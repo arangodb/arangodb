@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2013, International Business Machines
+ *   Copyright (C) 2005-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -11,7 +11,7 @@
 
 #include "cmemory.h"
 #include "cstring.h"
-#include "ucol_imp.h"
+#include "usrchimp.h"
 
 #include "unicode/coll.h"
 #include "unicode/tblcoll.h"
@@ -629,9 +629,6 @@ void SSearchTest::offsetTest()
     col->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_ON, status);
 
     for(int32_t i = 0; i < testCount; i += 1) {
-      if (i>=4 && i<=6 && logKnownIssue("9156", "was 8081")) {
-            continue; // timebomb until ticket #9156 (was #8081) is resolved
-        }
         UnicodeString ts = CharsToUnicodeString(test[i]);
         CollationElementIterator *iter = col->createCollationElementIterator(ts);
         OrderList forwardList;
@@ -1449,7 +1446,7 @@ void SSearchTest::monkeyTest(char *params)
         ucol_setStrength(coll, strengths[s]);
 
         // TODO: try alternate prefix and suffix too?
-        // TODO: alterntaes are only equal at primary strength. Is this OK?
+        // TODO: alternates are only equal at primary strength. Is this OK?
         for(int32_t t = 0; t < loopCount; t += 1) {
             uint32_t seed = m_seed;
             // int32_t  nmc = 0;

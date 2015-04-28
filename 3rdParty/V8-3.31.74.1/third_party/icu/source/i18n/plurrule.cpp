@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2013, International Business Machines Corporation and
+* Copyright (C) 2007-2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -29,6 +29,8 @@
 #include "ustrfmt.h"
 #include "uassert.h"
 #include "uvectr32.h"
+#include "sharedpluralrules.h"
+#include "unifiedcache.h"
 
 #if !UCONFIG_NO_FORMATTING
 
@@ -49,7 +51,6 @@ static const UChar PK_VAR_I[]={LOW_I,0};
 static const UChar PK_VAR_F[]={LOW_F,0};
 static const UChar PK_VAR_T[]={LOW_T,0};
 static const UChar PK_VAR_V[]={LOW_V,0};
-static const UChar PK_VAR_J[]={LOW_J,0};
 static const UChar PK_WITHIN[]={LOW_W,LOW_I,LOW_T,LOW_H,LOW_I,LOW_N,0};
 static const UChar PK_DECIMAL[]={LOW_D,LOW_E,LOW_C,LOW_I,LOW_M,LOW_A,LOW_L,0};
 static const UChar PK_INTEGER[]={LOW_I,LOW_N,LOW_T,LOW_E,LOW_G,LOW_E,LOW_R,0};
@@ -72,6 +73,10 @@ PluralRules::PluralRules(const PluralRules& other)
 
 PluralRules::~PluralRules() {
     delete mRules;
+}
+
+SharedPluralRules::~SharedPluralRules() {
+    delete ptr;
 }
 
 PluralRules*
@@ -132,6 +137,46 @@ PluralRules::createDefaultRules(UErrorCode& status) {
     return createRules(UnicodeString(TRUE, PLURAL_DEFAULT_RULE, -1), status);
 }
 
+/******************************************************************************/
+/* Create PluralRules cache */
+
+template<> U_I18N_API
+const SharedPluralRules *LocaleCacheKey<SharedPluralRules>::createObject(
+        const void * /*unused*/, UErrorCode &status) const {
+    const char *localeId = fLoc.getName();
+    PluralRules *pr = PluralRules::internalForLocale(
+            localeId, UPLURAL_TYPE_CARDINAL, status);
+    if (U_FAILURE(status)) {
+        return NULL;
+    }
+    SharedPluralRules *result = new SharedPluralRules(pr);
+    if (result == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        delete pr;
+        return NULL;
+    }
+    result->addRef();
+    return result;
+}
+
+/* end plural rules cache */
+/******************************************************************************/
+
+const SharedPluralRules* U_EXPORT2
+PluralRules::createSharedInstance(
+        const Locale& locale, UPluralType type, UErrorCode& status) {
+    if (U_FAILURE(status)) {
+        return NULL;
+    }
+    if (type != UPLURAL_TYPE_CARDINAL) {
+        status = U_UNSUPPORTED_ERROR;
+        return NULL;
+    }
+    const SharedPluralRules *result = NULL;
+    UnifiedCache::getByLocale(locale, result, status);
+    return result;
+}
+
 PluralRules* U_EXPORT2
 PluralRules::forLocale(const Locale& locale, UErrorCode& status) {
     return forLocale(locale, UPLURAL_TYPE_CARDINAL, status);
@@ -139,6 +184,24 @@ PluralRules::forLocale(const Locale& locale, UErrorCode& status) {
 
 PluralRules* U_EXPORT2
 PluralRules::forLocale(const Locale& locale, UPluralType type, UErrorCode& status) {
+    if (type != UPLURAL_TYPE_CARDINAL) {
+        return internalForLocale(locale, type, status);
+    }
+    const SharedPluralRules *shared = createSharedInstance(
+            locale, type, status);
+    if (U_FAILURE(status)) {
+        return NULL;
+    }
+    PluralRules *result = (*shared)->clone();
+    shared->removeRef();
+    if (result == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+    }
+    return result;
+}
+
+PluralRules* U_EXPORT2
+PluralRules::internalForLocale(const Locale& locale, UPluralType type, UErrorCode& status) {
     if (U_FAILURE(status)) {
         return NULL;
     }

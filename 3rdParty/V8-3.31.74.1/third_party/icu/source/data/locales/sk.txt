@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sk.xml
@@ -30,6 +30,7 @@ sk{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -206,10 +207,13 @@ sk{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         generic{
             DateTimePatterns{
@@ -240,10 +244,10 @@ sk{
                 M{"L."}
                 MEd{"E, d.M."}
                 MMM{"LLL"}
-                MMMEd{"E, d. MMM."}
+                MMMEd{"E, d. MMM"}
                 MMMMEd{"E, d. MMMM"}
                 MMMMd{"d. MMMM"}
-                MMMd{"d. MMM."}
+                MMMd{"d. MMM"}
                 Md{"d.M."}
                 d{"d."}
                 h{"h a"}
@@ -365,8 +369,12 @@ sk{
         }
         gregorian{
             AmPmMarkers{
-                "AM",
-                "PM",
+                "dopoludnia",
+                "odpoludnia",
+            }
+            AmPmMarkersNarrow{
+                "dop.",
+                "odp.",
             }
             DateTimePatterns{
                 "H:mm:ss zzzz",
@@ -375,39 +383,42 @@ sk{
                 "H:mm",
                 "EEEE, d. MMMM y",
                 "d. MMMM y",
-                "d.M.y",
-                "d.M.y",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
+                "d. M. y",
+                "dd.MM.yy",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
                 "{1} {0}",
             }
+            NoonMarker{"poludnie"}
+            NoonMarkerNarrow{"pol."}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E d."}
-                Ehm{"E h:mm"}
-                Ehms{"E h:mm:ss"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
-                GyMMM{"LLL y G"}
-                GyMMMEd{"E, d. MMM y G"}
+                GyMMM{"LLLL y G"}
+                GyMMMEd{"E, d. MMMM y G"}
                 GyMMMMd{"d. MMMM y G"}
-                GyMMMd{"d.M.y G"}
+                GyMMMd{"d. M. y G"}
                 H{"H"}
                 Hm{"H:mm"}
                 Hms{"H:mm:ss"}
                 M{"L."}
-                MEd{"E, d.M."}
+                MEd{"E, d. M."}
                 MMM{"LLL"}
-                MMMEd{"E, d. MMM."}
+                MMMEd{"E, d. M."}
                 MMMMEd{"E, d. MMMM"}
                 MMMMd{"d. MMMM"}
-                MMMd{"d. MMM."}
-                Md{"d.M."}
+                MMMd{"d. M"}
+                Md{"d. M."}
                 d{"d."}
                 h{"h a"}
                 hm{"h:mm a"}
@@ -415,14 +426,14 @@ sk{
                 mmss{"mm:ss"}
                 ms{"mm:ss"}
                 y{"y"}
-                yM{"M.y"}
+                yM{"M/y"}
                 yMEd{"E d. M. y"}
-                yMMM{"LLL y"}
-                yMMMEd{"E, d. MMM y"}
+                yMMM{"LLLL y"}
+                yMMMEd{"E d. M. y"}
                 yMMMM{"LLLL y"}
                 yMMMMd{"d. MMMM y"}
-                yMMMd{"d.M.y"}
-                yMd{"d.M.y"}
+                yMMMd{"d. M. y"}
+                yMd{"d. M. y"}
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
             }
@@ -506,8 +517,20 @@ sk{
             }
             eras{
                 abbreviated{
-                    "pred n.l.",
-                    "n.l.",
+                    "pred Kr.",
+                    "po Kr.",
+                }
+                abbreviated%variant{
+                    "pred n. l.",
+                    "n. l.",
+                }
+                wide{
+                    "pred Kristom",
+                    "po Kristovi",
+                }
+                wide%variant{
+                    "pred naším letopočtom",
+                    "nášho letopočtu",
                 }
             }
             intervalFormats{
@@ -529,26 +552,26 @@ sk{
                     M{"M. – M."}
                 }
                 MEd{
-                    M{"E, d.M. - E, d.M."}
-                    d{"E, d.M. - E, d.M."}
+                    M{"E, d.M. – E, d.M."}
+                    d{"E, d.M. – E, d.M."}
                 }
                 MMM{
                     M{"LLL – LLL"}
                 }
                 MMMEd{
-                    M{"E, d. MMM - E, d. MMM"}
-                    d{"E, d. - E, d. MMM"}
+                    M{"E, d. MMM – E, d. MMM"}
+                    d{"E, d. – E, d. MMM"}
                 }
                 MMMM{
-                    M{"LLLL-LLLL"}
+                    M{"LLLL – LLLL"}
                 }
                 MMMd{
-                    M{"d. MMM - d. MMM"}
-                    d{"d. - d. MMM"}
+                    M{"d. MMM – d. MMM"}
+                    d{"d. – d. MMM"}
                 }
                 Md{
-                    M{"d.M. - d.M."}
-                    d{"d.M. - d.M."}
+                    M{"d.M. – d.M."}
+                    d{"d.M. – d.M."}
                 }
                 d{
                     d{"d. – d."}
@@ -559,53 +582,53 @@ sk{
                     h{"h – h a"}
                 }
                 hm{
-                    a{"h:mm a - h:mm a"}
-                    h{"h:mm - h:mm a"}
-                    m{"h:mm - h:mm a"}
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
                 }
                 hmv{
-                    a{"h:mm a - h:mm a v"}
-                    h{"h:mm - h:mm a v"}
-                    m{"h:mm - h:mm a v"}
+                    a{"h:mm a – h:mm a v"}
+                    h{"h:mm – h:mm a v"}
+                    m{"h:mm – h:mm a v"}
                 }
                 hv{
-                    a{"h a - h a v"}
+                    a{"h a – h a v"}
                     h{"h – h a v"}
                 }
                 y{
-                    y{"y - y"}
+                    y{"y – y"}
                 }
                 yM{
-                    M{"M.y - M.y"}
-                    y{"M.y - M.y"}
+                    M{"M.y – M.y"}
+                    y{"M.y – M.y"}
                 }
                 yMEd{
-                    M{"E, d.M.y - E, d.M.y"}
-                    d{"E, d.M.y - E, d.M.y"}
-                    y{"E, d.M.y - E, d.M.y"}
+                    M{"E, d.M.y – E, d.M.y"}
+                    d{"E, d.M.y – E, d.M.y"}
+                    y{"E, d.M.y – E, d.M.y"}
                 }
                 yMMM{
-                    M{"LLL - LLL y"}
-                    y{"LLL y - LLL y"}
+                    M{"LLL – LLL y"}
+                    y{"LLL – LLL y"}
                 }
                 yMMMEd{
-                    M{"E, d. MMM - E, d. MMM y"}
-                    d{"E, d. - E, d. MMM y"}
-                    y{"E, d. MMM y - E, d. MMM y"}
+                    M{"E, d. MMM – E, d. MMM y"}
+                    d{"E, d. – E, d. MMM y"}
+                    y{"E, d. MMM y – E, d. MMM y"}
                 }
                 yMMMM{
-                    M{"LLLL - LLLL y"}
-                    y{"LLLL y - LLLL y"}
+                    M{"LLLL y – LLLL y"}
+                    y{"LLLL y – LLLL y"}
                 }
                 yMMMd{
-                    M{"d. MMM - d. MMM y"}
-                    d{"d. - d. MMM y"}
-                    y{"d. MMM y - d. MMM y"}
+                    M{"y MMM d – MMM d"}
+                    d{"d. – d. MMM y"}
+                    y{"d. MMM y – d. MMM y"}
                 }
                 yMd{
-                    M{"d.M.y - d.M.y"}
-                    d{"d.M.y - d.M.y"}
-                    y{"d.M.y - d.M.y"}
+                    M{"d.M.y – d.M.y"}
+                    d{"d.M.y – d.M.y"}
+                    y{"d.M.y – d.M.y"}
                 }
             }
             monthNames{
@@ -624,6 +647,20 @@ sk{
                         "nov",
                         "dec",
                     }
+                    narrow{
+                        "j",
+                        "f",
+                        "m",
+                        "a",
+                        "m",
+                        "j",
+                        "j",
+                        "a",
+                        "s",
+                        "o",
+                        "n",
+                        "d",
+                    }
                     wide{
                         "januára",
                         "februára",
@@ -640,6 +677,20 @@ sk{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "jan",
+                        "feb",
+                        "mar",
+                        "apr",
+                        "máj",
+                        "jún",
+                        "júl",
+                        "aug",
+                        "sep",
+                        "okt",
+                        "nov",
+                        "dec",
+                    }
                     narrow{
                         "j",
                         "f",
@@ -693,10 +744,10 @@ sk{
                 }
                 stand-alone{
                     abbreviated{
-                        "1Q",
-                        "2Q",
-                        "3Q",
-                        "4Q",
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4",
                     }
                     narrow{
                         "1",
@@ -749,209 +800,596 @@ sk{
     }
     fields{
         day{
-            dn{"Deň"}
+            dn{"deň"}
             relative{
-                "-1"{"Včera"}
-                "-2"{"Predvčerom"}
-                "0"{"Dnes"}
-                "1"{"Zajtra"}
-                "2"{"Pozajtra"}
+                "-1"{"včera"}
+                "-2"{"predvčerom"}
+                "0"{"dnes"}
+                "1"{"zajtra"}
+                "2"{"pozajtra"}
             }
             relativeTime{
                 future{
-                    few{"O {0} dni"}
-                    many{"O {0} dňa"}
-                    one{"O {0} deň"}
-                    other{"O {0} dní"}
+                    few{"o {0} dni"}
+                    many{"o {0} dňa"}
+                    one{"o {0} deň"}
+                    other{"o {0} dní"}
                 }
                 past{
-                    few{"Pred {0} dňami"}
-                    many{"Pred {0} dňami"}
-                    one{"Pred {0} dňom"}
-                    other{"Pred {0} dňami"}
+                    few{"pred {0} dňami"}
+                    many{"pred {0} dňom"}
+                    one{"pred {0} dňom"}
+                    other{"pred {0} dňami"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"d."}
+            relativeTime{
+                future{
+                    few{"o {0} d"}
+                    many{"o {0} d"}
+                    one{"o {0} d"}
+                    other{"o {0} d"}
+                }
+                past{
+                    few{"pred {0} d"}
+                    many{"pred {0} d"}
+                    one{"pred {0} d"}
+                    other{"pred {0} d"}
+                }
+            }
+        }
+        day-short{
+            dn{"d."}
+            relativeTime{
+                future{
+                    few{"o {0} d."}
+                    many{"o {0} d."}
+                    one{"o {0} d."}
+                    other{"o {0} d."}
+                }
+                past{
+                    few{"pred {0} d."}
+                    many{"pred {0} d."}
+                    one{"pred {0} d."}
+                    other{"pred {0} d."}
                 }
             }
         }
         dayperiod{
-            dn{"Časť dňa"}
+            dn{"časť dňa"}
         }
         era{
-            dn{"Éra"}
+            dn{"letopočet"}
         }
         fri{
             relative{
-                "-1"{"Minulý piatok"}
-                "0"{"Tento piatok"}
-                "1"{"Budúci piatok"}
+                "-1"{"minulý piatok"}
+                "0"{"tento piatok"}
+                "1"{"budúci piatok"}
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"minulý pi."}
+                "0"{"tento pi."}
+                "1"{"budúci pi."}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"minulý pi."}
+                "0"{"tento pi."}
+                "1"{"budúci pi."}
             }
         }
         hour{
-            dn{"Hodina"}
+            dn{"hodina"}
             relativeTime{
                 future{
-                    few{"O {0} hodiny"}
-                    many{"O {0} hodiny"}
-                    one{"O {0} hodinu"}
-                    other{"O {0} hodín"}
+                    few{"o {0} hodiny"}
+                    many{"o {0} hodiny"}
+                    one{"o {0} hodinu"}
+                    other{"o {0} hodín"}
                 }
                 past{
-                    few{"Pred {0} hodinami"}
-                    many{"Pred {0} hodinami"}
-                    one{"Pred {0} hodinou"}
-                    other{"Pred {0} hodinami"}
+                    few{"pred {0} hodinami"}
+                    many{"pred {0} hodinou"}
+                    one{"pred {0} hodinou"}
+                    other{"pred {0} hodinami"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"h"}
+            relativeTime{
+                future{
+                    few{"o {0} h"}
+                    many{"o {0} h"}
+                    one{"o {0} h"}
+                    other{"o {0} h"}
+                }
+                past{
+                    few{"pred {0} h"}
+                    many{"pred {0} h"}
+                    one{"pred {0} h"}
+                    other{"pred {0} h"}
+                }
+            }
+        }
+        hour-short{
+            dn{"h"}
+            relativeTime{
+                future{
+                    few{"o {0} h"}
+                    many{"o {0} h"}
+                    one{"o {0} h"}
+                    other{"o {0} h"}
+                }
+                past{
+                    few{"pred {0} h"}
+                    many{"pred {0} h"}
+                    one{"pred {0} h"}
+                    other{"pred {0} h"}
                 }
             }
         }
         minute{
-            dn{"Minúta"}
+            dn{"minúta"}
             relativeTime{
                 future{
-                    few{"O {0} minúty"}
-                    many{"O {0} minúty"}
-                    one{"O {0} minútu"}
-                    other{"O {0} minút"}
+                    few{"o {0} minúty"}
+                    many{"o {0} minúty"}
+                    one{"o {0} minútu"}
+                    other{"o {0} minút"}
                 }
                 past{
-                    few{"Pred {0} minútami"}
-                    many{"Pred {0} minútami"}
-                    one{"Pred {0} minútou"}
-                    other{"Pred {0} minútami"}
+                    few{"pred {0} minútami"}
+                    many{"pred {0} minútou"}
+                    one{"pred {0} minútou"}
+                    other{"pred {0} minútami"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    few{"o {0} min"}
+                    many{"o {0} min"}
+                    one{"o {0} min"}
+                    other{"o {0} min"}
+                }
+                past{
+                    few{"pred {0} min"}
+                    many{"pred {0} min"}
+                    one{"pred {0} min"}
+                    other{"pred {0} min"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min"}
+            relativeTime{
+                future{
+                    few{"o {0} min"}
+                    many{"o {0} min"}
+                    one{"o {0} min"}
+                    other{"o {0} min"}
+                }
+                past{
+                    few{"pred {0} min"}
+                    many{"pred {0} min"}
+                    one{"pred {0} min"}
+                    other{"pred {0} min"}
                 }
             }
         }
         mon{
             relative{
-                "-1"{"Minulý pondelok"}
-                "0"{"Tento pondelok"}
-                "1"{"Budúci pondelok"}
+                "-1"{"minulý pondelok"}
+                "0"{"tento pondelok"}
+                "1"{"budúci pondelok"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"minulý po."}
+                "0"{"tento po."}
+                "1"{"budúci po."}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"minulý pond."}
+                "0"{"tento pond."}
+                "1"{"budúci pond."}
             }
         }
         month{
-            dn{"Mesiac"}
+            dn{"mesiac"}
             relative{
-                "-1"{"Posledný mesiac"}
-                "0"{"Tento mesiac"}
-                "1"{"Budúci mesiac"}
+                "-1"{"minulý mesiac"}
+                "0"{"tento mesiac"}
+                "1"{"budúci mesiac"}
             }
             relativeTime{
                 future{
-                    few{"O {0} mesiace"}
-                    many{"O {0} mesiaca"}
-                    one{"O {0} mesiac"}
-                    other{"O {0} mesiacov"}
+                    few{"o {0} mesiace"}
+                    many{"o {0} mesiaca"}
+                    one{"o {0} mesiac"}
+                    other{"o {0} mesiacov"}
                 }
                 past{
-                    few{"Pred {0} mesiacmi"}
-                    many{"Pred {0} mesiacmi"}
-                    one{"Pred {0} mesiacom"}
-                    other{"Pred {0} mesiacmi"}
+                    few{"pred {0} mesiacmi"}
+                    many{"pred {0} mesiacom"}
+                    one{"pred {0} mesiacom"}
+                    other{"pred {0} mesiacmi"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"mes."}
+            relativeTime{
+                future{
+                    few{"o {0} mes."}
+                    many{"o {0} mes."}
+                    one{"o {0} mes."}
+                    other{"o {0} mes."}
+                }
+                past{
+                    few{"pred {0} mes."}
+                    many{"pred {0} mes."}
+                    one{"pred {0} mes."}
+                    other{"pred {0} mes."}
+                }
+            }
+        }
+        month-short{
+            dn{"mes."}
+            relativeTime{
+                future{
+                    few{"o {0} mes."}
+                    many{"o {0} mes."}
+                    one{"o {0} mes."}
+                    other{"o {0} mes."}
+                }
+                past{
+                    few{"pred {0} mes."}
+                    many{"pred {0} mes."}
+                    one{"pred {0} mes."}
+                    other{"pred {0} mes."}
+                }
+            }
+        }
+        quarter{
+            dn{"štvrťrok"}
+            relativeTime{
+                future{
+                    few{"o {0} štvrťroky"}
+                    many{"o {0} štvrťroka"}
+                    one{"o {0} štvrťrok"}
+                    other{"o {0} štvrťrokov"}
+                }
+                past{
+                    few{"pred {0} štvrťrokmi"}
+                    many{"pred {0} štvrťrokom"}
+                    one{"pred {0} štvrťrokom"}
+                    other{"pred {0} štvrťrokmi"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"Q"}
+            relativeTime{
+                future{
+                    few{"o {0} štvrťr."}
+                    many{"o {0} štvrťr."}
+                    one{"o {0} štvrťr."}
+                    other{"o {0} štvrťr."}
+                }
+                past{
+                    few{"pred {0} štvrťr."}
+                    many{"pred {0} štvrťr."}
+                    one{"pred {0} štvrťr."}
+                    other{"pred {0} štvrťr."}
+                }
+            }
+        }
+        quarter-short{
+            dn{"Q"}
+            relativeTime{
+                future{
+                    few{"o {0} štvrťr."}
+                    many{"o {0} štvrťr."}
+                    one{"o {0} štvrťr."}
+                    other{"o {0} štvrťr."}
+                }
+                past{
+                    few{"pred {0} štvrťr."}
+                    many{"pred {0} štvrťr."}
+                    one{"pred {0} štvrťr."}
+                    other{"pred {0} štvrťr."}
                 }
             }
         }
         sat{
             relative{
-                "-1"{"Minulú sobotu"}
-                "0"{"Túto sobotu"}
-                "1"{"Budúcu sobotu"}
+                "-1"{"minulú sobotu"}
+                "0"{"túto sobotu"}
+                "1"{"budúcu sobotu"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"minulú so."}
+                "0"{"túto so."}
+                "1"{"budúcu so."}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"minulú so."}
+                "0"{"túto so."}
+                "1"{"budúcu so."}
             }
         }
         second{
-            dn{"Sekunda"}
+            dn{"sekunda"}
             relative{
                 "0"{"teraz"}
             }
             relativeTime{
                 future{
-                    few{"O {0} sekundy"}
-                    many{"O {0} sekundy"}
-                    one{"O {0} sekundu"}
-                    other{"O {0} sekúnd"}
+                    few{"o {0} sekundy"}
+                    many{"o {0} sekundy"}
+                    one{"o {0} sekundu"}
+                    other{"o {0} sekúnd"}
                 }
                 past{
-                    few{"Pred {0} sekundami"}
+                    few{"pred {0} sekundami"}
                     many{"Pred {0} sekundami"}
-                    one{"Pred {0} sekundou"}
-                    other{"Pred {0} sekundami"}
+                    one{"pred {0} sekundou"}
+                    other{"pred {0} sekundami"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    few{"o {0} s"}
+                    many{"o {0} s"}
+                    one{"o {0} s"}
+                    other{"o {0} s"}
+                }
+                past{
+                    few{"pred {0} s"}
+                    many{"pred {0} s"}
+                    one{"pred {0} s"}
+                    other{"pred {0} s"}
+                }
+            }
+        }
+        second-short{
+            dn{"s"}
+            relativeTime{
+                future{
+                    few{"o {0} s"}
+                    many{"o {0} s"}
+                    one{"o {0} s"}
+                    other{"o {0} s"}
+                }
+                past{
+                    few{"pred {0} s"}
+                    many{"pred {0} s"}
+                    one{"pred {0} s"}
+                    other{"pred {0} s"}
                 }
             }
         }
         sun{
             relative{
-                "-1"{"Minulú nedeľu"}
-                "0"{"Túto nedeľu"}
-                "1"{"Budúcu nedeľu"}
+                "-1"{"minulú nedeľu"}
+                "0"{"túto nedeľu"}
+                "1"{"budúcu nedeľu"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"minulú ne."}
+                "0"{"túto ne."}
+                "1"{"budúcu ne."}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"minulú ned."}
+                "0"{"túto ned."}
+                "1"{"budúcu ned."}
             }
         }
         thu{
             relative{
-                "-1"{"Minulý štvrtok"}
-                "0"{"Tento štvrtok"}
-                "1"{"Budúci štvrtok"}
+                "-1"{"minulý štvrtok"}
+                "0"{"tento štvrtok"}
+                "1"{"budúci štvrtok"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"minulý št."}
+                "0"{"tento št."}
+                "1"{"budúci št."}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"minulý št."}
+                "0"{"tento št."}
+                "1"{"budúci št."}
             }
         }
         tue{
             relative{
-                "-1"{"Minulý utorok"}
-                "0"{"Tento utorok"}
-                "1"{"Budúci utorok"}
+                "-1"{"minulý utorok"}
+                "0"{"tento utorok"}
+                "1"{"budúci utorok"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"minulý ut."}
+                "0"{"tento ut."}
+                "1"{"budúci ut."}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"minulý ut."}
+                "0"{"tento ut."}
+                "1"{"budúci ut."}
             }
         }
         wed{
             relative{
-                "-1"{"Minulú stredu"}
-                "0"{"Túto stredu"}
-                "1"{"Budúcu stredu"}
+                "-1"{"minulú stredu"}
+                "0"{"túto stredu"}
+                "1"{"budúcu stredu"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"minulú st."}
+                "0"{"túto st."}
+                "1"{"budúcu st."}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"minulú str."}
+                "0"{"túto str."}
+                "1"{"budúcu str."}
             }
         }
         week{
-            dn{"Týždeň"}
+            dn{"týždeň"}
             relative{
-                "-1"{"Minulý týždeň"}
-                "0"{"Tento týždeň"}
-                "1"{"Budúci týždeň"}
+                "-1"{"minulý týždeň"}
+                "0"{"tento týždeň"}
+                "1"{"budúci týždeň"}
             }
             relativeTime{
                 future{
-                    few{"O {0} týždne"}
-                    many{"O {0} týždňa"}
-                    one{"O {0} týždeň"}
-                    other{"O {0} týždňov"}
+                    few{"o {0} týždne"}
+                    many{"o {0} týždňa"}
+                    one{"o {0} týždeň"}
+                    other{"o {0} týždňov"}
                 }
                 past{
-                    few{"Pred {0} týždňami"}
-                    many{"Pred {0} týždňami"}
-                    one{"Pred {0} týždňom"}
-                    other{"Pred {0} týždňami"}
+                    few{"pred {0} týždňami"}
+                    many{"pred {0} týždňom"}
+                    one{"pred {0} týždňom"}
+                    other{"pred {0} týždňami"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"týž."}
+            relativeTime{
+                future{
+                    few{"o {0} týž."}
+                    many{"o {0} týž."}
+                    one{"o {0} týž."}
+                    other{"o {0} týž."}
+                }
+                past{
+                    few{"pred {0} týž."}
+                    many{"pred {0} týž."}
+                    one{"pred {0} týž."}
+                    other{"pred {0} týž."}
+                }
+            }
+        }
+        week-short{
+            dn{"týž."}
+            relativeTime{
+                future{
+                    few{"o {0} týž."}
+                    many{"o {0} týž."}
+                    one{"o {0} týž."}
+                    other{"o {0} týž."}
+                }
+                past{
+                    few{"pred {0} týž."}
+                    many{"pred {0} týž."}
+                    one{"pred {0} týž."}
+                    other{"pred {0} týž."}
                 }
             }
         }
         weekday{
-            dn{"Deň v týždni"}
+            dn{"deň v týždni"}
         }
         year{
-            dn{"Rok"}
+            dn{"rok"}
             relative{
-                "-1"{"Minulý rok"}
-                "0"{"Tento rok"}
-                "1"{"Budúci rok"}
+                "-1"{"minulý rok"}
+                "0"{"tento rok"}
+                "1"{"budúci rok"}
             }
             relativeTime{
                 future{
-                    few{"O {0} roky"}
-                    many{"O {0} roka"}
-                    one{"O {0} rok"}
-                    other{"O {0} rokov"}
+                    few{"o {0} roky"}
+                    many{"o {0} roka"}
+                    one{"o {0} rok"}
+                    other{"o {0} rokov"}
                 }
                 past{
-                    few{"Pred {0} rokmi"}
-                    many{"Pred {0} rokmi"}
-                    one{"Pred {0} rokom"}
-                    other{"Pred {0} rokmi"}
+                    few{"pred {0} rokmi"}
+                    many{"pred {0} rokom"}
+                    one{"pred {0} rokom"}
+                    other{"pred {0} rokmi"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"r."}
+            relativeTime{
+                future{
+                    few{"o {0} r."}
+                    many{"o {0} r."}
+                    one{"o {0} r."}
+                    other{"o {0} r."}
+                }
+                past{
+                    few{"pred {0} r."}
+                    many{"pred {0} r."}
+                    one{"pred {0} r."}
+                    other{"pred {0} r."}
+                }
+            }
+        }
+        year-short{
+            dn{"r."}
+            relativeTime{
+                future{
+                    few{"o {0} r."}
+                    many{"o {0} r."}
+                    one{"o {0} r."}
+                    other{"o {0} r."}
+                }
+                past{
+                    few{"pred {0} r."}
+                    many{"pred {0} r."}
+                    one{"pred {0} r."}
+                    other{"pred {0} r."}
                 }
             }
         }
         zone{
-            dn{"Časové pásmo"}
+            dn{"časové pásmo"}
         }
     }
     listPattern{
@@ -967,6 +1405,12 @@ sk{
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
+        unit-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         unit-short{
             2{"{0}, {1}"}
             end{"{0}, {1}"}
@@ -975,7 +1419,7 @@ sk{
         }
     }
     measurementSystemNames{
-        UK{"imperiálny"}
+        UK{"britský"}
         US{"americký"}
         metric{"metrický"}
     }
@@ -990,170 +1434,5 @@ sk{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinyin"}
         x-Publishing{"Uverejnenie"}
-    }
-    units{
-        compound{
-            per{"{0} za {1}"}
-        }
-        duration{
-            day{
-                few{"{0} dni"}
-                many{"{0} dňa"}
-                one{"{0} deň"}
-                other{"{0} dní"}
-            }
-            hour{
-                few{"{0} hodiny"}
-                many{"{0} hodiny"}
-                one{"{0} hodina"}
-                other{"{0} hodín"}
-            }
-            millisecond{
-                few{"{0} milisekundy"}
-                many{"{0} milisekundy"}
-                one{"{0} milisekunda"}
-                other{"{0} milisekúnd"}
-            }
-            minute{
-                few{"{0} minúty"}
-                many{"{0} minúty"}
-                one{"{0} minúta"}
-                other{"{0} minút"}
-            }
-            month{
-                few{"{0} mesiace"}
-                many{"{0} mesiaca"}
-                one{"{0} mesiac"}
-                other{"{0} mesiacov"}
-            }
-            second{
-                few{"{0} sekundy"}
-                many{"{0} sekundy"}
-                one{"{0} sekunda"}
-                other{"{0} sekúnd"}
-            }
-            week{
-                few{"{0} týždne"}
-                many{"{0} týždňa"}
-                one{"{0} týždeň"}
-                other{"{0} týždňov"}
-            }
-            year{
-                few{"{0} roky"}
-                many{"{0} roka"}
-                one{"{0} rok"}
-                other{"{0} rokov"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0}d."}
-                many{"{0}d."}
-                one{"{0}d."}
-                other{"{0}d."}
-            }
-            hour{
-                few{"{0}h"}
-                many{"{0}h"}
-                one{"{0}h"}
-                other{"{0}h"}
-            }
-            millisecond{
-                few{"{0}ms"}
-                many{"{0}ms"}
-                one{"{0}ms"}
-                other{"{0}ms"}
-            }
-            minute{
-                few{"{0}min"}
-                many{"{0}min"}
-                one{"{0}min"}
-                other{"{0}min"}
-            }
-            month{
-                few{"{0}mes."}
-                many{"{0}mes."}
-                one{"{0}mes."}
-                other{"{0}mes."}
-            }
-            second{
-                few{"{0}s"}
-                many{"{0}s"}
-                one{"{0}s"}
-                other{"{0}s"}
-            }
-            week{
-                few{"{0}týžd."}
-                many{"{0}týžd."}
-                one{"{0}týžd."}
-                other{"{0}týžd."}
-            }
-            year{
-                few{"{0}r."}
-                many{"{0}r."}
-                one{"{0}r."}
-                other{"{0}r."}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} d."}
-                many{"{0} d."}
-                one{"{0} d."}
-                other{"{0} d."}
-            }
-            hour{
-                few{"{0} hod."}
-                many{"{0} hod."}
-                one{"{0} hod."}
-                other{"{0} hod."}
-            }
-            millisecond{
-                few{"{0} ms"}
-                many{"{0} ms"}
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                few{"{0} min."}
-                many{"{0} min."}
-                one{"{0} min."}
-                other{"{0} min."}
-            }
-            month{
-                few{"{0} mes."}
-                many{"{0} mes."}
-                one{"{0} mes."}
-                other{"{0} mes."}
-            }
-            second{
-                few{"{0} sek."}
-                many{"{0} sek."}
-                one{"{0} sek."}
-                other{"{0} sek."}
-            }
-            week{
-                few{"{0} týžd."}
-                many{"{0} týžd."}
-                one{"{0} týžd."}
-                other{"{0} týžd."}
-            }
-            year{
-                few{"{0} r."}
-                many{"{0} r."}
-                one{"{0} r."}
-                other{"{0} r."}
-            }
-        }
     }
 }

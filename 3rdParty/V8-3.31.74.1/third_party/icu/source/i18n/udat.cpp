@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 1996-2013, International Business Machines
+*   Copyright (C) 1996-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 */
@@ -67,16 +67,19 @@ static UCalendarDateFields gDateFieldMapping[] = {
     UCAL_EXTENDED_YEAR,        // UDAT_EXTENDED_YEAR_FIELD = 20
     UCAL_JULIAN_DAY,           // UDAT_JULIAN_DAY_FIELD = 21
     UCAL_MILLISECONDS_IN_DAY,  // UDAT_MILLISECONDS_IN_DAY_FIELD = 22
-    UCAL_ZONE_OFFSET,          // UDAT_TIMEZONE_RFC_FIELD = 23
-    // UCAL_DST_OFFSET also
-    UCAL_ZONE_OFFSET,          // UDAT_TIMEZONE_GENERIC_FIELD = 24
+    UCAL_ZONE_OFFSET,          // UDAT_TIMEZONE_RFC_FIELD = 23 (also UCAL_DST_OFFSET)
+    UCAL_ZONE_OFFSET,          // UDAT_TIMEZONE_GENERIC_FIELD = 24 (also UCAL_DST_OFFSET)
     UCAL_DOW_LOCAL,            // UDAT_STANDALONE_DAY_FIELD = 25
     UCAL_MONTH,                // UDAT_STANDALONE_MONTH_FIELD = 26
     UCAL_MONTH,                // UDAT_QUARTER_FIELD = 27
     UCAL_MONTH,                // UDAT_STANDALONE_QUARTER_FIELD = 28
-    UCAL_ZONE_OFFSET,          // UDAT_TIMEZONE_SPECIAL_FIELD = 29
+    UCAL_ZONE_OFFSET,          // UDAT_TIMEZONE_SPECIAL_FIELD = 29 (also UCAL_DST_OFFSET)
     UCAL_YEAR,                 // UDAT_YEAR_NAME_FIELD = 30
-    UCAL_FIELD_COUNT,          // UDAT_FIELD_COUNT = 31
+    UCAL_ZONE_OFFSET,          // UDAT_TIMEZONE_LOCALIZED_GMT_OFFSET_FIELD = 31 (also UCAL_DST_OFFSET)
+    UCAL_ZONE_OFFSET,          // UDAT_TIMEZONE_ISO_FIELD = 32 (also UCAL_DST_OFFSET)
+    UCAL_ZONE_OFFSET,          // UDAT_TIMEZONE_ISO_LOCAL_FIELD = 33 (also UCAL_DST_OFFSET)
+    UCAL_EXTENDED_YEAR,        // UDAT_RELATED_YEAR_FIELD = 34 (not an exact match)
+    UCAL_FIELD_COUNT,          // UDAT_FIELD_COUNT = 35
     // UCAL_IS_LEAP_MONTH is not the target of a mapping
 };
 
@@ -307,6 +310,26 @@ udat_setLenient(    UDateFormat*    fmt,
     ((DateFormat*)fmt)->setLenient(isLenient);
 }
 
+U_DRAFT UBool U_EXPORT2
+udat_getBooleanAttribute(const UDateFormat* fmt, 
+                         UDateFormatBooleanAttribute attr, 
+                         UErrorCode* status)
+{
+    if(U_FAILURE(*status)) return FALSE;
+    return ((DateFormat*)fmt)->getBooleanAttribute(attr, *status);
+    //return FALSE;
+}
+
+U_DRAFT void U_EXPORT2
+udat_setBooleanAttribute(UDateFormat *fmt, 
+                         UDateFormatBooleanAttribute attr, 
+                         UBool newValue, 
+                         UErrorCode* status)
+{
+    if(U_FAILURE(*status)) return;
+    ((DateFormat*)fmt)->setBooleanAttribute(attr, newValue, *status);
+}
+
 U_CAPI const UCalendar* U_EXPORT2
 udat_getCalendar(const UDateFormat* fmt)
 {
@@ -320,10 +343,34 @@ udat_setCalendar(UDateFormat*    fmt,
     ((DateFormat*)fmt)->setCalendar(*((Calendar*)calendarToSet));
 }
 
+U_DRAFT const UNumberFormat* U_EXPORT2 
+udat_getNumberFormatForField(const UDateFormat* fmt, UChar field)
+{
+    UErrorCode status = U_ZERO_ERROR;
+    verifyIsSimpleDateFormat(fmt, &status);
+    if (U_FAILURE(status)) return (const UNumberFormat*) ((DateFormat*)fmt)->getNumberFormat();
+    return (const UNumberFormat*) ((SimpleDateFormat*)fmt)->getNumberFormatForField(field);
+}
+
 U_CAPI const UNumberFormat* U_EXPORT2
 udat_getNumberFormat(const UDateFormat* fmt)
 {
     return (const UNumberFormat*) ((DateFormat*)fmt)->getNumberFormat();
+}
+
+U_DRAFT void U_EXPORT2 
+udat_adoptNumberFormatForFields(           UDateFormat*    fmt,
+                                    const  UChar*          fields,
+                                           UNumberFormat*  numberFormatToSet,
+                                           UErrorCode*     status)
+{
+    verifyIsSimpleDateFormat(fmt, status);
+    if (U_FAILURE(*status)) return;
+    
+    if (fields!=NULL) {
+        UnicodeString overrideFields(fields);
+        ((SimpleDateFormat*)fmt)->adoptNumberFormat(overrideFields, (NumberFormat*)numberFormatToSet, *status);
+    }
 }
 
 U_CAPI void U_EXPORT2
@@ -331,6 +378,13 @@ udat_setNumberFormat(UDateFormat*    fmt,
                      const   UNumberFormat*  numberFormatToSet)
 {
     ((DateFormat*)fmt)->setNumberFormat(*((NumberFormat*)numberFormatToSet));
+}
+
+U_DRAFT void U_EXPORT2
+udat_adoptNumberFormat(      UDateFormat*    fmt,
+                             UNumberFormat*  numberFormatToAdopt)
+{
+    ((DateFormat*)fmt)->adoptNumberFormat((NumberFormat*)numberFormatToAdopt);
 }
 
 U_CAPI const char* U_EXPORT2
@@ -538,6 +592,30 @@ udat_getSymbols(const   UDateFormat     *fmt,
         res = syms->getQuarters(count, DateFormatSymbols::STANDALONE, DateFormatSymbols::ABBREVIATED);
         break;
 
+    case UDAT_CYCLIC_YEARS_WIDE:
+        res = syms->getYearNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::WIDE);
+        break;
+
+    case UDAT_CYCLIC_YEARS_ABBREVIATED:
+        res = syms->getYearNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::ABBREVIATED);
+        break;
+
+    case UDAT_CYCLIC_YEARS_NARROW:
+        res = syms->getYearNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::NARROW);
+        break;
+
+    case UDAT_ZODIAC_NAMES_WIDE:
+        res = syms->getZodiacNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::WIDE);
+        break;
+
+    case UDAT_ZODIAC_NAMES_ABBREVIATED:
+        res = syms->getZodiacNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::ABBREVIATED);
+        break;
+
+    case UDAT_ZODIAC_NAMES_NARROW:
+        res = syms->getZodiacNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::NARROW);
+        break;
+
     }
 
     if(index < count) {
@@ -650,6 +728,30 @@ udat_countSymbols(    const    UDateFormat                *fmt,
 
     case UDAT_STANDALONE_SHORT_QUARTERS:
         syms->getQuarters(count, DateFormatSymbols::STANDALONE, DateFormatSymbols::ABBREVIATED);
+        break;
+
+    case UDAT_CYCLIC_YEARS_WIDE:
+        syms->getYearNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::WIDE);
+        break;
+
+    case UDAT_CYCLIC_YEARS_ABBREVIATED:
+        syms->getYearNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::ABBREVIATED);
+        break;
+
+    case UDAT_CYCLIC_YEARS_NARROW:
+        syms->getYearNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::NARROW);
+        break;
+
+    case UDAT_ZODIAC_NAMES_WIDE:
+        syms->getZodiacNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::WIDE);
+        break;
+
+    case UDAT_ZODIAC_NAMES_ABBREVIATED:
+        syms->getZodiacNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::ABBREVIATED);
+        break;
+
+    case UDAT_ZODIAC_NAMES_NARROW:
+        syms->getZodiacNames(count, DateFormatSymbols::FORMAT, DateFormatSymbols::NARROW);
         break;
 
     }
@@ -841,6 +943,20 @@ public:
     }
 
     static void
+        setShortYearNames(DateFormatSymbols *syms, int32_t index,
+        const UChar *value, int32_t valueLength, UErrorCode &errorCode)
+    {
+        setSymbol(syms->fShortYearNames, syms->fShortYearNamesCount, index, value, valueLength, errorCode);
+    }
+
+    static void
+        setShortZodiacNames(DateFormatSymbols *syms, int32_t index,
+        const UChar *value, int32_t valueLength, UErrorCode &errorCode)
+    {
+        setSymbol(syms->fShortZodiacNames, syms->fShortZodiacNamesCount, index, value, valueLength, errorCode);
+    }
+
+    static void
         setAmPm(DateFormatSymbols *syms, int32_t index,
         const UChar *value, int32_t valueLength, UErrorCode &errorCode)
     {
@@ -951,6 +1067,14 @@ udat_setSymbols(    UDateFormat             *format,
         DateFormatSymbolsSingleSetter::setStandaloneShortQuarter(syms, index, value, valueLength, *status);
         break;
 
+    case UDAT_CYCLIC_YEARS_ABBREVIATED:
+        DateFormatSymbolsSingleSetter::setShortYearNames(syms, index, value, valueLength, *status);
+        break;
+
+    case UDAT_ZODIAC_NAMES_ABBREVIATED:
+        DateFormatSymbolsSingleSetter::setShortZodiacNames(syms, index, value, valueLength, *status);
+        break;
+
     case UDAT_AM_PMS:
         DateFormatSymbolsSingleSetter::setAmPm(syms, index, value, valueLength, *status);
         break;
@@ -980,25 +1104,23 @@ udat_getLocaleByType(const UDateFormat *fmt,
     return ((Format*)fmt)->getLocaleID(type, *status);
 }
 
-
 U_CAPI void U_EXPORT2
 udat_setContext(UDateFormat* fmt, UDisplayContext value, UErrorCode* status)
 {
-    verifyIsSimpleDateFormat(fmt, status);
     if (U_FAILURE(*status)) {
         return;
     }
-    ((SimpleDateFormat*)fmt)->setContext(value, *status);
+    ((DateFormat*)fmt)->setContext(value, *status);
+    return;
 }
 
 U_CAPI UDisplayContext U_EXPORT2
-udat_getContext(UDateFormat* fmt, UDisplayContextType type, UErrorCode* status)
+udat_getContext(const UDateFormat* fmt, UDisplayContextType type, UErrorCode* status)
 {
-    verifyIsSimpleDateFormat(fmt, status);
     if (U_FAILURE(*status)) {
         return (UDisplayContext)0;
     }
-    return ((SimpleDateFormat*)fmt)->getContext(type, *status);
+    return ((const DateFormat*)fmt)->getContext(type, *status);
 }
 
 

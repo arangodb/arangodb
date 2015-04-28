@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2013, International Business Machines Corporation and
+* Copyright (C) 2007-2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 */
@@ -15,6 +15,9 @@
 #include "unicode/datefmt.h"
 #include "unicode/smpdtfmt.h"
 #include "unicode/msgfmt.h"
+#include "unicode/udisplaycontext.h"
+#include "unicode/uchar.h"
+#include "unicode/brkiter.h"
 
 #include "gregoimp.h" // for CalendarData
 #include "cmemory.h"
@@ -42,7 +45,12 @@ RelativeDateFormat::RelativeDateFormat(const RelativeDateFormat& other) :
  fTimePattern(other.fTimePattern), fCombinedFormat(NULL),
  fDateStyle(other.fDateStyle), fLocale(other.fLocale),
  fDayMin(other.fDayMin), fDayMax(other.fDayMax),
- fDatesLen(other.fDatesLen), fDates(NULL)
+ fDatesLen(other.fDatesLen), fDates(NULL),
+ fCombinedHasDateAtStart(other.fCombinedHasDateAtStart),
+ fCapitalizationInfoSet(other.fCapitalizationInfoSet),
+ fCapitalizationOfRelativeUnitsForUIListMenu(other.fCapitalizationOfRelativeUnitsForUIListMenu),
+ fCapitalizationOfRelativeUnitsForStandAlone(other.fCapitalizationOfRelativeUnitsForStandAlone),
+ fCapitalizationBrkIter(NULL)
 {
     if(other.fDateTimeFormatter != NULL) {
         fDateTimeFormatter = (SimpleDateFormat*)other.fDateTimeFormatter->clone();
@@ -54,12 +62,20 @@ RelativeDateFormat::RelativeDateFormat(const RelativeDateFormat& other) :
         fDates = (URelativeString*) uprv_malloc(sizeof(fDates[0])*fDatesLen);
         uprv_memcpy(fDates, other.fDates, sizeof(fDates[0])*fDatesLen);
     }
+#if !UCONFIG_NO_BREAK_ITERATION
+    if (other.fCapitalizationBrkIter != NULL) {
+        fCapitalizationBrkIter = (other.fCapitalizationBrkIter)->clone();
+    }
+#endif
 }
 
 RelativeDateFormat::RelativeDateFormat( UDateFormatStyle timeStyle, UDateFormatStyle dateStyle,
                                         const Locale& locale, UErrorCode& status) :
  DateFormat(), fDateTimeFormatter(NULL), fDatePattern(), fTimePattern(), fCombinedFormat(NULL),
- fDateStyle(dateStyle), fLocale(locale), fDatesLen(0), fDates(NULL)
+ fDateStyle(dateStyle), fLocale(locale), fDayMin(0), fDayMax(0), fDatesLen(0), fDates(NULL),
+ fCombinedHasDateAtStart(FALSE), fCapitalizationInfoSet(FALSE),
+ fCapitalizationOfRelativeUnitsForUIListMenu(FALSE), fCapitalizationOfRelativeUnitsForStandAlone(FALSE),
+ fCapitalizationBrkIter(NULL)
 {
     if(U_FAILURE(status) ) {
         return;
@@ -110,6 +126,9 @@ RelativeDateFormat::~RelativeDateFormat() {
     delete fDateTimeFormatter;
     delete fCombinedFormat;
     uprv_free(fDates);
+#if !UCONFIG_NO_BREAK_ITERATION
+    delete fCapitalizationBrkIter;
+#endif
 }
 
 
@@ -119,12 +138,14 @@ Format* RelativeDateFormat::clone(void) const {
 
 UBool RelativeDateFormat::operator==(const Format& other) const {
     if(DateFormat::operator==(other)) {
+        // The DateFormat::operator== check for fCapitalizationContext equality above
+        //   is sufficient to check equality of all derived context-related data.
         // DateFormat::operator== guarantees following cast is safe
         RelativeDateFormat* that = (RelativeDateFormat*)&other;
         return (fDateStyle==that->fDateStyle   &&
                 fDatePattern==that->fDatePattern   &&
                 fTimePattern==that->fTimePattern   &&
-                fLocale==that->fLocale);
+                fLocale==that->fLocale );
     }
     return FALSE;
 }
@@ -137,6 +158,7 @@ UnicodeString& RelativeDateFormat::format(  Calendar& cal,
                                 
     UErrorCode status = U_ZERO_ERROR;
     UnicodeString relativeDayString;
+    UDisplayContext capitalizationContext = getContext(UDISPCTX_TYPE_CAPITALIZATION, status);
     
     // calculate the difference, in days, between 'cal' and now.
     int dayDiff = dayDifference(cal, status);
@@ -148,7 +170,25 @@ UnicodeString& RelativeDateFormat::format(  Calendar& cal,
         // found a relative string
         relativeDayString.setTo(theString, len);
     }
-    
+
+    if ( relativeDayString.length() > 0 && !fDatePattern.isEmpty() && 
+         (fTimePattern.isEmpty() || fCombinedFormat == NULL || fCombinedHasDateAtStart)) {
+#if !UCONFIG_NO_BREAK_ITERATION
+        // capitalize relativeDayString according to context for relative, set formatter no context
+        if ( u_islower(relativeDayString.char32At(0)) && fCapitalizationBrkIter!= NULL &&
+             ( capitalizationContext==UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE ||
+               (capitalizationContext==UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU && fCapitalizationOfRelativeUnitsForUIListMenu) ||
+               (capitalizationContext==UDISPCTX_CAPITALIZATION_FOR_STANDALONE && fCapitalizationOfRelativeUnitsForStandAlone) ) ) {
+            // titlecase first word of relativeDayString
+            relativeDayString.toTitle(fCapitalizationBrkIter, fLocale, U_TITLECASE_NO_LOWERCASE | U_TITLECASE_NO_BREAK_ADJUSTMENT);
+        }
+#endif
+        fDateTimeFormatter->setContext(UDISPCTX_CAPITALIZATION_NONE, status);
+    } else {
+        // set our context for the formatter
+        fDateTimeFormatter->setContext(capitalizationContext, status);
+    }
+
     if (fDatePattern.isEmpty()) {
         fDateTimeFormatter->applyPattern(fTimePattern);
         fDateTimeFormatter->format(cal,appendTo,pos);
@@ -384,6 +424,57 @@ RelativeDateFormat::getDateFormatSymbols() const
     return fDateTimeFormatter->getDateFormatSymbols();
 }
 
+// override the DateFormat implementation in order to
+// lazily initialize relevant items
+void
+RelativeDateFormat::setContext(UDisplayContext value, UErrorCode& status)
+{
+    DateFormat::setContext(value, status);
+    if (U_SUCCESS(status)) {
+        if (!fCapitalizationInfoSet &&
+                (value==UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU || value==UDISPCTX_CAPITALIZATION_FOR_STANDALONE)) {
+            initCapitalizationContextInfo(fLocale);
+            fCapitalizationInfoSet = TRUE;
+        }
+#if !UCONFIG_NO_BREAK_ITERATION
+        if ( fCapitalizationBrkIter == NULL && (value==UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE ||
+                (value==UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU && fCapitalizationOfRelativeUnitsForUIListMenu) ||
+                (value==UDISPCTX_CAPITALIZATION_FOR_STANDALONE && fCapitalizationOfRelativeUnitsForStandAlone)) ) {
+            UErrorCode status = U_ZERO_ERROR;
+            fCapitalizationBrkIter = BreakIterator::createSentenceInstance(fLocale, status);
+            if (U_FAILURE(status)) {
+                delete fCapitalizationBrkIter;
+                fCapitalizationBrkIter = NULL;
+            }
+        }
+#endif
+    }
+}
+
+void
+RelativeDateFormat::initCapitalizationContextInfo(const Locale& thelocale)
+{
+#if !UCONFIG_NO_BREAK_ITERATION
+    const char * localeID = (thelocale != NULL)? thelocale.getBaseName(): NULL;
+    UErrorCode status = U_ZERO_ERROR;
+    UResourceBundle *rb = ures_open(NULL, localeID, &status);
+    rb = ures_getByKeyWithFallback(rb, "contextTransforms", rb, &status);
+    rb = ures_getByKeyWithFallback(rb, "relative", rb, &status);
+    if (U_SUCCESS(status) && rb != NULL) {
+        int32_t len = 0;
+        const int32_t * intVector = ures_getIntVector(rb, &len, &status);
+        if (U_SUCCESS(status) && intVector != NULL && len >= 2) {
+            fCapitalizationOfRelativeUnitsForUIListMenu = intVector[0];
+            fCapitalizationOfRelativeUnitsForStandAlone = intVector[1];
+        }
+    }
+    ures_close(rb);
+#endif
+}
+
+static const UChar patItem1[] = {0x7B,0x31,0x7D}; // "{1}"
+static const int32_t patItem1Len = 3;
+
 void RelativeDateFormat::loadDates(UErrorCode &status) {
     CalendarData calData(fLocale, "gregorian", status);
     
@@ -420,26 +511,28 @@ void RelativeDateFormat::loadDates(UErrorCode &status) {
             }
 
             const UChar *resStr = ures_getStringByIndex(dateTimePatterns, glueIndex, &resStrLen, &tempStatus);
+            if (U_SUCCESS(tempStatus) && resStrLen >= patItem1Len && u_strncmp(resStr,patItem1,patItem1Len)==0) {
+                fCombinedHasDateAtStart = TRUE;
+            }
             fCombinedFormat = new MessageFormat(UnicodeString(TRUE, resStr, resStrLen), fLocale, tempStatus);
         }
     }
 
     UResourceBundle *rb = ures_open(NULL, fLocale.getBaseName(), &status);
-    UResourceBundle *sb = ures_getByKeyWithFallback(rb, "fields", NULL, &status);
-    rb = ures_getByKeyWithFallback(sb, "day", rb, &status);
-    sb = ures_getByKeyWithFallback(rb, "relative", sb, &status);
-    ures_close(rb);
+    rb = ures_getByKeyWithFallback(rb, "fields", rb, &status);
+    rb = ures_getByKeyWithFallback(rb, "day", rb, &status);
+    rb = ures_getByKeyWithFallback(rb, "relative", rb, &status);
     // set up min/max 
     fDayMin=-1;
     fDayMax=1;
 
     if(U_FAILURE(status)) {
         fDatesLen=0;
-        ures_close(sb);
+        ures_close(rb);
         return;
     }
 
-    fDatesLen = ures_getSize(sb);
+    fDatesLen = ures_getSize(rb);
     fDates = (URelativeString*) uprv_malloc(sizeof(fDates[0])*fDatesLen);
 
     // Load in each item into the array...
@@ -447,8 +540,8 @@ void RelativeDateFormat::loadDates(UErrorCode &status) {
 
     UResourceBundle *subString = NULL;
     
-    while(ures_hasNext(sb) && U_SUCCESS(status)) {  // iterate over items
-        subString = ures_getNextResource(sb, subString, &status);
+    while(ures_hasNext(rb) && U_SUCCESS(status)) {  // iterate over items
+        subString = ures_getNextResource(rb, subString, &status);
         
         if(U_FAILURE(status) || (subString==NULL)) break;
         
@@ -480,11 +573,12 @@ void RelativeDateFormat::loadDates(UErrorCode &status) {
         n++;
     }
     ures_close(subString);
-    ures_close(sb);
+    ures_close(rb);
     
     // the fDates[] array could be sorted here, for direct access.
 }
 
+//----------------------------------------------------------------------
 
 // this should to be in DateFormat, instead it was copied from SimpleDateFormat.
 

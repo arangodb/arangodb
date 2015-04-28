@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/et.xml
@@ -57,7 +57,7 @@ et{
         CF{"Kesk-Aafrika Vabariik"}
         CG{"Kongo-Brazzaville"}
         CH{"Šveits"}
-        CI{"Côte d'Ivoire"}
+        CI{"Côte d’Ivoire"}
         CK{"Cooki saared"}
         CL{"Tšiili"}
         CM{"Kamerun"}
@@ -112,8 +112,8 @@ et{
         GU{"Guam"}
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
-        HK{"Hongkong - Hiina erihalduspiirkond"}
-        HM{"Heard ja McDonald saared"}
+        HK{"Hongkong"}
+        HM{"Heardi ja McDonaldi saared"}
         HN{"Honduras"}
         HR{"Horvaatia"}
         HT{"Haiti"}
@@ -164,9 +164,9 @@ et{
         MH{"Marshalli saared"}
         MK{"Makedoonia"}
         ML{"Mali"}
-        MM{"Myanmar"}
+        MM{"Myanmar (Birma)"}
         MN{"Mongoolia"}
-        MO{"Macau - Hiina erihalduspiirkond"}
+        MO{"Macau"}
         MP{"Põhja-Mariaanid"}
         MQ{"Martinique"}
         MR{"Mauritaania"}
@@ -201,7 +201,7 @@ et{
         PM{"Saint Pierre ja Miquelon"}
         PN{"Pitcairni saared"}
         PR{"Puerto Rico"}
-        PS{"Palestiina alad"}
+        PS{"Palestiina"}
         PT{"Portugal"}
         PW{"Belau"}
         PY{"Paraguay"}
@@ -273,12 +273,15 @@ et{
         ZW{"Zimbabwe"}
         ZZ{"Tundmatu piirkond"}
     }
+    Countries%variant{
+        CD{"Kongo-Kinshasa"}
+        CG{"Kongo (Vabariik)"}
+        CI{"Elevandiluurannik"}
+        FK{"Falklandi saared (Malviini saared)"}
+    }
     CountriesShort{
         GB{"Suurbritannia"}
-        HK{"Hongkong"}
-        MO{"Macau"}
-        PS{"Palestiina"}
         US{"USA"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

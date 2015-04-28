@@ -1,12 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/rbnf/zh_Hant_HK.xml
 // *
 // ***************************************************************************
 zh_Hant_HK{
+    %%Parent{"zh_Hant"}
     RBNFRules{
         SpelloutRules{
             "%spellout-numbering-year:",
@@ -175,5 +176,5 @@ zh_Hant_HK{
             "0: \u7B2C=%spellout-numbering=;",
         }
     }
-    Version{"2.0.82.68"}
+    Version{"2.1.1.21"}
 }

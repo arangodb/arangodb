@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1997-2013, International Business Machines
+*   Copyright (C) 1997-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -117,10 +117,11 @@ typedef size_t uintptr_t;
 #   define U_TIMEZONE timezone
 #elif U_PLATFORM_IS_LINUX_BASED
 #   if defined(__UCLIBC__)
-    /* uClibc does not have __timezone or _timezone. */
+       /* uClibc does not have __timezone or _timezone. */
 #   elif defined(_NEWLIB_VERSION)
 #      define U_TIMEZONE      _timezone
 #   elif defined(__GLIBC__)
+       /* glibc */
 #      define U_TIMEZONE      __timezone
 #   endif
 #elif U_PLATFORM_USES_ONLY_WIN32_API
@@ -480,6 +481,12 @@ U_INTERNAL int32_t  U_EXPORT2 uprv_timezone(void);
  * @internal
  */
 U_INTERNAL const char* U_EXPORT2 uprv_tzname(int n);
+
+/**
+ * Reset the global tzname cache.
+ * @internal
+ */
+U_INTERNAL void uprv_tzname_clear_cache();
 
 /**
  * Get UTC (GMT) time measured in milliseconds since 0:00 on 1/1/1970.

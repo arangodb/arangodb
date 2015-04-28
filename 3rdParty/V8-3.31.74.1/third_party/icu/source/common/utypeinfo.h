@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 2012, International Business Machines
+*   Copyright (C) 2012-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -21,6 +21,9 @@
 #if defined(_MSC_VER) && _HAS_EXCEPTIONS == 0
 #include <exception>
 using std::exception;
+#endif
+#if !defined(_MSC_VER)
+namespace std { class type_info; } // WORKAROUND: http://llvm.org/bugs/show_bug.cgi?id=13364
 #endif
 #include <typeinfo>  // for 'typeid' to work
 

@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- * Copyright (c) 1997-2013, International Business Machines Corporation and *
+ * Copyright (c) 1997-2014, International Business Machines Corporation and *
  * others. All Rights Reserved.                                             *
  ****************************************************************************
  */
@@ -13,11 +13,10 @@
 #include "unicode/ucal.h"
 
 #include "cintltst.h"
+#include "cmemory.h"
 
 #include <stdlib.h>
 #include <time.h>
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 #define LOOP_COUNT 10000
 
@@ -461,7 +460,7 @@ TestDotNet() {
         ucal_close(cal);
         return;
     }
-    for(i = 0; i < LENGTHOF(dotNetDateTimeTicks); ++i) {
+    for(i = 0; i < UPRV_LENGTHOF(dotNetDateTimeTicks); ++i) {
         /* Test conversion from .Net/Universal time to ICU time. */
         dt = dotNetDateTimeTicks + i;
         millis = utmscale_toInt64(dt->ticks, UDTS_ICU4C_TIME, &errorCode);

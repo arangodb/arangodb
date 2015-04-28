@@ -1,9 +1,7 @@
 /*
 *******************************************************************************
-*                                                                             *
-* Copyright (C) 1999-2012, International Business Machines Corporation        *
-*               and others. All Rights Reserved.                              *
-*                                                                             *
+* Copyright (C) 1999-2014, International Business Machines Corporation
+*               and others. All Rights Reserved.
 *******************************************************************************
 *   file name:  uresdata.c
 *   encoding:   US-ASCII
@@ -32,8 +30,6 @@
 #include "uresdata.h"
 #include "uresimp.h"
 #include "uassert.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 /*
  * Resource access helpers
@@ -751,11 +747,11 @@ ures_swapResource(const UDataSwapper *ds,
             (key!=gUnknownKey ?
                 /* its table key string is "%%CollationBin" */
                 0==ds->compareInvChars(ds, key, -1,
-                                       gCollationBinKey, LENGTHOF(gCollationBinKey)-1) :
+                                       gCollationBinKey, UPRV_LENGTHOF(gCollationBinKey)-1) :
                 /* its table key string is unknown but it looks like a collation binary */
                 ucol_looksLikeCollationBinary(ds, p+1, count))
         ) {
-            ucol_swapBinary(ds, p+1, count, q+1, pErrorCode);
+            ucol_swap(ds, p+1, count, q+1, pErrorCode);
         }
 #endif
         break;

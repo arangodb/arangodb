@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/nl.xml
@@ -16,13 +16,12 @@ nl{
         ak{"Akan"}
         am{"Amhaars"}
         ar{"Arabisch"}
-        ar_001{"Modern standaard Arabisch"}
+        ar_001{"modern standaard Arabisch"}
         az{"Azerbeidzjaans"}
         ban{"Balinees"}
         be{"Wit-Russisch"}
         bem{"Bemba"}
         bg{"Bulgaars"}
-        bh{"Bihari"}
         bn{"Bengaals"}
         br{"Bretons"}
         bs{"Bosnisch"}
@@ -49,7 +48,7 @@ nl{
         es_419{"Latijns-Amerikaans Spaans"}
         es_ES{"Europees Spaans"}
         es_MX{"Mexicaans Spaans"}
-        et{"Estlands"}
+        et{"Estisch"}
         eu{"Baskisch"}
         fa{"Perzisch"}
         fi{"Fins"}
@@ -58,10 +57,10 @@ nl{
         fr{"Frans"}
         fr_CA{"Canadees Frans"}
         fr_CH{"Zwitsers Frans"}
-        fy{"West-Fries"}
+        fy{"Fries"}
         ga{"Iers"}
         gaa{"Ga"}
-        gd{"Schots Gaelic"}
+        gd{"Schots-Gaelisch"}
         gl{"Galicisch"}
         gn{"Guaraní"}
         gu{"Gujarati"}
@@ -70,7 +69,7 @@ nl{
         he{"Hebreeuws"}
         hi{"Hindi"}
         hr{"Kroatisch"}
-        ht{"Haïtiaans"}
+        ht{"Haïtiaans Creools"}
         hu{"Hongaars"}
         hy{"Armeens"}
         ia{"Interlingua"}
@@ -85,27 +84,27 @@ nl{
         km{"Khmer"}
         kn{"Kannada"}
         ko{"Koreaans"}
+        kri{"Krio"}
         ku{"Koerdisch"}
         ky{"Kirgizisch"}
         la{"Latijn"}
-        lg{"Ganda"}
+        lg{"Luganda"}
         ln{"Lingala"}
         lo{"Laotiaans"}
         loz{"Lozi"}
         lt{"Litouws"}
         lua{"Luba-Lulua"}
-        lv{"Letlands"}
+        lv{"Lets"}
         mfe{"Morisyen"}
-        mg{"Malagasisch"}
+        mg{"Malagassisch"}
         mi{"Maori"}
         mk{"Macedonisch"}
         ml{"Malayalam"}
         mn{"Mongools"}
-        mo{"Moldavisch"}
         mr{"Marathi"}
         ms{"Maleis"}
         mt{"Maltees"}
-        my{"Birmees"}
+        my{"Birmaans"}
         nb{"Noors - Bokmål"}
         ne{"Nepalees"}
         nl{"Nederlands"}
@@ -116,7 +115,7 @@ nl{
         ny{"Nyanja"}
         nyn{"Nyankole"}
         oc{"Occitaans"}
-        om{"Oromo"}
+        om{"Afaan Oromo"}
         or{"Odia"}
         pa{"Punjabi"}
         pl{"Pools"}
@@ -149,6 +148,7 @@ nl{
         th{"Thais"}
         ti{"Tigrinya"}
         tk{"Turkmeens"}
+        tl{"Tagalog"}
         tn{"Tswana"}
         to{"Tongaans"}
         tr{"Turks"}
@@ -165,15 +165,19 @@ nl{
         yi{"Jiddisch"}
         yo{"Yoruba"}
         zh{"Chinees"}
-        zh_Hans{"Vereenvoudigd Chinees"}
-        zh_Hant{"Traditioneel Chinees"}
-        zu{"Zulu"}
+        zh_Hans{"vereenvoudigd Chinees"}
+        zh_Hant{"traditioneel Chinees"}
+        zu{"Zoeloe"}
+    }
+    Languages%variant{
+        ps{"Pashto"}
     }
     LanguagesShort{
         az{"Azeri"}
     }
     Scripts{
         Afak{"Defaka"}
+        Aghb{"Kaukasisch Albanees"}
         Arab{"Arabisch"}
         Armi{"Keizerlijk Aramees"}
         Armn{"Armeens"}
@@ -182,7 +186,7 @@ nl{
         Bamu{"Bamoun"}
         Bass{"Bassa Vah"}
         Batk{"Batak"}
-        Beng{"Bengalees"}
+        Beng{"Bengaals"}
         Blis{"Blissymbolen"}
         Bopo{"Bopomofo"}
         Brah{"Brahmi"}
@@ -205,6 +209,7 @@ nl{
         Egyd{"Egyptisch demotisch"}
         Egyh{"Egyptisch hiëratisch"}
         Egyp{"Egyptische hiërogliefen"}
+        Elba{"Elbasan"}
         Ethi{"Ethiopisch"}
         Geok{"Georgisch Khutsuri"}
         Geor{"Georgisch"}
@@ -217,8 +222,8 @@ nl{
         Hang{"Hangul"}
         Hani{"Han"}
         Hano{"Hanunoo"}
-        Hans{"Vereenvoudigd"}
-        Hant{"Traditioneel"}
+        Hans{"vereenvoudigd"}
+        Hant{"traditioneel"}
         Hebr{"Hebreeuws"}
         Hira{"Hiragana"}
         Hluw{"Anatolische hiërogliefen"}
@@ -240,7 +245,7 @@ nl{
         Kpel{"Kpelle"}
         Kthi{"Kaithi"}
         Lana{"Lanna"}
-        Laoo{"Lao"}
+        Laoo{"Laotiaans"}
         Latf{"Gotisch Latijn"}
         Latg{"Gaelisch Latijn"}
         Latn{"Latijn"}
@@ -252,6 +257,7 @@ nl{
         Loma{"Loma"}
         Lyci{"Lycisch"}
         Lydi{"Lydisch"}
+        Mahj{"Mahajani"}
         Mand{"Mandaeans"}
         Mani{"Manicheaans"}
         Maya{"Mayahiërogliefen"}
@@ -259,11 +265,12 @@ nl{
         Merc{"Meroitisch cursief"}
         Mero{"Meroïtisch"}
         Mlym{"Malayalam"}
+        Modi{"Modi"}
         Mong{"Mongools"}
         Moon{"Moon"}
         Mroo{"Mro"}
         Mtei{"Meitei"}
-        Mymr{"Myanmar"}
+        Mymr{"Birmaans"}
         Narb{"Oud Noord-Arabisch"}
         Nbat{"Nabateaans"}
         Nkgb{"Naxi Geba"}
@@ -275,6 +282,7 @@ nl{
         Orya{"Odia"}
         Osma{"Osmanya"}
         Palm{"Palmyreens"}
+        Pauc{"Pau Cin Hau"}
         Perm{"Oudpermisch"}
         Phag{"Phags-pa"}
         Phli{"Inscriptioneel Pahlavi"}
@@ -293,8 +301,9 @@ nl{
         Sgnw{"SignWriting"}
         Shaw{"Shavian"}
         Shrd{"Sharada"}
+        Sidd{"Siddham"}
         Sind{"Sindhi"}
-        Sinh{"Sinhala"}
+        Sinh{"Singalees"}
         Sora{"Sora Sompeng"}
         Sund{"Soendanees"}
         Sylo{"Syloti Nagri"}
@@ -314,7 +323,7 @@ nl{
         Tfng{"Tifinagh"}
         Tglg{"Tagalog"}
         Thaa{"Thaana"}
-        Thai{"Thais"}
+        Thai{"Thai"}
         Tibt{"Tibetaans"}
         Tirh{"Tirhuta"}
         Ugar{"Ugaritisch"}
@@ -328,15 +337,18 @@ nl{
         Zinh{"Overgeërfd"}
         Zmth{"Wiskundige notatie"}
         Zsym{"Symbolen"}
-        Zxxx{"Ongeschreven"}
-        Zyyy{"Algemeen"}
-        Zzzz{"Onbekend schriftsysteem"}
+        Zxxx{"ongeschreven"}
+        Zyyy{"algemeen"}
+        Zzzz{"onbekend schriftsysteem"}
     }
     Scripts%stand-alone{
-        Hans{"Vereenvoudigd Chinees"}
-        Hant{"Traditioneel Chinees"}
+        Hans{"vereenvoudigd Chinees"}
+        Hant{"traditioneel Chinees"}
     }
-    Version{"2.0.93.8"}
+    Scripts%variant{
+        Arab{"Perso-Arabisch"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Taal: {0}"}
         script{"Schrift: {0}"}

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/bg.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/bg.xml
  */
 bg{
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Абиджан"}
@@ -211,10 +211,10 @@ bg{
             ec{"Асунсион"}
         }
         "America:Bahia"{
-            ec{"Бахия"}
+            ec{"Баия"}
         }
         "America:Bahia_Banderas"{
-            ec{"Бахия де Бандерас"}
+            ec{"Баия де Бандерас"}
         }
         "America:Barbados"{
             ec{"Барбадос"}
@@ -373,7 +373,7 @@ bg{
             ec{"Уинамак"}
         }
         "America:Indianapolis"{
-            ec{"Индианополис"}
+            ec{"Индианаполис"}
         }
         "America:Inuvik"{
             ec{"Инувик"}
@@ -458,9 +458,6 @@ bg{
         }
         "America:Montevideo"{
             ec{"Монтевидео"}
-        }
-        "America:Montreal"{
-            ec{"Монреал"}
         }
         "America:Montserrat"{
             ec{"Монтсерат"}
@@ -552,9 +549,6 @@ bg{
         "America:Scoresbysund"{
             ec{"Сгорсбисон"}
         }
-        "America:Shiprock"{
-            ec{"Шипрок"}
-        }
         "America:Sitka"{
             ec{"Ситка"}
         }
@@ -562,7 +556,7 @@ bg{
             ec{"Сен Бартелеми"}
         }
         "America:St_Johns"{
-            ec{"Сейнт Джоунс"}
+            ec{"Сейнт Джонс"}
         }
         "America:St_Kitts"{
             ec{"Сейнт Китс"}
@@ -636,11 +630,11 @@ bg{
         "Antarctica:Rothera"{
             ec{"Ротера"}
         }
-        "Antarctica:South_Pole"{
-            ec{"Южен полюс"}
-        }
         "Antarctica:Syowa"{
             ec{"Шова"}
+        }
+        "Antarctica:Troll"{
+            ec{"Трол"}
         }
         "Antarctica:Vostok"{
             ec{"Восток"}
@@ -880,7 +874,7 @@ bg{
             ec{"Якутск"}
         }
         "Asia:Yekaterinburg"{
-            ec{"Екатерининбург"}
+            ec{"Екатеринбург"}
         }
         "Asia:Yerevan"{
             ec{"Ереван"}
@@ -925,10 +919,10 @@ bg{
             ec{"Броукън Хил"}
         }
         "Australia:Currie"{
-            ec{"Кери"}
+            ec{"Къри"}
         }
         "Australia:Darwin"{
-            ec{"Даруин"}
+            ec{"Дарвин"}
         }
         "Australia:Eucla"{
             ec{"Юкла"}
@@ -992,7 +986,7 @@ bg{
         }
         "Europe:Dublin"{
             ec{"Дъблин"}
-            ld{"Ирландско лятно часово време"}
+            ld{"Ирландско стандартно време"}
         }
         "Europe:Gibraltar"{
             ec{"Гибралтар"}
@@ -1323,6 +1317,11 @@ bg{
             lg{"Анадир време"}
             ls{"Анадир – стандартно време"}
         }
+        "meta:Apia"{
+            ld{"Апия – лятно часово време"}
+            lg{"Апия"}
+            ls{"Апия – стандартно време"}
+        }
         "meta:Arabian"{
             ld{"Арабско лятно часово време"}
             lg{"Арабско време"}
@@ -1473,6 +1472,9 @@ bg{
             lg{"Източноевропейско време"}
             ls{"Източноевропейско стандартно време"}
         }
+        "meta:Europe_Further_Eastern"{
+            ls{"Далечно източноевропейско време"}
+        }
         "meta:Europe_Western"{
             ld{"Западноевропейско лятно време"}
             lg{"Западноевропейско време"}
@@ -1543,7 +1545,7 @@ bg{
             ls{"Ховдско стандартно време"}
         }
         "meta:India"{
-            ls{"Индийско време"}
+            ls{"Индийско стандартно време"}
         }
         "meta:Indian_Ocean"{
             ls{"Индийски океан"}
@@ -1643,6 +1645,16 @@ bg{
         "meta:Mawson"{
             ls{"Моусън"}
         }
+        "meta:Mexico_Northwest"{
+            ld{"Мексико – северозападно лятно часово време"}
+            lg{"Мексико – северозападно време"}
+            ls{"Мексико – северозападно стандартно време"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"Мексиканско тихоокеанско лятно часово време"}
+            lg{"Мексиканско тихоокеанско време"}
+            ls{"Мексиканско тихоокеанско стандартно време"}
+        }
         "meta:Mongolia"{
             ld{"Уланбаторско лятно часово време"}
             lg{"Уланбаторско време"}
@@ -1707,7 +1719,7 @@ bg{
             ls{"Палау"}
         }
         "meta:Papua_New_Guinea"{
-            ls{"Папуа – Нова Гвинея"}
+            ls{"Папуа Нова Гвинея"}
         }
         "meta:Paraguay"{
             ld{"Парагвайско лятно часово време"}
@@ -1855,8 +1867,8 @@ bg{
             ls{"Екатеринбургско стандартно време"}
         }
         fallbackFormat{"{1} ({0})"}
-        gmtFormat{"Гриинуич{0}"}
-        gmtZeroFormat{"Гриинуич"}
+        gmtFormat{"Гринуич{0}"}
+        gmtZeroFormat{"Гринуич"}
         hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0}"}
         regionFormatDaylight{"{0} – лятно часово време"}

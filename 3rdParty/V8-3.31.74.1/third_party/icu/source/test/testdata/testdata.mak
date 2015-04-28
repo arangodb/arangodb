@@ -1,5 +1,5 @@
 #**********************************************************************
-#* Copyright (C) 1999-2012, International Business Machines Corporation
+#* Copyright (C) 1999-2014, International Business Machines Corporation
 #* and others.  All Rights Reserved.
 #**********************************************************************
 #
@@ -28,11 +28,12 @@ ALL : "$(TESTDATAOUT)\testdata.dat"
 
 TEST_RES_FILES = $(TEST_RES_SOURCE:.txt=.res)
 
-"$(TESTDATAOUT)\testdata.dat" : $(TEST_RES_FILES) "$(TESTDATABLD)\casing.res" "$(TESTDATABLD)\conversion.res" "$(TESTDATABLD)\icuio.res" "$(TESTDATABLD)\mc.res" "$(TESTDATABLD)\structLocale.res" "$(TESTDATABLD)\root.res" "$(TESTDATABLD)\sh.res" "$(TESTDATABLD)\sh_YU.res"  "$(TESTDATABLD)\te.res" "$(TESTDATABLD)\te_IN.res" "$(TESTDATABLD)\te_IN_REVISED.res" "$(TESTDATABLD)\testaliases.res" "$(TESTDATABLD)\testtypes.res" "$(TESTDATABLD)\testempty.res" "$(TESTDATABLD)\iscii.res" "$(TESTDATABLD)\idna_rules.res" "$(TESTDATABLD)\DataDrivenCollationTest.res" "$(TESTDATABLD)\test.icu" "$(TESTDATABLD)\testtable32.res" "$(TESTDATABLD)\test1.cnv" "$(TESTDATABLD)\test1bmp.cnv" "$(TESTDATABLD)\test2.cnv" "$(TESTDATABLD)\test3.cnv" "$(TESTDATABLD)\test4.cnv" "$(TESTDATABLD)\test4x.cnv" "$(TESTDATABLD)\test5.cnv" "$(TESTDATABLD)\ibm9027.cnv" "$(TESTDATABLD)\nfscsi.spp" "$(TESTDATABLD)\nfscss.spp" "$(TESTDATABLD)\nfscis.spp" "$(TESTDATABLD)\nfsmxs.spp" "$(TESTDATABLD)\nfsmxp.spp" "$(TESTDATABLD)\testnorm.nrm"
+"$(TESTDATAOUT)\testdata.dat" : $(TEST_RES_FILES) "$(TESTDATABLD)\casing.res" "$(TESTDATABLD)\conversion.res" "$(TESTDATABLD)\icuio.res" "$(TESTDATABLD)\mc.res" "$(TESTDATABLD)\structLocale.res" "$(TESTDATABLD)\root.res" "$(TESTDATABLD)\sh.res" "$(TESTDATABLD)\sh_YU.res"  "$(TESTDATABLD)\te.res" "$(TESTDATABLD)\te_IN.res" "$(TESTDATABLD)\te_IN_REVISED.res" "$(TESTDATABLD)\testaliases.res" "$(TESTDATABLD)\testtypes.res" "$(TESTDATABLD)\testempty.res" "$(TESTDATABLD)\iscii.res" "$(TESTDATABLD)\idna_rules.res" "$(TESTDATABLD)\test.icu" "$(TESTDATABLD)\testtable32.res" "$(TESTDATABLD)\test1.cnv" "$(TESTDATABLD)\test1bmp.cnv" "$(TESTDATABLD)\test2.cnv" "$(TESTDATABLD)\test3.cnv" "$(TESTDATABLD)\test4.cnv" "$(TESTDATABLD)\test4x.cnv" "$(TESTDATABLD)\test5.cnv" "$(TESTDATABLD)\ibm9027.cnv" "$(TESTDATABLD)\nfscsi.spp" "$(TESTDATABLD)\nfscss.spp" "$(TESTDATABLD)\nfscis.spp" "$(TESTDATABLD)\nfsmxs.spp" "$(TESTDATABLD)\nfsmxp.spp" "$(TESTDATABLD)\testnorm.nrm" "$(TESTDATABLD)\zoneinfo64.res"
 	@echo Building test data
 	@copy "$(TESTDATABLD)\te.res" "$(TESTDATAOUT)\$(TESTDT)\nam.typ"
 	@copy "$(TESTDATA)\old_l_testtypes.res" "$(TESTDATABLD)"
 	@copy "$(TESTDATA)\old_e_testtypes.res" "$(TESTDATABLD)"
+	@copy "$(TESTDATABLD)\zoneinfo64.res" "$(TESTDATAOUT)\$(TESTDT)"
 	"$(ICUPBIN)\pkgdata" -f -v -m common -c -p"$(TESTPKG)" -d "$(TESTDATAOUT)" -T "$(TESTDATABLD)" -s "$(TESTDATABLD)" <<
 casing.res
 conversion.res

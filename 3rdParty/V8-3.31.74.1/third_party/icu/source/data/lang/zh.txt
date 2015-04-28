@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zh.xml
@@ -22,7 +22,6 @@ zh{
         be{"白俄罗斯文"}
         bem{"别姆巴文"}
         bg{"保加利亚文"}
-        bh{"比哈尔文"}
         bn{"孟加拉文"}
         br{"布里多尼文"}
         bs{"波斯尼亚文"}
@@ -101,7 +100,6 @@ zh{
         mk{"马其顿文"}
         ml{"马拉雅拉姆文"}
         mn{"蒙古文"}
-        mo{"摩尔多瓦文"}
         mr{"马拉地文"}
         ms{"马来文"}
         mt{"马耳他文"}
@@ -128,6 +126,7 @@ zh{
         rm{"罗曼什文"}
         rn{"基隆迪文"}
         ro{"罗马尼亚文"}
+        ro_MD{"摩尔多瓦文"}
         ru{"俄文"}
         rw{"卢旺达文"}
         sd{"信德文"}
@@ -149,6 +148,7 @@ zh{
         th{"泰文"}
         ti{"提格里尼亚文"}
         tk{"土库曼文"}
+        tl{"塔加洛文"}
         tn{"塞茨瓦纳文"}
         to{"汤加文"}
         tr{"土耳其文"}
@@ -330,7 +330,7 @@ zh{
         Zinh{"遗传学术语"}
         Zmth{"数学符号"}
         Zsym{"符号"}
-        Zxxx{"非书写语言"}
+        Zxxx{"非书面文字"}
         Zyyy{"通用"}
         Zzzz{"未知文字"}
     }
@@ -338,7 +338,10 @@ zh{
         Hans{"简体中文"}
         Hant{"繁体中文"}
     }
-    Version{"2.0.93.8"}
+    Scripts%variant{
+        Arab{"波斯阿拉伯文"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"语言：{0}"}
         script{"文字：{0}"}

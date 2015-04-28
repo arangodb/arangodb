@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sl.xml
@@ -28,7 +28,7 @@ sl{
         AT{"Avstrija"}
         AU{"Avstralija"}
         AW{"Aruba"}
-        AX{"Alandsko otočje"}
+        AX{"Ålandski otoki"}
         AZ{"Azerbajdžan"}
         BA{"Bosna in Hercegovina"}
         BB{"Barbados"}
@@ -39,7 +39,7 @@ sl{
         BH{"Bahrajn"}
         BI{"Burundi"}
         BJ{"Benin"}
-        BL{"Saint Barthelemy"}
+        BL{"Saint Barthélemy"}
         BM{"Bermudi"}
         BN{"Brunej"}
         BO{"Bolivija"}
@@ -58,7 +58,7 @@ sl{
         CG{"Kongo - Brazzaville"}
         CH{"Švica"}
         CI{"Slonokoščena obala"}
-        CK{"Cookovo otočje"}
+        CK{"Cookovi otoki"}
         CL{"Čile"}
         CM{"Kamerun"}
         CN{"Kitajska"}
@@ -112,8 +112,8 @@ sl{
         GU{"Guam"}
         GW{"Gvineja Bissau"}
         GY{"Gvajana"}
-        HK{"Posebno administrativno območje LR Kitajske Hong Kong"}
-        HM{"Otok Heard in otočje McDonald"}
+        HK{"Hongkong"}
+        HM{"Heardov otok in McDonaldovi otoki"}
         HN{"Honduras"}
         HR{"Hrvaška"}
         HT{"Haiti"}
@@ -166,7 +166,7 @@ sl{
         ML{"Mali"}
         MM{"Mjanmar (Burma)"}
         MN{"Mongolija"}
-        MO{"Posebno administrativno območje LR Kitajske Macao"}
+        MO{"Macao"}
         MP{"Severni Marianski otoki"}
         MQ{"Martinik"}
         MR{"Mavretanija"}
@@ -201,7 +201,7 @@ sl{
         PM{"Saint Pierre in Miquelon"}
         PN{"Pitcairn"}
         PR{"Portoriko"}
-        PS{"Palestinsko ozemlje"}
+        PS{"Palestina"}
         PT{"Portugalska"}
         PW{"Palau"}
         PY{"Paragvaj"}
@@ -273,12 +273,15 @@ sl{
         ZW{"Zimbabve"}
         ZZ{"Neznano ali neveljavno območje"}
     }
+    Countries%variant{
+        CD{"Kongo (Demokratična republika Kongo)"}
+        CG{"Kongo (Republika)"}
+        FK{"Falklandski otoki (Malvinski otoki)"}
+        MK{"Makedonija (FYROM)"}
+    }
     CountriesShort{
         GB{"ZK"}
-        HK{"Hongkong"}
-        MO{"Macao"}
-        PS{"Palestina"}
         US{"ZDA"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

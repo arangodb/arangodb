@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/mg.xml
@@ -27,10 +27,6 @@ mg{
             "BHD",
             "dinar bahreïni",
         }
-        BIF{
-            "BIF",
-            "Farantsa Borondi",
-        }
         BWP{
             "BWP",
             "Pola botsoaney",
@@ -51,14 +47,6 @@ mg{
             "CN¥",
             "Yoan sinoa Renminbi",
         }
-        CVE{
-            "CVE",
-            "Escudo",
-        }
-        DJF{
-            "DJF",
-            "Farantsa Djibotianina",
-        }
         DZD{
             "DZD",
             "Dinara alzerianina",
@@ -66,10 +54,6 @@ mg{
         EGP{
             "EGP",
             "vola venty ejipsiana",
-        }
-        ERN{
-            "ERN",
-            "Nakfà Eritreanina",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ mg{
             "£",
             "livre sterling",
         }
-        GMD{
-            "GMD",
-            "Dalasi gambianina",
-        }
-        GNS{
-            "GNS",
-            "Farantsa Gineanina",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Ropia Indianina",
         }
         JPY{
@@ -102,18 +78,6 @@ mg{
         KES{
             "KES",
             "Shilling kenianina",
-        }
-        KMF{
-            "KMF",
-            "Farantsa Komorianina",
-        }
-        LRD{
-            "LRD",
-            "Dôlara Liberianina",
-        }
-        LSL{
-            "LSL",
-            "Loti",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ mg{
             "SAR",
             "Rial saodianina",
         }
-        SCR{
-            "SCR",
-            "Ropia Seysheloà",
-        }
         SDG{
             "SDG",
             "Dinara Sodaney",
         }
-        SHP{
-            "SHP",
-            "livre de Sainte-Hélène",
-        }
         SLL{
             "SLL",
             "Leone",
-        }
-        SOS{
-            "SOS",
-            "Shilling somalianina",
-        }
-        STD{
-            "STD",
-            "Dobra",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ mg{
             "Kwacha zambianina",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

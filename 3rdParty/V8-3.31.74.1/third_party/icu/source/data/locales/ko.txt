@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ko.xml
@@ -54,6 +54,7 @@ ko{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -61,7 +62,7 @@ ko{
             }
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
-                currencyFormat{"¤#,##0.00;(¤#,##0.00)"}
+                currencyFormat{"¤#,##0.00"}
                 decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
@@ -158,10 +159,13 @@ ko{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.9.31"}
     calendar{
         buddhist{
             eras{
@@ -176,8 +180,8 @@ ko{
                 "a h시 m분 s초 z",
                 "a h:mm:ss",
                 "a h:mm",
-                "U년 M월 d일 EEEE",
-                "U년 M월 d일",
+                "U년 MMM d일 EEEE",
+                "U년 MMM d일",
                 "y. M. d.",
                 "y. M. d.",
                 "{1} {0}",
@@ -196,7 +200,7 @@ ko{
                 GyMMMd{"U년 MMM d일"}
                 H{"H시"}
                 Hms{"H시 m분 s초"}
-                M{"M월"}
+                M{"MMM"}
                 MEEEEd{"M. d. EEEE"}
                 MEd{"M. d. (E)"}
                 MMM{"LLL"}
@@ -223,6 +227,36 @@ ko{
                 yyyyQQQQ{"U년 QQQQ"}
             }
             cyclicNameSets{
+                solarTerms{
+                    format{
+                        abbreviated{
+                            "입춘",
+                            "우수",
+                            "경칩",
+                            "춘분",
+                            "청명",
+                            "곡우",
+                            "입하",
+                            "소만",
+                            "망종",
+                            "하지",
+                            "소서",
+                            "대서",
+                            "입추",
+                            "처서",
+                            "백로",
+                            "추분",
+                            "한로",
+                            "상강",
+                            "입동",
+                            "소설",
+                            "대설",
+                            "동지",
+                            "소한",
+                            "대한",
+                        }
+                    }
+                }
                 years{
                     format{
                         abbreviated{
@@ -290,6 +324,71 @@ ko{
                     }
                 }
             }
+            monthNames{
+                format{
+                    abbreviated{
+                        "1월",
+                        "2월",
+                        "3월",
+                        "4월",
+                        "5월",
+                        "6월",
+                        "7월",
+                        "8월",
+                        "9월",
+                        "10월",
+                        "11월",
+                        "12월",
+                    }
+                    wide{
+                        "1월",
+                        "2월",
+                        "3월",
+                        "4월",
+                        "5월",
+                        "6월",
+                        "7월",
+                        "8월",
+                        "9월",
+                        "10월",
+                        "11월",
+                        "12월",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                }
+            }
+            monthPatterns{
+                format{
+                    wide{
+                        leap{"윤{0}"}
+                    }
+                }
+                numeric{
+                    all{
+                        leap{"윤{0}"}
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        leap{"윤{0}"}
+                    }
+                }
+            }
         }
         coptic{
             monthNames{
@@ -350,8 +449,8 @@ ko{
                 "a h시 m분 s초 z",
                 "a h:mm:ss",
                 "a h:mm",
-                "U년 M월 d일 EEEE",
-                "U년 M월 d일",
+                "U년 MMM d일 EEEE",
+                "U년 MMM d일",
                 "y. M. d.",
                 "y. M. d.",
                 "{1} {0}",
@@ -376,6 +475,102 @@ ko{
                             "유",
                             "술",
                             "해",
+                        }
+                    }
+                }
+                solarTerms{
+                    format{
+                        abbreviated{
+                            "입춘",
+                            "우수",
+                            "경칩",
+                            "춘분",
+                            "청명",
+                            "곡우",
+                            "입하",
+                            "소만",
+                            "망종",
+                            "하지",
+                            "소서",
+                            "대서",
+                            "입추",
+                            "처서",
+                            "백로",
+                            "추분",
+                            "한로",
+                            "상강",
+                            "입동",
+                            "소설",
+                            "대설",
+                            "동지",
+                            "소한",
+                            "대한",
+                        }
+                    }
+                }
+                years{
+                    format{
+                        abbreviated{
+                            "갑자",
+                            "을축",
+                            "병인",
+                            "정묘",
+                            "무진",
+                            "기사",
+                            "경오",
+                            "신미",
+                            "임신",
+                            "계유",
+                            "갑술",
+                            "을해",
+                            "병자",
+                            "정축",
+                            "무인",
+                            "기묘",
+                            "경진",
+                            "신사",
+                            "임오",
+                            "계미",
+                            "갑신",
+                            "을유",
+                            "병술",
+                            "정해",
+                            "무자",
+                            "기축",
+                            "경인",
+                            "신묘",
+                            "임진",
+                            "계사",
+                            "갑오",
+                            "을미",
+                            "병신",
+                            "정유",
+                            "무술",
+                            "기해",
+                            "경자",
+                            "신축",
+                            "임인",
+                            "계묘",
+                            "갑진",
+                            "을사",
+                            "병오",
+                            "정미",
+                            "무신",
+                            "기유",
+                            "경술",
+                            "신해",
+                            "임자",
+                            "계축",
+                            "갑인",
+                            "을묘",
+                            "병진",
+                            "정사",
+                            "무오",
+                            "기미",
+                            "경신",
+                            "신유",
+                            "임술",
+                            "계해",
                         }
                     }
                 }
@@ -485,6 +680,23 @@ ko{
                         "10월",
                         "11월",
                         "12월",
+                    }
+                }
+            }
+            monthPatterns{
+                format{
+                    wide{
+                        leap{"윤{0}"}
+                    }
+                }
+                numeric{
+                    all{
+                        leap{"윤{0}"}
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        leap{"윤{0}"}
                     }
                 }
             }
@@ -709,6 +921,10 @@ ko{
                 "오전",
                 "오후",
             }
+            AmPmMarkersNarrow{
+                "오전",
+                "오후",
+            }
             DateTimePatterns{
                 "a h시 m분 s초 zzzz",
                 "a h시 m분 s초 z",
@@ -724,10 +940,13 @@ ko{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"정오"}
+            NoonMarkerNarrow{"정오"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EEEEd{"d일 EEEE"}
                 EHm{"(E) HH:mm"}
                 EHms{"(E) HH:mm:ss"}
@@ -781,6 +1000,15 @@ ko{
                         "금",
                         "토",
                     }
+                    narrow{
+                        "일",
+                        "월",
+                        "화",
+                        "수",
+                        "목",
+                        "금",
+                        "토",
+                    }
                     short{
                         "일",
                         "월",
@@ -801,6 +1029,15 @@ ko{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "일",
+                        "월",
+                        "화",
+                        "수",
+                        "목",
+                        "금",
+                        "토",
+                    }
                     narrow{
                         "일",
                         "월",
@@ -819,6 +1056,15 @@ ko{
                         "금",
                         "토",
                     }
+                    wide{
+                        "일요일",
+                        "월요일",
+                        "화요일",
+                        "수요일",
+                        "목요일",
+                        "금요일",
+                        "토요일",
+                    }
                 }
             }
             eras{
@@ -826,14 +1072,18 @@ ko{
                     "기원전",
                     "서기",
                 }
+                abbreviated%variant{
+                    "BCE",
+                    "CE",
+                }
                 wide{
-                    "서력기원전",
-                    "서력기원",
+                    "기원전",
+                    "서기",
                 }
             }
             intervalFormats{
                 H{
-                    H{"HH ~ HH시"}
+                    H{"H ~ H시"}
                 }
                 Hm{
                     H{"HH:mm ~ HH:mm"}
@@ -847,14 +1097,14 @@ ko{
                     H{"HH ~ HH시 v"}
                 }
                 M{
-                    M{"M월 ~ M월"}
+                    M{"M월~M월"}
                 }
                 MEd{
                     M{"M. d (E) ~ M. d (E)"}
                     d{"M. d (E) ~ M. d (E)"}
                 }
                 MMM{
-                    M{"MMM ~ MMM"}
+                    M{"MMM~MMM"}
                 }
                 MMMEd{
                     M{"M월 d일 (E) ~ M월 d일 (E)"}
@@ -865,14 +1115,14 @@ ko{
                 }
                 MMMd{
                     M{"M월 d일 ~ M월 d일"}
-                    d{"M월 d일 ~ d일"}
+                    d{"MMM d일~d일"}
                 }
                 Md{
                     M{"M. d ~ M. d"}
                     d{"M. d ~ M. d"}
                 }
                 d{
-                    d{"d일 ~ d일"}
+                    d{"d일~d일"}
                 }
                 fallback{"{0} ~ {1}"}
                 h{
@@ -920,8 +1170,8 @@ ko{
                     y{"y년 M월 d일 (E) ~ y년 M월 d일 (E)"}
                 }
                 yMMMM{
-                    M{"y년 M월 ~ M월"}
-                    y{"y년 M월 ~ y년 M월"}
+                    M{"y년 MMMM ~ MMMM"}
+                    y{"y년 MMMM ~ y년 MMMM"}
                 }
                 yMMMd{
                     M{"y년 M월 d일 ~ M월 d일"}
@@ -995,6 +1245,20 @@ ko{
                         "12월",
                     }
                     narrow{
+                        "1월",
+                        "2월",
+                        "3월",
+                        "4월",
+                        "5월",
+                        "6월",
+                        "7월",
+                        "8월",
+                        "9월",
+                        "10월",
+                        "11월",
+                        "12월",
+                    }
+                    wide{
                         "1월",
                         "2월",
                         "3월",
@@ -1402,6 +1666,28 @@ ko{
                 }
             }
         }
+        day-narrow{
+            dn{"일"}
+            relativeTime{
+                future{
+                    other{"{0}일 후"}
+                }
+                past{
+                    other{"{0}일 전"}
+                }
+            }
+        }
+        day-short{
+            dn{"일"}
+            relativeTime{
+                future{
+                    other{"{0}일 후"}
+                }
+                past{
+                    other{"{0}일 전"}
+                }
+            }
+        }
         dayperiod{
             dn{"오전/오후"}
         }
@@ -1415,7 +1701,43 @@ ko{
                 "1"{"다음 금요일"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"지난 금요일"}
+                "0"{"이번 금요일"}
+                "1"{"다음 금요일"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"지난 금요일"}
+                "0"{"이번 금요일"}
+                "1"{"다음 금요일"}
+            }
+        }
         hour{
+            dn{"시"}
+            relativeTime{
+                future{
+                    other{"{0}시간 후"}
+                }
+                past{
+                    other{"{0}시간 전"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"시"}
+            relativeTime{
+                future{
+                    other{"{0}시간 후"}
+                }
+                past{
+                    other{"{0}시간 전"}
+                }
+            }
+        }
+        hour-short{
             dn{"시"}
             relativeTime{
                 future{
@@ -1437,7 +1759,43 @@ ko{
                 }
             }
         }
+        minute-narrow{
+            dn{"분"}
+            relativeTime{
+                future{
+                    other{"{0}분 후"}
+                }
+                past{
+                    other{"{0}분 전"}
+                }
+            }
+        }
+        minute-short{
+            dn{"분"}
+            relativeTime{
+                future{
+                    other{"{0}분 후"}
+                }
+                past{
+                    other{"{0}분 전"}
+                }
+            }
+        }
         mon{
+            relative{
+                "-1"{"지난 월요일"}
+                "0"{"이번 월요일"}
+                "1"{"다음 월요일"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"지난 월요일"}
+                "0"{"이번 월요일"}
+                "1"{"다음 월요일"}
+            }
+        }
+        mon-short{
             relative{
                 "-1"{"지난 월요일"}
                 "0"{"이번 월요일"}
@@ -1460,7 +1818,76 @@ ko{
                 }
             }
         }
+        month-narrow{
+            dn{"월"}
+            relativeTime{
+                future{
+                    other{"{0}개월 후"}
+                }
+                past{
+                    other{"{0}개월 전"}
+                }
+            }
+        }
+        month-short{
+            dn{"월"}
+            relativeTime{
+                future{
+                    other{"{0}개월 후"}
+                }
+                past{
+                    other{"{0}개월 전"}
+                }
+            }
+        }
+        quarter{
+            dn{"분기"}
+            relativeTime{
+                future{
+                    other{"{0}분기 후"}
+                }
+                past{
+                    other{"{0}분기 전"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"분기"}
+            relativeTime{
+                future{
+                    other{"{0}분기 후"}
+                }
+                past{
+                    other{"{0}분기 전"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"분기"}
+            relativeTime{
+                future{
+                    other{"{0}분기 후"}
+                }
+                past{
+                    other{"{0}분기 전"}
+                }
+            }
+        }
         sat{
+            relative{
+                "-1"{"지난 토요일"}
+                "0"{"이번 토요일"}
+                "1"{"다음 토요일"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"지난 토요일"}
+                "0"{"이번 토요일"}
+                "1"{"다음 토요일"}
+            }
+        }
+        sat-short{
             relative{
                 "-1"{"지난 토요일"}
                 "0"{"이번 토요일"}
@@ -1481,7 +1908,43 @@ ko{
                 }
             }
         }
+        second-narrow{
+            dn{"초"}
+            relativeTime{
+                future{
+                    other{"{0}초 후"}
+                }
+                past{
+                    other{"{0}초 전"}
+                }
+            }
+        }
+        second-short{
+            dn{"초"}
+            relativeTime{
+                future{
+                    other{"{0}초 후"}
+                }
+                past{
+                    other{"{0}초 전"}
+                }
+            }
+        }
         sun{
+            relative{
+                "-1"{"지난 일요일"}
+                "0"{"이번 일요일"}
+                "1"{"다음 일요일"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"지난 일요일"}
+                "0"{"이번 일요일"}
+                "1"{"다음 일요일"}
+            }
+        }
+        sun-short{
             relative{
                 "-1"{"지난 일요일"}
                 "0"{"이번 일요일"}
@@ -1495,6 +1958,20 @@ ko{
                 "1"{"다음 목요일"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"지난 목요일"}
+                "0"{"이번 목요일"}
+                "1"{"다음 목요일"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"지난 목요일"}
+                "0"{"이번 목요일"}
+                "1"{"다음 목요일"}
+            }
+        }
         tue{
             relative{
                 "-1"{"지난 화요일"}
@@ -1502,7 +1979,35 @@ ko{
                 "1"{"다음 화요일"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"지난 화요일"}
+                "0"{"이번 화요일"}
+                "1"{"다음 화요일"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"지난 화요일"}
+                "0"{"이번 화요일"}
+                "1"{"다음 화요일"}
+            }
+        }
         wed{
+            relative{
+                "-1"{"지난 수요일"}
+                "0"{"이번 수요일"}
+                "1"{"다음 수요일"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"지난 수요일"}
+                "0"{"이번 수요일"}
+                "1"{"다음 수요일"}
+            }
+        }
+        wed-short{
             relative{
                 "-1"{"지난 수요일"}
                 "0"{"이번 수요일"}
@@ -1525,16 +2030,60 @@ ko{
                 }
             }
         }
+        week-narrow{
+            dn{"주"}
+            relativeTime{
+                future{
+                    other{"{0}주 후"}
+                }
+                past{
+                    other{"{0}주 전"}
+                }
+            }
+        }
+        week-short{
+            dn{"주"}
+            relativeTime{
+                future{
+                    other{"{0}주 후"}
+                }
+                past{
+                    other{"{0}주 전"}
+                }
+            }
+        }
         weekday{
             dn{"요일"}
         }
         year{
             dn{"년"}
             relative{
-                "-1"{"지난해"}
+                "-1"{"작년"}
                 "0"{"올해"}
                 "1"{"내년"}
             }
+            relativeTime{
+                future{
+                    other{"{0}년 후"}
+                }
+                past{
+                    other{"{0}년 전"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"년"}
+            relativeTime{
+                future{
+                    other{"{0}년 후"}
+                }
+                past{
+                    other{"{0}년 전"}
+                }
+            }
+        }
+        year-short{
+            dn{"년"}
             relativeTime{
                 future{
                     other{"{0}년 후"}
@@ -1561,6 +2110,12 @@ ko{
             middle{"{0} {1}"}
             start{"{0} {1}"}
         }
+        unit-narrow{
+            2{"{0} {1}"}
+            end{"{0} {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
+        }
         unit-short{
             2{"{0} {1}"}
             end{"{0} {1}"}
@@ -1569,8 +2124,8 @@ ko{
         }
     }
     measurementSystemNames{
-        UK{"영국"}
-        US{"미국"}
+        UK{"영국식"}
+        US{"미국식"}
         metric{"미터법"}
     }
     transformNames{
@@ -1584,98 +2139,5 @@ ko{
         x-Jamo{"자모"}
         x-Pinyin{"병음"}
         x-Publishing{"게시"}
-    }
-    units{
-        compound{
-            per{"{1}당 {0}"}
-        }
-        duration{
-            day{
-                other{"{0}일"}
-            }
-            hour{
-                other{"{0}시간"}
-            }
-            millisecond{
-                other{"{0}밀리초"}
-            }
-            minute{
-                other{"{0}분"}
-            }
-            month{
-                other{"{0}개월"}
-            }
-            second{
-                other{"{0}초"}
-            }
-            week{
-                other{"{0}주"}
-            }
-            year{
-                other{"{0}년"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                other{"{0}일"}
-            }
-            hour{
-                other{"{0}시간"}
-            }
-            millisecond{
-                other{"{0}ms"}
-            }
-            minute{
-                other{"{0}분"}
-            }
-            month{
-                other{"{0}개월"}
-            }
-            second{
-                other{"{0}초"}
-            }
-            week{
-                other{"{0}주"}
-            }
-            year{
-                other{"{0}년"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                other{"{0}일"}
-            }
-            hour{
-                other{"{0}시간"}
-            }
-            millisecond{
-                other{"{0}ms"}
-            }
-            minute{
-                other{"{0}분"}
-            }
-            month{
-                other{"{0}개월"}
-            }
-            second{
-                other{"{0}초"}
-            }
-            week{
-                other{"{0}주"}
-            }
-            year{
-                other{"{0}년"}
-            }
-        }
     }
 }

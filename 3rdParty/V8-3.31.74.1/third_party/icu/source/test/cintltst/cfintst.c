@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 1997-2009, International Business Machines
+ * Copyright (c) 1997-2009,2014, International Business Machines
  * Corporation and others. All Rights Reserved.
  ********************************************************************
  *
@@ -56,7 +56,7 @@ const static UCollationResult results[] = {
     UCOL_GREATER,
     UCOL_LESS,
     /* test primary > 4*/
-    UCOL_EQUAL
+    UCOL_GREATER    /* v < w per cldrbug 6615 */
 };
 
 
@@ -65,8 +65,8 @@ void addFinnishCollTest(TestNode** root)
 {
     
     
-    addTest(root, &TestPrimary, "tscoll/cficoll/TestPrimary");
-    addTest(root, &TestTertiary, "tscoll/cficoll/TestTertiary");
+    addTest(root, &TestPrimary, "tscoll/cfintst/TestPrimary");
+    addTest(root, &TestTertiary, "tscoll/cfintst/TestTertiary");
     
 
 
@@ -100,7 +100,7 @@ static void TestPrimary()
     if(U_FAILURE(status)){
         log_err_status(status, "ERROR: in creation of rule based collator: %s\n", myErrorName(status));
     }
-    log_verbose("Testing Finnish Collation with Tertiary strength\n");
+    log_verbose("Testing Finnish Collation with Primary strength\n");
     ucol_setStrength(myCollation, UCOL_PRIMARY);
     for (i = 4; i < 5; i++)
     {

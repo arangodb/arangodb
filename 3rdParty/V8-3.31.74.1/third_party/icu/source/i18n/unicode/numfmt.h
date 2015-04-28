@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-* Copyright (C) 1997-2013, International Business Machines Corporation and others.
+* Copyright (C) 1997-2014, International Business Machines Corporation and others.
 * All Rights Reserved.
 ********************************************************************************
 *
@@ -37,10 +37,13 @@
 #include "unicode/locid.h"
 #include "unicode/stringpiece.h"
 #include "unicode/curramt.h"
+#include "unicode/udisplaycontext.h"
 
 class NumberFormatTest;
 
 U_NAMESPACE_BEGIN
+
+class SharedNumberFormat;
 
 #if !UCONFIG_NO_SERVICE
 class NumberFormatFactory;
@@ -705,6 +708,30 @@ public:
                                                   UNumberFormatStyle style,
                                                   UErrorCode& errorCode);
 
+#ifndef U_HIDE_INTERNAL_API
+
+    /**
+     * ICU use only.
+     * Creates NumberFormat instance without using the cache.
+     * @internal
+     */
+    static NumberFormat* internalCreateInstance(
+            const Locale& desiredLocale,
+            UNumberFormatStyle style,
+            UErrorCode& errorCode);
+
+    /**
+     * ICU use only.
+     * Returns handle to the shared, cached NumberFormat instance for given
+     * locale. On success, caller must call removeRef() on returned value
+     * once it is done with the shared instance.
+     * @internal
+     */
+    static const SharedNumberFormat* U_EXPORT2 createSharedInstance(
+            const Locale& inLocale, UNumberFormatStyle style, UErrorCode& status);
+
+#endif  /* U_HIDE_INTERNAL_API */
+
     /**
      * Returns a currency format for the current default locale.
      * @stable ICU 2.0
@@ -757,6 +784,9 @@ public:
 #if !UCONFIG_NO_SERVICE
     /**
      * Register a new NumberFormatFactory.  The factory will be adopted.
+     * Because ICU may choose to cache NumberFormat objects internally,
+     * this must be called at application startup, prior to any calls to
+     * NumberFormat::createInstance to avoid undefined behavior.
      * @param toAdopt the NumberFormatFactory instance to be adopted
      * @param status the in/out status code, no special meanings are assigned
      * @return a registry key that can be used to unregister this factory
@@ -768,6 +798,9 @@ public:
      * Unregister a previously-registered NumberFormatFactory using the key returned from the
      * register call.  Key becomes invalid after a successful call and should not be used again.
      * The NumberFormatFactory corresponding to the key will be deleted.
+     * Because ICU may choose to cache NumberFormat objects internally,
+     * this should be called during application shutdown, after all calls to
+     * NumberFormat::createInstance to avoid undefined behavior.
      * @param key the registry key returned by a previous call to registerFactory
      * @param status the in/out status code, no special meanings are assigned
      * @return TRUE if the factory for the key was successfully unregistered
@@ -915,6 +948,31 @@ public:
      * @stable ICU 2.6
      */
     const UChar* getCurrency() const;
+	
+    /* Cannot use #ifndef U_HIDE_DRAFT_API for the following draft method since it is virtual */
+    /**
+     * Set a particular UDisplayContext value in the formatter, such as
+     * UDISPCTX_CAPITALIZATION_FOR_STANDALONE.
+     * @param value The UDisplayContext value to set.
+     * @param status Input/output status. If at entry this indicates a failure
+     *               status, the function will do nothing; otherwise this will be
+     *               updated with any new status from the function. 
+     * @draft ICU 53
+     */
+    virtual void setContext(UDisplayContext value, UErrorCode& status);
+
+    /* Cannot use #ifndef U_HIDE_DRAFT_API for the following draft method since it is virtual */
+    /**
+     * Get the formatter's UDisplayContext value for the specified UDisplayContextType,
+     * such as UDISPCTX_TYPE_CAPITALIZATION.
+     * @param type The UDisplayContextType whose value to return
+     * @param status Input/output status. If at entry this indicates a failure
+     *               status, the function will do nothing; otherwise this will be
+     *               updated with any new status from the function. 
+     * @return The UDisplayContextValue for the specified type.
+     * @draft ICU 53
+     */
+    virtual UDisplayContext getContext(UDisplayContextType type, UErrorCode& status) const;
 
 public:
 
@@ -999,7 +1057,7 @@ private:
                                       UNumberFormatStyle style,
                                       UErrorCode& errorCode);
 
-    UBool      fGroupingUsed;
+    UBool       fGroupingUsed;
     int32_t     fMaxIntegerDigits;
     int32_t     fMinIntegerDigits;
     int32_t     fMaxFractionDigits;
@@ -1015,6 +1073,8 @@ private:
 
     // ISO currency code
     UChar      fCurrency[4];
+
+    UDisplayContext fCapitalizationContext;
 
     friend class ICUNumberFormatFactory; // access to makeInstance
     friend class ICUNumberFormatService;

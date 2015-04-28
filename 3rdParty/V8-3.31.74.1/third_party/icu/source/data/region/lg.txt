@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/lg.xml
@@ -18,7 +18,7 @@ lg{
         AI{"Angwila"}
         AL{"Alibaniya"}
         AM{"Arameniya"}
-        AN{"Bizinga bya Antile eby'abaHolandi"}
+        AN{"Bizinga bya Antile eby’abaHolandi"}
         AO{"Angola"}
         AR{"Arigentina"}
         AS{"Samowa omumerika"}
@@ -57,7 +57,7 @@ lg{
         CO{"Kolombya"}
         CR{"Kosita Rika"}
         CU{"Cuba"}
-        CV{"Bizinga by'e Kepu Veredi"}
+        CV{"Bizinga by’e Kepu Veredi"}
         CY{"Sipuriya"}
         CZ{"Lipubulika ya Ceeka"}
         DE{"Budaaki"}
@@ -74,7 +74,7 @@ lg{
         ET{"Esyopya"}
         FI{"Finilandi"}
         FJ{"Fiji"}
-        FK{"Bizinga by'eFalikalandi"}
+        FK{"Bizinga by’eFalikalandi"}
         FM{"Mikuronezya"}
         FR{"Bufalansa"}
         GA{"Gaboni"}
@@ -88,7 +88,7 @@ lg{
         GM{"Gambya"}
         GN{"Gini"}
         GP{"Gwadalupe"}
-        GQ{"Gayana ey'oku ekweta"}
+        GQ{"Gayana ey’oku ekweta"}
         GR{"Bugereeki/Buyonaani"}
         GT{"Gwatemala"}
         GU{"Gwamu"}
@@ -102,7 +102,7 @@ lg{
         IE{"Ayalandi"}
         IL{"Yisirayeri"}
         IN{"Buyindi"}
-        IO{"Bizinga by'eCago"}
+        IO{"Bizinga by’eCago"}
         IQ{"Yiraaka"}
         IR{"Yiraani"}
         IS{"Ayisirandi"}
@@ -114,10 +114,10 @@ lg{
         KG{"Kirigizisitaani"}
         KH{"Kambodya"}
         KI{"Kiribati"}
-        KM{"Bizinga by'eKomoro"}
+        KM{"Bizinga by’eKomoro"}
         KN{"Senti Kitisi ne Nevisi"}
-        KP{"Koreya ey'omumambuka"}
-        KR{"Koreya ey'omumaserengeta"}
+        KP{"Koreya ey’omumambuka"}
+        KR{"Koreya ey’omumaserengeta"}
         KW{"Kuweti"}
         KY{"Bizinga ebya Kayimaani"}
         KZ{"Kazakisitaani"}
@@ -141,13 +141,13 @@ lg{
         ML{"Mali"}
         MM{"Myanima"}
         MN{"Mongoliya"}
-        MP{"Bizinga bya Mariyana eby'omumambuka"}
+        MP{"Bizinga bya Mariyana eby’omumambuka"}
         MQ{"Maritiniiki"}
         MR{"Mawulitenya"}
         MS{"Monteseraati"}
         MT{"Malita"}
         MU{"Mawulisyasi"}
-        MV{"Bizinga by'eMalidive"}
+        MV{"Bizinga by’eMalidive"}
         MW{"Malawi"}
         MX{"Mekisiko"}
         MY{"Malezya"}
@@ -155,7 +155,7 @@ lg{
         NA{"Namibiya"}
         NC{"Kaledonya mupya"}
         NE{"Nije"}
-        NF{"Kizinga ky'eNorofoko"}
+        NF{"Kizinga ky’eNorofoko"}
         NG{"Nayijerya"}
         NI{"Nikaraguwa"}
         NL{"Holandi"}
@@ -185,7 +185,7 @@ lg{
         RU{"Lasa"}
         RW{"Rwanda"}
         SA{"Sawudarebya - Buwarabu"}
-        SB{"Bizanga by'eSolomooni"}
+        SB{"Bizanga by’eSolomooni"}
         SC{"Sesere"}
         SD{"Sudaani"}
         SE{"Swideni"}
@@ -202,7 +202,7 @@ lg{
         SV{"El salivado"}
         SY{"Siriya"}
         SZ{"Swazirandi"}
-        TC{"Bizinga by'eTaaka ne Kayikosi"}
+        TC{"Bizinga by’eTaaka ne Kayikosi"}
         TD{"Caadi"}
         TG{"Togo"}
         TH{"Tayirandi"}
@@ -226,7 +226,7 @@ lg{
         VC{"Senti Vinsenti ne Gurendadiini"}
         VE{"Venzwera"}
         VG{"Bizinga ebya Virigini ebitwalibwa Bungereza"}
-        VI{"Bizinga bya Virigini eby'Amerika"}
+        VI{"Bizinga bya Virigini eby’Amerika"}
         VN{"Vyetinaamu"}
         VU{"Vanawuwatu"}
         WF{"Walisi ne Futuna"}
@@ -237,5 +237,5 @@ lg{
         ZM{"Zambya"}
         ZW{"Zimbabwe"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

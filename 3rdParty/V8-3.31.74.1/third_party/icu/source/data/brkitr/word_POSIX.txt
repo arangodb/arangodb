@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2002-2013, International Business Machines Corporation 
+# Copyright (C) 2002-2014, International Business Machines Corporation 
 # and others. All Rights Reserved.
 #
 # file:  word_POSIX.txt
@@ -36,7 +36,7 @@ $ALetter            = [\p{Word_Break = ALetter}];
 $Single_Quote       = [\p{Word_Break = Single_Quote}];
 $Double_Quote       = [\p{Word_Break = Double_Quote}];
 $MidNumLet          = [\p{Word_Break = MidNumLet} - [.]];
-$MidLetter          = [\p{Word_Break = MidLetter}];
+$MidLetter          = [\p{Word_Break = MidLetter} - [\:]];
 $MidNum             = [\p{Word_Break = MidNum} [.]];
 $Numeric            = [\p{Word_Break = Numeric}];
 $ExtendNumLet       = [\p{Word_Break = ExtendNumLet}];

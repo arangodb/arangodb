@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-#   Copyright (C) 1999-2013, International Business Machines
+#   Copyright (C) 1999-2014, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #
 #******************************************************************************
@@ -94,7 +94,7 @@ dictionarydata.o \
 appendable.o ustr_cnv.o unistr_cnv.o unistr.o unistr_case.o unistr_props.o \
 utf_impl.o ustring.o ustrcase.o ucasemap.o ucasemap_titlecase_brkiter.o cstring.o ustrfmt.o ustrtrns.o ustr_wcs.o utext.o \
 unistr_case_locale.o ustrcase_locale.o unistr_titlecase_brkiter.o ustr_titlecase_brkiter.o \
-normalizer2impl.o normalizer2.o filterednormalizer2.o normlzr.o unorm.o unormcmp.o unorm_it.o \
+normalizer2impl.o normalizer2.o filterednormalizer2.o normlzr.o unorm.o unormcmp.o loadednormalizer2impl.o \
 chariter.o schriter.o uchriter.o uiter.o \
 patternprops.o uchar.o uprops.o ucase.o propname.o ubidi_props.o ubidi.o ubidiwrt.o ubidiln.o ushape.o \
 uscript.o uscript_props.o usc_impl.o unames.o \
@@ -104,7 +104,8 @@ rbbi.o rbbidata.o rbbinode.o rbbirb.o rbbiscan.o rbbisetb.o rbbistbl.o rbbitblb.
 serv.o servnotf.o servls.o servlk.o servlkf.o servrbf.o servslkf.o \
 uidna.o usprep.o uts46.o punycode.o \
 util.o util_props.o parsepos.o locbased.o cwchar.o wintz.o dtintrv.o ucnvsel.o propsvec.o \
-ulist.o uloc_tag.o icudataver.o icuplug.o listformatter.o
+ulist.o uloc_tag.o icudataver.o icuplug.o listformatter.o \
+sharedobject.o simplepatternformatter.o unifiedcache.o uloc_keytype.o
 
 ## Header files to install
 HEADERS = $(srcdir)/unicode/*.h

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/collation/fa.xml
@@ -10,19 +10,21 @@
  * ICU <specials> source: <path>/xml/collation/fa.xml
  */
 fa{
-    Version{"2.0.89.0"}
+    Version{"2.0.97.64"}
     collations{
         standard{
             Sequence{
                 "[normalization on][reorder Arab]"
                 "&َ<<ِ<<ُ<<ً<<ٍ<<ٌ"
                 "&[before 1]ا<آ"
-                "&ا<<ٱ<ء<<*أٲإٳؤ<<یٔ<<<ىٔ<<<ئ"
+                "&ا<<ٱ<ء"
+                "<<أ<<ٲ<<إ<<ٳ<<ؤ"
+                "<<یٔ<<<ىٔ<<<ئ"
                 "&ک<<*ڪګكڬڭڮ"
-                "&ۏ<ه<<*ەہةۃۀھ"
+                "&ۏ<ه<<ە<<ہ<<ة<<ۃ<<ۀ<<ھ"
                 "&ی<<*ىےيېۑۍێ"
             }
-            Version{"24"}
+            Version{"26"}
         }
     }
 }

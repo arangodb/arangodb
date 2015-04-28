@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/nb.xml
@@ -22,13 +22,12 @@ nb{
         be{"hviterussisk"}
         bem{"bemba"}
         bg{"bulgarsk"}
-        bh{"bihari"}
         bn{"bengali"}
         br{"bretonsk"}
         bs{"bosnisk"}
         ca{"katalansk"}
         ceb{"cebuansk"}
-        chr{"cherokee"}
+        chr{"cherokesisk"}
         ckb{"kurdisk (sorani)"}
         co{"korsikansk"}
         cs{"tsjekkisk"}
@@ -101,13 +100,12 @@ nb{
         mk{"makedonsk"}
         ml{"malayalam"}
         mn{"mongolsk"}
-        mo{"moldavisk"}
         mr{"marathi"}
         ms{"malayisk"}
         mt{"maltesisk"}
         my{"burmesisk"}
         nb{"norsk bokmål"}
-        ne{"nepalsk"}
+        ne{"nepali"}
         nl{"nederlandsk"}
         nl_BE{"flamsk"}
         nn{"norsk nynorsk"}
@@ -118,7 +116,7 @@ nb{
         oc{"oksitansk"}
         om{"oromo"}
         or{"oriya"}
-        pa{"panjabi"}
+        pa{"punjabi"}
         pl{"polsk"}
         ps{"pashto"}
         pt{"portugisisk"}
@@ -128,8 +126,9 @@ nb{
         rm{"retoromansk"}
         rn{"rundi"}
         ro{"rumensk"}
+        ro_MD{"moldovsk"}
         ru{"russisk"}
-        rw{"kinjarwanda"}
+        rw{"kinyarwanda"}
         sd{"sindhi"}
         sh{"serbokroatisk"}
         si{"singalesisk"}
@@ -143,12 +142,13 @@ nb{
         su{"sundanesisk"}
         sv{"svensk"}
         sw{"swahili"}
-        ta{"tamil"}
+        ta{"tamilsk"}
         te{"telugu"}
         tg{"tadsjikisk"}
         th{"thai"}
         ti{"tigrinja"}
         tk{"turkmensk"}
+        tl{"tagalog"}
         tn{"setswana"}
         to{"tongansk"}
         tr{"tyrkisk"}
@@ -168,6 +168,9 @@ nb{
         zh_Hans{"forenklet kinesisk"}
         zh_Hant{"tradisjonell kinesisk"}
         zu{"zulu"}
+    }
+    Languages%variant{
+        ps{"pushto"}
     }
     LanguagesShort{
         az{"azeri"}
@@ -269,7 +272,7 @@ nb{
         Narb{"gammelnordarabisk"}
         Nbat{"nabataeansk"}
         Nkgb{"naxi geba"}
-        Nkoo{"n'ko"}
+        Nkoo{"n’ko"}
         Nshu{"nüshu"}
         Ogam{"ogham"}
         Olck{"ol-chiki"}
@@ -308,7 +311,7 @@ nb{
         Takr{"takri"}
         Tale{"tai le"}
         Talu{"ny tai lue"}
-        Taml{"tamil"}
+        Taml{"tamilsk"}
         Tang{"tangut"}
         Tavt{"tai viet"}
         Telu{"telugu"}
@@ -338,7 +341,10 @@ nb{
         Hans{"forenklet han"}
         Hant{"tradisjonell han"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"persisk-arabisk"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Språk: {0}"}
         script{"Skrift: {0}"}

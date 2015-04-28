@@ -1,8 +1,8 @@
-Index: source/data/brkitr/word.txt
-===================================================================
---- source/data/brkitr/word.txt	(revision 259715)
-+++ source/data/brkitr/word.txt	(working copy)
-@@ -35,10 +35,16 @@
+diff --git a/source/data/brkitr/word.txt b/source/data/brkitr/word.txt
+index f89a2fe..c74da4c 100644
+--- a/source/data/brkitr/word.txt
++++ b/source/data/brkitr/word.txt
+@@ -35,10 +35,16 @@ $Hebrew_Letter      = [\p{Word_Break = Hebrew_Letter}];
  $ALetter            = [\p{Word_Break = ALetter}];
  $Single_Quote       = [\p{Word_Break = Single_Quote}];
  $Double_Quote       = [\p{Word_Break = Double_Quote}];
@@ -22,10 +22,10 @@ Index: source/data/brkitr/word.txt
  $ExtendNumLet       = [\p{Word_Break = ExtendNumLet}];
  
  $Han                = [:Han:];
-Index: source/data/brkitr/line.txt
-===================================================================
---- source/data/brkitr/line.txt	(revision 259715)
-+++ source/data/brkitr/line.txt	(working copy)
+diff --git a/source/data/brkitr/line.txt b/source/data/brkitr/line.txt
+index 74560af..ff7d139 100644
+--- a/source/data/brkitr/line.txt
++++ b/source/data/brkitr/line.txt
 @@ -12,9 +12,8 @@
  #         This is only because of a limitation of ICU break engine implementation,
  #         not because the older behavior is desirable.
@@ -55,7 +55,7 @@ Index: source/data/brkitr/line.txt
  $CM = [:LineBreak =  Combining_Mark:];
  $CP = [:LineBreak =  Close_Parenthesis:];
  $CR = [:LineBreak =  Carriage_Return:];
-@@ -74,16 +73,16 @@
+@@ -74,17 +73,17 @@ $HL = [:LineBreak =  Hebrew_Letter:];
  $HY = [:LineBreak =  Hyphen:];
  $H2 = [:LineBreak =  H2:];
  $H3 = [:LineBreak =  H3:];
@@ -76,3 +76,4 @@ Index: source/data/brkitr/line.txt
 +$OP = [[:LineBreak =  Open_Punctuation:] \u23B4];
  $PO = [:LineBreak =  Postfix_Numeric:];
  $PR = [:LineBreak =  Prefix_Numeric:];
+ $QU = [:LineBreak =  Quotation:];

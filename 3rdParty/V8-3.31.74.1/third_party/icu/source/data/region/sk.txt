@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sk.xml
@@ -12,7 +12,7 @@
 sk{
     Countries{
         419{"Latinská Amerika"}
-        AC{"Ostrov Ascensión"}
+        AC{"Ascensión"}
         AD{"Andorra"}
         AE{"Spojené arabské emiráty"}
         AF{"Afganistan"}
@@ -28,7 +28,7 @@ sk{
         AT{"Rakúsko"}
         AU{"Austrália"}
         AW{"Aruba"}
-        AX{"Alandské ostrovy"}
+        AX{"Ålandy"}
         AZ{"Azerbajdžan"}
         BA{"Bosna a Hercegovina"}
         BB{"Barbados"}
@@ -63,7 +63,7 @@ sk{
         CM{"Kamerun"}
         CN{"Čína"}
         CO{"Kolumbia"}
-        CP{"Ostrov Clipperton"}
+        CP{"Clipperton"}
         CR{"Kostarika"}
         CU{"Kuba"}
         CV{"Kapverdy"}
@@ -72,7 +72,7 @@ sk{
         CY{"Cyprus"}
         CZ{"Česká republika"}
         DE{"Nemecko"}
-        DG{"Diego Garcia"}
+        DG{"Diego García"}
         DJ{"Džibutsko"}
         DK{"Dánsko"}
         DM{"Dominika"}
@@ -89,7 +89,7 @@ sk{
         EU{"Európska únia"}
         FI{"Fínsko"}
         FJ{"Fidži"}
-        FK{"Falklandské ostrovy"}
+        FK{"Falklandy"}
         FM{"Mikronézia"}
         FO{"Faerské ostrovy"}
         FR{"Francúzsko"}
@@ -112,7 +112,7 @@ sk{
         GU{"Guam"}
         GW{"Guinea-Bissau"}
         GY{"Guayana"}
-        HK{"Hongkong OAO Číny"}
+        HK{"Hongkong"}
         HM{"Heardov ostrov a McDonaldove ostrovy"}
         HN{"Honduras"}
         HR{"Chorvátsko"}
@@ -138,7 +138,7 @@ sk{
         KH{"Kambodža"}
         KI{"Kiribati"}
         KM{"Komory"}
-        KN{"Saint Kitts a Nevis"}
+        KN{"Svätý Krištof a Nevis"}
         KP{"Severná Kórea"}
         KR{"Južná Kórea"}
         KW{"Kuvajt"}
@@ -159,14 +159,14 @@ sk{
         MC{"Monako"}
         MD{"Moldavsko"}
         ME{"Čierna Hora"}
-        MF{"Saint Martin"}
+        MF{"Svätý Martin"}
         MG{"Madagaskar"}
         MH{"Marshallove ostrovy"}
         MK{"Macedónsko"}
         ML{"Mali"}
         MM{"Mjanmarsko"}
         MN{"Mongolsko"}
-        MO{"Macao OAO Číny"}
+        MO{"Macao"}
         MP{"Severné Mariány"}
         MQ{"Martinik"}
         MR{"Mauritánia"}
@@ -181,7 +181,7 @@ sk{
         NA{"Namíbia"}
         NC{"Nová Kaledónia"}
         NE{"Niger"}
-        NF{"Norfolkov ostrov"}
+        NF{"Norfolk"}
         NG{"Nigéria"}
         NI{"Nikaragua"}
         NL{"Holandsko"}
@@ -201,12 +201,12 @@ sk{
         PM{"Saint Pierre a Miquelon"}
         PN{"Pitcairnove ostrovy"}
         PR{"Portoriko"}
-        PS{"Palestínske územie"}
+        PS{"Palestína"}
         PT{"Portugalsko"}
         PW{"Palau"}
         PY{"Paraguaj"}
         QA{"Katar"}
-        QO{"Tichomorie - ostatné"}
+        QO{"ostatné Tichomorie"}
         RE{"Réunion"}
         RO{"Rumunsko"}
         RS{"Srbsko"}
@@ -214,13 +214,13 @@ sk{
         RW{"Rwanda"}
         SA{"Saudská Arábia"}
         SB{"Šalamúnove ostrovy"}
-        SC{"Seychelské ostrovy"}
+        SC{"Seychely"}
         SD{"Sudán"}
         SE{"Švédsko"}
         SG{"Singapur"}
         SH{"Svätá Helena"}
         SI{"Slovinsko"}
-        SJ{"Špicbergy a Jan Mayen"}
+        SJ{"Svalbard a Jan Mayen"}
         SK{"Slovensko"}
         SL{"Sierra Leone"}
         SM{"San Maríno"}
@@ -228,8 +228,8 @@ sk{
         SO{"Somálsko"}
         SR{"Surinam"}
         SS{"Južný Sudán"}
-        ST{"Svätý Tomáš a Princove ostrovy"}
-        SV{"Salvador"}
+        ST{"Svätý Tomáš a Princov ostrov"}
+        SV{"Salvádor"}
         SX{"Sint Maarten"}
         SY{"Sýria"}
         SZ{"Svazijsko"}
@@ -259,8 +259,8 @@ sk{
         VA{"Vatikán"}
         VC{"Svätý Vincent a Grenadíny"}
         VE{"Venezuela"}
-        VG{"Britské panenské ostrovy"}
-        VI{"Panenské ostrovy - USA"}
+        VG{"Britské Panenské ostrovy"}
+        VI{"Americké Panenské ostrovy"}
         VN{"Vietnam"}
         VU{"Vanuatu"}
         WF{"Wallis a Futuna"}
@@ -271,14 +271,17 @@ sk{
         ZA{"Južná Afrika"}
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
-        ZZ{"Neznámy región"}
+        ZZ{"neznámy región"}
+    }
+    Countries%variant{
+        CD{"Konžská demokratická republika"}
+        CG{"Konžská republika"}
+        FK{"Malvíny"}
+        MK{"Macedónsko (BJRM)"}
     }
     CountriesShort{
         GB{"UK"}
-        HK{"Hongkong"}
-        MO{"Macao"}
-        PS{"Palestína"}
         US{"USA"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1999-2012, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -13,7 +13,7 @@
 *   created on: 1999sep13
 *   created by: Markus W. Scherer
 *
-*   This file defines basic types and constants for utf.h to be
+*   This file defines basic types and constants for ICU to be
 *   platform-independent. umachine.h and utf.h are included into
 *   utypes.h to provide all the general definitions for ICU.
 *   All of these definitions used to be in utypes.h before
@@ -115,6 +115,40 @@
 #define U_OBSOLETE U_CAPI
 /** This is used to declare a function as an internal ICU C API  */
 #define U_INTERNAL U_CAPI
+
+/**
+ * \def U_OVERRIDE
+ * Defined to the C++11 "override" keyword if available.
+ * Denotes a class or member which is an override of the base class.
+ * May result in an error if it applied to something not an override.
+ * @internal
+ */
+
+/**
+ * \def U_FINAL
+ * Defined to the C++11 "final" keyword if available.
+ * Denotes a class or member which may not be overridden in subclasses.
+ * May result in an error if subclasses attempt to override.
+ * @internal
+ */
+
+#if defined(__cplusplus) && __cplusplus>=201103L
+/* C++11 */
+#ifndef U_OVERRIDE
+#define U_OVERRIDE override
+#endif
+#ifndef U_FINAL
+#define U_FINAL final
+#endif
+#else
+/* not C++11 - define to nothing */
+#ifndef U_OVERRIDE
+#define U_OVERRIDE
+#endif
+#ifndef U_FINAL
+#define U_FINAL
+#endif
+#endif
 
 /*==========================================================================*/
 /* limits for int32_t etc., like in POSIX inttypes.h                        */

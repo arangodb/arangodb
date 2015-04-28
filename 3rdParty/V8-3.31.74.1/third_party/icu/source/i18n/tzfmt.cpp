@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2011-2013, International Business Machines Corporation and
+* Copyright (C) 2011-2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 */
@@ -308,7 +308,8 @@ U_CDECL_END
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(TimeZoneFormat)
 
 TimeZoneFormat::TimeZoneFormat(const Locale& locale, UErrorCode& status) 
-: fLocale(locale), fTimeZoneNames(NULL), fTimeZoneGenericNames(NULL), fDefParseOptionFlags(0) {
+: fLocale(locale), fTimeZoneNames(NULL), fTimeZoneGenericNames(NULL),
+  fDefParseOptionFlags(0), fTZDBTimeZoneNames(NULL) {
 
     for (int32_t i = 0; i < UTZFMT_PAT_COUNT; i++) {
         fGMTOffsetPatternItems[i] = NULL;
@@ -418,6 +419,7 @@ TimeZoneFormat::TimeZoneFormat(const TimeZoneFormat& other)
 TimeZoneFormat::~TimeZoneFormat() {
     delete fTimeZoneNames;
     delete fTimeZoneGenericNames;
+    delete fTZDBTimeZoneNames;
     for (int32_t i = 0; i < UTZFMT_PAT_COUNT; i++) {
         delete fGMTOffsetPatternItems[i];
     }
@@ -846,6 +848,8 @@ TimeZoneFormat::parse(UTimeZoneFormatStyle style, const UnicodeString& text, Par
     UErrorCode status = U_ZERO_ERROR;
     UnicodeString tzID;
 
+    UBool parseTZDBAbbrev = ((parseOptions & UTZFMT_PARSE_OPTION_TZ_DATABASE_ABBREVIATIONS) != 0);
+
     // Try the specified style
     switch (style) {
     case UTZFMT_STYLE_LOCALIZED_GMT:
@@ -954,6 +958,41 @@ TimeZoneFormat::parse(UTimeZoneFormatStyle style, const UnicodeString& text, Par
                     getTimeZoneID(specificMatches.getAlias(), matchIdx, tzID);
                     U_ASSERT(!tzID.isEmpty());
                     return TimeZone::createTimeZone(tzID);
+                }
+            }
+
+            if (parseTZDBAbbrev && style == UTZFMT_STYLE_SPECIFIC_SHORT) {
+                U_ASSERT((nameTypes & UTZNM_SHORT_STANDARD) != 0);
+                U_ASSERT((nameTypes & UTZNM_SHORT_DAYLIGHT) != 0);
+
+                const TZDBTimeZoneNames *tzdbTimeZoneNames = getTZDBTimeZoneNames(status);
+                if (U_SUCCESS(status)) {
+                    LocalPointer<TimeZoneNames::MatchInfoCollection> tzdbNameMatches(
+                        tzdbTimeZoneNames->find(text, startIdx, nameTypes, status));
+                    if (U_FAILURE(status)) {
+                        pos.setErrorIndex(startIdx);
+                        return NULL;
+                    }
+                    if (!tzdbNameMatches.isNull()) {
+                        int32_t matchIdx = -1;
+                        int32_t matchPos = -1;
+                        for (int32_t i = 0; i < tzdbNameMatches->size(); i++) {
+                            matchPos = startIdx + tzdbNameMatches->getMatchLengthAt(i);
+                            if (matchPos > parsedPos) {
+                                matchIdx = i;
+                                parsedPos = matchPos;
+                            }
+                        }
+                        if (matchIdx >= 0) {
+                            if (timeType) {
+                                *timeType = getTimeType(tzdbNameMatches->getNameTypeAt(matchIdx));
+                            }
+                            pos.setIndex(matchPos);
+                            getTimeZoneID(tzdbNameMatches.getAlias(), matchIdx, tzID);
+                            U_ASSERT(!tzID.isEmpty());
+                            return TimeZone::createTimeZone(tzID);
+                        }
+                    }
                 }
             }
             break;
@@ -1168,6 +1207,34 @@ TimeZoneFormat::parse(UTimeZoneFormatStyle style, const UnicodeString& text, Par
                 parsedOffset = UNKNOWN_OFFSET;
             }
         }
+        if (parseTZDBAbbrev && parsedPos < maxPos && (evaluated & STYLE_PARSE_FLAGS[UTZFMT_STYLE_SPECIFIC_SHORT]) == 0) {
+            const TZDBTimeZoneNames *tzdbTimeZoneNames = getTZDBTimeZoneNames(status);
+            if (U_SUCCESS(status)) {
+                LocalPointer<TimeZoneNames::MatchInfoCollection> tzdbNameMatches(
+                    tzdbTimeZoneNames->find(text, startIdx, ALL_SIMPLE_NAME_TYPES, status));
+                if (U_FAILURE(status)) {
+                    pos.setErrorIndex(startIdx);
+                    return NULL;
+                }
+                int32_t tzdbNameMatchIdx = -1;
+                int32_t matchPos = -1;
+                if (!tzdbNameMatches.isNull()) {
+                    for (int32_t i = 0; i < tzdbNameMatches->size(); i++) {
+                        if (startIdx + tzdbNameMatches->getMatchLengthAt(i) > matchPos) {
+                            tzdbNameMatchIdx = i;
+                            matchPos = startIdx + tzdbNameMatches->getMatchLengthAt(i);
+                        }
+                    }
+                }
+                if (parsedPos < matchPos) {
+                    U_ASSERT(tzdbNameMatchIdx >= 0);
+                    parsedPos = matchPos;
+                    getTimeZoneID(tzdbNameMatches.getAlias(), tzdbNameMatchIdx, parsedID);
+                    parsedTimeType = getTimeType(tzdbNameMatches->getNameTypeAt(tzdbNameMatchIdx));
+                    parsedOffset = UNKNOWN_OFFSET;
+                }
+            }
+        }
         // Try generic names
         if (parsedPos < maxPos) {
             int32_t genMatchLen = -1;
@@ -1182,7 +1249,7 @@ TimeZoneFormat::parse(UTimeZoneFormatStyle style, const UnicodeString& text, Par
                 return NULL;
             }
 
-            if (parsedPos < startIdx + genMatchLen) {
+            if (genMatchLen > 0 && parsedPos < startIdx + genMatchLen) {
                 parsedPos = startIdx + genMatchLen;
                 parsedID.setTo(tzID);
                 parsedTimeType = tt;
@@ -1311,6 +1378,27 @@ TimeZoneFormat::getTimeZoneGenericNames(UErrorCode& status) const {
     umtx_unlock(&gLock);
 
     return fTimeZoneGenericNames;
+}
+
+const TZDBTimeZoneNames*
+TimeZoneFormat::getTZDBTimeZoneNames(UErrorCode& status) const {
+    if (U_FAILURE(status)) {
+        return NULL;
+    }
+
+    umtx_lock(&gLock);
+    if (fTZDBTimeZoneNames == NULL) {
+        TZDBTimeZoneNames *tzdbNames = new TZDBTimeZoneNames(fLocale);
+        if (tzdbNames == NULL) {
+            status = U_MEMORY_ALLOCATION_ERROR;
+        } else {
+            TimeZoneFormat *nonConstThis = const_cast<TimeZoneFormat *>(this);
+            nonConstThis->fTZDBTimeZoneNames = tzdbNames;
+        }
+    }
+    umtx_unlock(&gLock);
+
+    return fTZDBTimeZoneNames;
 }
 
 UnicodeString&
@@ -2576,9 +2664,8 @@ TimeZoneFormat::getTimeType(UTimeZoneNameType nameType) {
         return UTZFMT_TIME_TYPE_DAYLIGHT;
 
     default:
-        U_ASSERT(FALSE);
+        return UTZFMT_TIME_TYPE_UNKNOWN;
     }
-    return UTZFMT_TIME_TYPE_UNKNOWN;
 }
 
 UnicodeString&

@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 2012-2013, International Business Machines
+*   Copyright (C) 2012-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -18,7 +18,6 @@
  */
 
 #if !UCONFIG_NO_FORMATTING
-#ifndef U_HIDE_DRAFT_API
 
 #include "unicode/decimfmt.h"
 
@@ -48,7 +47,7 @@ class PluralRules;
  * Resetting the pattern prefixes or suffixes is not supported; the method calls
  * are ignored.
  * <p>
- * @draft ICU 51
+ * @stable ICU 51
  */
 class U_I18N_API CompactDecimalFormat : public DecimalFormat {
 public:
@@ -58,7 +57,7 @@ public:
       * @param inLocale the given locale.
       * @param style whether to use short or long style.
       * @param status error code returned  here.
-      * @draft ICU 51
+      * @stable ICU 51
       */
      static CompactDecimalFormat* U_EXPORT2 createInstance(
           const Locale& inLocale, UNumberCompactStyle style, UErrorCode& status);
@@ -67,13 +66,13 @@ public:
      * Copy constructor.
      *
      * @param source    the DecimalFormat object to be copied from.
-     * @draft ICU 51
+     * @stable ICU 51
       */
     CompactDecimalFormat(const CompactDecimalFormat& source);
 
     /**
      * Destructor.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     virtual ~CompactDecimalFormat();
 
@@ -81,7 +80,7 @@ public:
      * Assignment operator.
      *
      * @param rhs    the DecimalFormat object to be copied.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     CompactDecimalFormat& operator=(const CompactDecimalFormat& rhs);
 
@@ -90,7 +89,7 @@ public:
      * result and should delete it when done.
      *
      * @return    a polymorphic copy of this CompactDecimalFormat.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     virtual Format* clone() const;
 
@@ -100,7 +99,7 @@ public:
      *
      * @param other    the object to be compared with.
      * @return         TRUE if the given Format objects are semantically equal.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     virtual UBool operator==(const Format& other) const;
 
@@ -116,7 +115,7 @@ public:
      * @param pos       On input: an alignment field, if desired.
      *                  On output: the offsets of the alignment field.
      * @return          Reference to 'appendTo' parameter.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     virtual UnicodeString& format(double number,
                                   UnicodeString& appendTo,
@@ -150,7 +149,7 @@ public:
      * @param pos       On input: an alignment field, if desired.
      *                  On output: the offsets of the alignment field.
      * @return          Reference to 'appendTo' parameter.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     virtual UnicodeString& format(int64_t number,
                                   UnicodeString& appendTo,
@@ -243,7 +242,7 @@ public:
     * @param result         Does not change.
     * @param parsePosition  Does not change.
     * @see Formattable
-    * @draft ICU 51
+    * @stable ICU 51
     */
     virtual void parse(const UnicodeString& text,
                        Formattable& result,
@@ -256,13 +255,12 @@ public:
      * @param text      Unused. 
      * @param result    Does not change.
      * @param status    Always set to U_UNSUPPORTED_ERROR.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     virtual void parse(const UnicodeString& text,
                        Formattable& result,
                        UErrorCode& status) const;
 
-/* Cannot use #ifndef U_HIDE_INTERNAL_API for the following draft method since it is virtual */
     /**
      * Parses text from the given string as a currency amount.  Unlike
      * the parse() method, this method will attempt to parse a generic
@@ -295,7 +293,7 @@ public:
      * .          Derived::getStaticClassID()) ...
      * </pre>
      * @return          The class ID for all objects of this class.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     static UClassID U_EXPORT2 getStaticClassID();
 
@@ -308,7 +306,7 @@ public:
      * @return          The class ID for this object. All objects of a
      *                  given class have the same class ID.  Objects of
      *                  other classes have different class IDs.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     virtual UClassID getDynamicClassID() const;
 
@@ -326,7 +324,6 @@ private:
 
 U_NAMESPACE_END
 
-#endif /* U_HIDE_DRAFT_API */
 #endif /* #if !UCONFIG_NO_FORMATTING */
 
 #endif // __COMPACT_DECIMAL_FORMAT_H__

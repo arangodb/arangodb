@@ -1,0 +1,187 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/pa.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/pa.xml
+ */
+pa{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} ਪ੍ਰਤੀ {1}"}
+        }
+        duration{
+            day{
+                dnam{"ਦਿਨ"}
+                one{"{0} ਦਿਨ"}
+                other{"{0} ਦਿਨ"}
+            }
+            hour{
+                dnam{"ਘੰਟੇ"}
+                one{"{0} ਘੰਟਾ"}
+                other{"{0} ਘੰਟੇ"}
+                per{"{0} ਪ੍ਰਤੀ ਘੰਟਾ"}
+            }
+            microsecond{
+                dnam{"ਮਾਈਕਰੋਸਕਿੰਟ"}
+                one{"{0} ਮਾਈਕਰੋਸਕਿੰਟ"}
+                other{"{0} ਮਾਈਕਰੋਸਕਿੰਟ"}
+            }
+            millisecond{
+                dnam{"ਮਿਲੀਸਕਿੰਟ"}
+                one{"{0} ਮਿਲੀਸਕਿੰਟ"}
+                other{"{0} ਮਿਲੀਸਕਿੰਟ"}
+            }
+            minute{
+                dnam{"ਮਿੰਟ"}
+                one{"{0} ਮਿੰਟ"}
+                other{"{0} ਮਿੰਟ"}
+            }
+            month{
+                dnam{"ਮਹੀਨੇ"}
+                one{"{0} ਮਹੀਨਾ"}
+                other{"{0} ਮਹੀਨੇ"}
+            }
+            nanosecond{
+                dnam{"ਨੈਨੋਸਕਿੰਟ"}
+                one{"{0} ਨੈਨੋਸਕਿੰਟ"}
+                other{"{0} ਨੈਨੋਸਕਿੰਟ"}
+            }
+            second{
+                dnam{"ਸਕਿੰਟ"}
+                one{"{0} ਸਕਿੰਟ"}
+                other{"{0} ਸਕਿੰਟ"}
+                per{"{0} ਪ੍ਰਤੀ ਸਕਿੰਟ"}
+            }
+            week{
+                dnam{"ਹਫ਼ਤੇ"}
+                one{"{0} ਹਫ਼ਤਾ"}
+                other{"{0} ਹਫ਼ਤੇ"}
+            }
+            year{
+                dnam{"ਸਾਲ"}
+                one{"{0} ਸਾਲ"}
+                other{"{0} ਸਾਲ"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0} ਪ੍ਰਤੀ {1}"}
+        }
+        duration{
+            day{
+                dnam{"ਦਿਨ"}
+                one{"{0} ਦਿਨ"}
+                other{"{0} ਦਿਨ"}
+            }
+            hour{
+                dnam{"ਘੰਟਾ"}
+                one{"{0} ਘੰਟਾ"}
+                other{"{0} ਘੰਟੇ"}
+            }
+            microsecond{
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ਮਿਲੀਸਕਿੰਟ"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"ਮਿੰਟ"}
+                one{"{0} ਮਿੰਟ"}
+                other{"{0} ਮਿੰਟ"}
+            }
+            month{
+                dnam{"ਮਹੀਨਾ"}
+                one{"{0} ਮਹੀਨਾ"}
+                other{"{0} ਮਹੀਨੇ"}
+            }
+            nanosecond{
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"ਸਕਿੰਟ"}
+                one{"{0} ਸਕਿੰਟ"}
+                other{"{0} ਸਕਿੰਟ"}
+            }
+            week{
+                dnam{"ਹਫ਼ਤਾ"}
+                one{"{0} ਹਫ਼ਤਾ"}
+                other{"{0} ਹਫ਼ਤੇ"}
+            }
+            year{
+                dnam{"ਸਾਲ"}
+                one{"{0} ਸਾਲ"}
+                other{"{0} ਸਾਲ"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ਦਿਨ"}
+                one{"{0} ਦਿਨ"}
+                other{"{0} ਦਿਨ"}
+            }
+            hour{
+                dnam{"ਘੰਟੇ"}
+                one{"{0} ਘੰਟਾ"}
+                other{"{0} ਘੰਟੇ"}
+                per{"{0} ਪ੍ਰ.ਘੰ."}
+            }
+            microsecond{
+                dnam{"ਮਾਈਕਰੋਸਕਿੰਟ"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ਮਿਲੀਸਕਿੰਟ"}
+                one{"{0} ਮਿਲੀਸਕਿੰਟ"}
+                other{"{0} ਮਿਲੀਸਕਿੰਟ"}
+            }
+            minute{
+                dnam{"ਮਿੰਟ"}
+                one{"{0} ਮਿੰਟ"}
+                other{"{0} ਮਿੰਟ"}
+            }
+            month{
+                dnam{"ਮਹੀਨੇ"}
+                one{"{0} ਮਹੀਨਾ"}
+                other{"{0} ਮਹੀਨੇ"}
+            }
+            nanosecond{
+                dnam{"ਨੈਨੋਸਕਿੰਟ"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"ਸਕਿੰਟ"}
+                one{"{0} ਸਕਿੰਟ"}
+                other{"{0} ਸਕਿੰਟ"}
+                per{"{0} ਪ੍ਰ.ਸ."}
+            }
+            week{
+                dnam{"ਹਫ਼ਤੇ"}
+                one{"{0} ਹਫ਼ਤਾ"}
+                other{"{0} ਹਫ਼ਤੇ"}
+            }
+            year{
+                dnam{"ਸਾਲ"}
+                one{"{0} ਸਾਲ"}
+                other{"{0} ਸਾਲ"}
+            }
+        }
+    }
+}

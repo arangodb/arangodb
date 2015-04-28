@@ -1,10 +1,10 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1998-2013, International Business Machines Corporation and
+ * Copyright (c) 1998-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*
-* File test.c
+* File udatatst.c
 *
 * Modification History:
 *
@@ -16,6 +16,7 @@
 #include "unicode/utypes.h"
 #include "unicode/putil.h"
 #include "unicode/udata.h"
+#include "unicode/ucal.h"
 #include "unicode/uchar.h"
 #include "unicode/ucnv.h"
 #include "unicode/ures.h"
@@ -55,8 +56,6 @@ unorm2_swap(const UDataSwapper *ds,
 
 /* other definitions and prototypes */
 
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
-
 #if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
 static void TestUDataOpen(void);
 static void TestUDataOpenChoiceDemo1(void);
@@ -72,7 +71,9 @@ static void TestICUDataName(void);
 static void PointerTableOfContents(void);
 static void SetBadCommonData(void);
 static void TestUDataFileAccess(void);
-
+#if !UCONFIG_NO_FORMATTING && !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
+static void TestTZDataDir(void); 
+#endif
 
 void addUDataTest(TestNode** root);
 
@@ -94,6 +95,9 @@ addUDataTest(TestNode** root)
     addTest(root, &PointerTableOfContents, "udatatst/PointerTableOfContents" );
     addTest(root, &SetBadCommonData, "udatatst/SetBadCommonData" );
     addTest(root, &TestUDataFileAccess, "udatatst/TestUDataFileAccess" );
+#if !UCONFIG_NO_FORMATTING && !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
+    addTest(root, &TestTZDataDir, "udatatst/TestTZDataDir" );
+#endif
 }
 
 #if 0
@@ -1304,7 +1308,10 @@ static const struct {
 #if !UCONFIG_NO_COLLATION
     /* standalone collation data files */
     {"ucadata",                  "icu", ucol_swap},
+#if 0
+    /* Starting with ICU 53, the "inverse UCA" data is integrated into ucadata.icu. */
     {"invuca",                   "icu", ucol_swapInverseUCA},
+#endif
 #endif
 
 #if !UCONFIG_NO_LEGACY_CONVERSION
@@ -1364,15 +1371,18 @@ static const struct {
      * to testdata) for code coverage in tests.
      * See Jitterbug 4497.
      *
-     * ICU4C 4.4 adds normalization data files again, e.g., nfc.nrm.
+     * ICU4C 4.4 adds normalization data files again, e.g., nfkc.nrm.
      */
     {"uprops",                   "icu", uprops_swap},
     {"ucase",                    "icu", ucase_swap},
     {"ubidi",                    "icu", ubidi_swap},
 #endif
 #if !UCONFIG_NO_NORMALIZATION && !UCONFIG_ONLY_COLLATION
-    {"nfc",                      "nrm", unorm2_swap},
-    {"confusables",              "cfu", uspoof_swap},
+    {"nfkc",                     "nrm", unorm2_swap},
+#if !UCONFIG_NO_REGULAR_EXPRESSIONS
+    {"confusables",              "cfu", uspoof_swap}, /* spoof data missing without regex */
+#endif
+
 #endif
     {"unames",                   "icu", uchar_swapNames}
     /* the last item should not be #if'ed so that it can reliably omit the last comma */
@@ -1676,17 +1686,16 @@ TestSwapData() {
     }
     errorCode=U_ZERO_ERROR;
 
-    /* Test argument checking. ucol_swapBinary is normally tested via ures_swap, and isn't normally called directly. */
+    /* Test argument checking. ucol_swap is normally tested via ures_swap, and isn't normally called directly. */
 #if !UCONFIG_NO_COLLATION
-    ucol_swapBinary(NULL, NULL, -1, NULL, NULL);
-    ucol_swapBinary(NULL, NULL, -1, NULL, &errorCode);
+    ucol_swap(NULL, NULL, -1, NULL, &errorCode);
     if (errorCode != U_ILLEGAL_ARGUMENT_ERROR) {
-        log_err("ucol_swapBinary did not fail as expected\n", name);
+        log_err("ucol_swap did not fail as expected\n", name);
     }
     errorCode=U_ZERO_ERROR;
 #endif
 
-    for(i=0; i<LENGTHOF(swapCases); ++i) {
+    for(i=0; i<UPRV_LENGTHOF(swapCases); ++i) {
         /* build the name for logging */
         errorCode=U_ZERO_ERROR;
         if(swapCases[i].name[0]=='*') {
@@ -1698,11 +1707,13 @@ TestSwapData() {
             pkg=U_ICUDATA_BRKITR;
             nm=swapCases[i].name;
             uprv_strcpy(name, U_ICUDATA_BRKITR);
+#if !UCONFIG_NO_COLLATION
         } else if (uprv_strcmp(swapCases[i].name, "ucadata")==0
             || uprv_strcmp(swapCases[i].name, "invuca")==0) {
             pkg=U_ICUDATA_COLL;
             nm=swapCases[i].name;
             uprv_strcpy(name, U_ICUDATA_COLL);
+#endif  /* !UCONFIG_NO_COLLATION */
         } else {
             pkg=NULL;
             nm=swapCases[i].name;
@@ -1809,3 +1820,49 @@ static void SetBadCommonData(void) {
     }
 }
 
+// Check the override loading of time zone .res files from a specified path
+//
+// Hand testing notes: 
+//   1. Run this test with the environment variable set. The following should induce faiures:
+//        ICU_TIMEZONE_FILES_DIR=../testdata/out/build LD_LIBRARY_PATH=../../lib:../../stubdata:../../tools/ctestfw:$LD_LIBRARY_PATH  ./cintltst /udatatst/TestTZDataDir
+//   2. Build ICU with with U_TIMEZONE_FILES_DIR defined. This should also induce failures.
+//        CPPFLAGS=-DU_TIMEZONE_FILES_DIR\=`pwd`/test/testdata/out/testdata ./runConfigureICU Linux
+//        make check
+
+static void TestTZDataDir(void) {
+#if !UCONFIG_NO_FORMATTING
+    UErrorCode status = U_ZERO_ERROR;
+    const char *tzDataVersion;
+    const char *testDataPath;
+
+    // Verify that default ICU time zone data version is something newer than 2014a.
+    tzDataVersion = ucal_getTZDataVersion(&status);
+    // printf("tz data version is %s\n", tzDataVersion);
+    if (U_FAILURE(status)) {
+        log_data_err("Failed call to ucal_getTZDataVersion - %s\n", u_errorName(status));
+        return;
+    } else if (strcmp("2014a", tzDataVersion) == 0) {
+        log_err("File %s:%d - expected something newer than time zone data 2014a.\n", __FILE__, __LINE__, tzDataVersion);
+    }
+
+    testDataPath = loadTestData(&status);
+    // The path produced by loadTestData() will look something like 
+    //     whatever/.../testdata/out/testdata
+    // The test data puts an old (2014a) version of the time zone data there.
+
+    // Switch ICU to the testdata version of zoneinfo64.res, which is verison 2014a.
+    ctest_resetICU();
+    u_setTimeZoneFilesDirectory(testDataPath, &status);
+    tzDataVersion = ucal_getTZDataVersion(&status);
+    if (strcmp("2014a", tzDataVersion) != 0) {
+        log_err("File %s:%d - expected \"2014a\"; actual \"%s\"\n", __FILE__, __LINE__, tzDataVersion);
+    }
+
+    ctest_resetICU();   // Return ICU to using its standard tz data.
+    tzDataVersion = ucal_getTZDataVersion(&status);
+    // printf("tz data version is %s\n", tzDataVersion);
+    if (strcmp("2014a", tzDataVersion) == 0) {
+        log_err("File %s:%d - expected something newer than time zone data 2014a.\n", __FILE__, __LINE__, tzDataVersion);
+    }
+#endif
+}

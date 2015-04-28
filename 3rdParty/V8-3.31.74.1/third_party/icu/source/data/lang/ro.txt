@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ro.xml
@@ -22,7 +22,6 @@ ro{
         be{"bielorusă"}
         bem{"bemba"}
         bg{"bulgară"}
-        bh{"bihari"}
         bn{"bengaleză"}
         br{"bretonă"}
         bs{"bosniacă"}
@@ -32,7 +31,7 @@ ro{
         ckb{"kurdă sorani"}
         co{"corsicană"}
         cs{"cehă"}
-        cy{"velșă"}
+        cy{"galeză"}
         da{"daneză"}
         de{"germană"}
         de_AT{"germană austriacă"}
@@ -101,9 +100,8 @@ ro{
         mk{"macedoneană"}
         ml{"malayalam"}
         mn{"mongolă"}
-        mo{"moldovenească"}
         mr{"marathi"}
-        ms{"malay"}
+        ms{"malaeză"}
         mt{"malteză"}
         my{"birmaneză"}
         nb{"norvegiană bokmål"}
@@ -128,6 +126,7 @@ ro{
         rm{"romanșă"}
         rn{"kirundi"}
         ro{"română"}
+        ro_MD{"moldovenească"}
         ru{"rusă"}
         rw{"kinyarwanda"}
         sd{"sindhi"}
@@ -147,8 +146,9 @@ ro{
         te{"telugu"}
         tg{"tadjică"}
         th{"thailandeză"}
-        ti{"tigrinya"}
+        ti{"tigrină"}
         tk{"turkmenă"}
+        tl{"tagalog"}
         tn{"setswana"}
         to{"tonga"}
         tr{"turcă"}
@@ -169,6 +169,9 @@ ro{
         zh_Hant{"chineză tradițională"}
         zu{"zulu"}
     }
+    Languages%variant{
+        ps{"pushto"}
+    }
     LanguagesShort{
         az{"azeră"}
         en_GB{"engleză britanică"}
@@ -178,7 +181,7 @@ ro{
         Arab{"arabă"}
         Armn{"armeană"}
         Bali{"balineză"}
-        Beng{"bengali"}
+        Beng{"bengaleză"}
         Bopo{"bopomofo"}
         Brai{"braille"}
         Cans{"silabică aborigenă canadiană unificată"}
@@ -251,7 +254,10 @@ ro{
         Hans{"han simplificată"}
         Hant{"han tradițională"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"persano-arabă"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Limbă: {0}"}
         script{"Scriere: {0}"}

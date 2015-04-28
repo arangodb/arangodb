@@ -1,4 +1,4 @@
-# Copyright (c) 1999-2013, International Business Machines Corporation and
+# Copyright (c) 1999-2014, International Business Machines Corporation and
 # others. All Rights Reserved.
 # A list of UCM's to build
 # Note: 
@@ -92,7 +92,7 @@ ibm-954_P101-2007.ucm\
 ibm-964_P110-1999.ucm\
 ibm-971_P100-1995.ucm\
 ibm-1363_P110-1997.ucm\
-ibm-1375_P100-2007.ucm\
+ibm-1375_P100-2008.ucm\
 ibm-5471_P100-2006.ucm\
 ibm-9005_X110-2007.ucm\
 ibm-9448_X100-2005.ucm\
@@ -117,5 +117,6 @@ icu-internal-25546.ucm lmb-excp.ucm \
 icu-internal-compound-d1.ucm icu-internal-compound-d2.ucm icu-internal-compound-d3.ucm icu-internal-compound-d4.ucm\
 icu-internal-compound-d5.ucm icu-internal-compound-d6.ucm icu-internal-compound-d7.ucm \
 icu-internal-compound-s1.ucm icu-internal-compound-s2.ucm icu-internal-compound-s3.ucm icu-internal-compound-t.ucm \
-euc-jp-2007.ucm
+euc-jp-2007.ucm\
+euc-tw-2014.ucm
 

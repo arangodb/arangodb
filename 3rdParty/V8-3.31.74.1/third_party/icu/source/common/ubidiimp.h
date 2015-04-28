@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2015, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -17,7 +17,7 @@
 #ifndef UBIDIIMP_H
 #define UBIDIIMP_H
 
-/* set import/export definitions */
+/*  set import/export definitions */
 #ifdef U_COMMON_IMPLEMENTATION
 
 #include "unicode/utypes.h"
@@ -57,24 +57,24 @@ enum {
     LRI=U_LEFT_TO_RIGHT_ISOLATE,        /* 20 */
     RLI=U_RIGHT_TO_LEFT_ISOLATE,        /* 21 */
     PDI=U_POP_DIRECTIONAL_ISOLATE,      /* 22 */
-    ENL,                                /* 23 */
-    ENR,                                /* 24 */
+    ENL,    /* EN after W7 */           /* 23 */
+    ENR,    /* EN not subject to W7 */  /* 24 */
     dirPropCount
 };
 
-/*
- * Sometimes, bit values are more appropriate
- * to deal with directionality properties.
- * Abbreviations in these macro names refer to names
- * used in the BiDi algorithm.
- */
+/*  Sometimes, bit values are more appropriate
+    to deal with directionality properties.
+    Abbreviations in these macro names refer to names
+    used in the BiDi algorithm.
+*/
 #define DIRPROP_FLAG(dir) (1UL<<(dir))
+#define PURE_DIRPROP(prop)  ((prop)&~0xE0)    ?????????????????????????
 
 /* special flag for multiple runs from explicit embedding codes */
 #define DIRPROP_FLAG_MULTI_RUNS (1UL<<31)
 
 /* are there any characters that are LTR or RTL? */
-#define MASK_LTR (DIRPROP_FLAG(L)|DIRPROP_FLAG(EN)|DIRPROP_FLAG(AN)|DIRPROP_FLAG(LRE)|DIRPROP_FLAG(LRO)|DIRPROP_FLAG(LRI))
+#define MASK_LTR (DIRPROP_FLAG(L)|DIRPROP_FLAG(EN)|DIRPROP_FLAG(ENL)|DIRPROP_FLAG(ENR)|DIRPROP_FLAG(AN)|DIRPROP_FLAG(LRE)|DIRPROP_FLAG(LRO)|DIRPROP_FLAG(LRI))
 #define MASK_RTL (DIRPROP_FLAG(R)|DIRPROP_FLAG(AL)|DIRPROP_FLAG(RLE)|DIRPROP_FLAG(RLO)|DIRPROP_FLAG(RLI))
 #define MASK_R_AL (DIRPROP_FLAG(R)|DIRPROP_FLAG(AL))
 #define MASK_STRONG_EN_AN (DIRPROP_FLAG(L)|DIRPROP_FLAG(R)|DIRPROP_FLAG(AL)|DIRPROP_FLAG(EN)|DIRPROP_FLAG(AN))
@@ -97,9 +97,9 @@ enum {
 #define MASK_POSSIBLE_N (DIRPROP_FLAG(ON)|DIRPROP_FLAG(CS)|DIRPROP_FLAG(ES)|DIRPROP_FLAG(ET)|MASK_WS)
 
 /*
- * These types may be changed to "e",
- * the embedding type (L or R) of the run,
- * in the BiDi algorithm (N2)
+ *  These types may be changed to "e",
+ *  the embedding type (L or R) of the run,
+ *  in the BiDi algorithm (N2)
  */
 #define MASK_EMBEDDING (DIRPROP_FLAG(NSM)|MASK_POSSIBLE_N)
 
@@ -109,17 +109,8 @@ enum {
 #define IS_DEFAULT_LEVEL(level) ((level)>=0xfe)
 
 /*
- * The following bit is ORed to the property of directional control
- * characters which are ignored: unmatched PDF or PDI; LRx, RLx or FSI
- * which would exceed the maximum explicit bidi level.
- */
-#define IGNORE_CC   0x40
-
-#define PURE_DIRPROP(prop)  ((prop)&~IGNORE_CC)
-
-/*
- * The following bit is used for the directional isolate status.
- * Stack entries corresponding to isolate sequences are greater than ISOLATE.
+ *  The following bit is used for the directional isolate status.
+ *  Stack entries corresponding to isolate sequences are greater than ISOLATE.
  */
 #define ISOLATE  0x0100
 
@@ -131,11 +122,11 @@ ubidi_getParaLevelAtIndex(const UBiDi *pBiDi, int32_t index);
                          (ubidi)->paraLevel : ubidi_getParaLevelAtIndex((ubidi), (index))))
 
 /* number of paras entries allocated initially without malloc */
-#define SIMPLE_PARAS_SIZE   10
+#define SIMPLE_PARAS_COUNT      10
 /* number of isolate entries allocated initially without malloc */
-#define SIMPLE_ISOLATES_SIZE 5
+#define SIMPLE_ISOLATES_COUNT   5
 /* number of isolate run entries for paired brackets allocated initially without malloc */
-#define SIMPLE_OPENINGS_SIZE 20
+#define SIMPLE_OPENINGS_COUNT   20
 
 #define CR  0x000D
 #define LF  0x000A
@@ -168,22 +159,21 @@ typedef struct Opening {
 } Opening;
 
 typedef struct IsoRun {
-    int32_t  lastStrongPos;             /* position of last strong char found in this run */
-    int32_t  contextPos;                /* position of last char defining context */
+    int32_t  contextPos;                /* position of char determining context */
     uint16_t start;                     /* index of first opening entry for this run */
     uint16_t limit;                     /* index after last opening entry for this run */
     UBiDiLevel level;                   /* level of this run */
     DirProp lastStrong;                 /* bidi class of last strong char found in this run */
+    DirProp lastBase;                   /* bidi class of last base char found in this run */
     UBiDiDirection contextDir;          /* L or R to use as context for following openings */
-    uint8_t filler;                     /* to complete a nice multiple of 4 chars */
 } IsoRun;
 
 typedef struct BracketData {
     UBiDi   *pBiDi;
     /* array of opening entries which should be enough in most cases; no malloc() */
-    Opening simpleOpenings[SIMPLE_OPENINGS_SIZE];
+    Opening simpleOpenings[SIMPLE_OPENINGS_COUNT];
     Opening *openings;                  /* pointer to current array of entries */
-    int32_t openingsSize;               /* number of allocated entries */
+    int32_t openingsCount;              /* number of allocated entries */
     int32_t isoRunLast;                 /* index of last used entry */
     /* array of nested isolated sequence entries; can never excess UBIDI_MAX_EXPLICIT_LEVEL
        + 1 for index 0, + 1 for before the first isolated sequence */
@@ -192,9 +182,10 @@ typedef struct BracketData {
 } BracketData;
 
 typedef struct Isolate {
+    int32_t startON;
     int32_t start1;
+    int32_t state;
     int16_t stateImp;
-    int16_t state;
 } Isolate;
 
 typedef struct Run {
@@ -354,7 +345,7 @@ struct UBiDi {
     Para *paras;
 
     /* for relatively short text, we only need a tiny array of paras (no malloc()) */
-    Para simpleParas[SIMPLE_PARAS_SIZE];
+    Para simpleParas[SIMPLE_PARAS_COUNT];
 
     /* fields for line reordering */
     int32_t runCount;     /* ==-1: runs not set up yet */
@@ -372,7 +363,7 @@ struct UBiDi {
     Isolate *isolates;
 
     /* for simple text, have a small stack (no malloc()) */
-    Isolate simpleIsolates[SIMPLE_ISOLATES_SIZE];
+    Isolate simpleIsolates[SIMPLE_ISOLATES_COUNT];
 
     /* for inverse Bidi with insertion of directional marks */
     InsertPoints insertPoints;

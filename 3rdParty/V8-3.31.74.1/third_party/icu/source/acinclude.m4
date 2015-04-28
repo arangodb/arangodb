@@ -1,4 +1,4 @@
-# Copyright (c) 1999-2013, International Business Machines Corporation and
+# Copyright (c) 1999-2014, International Business Machines Corporation and
 # others. All Rights Reserved.
 # acinclude.m4 for ICU
 # Don't edit aclocal.m4, do edit acinclude.m4
@@ -32,17 +32,30 @@ powerpc*-*-linux*)
 		icu_cv_host_frag=mh-linux-va
 	fi ;;
 *-*-linux*|*-*-gnu|*-*-k*bsd*-gnu|*-*-kopensolaris*-gnu) icu_cv_host_frag=mh-linux ;;
-*-*-cygwin|*-*-mingw32|*-*-mingw64)
+i[[34567]]86-*-cygwin) 
 	if test "$GCC" = yes; then
-		AC_TRY_COMPILE([
-#ifndef __MINGW32__
-#error This is not MinGW
-#endif], [], AC_TRY_COMPILE([
-#ifndef __MINGW64__
-#error This is not MinGW64
-#endif], [], icu_cv_host_frag=mh-mingw64, icu_cv_host_frag=mh-mingw), icu_cv_host_frag=mh-cygwin)
+		icu_cv_host_frag=mh-cygwin
 	else
 		icu_cv_host_frag=mh-cygwin-msvc
+	fi ;;
+x86_64-*-cygwin) 
+	if test "$GCC" = yes; then
+		icu_cv_host_frag=mh-cygwin64
+	else
+		icu_cv_host_frag=mh-cygwin-msvc
+	fi ;;
+*-*-mingw*)
+	if test "$GCC" = yes; then
+                AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#ifndef __MINGW64__
+#error This is not MinGW64
+#endif]])],                        [icu_cv_host_frag=mh-mingw64],
+                                   [icu_cv_host_frag=mh-mingw])
+	else
+	        case "${host}" in
+		*-*-mingw*) icu_cv_host_frag=mh-msys-msvc ;;
+		*-*-cygwin) icu_cv_host_frag=mh-cygwin-msvc ;;
+		esac
 	fi ;;
 *-*-*bsd*|*-*-dragonfly*) 	icu_cv_host_frag=mh-bsd-gcc ;;
 *-*-aix*)
@@ -262,7 +275,7 @@ AC_DEFUN([AC_CHECK_64BIT_LIBS],
                     if test "$CAN_BUILD_64" != yes; then
                         # Nope. back out changes.
                         CFLAGS="${CFLAGS_OLD}"
-                        CXXFLAGS="${CFLAGS_OLD}"
+                        CXXFLAGS="${CXXFLAGS_OLD}"
                         # 2. try xarch=v9 [deprecated]
                         ## TODO: cross compile: the following won't work.
                         SPARCV9=`isainfo -n 2>&1 | grep sparcv9`
@@ -457,9 +470,6 @@ AC_DEFUN([AC_CHECK_STRICT_COMPILE],
         if test "$GCC" = yes
         then
             case "${host}" in
-            *-*-solaris*)
-                # Don't use -std=c99 option on Solaris/GCC
-                ;;
             *)
                 # Do not use -ansi. It limits us to C90, and it breaks some platforms.
                 # We use -std=c99 to disable the gnu99 defaults and its associated warnings
@@ -474,7 +484,9 @@ AC_DEFUN([AC_CHECK_STRICT_COMPILE],
                 if test "`$CC /help 2>&1 | head -c9`" = "Microsoft"
                 then
                     CFLAGS="$CFLAGS /W4"
-                fi
+                fi ;;
+            *-*-mingw*)
+                CFLAGS="$CFLAGS -W4" ;;
             esac
         fi
         if test "$GXX" = yes
@@ -486,7 +498,9 @@ AC_DEFUN([AC_CHECK_STRICT_COMPILE],
                 if test "`$CXX /help 2>&1 | head -c9`" = "Microsoft"
                 then
                     CXXFLAGS="$CXXFLAGS /W4"
-                fi
+                fi ;;
+            *-*-mingw*)
+                CFLAGS="$CFLAGS -W4" ;;
             esac
         fi
     fi

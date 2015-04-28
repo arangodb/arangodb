@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-*   Copyright (C) 1997-2012, International Business Machines
+*   Copyright (C) 1997-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ******************************************************************************
 *   file name:  nfrs.h
@@ -29,49 +29,49 @@
 U_NAMESPACE_BEGIN
 
 class NFRuleSet : public UMemory {
- public:
-  NFRuleSet(UnicodeString* descriptions, int32_t index, UErrorCode& status);
-  void parseRules(UnicodeString& rules, const RuleBasedNumberFormat* owner, UErrorCode& status);
-  void makeIntoFractionRuleSet() { fIsFractionRuleSet = TRUE; }
+public:
+    NFRuleSet(UnicodeString* descriptions, int32_t index, UErrorCode& status);
+    void parseRules(UnicodeString& rules, const RuleBasedNumberFormat* owner, UErrorCode& status);
+    void makeIntoFractionRuleSet() { fIsFractionRuleSet = TRUE; }
 
-  ~NFRuleSet();
+    ~NFRuleSet();
 
-  UBool operator==(const NFRuleSet& rhs) const;
-  UBool operator!=(const NFRuleSet& rhs) const { return !operator==(rhs); }
+    UBool operator==(const NFRuleSet& rhs) const;
+    UBool operator!=(const NFRuleSet& rhs) const { return !operator==(rhs); }
 
-  UBool isPublic() const { return fIsPublic; }
+    UBool isPublic() const { return fIsPublic; }
 
-  UBool isParseable() const { return fIsParseable; }
+    UBool isParseable() const { return fIsParseable; }
 
-  UBool isFractionRuleSet() const { return fIsFractionRuleSet; }
+    UBool isFractionRuleSet() const { return fIsFractionRuleSet; }
 
-  void  getName(UnicodeString& result) const { result.setTo(name); }
-  UBool isNamed(const UnicodeString& _name) const { return this->name == _name; }
+    void  getName(UnicodeString& result) const { result.setTo(name); }
+    UBool isNamed(const UnicodeString& _name) const { return this->name == _name; }
 
-  void  format(int64_t number, UnicodeString& toAppendTo, int32_t pos) const;
-  void  format(double number, UnicodeString& toAppendTo, int32_t pos) const;
+    void  format(int64_t number, UnicodeString& toAppendTo, int32_t pos, UErrorCode& status) const;
+    void  format(double number, UnicodeString& toAppendTo, int32_t pos, UErrorCode& status) const;
 
-  UBool parse(const UnicodeString& text, ParsePosition& pos, double upperBound, Formattable& result) const;
+    UBool parse(const UnicodeString& text, ParsePosition& pos, double upperBound, Formattable& result) const;
 
-  void appendRules(UnicodeString& result) const; // toString
+    void appendRules(UnicodeString& result) const; // toString
 
- private:
-  NFRule * findNormalRule(int64_t number) const;
-  NFRule * findDoubleRule(double number) const;
-  NFRule * findFractionRuleSetRule(double number) const;
+private:
+    NFRule * findNormalRule(int64_t number) const;
+    NFRule * findDoubleRule(double number) const;
+    NFRule * findFractionRuleSetRule(double number) const;
 
- private:
-  UnicodeString name;
-  NFRuleList rules;
-  NFRule *negativeNumberRule;
-  NFRule *fractionRules[3];
-  UBool fIsFractionRuleSet;
-  UBool fIsPublic;
-  UBool fIsParseable;
-  int32_t fRecursionCount;
+private:
+    UnicodeString name;
+    NFRuleList rules;
+    NFRule *negativeNumberRule;
+    NFRule *fractionRules[3];
+    UBool fIsFractionRuleSet;
+    UBool fIsPublic;
+    UBool fIsParseable;
+    int32_t fRecursionCount;
 
-  NFRuleSet(const NFRuleSet &other); // forbid copying of this class
-  NFRuleSet &operator=(const NFRuleSet &other); // forbid copying of this class
+    NFRuleSet(const NFRuleSet &other); // forbid copying of this class
+    NFRuleSet &operator=(const NFRuleSet &other); // forbid copying of this class
 };
 
 // utilities from old llong.h

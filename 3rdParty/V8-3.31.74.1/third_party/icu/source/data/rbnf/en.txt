@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/rbnf/en.xml
@@ -37,17 +37,9 @@ en{
             "& ':' = '.' = ' ' = '-';",
         }
         OrdinalRules{
-            "%%digits-ordinal-indicator:",
-            "0: th;",
-            "1: st;",
-            "2: nd;",
-            "3: rd;",
-            "4: th;",
-            "20: >>;",
-            "100: >>;",
             "%digits-ordinal:",
             "-x: \u2212>>;",
-            "0: =#,##0==%%digits-ordinal-indicator=;",
+            "0: =#,##0=$(ordinal,one{st}two{nd}few{rd}other{th})$;",
         }
         SpelloutRules{
             "%%2d-year:",
@@ -209,5 +201,5 @@ en{
             "1000000000000000000: =#,##0=.;",
         }
     }
-    Version{"2.0.82.42"}
+    Version{"2.1.8.55"}
 }

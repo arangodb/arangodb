@@ -1,0 +1,178 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lb.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/lb.xml
+ */
+lb{
+    Version{"2.1.8.9"}
+    units{
+        duration{
+            day{
+                dnam{"Deeg"}
+                one{"{0} Dag"}
+                other{"{0} Deeg"}
+            }
+            hour{
+                dnam{"Stonnen"}
+                one{"{0} Stonn"}
+                other{"{0} Stonnen"}
+                per{"{0} pro Stonn"}
+            }
+            microsecond{
+                dnam{"Mikrosekonnen"}
+                one{"{0} Mikrosekonn"}
+                other{"{0} Mikrosekonnen"}
+            }
+            millisecond{
+                dnam{"Millisekonnen"}
+                one{"{0} Millisekonn"}
+                other{"{0} Millisekonnen"}
+            }
+            minute{
+                dnam{"Minutten"}
+                one{"{0} Minutt"}
+                other{"{0} Minutten"}
+            }
+            month{
+                dnam{"Méint"}
+                one{"{0} Mount"}
+                other{"{0} Méint"}
+            }
+            nanosecond{
+                dnam{"Nanosekonnen"}
+                one{"{0} Nanosekonn"}
+                other{"{0} Nanosekonnen"}
+            }
+            second{
+                dnam{"Sekonnen"}
+                one{"{0} Sekonn"}
+                other{"{0} Sekonnen"}
+                per{"{0} pro Sekonn"}
+            }
+            week{
+                dnam{"Wochen"}
+                one{"{0} Woch"}
+                other{"{0} Wochen"}
+            }
+            year{
+                dnam{"Joer"}
+                one{"{0} Joer"}
+                other{"{0} Joer"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            day{
+                dnam{"D"}
+                one{"{0} D"}
+                other{"{0} D"}
+            }
+            hour{
+                dnam{"st"}
+                one{"{0} st"}
+                other{"{0} st"}
+            }
+            microsecond{
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min"}
+                one{"{0} min"}
+                other{"{0} min"}
+            }
+            month{
+                dnam{"M"}
+                one{"{0} M"}
+                other{"{0} M"}
+            }
+            nanosecond{
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"s"}
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+            week{
+                dnam{"W"}
+                one{"{0} W"}
+                other{"{0} W"}
+            }
+            year{
+                dnam{"J"}
+                one{"{0} J"}
+                other{"{0} J"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                dnam{"D"}
+                one{"{0} D"}
+                other{"{0} D"}
+            }
+            hour{
+                dnam{"St."}
+                one{"{0} St."}
+                other{"{0} St."}
+                per{"{0}/St."}
+            }
+            microsecond{
+                dnam{"μs"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"Min."}
+                one{"{0} Min."}
+                other{"{0} Min."}
+            }
+            month{
+                dnam{"Mnt"}
+                one{"{0} Mnt"}
+                other{"{0} Mnt"}
+            }
+            nanosecond{
+                dnam{"ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"Sek."}
+                one{"{0} Sek."}
+                other{"{0} Sek."}
+                per{"{0}/Sek."}
+            }
+            week{
+                dnam{"W"}
+                one{"{0} W"}
+                other{"{0} W"}
+            }
+            year{
+                dnam{"J"}
+                one{"{0} J"}
+                other{"{0} J"}
+            }
+        }
+    }
+}

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -20,10 +20,9 @@
 #if !UCONFIG_NO_COLLATION
 
 #include "unicode/localpointer.h"
+#include "unicode/sortkey.h"
 #include "unicode/uchar.h"
 #include "unicode/ustring.h"
-
-#include "dadrcoll.h"
 
 #include "encoll.h"
 #include "frcoll.h"
@@ -44,27 +43,16 @@
 #include "thcoll.h"
 #include "srchtest.h"
 #include "ssearch.h"
-#include "cntabcol.h"
 #include "lcukocol.h"
 #include "ucaconf.h"
 #include "svccoll.h"
 #include "cmemory.h"
 #include "alphaindextst.h"
-//#include "rndmcoll.h"
 
 // Set to 1 to test offsets in backAndForth()
 #define TEST_OFFSETS 0
 
-#define TESTCLASS(n,classname)        \
-    case n:                           \
-        name = #classname;            \
-        if (exec) {                   \
-            logln(#classname "---");  \
-            logln("");                \
-            classname t;              \
-            callTest(t, par);         \
-        }                             \
-        break
+extern IntlTest *createCollationTest();
 
 void IntlTestCollator::runIndexedTest( int32_t index, UBool exec, const char* &name, char* par )
 {
@@ -72,38 +60,32 @@ void IntlTestCollator::runIndexedTest( int32_t index, UBool exec, const char* &n
         logln("TestSuite Collator: ");
     }
 
-    switch (index) {
-      TESTCLASS(0, CollationEnglishTest);
-      TESTCLASS(1, CollationFrenchTest);
-      TESTCLASS(2, CollationGermanTest);
-      TESTCLASS(3, CollationSpanishTest);
-      TESTCLASS(4, CollationKanaTest);
-      TESTCLASS(5, CollationTurkishTest);
-      TESTCLASS(6, CollationDummyTest);
-      TESTCLASS(7, G7CollationTest);
-      TESTCLASS(8, CollationMonkeyTest);
-      TESTCLASS(9, CollationAPITest);
-      TESTCLASS(10, CollationRegressionTest);
-      TESTCLASS(11, CollationCurrencyTest);
-      TESTCLASS(12, CollationIteratorTest);
-      TESTCLASS(13, CollationThaiTest);
-      TESTCLASS(14, LotusCollationKoreanTest);
-      TESTCLASS(15, StringSearchTest);
-      TESTCLASS(16, ContractionTableTest);
-#if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
-      TESTCLASS(17, DataDrivenCollatorTest);
+    TESTCASE_AUTO_BEGIN;
+    TESTCASE_AUTO_CLASS(CollationEnglishTest);
+    TESTCASE_AUTO_CLASS(CollationFrenchTest);
+    TESTCASE_AUTO_CLASS(CollationGermanTest);
+    TESTCASE_AUTO_CLASS(CollationSpanishTest);
+    TESTCASE_AUTO_CLASS(CollationKanaTest);
+    TESTCASE_AUTO_CLASS(CollationTurkishTest);
+    TESTCASE_AUTO_CLASS(CollationDummyTest);
+    TESTCASE_AUTO_CLASS(G7CollationTest);
+    TESTCASE_AUTO_CLASS(CollationMonkeyTest);
+    TESTCASE_AUTO_CLASS(CollationAPITest);
+    TESTCASE_AUTO_CLASS(CollationRegressionTest);
+    TESTCASE_AUTO_CLASS(CollationCurrencyTest);
+    TESTCASE_AUTO_CLASS(CollationIteratorTest);
+    TESTCASE_AUTO_CLASS(CollationThaiTest);
+    TESTCASE_AUTO_CLASS(LotusCollationKoreanTest);
+    TESTCASE_AUTO_CLASS(StringSearchTest);
+    TESTCASE_AUTO_CLASS(UCAConformanceTest);
+    TESTCASE_AUTO_CLASS(CollationServiceTest);
+    TESTCASE_AUTO_CLASS(CollationFinnishTest); // removed by weiv - we have changed Finnish collation
+    TESTCASE_AUTO_CLASS(SSearchTest);
+#if !UCONFIG_NO_NORMALIZATION
+    TESTCASE_AUTO_CLASS(AlphabeticIndexTest);
 #endif
-      TESTCLASS(18, UCAConformanceTest);
-      TESTCLASS(19, CollationServiceTest);
-      TESTCLASS(20, CollationFinnishTest); // removed by weiv - we have changed Finnish collation
-      //TESTCLASS(21, RandomCollatorTest); // See ticket 5747 about reenabling this test.
-      TESTCLASS(21, SSearchTest);
-#if !UCONFIG_NO_COLLATION && !UCONFIG_NO_NORMALIZATION
-      TESTCLASS(22, AlphabeticIndexTest);
-#endif
-
-      default: name = ""; break;
-    }
+    TESTCASE_AUTO_CREATE_CLASS(CollationTest);
+    TESTCASE_AUTO_END;
 }
 
 UCollationResult 
@@ -145,7 +127,7 @@ IntlTestCollator::doTestVariant(Collator* col, const UnicodeString &source, cons
 {   
   UErrorCode status = U_ZERO_ERROR;
 
-  UCollator *myCollation = (UCollator *)((RuleBasedCollator *)col)->getUCollator();
+  UCollator *myCollation = col->toUCollator();
 
   Collator::EComparisonResult compareResult = col->compare(source, target);
 
@@ -523,6 +505,10 @@ IntlTestCollator::Order *IntlTestCollator::getOrders(CollationElementIterator &i
 
         offset = iter.getOffset();
         size += 1;
+    }
+    if (U_FAILURE(status)) {
+        errln("CollationElementIterator.next() failed - %s",
+              u_errorName(status));
     }
 
     if (maxSize > size)

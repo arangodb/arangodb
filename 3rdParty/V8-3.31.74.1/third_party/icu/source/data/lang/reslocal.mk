@@ -1,6 +1,6 @@
 # *   Copyright (C) 1998-2010, International Business Machines
 # *   Corporation and others.  All Rights Reserved.
-LANG_CLDR_VERSION = 1.9
+LANG_CLDR_VERSION = %version%
 # A list of txt's to build
 # The downstream packager may not need this file at all if their package is not
 # constrained by
@@ -33,10 +33,8 @@ LANG_SOURCE =\
  da.txt\
  de.txt\
  el.txt\
- en.txt\
- es.txt\
- es_AR.txt\
- es_CL.txt\
+ en.txt en_GB.txt\
+ es.txt es_419.txt\
  et.txt\
  fa.txt\
  fi.txt\
@@ -83,6 +81,7 @@ LANG_SOURCE =\
  bem.txt\
  br.txt\
  bs.txt\
+ ckb.txt\
  cy.txt\
  ee.txt\
  eo.txt\
@@ -98,6 +97,7 @@ LANG_SOURCE =\
  ka.txt\
  kk.txt\
  km.txt\
+ ku.txt\
  ky.txt\
  lg.txt\
  ln.txt\
@@ -106,7 +106,7 @@ LANG_SOURCE =\
  mg.txt\
  mk.txt\
  mn.txt\
- mo.txt\
+ mo.txt ro_MD.txt\
  mt.txt\
  my.txt\
  ne.txt\

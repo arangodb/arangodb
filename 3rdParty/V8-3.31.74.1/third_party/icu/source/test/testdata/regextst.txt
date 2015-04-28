@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2001-2013 International Business Machines
+﻿# Copyright (c) 2001-2014 International Business Machines
 # Corporation and others. All Rights Reserved.
 #
 #  file:
@@ -519,8 +519,14 @@
 '((((((((((a))))))))))\10' i    "<0><1><2><3><4><5><6><7><8><9><10>A</10></9></8></7></6></5></4></3></2></1>A</0>"
 
 "(?:(?i)a)b"                    "<0>Ab</0>"
-"ab(?i)cd"	                 "<0>abCd</0>"
+"ab(?i)cd"	                    "<0>abCd</0>"
 "ab$cd"                         "abcd"
+
+"ssl"                      i    "abc<0>ßl</0>xyz"
+"ssl"                      i    "abc<0>ẞl</0>xyz"
+"FIND"                     i    "can <0>ﬁnd</0> ?"  # fi ligature, \ufb01
+"ﬁnd"                      i    "can <0>FIND</0> ?"
+"ῧ"                        i    "xxx<0>ῧ</0>xxx"    # Composed char (match string) decomposes when case-folded (pattern)
 
 # White space handling
 "a b"                           "ab"
@@ -1172,14 +1178,51 @@
 "(?<=a{1,})bc"           E       "aaaa<0>bc</0>def"   # U_REGEX_LOOK_BEHIND_LIMIT error.
 "(?<=(?:){11})bc"                "<0>bc</0>"          # Empty (?:) expression.
 
+# Bug 10835
+#   Match Start Set not being correctly computed for case insensitive patterns.
+#   (Test here is to dump the compiled pattern & manually check the start set.)
+
+"(private|secret|confidential|classified|restricted)"  i   "hmm, <0><1>Classified</1></0> stuff"
+"(private|secret|confidential|classified|restricted)"      "hmm, Classified stuff"
+
+# Bug 10844
+
+"^([\w\d:]+)$"                  "<0><1>DiesIst1Beispiel:text</1></0>"
+"^([\w\d:]+)$"           i      "<0><1>DiesIst1Beispiel:text</1></0>"
+"^(\w+\d\w+:\w+)$"              "<0><1>DiesIst1Beispiel:text</1></0>"
+"^(\w+\d\w+:\w+)$"       i      "<0><1>DiesIst1Beispiel:text</1></0>"
+
+# Bug 11049
+#   Edge cases in find() when pattern match begins with set of code points
+#   and the match begins at the end of the string.
+
+"A|B|C"                         "hello <0>A</0>"
+"A|B|C"                         "hello \U00011234"
+"A|B|\U00012345"                "hello <0>\U00012345</0>"
+"A|B|\U00010000"                "hello \ud800"
+
+# Bug 11369
+#   Incorrect optimization of patterns with a zero length quantifier {0}
+
+"(.|b)(|b){0}\$(?#xxx){3}(?>\D*)"   "AAAAABBBBBCCCCCDDDDEEEEE"
+"(|b)ab(c)"                     "<0><1></1>ab<2>c</2></0>"
+"(|b){0}a{3}(D*)"               "<0>aaa<2></2></0>"
+"(|b){0,1}a{3}(D*)"             "<0><1></1>aaa<2></2></0>"
+"((|b){0})a{3}(D*)"             "<0><1></1>aaa<3></3></0>"
+
+# Bug 11370
+#   Max match length computation of look-behind expression gives result that is too big to fit in the
+#   in the 24 bit operand portion of the compiled code. Expressions should fail to compile
+#   (Look-behind match length must be bounded. This case is treated as unbounded, an error.)
+
+"(?<!(0123456789a){10000000})x"         E  "no match"
+"(?<!\\ubeaf(\\ubeaf{11000}){11000})"   E  "no match"
+
 
 #  Random debugging, Temporary
 #
-#"^(?:a?b?)*$"	                  "a--"
 
 "This is a string with (?:one |two |three )endings"   "<0>This is a string with two endings</0>"
-"((?:a|b|c)whoop-dee-do) | [jkl]|zed"             "x"
-"astring|another[bcd]|alpha|a|[a]"    "x"
 
 
 #

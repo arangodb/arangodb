@@ -26,7 +26,7 @@ root {
     "%Translit%Hex"         { "%Translit%Hex" }
     "%Translit%UnicodeName" { "%Translit%UnicodeName" }
     "%Translit%UnicodeChar" { "%Translit%UnicodeChar" }
-    TransliterateLATIN{        
+    TransliterateLATIN{
     "",
     ""
     }

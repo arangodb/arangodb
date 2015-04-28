@@ -79,13 +79,7 @@
     <ClCompile Include="apicoll.cpp">
       <Filter>collation</Filter>
     </ClCompile>
-    <ClCompile Include="cntabcol.cpp">
-      <Filter>collation</Filter>
-    </ClCompile>
     <ClCompile Include="currcoll.cpp">
-      <Filter>collation</Filter>
-    </ClCompile>
-    <ClCompile Include="dadrcoll.cpp">
       <Filter>collation</Filter>
     </ClCompile>
     <ClCompile Include="decoll.cpp">
@@ -141,6 +135,9 @@
     </ClCompile>
     <ClCompile Include="ucaconf.cpp">
       <Filter>collation</Filter>
+    </ClCompile>
+    <ClCompile Include="unifiedcachetest.cpp">
+      <Filter>collections</Filter>
     </ClCompile>
     <ClCompile Include="uvectest.cpp">
       <Filter>collections</Filter>
@@ -238,6 +235,9 @@
     <ClCompile Include="locnmtst.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
+    <ClCompile Include="measfmttest.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
     <ClCompile Include="miscdtfm.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
@@ -265,10 +265,22 @@
     <ClCompile Include="pptest.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
+    <ClCompile Include="quantityformattertest.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
+    <ClCompile Include="reldatefmttest.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
+    <ClCompile Include="scientificformathelpertest.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
     <ClCompile Include="sdtfmtts.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="selfmts.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
+    <ClCompile Include="simplepatternformattertest.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="tchcfmt.cpp">
@@ -457,6 +469,12 @@
     <ClCompile Include="regiontst.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
+    <ClCompile Include="collationtest.cpp">
+      <Filter>collation</Filter>
+    </ClCompile>
+    <ClCompile Include="numfmtspectest.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="itrbbi.h">
@@ -477,13 +495,7 @@
     <ClInclude Include="apicoll.h">
       <Filter>collation</Filter>
     </ClInclude>
-    <ClInclude Include="cntabcol.h">
-      <Filter>collation</Filter>
-    </ClInclude>
     <ClInclude Include="currcoll.h">
-      <Filter>collation</Filter>
-    </ClInclude>
-    <ClInclude Include="dadrcoll.h">
       <Filter>collation</Filter>
     </ClInclude>
     <ClInclude Include="decoll.h">

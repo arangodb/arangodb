@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (C) 1998-2011, International Business Machines Corporation
+* Copyright (C) 1998-2014, International Business Machines Corporation
 * and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -19,8 +19,6 @@
 #include "uinvchar.h"
 #include "cintltst.h"
 #include "cmemory.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 static void TestAPI(void);
 void addCStringTest(TestNode** root);
@@ -249,10 +247,10 @@ TestInvariant() {
             }
 
             errorCode=U_ZERO_ERROR;
-            length=ucnv_toUChars(cnv, us, LENGTHOF(us), invariantChars, -1, &errorCode);
+            length=ucnv_toUChars(cnv, us, UPRV_LENGTHOF(us), invariantChars, -1, &errorCode);
             if(U_FAILURE(errorCode)) {
                 log_err("ucnv_toUChars(invariantChars) failed - %s\n", u_errorName(errorCode));
-            } else if(length!=LENGTHOF(invariantUChars)-1 || u_strcmp(us, invariantUChars)!=0) {
+            } else if(length!=UPRV_LENGTHOF(invariantUChars)-1 || u_strcmp(us, invariantUChars)!=0) {
                 log_err("ucnv_toUChars(invariantChars) failed\n");
             }
 
@@ -280,7 +278,7 @@ TestInvariant() {
         }
     }
 
-    for(i=0; i<LENGTHOF(nonASCIIUChars); ++i) {
+    for(i=0; i<UPRV_LENGTHOF(nonASCIIUChars); ++i) {
         if(uprv_isInvariantUString(nonASCIIUChars+i, 1)) {
             log_err("uprv_isInvariantUString(nonASCIIUChars[%d]) failed\n", i);
         }
@@ -323,7 +321,7 @@ TestCompareInvEbcdicAsAscii() {
         { "\x81\x81\x82", "aab" }
     };
     int32_t i;
-    for(i=1; i<LENGTHOF(invStrings); ++i) {
+    for(i=1; i<UPRV_LENGTHOF(invStrings); ++i) {
         int32_t diff1, diff2;
         /* compare previous vs. current */
         diff1=getSign(uprv_compareInvEbcdicAsAscii(invStrings[i-1][0], invStrings[i][0]));

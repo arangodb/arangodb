@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/de.xml
@@ -22,7 +22,6 @@ de{
         be{"Weißrussisch"}
         bem{"Bemba-Sprache"}
         bg{"Bulgarisch"}
-        bh{"Biharisch"}
         bn{"Bengalisch"}
         br{"Bretonisch"}
         bs{"Bosnisch"}
@@ -37,7 +36,7 @@ de{
         de{"Deutsch"}
         de_AT{"Österreichisches Deutsch"}
         de_CH{"Schweizer Hochdeutsch"}
-        ee{"Ewe-Sprache"}
+        ee{"Ewe"}
         el{"Griechisch"}
         en{"Englisch"}
         en_AU{"Australisches Englisch"}
@@ -75,7 +74,7 @@ de{
         hy{"Armenisch"}
         ia{"Interlingua"}
         id{"Indonesisch"}
-        ig{"Igbo-Sprache"}
+        ig{"Igbo"}
         is{"Isländisch"}
         it{"Italienisch"}
         ja{"Japanisch"}
@@ -85,10 +84,11 @@ de{
         km{"Kambodschanisch"}
         kn{"Kannada"}
         ko{"Koreanisch"}
+        kri{"Krio"}
         ku{"Kurdisch"}
         ky{"Kirgisisch"}
         la{"Latein"}
-        lg{"Ganda-Sprache"}
+        lg{"Ganda"}
         ln{"Lingala"}
         lo{"Laotisch"}
         loz{"Rotse-Sprache"}
@@ -96,12 +96,11 @@ de{
         lua{"Luba-Lulua"}
         lv{"Lettisch"}
         mfe{"Morisyen"}
-        mg{"Malagassi-Sprache"}
+        mg{"Madagassisch"}
         mi{"Maori"}
         mk{"Mazedonisch"}
         ml{"Malayalam"}
         mn{"Mongolisch"}
-        mo{"Moldauisch"}
         mr{"Marathi"}
         ms{"Malaiisch"}
         mt{"Maltesisch"}
@@ -117,8 +116,8 @@ de{
         nyn{"Nyankole"}
         oc{"Okzitanisch"}
         om{"Oromo"}
-        or{"Orija"}
-        pa{"Pandschabisch"}
+        or{"Oriya"}
+        pa{"Panjabi"}
         pl{"Polnisch"}
         ps{"Paschtu"}
         pt{"Portugiesisch"}
@@ -128,6 +127,7 @@ de{
         rm{"Rätoromanisch"}
         rn{"Rundi-Sprache"}
         ro{"Rumänisch"}
+        ro_MD{"Moldauisch"}
         ru{"Russisch"}
         rw{"Ruandisch"}
         sd{"Sindhi"}
@@ -149,6 +149,7 @@ de{
         th{"Thailändisch"}
         ti{"Tigrinja"}
         tk{"Turkmenisch"}
+        tl{"Tagalog"}
         tn{"Tswana-Sprache"}
         to{"Tongaisch"}
         tr{"Türkisch"}
@@ -175,11 +176,15 @@ de{
         en_US{"US-Englisch"}
     }
     Scripts{
+        Afak{"Afaka"}
+        Aghb{"Kaukasisch-Albanisch"}
         Arab{"Arabisch"}
         Armi{"Armi"}
         Armn{"Armenisch"}
         Avst{"Avestisch"}
         Bali{"Balinesisch"}
+        Bamu{"Bamun"}
+        Bass{"Bassa"}
         Batk{"Battakisch"}
         Beng{"Bengalisch"}
         Blis{"Bliss-Symbole"}
@@ -188,6 +193,7 @@ de{
         Brai{"Blindenschrift"}
         Bugi{"Buginesisch"}
         Buhd{"Buhid"}
+        Cakm{"Chakma"}
         Cans{"UCAS"}
         Cari{"Karisch"}
         Cham{"Cham"}
@@ -199,14 +205,17 @@ de{
         Cyrs{"Altkirchenslawisch"}
         Deva{"Devanagari"}
         Dsrt{"Deseret"}
+        Dupl{"Duployanisch"}
         Egyd{"Ägyptisch - Demotisch"}
         Egyh{"Ägyptisch - Hieratisch"}
         Egyp{"Ägyptische Hieroglyphen"}
+        Elba{"Elbasanisch"}
         Ethi{"Äthiopisch"}
         Geok{"Khutsuri"}
         Geor{"Georgisch"}
         Glag{"Glagolitisch"}
         Goth{"Gotisch"}
+        Gran{"Grantha"}
         Grek{"Griechisch"}
         Gujr{"Gujarati"}
         Guru{"Gurmukhi"}
@@ -217,6 +226,7 @@ de{
         Hant{"Traditionell"}
         Hebr{"Hebräisch"}
         Hira{"Hiragana"}
+        Hluw{"Hieroglyphen-Luwisch"}
         Hmng{"Pahawh Hmong"}
         Hrkt{"Katakana oder Hiragana"}
         Hung{"Altungarisch"}
@@ -224,12 +234,16 @@ de{
         Ital{"Altitalisch"}
         Java{"Javanesisch"}
         Jpan{"Japanisch"}
+        Jurc{"Jurchen"}
         Kali{"Kayah Li"}
         Kana{"Katakana"}
         Khar{"Kharoshthi"}
         Khmr{"Khmer"}
+        Khoj{"Khojki"}
         Knda{"Kannada"}
         Kore{"Koreanisch"}
+        Kpel{"Kpelle"}
+        Kthi{"Kaithi"}
         Lana{"Lanna"}
         Laoo{"Laotisch"}
         Latf{"Lateinisch - Fraktur-Variante"}
@@ -239,37 +253,58 @@ de{
         Limb{"Limbu"}
         Lina{"Linear A"}
         Linb{"Linear B"}
+        Lisu{"Fraser"}
+        Loma{"Loma"}
         Lyci{"Lykisch"}
         Lydi{"Lydisch"}
+        Mahj{"Mahajani"}
         Mand{"Mandäisch"}
         Mani{"Manichäisch"}
         Maya{"Maya-Hieroglyphen"}
+        Mend{"Mende"}
+        Merc{"Meroitisch kursiv"}
         Mero{"Meroitisch"}
-        Mlym{"Malaysisch"}
+        Mlym{"Malayalam"}
+        Modi{"Modi"}
         Mong{"Mongolisch"}
         Moon{"Moon"}
+        Mroo{"Mro"}
         Mtei{"Meitei Mayek"}
         Mymr{"Birmanisch"}
+        Narb{"Altnordarabisch"}
+        Nbat{"Nabatäisch"}
+        Nkgb{"Geba"}
         Nkoo{"N’Ko"}
+        Nshu{"Frauenschrift"}
         Ogam{"Ogham"}
         Olck{"Ol Chiki"}
         Orkh{"Orchon-Runen"}
         Orya{"Oriya"}
         Osma{"Osmanisch"}
+        Palm{"Palmyrenisch"}
+        Pauc{"Pau Cin Hau"}
         Perm{"Altpermisch"}
         Phag{"Phags-pa"}
+        Phli{"Buch-Pahlavi"}
+        Phlp{"Psalter-Pahlavi"}
         Phlv{"Pahlavi"}
         Phnx{"Phönizisch"}
         Plrd{"Pollard Phonetisch"}
+        Prti{"Parthisch"}
         Rjng{"Rejang"}
         Roro{"Rongorongo"}
         Runr{"Runenschrift"}
         Samr{"Samaritanisch"}
         Sara{"Sarati"}
+        Sarb{"Altsüdarabisch"}
         Saur{"Saurashtra"}
         Sgnw{"Gebärdensprache"}
         Shaw{"Shaw-Alphabet"}
+        Shrd{"Sharada"}
+        Sidd{"Siddham"}
+        Sind{"Khudawadi"}
         Sinh{"Singhalesisch"}
+        Sora{"Sora Sompeng"}
         Sund{"Sundanesisch"}
         Sylo{"Syloti Nagri"}
         Syrc{"Syrisch"}
@@ -277,9 +312,12 @@ de{
         Syrj{"Westsyrisch"}
         Syrn{"Ostsyrisch"}
         Tagb{"Tagbanwa"}
+        Takr{"Takri"}
         Tale{"Tai Le"}
         Talu{"Tai Lue"}
         Taml{"Tamilisch"}
+        Tang{"Xixia"}
+        Tavt{"Tai-Viet"}
         Telu{"Telugu"}
         Teng{"Tengwar"}
         Tfng{"Tifinagh"}
@@ -287,13 +325,17 @@ de{
         Thaa{"Thaana"}
         Thai{"Thai"}
         Tibt{"Tibetisch"}
+        Tirh{"Tirhuta"}
         Ugar{"Ugaritisch"}
         Vaii{"Vai"}
         Visp{"Sichtbare Sprache"}
+        Wara{"Varang Kshiti"}
+        Wole{"Woleaianisch"}
         Xpeo{"Altpersisch"}
         Xsux{"Sumerisch-akkadische Keilschrift"}
         Yiii{"Yi"}
         Zinh{"Geerbter Schriftwert"}
+        Zmth{"Mathematische Notation"}
         Zsym{"Symbole"}
         Zxxx{"Schriftlos"}
         Zyyy{"Unbestimmt"}
@@ -303,7 +345,10 @@ de{
         Hans{"Vereinfachtes Chinesisch"}
         Hant{"Traditionelles Chinesisch"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"Persisch"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Sprache: {0}"}
         script{"Schrift: {0}"}

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ff.xml
@@ -27,10 +27,6 @@ ff{
             "BHD",
             "Dinaar Bahrayn",
         }
-        BIF{
-            "BIF",
-            "Mbuuɗu Burunndi",
-        }
         BWP{
             "BWP",
             "Pulaa Botwanaa",
@@ -51,14 +47,6 @@ ff{
             "CN¥",
             "Yuam Siin",
         }
-        CVE{
-            "CVE",
-            "Eskudoo Kap Weer",
-        }
-        DJF{
-            "DJF",
-            "Faraa Jibutii",
-        }
         DZD{
             "DZD",
             "Dinaar Alaseri",
@@ -66,10 +54,6 @@ ff{
         EGP{
             "EGP",
             "Liibar Ejipt",
-        }
-        ERN{
-            "ERN",
-            "Nafka Eriteree",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ ff{
             "£",
             "Liibar Sterling",
         }
-        GMD{
-            "GMD",
-            "Dalasi Gammbi",
-        }
-        GNS{
-            "GNS",
-            "Faraa Gine",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Rupii Enndo",
         }
         JPY{
@@ -102,18 +78,6 @@ ff{
         KES{
             "KES",
             "Siling Keñaa",
-        }
-        KMF{
-            "KMF",
-            "Faraa Komoor",
-        }
-        LRD{
-            "LRD",
-            "Dolaar Liberiyaa",
-        }
-        LSL{
-            "LSL",
-            "Loti Lesotoo",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ ff{
             "SAR",
             "Riyaal Arabi Sawdit",
         }
-        SCR{
-            "SCR",
-            "Rupii Seysel",
-        }
         SDG{
             "SDG",
             "Liibar Sudaan",
         }
-        SHP{
-            "SHP",
-            "Liibar Sent Helen",
-        }
         SLL{
             "SLL",
             "Lewoon Seraa Liyon",
-        }
-        SOS{
-            "SOS",
-            "Siling Soomali",
-        }
-        STD{
-            "STD",
-            "Dobra Sawo Tome e Prensipe",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni Swaasilannda",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ ff{
             "Kuwacca Sammbi",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

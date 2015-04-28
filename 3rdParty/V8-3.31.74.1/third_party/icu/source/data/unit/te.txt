@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/te.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/te.xml
+ */
+te{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"రోజులు"}
+                one{"{0} రోజు"}
+                other{"{0} రోజులు"}
+            }
+            hour{
+                dnam{"గంటలు"}
+                one{"{0} గంట"}
+                other{"{0} గంటలు"}
+                per{"{0}/గంట"}
+            }
+            microsecond{
+                dnam{"మైక్రోసెకన్లు"}
+                one{"{0} మైక్రోసెకను"}
+                other{"{0} మైక్రోసెకన్లు"}
+            }
+            millisecond{
+                dnam{"మిల్లీసెకన్లు"}
+                one{"{0} మిల్లీసెకను"}
+                other{"{0} మిల్లీసెకన్లు"}
+            }
+            minute{
+                dnam{"నిమిషాలు"}
+                one{"{0} నిమిషం"}
+                other{"{0} నిమిషాలు"}
+            }
+            month{
+                dnam{"నెలలు"}
+                one{"{0} నెల"}
+                other{"{0} నెలలు"}
+            }
+            nanosecond{
+                dnam{"నానోసెకన్లు"}
+                one{"{0} నానోసెకను"}
+                other{"{0} నానోసెకన్లు"}
+            }
+            second{
+                dnam{"సెకన్లు"}
+                one{"{0} సెకను"}
+                other{"{0} సెకన్లు"}
+                per{"{0}/సెకను"}
+            }
+            week{
+                dnam{"వారాలు"}
+                one{"{0} వారం"}
+                other{"{0} వారాలు"}
+            }
+            year{
+                dnam{"సంవత్సరాలు"}
+                one{"{0} సంవత్సరం"}
+                other{"{0} సంవత్సరాలు"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"రోజు"}
+                one{"{0}రో"}
+                other{"{0}రో"}
+            }
+            hour{
+                dnam{"గంట"}
+                one{"{0}గం"}
+                other{"{0}గం"}
+            }
+            millisecond{
+                dnam{"మి.సె."}
+                one{"{0}మి.సె"}
+                other{"{0}మి.సె"}
+            }
+            minute{
+                dnam{"నిమి"}
+                one{"{0}ని"}
+                other{"{0}ని"}
+            }
+            month{
+                dnam{"నెల"}
+                one{"{0}నె"}
+                other{"{0}నె"}
+            }
+            second{
+                dnam{"సె"}
+                one{"{0}సె"}
+                other{"{0}సె"}
+            }
+            week{
+                dnam{"వా"}
+                one{"{0}వా"}
+                other{"{0}వా"}
+            }
+            year{
+                dnam{"సం"}
+                one{"{0}సం"}
+                other{"{0}సం"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"రోజులు"}
+                one{"{0} రోజు"}
+                other{"{0} రోజులు"}
+            }
+            hour{
+                dnam{"గంటలు"}
+                one{"{0} గం."}
+                other{"{0} గం."}
+                per{"{0}/గం"}
+            }
+            microsecond{
+                dnam{"మై.సె."}
+                one{"{0} మై.సె"}
+                other{"{0} మై.సె"}
+            }
+            millisecond{
+                dnam{"మిల్లీసె."}
+                one{"{0} మి.సె"}
+                other{"{0} మి.సె"}
+            }
+            minute{
+                dnam{"నిమి."}
+                one{"{0} నిమి."}
+                other{"{0} నిమి."}
+            }
+            month{
+                dnam{"నెలలు"}
+                one{"{0} నె."}
+                other{"{0} నె."}
+            }
+            nanosecond{
+                dnam{"నా.సె."}
+                one{"{0} నా.సె"}
+                other{"{0} నా.సె"}
+            }
+            second{
+                dnam{"సె."}
+                one{"{0} సె."}
+                other{"{0} సెక."}
+                per{"{0}/సె"}
+            }
+            week{
+                dnam{"వారాలు"}
+                one{"{0} వా."}
+                other{"{0} వా."}
+            }
+            year{
+                dnam{"సంవత్సరాలు"}
+                one{"{0} సం."}
+                other{"{0} సం."}
+            }
+        }
+    }
+}

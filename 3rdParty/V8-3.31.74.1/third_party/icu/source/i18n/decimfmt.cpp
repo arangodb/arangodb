@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 1997-2013, International Business Machines Corporation and    *
+* Copyright (C) 1997-2014, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 *
@@ -71,6 +71,7 @@
 #include "decfmtst.h"
 #include "dcfmtimp.h"
 #include "plurrule_impl.h"
+#include "decimalformatpattern.h"
 
 /*
  * On certain platforms, round is a macro defined in math.h
@@ -288,6 +289,27 @@ static const UChar fgTripleCurrencySign[] = {0xA4, 0xA4, 0xA4, 0};
 inline int32_t _min(int32_t a, int32_t b) { return (a<b) ? a : b; }
 inline int32_t _max(int32_t a, int32_t b) { return (a<b) ? b : a; }
 
+static void copyString(const UnicodeString& src, UBool isBogus, UnicodeString *& dest, UErrorCode &status) {
+    if (U_FAILURE(status)) {
+        return;
+    }
+    if (isBogus) {
+        delete dest;
+        dest = NULL;
+    } else {
+        if (dest != NULL) {
+            *dest = src;
+        } else {
+            dest = new UnicodeString(src);
+            if (dest == NULL) {
+                status = U_MEMORY_ALLOCATION_ERROR;
+                return;
+            }
+        }
+    }
+}
+
+
 //------------------------------------------------------------------------------
 // Constructs a DecimalFormat instance in the default locale.
 
@@ -398,6 +420,7 @@ DecimalFormat::init() {
     fAffixesForCurrency = NULL;
     fPluralAffixesForCurrency = NULL;
     fCurrencyPluralInfo = NULL;
+    fCurrencyUsage = UCURR_USAGE_STANDARD;
 #if UCONFIG_HAVE_PARSEALLINPUT
     fParseAllInput = UNUM_MAYBE;
 #endif
@@ -791,8 +814,8 @@ DecimalFormat::operator=(const DecimalFormat& rhs)
         fMaxSignificantDigits = rhs.fMaxSignificantDigits;
         fUseSignificantDigits = rhs.fUseSignificantDigits;
         fFormatPattern = rhs.fFormatPattern;
+        fCurrencyUsage = rhs.fCurrencyUsage;
         fStyle = rhs.fStyle;
-        fCurrencySignCount = rhs.fCurrencySignCount;
         _clone_ptr(&fCurrencyPluralInfo, rhs.fCurrencyPluralInfo);
         deleteHashForAffixPattern();
         if (rhs.fAffixPatternsForCurrency) {
@@ -813,10 +836,12 @@ DecimalFormat::operator=(const DecimalFormat& rhs)
             fPluralAffixesForCurrency = initHashForAffixPattern(status);
             copyHashForAffix(rhs.fPluralAffixesForCurrency, fPluralAffixesForCurrency, status);
         }
-    }
 #if UCONFIG_FORMAT_FASTPATHS_49
-    handleChanged();
+        DecimalFormatInternal &data    = internalData(fReserved);
+        const DecimalFormatInternal &rhsData = internalData(rhs.fReserved);
+        data = rhsData;
 #endif
+    }
     return *this;
 }
 
@@ -904,6 +929,10 @@ DecimalFormat::operator==(const Format& that) const
         if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
         debug("Rounding Increment !=");
               }
+    if (fRoundingMode != other->fRoundingMode) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
+        printf("Rounding Mode %d != %d", (int)fRoundingMode, (int)other->fRoundingMode);
+    }
     if (getMultiplier() != other->getMultiplier()) {
         if (first) { printf("[ "); first = FALSE; }
         printf("Multiplier %ld != %ld", getMultiplier(), other->getMultiplier());
@@ -918,16 +947,25 @@ DecimalFormat::operator==(const Format& that) const
     }
     if (fDecimalSeparatorAlwaysShown != other->fDecimalSeparatorAlwaysShown) {
         if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
-        printf("Dec Sep Always %d != %d", fDecimalSeparatorAlwaysShown, other->fDecimalSeparatorAlwaysShown);
+        printf("fDecimalSeparatorAlwaysShown %d != %d", fDecimalSeparatorAlwaysShown, other->fDecimalSeparatorAlwaysShown);
     }
     if (fUseExponentialNotation != other->fUseExponentialNotation) {
         if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
-        debug("Use Exp !=");
+        debug("fUseExponentialNotation !=");
     }
-    if (!(!fUseExponentialNotation ||
-          fMinExponentDigits != other->fMinExponentDigits)) {
+    if (fUseExponentialNotation &&
+        fMinExponentDigits != other->fMinExponentDigits) {
         if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
-        debug("Exp Digits !=");
+        debug("fMinExponentDigits !=");
+    }
+    if (fUseExponentialNotation &&
+        fExponentSignAlwaysShown != other->fExponentSignAlwaysShown) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
+        debug("fExponentSignAlwaysShown !=");
+    }
+    if (fBoolFlags.getAll() != other->fBoolFlags.getAll()) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
+        debug("fBoolFlags !=");
     }
     if (*fSymbols != *(other->fSymbols)) {
         if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
@@ -935,15 +973,40 @@ DecimalFormat::operator==(const Format& that) const
     }
     // TODO Add debug stuff for significant digits here
     if (fUseSignificantDigits != other->fUseSignificantDigits) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
         debug("fUseSignificantDigits !=");
     }
     if (fUseSignificantDigits &&
         fMinSignificantDigits != other->fMinSignificantDigits) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
         debug("fMinSignificantDigits !=");
     }
     if (fUseSignificantDigits &&
         fMaxSignificantDigits != other->fMaxSignificantDigits) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
         debug("fMaxSignificantDigits !=");
+    }
+    if (fFormatWidth != other->fFormatWidth) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
+        debug("fFormatWidth !=");
+    }
+    if (fPad != other->fPad) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
+        debug("fPad !=");
+    }
+    if (fPadPosition != other->fPadPosition) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
+        debug("fPadPosition !=");
+    }
+    if (fStyle == UNUM_CURRENCY_PLURAL &&
+        fStyle != other->fStyle)
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
+        debug("fStyle !=");
+    }
+    if (fStyle == UNUM_CURRENCY_PLURAL &&
+        fFormatPattern != other->fFormatPattern) {
+        if (first) { printf("[ "); first = FALSE; } else { printf(", "); }
+        debug("fFormatPattern !=");
     }
 
     if (!first) { printf(" ]"); }
@@ -970,46 +1033,70 @@ DecimalFormat::operator==(const Format& that) const
     }
 #endif
 
-    return (NumberFormat::operator==(that) &&
-            ((fCurrencySignCount == fgCurrencySignCountInPluralFormat) ?
-            (fAffixPatternsForCurrency->equals(*other->fAffixPatternsForCurrency)) :
-            (((fPosPrefixPattern == other->fPosPrefixPattern && // both null
-              fPositivePrefix == other->fPositivePrefix)
-             || (fPosPrefixPattern != 0 && other->fPosPrefixPattern != 0 &&
-                 *fPosPrefixPattern  == *other->fPosPrefixPattern)) &&
-            ((fPosSuffixPattern == other->fPosSuffixPattern && // both null
-              fPositiveSuffix == other->fPositiveSuffix)
-             || (fPosSuffixPattern != 0 && other->fPosSuffixPattern != 0 &&
-                 *fPosSuffixPattern  == *other->fPosSuffixPattern)) &&
-            ((fNegPrefixPattern == other->fNegPrefixPattern && // both null
-              fNegativePrefix == other->fNegativePrefix)
-             || (fNegPrefixPattern != 0 && other->fNegPrefixPattern != 0 &&
-                 *fNegPrefixPattern  == *other->fNegPrefixPattern)) &&
-            ((fNegSuffixPattern == other->fNegSuffixPattern && // both null
-              fNegativeSuffix == other->fNegativeSuffix)
-             || (fNegSuffixPattern != 0 && other->fNegSuffixPattern != 0 &&
-                 *fNegSuffixPattern  == *other->fNegSuffixPattern)))) &&
-            ((fRoundingIncrement == other->fRoundingIncrement) // both null
-             || (fRoundingIncrement != NULL &&
-                 other->fRoundingIncrement != NULL &&
-                 *fRoundingIncrement == *other->fRoundingIncrement)) &&
+    return (
+        NumberFormat::operator==(that) &&
+
+        ((fCurrencySignCount == fgCurrencySignCountInPluralFormat) ?
+        (fAffixPatternsForCurrency->equals(*other->fAffixPatternsForCurrency)) :
+        (((fPosPrefixPattern == other->fPosPrefixPattern && // both null
+          fPositivePrefix == other->fPositivePrefix)
+         || (fPosPrefixPattern != 0 && other->fPosPrefixPattern != 0 &&
+             *fPosPrefixPattern  == *other->fPosPrefixPattern)) &&
+        ((fPosSuffixPattern == other->fPosSuffixPattern && // both null
+          fPositiveSuffix == other->fPositiveSuffix)
+         || (fPosSuffixPattern != 0 && other->fPosSuffixPattern != 0 &&
+             *fPosSuffixPattern  == *other->fPosSuffixPattern)) &&
+        ((fNegPrefixPattern == other->fNegPrefixPattern && // both null
+          fNegativePrefix == other->fNegativePrefix)
+         || (fNegPrefixPattern != 0 && other->fNegPrefixPattern != 0 &&
+             *fNegPrefixPattern  == *other->fNegPrefixPattern)) &&
+        ((fNegSuffixPattern == other->fNegSuffixPattern && // both null
+          fNegativeSuffix == other->fNegativeSuffix)
+         || (fNegSuffixPattern != 0 && other->fNegSuffixPattern != 0 &&
+             *fNegSuffixPattern  == *other->fNegSuffixPattern)))) &&
+
+        ((fRoundingIncrement == other->fRoundingIncrement) // both null
+         || (fRoundingIncrement != NULL &&
+             other->fRoundingIncrement != NULL &&
+             *fRoundingIncrement == *other->fRoundingIncrement)) &&
+
+        fRoundingMode == other->fRoundingMode &&
         getMultiplier() == other->getMultiplier() &&
         fGroupingSize == other->fGroupingSize &&
         fGroupingSize2 == other->fGroupingSize2 &&
         fDecimalSeparatorAlwaysShown == other->fDecimalSeparatorAlwaysShown &&
         fUseExponentialNotation == other->fUseExponentialNotation &&
+
         (!fUseExponentialNotation ||
-         fMinExponentDigits == other->fMinExponentDigits) &&
+            (fMinExponentDigits == other->fMinExponentDigits && fExponentSignAlwaysShown == other->fExponentSignAlwaysShown)) &&
+
+        fBoolFlags.getAll() == other->fBoolFlags.getAll() &&
         *fSymbols == *(other->fSymbols) &&
         fUseSignificantDigits == other->fUseSignificantDigits &&
+
         (!fUseSignificantDigits ||
-         (fMinSignificantDigits == other->fMinSignificantDigits &&
-          fMaxSignificantDigits == other->fMaxSignificantDigits)) &&
+            (fMinSignificantDigits == other->fMinSignificantDigits && fMaxSignificantDigits == other->fMaxSignificantDigits)) &&
+
+        fFormatWidth == other->fFormatWidth &&
+        fPad == other->fPad &&
+        fPadPosition == other->fPadPosition &&
+
+        (fStyle != UNUM_CURRENCY_PLURAL ||
+            (fStyle == other->fStyle && fFormatPattern == other->fFormatPattern)) &&
+
         fCurrencySignCount == other->fCurrencySignCount &&
+
         ((fCurrencyPluralInfo == other->fCurrencyPluralInfo &&
           fCurrencyPluralInfo == NULL) ||
          (fCurrencyPluralInfo != NULL && other->fCurrencyPluralInfo != NULL &&
-         *fCurrencyPluralInfo == *(other->fCurrencyPluralInfo))));
+         *fCurrencyPluralInfo == *(other->fCurrencyPluralInfo))) &&
+
+        fCurrencyUsage == other->fCurrencyUsage
+
+        // depending on other settings we may also need to compare
+        // fCurrencyChoice (mostly deprecated?),
+        // fAffixesForCurrency & fPluralAffixesForCurrency (only relevant in some cases)
+        );
 }
 
 //------------------------------------------------------------------------------
@@ -1237,14 +1324,7 @@ void DecimalFormat::handleChanged() {
     debug("parse fastpath: YES");
   }
   
-  if (fGroupingSize!=0 && isGroupingUsed()) {
-    debug("No format fastpath: fGroupingSize!=0 and grouping is used");
-#ifdef FMT_DEBUG
-    printf("groupingsize=%d\n", fGroupingSize);
-#endif
-  } else if(fGroupingSize2!=0 && isGroupingUsed()) {
-    debug("No format fastpath: fGroupingSize2!=0");
-  } else if(fUseExponentialNotation) {
+  if(fUseExponentialNotation) {
     debug("No format fastpath: fUseExponentialNotation");
   } else if(fFormatWidth!=0) {
     debug("No format fastpath: fFormatWidth!=0");
@@ -1264,6 +1344,17 @@ void DecimalFormat::handleChanged() {
     debug("No format fastpath: fCurrencySignCount != fgCurrencySignCountZero");
   } else if(fRoundingIncrement!=0) {
     debug("No format fastpath: fRoundingIncrement!=0");
+  } else if (fGroupingSize!=0 && isGroupingUsed()) {
+    debug("Maybe format fastpath: fGroupingSize!=0 and grouping is used");
+#ifdef FMT_DEBUG
+    printf("groupingsize=%d\n", fGroupingSize);
+#endif
+    
+    if (getMinimumIntegerDigits() <= fGroupingSize) {
+      data.fFastFormatStatus = kFastpathMAYBE;
+    }
+  } else if(fGroupingSize2!=0 && isGroupingUsed()) {
+    debug("No format fastpath: fGroupingSize2!=0");
   } else {
     data.fFastFormatStatus = kFastpathYES;
     debug("format:kFastpathYES!");
@@ -1327,7 +1418,9 @@ DecimalFormat::_format(int64_t number,
   printf("fastpath? [%d]\n", number);
 #endif
     
-  if( data.fFastFormatStatus==kFastpathYES) {
+  if( data.fFastFormatStatus==kFastpathYES || 
+      data.fFastFormatStatus==kFastpathMAYBE) {
+    int32_t noGroupingThreshold = 0;
 
 #define kZero 0x0030
     const int32_t MAX_IDX = MAX_DIGITS+2;
@@ -1335,6 +1428,9 @@ DecimalFormat::_format(int64_t number,
     int32_t destIdx = MAX_IDX;
     outputStr[--destIdx] = 0;  // term
 
+    if (data.fFastFormatStatus==kFastpathMAYBE) {
+      noGroupingThreshold = destIdx - fGroupingSize;
+    }
     int64_t  n = number;
     if (number < 1) {
       // Negative numbers are slightly larger than positive
@@ -1344,15 +1440,17 @@ DecimalFormat::_format(int64_t number,
     }
     // get any remaining digits
     while (n > 0) {
+      if (destIdx == noGroupingThreshold) {
+        goto slowPath;
+      }
       outputStr[--destIdx] = (n % 10) + kZero;
       n /= 10;
     }
-    
 
         // Slide the number to the start of the output str
     U_ASSERT(destIdx >= 0);
     int32_t length = MAX_IDX - destIdx -1;
-    /*int32_t prefixLen = */ appendAffix(appendTo, number, handler, number<0, TRUE);
+    /*int32_t prefixLen = */ appendAffix(appendTo, static_cast<double>(number), handler, number<0, TRUE);
     int32_t maxIntDig = getMaximumIntegerDigits();
     int32_t destlength = length<=maxIntDig?length:maxIntDig; // dest length pinned to max int digits
 
@@ -1376,7 +1474,7 @@ DecimalFormat::_format(int64_t number,
                     destlength);
     handler.addAttribute(kIntegerField, intBegin, appendTo.length());
 
-    /*int32_t suffixLen =*/ appendAffix(appendTo, number, handler, number<0, FALSE);
+    /*int32_t suffixLen =*/ appendAffix(appendTo, static_cast<double>(number), handler, number<0, FALSE);
 
     //outputStr[length]=0;
     
@@ -1389,6 +1487,7 @@ DecimalFormat::_format(int64_t number,
     return appendTo;
   } // end fastpath
 #endif
+  slowPath:
 
   // Else the slow way - via DigitList
     DigitList digits;
@@ -1621,6 +1720,13 @@ DecimalFormat::_round(const DigitList &number, DigitList &adjustedNum, UBool& is
         int32_t sigDigits = precision();
         if (sigDigits > 0) {
             adjustedNum.round(sigDigits);
+            // Travis Keep (21/2/2014): Calling round on a digitList does not necessarily
+            // preserve the sign of that digit list. Preserving the sign is especially
+            // important when formatting -0.0 for instance. Not preserving the sign seems
+            // like a bug because I cannot think of any case where the sign would actually
+            // have to change when rounding. For now, we preserve the sign by setting the
+            // positive attribute directly.
+            adjustedNum.setPositive(!isNegative);
         }
     } else {
         // Fixed point format.  Round to a set number of fraction digits.
@@ -2838,6 +2944,18 @@ UBool DecimalFormat::subparse(const UnicodeString& text,
             }
         }
 
+        // if we didn't see a decimal and it is required, check to see if the pattern had one
+        if(!sawDecimal && isDecimalPatternMatchRequired()) 
+        {
+            if(fFormatPattern.indexOf(DecimalFormatSymbols::kDecimalSeparatorSymbol) != 0) 
+            {
+                parsePosition.setIndex(oldStart);
+                parsePosition.setErrorIndex(position);
+                debug("decimal point match required fail!");
+                return FALSE;
+            }
+        }
+
         if (backup != -1)
         {
             position = backup;
@@ -2951,6 +3069,20 @@ printf("PP -> %d, SLOW = [%s]!    pp=%d, os=%d, err=%s\n", position, parsedNum.d
         parsePosition.setErrorIndex(position);
         return FALSE;
     }
+
+    // check if we missed a required decimal point
+    if(fastParseOk && isDecimalPatternMatchRequired()) 
+    {
+        if(fFormatPattern.indexOf(DecimalFormatSymbols::kDecimalSeparatorSymbol) != 0) 
+        {
+            parsePosition.setIndex(oldStart);
+            parsePosition.setErrorIndex(position);
+            debug("decimal point match required fail!");
+            return FALSE;
+        }
+    }
+
+
     return TRUE;
 }
 
@@ -3046,12 +3178,12 @@ UnicodeString& DecimalFormat::trimMarksFromAffix(const UnicodeString& affix, Uni
     for (affixPos = 0; affixPos < affixLen; affixPos++) {
         UChar c = affix.charAt(affixPos);
         if (!IS_BIDI_MARK(c)) {
-        	if (trimLen < TRIM_BUFLEN) {
-        		trimBuf[trimLen++] = c;
-        	} else {
-        		trimLen = 0;
-        		break;
-        	}
+            if (trimLen < TRIM_BUFLEN) {
+                trimBuf[trimLen++] = c;
+            } else {
+                trimLen = 0;
+                break;
+            }
         }
     }
     return (trimLen > 0)? trimmedAffix.setTo(trimBuf, trimLen): trimmedAffix.setTo(affix);
@@ -3344,8 +3476,8 @@ int32_t DecimalFormat::compareComplexAffix(const UnicodeString& affixPat,
                         UChar effectiveCurr[4];
                         getEffectiveCurrency(effectiveCurr, ec);
                         if ( U_FAILURE(ec) || u_strncmp(curr,effectiveCurr,4) != 0 ) {
-                        	pos = -1;
-                        	continue;
+                            pos = -1;
+                            continue;
                         }
                     }
                     pos = ppos.getIndex();
@@ -4007,7 +4139,7 @@ void DecimalFormat::setExponentSignAlwaysShown(UBool expSignAlways) {
 int32_t
 DecimalFormat::getGroupingSize() const
 {
-    return fGroupingSize;
+    return isGroupingUsed() ? fGroupingSize : 0;
 }
 
 //------------------------------------------------------------------------------
@@ -4061,6 +4193,24 @@ DecimalFormat::setDecimalSeparatorAlwaysShown(UBool newValue)
     handleChanged();
 #endif
 }
+
+//------------------------------------------------------------------------------
+// Checks if decimal point pattern match is required
+UBool 
+DecimalFormat::isDecimalPatternMatchRequired(void) const
+{
+    return fBoolFlags.contains(UNUM_PARSE_DECIMAL_MARK_REQUIRED);
+}
+
+//------------------------------------------------------------------------------
+// Checks if decimal point pattern match is required
+         
+void 
+DecimalFormat::setDecimalPatternMatchRequired(UBool newValue)
+{
+    fBoolFlags.set(UNUM_PARSE_DECIMAL_MARK_REQUIRED, newValue);
+}
+
 
 //------------------------------------------------------------------------------
 // Emits the pattern of this DecimalFormat instance.
@@ -4812,596 +4962,77 @@ DecimalFormat::applyPatternWithoutExpandAffix(const UnicodeString& pattern,
     {
         return;
     }
-    // Clear error struct
-    parseError.offset = -1;
-    parseError.preContext[0] = parseError.postContext[0] = (UChar)0;
-
-    // Set the significant pattern symbols
-    UChar32 zeroDigit               = kPatternZeroDigit; // '0'
-    UChar32 sigDigit                = kPatternSignificantDigit; // '@'
-    UnicodeString groupingSeparator ((UChar)kPatternGroupingSeparator);
-    UnicodeString decimalSeparator  ((UChar)kPatternDecimalSeparator);
-    UnicodeString percent           ((UChar)kPatternPercent);
-    UnicodeString perMill           ((UChar)kPatternPerMill);
-    UnicodeString digit             ((UChar)kPatternDigit); // '#'
-    UnicodeString separator         ((UChar)kPatternSeparator);
-    UnicodeString exponent          ((UChar)kPatternExponent);
-    UnicodeString plus              ((UChar)kPatternPlus);
-    UnicodeString minus             ((UChar)kPatternMinus);
-    UnicodeString padEscape         ((UChar)kPatternPadEscape);
-    // Substitute with the localized symbols if necessary
+    DecimalFormatPatternParser patternParser;
     if (localized) {
-        zeroDigit = getConstSymbol(DecimalFormatSymbols::kZeroDigitSymbol).char32At(0);
-        sigDigit = getConstSymbol(DecimalFormatSymbols::kSignificantDigitSymbol).char32At(0);
-        groupingSeparator.  remove().append(getConstSymbol(DecimalFormatSymbols::kGroupingSeparatorSymbol));
-        decimalSeparator.   remove().append(getConstSymbol(DecimalFormatSymbols::kDecimalSeparatorSymbol));
-        percent.            remove().append(getConstSymbol(DecimalFormatSymbols::kPercentSymbol));
-        perMill.            remove().append(getConstSymbol(DecimalFormatSymbols::kPerMillSymbol));
-        digit.              remove().append(getConstSymbol(DecimalFormatSymbols::kDigitSymbol));
-        separator.          remove().append(getConstSymbol(DecimalFormatSymbols::kPatternSeparatorSymbol));
-        exponent.           remove().append(getConstSymbol(DecimalFormatSymbols::kExponentialSymbol));
-        plus.               remove().append(getConstSymbol(DecimalFormatSymbols::kPlusSignSymbol));
-        minus.              remove().append(getConstSymbol(DecimalFormatSymbols::kMinusSignSymbol));
-        padEscape.          remove().append(getConstSymbol(DecimalFormatSymbols::kPadEscapeSymbol));
+      patternParser.useSymbols(*fSymbols);
     }
-    UChar nineDigit = (UChar)(zeroDigit + 9);
-    int32_t digitLen = digit.length();
-    int32_t groupSepLen = groupingSeparator.length();
-    int32_t decimalSepLen = decimalSeparator.length();
-
-    int32_t pos = 0;
-    int32_t patLen = pattern.length();
-    // Part 0 is the positive pattern.  Part 1, if present, is the negative
-    // pattern.
-    for (int32_t part=0; part<2 && pos<patLen; ++part) {
-        // The subpart ranges from 0 to 4: 0=pattern proper, 1=prefix,
-        // 2=suffix, 3=prefix in quote, 4=suffix in quote.  Subpart 0 is
-        // between the prefix and suffix, and consists of pattern
-        // characters.  In the prefix and suffix, percent, perMill, and
-        // currency symbols are recognized and translated.
-        int32_t subpart = 1, sub0Start = 0, sub0Limit = 0, sub2Limit = 0;
-
-        // It's important that we don't change any fields of this object
-        // prematurely.  We set the following variables for the multiplier,
-        // grouping, etc., and then only change the actual object fields if
-        // everything parses correctly.  This also lets us register
-        // the data from part 0 and ignore the part 1, except for the
-        // prefix and suffix.
-        UnicodeString prefix;
-        UnicodeString suffix;
-        int32_t decimalPos = -1;
-        int32_t multiplier = 1;
-        int32_t digitLeftCount = 0, zeroDigitCount = 0, digitRightCount = 0, sigDigitCount = 0;
-        int8_t groupingCount = -1;
-        int8_t groupingCount2 = -1;
-        int32_t padPos = -1;
-        UChar32 padChar = 0;
-        int32_t roundingPos = -1;
-        DigitList roundingInc;
-        int8_t expDigits = -1;
-        UBool expSignAlways = FALSE;
-
-        // The affix is either the prefix or the suffix.
-        UnicodeString* affix = &prefix;
-
-        int32_t start = pos;
-        UBool isPartDone = FALSE;
-        UChar32 ch;
-
-        for (; !isPartDone && pos < patLen; ) {
-            // Todo: account for surrogate pairs
-            ch = pattern.char32At(pos);
-            switch (subpart) {
-            case 0: // Pattern proper subpart (between prefix & suffix)
-                // Process the digits, decimal, and grouping characters.  We
-                // record five pieces of information.  We expect the digits
-                // to occur in the pattern ####00.00####, and we record the
-                // number of left digits, zero (central) digits, and right
-                // digits.  The position of the last grouping character is
-                // recorded (should be somewhere within the first two blocks
-                // of characters), as is the position of the decimal point,
-                // if any (should be in the zero digits).  If there is no
-                // decimal point, then there should be no right digits.
-                if (pattern.compare(pos, digitLen, digit) == 0) {
-                    if (zeroDigitCount > 0 || sigDigitCount > 0) {
-                        ++digitRightCount;
-                    } else {
-                        ++digitLeftCount;
-                    }
-                    if (groupingCount >= 0 && decimalPos < 0) {
-                        ++groupingCount;
-                    }
-                    pos += digitLen;
-                } else if ((ch >= zeroDigit && ch <= nineDigit) ||
-                           ch == sigDigit) {
-                    if (digitRightCount > 0) {
-                        // Unexpected '0'
-                        debug("Unexpected '0'")
-                        status = U_UNEXPECTED_TOKEN;
-                        syntaxError(pattern,pos,parseError);
-                        return;
-                    }
-                    if (ch == sigDigit) {
-                        ++sigDigitCount;
-                    } else {
-                        if (ch != zeroDigit && roundingPos < 0) {
-                            roundingPos = digitLeftCount + zeroDigitCount;
-                        }
-                        if (roundingPos >= 0) {
-                            roundingInc.append((char)(ch - zeroDigit + '0'));
-                        }
-                        ++zeroDigitCount;
-                    }
-                    if (groupingCount >= 0 && decimalPos < 0) {
-                        ++groupingCount;
-                    }
-                    pos += U16_LENGTH(ch);
-                } else if (pattern.compare(pos, groupSepLen, groupingSeparator) == 0) {
-                    if (decimalPos >= 0) {
-                        // Grouping separator after decimal
-                        debug("Grouping separator after decimal")
-                        status = U_UNEXPECTED_TOKEN;
-                        syntaxError(pattern,pos,parseError);
-                        return;
-                    }
-                    groupingCount2 = groupingCount;
-                    groupingCount = 0;
-                    pos += groupSepLen;
-                } else if (pattern.compare(pos, decimalSepLen, decimalSeparator) == 0) {
-                    if (decimalPos >= 0) {
-                        // Multiple decimal separators
-                        debug("Multiple decimal separators")
-                        status = U_MULTIPLE_DECIMAL_SEPARATORS;
-                        syntaxError(pattern,pos,parseError);
-                        return;
-                    }
-                    // Intentionally incorporate the digitRightCount,
-                    // even though it is illegal for this to be > 0
-                    // at this point.  We check pattern syntax below.
-                    decimalPos = digitLeftCount + zeroDigitCount + digitRightCount;
-                    pos += decimalSepLen;
-                } else {
-                    if (pattern.compare(pos, exponent.length(), exponent) == 0) {
-                        if (expDigits >= 0) {
-                            // Multiple exponential symbols
-                            debug("Multiple exponential symbols")
-                            status = U_MULTIPLE_EXPONENTIAL_SYMBOLS;
-                            syntaxError(pattern,pos,parseError);
-                            return;
-                        }
-                        if (groupingCount >= 0) {
-                            // Grouping separator in exponential pattern
-                            debug("Grouping separator in exponential pattern")
-                            status = U_MALFORMED_EXPONENTIAL_PATTERN;
-                            syntaxError(pattern,pos,parseError);
-                            return;
-                        }
-                        pos += exponent.length();
-                        // Check for positive prefix
-                        if (pos < patLen
-                            && pattern.compare(pos, plus.length(), plus) == 0) {
-                            expSignAlways = TRUE;
-                            pos += plus.length();
-                        }
-                        // Use lookahead to parse out the exponential part of the
-                        // pattern, then jump into suffix subpart.
-                        expDigits = 0;
-                        while (pos < patLen &&
-                               pattern.char32At(pos) == zeroDigit) {
-                            ++expDigits;
-                            pos += U16_LENGTH(zeroDigit);
-                        }
-
-                        // 1. Require at least one mantissa pattern digit
-                        // 2. Disallow "#+ @" in mantissa
-                        // 3. Require at least one exponent pattern digit
-                        if (((digitLeftCount + zeroDigitCount) < 1 &&
-                             (sigDigitCount + digitRightCount) < 1) ||
-                            (sigDigitCount > 0 && digitLeftCount > 0) ||
-                            expDigits < 1) {
-                            // Malformed exponential pattern
-                            debug("Malformed exponential pattern")
-                            status = U_MALFORMED_EXPONENTIAL_PATTERN;
-                            syntaxError(pattern,pos,parseError);
-                            return;
-                        }
-                    }
-                    // Transition to suffix subpart
-                    subpart = 2; // suffix subpart
-                    affix = &suffix;
-                    sub0Limit = pos;
-                    continue;
-                }
-                break;
-            case 1: // Prefix subpart
-            case 2: // Suffix subpart
-                // Process the prefix / suffix characters
-                // Process unquoted characters seen in prefix or suffix
-                // subpart.
-
-                // Several syntax characters implicitly begins the
-                // next subpart if we are in the prefix; otherwise
-                // they are illegal if unquoted.
-                if (!pattern.compare(pos, digitLen, digit) ||
-                    !pattern.compare(pos, groupSepLen, groupingSeparator) ||
-                    !pattern.compare(pos, decimalSepLen, decimalSeparator) ||
-                    (ch >= zeroDigit && ch <= nineDigit) ||
-                    ch == sigDigit) {
-                    if (subpart == 1) { // prefix subpart
-                        subpart = 0; // pattern proper subpart
-                        sub0Start = pos; // Reprocess this character
-                        continue;
-                    } else {
-                        status = U_UNQUOTED_SPECIAL;
-                        syntaxError(pattern,pos,parseError);
-                        return;
-                    }
-                } else if (ch == kCurrencySign) {
-                    affix->append(kQuote); // Encode currency
-                    // Use lookahead to determine if the currency sign is
-                    // doubled or not.
-                    U_ASSERT(U16_LENGTH(kCurrencySign) == 1);
-                    if ((pos+1) < pattern.length() && pattern[pos+1] == kCurrencySign) {
-                        affix->append(kCurrencySign);
-                        ++pos; // Skip over the doubled character
-                        if ((pos+1) < pattern.length() &&
-                            pattern[pos+1] == kCurrencySign) {
-                            affix->append(kCurrencySign);
-                            ++pos; // Skip over the doubled character
-                            fCurrencySignCount = fgCurrencySignCountInPluralFormat;
-                        } else {
-                            fCurrencySignCount = fgCurrencySignCountInISOFormat;
-                        }
-                    } else {
-                        fCurrencySignCount = fgCurrencySignCountInSymbolFormat;
-                    }
-                    // Fall through to append(ch)
-                } else if (ch == kQuote) {
-                    // A quote outside quotes indicates either the opening
-                    // quote or two quotes, which is a quote literal.  That is,
-                    // we have the first quote in 'do' or o''clock.
-                    U_ASSERT(U16_LENGTH(kQuote) == 1);
-                    ++pos;
-                    if (pos < pattern.length() && pattern[pos] == kQuote) {
-                        affix->append(kQuote); // Encode quote
-                        // Fall through to append(ch)
-                    } else {
-                        subpart += 2; // open quote
-                        continue;
-                    }
-                } else if (pattern.compare(pos, separator.length(), separator) == 0) {
-                    // Don't allow separators in the prefix, and don't allow
-                    // separators in the second pattern (part == 1).
-                    if (subpart == 1 || part == 1) {
-                        // Unexpected separator
-                        debug("Unexpected separator")
-                        status = U_UNEXPECTED_TOKEN;
-                        syntaxError(pattern,pos,parseError);
-                        return;
-                    }
-                    sub2Limit = pos;
-                    isPartDone = TRUE; // Go to next part
-                    pos += separator.length();
-                    break;
-                } else if (pattern.compare(pos, percent.length(), percent) == 0) {
-                    // Next handle characters which are appended directly.
-                    if (multiplier != 1) {
-                        // Too many percent/perMill characters
-                        debug("Too many percent characters")
-                        status = U_MULTIPLE_PERCENT_SYMBOLS;
-                        syntaxError(pattern,pos,parseError);
-                        return;
-                    }
-                    affix->append(kQuote); // Encode percent/perMill
-                    affix->append(kPatternPercent); // Use unlocalized pattern char
-                    multiplier = 100;
-                    pos += percent.length();
-                    break;
-                } else if (pattern.compare(pos, perMill.length(), perMill) == 0) {
-                    // Next handle characters which are appended directly.
-                    if (multiplier != 1) {
-                        // Too many percent/perMill characters
-                        debug("Too many perMill characters")
-                        status = U_MULTIPLE_PERMILL_SYMBOLS;
-                        syntaxError(pattern,pos,parseError);
-                        return;
-                    }
-                    affix->append(kQuote); // Encode percent/perMill
-                    affix->append(kPatternPerMill); // Use unlocalized pattern char
-                    multiplier = 1000;
-                    pos += perMill.length();
-                    break;
-                } else if (pattern.compare(pos, padEscape.length(), padEscape) == 0) {
-                    if (padPos >= 0 ||               // Multiple pad specifiers
-                        (pos+1) == pattern.length()) { // Nothing after padEscape
-                        debug("Multiple pad specifiers")
-                        status = U_MULTIPLE_PAD_SPECIFIERS;
-                        syntaxError(pattern,pos,parseError);
-                        return;
-                    }
-                    padPos = pos;
-                    pos += padEscape.length();
-                    padChar = pattern.char32At(pos);
-                    pos += U16_LENGTH(padChar);
-                    break;
-                } else if (pattern.compare(pos, minus.length(), minus) == 0) {
-                    affix->append(kQuote); // Encode minus
-                    affix->append(kPatternMinus);
-                    pos += minus.length();
-                    break;
-                } else if (pattern.compare(pos, plus.length(), plus) == 0) {
-                    affix->append(kQuote); // Encode plus
-                    affix->append(kPatternPlus);
-                    pos += plus.length();
-                    break;
-                }
-                // Unquoted, non-special characters fall through to here, as
-                // well as other code which needs to append something to the
-                // affix.
-                affix->append(ch);
-                pos += U16_LENGTH(ch);
-                break;
-            case 3: // Prefix subpart, in quote
-            case 4: // Suffix subpart, in quote
-                // A quote within quotes indicates either the closing
-                // quote or two quotes, which is a quote literal.  That is,
-                // we have the second quote in 'do' or 'don''t'.
-                if (ch == kQuote) {
-                    ++pos;
-                    if (pos < pattern.length() && pattern[pos] == kQuote) {
-                        affix->append(kQuote); // Encode quote
-                        // Fall through to append(ch)
-                    } else {
-                        subpart -= 2; // close quote
-                        continue;
-                    }
-                }
-                affix->append(ch);
-                pos += U16_LENGTH(ch);
-                break;
-            }
-        }
-
-        if (sub0Limit == 0) {
-            sub0Limit = pattern.length();
-        }
-
-        if (sub2Limit == 0) {
-            sub2Limit = pattern.length();
-        }
-
-        /* Handle patterns with no '0' pattern character.  These patterns
-         * are legal, but must be recodified to make sense.  "##.###" ->
-         * "#0.###".  ".###" -> ".0##".
-         *
-         * We allow patterns of the form "####" to produce a zeroDigitCount
-         * of zero (got that?); although this seems like it might make it
-         * possible for format() to produce empty strings, format() checks
-         * for this condition and outputs a zero digit in this situation.
-         * Having a zeroDigitCount of zero yields a minimum integer digits
-         * of zero, which allows proper round-trip patterns.  We don't want
-         * "#" to become "#0" when toPattern() is called (even though that's
-         * what it really is, semantically).
-         */
-        if (zeroDigitCount == 0 && sigDigitCount == 0 &&
-            digitLeftCount > 0 && decimalPos >= 0) {
-            // Handle "###.###" and "###." and ".###"
-            int n = decimalPos;
-            if (n == 0)
-                ++n; // Handle ".###"
-            digitRightCount = digitLeftCount - n;
-            digitLeftCount = n - 1;
-            zeroDigitCount = 1;
-        }
-
-        // Do syntax checking on the digits, decimal points, and quotes.
-        if ((decimalPos < 0 && digitRightCount > 0 && sigDigitCount == 0) ||
-            (decimalPos >= 0 &&
-             (sigDigitCount > 0 ||
-              decimalPos < digitLeftCount ||
-              decimalPos > (digitLeftCount + zeroDigitCount))) ||
-            groupingCount == 0 || groupingCount2 == 0 ||
-            (sigDigitCount > 0 && zeroDigitCount > 0) ||
-            subpart > 2)
-        { // subpart > 2 == unmatched quote
-            debug("Syntax error")
-            status = U_PATTERN_SYNTAX_ERROR;
-            syntaxError(pattern,pos,parseError);
-            return;
-        }
-
-        // Make sure pad is at legal position before or after affix.
-        if (padPos >= 0) {
-            if (padPos == start) {
-                padPos = kPadBeforePrefix;
-            } else if (padPos+2 == sub0Start) {
-                padPos = kPadAfterPrefix;
-            } else if (padPos == sub0Limit) {
-                padPos = kPadBeforeSuffix;
-            } else if (padPos+2 == sub2Limit) {
-                padPos = kPadAfterSuffix;
-            } else {
-                // Illegal pad position
-                debug("Illegal pad position")
-                status = U_ILLEGAL_PAD_POSITION;
-                syntaxError(pattern,pos,parseError);
-                return;
-            }
-        }
-
-        if (part == 0) {
-            delete fPosPrefixPattern;
-            delete fPosSuffixPattern;
-            delete fNegPrefixPattern;
-            delete fNegSuffixPattern;
-            fPosPrefixPattern = new UnicodeString(prefix);
-            /* test for NULL */
-            if (fPosPrefixPattern == 0) {
-                status = U_MEMORY_ALLOCATION_ERROR;
-                return;
-            }
-            fPosSuffixPattern = new UnicodeString(suffix);
-            /* test for NULL */
-            if (fPosSuffixPattern == 0) {
-                status = U_MEMORY_ALLOCATION_ERROR;
-                delete fPosPrefixPattern;
-                return;
-            }
-            fNegPrefixPattern = 0;
-            fNegSuffixPattern = 0;
-
-            fUseExponentialNotation = (expDigits >= 0);
-            if (fUseExponentialNotation) {
-                fMinExponentDigits = expDigits;
-            }
-            fExponentSignAlwaysShown = expSignAlways;
-            int32_t digitTotalCount = digitLeftCount + zeroDigitCount + digitRightCount;
-            // The effectiveDecimalPos is the position the decimal is at or
-            // would be at if there is no decimal.  Note that if
-            // decimalPos<0, then digitTotalCount == digitLeftCount +
-            // zeroDigitCount.
-            int32_t effectiveDecimalPos = decimalPos >= 0 ? decimalPos : digitTotalCount;
-            UBool isSigDig = (sigDigitCount > 0);
-            setSignificantDigitsUsed(isSigDig);
-            if (isSigDig) {
-                setMinimumSignificantDigits(sigDigitCount);
-                setMaximumSignificantDigits(sigDigitCount + digitRightCount);
-            } else {
-                int32_t minInt = effectiveDecimalPos - digitLeftCount;
-                setMinimumIntegerDigits(minInt);
-                setMaximumIntegerDigits(fUseExponentialNotation
-                    ? digitLeftCount + getMinimumIntegerDigits()
-                    : NumberFormat::gDefaultMaxIntegerDigits);
-                setMaximumFractionDigits(decimalPos >= 0
-                    ? (digitTotalCount - decimalPos) : 0);
-                setMinimumFractionDigits(decimalPos >= 0
-                    ? (digitLeftCount + zeroDigitCount - decimalPos) : 0);
-            }
-            setGroupingUsed(groupingCount > 0);
-            fGroupingSize = (groupingCount > 0) ? groupingCount : 0;
-            fGroupingSize2 = (groupingCount2 > 0 && groupingCount2 != groupingCount)
-                ? groupingCount2 : 0;
-            setMultiplier(multiplier);
-            setDecimalSeparatorAlwaysShown(decimalPos == 0
-                    || decimalPos == digitTotalCount);
-            if (padPos >= 0) {
-                fPadPosition = (EPadPosition) padPos;
-                // To compute the format width, first set up sub0Limit -
-                // sub0Start.  Add in prefix/suffix length later.
-
-                // fFormatWidth = prefix.length() + suffix.length() +
-                //    sub0Limit - sub0Start;
-                fFormatWidth = sub0Limit - sub0Start;
-                fPad = padChar;
-            } else {
-                fFormatWidth = 0;
-            }
-            if (roundingPos >= 0) {
-                roundingInc.setDecimalAt(effectiveDecimalPos - roundingPos);
-                if (fRoundingIncrement != NULL) {
-                    *fRoundingIncrement = roundingInc;
-                } else {
-                    fRoundingIncrement = new DigitList(roundingInc);
-                    /* test for NULL */
-                    if (fRoundingIncrement == NULL) {
-                        status = U_MEMORY_ALLOCATION_ERROR;
-                        delete fPosPrefixPattern;
-                        delete fPosSuffixPattern;
-                        return;
-                    }
-                }
-                fRoundingMode = kRoundHalfEven;
-            } else {
-                setRoundingIncrement(0.0);
-            }
-        } else {
-            fNegPrefixPattern = new UnicodeString(prefix);
-            /* test for NULL */
-            if (fNegPrefixPattern == 0) {
-                status = U_MEMORY_ALLOCATION_ERROR;
-                return;
-            }
-            fNegSuffixPattern = new UnicodeString(suffix);
-            /* test for NULL */
-            if (fNegSuffixPattern == 0) {
-                delete fNegPrefixPattern;
-                status = U_MEMORY_ALLOCATION_ERROR;
-                return;
-            }
-        }
+    fFormatPattern = pattern;
+    DecimalFormatPattern out;
+    patternParser.applyPatternWithoutExpandAffix(
+        pattern,
+        out,
+        parseError,
+        status);
+    if (U_FAILURE(status)) {
+      return;
     }
 
-    if (pattern.length() == 0) {
-        delete fNegPrefixPattern;
-        delete fNegSuffixPattern;
-        fNegPrefixPattern = NULL;
-        fNegSuffixPattern = NULL;
-        if (fPosPrefixPattern != NULL) {
-            fPosPrefixPattern->remove();
+    setMinimumIntegerDigits(out.fMinimumIntegerDigits);
+    setMaximumIntegerDigits(out.fMaximumIntegerDigits);
+    setMinimumFractionDigits(out.fMinimumFractionDigits);
+    setMaximumFractionDigits(out.fMaximumFractionDigits);
+    setSignificantDigitsUsed(out.fUseSignificantDigits);
+    if (out.fUseSignificantDigits) {
+        setMinimumSignificantDigits(out.fMinimumSignificantDigits);
+        setMaximumSignificantDigits(out.fMaximumSignificantDigits);
+    }
+    fUseExponentialNotation = out.fUseExponentialNotation;
+    if (out.fUseExponentialNotation) {
+        fMinExponentDigits = out.fMinExponentDigits;
+    }
+    fExponentSignAlwaysShown = out.fExponentSignAlwaysShown;
+    fCurrencySignCount = out.fCurrencySignCount;
+    setGroupingUsed(out.fGroupingUsed);
+    if (out.fGroupingUsed) {
+        fGroupingSize = out.fGroupingSize;
+        fGroupingSize2 = out.fGroupingSize2;
+    }
+    setMultiplier(out.fMultiplier);
+    fDecimalSeparatorAlwaysShown = out.fDecimalSeparatorAlwaysShown;
+    fFormatWidth = out.fFormatWidth;
+    if (out.fRoundingIncrementUsed) {
+        if (fRoundingIncrement != NULL) {
+            *fRoundingIncrement = out.fRoundingIncrement;
         } else {
-            fPosPrefixPattern = new UnicodeString();
+            fRoundingIncrement = new DigitList(out.fRoundingIncrement);
             /* test for NULL */
-            if (fPosPrefixPattern == 0) {
-                status = U_MEMORY_ALLOCATION_ERROR;
-                return;
+            if (fRoundingIncrement == NULL) {
+                 status = U_MEMORY_ALLOCATION_ERROR;
+                 return;
             }
         }
-        if (fPosSuffixPattern != NULL) {
-            fPosSuffixPattern->remove();
-        } else {
-            fPosSuffixPattern = new UnicodeString();
-            /* test for NULL */
-            if (fPosSuffixPattern == 0) {
-                delete fPosPrefixPattern;
-                status = U_MEMORY_ALLOCATION_ERROR;
-                return;
-            }
-        }
-
-        setMinimumIntegerDigits(0);
-        setMaximumIntegerDigits(kDoubleIntegerDigits);
-        setMinimumFractionDigits(0);
-        setMaximumFractionDigits(kDoubleFractionDigits);
-
-        fUseExponentialNotation = FALSE;
-        fCurrencySignCount = fgCurrencySignCountZero;
-        setGroupingUsed(FALSE);
-        fGroupingSize = 0;
-        fGroupingSize2 = 0;
-        setMultiplier(1);
-        setDecimalSeparatorAlwaysShown(FALSE);
-        fFormatWidth = 0;
+    } else {
         setRoundingIncrement(0.0);
     }
-
-    // If there was no negative pattern, or if the negative pattern is
-    // identical to the positive pattern, then prepend the minus sign to the
-    // positive pattern to form the negative pattern.
-    if (fNegPrefixPattern == NULL ||
-        (*fNegPrefixPattern == *fPosPrefixPattern
-         && *fNegSuffixPattern == *fPosSuffixPattern)) {
-        _copy_ptr(&fNegSuffixPattern, fPosSuffixPattern);
-        if (fNegPrefixPattern == NULL) {
-            fNegPrefixPattern = new UnicodeString();
-            /* test for NULL */
-            if (fNegPrefixPattern == 0) {
-                status = U_MEMORY_ALLOCATION_ERROR;
-                return;
-            }
-        } else {
-            fNegPrefixPattern->remove();
-        }
-        fNegPrefixPattern->append(kQuote).append(kPatternMinus)
-            .append(*fPosPrefixPattern);
+    fPad = out.fPad;
+    switch (out.fPadPosition) {
+        case DecimalFormatPattern::kPadBeforePrefix:
+            fPadPosition = kPadBeforePrefix;
+            break;
+        case DecimalFormatPattern::kPadAfterPrefix:
+            fPadPosition = kPadAfterPrefix;
+            break;
+        case DecimalFormatPattern::kPadBeforeSuffix:
+            fPadPosition = kPadBeforeSuffix;
+            break;
+        case DecimalFormatPattern::kPadAfterSuffix:
+            fPadPosition = kPadAfterSuffix;
+            break;
     }
-#ifdef FMT_DEBUG
-    UnicodeString s;
-    s.append((UnicodeString)"\"").append(pattern).append((UnicodeString)"\"->");
-    debugout(s);
-#endif
-
-    // save the pattern
-    fFormatPattern = pattern;
+    copyString(out.fNegPrefixPattern, out.fNegPatternsBogus, fNegPrefixPattern, status);
+    copyString(out.fNegSuffixPattern, out.fNegPatternsBogus, fNegSuffixPattern, status);
+    copyString(out.fPosPrefixPattern, out.fPosPatternsBogus, fPosPrefixPattern, status);
+    copyString(out.fPosSuffixPattern, out.fPosPatternsBogus, fPosSuffixPattern, status);
 }
 
 
@@ -5572,8 +5203,8 @@ void DecimalFormat::setCurrencyInternally(const UChar* theCurrency,
     double rounding = 0.0;
     int32_t frac = 0;
     if (fCurrencySignCount != fgCurrencySignCountZero && isCurr) {
-        rounding = ucurr_getRoundingIncrement(theCurrency, &ec);
-        frac = ucurr_getDefaultFractionDigits(theCurrency, &ec);
+        rounding = ucurr_getRoundingIncrementForUsage(theCurrency, fCurrencyUsage, &ec);
+        frac = ucurr_getDefaultFractionDigitsForUsage(theCurrency, fCurrencyUsage, &ec);
     }
 
     NumberFormat::setCurrency(theCurrency, ec);
@@ -5607,6 +5238,28 @@ void DecimalFormat::setCurrency(const UChar* theCurrency, UErrorCode& ec) {
 #if UCONFIG_FORMAT_FASTPATHS_49
     handleChanged();
 #endif
+}
+
+void DecimalFormat::setCurrencyUsage(UCurrencyUsage newContext, UErrorCode* ec){
+    fCurrencyUsage = newContext;
+
+    const UChar* theCurrency = getCurrency();
+
+    // We set rounding/digit based on currency context
+    if(theCurrency){
+        double rounding = ucurr_getRoundingIncrementForUsage(theCurrency, fCurrencyUsage, ec);
+        int32_t frac = ucurr_getDefaultFractionDigitsForUsage(theCurrency, fCurrencyUsage, ec);
+
+        if (U_SUCCESS(*ec)) {
+            setRoundingIncrement(rounding);
+            setMinimumFractionDigits(frac);
+            setMaximumFractionDigits(frac);
+        }
+    }
+}
+
+UCurrencyUsage DecimalFormat::getCurrencyUsage() const {
+    return fCurrencyUsage;
 }
 
 // Deprecated variant with no UErrorCode parameter
@@ -5754,6 +5407,29 @@ DecimalFormat::copyHashForAffixPattern(const Hashtable* source,
     }
 }
 
+// this is only overridden to call handleChanged() for fastpath purposes.
+void
+DecimalFormat::setGroupingUsed(UBool newValue) {
+  NumberFormat::setGroupingUsed(newValue);
+  handleChanged();
+}
+
+// this is only overridden to call handleChanged() for fastpath purposes.
+void
+DecimalFormat::setParseIntegerOnly(UBool newValue) {
+  NumberFormat::setParseIntegerOnly(newValue);
+  handleChanged();
+}
+
+// this is only overridden to call handleChanged() for fastpath purposes.
+// setContext doesn't affect the fastPath right now, but this is called for completeness
+void
+DecimalFormat::setContext(UDisplayContext value, UErrorCode& status) {
+  NumberFormat::setContext(value, status);
+  handleChanged();
+}
+
+
 DecimalFormat& DecimalFormat::setAttribute( UNumberFormatAttribute attr,
                                             int32_t newValue,
                                             UErrorCode &status) {
@@ -5848,6 +5524,7 @@ DecimalFormat& DecimalFormat::setAttribute( UNumberFormatAttribute attr,
     /* These are stored in fBoolFlags */
     case UNUM_PARSE_NO_EXPONENT:
     case UNUM_FORMAT_FAIL_IF_MORE_THAN_MAX_DIGITS:
+    case UNUM_PARSE_DECIMAL_MARK_REQUIRED:
       if(!fBoolFlags.isValidValue(newValue)) {
           status = U_ILLEGAL_ARGUMENT_ERROR;
       } else {
@@ -5858,6 +5535,9 @@ DecimalFormat& DecimalFormat::setAttribute( UNumberFormatAttribute attr,
     case UNUM_SCALE:
         fScale = newValue;
         break;
+
+    case UNUM_CURRENCY_USAGE:
+        setCurrencyUsage((UCurrencyUsage)newValue, &status);
 
     default:
       status = U_UNSUPPORTED_ERROR;
@@ -5932,10 +5612,14 @@ int32_t DecimalFormat::getAttribute( UNumberFormatAttribute attr,
     /* These are stored in fBoolFlags */
     case UNUM_PARSE_NO_EXPONENT:
     case UNUM_FORMAT_FAIL_IF_MORE_THAN_MAX_DIGITS:
+    case UNUM_PARSE_DECIMAL_MARK_REQUIRED:
       return fBoolFlags.get(attr);
 
     case UNUM_SCALE:
         return fScale;
+
+    case UNUM_CURRENCY_USAGE:
+        return fCurrencyUsage;
 
     default:
         status = U_UNSUPPORTED_ERROR;

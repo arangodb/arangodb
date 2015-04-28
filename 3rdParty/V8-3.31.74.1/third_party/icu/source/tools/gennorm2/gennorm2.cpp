@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009-2012, International Business Machines
+*   Copyright (C) 2009-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -38,8 +38,6 @@
 #include "unewdata.h"
 #endif
 
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
-
 U_NAMESPACE_BEGIN
 
 UBool beVerbose=FALSE, haveCopyright=TRUE;
@@ -60,6 +58,7 @@ enum {
     SOURCEDIR,
     OUTPUT_FILENAME,
     UNICODE_VERSION,
+    WRITE_C_SOURCE,
     OPT_FAST
 };
 
@@ -71,6 +70,7 @@ static UOption options[]={
     UOPTION_SOURCEDIR,
     UOPTION_DEF("output", 'o', UOPT_REQUIRES_ARG),
     UOPTION_DEF("unicode", 'u', UOPT_REQUIRES_ARG),
+    UOPTION_DEF("csource", '\1', UOPT_NO_ARG),
     UOPTION_DEF("fast", '\1', UOPT_NO_ARG)
 };
 
@@ -102,7 +102,7 @@ main(int argc, char* argv[]) {
             "Usage: %s [-options] infiles+ -o outputfilename\n"
             "\n"
             "Reads the infiles with normalization data and\n"
-            "creates a binary file (outputfilename) with the data.\n"
+            "creates a binary or C source file (outputfilename) with the data.\n"
             "\n",
             argv[0]);
         fprintf(stderr,
@@ -113,9 +113,10 @@ main(int argc, char* argv[]) {
             "\t-u or --unicode     Unicode version, followed by the version like 5.2.0\n");
         fprintf(stderr,
             "\t-s or --sourcedir   source directory, followed by the path\n"
-            "\t-o or --output      output filename\n");
+            "\t-o or --output      output filename\n"
+            "\t      --csource     writes a C source file with initializers\n");
         fprintf(stderr,
-            "\t      --fast        optimize the .nrm file for fast normalization,\n"
+            "\t      --fast        optimize the data for fast normalization,\n"
             "\t                    which might increase its size  (Writes fully decomposed\n"
             "\t                    regular mappings instead of delta mappings.\n"
             "\t                    You should measure the runtime speed to make sure that\n"
@@ -176,7 +177,11 @@ main(int argc, char* argv[]) {
         filename.truncate(pathLength);
     }
 
-    builder->writeBinaryFile(options[OUTPUT_FILENAME].value);
+    if(options[WRITE_C_SOURCE].doesOccur) {
+        builder->writeCSourceFile(options[OUTPUT_FILENAME].value);
+    } else {
+        builder->writeBinaryFile(options[OUTPUT_FILENAME].value);
+    }
 
     return errorCode.get();
 
@@ -239,7 +244,7 @@ void parseFile(FILE *f, Normalizer2DataBuilder &builder) {
         }
         if(*delimiter=='=' || *delimiter=='>') {
             UChar uchars[Normalizer2Impl::MAPPING_LENGTH_MASK];
-            int32_t length=u_parseString(delimiter+1, uchars, LENGTHOF(uchars), NULL, errorCode);
+            int32_t length=u_parseString(delimiter+1, uchars, UPRV_LENGTHOF(uchars), NULL, errorCode);
             if(errorCode.isFailure()) {
                 fprintf(stderr, "gennorm2 error: parsing mapping string from %s\n", line);
                 exit(errorCode.reset());

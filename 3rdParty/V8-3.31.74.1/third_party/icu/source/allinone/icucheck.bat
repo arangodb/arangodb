@@ -1,7 +1,7 @@
 @echo off
 REM  ********************************************************************
 REM  * COPYRIGHT:
-REM  * Copyright (c) 2010-2012, International Business Machines Corporation
+REM  * Copyright (c) 2010-2014, International Business Machines Corporation
 REM  * and others. All Rights Reserved.
 REM  ********************************************************************
 
@@ -89,16 +89,17 @@ set ICUFAILCNT=0
 :OK_cintltst
 @set ICURUN=%ICURUN% %THT%
 
-@set THT=letest
-@echo ==== %THT% =========================================================================
-@cd %ICU_ICUDIR%\source\test\letest
-%LETST_CMD% %LETEST_OPTS%
+@REM  (Layout is deprecated)
+@REM  @set THT=letest
+@REM  @echo ==== %THT% =========================================================================
+@REM  @cd %ICU_ICUDIR%\source\test\letest
+@REM  %LETST_CMD% %LETEST_OPTS%
 
-@IF NOT ERRORLEVEL 1 GOTO OK_%THT%
-@set ICUFAILED=%ICUFAILED% %THT%
-@set ICUFAILCNT=1
-:OK_letest
-@set ICURUN=%ICURUN% %THT%
+@REM  @IF NOT ERRORLEVEL 1 GOTO OK_%THT%
+@REM  @set ICUFAILED=%ICUFAILED% %THT%
+@REM  @set ICUFAILCNT=1
+@REM  :OK_letest
+@REM  @set ICURUN=%ICURUN% %THT%
 
 @echo off
 

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2001-2011, International Business Machines
+*   Copyright (C) 2001-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -31,8 +31,6 @@
 #include "ustr_imp.h"
 
 U_NAMESPACE_USE
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 /* compare canonically equivalent ------------------------------------------- */
 
@@ -605,7 +603,7 @@ unorm_compare(const UChar *s1, int32_t length1,
     if(!(options&UNORM_INPUT_IS_FCD) || (options&U_FOLD_CASE_EXCLUDE_SPECIAL_I)) {
         const Normalizer2 *n2;
         if(options&U_FOLD_CASE_EXCLUDE_SPECIAL_I) {
-            n2=Normalizer2Factory::getNFDInstance(*pErrorCode);
+            n2=Normalizer2::getNFDInstance(*pErrorCode);
         } else {
             n2=Normalizer2Factory::getFCDInstance(*pErrorCode);
         }

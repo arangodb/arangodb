@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2013, International Business Machines Corporation and
+* Copyright (C) 2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -26,6 +26,7 @@
 #include "unicode/decimfmt.h"
 #include "ucln_in.h"
 #include "cstring.h"
+#include "mutex.h"
 #include "uhash.h"
 #include "umutex.h"
 #include "uresimp.h"
@@ -55,8 +56,7 @@ U_CDECL_END
 
 U_NAMESPACE_BEGIN
 
-static UMutex gRegionDataLock = U_MUTEX_INITIALIZER;
-static UBool regionDataIsLoaded = false;
+static UInitOnce gRegionDataInitOnce = U_INITONCE_INITIALIZER;
 static UVector* availableRegions[URGN_LIMIT];
 
 static UHashtable *regionAliases;
@@ -77,70 +77,65 @@ UOBJECT_DEFINE_RTTI_IMPLEMENTATION(RegionNameEnumeration)
  * If the region data has already loaded, then this method simply returns without doing
  * anything meaningful.
  */
-void Region::loadRegionData() {
-
-    if (regionDataIsLoaded) {
-        return;
-    }
-
-    umtx_lock(&gRegionDataLock);
-
-    if (regionDataIsLoaded) { // In case another thread gets to it before we do...
-        umtx_unlock(&gRegionDataLock);
-        return;
-    }
-
-
-    UErrorCode status = U_ZERO_ERROR;
-
-    UResourceBundle* regionCodes = NULL;
-    UResourceBundle* territoryAlias = NULL;
-    UResourceBundle* codeMappings = NULL;
-    UResourceBundle* worldContainment = NULL;
-    UResourceBundle* territoryContainment = NULL;
-    UResourceBundle* groupingContainment = NULL;
-
-    DecimalFormat *df = new DecimalFormat(status);
+void Region::loadRegionData(UErrorCode &status) {
+    LocalPointer<DecimalFormat> df(new DecimalFormat(status));
     if (U_FAILURE(status)) {
-        umtx_unlock(&gRegionDataLock);
+        return;
+    }
+    if (df == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
     df->setParseIntegerOnly(TRUE);
 
-    regionIDMap = uhash_open(uhash_hashUnicodeString,uhash_compareUnicodeString,NULL,&status);
+    regionIDMap = uhash_open(uhash_hashUnicodeString, uhash_compareUnicodeString, NULL, &status);
+    if (U_FAILURE(status)) {
+        return;
+    }
+    if (regionIDMap == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        return;
+    }
     uhash_setValueDeleter(regionIDMap, deleteRegion);
 
     numericCodeMap = uhash_open(uhash_hashLong,uhash_compareLong,NULL,&status);
 
     regionAliases = uhash_open(uhash_hashUnicodeString,uhash_compareUnicodeString,NULL,&status);
+    if (U_FAILURE(status)) {
+        return;
+    }
+    if (regionAliases == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        return;
+    }
     uhash_setKeyDeleter(regionAliases,uprv_deleteUObject);
 
-    UResourceBundle *rb = ures_openDirect(NULL,"metadata",&status);
-    regionCodes = ures_getByKey(rb,"regionCodes",NULL,&status);
-    territoryAlias = ures_getByKey(rb,"territoryAlias",NULL,&status);
+    LocalUResourceBundlePointer rb(ures_openDirect(NULL,"metadata",&status));
+    LocalUResourceBundlePointer regionCodes(ures_getByKey(rb.getAlias(),"regionCodes",NULL,&status));
+    LocalUResourceBundlePointer territoryAlias(ures_getByKey(rb.getAlias(),"territoryAlias",NULL,&status));
 
-    UResourceBundle *rb2 = ures_openDirect(NULL,"supplementalData",&status);
-    codeMappings = ures_getByKey(rb2,"codeMappings",NULL,&status);
+    LocalUResourceBundlePointer rb2(ures_openDirect(NULL,"supplementalData",&status));
+    LocalUResourceBundlePointer codeMappings(ures_getByKey(rb2.getAlias(),"codeMappings",NULL,&status));
 
-    territoryContainment = ures_getByKey(rb2,"territoryContainment",NULL,&status);
-    worldContainment = ures_getByKey(territoryContainment,"001",NULL,&status);
-    groupingContainment = ures_getByKey(territoryContainment,"grouping",NULL,&status);
+    LocalUResourceBundlePointer territoryContainment(ures_getByKey(rb2.getAlias(),"territoryContainment",NULL,&status));
+    LocalUResourceBundlePointer worldContainment(ures_getByKey(territoryContainment.getAlias(),"001",NULL,&status));
+    LocalUResourceBundlePointer groupingContainment(ures_getByKey(territoryContainment.getAlias(),"grouping",NULL,&status));
 
     UVector *continents = new UVector(uprv_deleteUObject, uhash_compareUnicodeString, status);
 
-    while ( ures_hasNext(worldContainment) ) {
-        UnicodeString *continentName = new UnicodeString(ures_getNextUnicodeString(worldContainment,NULL,&status));
+    while ( ures_hasNext(worldContainment.getAlias()) ) {
+        UnicodeString *continentName = new UnicodeString(ures_getNextUnicodeString(worldContainment.getAlias(),NULL,&status));
         continents->addElement(continentName,status);
     }
 
     UVector *groupings = new UVector(uprv_deleteUObject, uhash_compareUnicodeString, status);
-    while ( ures_hasNext(groupingContainment) ) {
-        UnicodeString *groupingName = new UnicodeString(ures_getNextUnicodeString(groupingContainment,NULL,&status));
+    while ( ures_hasNext(groupingContainment.getAlias()) ) {
+        UnicodeString *groupingName = new UnicodeString(ures_getNextUnicodeString(groupingContainment.getAlias(),NULL,&status));
         groupings->addElement(groupingName,status);
     }
 
-    while ( ures_hasNext(regionCodes) ) {
-        UnicodeString regionID = ures_getNextUnicodeString(regionCodes,NULL,&status);
+    while ( ures_hasNext(regionCodes.getAlias()) ) {
+        UnicodeString regionID = ures_getNextUnicodeString(regionCodes.getAlias(), NULL, &status);
         Region *r = new Region();
         r->idStr = regionID;
         r->idStr.extract(0,r->idStr.length(),r->id,sizeof(r->id),US_INV);
@@ -161,8 +156,8 @@ void Region::loadRegionData() {
 
 
     // Process the territory aliases
-    while ( ures_hasNext(territoryAlias) ) {
-        UResourceBundle *res = ures_getNextResource(territoryAlias,NULL,&status);
+    while ( ures_hasNext(territoryAlias.getAlias()) ) {
+        UResourceBundle *res = ures_getNextResource(territoryAlias.getAlias(),NULL,&status);
         const char *aliasFrom = ures_getKey(res);
         UnicodeString* aliasFromStr = new UnicodeString(aliasFrom, -1, US_INV);
         UnicodeString aliasTo = ures_getUnicodeString(res,&status);
@@ -214,8 +209,8 @@ void Region::loadRegionData() {
     }
 
     // Process the code mappings - This will allow us to assign numeric codes to most of the territories.
-    while ( ures_hasNext(codeMappings) ) {
-        UResourceBundle *mapping = ures_getNextResource(codeMappings,NULL,&status);
+    while ( ures_hasNext(codeMappings.getAlias()) ) {
+        UResourceBundle *mapping = ures_getNextResource(codeMappings.getAlias(),NULL,&status);
         if ( ures_getType(mapping) == URES_ARRAY && ures_getSize(mapping) == 3) {
             UnicodeString codeMappingID = ures_getUnicodeStringByIndex(mapping,0,&status);
             UnicodeString codeMappingNumber = ures_getUnicodeStringByIndex(mapping,1,&status);
@@ -277,9 +272,14 @@ void Region::loadRegionData() {
     }
 
     // Load territory containment info from the supplemental data.
-    while ( ures_hasNext(territoryContainment) ) {
-        UResourceBundle *mapping = ures_getNextResource(territoryContainment,NULL,&status);
+    while ( ures_hasNext(territoryContainment.getAlias()) ) {
+        UResourceBundle *mapping = ures_getNextResource(territoryContainment.getAlias(),NULL,&status);
         const char *parent = ures_getKey(mapping);
+        if (uprv_strcmp(parent, "containedGroupings") == 0 || uprv_strcmp(parent, "deprecated") == 0) {
+            ures_close(mapping);
+            continue; // handle new pseudo-parent types added in ICU data per cldrbug 7808; for now just skip.
+            // #11232 is to do something useful with these.
+        }
         UnicodeString parentStr = UnicodeString(parent, -1 , US_INV);
         Region *parentRegion = (Region *) uhash_get(regionIDMap,(void *)&parentStr);
 
@@ -319,27 +319,10 @@ void Region::loadRegionData() {
         availableRegions[ar->type]->addElement((void *)arString,status);
     }
 
-    ures_close(territoryContainment);
-    ures_close(worldContainment);
-    ures_close(groupingContainment);
-
-    ures_close(codeMappings);
-    ures_close(rb2);
-    ures_close(territoryAlias);
-    ures_close(regionCodes);
-    ures_close(rb);
-
-    delete df;
-
     ucln_i18n_registerCleanup(UCLN_I18N_REGION, region_cleanup);
-
-    regionDataIsLoaded = true;
-    umtx_unlock(&gRegionDataLock);
-
 }
 
 void Region::cleanupRegionData() {
-
     for (int32_t i = 0 ; i < URGN_LIMIT ; i++ ) {
         if ( availableRegions[i] ) {
             delete availableRegions[i];
@@ -357,6 +340,7 @@ void Region::cleanupRegionData() {
     if (regionIDMap) {
         uhash_close(regionIDMap);
     }
+    gRegionDataInitOnce.reset();
 }
 
 Region::Region ()
@@ -402,14 +386,12 @@ Region::operator!=(const Region &that) const {
 const Region* U_EXPORT2
 Region::getInstance(const char *region_code, UErrorCode &status) {
 
-    if ( !region_code ) {
-        status = U_ILLEGAL_ARGUMENT_ERROR;
+    umtx_initOnce(gRegionDataInitOnce, &loadRegionData, status);
+    if (U_FAILURE(status)) {
         return NULL;
     }
 
-    loadRegionData();
-
-    if (regionIDMap == NULL) {
+    if ( !region_code ) {
         status = U_ILLEGAL_ARGUMENT_ERROR;
         return NULL;
     }
@@ -445,10 +427,8 @@ Region::getInstance(const char *region_code, UErrorCode &status) {
 const Region* U_EXPORT2
 Region::getInstance (int32_t code, UErrorCode &status) {
 
-    loadRegionData();
-
-    if (numericCodeMap == NULL) {
-        status = U_ILLEGAL_ARGUMENT_ERROR;
+    umtx_initOnce(gRegionDataInitOnce, &loadRegionData, status);
+    if (U_FAILURE(status)) {
         return NULL;
     }
 
@@ -488,12 +468,12 @@ Region::getInstance (int32_t code, UErrorCode &status) {
  */
 StringEnumeration* U_EXPORT2
 Region::getAvailable(URegionType type) {
-
-    loadRegionData();
     UErrorCode status = U_ZERO_ERROR;
+    umtx_initOnce(gRegionDataInitOnce, &loadRegionData, status);
+    if (U_FAILURE(status)) {
+        return NULL;
+    }
     return new RegionNameEnumeration(availableRegions[type],status);
-
-    return NULL;
 }
 
 /**
@@ -503,7 +483,8 @@ Region::getAvailable(URegionType type) {
  */
 const Region*
 Region::getContainingRegion() const {
-    loadRegionData();
+    UErrorCode status = U_ZERO_ERROR;
+    umtx_initOnce(gRegionDataInitOnce, &loadRegionData, status);
     return containingRegion;
 }
 
@@ -516,7 +497,8 @@ Region::getContainingRegion() const {
  */
 const Region*
 Region::getContainingRegion(URegionType type) const {
-    loadRegionData();
+    UErrorCode status = U_ZERO_ERROR;
+    umtx_initOnce(gRegionDataInitOnce, &loadRegionData, status);
     if ( containingRegion == NULL ) {
         return NULL;
     }
@@ -538,8 +520,8 @@ Region::getContainingRegion(URegionType type) const {
  */
 StringEnumeration*
 Region::getContainedRegions() const {
-    loadRegionData();
     UErrorCode status = U_ZERO_ERROR;
+    umtx_initOnce(gRegionDataInitOnce, &loadRegionData, status);
     return new RegionNameEnumeration(containedRegions,status);
 }
 
@@ -551,9 +533,12 @@ Region::getContainedRegions() const {
  */
 StringEnumeration*
 Region::getContainedRegions( URegionType type ) const {
-    loadRegionData();
-
     UErrorCode status = U_ZERO_ERROR;
+    umtx_initOnce(gRegionDataInitOnce, &loadRegionData, status);
+    if (U_FAILURE(status)) {
+        return NULL;
+    }
+
     UVector *result = new UVector(NULL, uhash_compareChars, status);
 
     StringEnumeration *cr = getContainedRegions();
@@ -584,7 +569,8 @@ Region::getContainedRegions( URegionType type ) const {
  */
 UBool
 Region::contains(const Region &other) const {
-    loadRegionData();
+    UErrorCode status = U_ZERO_ERROR;
+    umtx_initOnce(gRegionDataInitOnce, &loadRegionData, status);
 
     if (!containedRegions) {
           return FALSE;
@@ -611,8 +597,8 @@ Region::contains(const Region &other) const {
  */
 StringEnumeration*
 Region::getPreferredValues() const {
-    loadRegionData();
     UErrorCode status = U_ZERO_ERROR;
+    umtx_initOnce(gRegionDataInitOnce, &loadRegionData, status);
     if ( type == URGN_DEPRECATED ) {
         return new RegionNameEnumeration(preferredValues,status);
     } else {

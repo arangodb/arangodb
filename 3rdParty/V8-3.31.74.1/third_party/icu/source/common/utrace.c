@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2003-2008, International Business Machines
+*   Copyright (C) 2003-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  utrace.c
@@ -467,6 +467,8 @@ trCollNames[] = {
     "ucol_getLocale",
     "ucol_nextSortKeyPart",
     "ucol_strcollIter",
+    "ucol_openFromShortString",
+    "ucol_strcollUTF8",
     NULL
 };
 

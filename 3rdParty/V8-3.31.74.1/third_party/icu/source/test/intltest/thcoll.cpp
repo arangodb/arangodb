@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1999-2012, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -17,6 +17,7 @@
 #include "unicode/coll.h"
 #include "unicode/localpointer.h"
 #include "unicode/sortkey.h"
+#include "unicode/tblcoll.h"
 #include "unicode/ustring.h"
 #include "cstring.h"
 #include "filestrm.h"

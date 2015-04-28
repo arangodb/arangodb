@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2012, International Business Machines Corporation and    *
+* Copyright (C) 2007-2014, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 */
@@ -29,8 +29,6 @@
 
 #define CASE(id,test) case id: name = #test; if (exec) { logln(#test "---"); logln((UnicodeString)""); test(); } break
 #define HOUR (60*60*1000)
-
-static const UVersionInfo ICU_453 = {4,5,3,0};
 
 static const char *const TESTZIDS[] = {
         "AGT",

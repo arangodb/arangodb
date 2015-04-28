@@ -1,5 +1,5 @@
 ## Makefile.in for ICU data
-## Copyright (c) 1999-2013, International Business Machines Corporation and
+## Copyright (c) 1999-2014, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Source directory information
@@ -44,7 +44,11 @@ CURDIR:=$(CURR_FULL_DIR)
 ifeq ($(CURDIR),)
 CURDIR=.
 endif
+ifeq ($(OS390BATCH),1)
+PKGDATA = $(TOOLBINDIR)/pkgdata $(PKGDATA_OPTS) -z -q -c -s $(CURDIR)/out/build/$(ICUDATA_PLATFORM_NAME) -d $(ICUPKGDATA_OUTDIR)
+else
 PKGDATA = $(TOOLBINDIR)/pkgdata $(PKGDATA_OPTS) -q -c -s $(CURDIR)/out/build/$(ICUDATA_PLATFORM_NAME) -d $(ICUPKGDATA_OUTDIR)
+endif
 OS390_PDS_NAME = -z -L $(BATCH_STUB_TARGET)
 
 ifeq ($(OS390_STUBDATA),1)
@@ -86,6 +90,8 @@ REGIONSRCDIR=$(SRCDATADIR)/region
 REGIONBLDDIR=$(BUILDDIR)/region
 ZONESRCDIR=$(SRCDATADIR)/zone
 ZONEBLDDIR=$(BUILDDIR)/zone
+UNITSRCDIR=$(SRCDATADIR)/unit
+UNITBLDDIR=$(BUILDDIR)/unit
 COLSRCDIR=$(SRCDATADIR)/coll
 COLBLDDIR=$(BUILDDIR)/coll
 RBNFSRCDIR=$(SRCDATADIR)/rbnf
@@ -100,7 +106,7 @@ UCMSRCDIR=$(SRCDATADIR)/mappings
 SPREPSRCDIR=$(SRCDATADIR)/sprep
 COMINCDIR=$(top_srcdir)/common/unicode
 SRCLISTDEPS=Makefile $(srcdir)/Makefile.in
-BUILD_DIRS=$(OUTDIR) $(MAINBUILDDIR) $(BUILDDIR) $(CURRBLDDIR) $(LANGBLDDIR) $(REGIONBLDDIR) $(ZONEBLDDIR) $(BRKBLDDIR) $(COLBLDDIR) $(RBNFBLDDIR) $(TRANSLITBLDDIR) $(OUTTMPDIR) $(OUTTMPDIR_390STUB) $(OUTTMPDIR)/$(CURR_TREE) $(OUTTMPDIR)/$(LANG_TREE) $(OUTTMPDIR)/$(REGION_TREE) $(OUTTMPDIR)/$(ZONE_TREE) $(OUTTMPDIR)/$(COLLATION_TREE) $(OUTTMPDIR)/$(RBNF_TREE) $(OUTTMPDIR)/$(TRANSLIT_TREE) $(OUTTMPDIR)/$(BREAK_TREE)
+BUILD_DIRS=$(OUTDIR) $(MAINBUILDDIR) $(BUILDDIR) $(CURRBLDDIR) $(LANGBLDDIR) $(REGIONBLDDIR) $(ZONEBLDDIR) $(UNITBLDDIR) $(BRKBLDDIR) $(COLBLDDIR) $(RBNFBLDDIR) $(TRANSLITBLDDIR) $(OUTTMPDIR) $(OUTTMPDIR_390STUB) $(OUTTMPDIR)/$(CURR_TREE) $(OUTTMPDIR)/$(LANG_TREE) $(OUTTMPDIR)/$(REGION_TREE) $(OUTTMPDIR)/$(ZONE_TREE) $(OUTTMPDIR)/$(UNIT_TREE) $(OUTTMPDIR)/$(COLLATION_TREE) $(OUTTMPDIR)/$(RBNF_TREE) $(OUTTMPDIR)/$(TRANSLIT_TREE) $(OUTTMPDIR)/$(BREAK_TREE)
 
 # relative lib links from pkgdata are the same as for tmp
 TOOLDIR=$(top_builddir)/tools
@@ -109,7 +115,7 @@ TOOLDIR=$(top_builddir)/tools
 .PHONY : all all-local all-recursive install install-local install-files	\
 install-recursive clean clean-local clean-recursive distclean		\
 distclean-local distclean-recursive dist dist-local dist-recursive	\
-check check-local check-recursive build-local clean-resindex build-dir icudata.jar	\
+check check-local check-recursive clean-resindex icudata.jar	\
 check-exhaustive
 
 ## Clear suffix list
@@ -139,6 +145,7 @@ clean-map:
 	-test -z *.map || $(RMV) *.map
 
 clean-local: cleanpackage cleanfiles clean-map
+	$(RMV) build-dir* build-local packagedata uni-core-data
 
 cleanfiles:
 	test -z "$(CLEANFILES)" || $(RMV) $(CLEANFILES)
@@ -180,12 +187,10 @@ endif
 endif
 ifneq ($(ICUDATA_SOURCE_IS_NATIVE_TARGET),YES)
 	$(PKGDATA_INVOKE) $(PKGDATA) -e $(ICUDATA_ENTRY_POINT) -T $(OUTTMPDIR) -p $(ICUDATA_NAME) -m $(PKGDATA_MODE) $(PKGDATA_VERSIONING) $(PKGDATA_LIBNAME) $(PKGDATA_LIST)
-ifeq ($(OS390BATCH),1)
-	$(PKGDATA_INVOKE) $(PKGDATA) -e $(ICUDATA_ENTRY_POINT) -T $(OUTTMPDIR) -p $(ICUDATA_NAME) -m $(PKGDATA_MODE) $(PKGDATA_VERSIONING) $(OS390_PDS_NAME) $(PKGDATA_LIST)
-endif
 else
 	$(INSTALL_DATA) $(ICUDATA_SOURCE_ARCHIVE) $(OUTDIR)
 endif
+	echo timestamp > $@
 
 ## Install ICU data.
 install-local: $(PKGDATA_LIST) ./icupkg.inc packagedata $(OS390INSTALL)
@@ -196,6 +201,7 @@ ifeq ($(PKGDATA_MODE),files)
 	$(MKINSTALLDIRS) $(ICUPKGDATA_DIR)/$(ICUDATA_NAME)/$(LANG_TREE)
 	$(MKINSTALLDIRS) $(ICUPKGDATA_DIR)/$(ICUDATA_NAME)/$(REGION_TREE)
 	$(MKINSTALLDIRS) $(ICUPKGDATA_DIR)/$(ICUDATA_NAME)/$(ZONE_TREE)
+	$(MKINSTALLDIRS) $(ICUPKGDATA_DIR)/$(ICUDATA_NAME)/$(UNIT_TREE)
 	$(MKINSTALLDIRS) $(ICUPKGDATA_DIR)/$(ICUDATA_NAME)/$(BREAK_TREE)
 	$(MKINSTALLDIRS) $(ICUPKGDATA_DIR)/$(ICUDATA_NAME)/$(COLLATION_TREE)
 	$(MKINSTALLDIRS) $(ICUPKGDATA_DIR)/$(ICUDATA_NAME)/$(RBNF_TREE)
@@ -240,14 +246,8 @@ package390: $(OUTTMPDIR)/icudata390.lst $(PKGDATA_LIST) ./icupkg.inc packagedata
 #  2010-dec Removed pnames.icu.
 # These are now hardcoded in ICU4C and only loaded in ICU4J.
 #
-# CHROME: unames.icu is excluded from the data file.
-# coll/invuca.icu is also excluded. When building a ICU data file to check in,
-# we need to copy data/in/coll/invuca.icu to the build location (expected
-# by genrb : out/build/icudt46l/coll) by hand because genrb requires its
-# presence when compiling coll/root.txt. We have to put it back if Webkit
-# begins to use it.
-# See https://bugs.webkit.org/show_bug.cgi?id=30437#c32 about invuca.icu.
-DAT_FILES_SHORT=cnvalias.icu coll/ucadata.icu nfc.nrm nfkc.nrm nfkc_cf.nrm uts46.nrm
+# Chromium: Drop unames.icu because we don't need Unicode character names.
+DAT_FILES_SHORT=cnvalias.icu coll/ucadata.icu nfkc.nrm nfkc_cf.nrm uts46.nrm
 DAT_FILES=$(DAT_FILES_SHORT:%=$(BUILDDIR)/%)
 
 ## BRK files
@@ -278,7 +278,7 @@ CFU_FILES=$(BUILDDIR)/$(CFU_FILES_SHORT)
 -include $(UCMSRCDIR)/ucmfiles.mk
 -include $(UCMSRCDIR)/ucmebcdic.mk
 -include $(UCMSRCDIR)/ucmlocal.mk
-# CHROME: we don't need any EBCDIC converters.
+# Chromium: Drop 2 ibm encodings not necessary.
 ALL_UCM_SOURCE=$(UCM_SOURCE_CORE) $(UCM_SOURCE_FILES) $(UCM_SOURCE_EBCDIC) $(UCM_SOURCE_LOCAL)
 UCM_FILES = $(ALL_UCM_SOURCE:%=$(SRCDATADIR)/%)
 CNV_FILES = $(ALL_UCM_SOURCE:%.ucm=$(BUILDDIR)/%.cnv)
@@ -294,6 +294,7 @@ CNV_FILES_SHORT_SPECIAL=$(UCM_SOURCE_SPECIAL:%.ucm=%.cnv)
 -include $(LANGSRCDIR)/resfiles.mk
 -include $(REGIONSRCDIR)/resfiles.mk
 -include $(ZONESRCDIR)/resfiles.mk
+-include $(UNITSRCDIR)/resfiles.mk
 -include $(COLSRCDIR)/colfiles.mk
 -include $(RBNFSRCDIR)/rbnffiles.mk
 -include $(TRANSLITSRCDIR)/trnsfiles.mk
@@ -302,6 +303,7 @@ CNV_FILES_SHORT_SPECIAL=$(UCM_SOURCE_SPECIAL:%.ucm=%.cnv)
 -include $(LANGSRCDIR)/reslocal.mk
 -include $(REGIONSRCDIR)/reslocal.mk
 -include $(ZONESRCDIR)/reslocal.mk
+-include $(UNITSRCDIR)/reslocal.mk
 -include $(COLSRCDIR)/collocal.mk
 -include $(BRKSRCDIR)/brslocal.mk
 -include $(RBNFSRCDIR)/rbnflocal.mk
@@ -327,9 +329,14 @@ REGION_SRC_FILES = $(REGION_SRC:%=$(REGIONSRCDIR)/%)
 INSTALLED_REGION_FILES = $(REGION_SOURCE:%.txt=%)  $(REGION_SOURCE_LOCAL:%.txt=%)
 endif
 ifdef ZONE_SOURCE
-ZONE_SRC= root.txt $(ZONE_SOURCE) $(ZONE_ALIAS_SOURCE) $(ZONE_SOURCE_LOCAL)
+ZONE_SRC= root.txt $(ZONE_SOURCE) $(ZONE_ALIAS_SOURCE) $(ZONE_SOURCE_LOCAL) tzdbNames.txt
 ZONE_SRC_FILES = $(ZONE_SRC:%=$(ZONESRCDIR)/%)
 INSTALLED_ZONE_FILES = $(ZONE_SOURCE:%.txt=%)  $(ZONE_SOURCE_LOCAL:%.txt=%)
+endif
+ifdef UNIT_SOURCE
+UNIT_SRC= root.txt $(UNIT_SOURCE) $(UNIT_ALIAS_SOURCE) $(UNIT_SOURCE_LOCAL)
+UNIT_SRC_FILES = $(UNIT_SRC:%=$(UNITSRCDIR)/%)
+INSTALLED_UNIT_FILES = $(UNIT_SOURCE:%.txt=%)  $(UNIT_SOURCE_LOCAL:%.txt=%)
 endif
 ifdef COLLATION_SOURCE
 COL_SRC= root.txt $(COLLATION_SOURCE) $(COLLATION_ALIAS_SOURCE) $(COLLATION_SOURCE_LOCAL)
@@ -346,7 +353,8 @@ TRANSLIT_SRC= $(TRANSLIT_SOURCE) $(TRANSLIT_ALIAS_SOURCE) $(TRANSLIT_SOURCE_LOCA
 TRANSLIT_SRC_FILES = $(TRANSLIT_SRC:%=$(TRANSLITSRCDIR)/%)
 INSTALLED_TRANSLIT_FILES = $(TRANSLIT_SOURCE:%.txt=%)  $(TRANSLIT_SOURCE_LOCAL:%.txt=%)
 endif
-# CHROME : To save space, use '-R' option.
+# Chromium : To save space, use '-R' option (exclude collation rules. just
+# include the compiled binary data.)
 GENRBOPTS=-k -R
 
 ## MISC files
@@ -359,7 +367,11 @@ ifeq ($(ENABLE_SO_VERSION_DATA),1)
 ifeq ($(PKGDATA_MODE),dll)
 SO_VERSION_DATA = $(OUTTMPDIR)/icudata.res
 $(SO_VERSION_DATA) : $(MISCSRCDIR)/icudata.rc
+ifeq ($(MSYS_RC_MODE),1)
+	rc.exe -i$(srcdir)/../common -i$(top_builddir)/common -fo$@ $(CPPFLAGS) $<
+else
 	rc.exe /i$(srcdir)/../common /i$(top_builddir)/common /fo$@ $(CPPFLAGS) $(SOURCE_FILE)
+endif
 endif
 endif
 
@@ -390,6 +402,11 @@ ZONE_TREE=zone
 ZONE_INDEX_FILE=$(OUTTMPDIR)/$(ZONE_TREE)/$(INDEX_NAME).txt
 ZONE_FILES = $(ZONE_SRC:%.txt=$(ZONEBLDDIR)/%.res) $(ZONEBLDDIR)/$(INDEX_NAME).res $(ZONEBLDDIR)/pool.res
 ZONE_FILES_SHORT = $(ZONE_SRC:%.txt=$(ZONE_TREE)/%.res) $(ZONE_TREE)/$(INDEX_NAME).res $(ZONE_TREE)/pool.res
+
+UNIT_TREE=unit
+UNIT_INDEX_FILE=$(OUTTMPDIR)/$(UNIT_TREE)/$(INDEX_NAME).txt
+UNIT_FILES = $(UNIT_SRC:%.txt=$(UNITBLDDIR)/%.res) $(UNITBLDDIR)/$(INDEX_NAME).res $(UNITBLDDIR)/pool.res
+UNIT_FILES_SHORT = $(UNIT_SRC:%.txt=$(UNIT_TREE)/%.res) $(UNIT_TREE)/$(INDEX_NAME).res $(UNIT_TREE)/pool.res
 
 COLLATION_TREE=coll
 COLLATION_INDEX_FILE=$(OUTTMPDIR)/$(COLLATION_TREE)/$(INDEX_NAME).txt
@@ -426,29 +443,31 @@ SPREP_FILES = $(ALL_SPREP_SOURCE:%.txt=$(BUILDDIR)/%.spp)
 SPREP_FILES_SHORT = $(ALL_SPREP_SOURCE:%.txt=%.spp)
 
 ## All generated files
-ALL_FILES = $(DAT_FILES) $(CNV_FILES) $(CNV_FILES_SPECIAL) $(BRK_FILES) $(DICT_FILES) $(RES_FILES) $(INDEX_RES_FILE) $(CURR_FILES) $(LANG_FILES) $(REGION_FILES) $(ZONE_FILES) $(COLLATION_FILES) $(BRK_RES_FILES) $(RBNF_FILES) $(TRANSLIT_FILES) $(SPREP_FILES) $(CFU_FILES)
-ALL_INDEX_SRC_FILES = $(PKGDATA_LIST) $(INDEX_FILE) $(CURR_INDEX_FILE) $(LANG_INDEX_FILE) $(REGION_INDEX_FILE) $(ZONE_INDEX_FILE) $(COLLATION_INDEX_FILE) $(BRK_RES_INDEX_FILE) $(RBNF_INDEX_FILE)
+ALL_FILES = $(DAT_FILES) $(CNV_FILES) $(CNV_FILES_SPECIAL) $(BRK_FILES) $(DICT_FILES) $(RES_FILES) $(INDEX_RES_FILE) $(CURR_FILES) $(LANG_FILES) $(REGION_FILES) $(ZONE_FILES) $(UNIT_FILES) $(COLLATION_FILES) $(BRK_RES_FILES) $(RBNF_FILES) $(TRANSLIT_FILES) $(SPREP_FILES) $(CFU_FILES)
+ALL_INDEX_SRC_FILES = $(PKGDATA_LIST) $(INDEX_FILE) $(CURR_INDEX_FILE) $(LANG_INDEX_FILE) $(REGION_INDEX_FILE) $(ZONE_INDEX_FILE) $(UNIT_INDEX_FILE) $(COLLATION_INDEX_FILE) $(BRK_RES_INDEX_FILE) $(RBNF_INDEX_FILE)
 # a list to use in the .lst files (package-relative)
 COLL_FILES_LIST=$(COLLATION_FILES_SHORT) $(COLLATION_INDEX_RES_SHORT)
 BRK_FILES_LIST=$(BRK_FILES_SHORT) $(BRK_RES_FILES_SHORT) $(BRK_RES_INDEX_RES_SHORT) $(DICT_FILES_SHORT)
-LOCALE_FILES_LIST= $(RES_FILES_SHORT) $(LANG_FILES_SHORT) $(REGION_FILES_SHORT) $(ZONE_FILES_SHORT)
+LOCALE_FILES_LIST= $(RES_FILES_SHORT) $(LANG_FILES_SHORT) $(REGION_FILES_SHORT) $(ZONE_FILES_SHORT) $(UNIT_FILES_SHORT)
 MISC_FILES_LIST=$(DAT_FILES_SHORT) $(CNV_FILES_SHORT) $(CNV_FILES_SHORT_SPECIAL) $(CURR_FILES_SHORT) $(RBNF_FILES_SHORT) $(RBNF_INDEX_RES_SHORT) $(TRANSLIT_FILES_SHORT) $(SPREP_FILES_SHORT) $(CFU_FILES_SHORT)
-UNI_CORE_DATA=pnames.icu uprops.icu ucase.icu ubidi.icu
+UNI_CORE_DATA=pnames.icu uprops.icu ucase.icu ubidi.icu nfc.nrm
 UNI_CORE_TARGET_DATA=$(UNI_CORE_DATA:%=$(BUILDDIR)/%)
 
 ifneq ($(INCLUDE_UNI_CORE_DATA),)
 MISC_FILES_LIST+=$(UNI_CORE_DATA)
 build-local: uni-core-data
+	echo timestamp > $@
 endif
 
 #####################################################
 # General data build rules
 
 ## Files to remove for 'make clean'
-CLEANFILES = *~ icupkg.inc
+CLEANFILES = *~ icupkg.inc *.x
 
 ifeq ($(ICUDATA_SOURCE_ARCHIVE),)
 build-local: build-dir $(SO_VERSION_DATA) $(ALL_FILES) $(PKGDATA_LIST) $(OS390LIST)
+	echo timestamp > $@
 $(PKGDATA_LIST): $(SRCLISTDEPS)
 	@echo "generating $@ (list of data files)"
 	@-$(RMV) $@
@@ -466,6 +485,7 @@ $(PKGDATA_LIST): $(SRCLISTDEPS)
 	done;
 else
 build-local: build-dir $(SO_VERSION_DATA) $(PKGDATA_LIST) $(OS390LIST)
+	echo timestamp > $@
 $(PKGDATA_LIST): $(SRCLISTDEPS) $(ICUDATA_SOURCE_ARCHIVE)
 ifneq ($(ICUDATA_SOURCE_IS_NATIVE_TARGET),YES)
 	@echo "Unpacking $(ICUDATA_SOURCE_ARCHIVE) and generating $@ (list of data files)"
@@ -480,6 +500,8 @@ endif
 $(BUILD_DIRS): build-dir
 
 build-dir:
+	@-$(RMV) $@
+	echo timestamp > $@.tmp
 	@list='$(BUILD_DIRS)'; \
 	for dir in $$list; do \
 	  if ! test -d $$dir; then \
@@ -487,6 +509,7 @@ build-dir:
 	    $(MKINSTALLDIRS) $(BUILD_DIRS); \
 	  fi; \
 	done
+	mv $@.tmp $@
 
 # The | is an order-only prerequisite. This helps when the -j option is used,
 # and we don't want the files to be built before the directories are built.
@@ -510,7 +533,14 @@ $(BUILDDIR)/%.icu: $(SRCDATADIR)/in/%.icu
 $(BUILDDIR)/%.nrm: $(SRCDATADIR)/in/%.nrm
 	$(INVOKE) $(TOOLBINDIR)/icupkg -t$(ICUDATA_CHAR) $< $@
 
-$(BUILDDIR)/coll/%.icu: $(SRCDATADIR)/in/coll/%.icu
+# Chromium: To cut down the data size by 280kB,
+# use the code point order for CJK Ideographs in non-CJK locales instead
+# of the UniHan radical-stroke order. The latter is better, but non-CJK
+# locales do not have a great need for sorting CJK Ideographs.
+# Moreover, the most common subset (the original CJK Ideograph block) will
+# still be sorted correctly because the code point order is radical-stroke
+# order.
+$(BUILDDIR)/coll/ucadata.icu: $(SRCDATADIR)/in/coll/ucadata-implicithan.icu
 	$(INVOKE) $(TOOLBINDIR)/icupkg -t$(ICUDATA_CHAR) $< $@
 
 ####################################################    SPP
@@ -538,6 +568,9 @@ $(BRKBLDDIR)/thaidict.dict: $(TOOLBINDIR)/gendict$(TOOLEXEEXT) $(DAT_FILES)
 
 $(BRKBLDDIR)/laodict.dict: $(TOOLBINDIR)/gendict$(TOOLEXEEXT) $(DAT_FILES)
 	$(INVOKE) $(TOOLBINDIR)/gendict --bytes --transform offset-0x0e80 -c -i $(BUILDDIR) $(BRKSRCDIR)/laodict.txt $(BRKBLDDIR)/laodict.dict
+
+$(BRKBLDDIR)/burmesedict.dict: $(TOOLBINDIR)/gendict$(TOOLEXEEXT) $(DAT_FILES)
+	$(INVOKE) $(TOOLBINDIR)/gendict --bytes --transform offset-0x1000 -c -i $(BUILDDIR) $(BRKSRCDIR)/burmesedict.txt $(BRKBLDDIR)/burmesedict.dict
 
 # TODO: figure out why combining characters are here?
 $(BRKBLDDIR)/khmerdict.dict: $(TOOLBINDIR)/gendict$(TOOLEXEEXT) $(DAT_FILES)
@@ -658,6 +691,30 @@ $(ZONE_INDEX_FILE): $(SRCLISTDEPS)
 	echo "$(INDEX_NAME):table(nofallback) {" >> $@; \
 	echo "    InstalledLocales {" >> $@; \
 	for file in $(INSTALLED_ZONE_FILES); do \
+	  echo "        $$file {\"\"}" >> $@; \
+	done; \
+	echo "    }" >> $@; \
+	echo "}" >> $@;
+
+### unit res
+$(UNITBLDDIR)/%.res: $(UNITSRCDIR)/%.txt  $(TOOLBINDIR)/genrb$(TOOLEXEEXT) $(DAT_FILES)
+	$(INVOKE) $(TOOLBINDIR)/genrb --usePoolBundle $(GENRBOPTS) -i $(BUILDDIR) -s $(UNITSRCDIR) -d $(UNITBLDDIR) $(<F)
+
+# copy the unit/pool.res file from the source folder to the build output folder
+# and swap it to native endianness
+$(UNITBLDDIR)/pool.res: $(UNITSRCDIR)/pool.res
+	$(INVOKE) $(TOOLBINDIR)/icupkg -t$(ICUDATA_CHAR) $(UNITSRCDIR)/pool.res $(UNITBLDDIR)/pool.res
+
+$(UNITBLDDIR)/$(INDEX_NAME).res: $(OUTTMPDIR)/$(UNIT_TREE)/$(INDEX_NAME).txt $(TOOLBINDIR)/genrb$(TOOLEXEEXT)
+	$(INVOKE) $(TOOLBINDIR)/genrb $(GENRBOPTS) -i $(BUILDDIR) -s $(OUTTMPDIR)/$(UNIT_TREE) -d $(UNITBLDDIR) $(INDEX_NAME).txt
+
+$(UNIT_INDEX_FILE): $(SRCLISTDEPS)
+	@echo "generating $@ (list of installed time zone name locales)"; \
+	$(RMV) $@; \
+	echo "// Warning this file is automatically generated" > $@; \
+	echo "$(INDEX_NAME):table(nofallback) {" >> $@; \
+	echo "    InstalledLocales {" >> $@; \
+	for file in $(INSTALLED_UNIT_FILES); do \
 	  echo "        $$file {\"\"}" >> $@; \
 	done; \
 	echo "    }" >> $@; \
@@ -790,6 +847,7 @@ $(BUILDDIR)/$(INDEX_NAME).res: $(INDEX_FILE) $(TOOLBINDIR)/genrb$(TOOLEXEEXT)
 # when updating the Unicode data.
 uni-core-data: build-dir $(UNI_CORE_TARGET_DATA)
 	@echo Unicode .icu files built to $(BUILDDIR)
+	echo timestamp > $@
 
 # Build the ICU4J icudata.jar.
 # Command line:
@@ -810,7 +868,7 @@ ICU4J_TZDATA_PATHS=$(ICU4J_TZDATA_FILES:%="$(ICU4J_DATA_DIRNAME)/%.res")
 generate-data: build-dir packagedata $(OUTTMPDIR)/$(ICUDATA_PLATFORM_NAME).dat uni-core-data
 	mkdir -p $(OUTDIR)/icu4j/$(ICU4J_DATA_DIRNAME)
 	mkdir -p $(OUTDIR)/icu4j/tzdata/$(ICU4J_DATA_DIRNAME)
-	echo pnames.icu ubidi.icu ucase.icu uprops.icu > $(OUTDIR)/icu4j/add.txt
+	echo $(UNI_CORE_DATA) > $(OUTDIR)/icu4j/add.txt
 	$(INVOKE) $(TOOLBINDIR)/icupkg $(OUTTMPDIR)/$(ICUDATA_PLATFORM_NAME).dat $(OUTDIR)/icu4j/$(ICUDATA_BASENAME_VERSION)b.dat -a $(OUTDIR)/icu4j/add.txt -s $(BUILDDIR) -x '*' -tb -d $(OUTDIR)/icu4j/$(ICU4J_DATA_DIRNAME)
 	mv $(ICU4J_TZDATA_PATHS:%=$(OUTDIR)/icu4j/%) "$(OUTDIR)/icu4j/tzdata/$(ICU4J_DATA_DIRNAME)"
 

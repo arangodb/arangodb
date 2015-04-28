@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/mt.xml
@@ -13,24 +13,19 @@ mt{
     Currencies{
         EUR{
             "€",
-            "Ewro",
+            "ewro",
         }
-        MTL{
-            "MTL",
-            "Lira Maltija",
-        }
-        XXX{
-            "XXX",
-            "Munita Mhux Magħrufa jew Mhux Valida",
-        }
+    }
+    Currencies%narrow{
+        EUR{"€"}
     }
     CurrencyPlurals{
-        XXX{
-            few{"Munita Mhux Magħruf jew Mhux Validu"}
-            many{"Munita Mhux Magħruf jew Mhux Validu"}
-            one{"Munita Mhux Magħruf jew Mhux Validu"}
-            other{"Munita Mhux Magħruf jew Mhux Validu"}
+        EUR{
+            few{"ewro"}
+            many{"ewro"}
+            one{"ewro"}
+            other{"ewro"}
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.22"}
 }

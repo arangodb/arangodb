@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-* Copyright (C) 1999-2013, International Business Machines Corporation and
+* Copyright (C) 1999-2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 ******************************************************************************
 *
@@ -459,12 +459,12 @@ UnicodeString::fastCopyFrom(const UnicodeString &src) {
 UnicodeString &
 UnicodeString::copyFrom(const UnicodeString &src, UBool fastCopy) {
   // if assigning to ourselves, do nothing
-  if(this == 0 || this == &src) {
+  if(this == &src) {
     return *this;
   }
 
   // is the right side bogus?
-  if(&src == 0 || src.isBogus()) {
+  if(src.isBogus()) {
     setToBogus();
     return *this;
   }

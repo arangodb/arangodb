@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2000-2002, International Business Machines
+*   Copyright (C) 2000-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -24,8 +24,6 @@
 #include "unicode/ustring.h"
 #include "unicode/ucnv.h"
 #include "unicode/unistr.h"
-
-#define LENGTHOF(array) (sizeof(array)/sizeof((array)[0]))
 
 // helper functions -------------------------------------------------------- ***
 
@@ -107,8 +105,8 @@ demo_utf_h_macros() {
 
     printf("\n* demo_utf_h_macros() -------------- ***\n\n");
 
-    printUString("iterate forward through: ", input, LENGTHOF(input));
-    for(i=0; i<LENGTHOF(input); /* U16_NEXT post-increments */) {
+    printUString("iterate forward through: ", input, UPRV_LENGTHOF(input));
+    for(i=0; i<UPRV_LENGTHOF(input); /* U16_NEXT post-increments */) {
         /* Iterating forwards 
            Codepoint at offset 0: U+0061
            Codepoint at offset 1: U+10000
@@ -116,7 +114,7 @@ demo_utf_h_macros() {
            Codepoint at offset 5: U+0062
         */
         printf("Codepoint at offset %d: U+", i);
-        U16_NEXT(input, i, LENGTHOF(input), c);
+        U16_NEXT(input, i, UPRV_LENGTHOF(input), c);
         printf("%04x\n", c); 
     }
 
@@ -124,10 +122,10 @@ demo_utf_h_macros() {
 
     isError=FALSE;
     i=1; /* write position, gets post-incremented so needs to be in an l-value */
-    U16_APPEND(input, i, LENGTHOF(input), 0x0062, isError);
+    U16_APPEND(input, i, UPRV_LENGTHOF(input), 0x0062, isError);
 
-    printUString("iterate backward through: ", input, LENGTHOF(input));
-    for(i=LENGTHOF(input); i>0; /* U16_PREV pre-decrements */) {
+    printUString("iterate backward through: ", input, UPRV_LENGTHOF(input));
+    for(i=UPRV_LENGTHOF(input); i>0; /* U16_PREV pre-decrements */) {
         U16_PREV(input, 0, i, c);
         /* Iterating backwards
            Codepoint at offset 5: U+0062
@@ -214,57 +212,57 @@ static void demoCaseMapInC() {
 
     /* uppercase */
     isError=FALSE;
-    for(i=j=0; j<LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
+    for(i=j=0; j<UPRV_LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
         U16_NEXT(input, i, INT32_MAX, c); /* without length because NUL-terminated */
         if(c==0) {
             break; /* stop at terminating NUL, no need to terminate buffer */
         }
         c=u_toupper(c);
-        U16_APPEND(buffer, j, LENGTHOF(buffer), c, isError);
+        U16_APPEND(buffer, j, UPRV_LENGTHOF(buffer), c, isError);
     }
     printUString("simple-uppercased: ", buffer, j);
     /* lowercase */
     isError=FALSE;
-    for(i=j=0; j<LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
+    for(i=j=0; j<UPRV_LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
         U16_NEXT(input, i, INT32_MAX, c); /* without length because NUL-terminated */
         if(c==0) {
             break; /* stop at terminating NUL, no need to terminate buffer */
         }
         c=u_tolower(c);
-        U16_APPEND(buffer, j, LENGTHOF(buffer), c, isError);
+        U16_APPEND(buffer, j, UPRV_LENGTHOF(buffer), c, isError);
     }
     printUString("simple-lowercased: ", buffer, j);
     /* titlecase */
     isError=FALSE;
-    for(i=j=0; j<LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
+    for(i=j=0; j<UPRV_LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
         U16_NEXT(input, i, INT32_MAX, c); /* without length because NUL-terminated */
         if(c==0) {
             break; /* stop at terminating NUL, no need to terminate buffer */
         }
         c=u_totitle(c);
-        U16_APPEND(buffer, j, LENGTHOF(buffer), c, isError);
+        U16_APPEND(buffer, j, UPRV_LENGTHOF(buffer), c, isError);
     }
     printUString("simple-titlecased: ", buffer, j);
     /* case-fold/default */
     isError=FALSE;
-    for(i=j=0; j<LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
+    for(i=j=0; j<UPRV_LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
         U16_NEXT(input, i, INT32_MAX, c); /* without length because NUL-terminated */
         if(c==0) {
             break; /* stop at terminating NUL, no need to terminate buffer */
         }
         c=u_foldCase(c, U_FOLD_CASE_DEFAULT);
-        U16_APPEND(buffer, j, LENGTHOF(buffer), c, isError);
+        U16_APPEND(buffer, j, UPRV_LENGTHOF(buffer), c, isError);
     }
     printUString("simple-case-folded/default: ", buffer, j);
     /* case-fold/Turkic */
     isError=FALSE;
-    for(i=j=0; j<LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
+    for(i=j=0; j<UPRV_LENGTHOF(buffer) && !isError; /* U16_NEXT post-increments */) {
         U16_NEXT(input, i, INT32_MAX, c); /* without length because NUL-terminated */
         if(c==0) {
             break; /* stop at terminating NUL, no need to terminate buffer */
         }
         c=u_foldCase(c, U_FOLD_CASE_EXCLUDE_SPECIAL_I);
-        U16_APPEND(buffer, j, LENGTHOF(buffer), c, isError);
+        U16_APPEND(buffer, j, UPRV_LENGTHOF(buffer), c, isError);
     }
     printUString("simple-case-folded/Turkic: ", buffer, j);
 
@@ -285,7 +283,7 @@ static void demoCaseMapInC() {
 
     /* lowercase/English */
     errorCode=U_ZERO_ERROR;
-    length=u_strToLower(buffer, LENGTHOF(buffer), input, -1, "en", &errorCode);
+    length=u_strToLower(buffer, UPRV_LENGTHOF(buffer), input, -1, "en", &errorCode);
     if(U_SUCCESS(errorCode)) {
         printUString("full-lowercased/en: ", buffer, length);
     } else {
@@ -293,7 +291,7 @@ static void demoCaseMapInC() {
     }
     /* lowercase/Turkish */
     errorCode=U_ZERO_ERROR;
-    length=u_strToLower(buffer, LENGTHOF(buffer), input, -1, "tr", &errorCode);
+    length=u_strToLower(buffer, UPRV_LENGTHOF(buffer), input, -1, "tr", &errorCode);
     if(U_SUCCESS(errorCode)) {
         printUString("full-lowercased/tr: ", buffer, length);
     } else {
@@ -301,7 +299,7 @@ static void demoCaseMapInC() {
     }
     /* uppercase/English */
     errorCode=U_ZERO_ERROR;
-    length=u_strToUpper(buffer, LENGTHOF(buffer), input, -1, "en", &errorCode);
+    length=u_strToUpper(buffer, UPRV_LENGTHOF(buffer), input, -1, "en", &errorCode);
     if(U_SUCCESS(errorCode)) {
         printUString("full-uppercased/en: ", buffer, length);
     } else {
@@ -309,7 +307,7 @@ static void demoCaseMapInC() {
     }
     /* uppercase/Turkish */
     errorCode=U_ZERO_ERROR;
-    length=u_strToUpper(buffer, LENGTHOF(buffer), input, -1, "tr", &errorCode);
+    length=u_strToUpper(buffer, UPRV_LENGTHOF(buffer), input, -1, "tr", &errorCode);
     if(U_SUCCESS(errorCode)) {
         printUString("full-uppercased/tr: ", buffer, length);
     } else {
@@ -317,7 +315,7 @@ static void demoCaseMapInC() {
     }
     /* titlecase/English */
     errorCode=U_ZERO_ERROR;
-    length=u_strToTitle(buffer, LENGTHOF(buffer), input, -1, NULL, "en", &errorCode);
+    length=u_strToTitle(buffer, UPRV_LENGTHOF(buffer), input, -1, NULL, "en", &errorCode);
     if(U_SUCCESS(errorCode)) {
         printUString("full-titlecased/en: ", buffer, length);
     } else {
@@ -325,7 +323,7 @@ static void demoCaseMapInC() {
     }
     /* titlecase/Turkish */
     errorCode=U_ZERO_ERROR;
-    length=u_strToTitle(buffer, LENGTHOF(buffer), input, -1, NULL, "tr", &errorCode);
+    length=u_strToTitle(buffer, UPRV_LENGTHOF(buffer), input, -1, NULL, "tr", &errorCode);
     if(U_SUCCESS(errorCode)) {
         printUString("full-titlecased/tr: ", buffer, length);
     } else {
@@ -333,7 +331,7 @@ static void demoCaseMapInC() {
     }
     /* case-fold/default */
     errorCode=U_ZERO_ERROR;
-    length=u_strFoldCase(buffer, LENGTHOF(buffer), input, -1, U_FOLD_CASE_DEFAULT, &errorCode);
+    length=u_strFoldCase(buffer, UPRV_LENGTHOF(buffer), input, -1, U_FOLD_CASE_DEFAULT, &errorCode);
     if(U_SUCCESS(errorCode)) {
         printUString("full-case-folded/default: ", buffer, length);
     } else {
@@ -341,7 +339,7 @@ static void demoCaseMapInC() {
     }
     /* case-fold/Turkic */
     errorCode=U_ZERO_ERROR;
-    length=u_strFoldCase(buffer, LENGTHOF(buffer), input, -1, U_FOLD_CASE_EXCLUDE_SPECIAL_I, &errorCode);
+    length=u_strFoldCase(buffer, UPRV_LENGTHOF(buffer), input, -1, U_FOLD_CASE_EXCLUDE_SPECIAL_I, &errorCode);
     if(U_SUCCESS(errorCode)) {
         printUString("full-case-folded/Turkic: ", buffer, length);
     } else {
@@ -428,11 +426,11 @@ demoUnicodeStringStorage() {
     printf("length of short string copy: %d\n", two.length());
     // set "one" to contain the 3 UChars from readonly
     // this setTo() variant copies the characters
-    one.setTo(readonly, LENGTHOF(readonly));
+    one.setTo(readonly, UPRV_LENGTHOF(readonly));
 
     // * UnicodeString with allocated contents
     // build a longer string that will not fit into the object's buffer
-    one+=UnicodeString(writeable, LENGTHOF(writeable));
+    one+=UnicodeString(writeable, UPRV_LENGTHOF(writeable));
     one+=one;
     one+=one;
     printf("length of longer string: %d\n", one.length());
@@ -443,7 +441,7 @@ demoUnicodeStringStorage() {
 
     // * UnicodeString using readonly-alias to a const UChar array
     // construct a string that aliases a readonly buffer
-    UnicodeString three(FALSE, readonly, LENGTHOF(readonly));
+    UnicodeString three(FALSE, readonly, UPRV_LENGTHOF(readonly));
     printUnicodeString("readonly-alias string: ", three);
     // copy-on-write: any modification to the string results in
     // a copy to either the internal buffer or to a newly allocated one
@@ -455,7 +453,7 @@ demoUnicodeStringStorage() {
                i, readonly[i]);
     }
     // setTo() readonly alias
-    one.setTo(FALSE, writeable, LENGTHOF(writeable));
+    one.setTo(FALSE, writeable, UPRV_LENGTHOF(writeable));
     // copying the readonly-alias object with fastCopyFrom() (new in ICU 2.4)
     // will readonly-alias the same buffer
     two.fastCopyFrom(one);
@@ -468,7 +466,7 @@ demoUnicodeStringStorage() {
         one.getBuffer()==two.getBuffer());
 
     // * UnicodeString using writeable-alias to a non-const UChar array
-    UnicodeString four(writeable, LENGTHOF(writeable), LENGTHOF(writeable));
+    UnicodeString four(writeable, UPRV_LENGTHOF(writeable), UPRV_LENGTHOF(writeable));
     printUnicodeString("writeable-alias string: ", four);
     // a modification writes through to the buffer
     four.setCharAt(1, 0x39);
@@ -485,7 +483,7 @@ demoUnicodeStringStorage() {
                "modification of string copy\n", i, writeable[i]);
     }
     // setTo() writeable alias, capacity==length
-    one.setTo(writeable, LENGTHOF(writeable), LENGTHOF(writeable));
+    one.setTo(writeable, UPRV_LENGTHOF(writeable), UPRV_LENGTHOF(writeable));
     // grow the string - it will not fit into the backing buffer any more
     // and will get copied before modification
     one.append((UChar)0x40);
@@ -499,13 +497,13 @@ demoUnicodeStringStorage() {
     // if we need it in the original buffer, then extract() to it
     // extract() does not do anything if the string aliases that same buffer
     // i=min(one.length(), length of array)
-    if(one.length()<LENGTHOF(writeable)) {
+    if(one.length()<UPRV_LENGTHOF(writeable)) {
         i=one.length();
     } else {
-        i=LENGTHOF(writeable);
+        i=UPRV_LENGTHOF(writeable);
     }
     one.extract(0, i, writeable);
-    for(i=0; i<LENGTHOF(writeable); ++i) {
+    for(i=0; i<UPRV_LENGTHOF(writeable); ++i) {
         printf("writeable-alias backing buffer[%d]=0x%lx after re-extract\n",
                i, writeable[i]);
     }
@@ -568,7 +566,7 @@ demoUnicodeStringInit() {
     int32_t length;
     length=u_unescape(
         "Sch\\u00f6nes Auto: \\u20ac 11240.\\fPrivates Zeichen: \\U00102345\\n",
-        buffer, LENGTHOF(buffer));
+        buffer, UPRV_LENGTHOF(buffer));
     printf("german C Unicode string from char * unescaping: (length %d)\n    ", length);
     printUnicodeString("", UnicodeString(buffer));
 }

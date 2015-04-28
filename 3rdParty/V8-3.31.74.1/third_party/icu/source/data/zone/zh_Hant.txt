@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zh_Hant.xml
@@ -11,7 +11,7 @@
  */
 zh_Hant{
     %%Parent{"root"}
-    Version{"2.0.93.8"}
+    Version{"2.1.8.95"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"阿比讓"}
@@ -206,7 +206,7 @@ zh_Hant{
             ec{"烏斯懷亞"}
         }
         "America:Aruba"{
-            ec{"阿魯巴"}
+            ec{"阿路巴"}
         }
         "America:Asuncion"{
             ec{"亞松森"}
@@ -248,7 +248,7 @@ zh_Hant{
             ec{"格蘭場"}
         }
         "America:Cancun"{
-            ec{"康庫"}
+            ec{"坎昆"}
         }
         "America:Caracas"{
             ec{"卡拉卡斯"}
@@ -290,10 +290,10 @@ zh_Hant{
             ec{"丹馬沙文"}
         }
         "America:Dawson"{
-            ec{"道生河"}
+            ec{"道森"}
         }
         "America:Dawson_Creek"{
-            ec{"道生灣"}
+            ec{"道森克里克"}
         }
         "America:Denver"{
             ec{"丹佛"}
@@ -332,7 +332,7 @@ zh_Hant{
             ec{"格瑞納達"}
         }
         "America:Guadeloupe"{
-            ec{"瓜德羅普"}
+            ec{"瓜地洛普"}
         }
         "America:Guatemala"{
             ec{"瓜地馬拉"}
@@ -341,7 +341,7 @@ zh_Hant{
             ec{"瓜亞基爾"}
         }
         "America:Guyana"{
-            ec{"圭亞那"}
+            ec{"蓋亞那"}
         }
         "America:Halifax"{
             ec{"哈里法克斯"}
@@ -359,7 +359,7 @@ zh_Hant{
             ec{"印第安那州馬倫哥"}
         }
         "America:Indiana:Petersburg"{
-            ec{"彼得堡，印第安那州"}
+            ec{"印第安那州彼得堡"}
         }
         "America:Indiana:Tell_City"{
             ec{"印第安那州泰爾城"}
@@ -371,7 +371,7 @@ zh_Hant{
             ec{"印第安那州溫森斯"}
         }
         "America:Indiana:Winamac"{
-            ec{"威納麥克，印第安那州"}
+            ec{"印第安那州威納馬克"}
         }
         "America:Indianapolis"{
             ec{"印第安那波里斯"}
@@ -416,7 +416,7 @@ zh_Hant{
             ec{"馬瑟歐"}
         }
         "America:Managua"{
-            ec{"馬那瓜"}
+            ec{"馬拿瓜"}
         }
         "America:Manaus"{
             ec{"瑪瑙斯"}
@@ -460,11 +460,8 @@ zh_Hant{
         "America:Montevideo"{
             ec{"蒙特維多"}
         }
-        "America:Montreal"{
-            ec{"蒙特婁"}
-        }
         "America:Montserrat"{
-            ec{"蒙賽拉特"}
+            ec{"蒙哲臘"}
         }
         "America:Nassau"{
             ec{"拿索"}
@@ -485,7 +482,7 @@ zh_Hant{
             ec{"北達科他州布由拉"}
         }
         "America:North_Dakota:Center"{
-            ec{"申特城"}
+            ec{"北達科他州中心"}
         }
         "America:North_Dakota:New_Salem"{
             ec{"北達科他州紐沙倫"}
@@ -553,9 +550,6 @@ zh_Hant{
         "America:Scoresbysund"{
             ec{"伊托科爾托米特"}
         }
-        "America:Shiprock"{
-            ec{"船岩峰"}
-        }
         "America:Sitka"{
             ec{"錫特卡"}
         }
@@ -620,7 +614,7 @@ zh_Hant{
             ec{"戴維斯"}
         }
         "Antarctica:DumontDUrville"{
-            ec{"杜蒙杜爾維爾"}
+            ec{"杜蒙杜比爾"}
         }
         "Antarctica:Macquarie"{
             ec{"麥覺理"}
@@ -637,14 +631,14 @@ zh_Hant{
         "Antarctica:Rothera"{
             ec{"羅瑟拉"}
         }
-        "Antarctica:South_Pole"{
-            ec{"南極"}
-        }
         "Antarctica:Syowa"{
-            ec{"昭和"}
+            ec{"昭和基地"}
+        }
+        "Antarctica:Troll"{
+            ec{"綽爾"}
         }
         "Antarctica:Vostok"{
-            ec{"莫斯托克"}
+            ec{"沃斯托克"}
         }
         "Arctic:Longyearbyen"{
             ec{"隆意耳拜恩"}
@@ -764,7 +758,7 @@ zh_Hant{
             ec{"堪地加"}
         }
         "Asia:Krasnoyarsk"{
-            ec{"克拉斯諾雅斯克"}
+            ec{"克拉斯諾亞爾斯克"}
         }
         "Asia:Kuala_Lumpur"{
             ec{"吉隆坡"}
@@ -788,7 +782,7 @@ zh_Hant{
             ec{"馬尼拉"}
         }
         "Asia:Muscat"{
-            ec{"阿曼"}
+            ec{"馬斯喀特"}
         }
         "Asia:Nicosia"{
             ec{"尼古西亞"}
@@ -846,6 +840,12 @@ zh_Hant{
         }
         "Asia:Taipei"{
             ec{"台北"}
+            ld{"台北夏令時間"}
+            lg{"台北時間"}
+            ls{"台北標準時間"}
+            sd{"台北"}
+            sg{"台北"}
+            ss{"台北"}
         }
         "Asia:Tashkent"{
             ec{"塔什干"}
@@ -993,7 +993,7 @@ zh_Hant{
         }
         "Europe:Dublin"{
             ec{"都柏林"}
-            ld{"愛爾蘭夏令時間"}
+            ld{"愛爾蘭標準時間"}
         }
         "Europe:Gibraltar"{
             ec{"直布羅陀"}
@@ -1225,7 +1225,7 @@ zh_Hant{
             ec{"諾魯"}
         }
         "Pacific:Niue"{
-            ec{"紐埃"}
+            ec{"紐埃島"}
         }
         "Pacific:Norfolk"{
             ec{"諾福克"}
@@ -1240,7 +1240,7 @@ zh_Hant{
             ec{"帛琉"}
         }
         "Pacific:Pitcairn"{
-            ec{"匹特開恩群島"}
+            ec{"皮特肯群島"}
         }
         "Pacific:Ponape"{
             ec{"波納佩"}
@@ -1333,6 +1333,11 @@ zh_Hant{
             ld{"阿那底河夏令時間"}
             lg{"阿納德爾時間"}
             ls{"阿那底河標準時間"}
+        }
+        "meta:Apia"{
+            ld{"阿皮亞夏令時間"}
+            lg{"阿皮亞時間"}
+            ls{"阿皮亞標準時間"}
         }
         "meta:Aqtau"{
             ld{"阿克陶夏令時間"}
@@ -1453,7 +1458,7 @@ zh_Hant{
             ls{"聖誕島時間"}
         }
         "meta:Cocos"{
-            ls{"可可斯群島時間"}
+            ls{"科科斯群島時間"}
         }
         "meta:Colombia"{
             ld{"哥倫比亞夏令時間"}
@@ -1497,6 +1502,9 @@ zh_Hant{
             lg{"東歐時間"}
             ls{"東歐標準時間"}
         }
+        "meta:Europe_Further_Eastern"{
+            ls{"歐洲遠東時間"}
+        }
         "meta:Europe_Western"{
             ld{"西歐夏令時間"}
             lg{"西歐時間"}
@@ -1522,7 +1530,7 @@ zh_Hant{
             ls{"格林威治標準時間"}
         }
         "meta:Galapagos"{
-            ls{"加拉帕戈群島時間"}
+            ls{"加拉巴哥群島時間"}
         }
         "meta:Gambier"{
             ls{"甘比爾群島時間"}
@@ -1552,7 +1560,7 @@ zh_Hant{
             ls{"波斯灣海域標準時間"}
         }
         "meta:Guyana"{
-            ls{"蓋亞納時間"}
+            ls{"蓋亞那時間"}
         }
         "meta:Hawaii_Aleutian"{
             ld{"夏威夷-阿留申夏令時間"}
@@ -1665,7 +1673,7 @@ zh_Hant{
             ls{"馬爾地夫時間"}
         }
         "meta:Marquesas"{
-            ls{"馬克沙斯時間"}
+            ls{"馬可薩斯時間"}
         }
         "meta:Marshall_Islands"{
             ls{"馬紹爾群島時間"}
@@ -1677,6 +1685,16 @@ zh_Hant{
         }
         "meta:Mawson"{
             ls{"莫森時間"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"墨西哥西北部夏令時間"}
+            lg{"墨西哥西北部時間"}
+            ls{"墨西哥西北部標準時間"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"墨西哥太平洋夏令時間"}
+            lg{"墨西哥太平洋時間"}
+            ls{"墨西哥太平洋標準時間"}
         }
         "meta:Mongolia"{
             ld{"烏蘭巴托夏令時間"}
@@ -1713,7 +1731,7 @@ zh_Hant{
             ls{"紐芬蘭標準時間"}
         }
         "meta:Niue"{
-            ls{"紐威島時間"}
+            ls{"紐埃島時間"}
         }
         "meta:Norfolk"{
             ls{"諾福克島時間"}
@@ -1733,7 +1751,7 @@ zh_Hant{
         }
         "meta:Omsk"{
             ld{"鄂木斯克夏令時間"}
-            lg{"鄂木斯科時間"}
+            lg{"鄂木斯克時間"}
             ls{"鄂木斯克標準時間"}
         }
         "meta:Pakistan"{
@@ -1771,7 +1789,7 @@ zh_Hant{
             ls{"聖皮埃爾和密克隆群島標準時間"}
         }
         "meta:Pitcairn"{
-            ls{"皮特康時間"}
+            ls{"皮特肯時間"}
         }
         "meta:Ponape"{
             ls{"波納佩時間"}
@@ -1785,7 +1803,7 @@ zh_Hant{
             ls{"留尼旺時間"}
         }
         "meta:Rothera"{
-            ls{"羅西拉時間"}
+            ls{"羅瑟拉時間"}
         }
         "meta:Sakhalin"{
             ld{"庫頁島夏令時間"}
@@ -1823,14 +1841,10 @@ zh_Hant{
         "meta:Tahiti"{
             ls{"大溪地時間"}
         }
-        // Chromium patch: Add short names.
         "meta:Taipei"{
             ld{"台北夏令時間"}
             lg{"台北時間"}
             ls{"台北標準時間"}
-            sd{"台北"}
-            sg{"台北"}
-            ss{"台北"}
         }
         "meta:Tajikistan"{
             ls{"塔吉克時間"}
@@ -1889,7 +1903,7 @@ zh_Hant{
             ls{"威克島時間"}
         }
         "meta:Wallis"{
-            ls{"瓦利斯和福杜納群島時間"}
+            ls{"瓦利斯和富圖納群島時間"}
         }
         "meta:Yakutsk"{
             ld{"雅庫次克夏令時間"}

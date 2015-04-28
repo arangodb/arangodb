@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ca.xml
@@ -22,7 +22,6 @@ ca{
         be{"bielorús"}
         bem{"bemba"}
         bg{"búlgar"}
-        bh{"bihari"}
         bn{"bengalí"}
         br{"bretó"}
         bs{"bosnià"}
@@ -101,7 +100,6 @@ ca{
         mk{"macedoni"}
         ml{"malaiàlam"}
         mn{"mongol"}
-        mo{"moldau"}
         mr{"marathi"}
         ms{"malai"}
         mt{"maltès"}
@@ -128,6 +126,7 @@ ca{
         rm{"retoromànic"}
         rn{"rundi"}
         ro{"romanès"}
+        ro_MD{"moldau"}
         ru{"rus"}
         rw{"ruandès"}
         sd{"sindhi"}
@@ -149,6 +148,7 @@ ca{
         th{"tailandès"}
         ti{"tigrinya"}
         tk{"turcman"}
+        tl{"tagàlog"}
         tn{"tswana"}
         to{"tongalès"}
         tr{"turc"}
@@ -168,6 +168,9 @@ ca{
         zh_Hans{"xinès simplificat"}
         zh_Hant{"xinès tradicional"}
         zu{"zulu"}
+    }
+    Languages%variant{
+        ps{"pushtu"}
     }
     LanguagesShort{
         az{"àzeri"}
@@ -200,7 +203,7 @@ ca{
         Copt{"copte"}
         Cprt{"xipriota"}
         Cyrl{"ciríl·lic"}
-        Cyrs{"ciríl·lic de l'antic eslau eclesiàstic"}
+        Cyrs{"ciríl·lic de l’antic eslau eclesiàstic"}
         Deva{"devanagari"}
         Dsrt{"deseret"}
         Dupl{"taquigrafia Duployé"}
@@ -227,7 +230,7 @@ ca{
         Hmng{"pahawh hmong"}
         Hrkt{"katakana o hiragana"}
         Hung{"hongarès antic"}
-        Inds{"escriptura de la vall de l'Indus"}
+        Inds{"escriptura de la vall de l’Indus"}
         Ital{"cursiva antiga"}
         Java{"javanès"}
         Jpan{"japonès"}
@@ -338,7 +341,10 @@ ca{
         Hans{"han simplificat"}
         Hant{"han tradicional"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"persoaràbic"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Idioma: {0}"}
         script{"Escriptura: {0}"}

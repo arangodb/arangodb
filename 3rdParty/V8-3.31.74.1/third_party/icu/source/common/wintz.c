@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 2005-2013, International Business Machines
+*   Copyright (C) 2005-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -17,8 +17,8 @@
 #include "cmemory.h"
 #include "cstring.h"
 
-#include "unicode/ustring.h"
 #include "unicode/ures.h"
+#include "unicode/ustring.h"
 
 #   define WIN32_LEAN_AND_MEAN
 #   define VC_EXTRALEAN
@@ -193,6 +193,30 @@ static LONG getSTDName(const char *winid, char *regStdName, int32_t length) {
     return result;
 }
 
+static LONG getTZKeyName(char* tzKeyName, int32_t length) {
+    HKEY hkey;
+    LONG result = FALSE;
+    DWORD cbData = length;
+
+    if(ERROR_SUCCESS == RegOpenKeyExA(
+        HKEY_LOCAL_MACHINE,
+        CURRENT_ZONE_REGKEY,
+        0, 
+        KEY_QUERY_VALUE,
+        &hkey))
+    {
+         result = RegQueryValueExA(
+             hkey,
+             "TimeZoneKeyName",
+             NULL,
+             NULL,
+             (LPBYTE)tzKeyName,
+             &cbData);
+    }
+
+    return result;
+}
+
 /*
   This code attempts to detect the Windows time zone, as set in the
   Windows Date and Time control panel.  It attempts to work on
@@ -250,19 +274,23 @@ uprv_detectWindowsTimeZone() {
     UErrorCode status = U_ZERO_ERROR;
     UResourceBundle* bundle = NULL;
     char* icuid = NULL;
-    UChar apiStd[MAX_LENGTH_ID];
     char apiStdName[MAX_LENGTH_ID];
     char regStdName[MAX_LENGTH_ID];
     char tmpid[MAX_LENGTH_ID];
     int32_t len;
     int id;
     int errorCode;
-    char ISOcode[3]; /* 2 letter iso code */
+    UChar ISOcodeW[3]; /* 2 letter iso code in UTF-16*/
+    char  ISOcodeA[3]; /* 2 letter iso code in ansi */
 
     LONG result;
     TZI tziKey;
     TZI tziReg;
     TIME_ZONE_INFORMATION apiTZI;
+
+    BOOL isVistaOrHigher;
+    BOOL tryPreVistaFallback;
+    OSVERSIONINFO osVerInfo;
 
     /* Obtain TIME_ZONE_INFORMATION from the API, and then convert it
        to TZI.  We could also interrogate the registry directly; we do
@@ -279,39 +307,35 @@ uprv_detectWindowsTimeZone() {
 
     /* Convert the wchar_t* standard name to char* */
     uprv_memset(apiStdName, 0, sizeof(apiStdName));
-    u_strFromWCS(apiStd, MAX_LENGTH_ID, NULL, apiTZI.StandardName, -1, &status);
-    u_austrncpy(apiStdName, apiStd, sizeof(apiStdName) - 1);
+    wcstombs(apiStdName, apiTZI.StandardName, MAX_LENGTH_ID);
 
     tmpid[0] = 0;
 
     id = GetUserGeoID(GEOCLASS_NATION);
-    errorCode = GetGeoInfoA(id,GEO_ISO2,ISOcode,3,0);
+    errorCode = GetGeoInfoW(id,GEO_ISO2,ISOcodeW,3,0);
+    u_strToUTF8(ISOcodeA, 3, NULL, ISOcodeW, 3, &status);
 
     bundle = ures_openDirect(NULL, "windowsZones", &status);
     ures_getByKey(bundle, "mapTimezones", bundle, &status);
 
-    /* Note: We get the winid not from static tables but from resource bundle. */
-    while (U_SUCCESS(status) && ures_hasNext(bundle)) {
-        UBool idFound = FALSE;
-        const char* winid;
-        UResourceBundle* winTZ = ures_getNextResource(bundle, NULL, &status);
-        if (U_FAILURE(status)) {
-            break;
-        }
-        winid = ures_getKey(winTZ);
-        result = getTZI(winid, &tziReg);
-
-        if (result == ERROR_SUCCESS) {
-            /* Windows alters the DaylightBias in some situations.
-               Using the bias and the rules suffices, so overwrite
-               these unreliable fields. */
-            tziKey.standardBias = tziReg.standardBias;
-            tziKey.daylightBias = tziReg.daylightBias;
-
-            if (uprv_memcmp((char *)&tziKey, (char*)&tziReg, sizeof(tziKey)) == 0) {
+    /*
+        Windows Vista+ provides us with a "TimeZoneKeyName" that is not localized
+        and can be used to directly map a name in our bundle. Try to use that first
+        if we're on Vista or higher
+    */
+    uprv_memset(&osVerInfo, 0, sizeof(osVerInfo));
+    osVerInfo.dwOSVersionInfoSize = sizeof(osVerInfo);
+    GetVersionEx(&osVerInfo);
+    isVistaOrHigher = osVerInfo.dwMajorVersion >= 6;	/* actually includes Windows Server 2008 as well, but don't worry about it */
+    tryPreVistaFallback = TRUE;
+    if(isVistaOrHigher) {
+        result = getTZKeyName(regStdName, sizeof(regStdName));
+        if(ERROR_SUCCESS == result) {
+            UResourceBundle* winTZ = ures_getByKey(bundle, regStdName, NULL, &status);
+            if(U_SUCCESS(status)) {
                 const UChar* icuTZ = NULL;
                 if (errorCode != 0) {
-                    icuTZ = ures_getStringByKey(winTZ, ISOcode, &len, &status);
+                    icuTZ = ures_getStringByKey(winTZ, ISOcodeA, &len, &status);
                 }
                 if (errorCode==0 || icuTZ==NULL) {
                     /* fallback to default "001" and reset status */
@@ -319,35 +343,79 @@ uprv_detectWindowsTimeZone() {
                     icuTZ = ures_getStringByKey(winTZ, "001", &len, &status);
                 }
 
-                if (U_SUCCESS(status)) {
-                    /* Get the standard name from the registry key to compare with
-                       the one from Windows API call. */
-                    uprv_memset(regStdName, 0, sizeof(regStdName));
-                    result = getSTDName(winid, regStdName, sizeof(regStdName));
-                    if (result == ERROR_SUCCESS) {
-                        if (uprv_strcmp(apiStdName, regStdName) == 0) {
-                            idFound = TRUE;
-                        }
+                if(U_SUCCESS(status)) {
+                    int index=0;
+                    while (! (*icuTZ == '\0' || *icuTZ ==' ')) {
+                        tmpid[index++]=(char)(*icuTZ++);  /* safe to assume 'char' is ASCII compatible on windows */
                     }
-
-                    /* tmpid buffer holds the ICU timezone ID corresponding to the timezone ID from Windows.
-                     * If none is found, tmpid buffer will contain a fallback ID (i.e. the time zone ID matching
-                     * the current time zone information)
-                     */
-                    if (idFound || tmpid[0] == 0) {
-                        /* if icuTZ has more than one city, take only the first (i.e. terminate icuTZ at first space) */
-                        int index=0;
-                        while (! (*icuTZ == '\0' || *icuTZ ==' ')) {
-                            tmpid[index++]=(char)(*icuTZ++);  /* safe to assume 'char' is ASCII compatible on windows */
-                        }
-                        tmpid[index]='\0';
-                    }
+                    tmpid[index]='\0';
+                    tryPreVistaFallback = FALSE;
                 }
             }
         }
-        ures_close(winTZ);
-        if (idFound) {
-            break;
+    }
+
+    if(tryPreVistaFallback) {
+
+        /* Note: We get the winid not from static tables but from resource bundle. */
+        while (U_SUCCESS(status) && ures_hasNext(bundle)) {
+            UBool idFound = FALSE;
+            const char* winid;
+            UResourceBundle* winTZ = ures_getNextResource(bundle, NULL, &status);
+            if (U_FAILURE(status)) {
+                break;
+            }
+            winid = ures_getKey(winTZ);
+            result = getTZI(winid, &tziReg);
+
+            if (result == ERROR_SUCCESS) {
+                /* Windows alters the DaylightBias in some situations.
+                   Using the bias and the rules suffices, so overwrite
+                   these unreliable fields. */
+                tziKey.standardBias = tziReg.standardBias;
+                tziKey.daylightBias = tziReg.daylightBias;
+
+                if (uprv_memcmp((char *)&tziKey, (char*)&tziReg, sizeof(tziKey)) == 0) {
+                    const UChar* icuTZ = NULL;
+                    if (errorCode != 0) {
+                        icuTZ = ures_getStringByKey(winTZ, ISOcodeA, &len, &status);
+                    }
+                    if (errorCode==0 || icuTZ==NULL) {
+                        /* fallback to default "001" and reset status */
+                        status = U_ZERO_ERROR;
+                        icuTZ = ures_getStringByKey(winTZ, "001", &len, &status);
+                    }
+
+                    if (U_SUCCESS(status)) {
+                        /* Get the standard name from the registry key to compare with
+                           the one from Windows API call. */
+                        uprv_memset(regStdName, 0, sizeof(regStdName));
+                        result = getSTDName(winid, regStdName, sizeof(regStdName));
+                        if (result == ERROR_SUCCESS) {
+                            if (uprv_strcmp(apiStdName, regStdName) == 0) {
+                                idFound = TRUE;
+                            }
+                        }
+
+                        /* tmpid buffer holds the ICU timezone ID corresponding to the timezone ID from Windows.
+                         * If none is found, tmpid buffer will contain a fallback ID (i.e. the time zone ID matching
+                         * the current time zone information)
+                         */
+                        if (idFound || tmpid[0] == 0) {
+                            /* if icuTZ has more than one city, take only the first (i.e. terminate icuTZ at first space) */
+                            int index=0;
+                            while (! (*icuTZ == '\0' || *icuTZ ==' ')) {
+                                tmpid[index++]=(char)(*icuTZ++);  /* safe to assume 'char' is ASCII compatible on windows */
+                            }
+                            tmpid[index]='\0';
+                        }
+                    }
+                }
+            }
+            ures_close(winTZ);
+            if (idFound) {
+                break;
+            }
         }
     }
 

@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 2001-2013, International Business Machines
+*   Copyright (C) 2001-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -319,7 +319,7 @@ utrie2_isFrozen(const UTrie2 *trie);
  * @see utrie2_openFromSerialized()
  */
 U_CAPI int32_t U_EXPORT2
-utrie2_serialize(UTrie2 *trie,
+utrie2_serialize(const UTrie2 *trie,
                  void *data, int32_t capacity,
                  UErrorCode *pErrorCode);
 

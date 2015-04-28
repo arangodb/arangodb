@@ -1,0 +1,208 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sr_Latn.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/sr_Latn.xml
+ */
+sr_Latn{
+    %%Parent{"root"}
+    Version{"2.1.8.20"}
+    units{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"dani"}
+                few{"{0} dana"}
+                one{"{0} dan"}
+                other{"{0} dana"}
+            }
+            hour{
+                dnam{"sati"}
+                few{"{0} sata"}
+                one{"{0} sat"}
+                other{"{0} sati"}
+                per{"{0}/sat"}
+            }
+            microsecond{
+                dnam{"mikrosekunde"}
+                few{"{0} mikrosekunde"}
+                one{"{0} mikrosekunda"}
+                other{"{0} mikrosekundi"}
+            }
+            millisecond{
+                dnam{"milisekunde"}
+                few{"{0} milisekunde"}
+                one{"{0} milisekunda"}
+                other{"{0} milisekundi"}
+            }
+            minute{
+                dnam{"minuti"}
+                few{"{0} minuta"}
+                one{"{0} minut"}
+                other{"{0} minuta"}
+            }
+            month{
+                dnam{"meseci"}
+                few{"{0} meseca"}
+                one{"{0} mesec"}
+                other{"{0} meseci"}
+            }
+            nanosecond{
+                dnam{"nanosekunde"}
+                few{"{0} nanosekunde"}
+                one{"{0} nanosekunda"}
+                other{"{0} nanosekundi"}
+            }
+            second{
+                dnam{"sekunde"}
+                few{"{0} sekunde"}
+                one{"{0} sekunda"}
+                other{"{0} sekundi"}
+                per{"{0}/sek"}
+            }
+            week{
+                dnam{"nedelje"}
+                few{"{0} nedelje"}
+                one{"{0} nedelja"}
+                other{"{0} nedelja"}
+            }
+            year{
+                dnam{"godine"}
+                few{"{0} godine"}
+                one{"{0} godina"}
+                other{"{0} godina"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"d."}
+                few{"{0} d"}
+                one{"{0} d"}
+                other{"{0} d"}
+            }
+            hour{
+                dnam{"sati"}
+                few{"{0} sata"}
+                one{"{0} sat"}
+                other{"{0} sati"}
+            }
+            millisecond{
+                dnam{"ms"}
+                few{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min"}
+                few{"{0} m"}
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            month{
+                dnam{"m."}
+                few{"{0} m"}
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            second{
+                dnam{"sek"}
+                few{"{0} sek"}
+                one{"{0} sek"}
+                other{"{0} sek"}
+            }
+            week{
+                dnam{"n."}
+                few{"{0} n"}
+                one{"{0} n"}
+                other{"{0} n"}
+            }
+            year{
+                dnam{"g."}
+                few{"{0} g"}
+                one{"{0} g"}
+                other{"{0} g"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"d."}
+                few{"{0} dana"}
+                one{"{0} dan"}
+                other{"{0} dana"}
+            }
+            hour{
+                dnam{"sati"}
+                few{"{0} sata"}
+                one{"{0} sat"}
+                other{"{0} sati"}
+                per{"{0}/s"}
+            }
+            microsecond{
+                dnam{"μs"}
+                few{"{0} μs"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                few{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min"}
+                few{"{0} min"}
+                one{"{0} min"}
+                other{"{0} min"}
+            }
+            month{
+                dnam{"meseci"}
+                few{"{0} mes."}
+                one{"{0} mes."}
+                other{"{0} mes."}
+            }
+            nanosecond{
+                dnam{"ns"}
+                few{"{0} ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"sek"}
+                few{"{0} sek"}
+                one{"{0} sek"}
+                other{"{0} sek"}
+                per{"{0}/sek"}
+            }
+            week{
+                dnam{"ned."}
+                few{"{0} ned."}
+                one{"{0} ned."}
+                other{"{0} ned."}
+            }
+            year{
+                dnam{"god."}
+                few{"{0} god."}
+                one{"{0} god"}
+                other{"{0} god."}
+            }
+        }
+    }
+}

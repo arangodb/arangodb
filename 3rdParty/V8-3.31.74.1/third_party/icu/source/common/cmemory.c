@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 2002-2012, International Business Machines
+*   Copyright (C) 2002-2015, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -32,10 +32,6 @@ static const void     *pContext;
 static UMemAllocFn    *pAlloc;
 static UMemReallocFn  *pRealloc;
 static UMemFreeFn     *pFree;
-
-/* Flag indicating whether any heap allocations have happened.
- *   Used to prevent changing out the heap functions after allocations have been made */
-static UBool   gHeapInUse;
 
 #if U_DEBUG && defined(UPRV_MALLOC_COUNT)
 #include <stdio.h>
@@ -78,7 +74,6 @@ uprv_malloc(size_t s) {
 #endif
 #endif
     if (s > 0) {
-        gHeapInUse = TRUE;
         if (pAlloc) {
             return (*pAlloc)(pContext, s);
         } else {
@@ -105,7 +100,6 @@ uprv_realloc(void * buffer, size_t size) {
         }
         return (void *)zeroMem;
     } else {
-        gHeapInUse = TRUE;
         if (pRealloc) {
             return (*pRealloc)(pContext, buffer, size);
         } else {
@@ -150,10 +144,6 @@ u_setMemoryFunctions(const void *context, UMemAllocFn *a, UMemReallocFn *r, UMem
         *status = U_ILLEGAL_ARGUMENT_ERROR;
         return;
     }
-    if (gHeapInUse) {
-        *status = U_INVALID_STATE_ERROR;
-        return;
-    }
     pContext  = context;
     pAlloc    = a;
     pRealloc  = r;
@@ -166,18 +156,5 @@ U_CFUNC UBool cmemory_cleanup(void) {
     pAlloc     = NULL;
     pRealloc   = NULL;
     pFree      = NULL;
-    gHeapInUse = FALSE;
     return TRUE;
 }
-
-
-/*
- *   gHeapInUse
- *       Return True if ICU has allocated any memory.
- *       Used by u_SetMutexFunctions() and similar to verify that ICU has not
- *               been used, that it is in a pristine initial state.
- */
-U_CFUNC UBool cmemory_inUse() {
-    return gHeapInUse;
-}
-

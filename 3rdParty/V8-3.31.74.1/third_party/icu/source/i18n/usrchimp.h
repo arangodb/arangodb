@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2001-2011 IBM and others. All rights reserved.
+*   Copyright (C) 2001-2014 IBM and others. All rights reserved.
 **********************************************************************
 *   Date        Name        Description
 *  08/13/2001   synwee      Creation.
@@ -17,6 +17,112 @@
 #include "unicode/ucol.h"
 #include "unicode/ucoleitr.h"
 #include "unicode/ubrk.h"
+
+/* mask off anything but primary order */
+#define UCOL_PRIMARYORDERMASK 0xffff0000
+/* mask off anything but secondary order */
+#define UCOL_SECONDARYORDERMASK 0x0000ff00
+/* mask off anything but tertiary order */
+#define UCOL_TERTIARYORDERMASK 0x000000ff
+/* primary order shift */
+#define UCOL_PRIMARYORDERSHIFT 16
+/* secondary order shift */
+#define UCOL_SECONDARYORDERSHIFT 8
+
+#define UCOL_IGNORABLE 0
+
+/* get weights from a CE */
+#define UCOL_PRIMARYORDER(order) (((order) >> 16) & 0xffff)
+#define UCOL_SECONDARYORDER(order) (((order) & UCOL_SECONDARYORDERMASK)>> UCOL_SECONDARYORDERSHIFT)
+#define UCOL_TERTIARYORDER(order) ((order) & UCOL_TERTIARYORDERMASK)
+
+#define UCOL_CONTINUATION_MARKER 0xC0
+
+#define isContinuation(CE) (((CE) & UCOL_CONTINUATION_MARKER) == UCOL_CONTINUATION_MARKER)
+
+/**
+ * This indicates an error has occured during processing or there are no more CEs 
+ * to be returned.
+ */
+#define UCOL_PROCESSED_NULLORDER        ((int64_t)U_INT64_MAX)
+
+U_NAMESPACE_BEGIN
+
+class CollationElementIterator;
+class Collator;
+
+struct PCEI
+{
+    uint64_t ce;
+    int32_t  low;
+    int32_t  high;
+};
+
+struct PCEBuffer
+{
+    PCEI    defaultBuffer[16];
+    PCEI   *buffer;
+    int32_t bufferIndex;
+    int32_t bufferSize;
+
+    PCEBuffer();
+    ~PCEBuffer();
+
+    void  reset();
+    UBool empty() const;
+    void  put(uint64_t ce, int32_t ixLow, int32_t ixHigh);
+    const PCEI *get();
+};
+
+class UCollationPCE : public UMemory {
+private:
+    PCEBuffer          pceBuffer;
+    CollationElementIterator *cei;
+    UCollationStrength strength;
+    UBool              toShift;
+    UBool              isShifted;
+    uint32_t           variableTop;
+
+public:
+    UCollationPCE(UCollationElements *elems);
+    UCollationPCE(CollationElementIterator *iter);
+    ~UCollationPCE();
+
+    void init(UCollationElements *elems);
+    void init(CollationElementIterator *iter);
+
+    /**
+     * Get the processed ordering priority of the next collation element in the text.
+     * A single character may contain more than one collation element.
+     *
+     * @param ixLow a pointer to an int32_t to receive the iterator index before fetching the CE.
+     * @param ixHigh a pointer to an int32_t to receive the iterator index after fetching the CE.
+     * @param status A pointer to an UErrorCode to receive any errors.
+     * @return The next collation elements ordering, otherwise returns UCOL_PROCESSED_NULLORDER 
+     *         if an error has occured or if the end of string has been reached
+     */
+    int64_t nextProcessed(int32_t *ixLow, int32_t *ixHigh, UErrorCode *status);
+    /**
+     * Get the processed ordering priority of the previous collation element in the text.
+     * A single character may contain more than one collation element.
+     *
+     * @param ixLow A pointer to an int32_t to receive the iterator index after fetching the CE
+     * @param ixHigh A pointer to an int32_t to receiver the iterator index before fetching the CE
+     * @param status A pointer to an UErrorCode to receive any errors. Noteably 
+     *               a U_BUFFER_OVERFLOW_ERROR is returned if the internal stack
+     *               buffer has been exhausted.
+     * @return The previous collation elements ordering, otherwise returns 
+     *         UCOL_PROCESSED_NULLORDER if an error has occured or if the start of
+     *         string has been reached.
+     */
+    int64_t previousProcessed(int32_t *ixLow, int32_t *ixHigh, UErrorCode *status);
+
+private:
+    void init(const Collator &coll);
+    uint64_t processCE(uint32_t ce);
+};
+
+U_NAMESPACE_END
 
 #define INITIAL_ARRAY_SIZE_       256
 #define MAX_TABLE_SIZE_           257
@@ -44,12 +150,12 @@ struct UPattern {
     const UChar              *text;
           int32_t             textLength; // exact length
           // length required for backwards ce comparison
-          int32_t             CELength; 
-          int32_t            *CE;
-          int32_t             CEBuffer[INITIAL_ARRAY_SIZE_];
-          int32_t             PCELength;
-          int64_t            *PCE;
-          int64_t             PCEBuffer[INITIAL_ARRAY_SIZE_];
+          int32_t             cesLength;
+          int32_t            *ces;
+          int32_t             cesBuffer[INITIAL_ARRAY_SIZE_];
+          int32_t             pcesLength;
+          int64_t            *pces;
+          int64_t             pcesBuffer[INITIAL_ARRAY_SIZE_];
           UBool               hasPrefixAccents;
           UBool               hasSuffixAccents;
           int16_t             defaultShiftSize;
@@ -65,6 +171,7 @@ struct UStringSearch {
     // positions within the collation element iterator is used to determine
     // if we are at the start of the text.
            UCollationElements *textIter;
+           icu::UCollationPCE *textProcessedIter;
     // utility collation element, used throughout program for temporary 
     // iteration.
            UCollationElements *utilIter;

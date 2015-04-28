@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/fr.xml
@@ -22,7 +22,6 @@ fr{
         be{"biélorusse"}
         bem{"bemba"}
         bg{"bulgare"}
-        bh{"bihari"}
         bn{"bengali"}
         br{"breton"}
         bs{"bosniaque"}
@@ -101,7 +100,6 @@ fr{
         mk{"macédonien"}
         ml{"malayalam"}
         mn{"mongol"}
-        mo{"moldave"}
         mr{"marathe"}
         ms{"malais"}
         mt{"maltais"}
@@ -128,6 +126,7 @@ fr{
         rm{"romanche"}
         rn{"roundi"}
         ro{"roumain"}
+        ro_MD{"moldave"}
         ru{"russe"}
         rw{"rwanda"}
         sd{"sindhi"}
@@ -149,6 +148,7 @@ fr{
         th{"thaï"}
         ti{"tigrigna"}
         tk{"turkmène"}
+        tl{"tagalog"}
         tn{"tswana"}
         to{"tonguien"}
         tr{"turc"}
@@ -168,6 +168,10 @@ fr{
         zh_Hans{"chinois simplifié"}
         zh_Hant{"chinois traditionnel"}
         zu{"zoulou"}
+    }
+    Languages%variant{
+        ps{"pashto"}
+        ug{"ouïgour"}
     }
     LanguagesShort{
         az{"azéri"}
@@ -310,7 +314,10 @@ fr{
         Hans{"sinogrammes simplifiés"}
         Hant{"sinogrammes traditionnels"}
     }
-    Version{"2.0.93.10"}
+    Scripts%variant{
+        Arab{"arabo-persan"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"langue : {0}"}
         script{"écriture : {0}"}

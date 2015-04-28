@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -110,7 +110,7 @@ setTrailingWSStart(UBiDi *pBiDi) {
         return;
     }
     /* go backwards across all WS, BN, explicit codes */
-    while(start>0 && DIRPROP_FLAG(PURE_DIRPROP(dirProps[start-1]))&MASK_WS) {
+    while(start>0 && DIRPROP_FLAG(dirProps[start-1])&MASK_WS) {
         --start;
     }
 

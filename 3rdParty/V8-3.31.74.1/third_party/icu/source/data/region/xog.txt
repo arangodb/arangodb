@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/xog.xml
@@ -18,7 +18,7 @@ xog{
         AI{"Angwila"}
         AL{"Alibaniya"}
         AM{"Arameniya"}
-        AN{"Ebizinga bya Antile by'abaHolandi"}
+        AN{"Ebizinga bya Antile by’abaHolandi"}
         AO{"Angola"}
         AR{"Arigentina"}
         AS{"Samowa omumerika"}
@@ -155,7 +155,7 @@ xog{
         NA{"Namibiya"}
         NC{"Kaledonya mupya"}
         NE{"Nije"}
-        NF{"Kizinga ky'eNorofoko"}
+        NF{"Kizinga ky’eNorofoko"}
         NG{"Nayijerya"}
         NI{"Nikaraguwa"}
         NL{"Holandi"}
@@ -225,7 +225,7 @@ xog{
         VC{"Senti Vinsenti ni Gurendadiini"}
         VE{"Venzwera"}
         VG{"Ebizinga bya Virigini ebitwalibwa Bungereza"}
-        VI{"Ebizinga bya Virigini eby'Amerika"}
+        VI{"Ebizinga bya Virigini eby’Amerika"}
         VN{"Vyetinaamu"}
         VU{"Vanawuwatu"}
         WF{"Walisi ni Futuna"}
@@ -236,5 +236,5 @@ xog{
         ZM{"Zambya"}
         ZW{"Zimbabwe"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

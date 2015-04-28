@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/da.xml
@@ -27,12 +27,14 @@ da{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0} eller derover"}
                 range{"{0}-{1}"}
             }
             patterns{
+                accountingFormat{"#,##0.00 ¤"}
                 currencyFormat{"#,##0.00 ¤"}
                 decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
@@ -154,10 +156,13 @@ da{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{"."}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.9.62"}
     calendar{
         buddhist{
             eras{
@@ -315,13 +320,17 @@ da{
                 "AM",
                 "PM",
             }
+            AmPmMarkersNarrow{
+                "a",
+                "p",
+            }
             DateTimePatterns{
                 "HH.mm.ss zzzz",
                 "HH.mm.ss z",
                 "HH.mm.ss",
                 "HH.mm",
                 "EEEE 'den' d. MMMM y",
-                "d. MMM y",
+                "d. MMMM y",
                 "dd/MM/y",
                 "dd/MM/yy",
                 "{1} {0}",
@@ -330,13 +339,17 @@ da{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"middag"}
+            NoonMarkerAbbr{"middag"}
+            NoonMarkerNarrow{"middag"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH.mm"}
                 EHms{"E HH.mm.ss"}
-                Ed{"E 'd'. d."}
+                Ed{"E 'den' d."}
                 Ehm{"E h.mm a"}
                 Ehms{"E h.mm.ss a"}
                 Gy{"y G"}
@@ -453,13 +466,25 @@ da{
                     "f.Kr.",
                     "e.Kr.",
                 }
+                abbreviated%variant{
+                    "f.v.t.",
+                    "v.t.",
+                }
                 narrow{
                     "fKr",
                     "eKr",
                 }
+                narrow%variant{
+                    "fvt",
+                    "vt",
+                }
                 wide{
                     "f.Kr.",
                     "e.Kr.",
+                }
+                wide%variant{
+                    "før vesterlandsk tidsregning",
+                    "vesterlandsk tidsregning",
                 }
             }
             intervalFormats{
@@ -650,10 +675,10 @@ da{
             quarters{
                 format{
                     abbreviated{
-                        "K1",
-                        "K2",
-                        "K3",
-                        "K4",
+                        "1. kvt.",
+                        "2. kvt.",
+                        "3. kvt.",
+                        "4. kvt.",
                     }
                     narrow{
                         "1",
@@ -670,10 +695,10 @@ da{
                 }
                 stand-alone{
                     abbreviated{
-                        "K1",
-                        "K2",
-                        "K3",
-                        "K4",
+                        "1. kvt.",
+                        "2. kvt.",
+                        "3. kvt.",
+                        "4. kvt.",
                     }
                     narrow{
                         "1",
@@ -759,12 +784,38 @@ da{
             }
             relativeTime{
                 future{
-                    one{"om {0} døgn"}
-                    other{"om {0} døgn"}
+                    one{"om {0} dag"}
+                    other{"om {0} dage"}
                 }
                 past{
-                    one{"for {0} døgn siden"}
-                    other{"for {0} døgn siden"}
+                    one{"for {0} dag siden"}
+                    other{"for {0} dage siden"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"dag"}
+            relativeTime{
+                future{
+                    one{"om {0} dag"}
+                    other{"om {0} dage"}
+                }
+                past{
+                    one{"for {0} dag siden"}
+                    other{"for {0} dage siden"}
+                }
+            }
+        }
+        day-short{
+            dn{"dag"}
+            relativeTime{
+                future{
+                    one{"om {0} dag"}
+                    other{"om {0} dage"}
+                }
+                past{
+                    one{"for {0} dag siden"}
+                    other{"for {0} dage siden"}
                 }
             }
         }
@@ -781,8 +832,48 @@ da{
                 "1"{"næste fredag"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"sidste fr."}
+                "0"{"denne fr."}
+                "1"{"næste fr."}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"sidste fre."}
+                "0"{"denne fre."}
+                "1"{"næste fre."}
+            }
+        }
         hour{
             dn{"Time"}
+            relativeTime{
+                future{
+                    one{"om {0} time"}
+                    other{"om {0} timer"}
+                }
+                past{
+                    one{"for {0} time siden"}
+                    other{"for {0} timer siden"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"t"}
+            relativeTime{
+                future{
+                    one{"om {0} time"}
+                    other{"om {0} timer"}
+                }
+                past{
+                    one{"for {0} time siden"}
+                    other{"for {0} timer siden"}
+                }
+            }
+        }
+        hour-short{
+            dn{"t."}
             relativeTime{
                 future{
                     one{"om {0} time"}
@@ -807,11 +898,51 @@ da{
                 }
             }
         }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"om {0} min."}
+                    other{"om {0} min."}
+                }
+                past{
+                    one{"for {0} min. siden"}
+                    other{"for {0} min. siden"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min."}
+            relativeTime{
+                future{
+                    one{"om {0} min."}
+                    other{"om {0} min."}
+                }
+                past{
+                    one{"for {0} min. siden"}
+                    other{"for {0} min. siden"}
+                }
+            }
+        }
         mon{
             relative{
                 "-1"{"sidste mandag"}
                 "0"{"denne mandag"}
                 "1"{"næste mandag"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"sidste ma."}
+                "0"{"denne ma."}
+                "1"{"næste ma."}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"sidste man."}
+                "0"{"denne man."}
+                "1"{"næste man."}
             }
         }
         month{
@@ -832,11 +963,90 @@ da{
                 }
             }
         }
+        month-narrow{
+            dn{"md."}
+            relativeTime{
+                future{
+                    one{"om {0} md."}
+                    other{"om {0} md."}
+                }
+                past{
+                    one{"for {0} md. siden"}
+                    other{"for {0} md. siden"}
+                }
+            }
+        }
+        month-short{
+            dn{"md."}
+            relativeTime{
+                future{
+                    one{"om {0} md."}
+                    other{"om {0} md."}
+                }
+                past{
+                    one{"for {0} md. siden"}
+                    other{"for {0} md. siden"}
+                }
+            }
+        }
+        quarter{
+            dn{"Kvartal"}
+            relativeTime{
+                future{
+                    one{"om {0} kvartal"}
+                    other{"om {0} kvartaler"}
+                }
+                past{
+                    one{"for {0} kvartal siden"}
+                    other{"for {0} kvartaler siden"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"kvt."}
+            relativeTime{
+                future{
+                    one{"om {0} kvt."}
+                    other{"om {0} kvt."}
+                }
+                past{
+                    one{"for {0} kvt. siden"}
+                    other{"for {0} kvt. siden"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"kvt."}
+            relativeTime{
+                future{
+                    one{"om {0} kvt."}
+                    other{"om {0} kvt."}
+                }
+                past{
+                    one{"for {0} kvt. siden"}
+                    other{"for {0} kvt. siden"}
+                }
+            }
+        }
         sat{
             relative{
                 "-1"{"sidste lørdag"}
                 "0"{"denne lørdag"}
                 "1"{"næste lørdag"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"sidste lø."}
+                "0"{"denne lø."}
+                "1"{"næste lø."}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"sidste lør."}
+                "0"{"denne lør."}
+                "1"{"næste lør."}
             }
         }
         second{
@@ -855,11 +1065,51 @@ da{
                 }
             }
         }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"om {0} sek."}
+                    other{"om {0} sek."}
+                }
+                past{
+                    one{"for {0} sek. siden"}
+                    other{"for {0} sek. siden"}
+                }
+            }
+        }
+        second-short{
+            dn{"sek."}
+            relativeTime{
+                future{
+                    one{"om {0} sek."}
+                    other{"om {0} sek."}
+                }
+                past{
+                    one{"for {0} sek. siden"}
+                    other{"for {0} sek. siden"}
+                }
+            }
+        }
         sun{
             relative{
                 "-1"{"sidste søndag"}
                 "0"{"denne søndag"}
                 "1"{"næste søndag"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"sidste sø."}
+                "0"{"denne sø."}
+                "1"{"næste sø."}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"sidste søn."}
+                "0"{"denne søn."}
+                "1"{"næste sø."}
             }
         }
         thu{
@@ -869,11 +1119,39 @@ da{
                 "1"{"næste torsdag"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"sidste to."}
+                "0"{"denne to."}
+                "1"{"næste to."}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"sidste tor."}
+                "0"{"denne tor."}
+                "1"{"næste tor."}
+            }
+        }
         tue{
             relative{
                 "-1"{"sidste tirsdag"}
                 "0"{"denne tirsdag"}
                 "1"{"næste tirsdag"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"sidste ti."}
+                "0"{"denne ti."}
+                "1"{"næste ti."}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"sidste tir."}
+                "0"{"denne tir."}
+                "1"{"næste tir."}
             }
         }
         wed{
@@ -883,6 +1161,20 @@ da{
                 "1"{"næste onsdag"}
             }
         }
+        wed-narrow{
+            relative{
+                "-1"{"sidste on."}
+                "0"{"denne on."}
+                "1"{"næste on."}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"sidste ons."}
+                "0"{"denne ons."}
+                "1"{"næste ons."}
+            }
+        }
         week{
             dn{"Uge"}
             relative{
@@ -890,6 +1182,32 @@ da{
                 "0"{"denne uge"}
                 "1"{"næste uge"}
             }
+            relativeTime{
+                future{
+                    one{"om {0} uge"}
+                    other{"om {0} uger"}
+                }
+                past{
+                    one{"for {0} uge siden"}
+                    other{"for {0} uger siden"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"uge"}
+            relativeTime{
+                future{
+                    one{"om {0} uge"}
+                    other{"om {0} uger"}
+                }
+                past{
+                    one{"for {0} uge siden"}
+                    other{"for {0} uger siden"}
+                }
+            }
+        }
+        week-short{
+            dn{"uge"}
             relativeTime{
                 future{
                     one{"om {0} uge"}
@@ -911,6 +1229,32 @@ da{
                 "0"{"i år"}
                 "1"{"næste år"}
             }
+            relativeTime{
+                future{
+                    one{"om {0} år"}
+                    other{"om {0} år"}
+                }
+                past{
+                    one{"for {0} år siden"}
+                    other{"for {0} år siden"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"år"}
+            relativeTime{
+                future{
+                    one{"om {0} år"}
+                    other{"om {0} år"}
+                }
+                past{
+                    one{"for {0} år siden"}
+                    other{"for {0} år siden"}
+                }
+            }
+        }
+        year-short{
+            dn{"år"}
             relativeTime{
                 future{
                     one{"om {0} år"}
@@ -968,122 +1312,5 @@ da{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinyin"}
         x-Publishing{"Publishing"}
-    }
-    units{
-        compound{
-            per{"{0} pr. {1}"}
-        }
-        duration{
-            day{
-                one{"{0} døgn"}
-                other{"{0} døgn"}
-            }
-            hour{
-                one{"{0} time"}
-                other{"{0} timer"}
-            }
-            millisecond{
-                one{"{0} millisekund"}
-                other{"{0} millisekunder"}
-            }
-            minute{
-                one{"{0} minut"}
-                other{"{0} minutter"}
-            }
-            month{
-                one{"{0} måned"}
-                other{"{0} måneder"}
-            }
-            second{
-                one{"{0} sekund"}
-                other{"{0} sekunder"}
-            }
-            week{
-                one{"{0} uge"}
-                other{"{0} uger"}
-            }
-            year{
-                one{"{0} år"}
-                other{"{0} år"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0}d"}
-                other{"{0}d"}
-            }
-            hour{
-                one{"{0} t"}
-                other{"{0}t"}
-            }
-            millisecond{
-                one{"{0}ms"}
-                other{"{0}ms"}
-            }
-            minute{
-                one{"{0}m"}
-                other{"{0}m"}
-            }
-            month{
-                one{"{0}m"}
-                other{"{0}m"}
-            }
-            second{
-                one{"{0}s"}
-                other{"{0}s"}
-            }
-            week{
-                one{"{0}u"}
-                other{"{0}u"}
-            }
-            year{
-                one{"{0}å"}
-                other{"{0}å"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} d"}
-                other{"{0} d"}
-            }
-            hour{
-                one{"{0} t"}
-                other{"{0} t"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} min"}
-                other{"{0} min"}
-            }
-            month{
-                one{"{0} mån"}
-                other{"{0} mån"}
-            }
-            second{
-                one{"{0} sek"}
-                other{"{0} sek"}
-            }
-            week{
-                one{"{0} uge"}
-                other{"{0} uger"}
-            }
-            year{
-                one{"{0} år"}
-                other{"{0} år"}
-            }
-        }
     }
 }

@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------ */
 /* Decimal Number arithmetic module                                   */
 /* ------------------------------------------------------------------ */
-/* Copyright (c) IBM Corporation, 2000-2012.  All rights reserved.    */
+/* Copyright (c) IBM Corporation, 2000-2014.  All rights reserved.    */
 /*                                                                    */
 /* This software is made available under the terms of the             */
 /* ICU License -- ICU 1.8.1 and later.                                */
@@ -215,7 +215,9 @@ static const Unit uarrone[1]={1};   /* Unit array of 1, used for incrementing  *
 /* ------------------------------------------------------------------ */
 /* round-for-reround digits                                           */
 /* ------------------------------------------------------------------ */
+#if 0
 static const uByte DECSTICKYTAB[10]={1,1,2,3,4,6,6,7,8,9}; /* used if sticky */
+#endif
 
 /* ------------------------------------------------------------------ */
 /* Powers of ten (powers[n]==10**n, 0<=n<=9)                          */

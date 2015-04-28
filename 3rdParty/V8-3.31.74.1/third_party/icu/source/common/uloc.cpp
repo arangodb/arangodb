@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1997-2013, International Business Machines
+*   Copyright (C) 1997-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -38,7 +38,6 @@
 #include "umutex.h"
 #include "cstring.h"
 #include "cmemory.h"
-#include "ucln_cmn.h"
 #include "locmap.h"
 #include "uarrsort.h"
 #include "uenumimp.h"
@@ -695,7 +694,7 @@ _getKeywords(const char *localeID,
             }
 
             /* Premature end or zero-length value */
-            if (!equalSign || equalSign == semicolon) {
+            if (!*equalSign || equalSign == semicolon) {
                 *status = U_INVALID_FORMAT_ERROR;
                 return 0;
             }
@@ -2523,6 +2522,106 @@ uloc_acceptLanguage(char *result, int32_t resultAvailable,
     }
     uprv_free(fallbackList);
     return -1;
+}
+
+U_CAPI const char* U_EXPORT2
+uloc_toUnicodeLocaleKey(const char* keyword)
+{
+    const char* bcpKey = ulocimp_toBcpKey(keyword);
+    if (bcpKey == NULL && ultag_isUnicodeLocaleKey(keyword, -1)) {
+        // unknown keyword, but syntax is fine..
+        return keyword;
+    }
+    return bcpKey;
+}
+
+U_CAPI const char* U_EXPORT2
+uloc_toUnicodeLocaleType(const char* keyword, const char* value)
+{
+    const char* bcpType = ulocimp_toBcpType(keyword, value, NULL, NULL);
+    if (bcpType == NULL && ultag_isUnicodeLocaleType(value, -1)) {
+        // unknown keyword, but syntax is fine..
+        return value;
+    }
+    return bcpType;
+}
+
+#define UPRV_ISDIGIT(c) (((c) >= '0') && ((c) <= '9'))
+#define UPRV_ISALPHANUM(c) (uprv_isASCIILetter(c) || UPRV_ISDIGIT(c) )
+
+static UBool
+isWellFormedLegacyKey(const char* legacyKey)
+{
+    const char* p = legacyKey;
+    while (*p) {
+        if (!UPRV_ISALPHANUM(*p)) {
+            return FALSE;
+        }
+        p++;
+    }
+    return TRUE;
+}
+
+static UBool
+isWellFormedLegacyType(const char* legacyType)
+{
+    const char* p = legacyType;
+    int32_t alphaNumLen = 0;
+    while (*p) {
+        if (*p == '_' || *p == '/' || *p == '-') {
+            if (alphaNumLen == 0) {
+                return FALSE;
+            }
+            alphaNumLen = 0;
+        } else if (UPRV_ISALPHANUM(*p)) {
+            alphaNumLen++;
+        } else {
+            return FALSE;
+        }
+        p++;
+    }
+    return (alphaNumLen != 0);
+}
+
+U_CAPI const char* U_EXPORT2
+uloc_toLegacyKey(const char* keyword)
+{
+    const char* legacyKey = ulocimp_toLegacyKey(keyword);
+    if (legacyKey == NULL) {
+        // Checks if the specified locale key is well-formed with the legacy locale syntax.
+        //
+        // Note:
+        //  Neither ICU nor LDML/CLDR provides the definition of keyword syntax.
+        //  However, a key should not contain '=' obviously. For now, all existing
+        //  keys are using ASCII alphabetic letters only. We won't add any new key
+        //  that is not compatible with the BCP 47 syntax. Therefore, we assume
+        //  a valid key consist from [0-9a-zA-Z], no symbols.
+        if (isWellFormedLegacyKey(keyword)) {
+            return keyword;
+        }
+    }
+    return legacyKey;
+}
+
+U_CAPI const char* U_EXPORT2
+uloc_toLegacyType(const char* keyword, const char* value)
+{
+    const char* legacyType = ulocimp_toLegacyType(keyword, value, NULL, NULL);
+    if (legacyType == NULL) {
+        // Checks if the specified locale type is well-formed with the legacy locale syntax.
+        //
+        // Note:
+        //  Neither ICU nor LDML/CLDR provides the definition of keyword syntax.
+        //  However, a type should not contain '=' obviously. For now, all existing
+        //  types are using ASCII alphabetic letters with a few symbol letters. We won't
+        //  add any new type that is not compatible with the BCP 47 syntax except timezone
+        //  IDs. For now, we assume a valid type start with [0-9a-zA-Z], but may contain
+        //  '-' '_' '/' in the middle.
+        if (isWellFormedLegacyType(value)) {
+            return value;
+        }
+    }
+    return legacyType;
 }
 
 /*eof*/

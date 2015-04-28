@@ -69,11 +69,15 @@ converterData[UCNV_NUMBER_OF_SUPPORTED_CONVERTER_TYPES]={
 
 #if UCONFIG_NO_LEGACY_CONVERSION
     NULL,
+#else
+    &_ISO2022Data,
+#endif
+
+#if UCONFIG_NO_LEGACY_CONVERSION || UCONFIG_NO_NON_HTML5_CONVERSION
     NULL, NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL,
     NULL,
 #else
-    &_ISO2022Data,
     &_LMBCSData1,&_LMBCSData2, &_LMBCSData3, &_LMBCSData4, &_LMBCSData5, &_LMBCSData6,
     &_LMBCSData8,&_LMBCSData11,&_LMBCSData16,&_LMBCSData17,&_LMBCSData18,&_LMBCSData19,
     &_HZData,
@@ -99,7 +103,7 @@ converterData[UCNV_NUMBER_OF_SUPPORTED_CONVERTER_TYPES]={
     &_UTF7Data, &_Bocu1Data, &_UTF16Data, &_UTF32Data, &_CESU8Data, &_IMAPData,
 #endif
 
-#if UCONFIG_NO_LEGACY_CONVERSION
+#if UCONFIG_NO_LEGACY_CONVERSION || UCONFIG_NO_NON_HTML5_CONVERSION
     NULL,
 #else
     &_CompoundTextData
@@ -114,18 +118,24 @@ static struct {
   const char *name;
   const UConverterType type;
 } const cnvNameType[] = {
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
   { "bocu1", UCNV_BOCU1 },
   { "cesu8", UCNV_CESU8 },
-#if !UCONFIG_NO_LEGACY_CONVERSION
+#endif
+#if !UCONFIG_NO_LEGACY_CONVERSION && !UCONFIG_NO_NON_HTML5_CONVERSION
   { "hz",UCNV_HZ },
 #endif
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
   { "imapmailboxname", UCNV_IMAP_MAILBOX },
-#if !UCONFIG_NO_LEGACY_CONVERSION
+#endif
+#if !UCONFIG_NO_LEGACY_CONVERSION && !UCONFIG_NO_NON_HTML5_CONVERSION
   { "iscii", UCNV_ISCII },
+#endif
+#if !UCONFIG_NO_LEGACY_CONVERSION
   { "iso2022", UCNV_ISO_2022 },
 #endif
   { "iso88591", UCNV_LATIN_1 },
-#if !UCONFIG_NO_LEGACY_CONVERSION
+#if !UCONFIG_NO_LEGACY_CONVERSION && !UCONFIG_NO_NON_HTML5_CONVERSION
   { "lmbcs1", UCNV_LMBCS_1 },
   { "lmbcs11",UCNV_LMBCS_11 },
   { "lmbcs16",UCNV_LMBCS_16 },
@@ -139,7 +149,9 @@ static struct {
   { "lmbcs6", UCNV_LMBCS_6 },
   { "lmbcs8", UCNV_LMBCS_8 },
 #endif
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
   { "scsu", UCNV_SCSU },
+#endif
   { "usascii", UCNV_US_ASCII },
   { "utf16", UCNV_UTF16 },
   { "utf16be", UCNV_UTF16_BigEndian },
@@ -161,9 +173,13 @@ static struct {
   { "utf32oppositeendian", UCNV_UTF32_BigEndian },
   { "utf32platformendian", UCNV_UTF32_LittleEndian },
 #endif
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
   { "utf7", UCNV_UTF7 },
+#endif
   { "utf8", UCNV_UTF8 },
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
   { "x11compoundtext", UCNV_COMPOUND_TEXT}
+#endif
 };
 
 

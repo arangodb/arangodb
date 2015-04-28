@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/rm.xml
@@ -55,7 +55,7 @@ rm{
         CF{"Republica Centralafricana"}
         CG{"Congo"}
         CH{"Svizra"}
-        CI{"Costa d'Ivur"}
+        CI{"Costa d’Ivur"}
         CK{"Inslas Cook"}
         CL{"Chile"}
         CM{"Camerun"}
@@ -106,7 +106,7 @@ rm{
         GU{"Guam"}
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
-        HK{"Regiun d'administraziun speziala da Hongkong, China"}
+        HK{"Regiun d’administraziun speziala da Hongkong, China"}
         HM{"Inslas da Heard e da McDonlad"}
         HN{"Honduras"}
         HR{"Croazia"}
@@ -117,7 +117,7 @@ rm{
         IL{"Israel"}
         IM{"Insla da Man"}
         IN{"India"}
-        IO{"Territori Britannic en l'Ocean Indic"}
+        IO{"Territori Britannic en l’Ocean Indic"}
         IQ{"Irac"}
         IR{"Iran"}
         IS{"Islanda"}
@@ -159,7 +159,7 @@ rm{
         ML{"Mali"}
         MM{"Myanmar"}
         MN{"Mongolia"}
-        MO{"Regiun d'administraziun speziala Macao, China"}
+        MO{"Regiun d’administraziun speziala Macao, China"}
         MP{"Inslas Mariannas dal Nord"}
         MQ{"Martinique"}
         MR{"Mauretania"}
@@ -211,7 +211,7 @@ rm{
         SD{"Sudan"}
         SE{"Svezia"}
         SG{"Singapur"}
-        SH{"Sontg'Elena"}
+        SH{"Sontg’Elena"}
         SI{"Slovenia"}
         SJ{"Svalbard e Jan Mayen"}
         SK{"Slovachia"}
@@ -231,7 +231,7 @@ rm{
         TH{"Tailanda"}
         TJ{"Tadschikistan"}
         TK{"Tokelau"}
-        TL{"Timor da l'Ost"}
+        TL{"Timor da l’Ost"}
         TM{"Turkmenistan"}
         TN{"Tunesia"}
         TO{"Tonga"}
@@ -242,8 +242,8 @@ rm{
         TZ{"Tansania"}
         UA{"Ucraina"}
         UG{"Uganda"}
-        UM{"Inslas pitschnas perifericas dals Stadis Unids da l'America"}
-        US{"Stadis Unids da l'America"}
+        UM{"Inslas pitschnas perifericas dals Stadis Unids da l’America"}
+        US{"Stadis Unids da l’America"}
         UY{"Uruguay"}
         UZ{"Usbekistan"}
         VA{"Citad dal Vatican"}
@@ -262,5 +262,5 @@ rm{
         ZW{"Simbabwe"}
         ZZ{"Regiun betg encouschenta u nunvalaivla"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

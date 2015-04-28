@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/kln.xml
@@ -27,10 +27,6 @@ kln{
             "BHD",
             "Rabisiekab Bahrain",
         }
-        BIF{
-            "BIF",
-            "Rabisiekab Burundi",
-        }
         BWP{
             "BWP",
             "Rabisiekab Botswana",
@@ -51,14 +47,6 @@ kln{
             "CN¥",
             "Rabisiekab China",
         }
-        CVE{
-            "CVE",
-            "Rabisiekab Kepuvede",
-        }
-        DJF{
-            "DJF",
-            "Rabisiekab Jibuti",
-        }
         DZD{
             "DZD",
             "Rabisiekab Algerian",
@@ -66,10 +54,6 @@ kln{
         EGP{
             "EGP",
             "Pauditab Misri",
-        }
-        ERN{
-            "ERN",
-            "Rabisiekab Eritrea",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ kln{
             "£",
             "pounditab Uingereza",
         }
-        GMD{
-            "GMD",
-            "Rabisiekab Gambia",
-        }
-        GNS{
-            "GNS",
-            "Rabisiekab Guinea",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Rabisiekab India",
         }
         JPY{
@@ -102,18 +78,6 @@ kln{
         KES{
             "Ksh",
             "Silingitab ya Kenya",
-        }
-        KMF{
-            "KMF",
-            "Rabisiekab Komoro",
-        }
-        LRD{
-            "LRD",
-            "Dolaitab Liberia",
-        }
-        LSL{
-            "LSL",
-            "Rabisiekab Lesoto",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ kln{
             "SAR",
             "Rabisiekab Saudia",
         }
-        SCR{
-            "SCR",
-            "Rabisiekab Shelisheli",
-        }
         SDG{
             "SDG",
             "Pouditab Sudan",
         }
-        SHP{
-            "SHP",
-            "Pouditab helena ne tilil",
-        }
         SLL{
             "SLL",
             "Leonit",
-        }
-        SOS{
-            "SOS",
-            "siligitab Somalia",
-        }
-        STD{
-            "STD",
-            "Rabisiekab Sao Tome ak Principe",
-        }
-        SZL{
-            "SZL",
-            "Lilangenit",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ kln{
             "Kwachaitab Zambia",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

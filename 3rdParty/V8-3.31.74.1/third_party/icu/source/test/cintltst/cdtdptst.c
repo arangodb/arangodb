@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2012, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -38,6 +38,8 @@ void addDtFrDepTest(TestNode** root)
     addTest(root, &TestRunTogetherPattern985, "tsformat/cdtdptst/TestRunTogetherPattern985");
     addTest(root, &TestCzechMonths459, "tsformat/cdtdptst/TestCzechMonths459");
     addTest(root, &TestQuotePattern161, "tsformat/cdtdptst/TestQuotePattern161");
+    addTest(root, &TestBooleanAttributes, "tsformat/cdtdptst/TestBooleanAttributes");
+
     
 }
 
@@ -347,6 +349,37 @@ void TestQuotePattern161()
     free(pattern);
     
     ctest_resetTimeZone();
+}
+
+/*
+ * Testing udat_getBooleanAttribute and  unum_setBooleanAttribute() to make sure basic C wrapper functionality is present
+ */
+void TestBooleanAttributes(void)
+{
+    UDateFormat *en;
+    UErrorCode status=U_ZERO_ERROR;
+    UBool initialState = TRUE;
+    UBool switchedState = FALSE;
+        
+    log_verbose("\ncreating a date format with english locale\n");
+    en = udat_open(UDAT_FULL, UDAT_DEFAULT, "en_US", NULL, 0, NULL, 0, &status);
+    if(U_FAILURE(status)) {
+        log_data_err("error in creating the dateformat -> %s (Are you missing data?)\n", 
+            myErrorName(status) );
+        return;
+    }
+    
+    
+    initialState = udat_getBooleanAttribute(en, UDAT_PARSE_ALLOW_NUMERIC, &status);
+    if(initialState != TRUE) switchedState = TRUE;  // if it wasn't the default of TRUE, then flip what we expect
+
+    udat_setBooleanAttribute(en, UDAT_PARSE_ALLOW_NUMERIC, switchedState, &status);
+    if(switchedState != udat_getBooleanAttribute(en, UDAT_PARSE_ALLOW_NUMERIC, &status)) {
+        log_err("unable to switch states!");
+        return;
+    }
+
+    udat_close(en);
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

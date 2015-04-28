@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/mgh.xml
@@ -24,7 +24,7 @@ mgh{
             }
         }
     }
-    Version{"2.0.90.61"}
+    Version{"2.1.7.39"}
     calendar{
         generic{
             DateTimePatterns{
@@ -70,7 +70,7 @@ mgh{
         gregorian{
             AmPmMarkers{
                 "wichishu",
-                "mchochil'l",
+                "mchochil’l",
             }
             DateTimePatterns{
                 "h:mm:ss a zzzz",
@@ -182,7 +182,7 @@ mgh{
                         "Mweri wo tisa",
                         "Mweri wo kumi",
                         "Mweri wo kumi na moja",
-                        "Mweri wo kumi na yel'li",
+                        "Mweri wo kumi na yel’li",
                     }
                 }
                 stand-alone{
@@ -208,13 +208,13 @@ mgh{
         day{
             dn{"nihuku"}
             relative{
-                "-1"{"n'chana"}
-                "0"{"lel'lo"}
-                "1"{"me'llo"}
+                "-1"{"n’chana"}
+                "0"{"lel’lo"}
+                "1"{"me’llo"}
             }
         }
         era{
-            dn{"kal'lai"}
+            dn{"kal’lai"}
         }
         hour{
             dn{"isaa"}

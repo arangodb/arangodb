@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2002-2011, International Business Machines
+* Copyright (c) 2002-2014, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 */
@@ -22,7 +22,7 @@ typedef struct UOption UOption;
 #if !UCONFIG_NO_CONVERSION
 
 U_NAMESPACE_USE
-// Use the TESTCASE macro in subclasses of IntlTest.  Define the
+// Use the TESTCASE macro in subclasses of UPerfTest. Define the
 // runIndexedTest method in this fashion:
 //
 //| void MyTest::runIndexedTest(int32_t index, UBool exec,
@@ -32,29 +32,48 @@ U_NAMESPACE_USE
 //|         TESTCASE(1,TestSomethingElse);
 //|         TESTCASE(2,TestAnotherThing);
 //|         default: 
-//|             name = ""; 
-//|             return NULL;
+//|             name = "";
+//|             break;
 //|     }
+//|     return NULL;
 //| }
-#if 0
 #define TESTCASE(id,test)                       \
     case id:                                    \
         name = #test;                           \
         if (exec) {                             \
-            fprintf(stdout,#test "---");        \
-            fprintf(stdout,"\n");               \
             return test();                      \
         }                                       \
         break
 
-#endif
-#define TESTCASE(id,test)                       \
-    case id:                                    \
-        name = #test;                           \
-        if (exec) {                             \
-            return test();                      \
-        }                                       \
-        break
+// More convenient macros. These allow easy reordering of the test cases.
+// Copied from intltest.h, and adjusted to not logln() but return a UPerfFunction.
+//
+//| void MyTest::runIndexedTest(int32_t index, UBool exec,
+//|                             const char* &name, char* /*par*/) {
+//|     TESTCASE_AUTO_BEGIN;
+//|     TESTCASE_AUTO(TestSomething);
+//|     TESTCASE_AUTO(TestSomethingElse);
+//|     TESTCASE_AUTO(TestAnotherThing);
+//|     TESTCASE_AUTO_END;
+//|     return NULL;
+//| }
+#define TESTCASE_AUTO_BEGIN \
+    for(;;) { \
+        int32_t testCaseAutoNumber = 0
+
+#define TESTCASE_AUTO(test) \
+        if (index == testCaseAutoNumber++) { \
+            name = #test; \
+            if (exec) { \
+                return test(); \
+            } \
+            break; \
+        }
+
+#define TESTCASE_AUTO_END \
+        name = ""; \
+        break; \
+    }
 
 /**
  * Subclasses of PerfTest will need to create subclasses of

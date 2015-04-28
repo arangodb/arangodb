@@ -1,5 +1,5 @@
 //
-//   Copyright (C) 2002-2012 International Business Machines Corporation
+//   Copyright (C) 2002-2014 International Business Machines Corporation
 //   and others. All rights reserved.
 //
 //   file:  regeximp.h
@@ -22,11 +22,11 @@
 
 U_NAMESPACE_BEGIN
 
-// For debugging, define REGEX_DEBUG 
+// For debugging, define REGEX_DEBUG
 // To define with configure,
-//   ./runConfigureICU --enable-debug --disable-release Linux CPPFLAGS="-DREGEX_DEBUG"
+//   CPPFLAGS="-DREGEX_DEBUG" ./runConfigureICU --enable-debug --disable-release Linux 
 
-#ifdef REGEX_DEBUG   
+#ifdef REGEX_DEBUG
 //
 //  debugging options.  Enable one or more of the three #defines immediately following
 //
@@ -44,19 +44,6 @@ U_NAMESPACE_BEGIN
 #define REGEX_SCAN_DEBUG_PRINTF(a) printf a
 #else
 #define REGEX_SCAN_DEBUG_PRINTF(a)
-#endif
-
-#ifdef REGEX_DUMP_DEBUG
-#define REGEX_DUMP_DEBUG_PRINTF(a) printf a
-#else
-#define REGEX_DUMP_DEBUG_PRINTF(a)
-#endif
-
-#ifdef REGEX_RUN_DEBUG
-#define REGEX_RUN_DEBUG_PRINTF(a) printf a
-#define REGEX_DUMP_DEBUG_PRINTF(a) printf a
-#else
-#define REGEX_RUN_DEBUG_PRINTF(a)
 #endif
 
 
@@ -254,7 +241,6 @@ enum {
 //
 //  Convenience macros for assembling and disassembling a compiled operation.
 //
-#define URX_BUILD(type, val) (int32_t)((type << 24) | (val))
 #define URX_TYPE(x)          ((uint32_t)(x) >> 24)
 #define URX_VAL(x)           ((x) & 0xffffff)
 
@@ -373,9 +359,9 @@ class CaseFoldingUTextIterator: public UMemory {
         CaseFoldingUTextIterator(UText &text);
         ~CaseFoldingUTextIterator();
 
-        UChar32 next();           // Next case folded character 
+        UChar32 next();           // Next case folded character
 
-        UBool   inExpansion();    // True if last char returned from next() and the 
+        UBool   inExpansion();    // True if last char returned from next() and the
                                   //  next to be returned both originated from a string
                                   //  folding of the same code point from the orignal UText.
       private:
@@ -398,9 +384,9 @@ class CaseFoldingUCharIterator: public UMemory {
         CaseFoldingUCharIterator(const UChar *chars, int64_t start, int64_t limit);
         ~CaseFoldingUCharIterator();
 
-        UChar32 next();           // Next case folded character 
+        UChar32 next();           // Next case folded character
 
-        UBool   inExpansion();    // True if last char returned from next() and the 
+        UBool   inExpansion();    // True if last char returned from next() and the
                                   //  next to be returned both originated from a string
                                   //  folding of the same code point from the orignal UText.
 

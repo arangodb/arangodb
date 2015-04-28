@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/pt.xml
@@ -19,17 +19,16 @@ pt{
         ar_001{"árabe moderno"}
         az{"azerbaijano"}
         ban{"balinês"}
-        be{"bielo-russo"}
+        be{"bielorrusso"}
         bem{"bemba"}
         bg{"búlgaro"}
-        bh{"biari"}
         bn{"bengali"}
         br{"bretão"}
         bs{"bósnio"}
         ca{"catalão"}
         ceb{"cebuano"}
         chr{"cherokee"}
-        ckb{"Sorâni curdo"}
+        ckb{"sorâni curdo"}
         co{"córsico"}
         cs{"tcheco"}
         cy{"galês"}
@@ -82,7 +81,7 @@ pt{
         ka{"georgiano"}
         kg{"congolês"}
         kk{"cazaque"}
-        km{"cmer"}
+        km{"khmer"}
         kn{"canarês"}
         ko{"coreano"}
         ku{"curdo"}
@@ -95,13 +94,12 @@ pt{
         lt{"lituano"}
         lua{"luba-lulua"}
         lv{"letão"}
-        mfe{"Morisyen"}
+        mfe{"morisyen"}
         mg{"malgaxe"}
         mi{"maori"}
         mk{"macedônio"}
         ml{"malaiala"}
         mn{"mongol"}
-        mo{"moldávio"}
         mr{"marata"}
         ms{"malaio"}
         mt{"maltês"}
@@ -128,8 +126,9 @@ pt{
         rm{"romanche"}
         rn{"rundi"}
         ro{"romeno"}
+        ro_MD{"moldávio"}
         ru{"russo"}
-        rw{"kinyarwanda"}
+        rw{"ruanda"}
         sd{"sindi"}
         sh{"servo-croata"}
         si{"cingalês"}
@@ -145,10 +144,11 @@ pt{
         sw{"suaíli"}
         ta{"tâmil"}
         te{"telugu"}
-        tg{"tadjique"}
+        tg{"tajique"}
         th{"tailandês"}
         ti{"tigrínia"}
-        tk{"turcomano"}
+        tk{"turcomeno"}
+        tl{"tagalo"}
         tn{"tswana"}
         to{"tonganês"}
         tr{"turco"}
@@ -168,6 +168,9 @@ pt{
         zh_Hans{"chinês simplificado"}
         zh_Hant{"chinês tradicional"}
         zu{"zulu"}
+    }
+    Languages%variant{
+        ps{"pushto"}
     }
     LanguagesShort{
         az{"azeri"}
@@ -255,7 +258,7 @@ pt{
         Moon{"moon"}
         Mtei{"meitei mayek"}
         Mymr{"birmanês"}
-        Nkoo{"n'ko"}
+        Nkoo{"n’ko"}
         Ogam{"ogâmico"}
         Olck{"ol chiki"}
         Orkh{"orkhon"}
@@ -313,7 +316,10 @@ pt{
         Hans{"han simplificado"}
         Hant{"han tradicional"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"perso-árabe"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Idioma: {0}"}
         script{"Alfabeto: {0}"}

@@ -1,6 +1,6 @@
 # *   Copyright (C) 1998-2010, International Business Machines
 # *   Corporation and others.  All Rights Reserved.
-GENRB_CLDR_VERSION = 1.9
+GENRB_CLDR_VERSION = %version%
 # A list of txt's to build
 # The downstream packager may not need this file at all if their package is not
 # constrained by
@@ -31,18 +31,15 @@ GENRB_SOURCE =\
  ca.txt\
  cs.txt\
  da.txt\
- de.txt\
+ de.txt de_AT.txt de_CH.txt\
  el.txt\
- en.txt en_GB.txt en_US.txt en_AU.txt en_001.txt\
- es.txt es_ES.txt es_419.txt\
- es_AR.txt es_CO.txt es_EC.txt es_HN.txt es_PA.txt es_PY.txt es_UY.txt\
- es_BO.txt es_CR.txt es_MX.txt es_PE.txt es_SV.txt es_VE.txt es_CL.txt\
- es_DO.txt es_GT.txt es_NI.txt es_PR.txt es_US.txt\
+ en.txt en_001.txt en_GB.txt en_US.txt en_AU.txt en_CA.txt en_NZ.txt en_ZA.txt\
+ es.txt es_ES.txt es_419.txt es_AR.txt es_MX.txt es_US.txt\
  et.txt\
  fa.txt\
  fi.txt\
  fil.txt\
- fr.txt\
+ fr.txt fr_CA.txt fr_CH.txt\
  gu.txt\
  he.txt\
  hi.txt\
@@ -84,6 +81,7 @@ GENRB_SOURCE =\
  bem.txt\
  br.txt\
  bs.txt\
+ ckb.txt\
  cy.txt\
  ee.txt\
  eo.txt\
@@ -99,6 +97,7 @@ GENRB_SOURCE =\
  ka.txt\
  kk.txt\
  km.txt\
+ ku.txt\
  ky.txt\
  lg.txt\
  ln.txt\

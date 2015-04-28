@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1998-2012, International Business Machines
+*   Copyright (C) 1998-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -92,7 +92,6 @@ static     UBool       write_java = FALSE;
 static     UBool       write_xliff = FALSE;
 static     const char* outputEnc ="";
 static     struct SRBRoot *newPoolBundle = NULL;
-           UBool       gIncludeUnihanColl = FALSE;
 
 /* TODO: separate header file for ResFile? */
 typedef struct ResFile {
@@ -280,7 +279,7 @@ main(int argc,
         }
     }
 
-    initParser(options[NO_COLLATION_RULES].doesOccur);
+    initParser();
 
     /*added by Jing*/
     if(options[LANGUAGE].doesOccur) {
@@ -397,7 +396,10 @@ main(int argc,
     }
 
     if(options[INCLUDE_UNIHAN_COLL].doesOccur) {
-        gIncludeUnihanColl = TRUE;
+        puts("genrb option --includeUnihanColl ignored: \n"
+                "CLDR 26/ICU 54 unihan data is small, except\n"
+                "the ucadata-unihan.icu version of the collation root data\n"
+                "is about 300kB larger than the ucadata-implicithan.icu version.");
     }
 
     if((argc-1)!=1) {
@@ -557,7 +559,8 @@ processFile(
         printf("autodetected encoding %s\n", cp);
     }
     /* Parse the data into an SRBRoot */
-    data = parse(ucbuf, inputDir, outputDir, !omitBinaryCollation, status);
+    data = parse(ucbuf, inputDir, outputDir, filename,
+                 !omitBinaryCollation, options[NO_COLLATION_RULES].doesOccur, status);
 
     if (data == NULL || U_FAILURE(*status)) {
         fprintf(stderr, "couldn't parse the file %s. Error:%s\n", filename,u_errorName(*status));

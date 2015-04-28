@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/pt.xml
@@ -52,7 +52,7 @@ pt{
         BY{"Bielorrússia"}
         BZ{"Belize"}
         CA{"Canadá"}
-        CC{"Ilhas Coco"}
+        CC{"Ilhas Cocos (Keeling)"}
         CD{"Congo - Kinshasa"}
         CF{"República Centro-Africana"}
         CG{"Congo - Brazzaville"}
@@ -68,7 +68,7 @@ pt{
         CU{"Cuba"}
         CV{"Cabo Verde"}
         CW{"Curaçao"}
-        CX{"Ilhas Natal"}
+        CX{"Ilha Christmas"}
         CY{"Chipre"}
         CZ{"República Tcheca"}
         DE{"Alemanha"}
@@ -101,7 +101,7 @@ pt{
         GG{"Guernsey"}
         GH{"Gana"}
         GI{"Gibraltar"}
-        GL{"Groênlandia"}
+        GL{"Groenlândia"}
         GM{"Gâmbia"}
         GN{"Guiné"}
         GP{"Guadalupe"}
@@ -112,8 +112,8 @@ pt{
         GU{"Guam"}
         GW{"Guiné Bissau"}
         GY{"Guiana"}
-        HK{"Hong Kong, RAE da China"}
-        HM{"Ilha Heard e Ilhas McDonald"}
+        HK{"Hong Kong"}
+        HM{"Ilhas Heard e McDonald"}
         HN{"Honduras"}
         HR{"Croácia"}
         HT{"Haiti"}
@@ -138,7 +138,7 @@ pt{
         KH{"Camboja"}
         KI{"Quiribati"}
         KM{"Comores"}
-        KN{"São Cristovão e Nevis"}
+        KN{"São Cristóvão e Nevis"}
         KP{"Coreia do Norte"}
         KR{"Coreia do Sul"}
         KW{"Kuwait"}
@@ -166,7 +166,7 @@ pt{
         ML{"Mali"}
         MM{"Mianmar (Birmânia)"}
         MN{"Mongólia"}
-        MO{"Macau, RAE da China"}
+        MO{"Macau"}
         MP{"Ilhas Marianas do Norte"}
         MQ{"Martinica"}
         MR{"Mauritânia"}
@@ -201,7 +201,7 @@ pt{
         PM{"Saint Pierre e Miquelon"}
         PN{"Ilhas Pitcairn"}
         PR{"Porto Rico"}
-        PS{"Territórios palestinos"}
+        PS{"Palestina"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguai"}
@@ -239,7 +239,7 @@ pt{
         TF{"Territórios Franceses do Sul"}
         TG{"Togo"}
         TH{"Tailândia"}
-        TJ{"Tadjiquistão"}
+        TJ{"Tajiquistão"}
         TK{"Tokelau"}
         TL{"Timor-Leste"}
         TM{"Turcomenistão"}
@@ -273,12 +273,16 @@ pt{
         ZW{"Zimbábue"}
         ZZ{"Região desconhecida"}
     }
+    Countries%variant{
+        CD{"República Democrática do Congo"}
+        CG{"Congo"}
+        FK{"Ilhas Falkland (Ilhas Malvinas)"}
+        MK{"Macedônia (Antiga República Iugoslava da Macedônia - ARIM)"}
+        TL{"República Democrática de Timor-Leste"}
+    }
     CountriesShort{
-        GB{"GB"}
-        HK{"Hong Kong"}
-        MO{"Macau"}
-        PS{"Palestina"}
+        GB{"Reino Unido"}
         US{"EUA"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

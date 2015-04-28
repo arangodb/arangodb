@@ -1,0 +1,38 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/jgo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/jgo.xml
+ */
+jgo{
+    Version{"2.1.7.39"}
+    units{
+        duration{
+            day{
+                one{"{0} lɛ́Ꞌ"}
+                other{"{0} lɛ́Ꞌ"}
+            }
+            hour{
+                one{"{0} háwa"}
+                other{"{0} háwa"}
+            }
+            minute{
+                one{"{0} minút"}
+                other{"{0} minút"}
+            }
+            month{
+                one{"pɛsaŋ {0}"}
+                other{"pɛsaŋ {0}"}
+            }
+            year{
+                one{"ŋguꞋ {0}"}
+                other{"ŋguꞋ {0}"}
+            }
+        }
+    }
+}

@@ -1,4 +1,4 @@
-# Copyright (C) 2010-2013, International Business Machines Corporation and others.
+# Copyright (C) 2010-2014, International Business Machines Corporation and others.
 # All Rights Reserved.                  
 #
 # Commands for regenerating ICU4C locale data (.txt files) from CLDR.
@@ -122,7 +122,7 @@
 # 1a. Java and ant variables, adjust for your system
 
 export JAVA_HOME=`/usr/libexec/java_home`
-export ANT_OPTS="-Xmx1024m
+export ANT_OPTS="-Xmx1024m"
 
 # 1b. CLDR variables, adjust for your setup; with cygwin it might be e.g.
 # CLDR_DIR=`cygpath -wp /build/cldr`

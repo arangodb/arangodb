@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2013, International Business Machines
+*   Copyright (C) 2013-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -15,6 +15,7 @@
 */
 
 #include "unicode/listformatter.h"
+#include "simplepatternformatter.h"
 #include "mutex.h"
 #include "hash.h"
 #include "cstring.h"
@@ -25,10 +26,39 @@
 
 U_NAMESPACE_BEGIN
 
+struct ListFormatInternal : public UMemory {
+    SimplePatternFormatter twoPattern;
+    SimplePatternFormatter startPattern;
+    SimplePatternFormatter middlePattern;
+    SimplePatternFormatter endPattern;
+
+ListFormatInternal(
+        const UnicodeString& two,
+        const UnicodeString& start,
+        const UnicodeString& middle,
+        const UnicodeString& end) :
+        twoPattern(two),
+        startPattern(start),
+        middlePattern(middle),
+        endPattern(end) {}
+
+ListFormatInternal(const ListFormatData &data) :
+        twoPattern(data.twoPattern),
+        startPattern(data.startPattern),
+        middlePattern(data.middlePattern),
+        endPattern(data.endPattern) { }
+
+ListFormatInternal(const ListFormatInternal &other) :
+    twoPattern(other.twoPattern),
+    startPattern(other.startPattern),
+    middlePattern(other.middlePattern),
+    endPattern(other.endPattern) { }
+};
+
+
+
 static Hashtable* listPatternHash = NULL;
 static UMutex listFormatterMutex = U_MUTEX_INITIALIZER;
-static UChar FIRST_PARAMETER[] = { 0x7b, 0x30, 0x7d };  // "{0}"
-static UChar SECOND_PARAMETER[] = { 0x7b, 0x31, 0x7d };  // "{0}"
 static const char *STANDARD_STYLE = "standard";
 
 U_CDECL_BEGIN
@@ -39,20 +69,43 @@ static UBool U_CALLCONV uprv_listformatter_cleanup() {
 }
 
 static void U_CALLCONV
-uprv_deleteListFormatData(void *obj) {
-    delete static_cast<ListFormatData *>(obj);
+uprv_deleteListFormatInternal(void *obj) {
+    delete static_cast<ListFormatInternal *>(obj);
 }
 
 U_CDECL_END
 
-static ListFormatData* loadListFormatData(const Locale& locale, const char* style, UErrorCode& errorCode);
-static void getStringByKey(const UResourceBundle* rb, const char* key, UnicodeString& result, UErrorCode& errorCode);
+static ListFormatInternal* loadListFormatInternal(
+        const Locale& locale,
+        const char* style,
+        UErrorCode& errorCode);
 
-ListFormatter::ListFormatter(const ListFormatter& other) : data(other.data) {
+static void getStringByKey(
+        const UResourceBundle* rb,
+        const char* key,
+        UnicodeString& result,
+        UErrorCode& errorCode);
+
+ListFormatter::ListFormatter(const ListFormatter& other) :
+        owned(other.owned), data(other.data) {
+    if (other.owned != NULL) {
+        owned = new ListFormatInternal(*other.owned);
+        data = owned;
+    }
 }
 
 ListFormatter& ListFormatter::operator=(const ListFormatter& other) {
-    data = other.data;
+    if (this == &other) {
+        return *this;
+    }
+    delete owned;
+    if (other.owned) {
+        owned = new ListFormatInternal(*other.owned);
+        data = owned;
+    } else {
+        owned = NULL;
+        data = other.data;
+    }
     return *this;
 }
 
@@ -67,12 +120,12 @@ void ListFormatter::initializeHash(UErrorCode& errorCode) {
         return;
     }
 
-    listPatternHash->setValueDeleter(uprv_deleteListFormatData);
+    listPatternHash->setValueDeleter(uprv_deleteListFormatInternal);
     ucln_common_registerCleanup(UCLN_COMMON_LIST_FORMATTER, uprv_listformatter_cleanup);
 
 }
 
-const ListFormatData* ListFormatter::getListFormatData(
+const ListFormatInternal* ListFormatter::getListFormatInternal(
         const Locale& locale, const char *style, UErrorCode& errorCode) {
     if (U_FAILURE(errorCode)) {
         return NULL;
@@ -80,7 +133,7 @@ const ListFormatData* ListFormatter::getListFormatData(
     CharString keyBuffer(locale.getName(), errorCode);
     keyBuffer.append(':', errorCode).append(style, errorCode);
     UnicodeString key(keyBuffer.data(), -1, US_INV);
-    ListFormatData* result = NULL;
+    ListFormatInternal* result = NULL;
     {
         Mutex m(&listFormatterMutex);
         if (listPatternHash == NULL) {
@@ -89,19 +142,19 @@ const ListFormatData* ListFormatter::getListFormatData(
                 return NULL;
             }
         }
-        result = static_cast<ListFormatData*>(listPatternHash->get(key));
+        result = static_cast<ListFormatInternal*>(listPatternHash->get(key));
     }
     if (result != NULL) {
         return result;
     }
-    result = loadListFormatData(locale, style, errorCode);
+    result = loadListFormatInternal(locale, style, errorCode);
     if (U_FAILURE(errorCode)) {
         return NULL;
     }
 
     {
         Mutex m(&listFormatterMutex);
-        ListFormatData* temp = static_cast<ListFormatData*>(listPatternHash->get(key));
+        ListFormatInternal* temp = static_cast<ListFormatInternal*>(listPatternHash->get(key));
         if (temp != NULL) {
             delete result;
             result = temp;
@@ -115,7 +168,7 @@ const ListFormatData* ListFormatter::getListFormatData(
     return result;
 }
 
-static ListFormatData* loadListFormatData(
+static ListFormatInternal* loadListFormatInternal(
         const Locale& locale, const char * style, UErrorCode& errorCode) {
     UResourceBundle* rb = ures_open(NULL, locale.getName(), &errorCode);
     if (U_FAILURE(errorCode)) {
@@ -144,7 +197,7 @@ static ListFormatData* loadListFormatData(
     if (U_FAILURE(errorCode)) {
         return NULL;
     }
-    ListFormatData* result = new ListFormatData(two, start, middle, end);
+    ListFormatInternal* result = new ListFormatInternal(two, start, middle, end);
     if (result == NULL) {
         errorCode = U_MEMORY_ALLOCATION_ERROR;
         return NULL;
@@ -172,11 +225,11 @@ ListFormatter* ListFormatter::createInstance(const Locale& locale, UErrorCode& e
 
 ListFormatter* ListFormatter::createInstance(const Locale& locale, const char *style, UErrorCode& errorCode) {
     Locale tempLocale = locale;
-    const ListFormatData* listFormatData = getListFormatData(tempLocale, style, errorCode);
+    const ListFormatInternal* listFormatInternal = getListFormatInternal(tempLocale, style, errorCode);
     if (U_FAILURE(errorCode)) {
         return NULL;
     }
-    ListFormatter* p = new ListFormatter(listFormatData);
+    ListFormatter* p = new ListFormatter(listFormatInternal);
     if (p == NULL) {
         errorCode = U_MEMORY_ALLOCATION_ERROR;
         return NULL;
@@ -184,14 +237,76 @@ ListFormatter* ListFormatter::createInstance(const Locale& locale, const char *s
     return p;
 }
 
-
-ListFormatter::ListFormatter(const ListFormatData* listFormatterData) : data(listFormatterData) {
+ListFormatter::ListFormatter(const ListFormatData& listFormatData) {
+    owned = new ListFormatInternal(listFormatData);
+    data = owned;
 }
 
-ListFormatter::~ListFormatter() {}
+ListFormatter::ListFormatter(const ListFormatInternal* listFormatterInternal) : owned(NULL), data(listFormatterInternal) {
+}
 
-UnicodeString& ListFormatter::format(const UnicodeString items[], int32_t nItems,
-                      UnicodeString& appendTo, UErrorCode& errorCode) const {
+ListFormatter::~ListFormatter() {
+    delete owned;
+}
+
+/**
+ * Joins first and second using the pattern pat.
+ * On entry offset is an offset into first or -1 if offset unspecified.
+ * On exit offset is offset of second in result if recordOffset was set
+ * Otherwise if it was >=0 it is set to point into result where it used
+ * to point into first.
+ */
+static void joinStrings(
+        const SimplePatternFormatter& pat,
+        const UnicodeString& first,
+        const UnicodeString& second,
+        UnicodeString &result,
+        UBool recordOffset,
+        int32_t &offset,
+        UErrorCode& errorCode) {
+    if (U_FAILURE(errorCode)) {
+        return;
+    }
+    const UnicodeString *params[2] = {&first, &second};
+    int32_t offsets[2];
+    pat.format(
+            params,
+            UPRV_LENGTHOF(params),
+            result,
+            offsets,
+            UPRV_LENGTHOF(offsets),
+            errorCode);
+    if (U_FAILURE(errorCode)) {
+        return;
+    }
+    if (offsets[0] == -1 || offsets[1] == -1) {
+        errorCode = U_INVALID_FORMAT_ERROR;
+        return;
+    }
+    if (recordOffset) {
+        offset = offsets[1];
+    } else if (offset >= 0) {
+        offset += offsets[0];
+    }
+}
+
+UnicodeString& ListFormatter::format(
+        const UnicodeString items[],
+        int32_t nItems,
+        UnicodeString& appendTo,
+        UErrorCode& errorCode) const {
+    int32_t offset;
+    return format(items, nItems, appendTo, -1, offset, errorCode);
+}
+
+UnicodeString& ListFormatter::format(
+        const UnicodeString items[],
+        int32_t nItems,
+        UnicodeString& appendTo,
+        int32_t index,
+        int32_t &offset,
+        UErrorCode& errorCode) const {
+    offset = -1;
     if (U_FAILURE(errorCode)) {
         return appendTo;
     }
@@ -200,67 +315,81 @@ UnicodeString& ListFormatter::format(const UnicodeString items[], int32_t nItems
         return appendTo;
     }
 
-    if (nItems > 0) {
-        UnicodeString newString = items[0];
-        if (nItems == 2) {
-            addNewString(data->twoPattern, newString, items[1], errorCode);
-        } else if (nItems > 2) {
-            addNewString(data->startPattern, newString, items[1], errorCode);
-            int32_t i;
-            for (i = 2; i < nItems - 1; ++i) {
-                addNewString(data->middlePattern, newString, items[i], errorCode);
-            }
-            addNewString(data->endPattern, newString, items[nItems - 1], errorCode);
+    if (nItems <= 0) {
+        return appendTo;
+    }
+    if (nItems == 1) {
+        if (index == 0) {
+            offset = appendTo.length();
         }
-        if (U_SUCCESS(errorCode)) {
-            appendTo += newString;
+        appendTo.append(items[0]);
+        return appendTo;
+    }
+    if (nItems == 2) {
+        if (index == 0) {
+            offset = 0;
         }
+        joinStrings(
+                data->twoPattern,
+                items[0],
+                items[1],
+                appendTo,
+                index == 1,
+                offset,
+                errorCode);
+        return appendTo;
+    }
+    UnicodeString temp[2];
+    if (index == 0) {
+        offset = 0;
+    }
+    joinStrings(
+            data->startPattern,
+            items[0],
+            items[1],
+            temp[0],
+            index == 1,
+            offset,
+            errorCode);
+    int32_t i;
+    int32_t pos = 0;
+    int32_t npos = 0;
+    UBool startsWithZeroPlaceholder =
+            data->middlePattern.startsWithPlaceholder(0);
+    for (i = 2; i < nItems - 1; ++i) {
+         if (!startsWithZeroPlaceholder) {
+             npos = (pos + 1) & 1;
+             temp[npos].remove();
+         }
+         joinStrings(
+                 data->middlePattern,
+                 temp[pos],
+                 items[i],
+                 temp[npos],
+                 index == i,
+                 offset,
+                 errorCode);
+         pos = npos;
+    }
+    if (!data->endPattern.startsWithPlaceholder(0)) {
+        npos = (pos + 1) & 1;
+        temp[npos].remove();
+    }
+    joinStrings(
+            data->endPattern,
+            temp[pos],
+            items[nItems - 1],
+            temp[npos],
+            index == nItems - 1,
+            offset,
+            errorCode);
+    if (U_SUCCESS(errorCode)) {
+        if (offset >= 0) {
+            offset += appendTo.length();
+        }
+        appendTo += temp[npos];
     }
     return appendTo;
-}
-
-/**
- * Joins originalString and nextString using the pattern pat and puts the result in
- * originalString.
- */
-void ListFormatter::addNewString(const UnicodeString& pat, UnicodeString& originalString,
-                                 const UnicodeString& nextString, UErrorCode& errorCode) const {
-    if (U_FAILURE(errorCode)) {
-        return;
-    }
-
-    int32_t p0Offset = pat.indexOf(FIRST_PARAMETER, 3, 0);
-    if (p0Offset < 0) {
-        errorCode = U_ILLEGAL_ARGUMENT_ERROR;
-        return;
-    }
-    int32_t p1Offset = pat.indexOf(SECOND_PARAMETER, 3, 0);
-    if (p1Offset < 0) {
-        errorCode = U_ILLEGAL_ARGUMENT_ERROR;
-        return;
-    }
-
-    int32_t i, j;
-
-    const UnicodeString* firstString;
-    const UnicodeString* secondString;
-    if (p0Offset < p1Offset) {
-        i = p0Offset;
-        j = p1Offset;
-        firstString = &originalString;
-        secondString = &nextString;
-    } else {
-        i = p1Offset;
-        j = p0Offset;
-        firstString = &nextString;
-        secondString = &originalString;
-    }
-
-    UnicodeString result = UnicodeString(pat, 0, i) + *firstString;
-    result += UnicodeString(pat, i+3, j-i-3);
-    result += *secondString;
-    result += UnicodeString(pat, j+3);
-    originalString = result;
 }
 
 U_NAMESPACE_END

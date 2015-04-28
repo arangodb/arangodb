@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/rbnf/sv.xml
@@ -32,7 +32,7 @@ sv{
             "%digits-ordinal-reale:",
             "0: =%digits-ordinal-feminine=;",
             "%digits-ordinal:",
-            "0: =%digits-ordinal-masculine=;",
+            "0: =%digits-ordinal-feminine=;",
         }
         SpelloutRules{
             "%%lenient-parse:",
@@ -239,5 +239,5 @@ sv{
             "0: =%spellout-ordinal-neuter=;",
         }
     }
-    Version{"2.0.82.42"}
+    Version{"2.0.95.53"}
 }

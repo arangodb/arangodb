@@ -1,10 +1,13 @@
-# Copyright (C) 2011-2013, International Business Machines
+# -*- icu-dependencies -*-
+# Copyright (C) 2011-2014, International Business Machines
 # Corporation and others. All Rights Reserved.
 #
 # file name: dependencies.txt
 #
 # created on: 2011may26
 # created by: Markus W. Scherer
+#
+# See http://site.icu-project.org/processes/release/tasks/healthy-code#TOC-Check-library-dependencies
 
 # Standard library symbols used by ICU --------------------------------------- #
 
@@ -58,7 +61,7 @@ group: stdlib_qsort
 
 group: pthread
     pthread_mutex_init pthread_mutex_destroy pthread_mutex_lock pthread_mutex_unlock
-    pthread_cond_wait pthread_cond_broadcast
+    pthread_cond_wait pthread_cond_broadcast pthread_cond_signal
 
 group: system_locale
     getenv
@@ -131,11 +134,11 @@ library: common
     # Libraries and groups that the common library depends on.
     date_interval
     breakiterator
-    uts46 filterednormalizer2 normalizer2 canonical_iterator
-    normlzr unormcmp unorm_it unorm
+    uts46 filterednormalizer2 normalizer2 loadednormalizer2 canonical_iterator
+    normlzr unormcmp unorm
     idna2003 stringprep
     stringenumeration
-    unistr_core unistr_props unistr_case unistr_case_locale unistr_titlecase_brkiter unistr_cnv
+    unistr_props unistr_case unistr_case_locale unistr_titlecase_brkiter unistr_cnv
     uniset_core uniset_props uniset_closure usetiter uset uset_props
     uiter
     ucasemap ucasemap_titlecase_brkiter script_runs
@@ -145,9 +148,10 @@ library: common
     resourcebundle service_registration resbund_cnv ures_cnv icudataver ucat
     loclikely
     conversion converter_selector ucnv_set ucnvdisp
-    messagepattern
+    messagepattern simplepatternformatter
     icu_utility icu_utility_with_props
     ustr_wcs
+    unifiedcache
     ucharstriebuilder ucharstrieiterator
     bytestriebuilder bytestrieiterator
     hashtable uhash uvector uvector32 uvector64 ulist
@@ -177,6 +181,7 @@ group: breakiterator
     uhash ustack utrie
     ucharstrie bytestrie
     normlzr  # for dictbe.o, should switch to Normalizer2
+    uvector32 # for dictbe.o
 
 group: unormcmp  # unorm_compare()
     unormcmp.o
@@ -184,11 +189,6 @@ group: unormcmp  # unorm_compare()
     filterednormalizer2
     uniset_props  # for uniset_getUnicode32Instance()
     ucase
-
-group: unorm_it  # UNormIterator
-    unorm_it.o
-  deps
-    unorm uiter
 
 group: unorm  # old normalization C API
     unorm.o
@@ -207,11 +207,10 @@ group: normlzr  # old Normalizer C++ class
 group: uts46
     uts46.o
   deps
-    normalizer2 punycode
+    normalizer2 loadednormalizer2 punycode
     uchar  # for u_charType() (via U_GET_GC_MASK(c))
     ubidi_props  # for u_charDirection() & ubidi_getJoiningType()
-    unistr_core
-    stringpiece bytestream
+    bytestream
 
 group: filterednormalizer2
     filterednormalizer2.o
@@ -235,12 +234,16 @@ group: canonical_iterator
   deps
     normalizer2 usetiter
 
+group: loadednormalizer2
+    loadednormalizer2impl.o
+  deps
+    normalizer2
+
 group: normalizer2
     normalizer2.o
     normalizer2impl.o
   deps
     uniset_core
-    unistr_core
     utrie2_builder  # for building CanonIterData & FCD
     uvector  # for building CanonIterData
     uhash  # for the instance cache
@@ -289,7 +292,7 @@ group: uniset_core
     uniset.o bmpset.o unisetspan.o
   deps
     patternprops
-    unistr_core icu_utility
+    icu_utility
     uvector
 
 group: icu_utility_with_props
@@ -300,17 +303,17 @@ group: icu_utility_with_props
 group: icu_utility
     util.o
   deps
-    unistr_core patternprops
+    patternprops platform
 
 group: utext
     utext.o
   deps
-    unistr_core ucase
+    ucase
 
 group: stringenumeration
     ustrenum.o uenum.o
   deps
-    unistr_core
+    platform
 
 group: schriter
     schriter.o
@@ -319,7 +322,7 @@ group: schriter
     # schriter and uchriter into separate groups.
     uchriter.o
   deps
-    chariter unistr_core
+    chariter
 
 group: chariter
     chariter.o
@@ -334,27 +337,22 @@ group: uiter
 group: unistr_cnv
     unistr_cnv.o
   deps
-    conversion unistr_core
-
-group: unistr_core
-    unistr.o
-  deps
-    ustrtrns appendable
+    conversion
 
 group: uscript
     uscript.o  # uscript_getCode() accepts a locale ID and loads its script code data
   deps
-    propname resourcebundle
+    propname loclikely
 
 group: uscript_props  # script metadata properties
     uscript_props.o
   deps
-    unistr_core platform
+    platform
 
 group: uprops
     uprops.o
   deps
-    normalizer2
+    normalizer2 loadednormalizer2
     uchar
     ubidi_props
     unistr_case ustring_case  # only for case folding
@@ -383,7 +381,12 @@ group: uchar
 group: messagepattern  # for MessageFormat and tools
     messagepattern.o
   deps
-    patternprops unistr_core
+    patternprops platform
+
+group: simplepatternformatter
+    simplepatternformatter.o
+  deps
+    platform
 
 group: patternprops
     patternprops.o
@@ -409,7 +412,7 @@ group: ubidi_props
 group: unistr_props
     unistr_props.o
   deps
-    unistr_core uchar
+    uchar platform
 
 group: unistr_case_locale
     unistr_case_locale.o
@@ -419,7 +422,6 @@ group: unistr_case_locale
 group: unistr_case
     unistr_case.o
   deps
-    unistr_core
     ustring_case
 
 group: unistr_titlecase_brkiter
@@ -458,7 +460,7 @@ group: ustring_case
 group: ucase
     ucase.o
   deps
-    unistr_core utrie2
+    utrie2
 
 group: uinit
     uinit.o
@@ -506,7 +508,7 @@ group: service_registration
 group: listformatter
     listformatter.o
   deps
-    resourcebundle
+    resourcebundle simplepatternformatter
 
 group: ucat  # message-catalog-like API
     ucat.o
@@ -526,7 +528,7 @@ group: icudataver  # u_getDataVersion()
 group: loclikely
     loclikely.o
   deps
-    resourcebundle
+    resourcebundle uscript_props propname
 
 group: locresdata
     # This was intended to collect locale functions that load resource bundle data.
@@ -548,12 +550,13 @@ group: ures_cnv  # ures_openU, path is a Unicode string
 group: resourcebundle
     resbund.o uresbund.o uresdata.o
     locavailable.o
-    # uloc_tag.c converts between old ICU/LDML/CLDR locale IDs and newer BCP 47 IDs.
-    # It uses data from resource bundles for some of the mappings.
-    # We might want to generate .c files for that data, to #include rather than load,
+    # uloc_tag.c and uloc_keytype.cpp convert between
+    # old ICU/LDML/CLDR locale IDs and newer BCP 47 IDs.
+    # They use data from resource bundles for some of the mappings.
+    # We might want to generate .h files for that data, to #include rather than load,
     # to minimize dependencies from this code.
     # Then we could separate this higher-level locale ID code from the resource bundle code.
-    uloc.o uloc_tag.o
+    uloc.o uloc_tag.o uloc_keytype.o
     # Even basic locid.cpp via Locale constructors and Locale::getDefault()
     # depend on canonicalization and data loading.
     # We can probably only disentangle basic locale ID handling from resource bundle code
@@ -563,25 +566,30 @@ group: resourcebundle
     locbased.o
   deps
     udata ucol_swp
-    sort stringenumeration uhash
+    sort stringenumeration uhash uvector
 
 group: udata
     udata.o ucmndata.o udatamem.o
     umapfile.o
   deps
-    uhash charstr stringpiece platform stubdata
+    uhash platform stubdata
     file_io mmap_functions
+
+group: unifiedcache
+    unifiedcache.o
+  deps
+    uhash
+    platform
 
 group: ucharstriebuilder
     ucharstriebuilder.o
   deps
     ucharstrie stringtriebuilder sort
-    unistr_core
 
 group: ucharstrieiterator
     ucharstrieiterator.o
   deps
-    ucharstrie unistr_core uvector32
+    ucharstrie uvector32
 
 group: ucharstrie
     ucharstrie.o
@@ -592,12 +600,11 @@ group: bytestriebuilder
     bytestriebuilder.o
   deps
     bytestrie stringtriebuilder sort
-    charstr stringpiece
 
 group: bytestrieiterator
     bytestrieiterator.o
   deps
-    bytestrie charstr uvector32
+    bytestrie uvector32
 
 group: bytestrie
     bytestrie.o
@@ -635,7 +642,6 @@ group: utrie  # Callers should use utrie2 instead.
 group: hashtable  # Maps UnicodeString to value.
     uhash_us.o
   deps
-    unistr_core
     uhash
 
 group: uhash
@@ -677,32 +683,10 @@ group: sort
 group: ustr_wcs
     ustr_wcs.o
   deps
-    ustrtrns  # on platforms where wchar_t is UTF-32
-    # platform -- on other platforms
-
-group: ustrtrns
-    ustrtrns.o
-  deps
     platform
-
-group: charstr
-    charstr.o
-  deps
-    unistr_core  # for CharString::appendInvariantChars(const UnicodeString &s, UErrorCode &errorCode)
-    platform
-
-group: stringpiece
-    stringpiece.o
-  deps
-    PIC c_strings
 
 group: bytestream
     bytestream.o
-  deps
-    platform
-
-group: appendable
-    appendable.o
   deps
     platform
 
@@ -714,7 +698,7 @@ group: icuplug
 group: ucol_swp
     ucol_swp.o
   deps
-    platform
+    utrie2  # Format version 4 uses UTrie2.
 
 group: errorcode  # ErrorCode base class
     errorcode.o
@@ -729,6 +713,9 @@ group: platform
     # Files in the "platform" group.
     cmemory.o uobject.o
     cstring.o cwchar.o uinvchar.o
+    charstr.o
+    unistr.o  # for CharString::appendInvariantChars(const UnicodeString &s, UErrorCode &errorCode)
+    appendable.o stringpiece.o ustrtrns.o  # for unistr.o
     ustring.o  # Other platform files really just need u_strlen
     ustrfmt.o  # uprv_itou
     utf_impl.o
@@ -736,7 +723,7 @@ group: platform
     ucln_cmn.o  # for putil.o which calls ucln_common_registerCleanup
     udataswp.o  # for uinvchar.o; TODO: move uinvchar.o swapper functions to udataswp.o?
     umath.o
-    umutex.o
+    umutex.o sharedobject.o
     utrace.o
   deps
     # The "platform" group has no ICU dependencies.
@@ -751,7 +738,9 @@ group: platform
 library: i18n
   deps
     region localedata genderinfo charset_detector spoof_detection
-    alphabetic_index collation formatting formattable_cnv regex regex_cnv translit
+    alphabetic_index collation collation_builder string_search
+    formatting formattable_cnv regex regex_cnv translit
+    filteredbreakiterator
     universal_time_scale
     uclean_i18n
 
@@ -794,12 +783,36 @@ group: alphabetic_index
     uclean_i18n
 
 group: collation
-    bocsu.o coleitr.o coll.o sortkey.o tblcoll.o ucol.o
-    ucol_bld.o ucol_cnt.o ucol_elm.o ucol_res.o ucol_sit.o ucol_tok.o ucol_wgt.o ucoleitr.o
+    # The collation "runtime" code should not depend on the collation_builder code.
+    # For example, loading from resource bundles does not fall back to
+    # building from rules.
+    collation.o collationcompare.o collationdata.o
+    collationdatareader.o collationdatawriter.o
+    collationfastlatin.o collationfcd.o collationiterator.o collationkeys.o
+    collationroot.o collationrootelements.o collationsets.o
+    collationsettings.o collationtailoring.o rulebasedcollator.o
+    uitercollationiterator.o utf16collationiterator.o utf8collationiterator.o
+    bocsu.o coleitr.o coll.o sortkey.o ucol.o
+    ucol_res.o ucol_sit.o ucoleitr.o
+  deps
+    bytestream normalizer2 resourcebundle service_registration unifiedcache
+    ucharstrieiterator uiter ulist uset usetiter uvector32 uvector64
+    uclean_i18n propname
+
+group: collation_builder
+    # The CollationBaseDataBuilder is only called from genuca, and maybe from tests.
+    # It is in the i18n library so that it gets maintained and refactored together with
+    # related code.
+    collationbasedatabuilder.o
+    collationbuilder.o collationdatabuilder.o collationfastlatinbuilder.o
+    collationruleparser.o collationweights.o
+  deps
+    canonical_iterator collation ucharstriebuilder uset_props
+
+group: string_search
     search.o stsearch.o usearch.o
   deps
-    common  # TODO: Could be narrower.
-    uclean_i18n
+    breakiterator collation
 
 group: formatting
     # TODO: Try to subdivide this ball of wax.
@@ -810,12 +823,14 @@ group: formatting
     # currencyformat
     curramt.o currfmt.o currpinf.o currunit.o
     # decimalformat
-    dcfmtsym.o decfmtst.o decimfmt.o compactdecimalformat.o
+    dcfmtsym.o decfmtst.o decimfmt.o decimalformatpattern.o compactdecimalformat.o
     numfmt.o numsys.o unumsys.o unum.o winnmfmt.o
+    # scientificformathelper - would depend on dcfmtsym, so would be circular.
+    scientificformathelper.o
     # rbnf
     nfrs.o nfrule.o nfsubs.o rbnf.o
     # measureformat
-    measfmt.o
+    measfmt.o measunit.o quantityformatter.o
     # dateformat
     astro.o buddhcal.o calendar.o cecal.o chnsecal.o coptccal.o dangical.o ethpccal.o
     gregocal.o gregoimp.o hebrwcal.o indiancal.o islamcal.o japancal.o persncal.o taiwncal.o
@@ -823,7 +838,7 @@ group: formatting
     basictz.o olsontz.o rbtz.o simpletz.o timezone.o tzrule.o tztrans.o
     vtzone.o vzone.o wintzimpl.o zonemeta.o zrule.o ztrans.o
     tzfmt.o tzgnames.o tznames.o tznames_impl.o
-    datefmt.o dtfmtsym.o dtitvfmt.o dtitvinf.o dtptngen.o dtrule.o reldtfmt.o
+    datefmt.o dtfmtsym.o dtitvfmt.o dtitvinf.o dtptngen.o dtrule.o reldtfmt.o reldatefmt.o
     smpdtfmt.o smpdtfst.o udateintervalformat.o udatpg.o windtfmt.o
     udat.o
     tmunit.o tmutamt.o tmutfmt.o
@@ -832,23 +847,29 @@ group: formatting
   deps
     digitlist formattable format
     pluralrules
-    collation  # for rbnf
+    collation collation_builder  # for rbnf
     common
     floating_point  # sqrt() for astro.o
     trigonometry  # for astro.o
     stdlib_qsort  # for ucurr.o (which does not use ICU's uarrsort.o)
+    sharedbreakiterator # for reldatefmt.o
     uclean_i18n
+
+group: sharedbreakiterator
+    sharedbreakiterator.o
+  deps
+    breakiterator
 
 group: digitlist
     digitlst.o decContext.o decNumber.o
   deps
-    charstr stringpiece unistr_core
+    platform
 
 group: formattable
     fmtable.o
     measure.o
   deps
-    unistr_core digitlist stringpiece charstr
+    digitlist
 
 group: formattable_cnv
     fmtable_cnv.o
@@ -858,14 +879,15 @@ group: formattable_cnv
 group: format
     format.o fphdlimp.o fpositer.o
   deps
-    resourcebundle parsepos unistr_core uvector32
+    resourcebundle parsepos uvector32
 
 group: pluralrules
     plurrule.o upluralrules.o
   deps
     digitlist  # plurals depend on decimals
-    patternprops resourcebundle uvector uvector32
+    patternprops resourcebundle uvector uvector32 unifiedcache
     unistr_case_locale
+    uclean_i18n
 
 group: regex_cnv
     uregexc.o
@@ -877,7 +899,6 @@ group: regex
   deps
     uniset_closure utext uvector32 uvector64 ustack
     breakiterator
-    unistr_core
     uinit  # TODO: Really needed?
     uclean_i18n
 
@@ -889,6 +910,17 @@ group: translit
     common
     formatting  # for Transliterator::getDisplayName()
     uclean_i18n
+
+# This is off by default, UCONFIG_NO_FILTERED_BREAK_ITERATION=0
+# so, you will see warnings:
+#Info:  group filteredbreakiterator  does not need to depend on  breakiterator
+#Info:  group filteredbreakiterator  does not need to depend on  ucharstriebuilder
+group: filteredbreakiterator
+    filteredbrk.o
+  deps
+    breakiterator ucharstriebuilder
+    # depends on global new/delete and STL. Not recording these here.
+    # http://bugs.icu-project.org/trac/ticket/10990
 
 group: universal_time_scale
     utmscale.o

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009-2013, International Business Machines
+*   Copyright (C) 2009-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -39,8 +39,6 @@ public:
     void TestBidiTest();
     void TestBidiCharacterTest();
 private:
-    char *getUnidataPath(char path[]);
-
     UBool parseLevels(const char *&start);
     UBool parseOrdering(const char *start);
     UBool parseInputStringFromBiDiClasses(const char *&start);
@@ -75,42 +73,6 @@ void BiDiConformanceTest::runIndexedTest(int32_t index, UBool exec, const char *
     TESTCASE_AUTO(TestBidiTest);
     TESTCASE_AUTO(TestBidiCharacterTest);
     TESTCASE_AUTO_END;
-}
-
-// TODO: Move to a common place (IntlTest?) to avoid duplication with UnicodeTest (ucdtest.cpp).
-char *BiDiConformanceTest::getUnidataPath(char path[]) {
-    IcuTestErrorCode errorCode(*this, "getUnidataPath");
-    const int kUnicodeDataTxtLength=15;  // strlen("UnicodeData.txt")
-
-    // Look inside ICU_DATA first.
-    strcpy(path, pathToDataDirectory());
-    strcat(path, "unidata" U_FILE_SEP_STRING "UnicodeData.txt");
-    FILE *f=fopen(path, "r");
-    if(f!=NULL) {
-        fclose(f);
-        *(strchr(path, 0)-kUnicodeDataTxtLength)=0;  // Remove the basename.
-        return path;
-    }
-
-    // As a fallback, try to guess where the source data was located
-    // at the time ICU was built, and look there.
-#   ifdef U_TOPSRCDIR
-        strcpy(path, U_TOPSRCDIR  U_FILE_SEP_STRING "data");
-#   else
-        strcpy(path, loadTestData(errorCode));
-        strcat(path, U_FILE_SEP_STRING ".." U_FILE_SEP_STRING ".."
-                     U_FILE_SEP_STRING ".." U_FILE_SEP_STRING ".."
-                     U_FILE_SEP_STRING "data");
-#   endif
-    strcat(path, U_FILE_SEP_STRING);
-    strcat(path, "unidata" U_FILE_SEP_STRING "UnicodeData.txt");
-    f=fopen(path, "r");
-    if(f!=NULL) {
-        fclose(f);
-        *(strchr(path, 0)-kUnicodeDataTxtLength)=0;  // Remove the basename.
-        return path;
-    }
-    return NULL;
 }
 
 U_DEFINE_LOCAL_OPEN_POINTER(LocalStdioFilePointer, FILE, fclose);

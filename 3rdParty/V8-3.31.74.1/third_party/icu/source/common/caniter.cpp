@@ -1,7 +1,7 @@
 /*
  *****************************************************************************
- * Copyright (C) 1996-2011, International Business Machines Corporation and  *
- * others. All Rights Reserved.                                              *
+ * Copyright (C) 1996-2014, International Business Machines Corporation and
+ * others. All Rights Reserved.
  *****************************************************************************
  */
 
@@ -71,7 +71,7 @@ CanonicalIterator::CanonicalIterator(const UnicodeString &sourceStr, UErrorCode 
     pieces_lengths(NULL),
     current(NULL),
     current_length(0),
-    nfd(*Normalizer2Factory::getNFDInstance(status)),
+    nfd(*Normalizer2::getNFDInstance(status)),
     nfcImpl(*Normalizer2Factory::getNFCImpl(status))
 {
     if(U_SUCCESS(status) && nfcImpl.ensureCanonIterData(status)) {

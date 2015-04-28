@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/es.xml
@@ -22,14 +22,13 @@ es{
         be{"bielorruso"}
         bem{"bemba"}
         bg{"búlgaro"}
-        bh{"bihari"}
         bn{"bengalí"}
         br{"bretón"}
         bs{"bosnio"}
         ca{"catalán"}
         ceb{"cebuano"}
-        chr{"cherokee"}
-        ckb{"kurdo central"}
+        chr{"cheroqui"}
+        ckb{"kurdo sorani"}
         co{"corso"}
         cs{"checo"}
         cy{"galés"}
@@ -37,7 +36,7 @@ es{
         de{"alemán"}
         de_AT{"alemán austríaco"}
         de_CH{"alto alemán de Suiza"}
-        ee{"ewe"}
+        ee{"ewé"}
         el{"griego"}
         en{"inglés"}
         en_AU{"inglés australiano"}
@@ -48,15 +47,16 @@ es{
         es{"español"}
         es_419{"español de América"}
         es_ES{"español de España"}
+        es_MX{"español de México"}
         et{"estonio"}
-        eu{"vasco"}
+        eu{"euskera"}
         fa{"persa"}
         fi{"finés"}
         fil{"filipino"}
         fo{"feroés"}
         fr{"francés"}
         fr_CA{"francés canadiense"}
-        fr_CH{"francés de Suiza"}
+        fr_CH{"francés suizo"}
         fy{"frisón occidental"}
         ga{"irlandés"}
         gaa{"ga"}
@@ -85,7 +85,7 @@ es{
         kn{"canarés"}
         ko{"coreano"}
         ku{"kurdo"}
-        ky{"kirghiz"}
+        ky{"kirguís"}
         la{"latín"}
         lg{"ganda"}
         ln{"lingala"}
@@ -100,7 +100,6 @@ es{
         mk{"macedonio"}
         ml{"malayalam"}
         mn{"mongol"}
-        mo{"moldavo"}
         mr{"marathi"}
         ms{"malayo"}
         mt{"maltés"}
@@ -127,6 +126,7 @@ es{
         rm{"retorrománico"}
         rn{"kiroundi"}
         ro{"rumano"}
+        ro_MD{"moldavo"}
         ru{"ruso"}
         rw{"kinyarwanda"}
         sd{"sindhi"}
@@ -148,6 +148,7 @@ es{
         th{"tailandés"}
         ti{"tigriña"}
         tk{"turcomano"}
+        tl{"tagalo"}
         tn{"setchwana"}
         to{"tongano"}
         tr{"turco"}
@@ -159,7 +160,7 @@ es{
         ur{"urdu"}
         uz{"uzbeko"}
         vi{"vietnamita"}
-        wo{"uolof"}
+        wo{"wólof"}
         xh{"xhosa"}
         yi{"yídish"}
         yo{"yoruba"}
@@ -168,8 +169,14 @@ es{
         zh_Hant{"chino tradicional"}
         zu{"zulú"}
     }
+    Languages%variant{
+        ps{"pastú"}
+        ug{"uygur"}
+    }
     LanguagesShort{
         az{"azerí"}
+        en_GB{"inglés (RU)"}
+        en_US{"inglés (EE. UU.)"}
     }
     Scripts{
         Arab{"árabe"}
@@ -262,7 +269,7 @@ es{
         Saur{"saurashtra"}
         Sgnw{"SignWriting"}
         Shaw{"shaviano"}
-        Sinh{"binhala"}
+        Sinh{"singalés"}
         Sund{"sundanés"}
         Sylo{"syloti nagri"}
         Syrc{"siriaco"}
@@ -296,7 +303,10 @@ es{
         Hans{"hanzi simplificado"}
         Hant{"hanzi tradicional"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"perso-arábigo"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Idioma: {0}"}
         script{"Dialecto: {0}"}

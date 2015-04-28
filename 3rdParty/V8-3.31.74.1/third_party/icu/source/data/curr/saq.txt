@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/saq.xml
@@ -27,10 +27,6 @@ saq{
             "BHD",
             "Njilingi eel Bahareni",
         }
-        BIF{
-            "BIF",
-            "Njilingi eel Burundi",
-        }
         BWP{
             "BWP",
             "Njilingi eel Botswana",
@@ -51,14 +47,6 @@ saq{
             "CN¥",
             "Njilingi eel China",
         }
-        CVE{
-            "CVE",
-            "Njilingi eel Kepuvede",
-        }
-        DJF{
-            "DJF",
-            "Njilingi eel Jibuti",
-        }
         DZD{
             "DZD",
             "Njilingi eel Aljeria",
@@ -66,10 +54,6 @@ saq{
         EGP{
             "EGP",
             "Njilingi eel Misri",
-        }
-        ERN{
-            "ERN",
-            "Njilingi eel Eritrea",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ saq{
             "£",
             "Njilingi eel Uingereza",
         }
-        GMD{
-            "GMD",
-            "Njilingi eel Gambia",
-        }
-        GNS{
-            "GNS",
-            "Njilingi eel Gine",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Njilingi eel India",
         }
         JPY{
@@ -102,18 +78,6 @@ saq{
         KES{
             "Ksh",
             "Njilingi eel Kenya",
-        }
-        KMF{
-            "KMF",
-            "Njilingi eel Komoro",
-        }
-        LRD{
-            "LRD",
-            "Dola eel Liberia",
-        }
-        LSL{
-            "LSL",
-            "Njilingi eel Lesoto",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ saq{
             "SAR",
             "Njilingi eel Saudia",
         }
-        SCR{
-            "SCR",
-            "Njilingi eel Shelisheli",
-        }
         SDG{
             "SDG",
             "Paunt eel Sudani",
         }
-        SHP{
-            "SHP",
-            "Paunt eel Santahelena",
-        }
         SLL{
             "SLL",
             "Leoni",
-        }
-        SOS{
-            "SOS",
-            "Njilingi eel Somalia",
-        }
-        STD{
-            "STD",
-            "Njilingi eel Sao Tome na Principe",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ saq{
             "Njilingi eel Zambia",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

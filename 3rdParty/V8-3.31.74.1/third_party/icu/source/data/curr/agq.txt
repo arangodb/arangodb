@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/agq.xml
@@ -27,10 +27,6 @@ agq{
             "BHD",
             "Dinà è Balae",
         }
-        BIF{
-            "BIF",
-            "Fàlâŋ è Bùlundì",
-        }
         BWP{
             "BWP",
             "Kpuwlà è Botɨshǔanà",
@@ -51,14 +47,6 @@ agq{
             "CN¥",
             "Yùwân Lèmembi è Chaenî",
         }
-        CVE{
-            "CVE",
-            "Kàbòvàdianù è Èsùkudò",
-        }
-        DJF{
-            "DJF",
-            "Fàlâŋ è Dzìbutì",
-        }
         DZD{
             "DZD",
             "Dinà è Àdzɛlìa",
@@ -66,10 +54,6 @@ agq{
         EGP{
             "EGP",
             "Bɔ̀ŋ è Edzì",
-        }
-        ERN{
-            "ERN",
-            "Nakafa è Èletɨ̀làe",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ agq{
             "£",
             "Bɔ̀ŋ Sɨ̀telè è Bèletì",
         }
-        GMD{
-            "GMD",
-            "Dàlasì è Gambìa",
-        }
-        GNS{
-            "GNS",
-            "Fàlâŋ è Ginè",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Lukpì è Endìa",
         }
         JPY{
@@ -102,18 +78,6 @@ agq{
         KES{
             "KES",
             "Shwɨlà tɨ Kenyà",
-        }
-        KMF{
-            "KMF",
-            "Fàlâŋ è Komolìa",
-        }
-        LRD{
-            "LRD",
-            "Dɔlà Làebɛlìa",
-        }
-        LSL{
-            "LSL",
-            "Lɔtì Lèsutù",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ agq{
             "SAR",
             "Leyà è Sàwudì",
         }
-        SCR{
-            "SCR",
-            "Lukpìi è Sɛchɛ̀lɛ̀",
-        }
         SDG{
             "SDG",
             "Bɔ̀ŋ è Sùdànê",
         }
-        SHP{
-            "SHP",
-            "Bɔ̀ŋ è Sɛ̀n Èlenà",
-        }
         SLL{
             "SLL",
             "Lyɔ̂ŋ",
-        }
-        SOS{
-            "SOS",
-            "Shwɨlà è Sùmalìa",
-        }
-        STD{
-            "STD",
-            "Dɔbàlà è Sàwu Tɔ̀me à Pèlènsipè",
-        }
-        SZL{
-            "SZL",
-            "Lèlàŋgenè",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ agq{
             "Kwachà è Zambìa",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

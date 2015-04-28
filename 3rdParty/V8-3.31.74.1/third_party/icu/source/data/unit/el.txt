@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/el.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/el.xml
+ */
+el{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} ανά {1}"}
+        }
+        duration{
+            day{
+                dnam{"ημέρες"}
+                one{"{0} ημέρα"}
+                other{"{0} ημέρες"}
+            }
+            hour{
+                dnam{"ώρες"}
+                one{"{0} ώρα"}
+                other{"{0} ώρες"}
+                per{"{0} ανά ώρα"}
+            }
+            microsecond{
+                dnam{"μικροδευτερόλεπτα"}
+                one{"{0} μικροδευτερόλεπτο"}
+                other{"{0} μικροδευτερόλεπτα"}
+            }
+            millisecond{
+                dnam{"χιλιοστά του δευτερολέπτου"}
+                one{"{0} χιλιοστό του δευτερολέπτου"}
+                other{"{0} χιλιοστά του δευτερολέπτου"}
+            }
+            minute{
+                dnam{"λεπτά"}
+                one{"{0} λεπτό"}
+                other{"{0} λεπτά"}
+            }
+            month{
+                dnam{"μήνες"}
+                one{"{0} μήνας"}
+                other{"{0} μήνες"}
+            }
+            nanosecond{
+                dnam{"νανοδευτερόλεπτα"}
+                one{"{0} νανοδευτερόλεπτο"}
+                other{"{0} νανοδευτερόλεπτα"}
+            }
+            second{
+                dnam{"δευτερόλεπτα"}
+                one{"{0} δευτερόλεπτο"}
+                other{"{0} δευτερόλεπτα"}
+                per{"{0} ανά δευτερόλεπτο"}
+            }
+            week{
+                dnam{"εβδομάδες"}
+                one{"{0} εβδομάδα"}
+                other{"{0} εβδομάδες"}
+            }
+            year{
+                dnam{"έτη"}
+                one{"{0} έτος"}
+                other{"{0} έτη"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ημέρα"}
+                one{"{0} η"}
+                other{"{0} η"}
+            }
+            hour{
+                dnam{"ώρα"}
+                one{"{0} ώ"}
+                other{"{0} ώ"}
+            }
+            millisecond{
+                dnam{"χιλ. δευτ."}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"λεπ."}
+                one{"{0} λ"}
+                other{"{0} λ"}
+            }
+            month{
+                dnam{"μήνας"}
+                one{"{0} μ"}
+                other{"{0} μ"}
+            }
+            second{
+                dnam{"δευτ."}
+                one{"{0} δ"}
+                other{"{0} δ"}
+            }
+            week{
+                dnam{"εβδ."}
+                one{"{0} ε"}
+                other{"{0} ε"}
+            }
+            year{
+                dnam{"έτ."}
+                one{"{0} έ"}
+                other{"{0} έ"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ημέρες"}
+                one{"{0} ημέρα"}
+                other{"{0} ημέρες"}
+            }
+            hour{
+                dnam{"ώρες"}
+                one{"{0} ώρα"}
+                other{"{0} ώρ."}
+                per{"{0} α.ώ."}
+            }
+            microsecond{
+                dnam{"μικροδεύτερα"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"χιλιοστά δευτ."}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"λεπ."}
+                one{"{0} λεπ."}
+                other{"{0} λεπ."}
+            }
+            month{
+                dnam{"μήνες"}
+                one{"{0} μήν."}
+                other{"{0} μήν."}
+            }
+            nanosecond{
+                dnam{"νανοδεύτερα"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"δευτ."}
+                one{"{0} δευτ."}
+                other{"{0} δευτ."}
+                per{"{0} ανα δευτ."}
+            }
+            week{
+                dnam{"εβδομάδες"}
+                one{"{0} εβδ."}
+                other{"{0} εβδ."}
+            }
+            year{
+                dnam{"έτη"}
+                one{"{0} έτ."}
+                other{"{0} έτ."}
+            }
+        }
+    }
+}

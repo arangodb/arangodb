@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -41,8 +41,6 @@
 static const int32_t kItemsChunk = 256; /* How much to increase the filesarray by each time */
 
 // general definitions ----------------------------------------------------- ***
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 /* UDataInfo cf. udata.h */
 static const UDataInfo dataInfo={
@@ -594,7 +592,7 @@ Package::readPackage(const char *filename) {
                 exit(U_INVALID_FORMAT_ERROR);
             }
             prefixLength=(int32_t)(prefixLimit-s);
-            if(prefixLength==0 || prefixLength>=LENGTHOF(pkgPrefix)) {
+            if(prefixLength==0 || prefixLength>=UPRV_LENGTHOF(pkgPrefix)) {
                 fprintf(stderr,
                         "icupkg: --auto_toc_prefix[_with_type] but "
                         "the prefix of the first entry \"%s\" is empty or too long\n",
@@ -609,6 +607,7 @@ Package::readPackage(const char *filename) {
                 exit(U_INVALID_FORMAT_ERROR);
             }
             memcpy(pkgPrefix, s, prefixLength);
+            pkgPrefix[prefixLength]=0;
             memcpy(prefix, s, ++prefixLength);  // include the /
         } else {
             // Use the package basename as prefix.

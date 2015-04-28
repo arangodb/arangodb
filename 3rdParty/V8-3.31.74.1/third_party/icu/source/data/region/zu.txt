@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zu.xml
@@ -112,7 +112,7 @@ zu{
         GU{"i-Guam"}
         GW{"i-Guinea-Bissau"}
         GY{"i-Guyana"}
-        HK{"i-Hong Kong SAR China"}
+        HK{"i-Hong Kong"}
         HM{"i-Heard Island ne-McDonald Islands"}
         HN{"i-Honduras"}
         HR{"i-Croatia"}
@@ -166,7 +166,7 @@ zu{
         ML{"i-Mali"}
         MM{"i-Myanmar (Burma)"}
         MN{"i-Mongolia"}
-        MO{"i-Macau SAR China"}
+        MO{"i-Macau"}
         MP{"i-Northern Mariana Islands"}
         MQ{"i-Martinique"}
         MR{"i-Mauritania"}
@@ -201,7 +201,7 @@ zu{
         PM{"i-Saint Pierre kanye ne-Miquelon"}
         PN{"i-Pitcairn Islands"}
         PR{"i-Puerto Rico"}
-        PS{"i-Palestinian Territories"}
+        PS{"i-Phalestine"}
         PT{"i-Portugal"}
         PW{"i-Palau"}
         PY{"i-Paraguay"}
@@ -227,7 +227,7 @@ zu{
         SN{"i-Senegal"}
         SO{"i-Somalia"}
         SR{"i-Suriname"}
-        SS{"iNingizimu Sudan"}
+        SS{"i-South Sudan"}
         ST{"i-São Tomé kanye ne-Príncipe"}
         SV{"i-El Salvador"}
         SX{"I-Sint Maarten"}
@@ -273,10 +273,17 @@ zu{
         ZW{"i-Zimbabwe"}
         ZZ{"iSifunda esingaziwa"}
     }
-    CountriesShort{
-        HK{"i-Hong Kong"}
-        MO{"i-Macau"}
-        PS{"i-Phalestine"}
+    Countries%variant{
+        CD{"i-Congo (DRC)"}
+        CG{"i-Congo (Republic)"}
+        CI{"i-Ivory Coast"}
+        FK{"i-Falkland Islands (Islas Malvinas)"}
+        MK{"i-Macedonia (FYROM)"}
+        TL{"i-East Timor"}
     }
-    Version{"2.0.92.87"}
+    CountriesShort{
+        GB{"i-U.K."}
+        US{"i-U.S"}
+    }
+    Version{"2.1.8.18"}
 }

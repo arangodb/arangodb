@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 1999-2013, International Business Machines
+ *   Copyright (C) 1999-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -748,6 +748,7 @@ U_CDECL_BEGIN
  */
 static void U_CALLCONV GlyphToCharTest(void)
 {
+#if !UCONFIG_NO_BREAK_ITERATION
     LEErrorCode status = LE_NO_ERROR;
     LEFontInstance *font;
     FontRuns fontRuns(0);
@@ -958,6 +959,7 @@ close_font:
 
 finish:
     return;
+#endif
 }
 U_CDECL_END
 
@@ -970,7 +972,9 @@ static void addAllTests(TestNode **root)
     addTest(root, &DataDrivenTest,  "layout/DataDrivenTest");
     addTest(root, &GlyphToCharTest, "paragraph/GlyphToCharTest");
 
+#ifndef USING_ICULEHB
     addCTests(root);
+#endif
 }
 
 /* returns the path to icu/source/data/out */

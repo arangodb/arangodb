@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/mas.xml
@@ -27,10 +27,6 @@ mas{
             "BHD",
             "Iropiyianí e Bahareini",
         }
-        BIF{
-            "BIF",
-            "Iropiyianí e Burundi",
-        }
         BWP{
             "BWP",
             "Iropiyianí e Botswana",
@@ -51,14 +47,6 @@ mas{
             "CN¥",
             "Iropiyianí e China",
         }
-        CVE{
-            "CVE",
-            "Iropiyianí e Kepuvede",
-        }
-        DJF{
-            "DJF",
-            "Iropiyianí e Jibuti",
-        }
         DZD{
             "DZD",
             "Iropiyianí e Algeria",
@@ -66,10 +54,6 @@ mas{
         EGP{
             "EGP",
             "Iropiyianí e Misri",
-        }
-        ERN{
-            "ERN",
-            "Iropiyianí e Eritrea",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ mas{
             "£",
             "Iropiyianí e Nkɨ́resa",
         }
-        GMD{
-            "GMD",
-            "Iropiyianí e Gambia",
-        }
-        GNS{
-            "GNS",
-            "Iropiyianí e Gine",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Iropiyianí e India",
         }
         JPY{
@@ -102,18 +78,6 @@ mas{
         KES{
             "Ksh",
             "Iropiyianí e Kenya",
-        }
-        KMF{
-            "KMF",
-            "Iropiyianí e Komoro",
-        }
-        LRD{
-            "LRD",
-            "Iropiyianí e Liberia",
-        }
-        LSL{
-            "LSL",
-            "Iropiyianí e Lesoto",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ mas{
             "SAR",
             "Iropiyianí e Saudi",
         }
-        SCR{
-            "SCR",
-            "Iropiyianí e Shelisheli",
-        }
         SDG{
             "SDG",
             "Iropiyianí e Sudani",
         }
-        SHP{
-            "SHP",
-            "Iropiyianí e Santahelena",
-        }
         SLL{
             "SLL",
             "Iropiyianí e leoni",
-        }
-        SOS{
-            "SOS",
-            "Iropiyianí e Somalia",
-        }
-        STD{
-            "STD",
-            "Iropiyianí e Saotome",
-        }
-        SZL{
-            "SZL",
-            "Iropiyianí e lilangeni",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ mas{
             "Iropiyianí e Sambia",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

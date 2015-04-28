@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/cy.xml
@@ -10,13 +10,16 @@
  * ICU <specials> source: <path>/common/main/cy.xml
  */
 cy{
-    Version{"2.0.93.7"}
+    Version{"2.1.7.80"}
     zoneStrings{
         "Africa:Algiers"{
             ec{"Alger"}
         }
         "Africa:Asmera"{
             ec{"Asmera"}
+        }
+        "Africa:Ceuta"{
+            ec{"Ceuta"}
         }
         "Africa:El_Aaiun"{
             ec{"El Aaiún"}
@@ -25,7 +28,7 @@ cy{
             ec{"Lomé"}
         }
         "Africa:Ndjamena"{
-            ec{"N'Djamena"}
+            ec{"N’Djamena"}
         }
         "Africa:Sao_Tome"{
             ec{"São Tomé"}
@@ -94,7 +97,7 @@ cy{
             ec{"Monticello, Kentucky"}
         }
         "America:Lower_Princes"{
-            ec{"Lower Prince's Quarter/Beneden Prinsen Kwartier"}
+            ec{"Lower Prince’s Quarter/Beneden Prinsen Kwartier"}
         }
         "America:Maceio"{
             ec{"Maceió"}
@@ -104,9 +107,6 @@ cy{
         }
         "America:Mexico_City"{
             ec{"Dinas México"}
-        }
-        "America:Montreal"{
-            ec{"Montréal"}
         }
         "America:New_York"{
             ec{"Efrog Newydd"}
@@ -132,9 +132,6 @@ cy{
         "America:Scoresbysund"{
             ec{"Ittoqqortoormiit"}
         }
-        "America:Shiprock"{
-            ec{"Shiprock/Naatʼáanii Nééz"}
-        }
         "America:St_Barthelemy"{
             ec{"St. Barthélemy"}
         }
@@ -156,8 +153,17 @@ cy{
         "Antarctica:DumontDUrville"{
             ec{"Dumont d’Urville"}
         }
-        "Antarctica:South_Pole"{
-            ec{"Pegwn y De"}
+        "Arctic:Longyearbyen"{
+            ec{"Longyearbyen"}
+        }
+        "Asia:Aden"{
+            ec{"Aden"}
+        }
+        "Asia:Amman"{
+            ec{"Amman"}
+        }
+        "Asia:Anadyr"{
+            ec{"Anadyr"}
         }
         "Asia:Aqtau"{
             ec{"Aktau"}
@@ -168,29 +174,83 @@ cy{
         "Asia:Ashgabat"{
             ec{"Ashkabad"}
         }
+        "Asia:Baghdad"{
+            ec{"Baghdad"}
+        }
+        "Asia:Bahrain"{
+            ec{"Bahrain"}
+        }
+        "Asia:Baku"{
+            ec{"Baku"}
+        }
+        "Asia:Beirut"{
+            ec{"Beirut"}
+        }
         "Asia:Calcutta"{
             ec{"Calcutta"}
         }
         "Asia:Choibalsan"{
             ec{"Choybalsan"}
         }
+        "Asia:Damascus"{
+            ec{"Damascus"}
+        }
         "Asia:Dhaka"{
             ec{"Dacca"}
+        }
+        "Asia:Dubai"{
+            ec{"Dubai"}
         }
         "Asia:Gaza"{
             ec{"Gasa"}
         }
+        "Asia:Hebron"{
+            ec{"Hebron"}
+        }
+        "Asia:Irkutsk"{
+            ec{"Irkutsk"}
+        }
         "Asia:Jerusalem"{
             ec{"Jerwsalem"}
+        }
+        "Asia:Kamchatka"{
+            ec{"Kamchatka"}
         }
         "Asia:Katmandu"{
             ec{"Kathmandu"}
         }
+        "Asia:Krasnoyarsk"{
+            ec{"Krasnoyarsk"}
+        }
+        "Asia:Kuwait"{
+            ec{"Kuwait"}
+        }
+        "Asia:Magadan"{
+            ec{"Magadan"}
+        }
+        "Asia:Muscat"{
+            ec{"Muscat"}
+        }
+        "Asia:Nicosia"{
+            ec{"Nicosia"}
+        }
+        "Asia:Novosibirsk"{
+            ec{"Novosibirsk"}
+        }
+        "Asia:Omsk"{
+            ec{"Omsk"}
+        }
         "Asia:Pyongyang"{
-            ec{"P'yŏngyang"}
+            ec{"P’yŏngyang"}
+        }
+        "Asia:Qatar"{
+            ec{"Qatar"}
         }
         "Asia:Rangoon"{
             ec{"Yangon"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riyadh"}
         }
         "Asia:Saigon"{
             ec{"Dinas Hô Chi Minh"}
@@ -222,6 +282,18 @@ cy{
         "Asia:Urumqi"{
             ec{"Ürümqi"}
         }
+        "Asia:Vladivostok"{
+            ec{"Vladivostok"}
+        }
+        "Asia:Yakutsk"{
+            ec{"Yakutsk"}
+        }
+        "Asia:Yekaterinburg"{
+            ec{"Yekaterinburg"}
+        }
+        "Asia:Yerevan"{
+            ec{"Yerevan"}
+        }
         "Atlantic:Canary"{
             ec{"yr Ynysoedd Dedwydd"}
         }
@@ -243,17 +315,29 @@ cy{
         "Etc:Unknown"{
             ec{"Dinas Anhysbys"}
         }
+        "Europe:Amsterdam"{
+            ec{"Amsterdam"}
+        }
         "Europe:Athens"{
             ec{"Athen"}
         }
         "Europe:Belgrade"{
             ec{"Beograd"}
         }
+        "Europe:Berlin"{
+            ec{"Berlin"}
+        }
+        "Europe:Bratislava"{
+            ec{"Bratislava"}
+        }
         "Europe:Brussels"{
             ec{"Brwsel"}
         }
         "Europe:Bucharest"{
             ec{"Bucureşti"}
+        }
+        "Europe:Budapest"{
+            ec{"Budapest"}
         }
         "Europe:Busingen"{
             ec{"Büsingen"}
@@ -268,11 +352,26 @@ cy{
             ec{"Dulyn"}
             ld{"Amser Haf Iwerddon"}
         }
+        "Europe:Gibraltar"{
+            ec{"Gibraltar"}
+        }
         "Europe:Guernsey"{
             ec{"Ynys y Garn"}
         }
+        "Europe:Helsinki"{
+            ec{"Helsinki"}
+        }
         "Europe:Isle_of_Man"{
             ec{"Ynys Manaw"}
+        }
+        "Europe:Jersey"{
+            ec{"Jersey"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"Kaliningrad"}
+        }
+        "Europe:Kiev"{
+            ec{"Kiev"}
         }
         "Europe:Lisbon"{
             ec{"Lisboa"}
@@ -281,20 +380,62 @@ cy{
             ec{"Llundain"}
             ld{"Amser Haf Prydain"}
         }
+        "Europe:Madrid"{
+            ec{"Madrid"}
+        }
+        "Europe:Malta"{
+            ec{"Malta"}
+        }
+        "Europe:Minsk"{
+            ec{"Minsk"}
+        }
+        "Europe:Monaco"{
+            ec{"Monaco"}
+        }
         "Europe:Moscow"{
             ec{"Moskva"}
+        }
+        "Europe:Oslo"{
+            ec{"Oslo"}
+        }
+        "Europe:Paris"{
+            ec{"Paris"}
         }
         "Europe:Prague"{
             ec{"Praha"}
         }
+        "Europe:Riga"{
+            ec{"Riga"}
+        }
         "Europe:Rome"{
             ec{"Rhufain"}
+        }
+        "Europe:Samara"{
+            ec{"Samara"}
+        }
+        "Europe:Sarajevo"{
+            ec{"Sarajevo"}
+        }
+        "Europe:Simferopol"{
+            ec{"Simferopol"}
+        }
+        "Europe:Skopje"{
+            ec{"Skopje"}
         }
         "Europe:Sofia"{
             ec{"Sofiya"}
         }
+        "Europe:Stockholm"{
+            ec{"Stockholm"}
+        }
+        "Europe:Tallinn"{
+            ec{"Tallinn"}
+        }
         "Europe:Tirane"{
             ec{"Tiranë"}
+        }
+        "Europe:Uzhgorod"{
+            ec{"Uzhgorod"}
         }
         "Europe:Vatican"{
             ec{"y Fatican"}
@@ -302,8 +443,14 @@ cy{
         "Europe:Vienna"{
             ec{"Wien"}
         }
+        "Europe:Volgograd"{
+            ec{"Volgograd"}
+        }
         "Europe:Warsaw"{
             ec{"Warszawa"}
+        }
+        "Europe:Zagreb"{
+            ec{"Zagreb"}
         }
         "Europe:Zaporozhye"{
             ec{"Zaporizhzhya"}

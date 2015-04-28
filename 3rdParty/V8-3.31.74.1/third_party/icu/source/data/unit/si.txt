@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/si.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/si.xml
+ */
+si{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{1} ට {0} බැගින්"}
+        }
+        duration{
+            day{
+                dnam{"දින"}
+                one{"දින {0}"}
+                other{"දින {0}"}
+            }
+            hour{
+                dnam{"පැය"}
+                one{"පැය {0}"}
+                other{"පැය {0}"}
+                per{"පැයට {0}"}
+            }
+            microsecond{
+                dnam{"මයික්‍රෝ තත්පර"}
+                one{"මයික්‍රෝ තත්පර {0}"}
+                other{"මයික්‍රෝ තත්පර {0}"}
+            }
+            millisecond{
+                dnam{"මිලිතත්පර"}
+                one{"මිලිතත්පර {0}"}
+                other{"මිලිතත්පර {0}"}
+            }
+            minute{
+                dnam{"මිනිත්තු"}
+                one{"මිනිත්තු {0}"}
+                other{"මිනිත්තු {0}"}
+            }
+            month{
+                dnam{"මාස"}
+                one{"මාස {0}"}
+                other{"මාස {0}"}
+            }
+            nanosecond{
+                dnam{"නැනෝතත්පර"}
+                one{"නැනෝතත්පර {0}"}
+                other{"නැනෝතත්පර {0}"}
+            }
+            second{
+                dnam{"තත්පර"}
+                one{"තත්පර {0}"}
+                other{"තත්පර {0}"}
+                per{"තත්පරයට"}
+            }
+            week{
+                dnam{"සති"}
+                one{"සති {0}"}
+                other{"සති {0}"}
+            }
+            year{
+                dnam{"වසර"}
+                one{"වසර {0}"}
+                other{"වසර {0}"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"දින"}
+                one{"දි {0}"}
+                other{"දි {0}"}
+            }
+            hour{
+                dnam{"පැය"}
+                one{"පැ {0}"}
+                other{"පැ {0}"}
+            }
+            millisecond{
+                dnam{"මිලිතත්"}
+                one{"මි.ත {0}"}
+                other{"මි.ත {0}"}
+            }
+            minute{
+                dnam{"මිනි"}
+                one{"මි {0}"}
+                other{"මි {0}"}
+            }
+            month{
+                dnam{"මාස"}
+                one{"මා {0}"}
+                other{"මා {0}"}
+            }
+            second{
+                dnam{"තත්"}
+                one{"ත {0}"}
+                other{"ත {0}"}
+            }
+            week{
+                dnam{"සති"}
+                one{"ස {0}"}
+                other{"ස {0}"}
+            }
+            year{
+                dnam{"වසර"}
+                one{"ව {0}"}
+                other{"ව {0}"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"දින"}
+                one{"දින {0}"}
+                other{"දින {0}"}
+            }
+            hour{
+                dnam{"පැය"}
+                one{"පැය {0}"}
+                other{"පැය {0}"}
+                per{"පැට {0}"}
+            }
+            microsecond{
+                dnam{"මතත්"}
+                one{"මත {0}"}
+                other{"මත {0}"}
+            }
+            millisecond{
+                dnam{"මිලිතත්පර"}
+                one{"මි.ත {0}"}
+                other{"මි.ත {0}"}
+            }
+            minute{
+                dnam{"මිනි"}
+                one{"මිනි {0}"}
+                other{"මිනි {0}"}
+            }
+            month{
+                dnam{"මාස"}
+                one{"මාස {0}"}
+                other{"මාස {0}"}
+            }
+            nanosecond{
+                dnam{"නැනෝතත්"}
+                one{"නැත {0}"}
+                other{"නැත {0}"}
+            }
+            second{
+                dnam{"තත්පර"}
+                one{"තත් {0}"}
+                other{"තත් {0}"}
+                per{"තය {0}"}
+            }
+            week{
+                dnam{"සති"}
+                one{"සති {0}"}
+                other{"සති {0}"}
+            }
+            year{
+                dnam{"වසර"}
+                one{"වසර {0}"}
+                other{"වසර {0}"}
+            }
+        }
+    }
+}

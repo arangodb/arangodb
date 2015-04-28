@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/fil.xml
@@ -15,13 +15,12 @@ fil{
         af{"Afrikaans"}
         ak{"Akan"}
         am{"Amharic"}
-        ar{"Arabic"}
-        ar_001{"Modern Standard Arabic"}
+        ar{"Arabe"}
+        ar_001{"Modernong Karaniwang Arabe"}
         az{"Azerbaijani"}
         be{"Belarusian"}
         bem{"Bemba"}
         bg{"Bulgarian"}
-        bh{"Bihari"}
         bn{"Bengali"}
         br{"Breton"}
         bs{"Bosnian"}
@@ -33,12 +32,10 @@ fil{
         cy{"Welsh"}
         da{"Danish"}
         de{"German"}
-        de_AT{"Austrian German"}
-        de_CH{"Swiss High German"}
         ee{"Ewe"}
         el{"Greek"}
         en{"Ingles"}
-        en_AU{"Ingles sa Australia"}
+        en_AU{"Ingles ng Australya"}
         en_CA{"Ingles sa Canada"}
         en_GB{"Ingles (UK)"}
         en_US{"Ingles (US)"}
@@ -118,13 +115,14 @@ fil{
         pa{"Punjabi"}
         pl{"Polish"}
         ps{"Pashto"}
-        pt{"Portuguese"}
+        pt{"Portuges"}
         pt_BR{"Brazilian Portuguese"}
         pt_PT{"European Portuguese"}
         qu{"Quechua"}
         rm{"Romansh"}
         rn{"Rundi"}
         ro{"Romanian"}
+        ro_MD{"Moldavian"}
         ru{"Russian"}
         rw{"Kinyarwanda"}
         sd{"Sindhi"}
@@ -162,8 +160,11 @@ fil{
         yo{"Yoruba"}
         zh{"Chinese"}
         zh_Hans{"Simplified Chinese"}
-        zh_Hant{"Traditional Chinese"}
         zu{"Zulu"}
+    }
+    Languages%variant{
+        ps{"Pushto"}
+        ug{"Uighur"}
     }
     LanguagesShort{
         az{"Azeri"}
@@ -207,15 +208,18 @@ fil{
         Thai{"Thai"}
         Tibt{"Tibetan"}
         Zsym{"Mga Simbolo"}
-        Zxxx{"Unwritten"}
-        Zyyy{"Common"}
+        Zxxx{"Hindi Nakasulat"}
+        Zyyy{"Karaniwan"}
         Zzzz{"Hindi Kilalang Script"}
     }
     Scripts%stand-alone{
         Hans{"Simplified Han"}
         Hant{"Traditional Han"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"Perso-Arabic"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Wika: {0}"}
         script{"Script: {0}"}

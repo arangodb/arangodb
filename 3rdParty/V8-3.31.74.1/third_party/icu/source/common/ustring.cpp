@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1998-2012, International Business Machines
+*   Copyright (C) 1998-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -1486,7 +1486,7 @@ u_terminateWChars(wchar_t *dest, int32_t destCapacity, int32_t length, UErrorCod
 */
 
 #define STRING_HASH(TYPE, STR, STRLEN, DEREF) \
-    int32_t hash = 0;                         \
+    uint32_t hash = 0;                        \
     const TYPE *p = (const TYPE*) STR;        \
     if (p != NULL) {                          \
         int32_t len = (int32_t)(STRLEN);      \
@@ -1497,7 +1497,7 @@ u_terminateWChars(wchar_t *dest, int32_t destCapacity, int32_t length, UErrorCod
             p += inc;                         \
         }                                     \
     }                                         \
-    return hash
+    return static_cast<int32_t>(hash)
 
 /* Used by UnicodeString to compute its hashcode - Not public API. */
 U_CAPI int32_t U_EXPORT2

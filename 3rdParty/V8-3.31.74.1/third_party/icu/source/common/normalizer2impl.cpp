@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009-2013, International Business Machines
+*   Copyright (C) 2009-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -253,50 +253,12 @@ struct CanonIterData : public UMemory {
 };
 
 Normalizer2Impl::~Normalizer2Impl() {
-    udata_close(memory);
-    utrie2_close(normTrie);
     delete fCanonIterData;
 }
 
-UBool U_CALLCONV
-Normalizer2Impl::isAcceptable(void *context,
-                              const char * /* type */, const char * /*name*/,
-                              const UDataInfo *pInfo) {
-    if(
-        pInfo->size>=20 &&
-        pInfo->isBigEndian==U_IS_BIG_ENDIAN &&
-        pInfo->charsetFamily==U_CHARSET_FAMILY &&
-        pInfo->dataFormat[0]==0x4e &&    /* dataFormat="Nrm2" */
-        pInfo->dataFormat[1]==0x72 &&
-        pInfo->dataFormat[2]==0x6d &&
-        pInfo->dataFormat[3]==0x32 &&
-        pInfo->formatVersion[0]==2
-    ) {
-        Normalizer2Impl *me=(Normalizer2Impl *)context;
-        uprv_memcpy(me->dataVersion, pInfo->dataVersion, 4);
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-}
-
 void
-Normalizer2Impl::load(const char *packageName, const char *name, UErrorCode &errorCode) {
-    if(U_FAILURE(errorCode)) {
-        return;
-    }
-    memory=udata_openChoice(packageName, "nrm", name, isAcceptable, this, &errorCode);
-    if(U_FAILURE(errorCode)) {
-        return;
-    }
-    const uint8_t *inBytes=(const uint8_t *)udata_getMemory(memory);
-    const int32_t *inIndexes=(const int32_t *)inBytes;
-    int32_t indexesLength=inIndexes[IX_NORM_TRIE_OFFSET]/4;
-    if(indexesLength<=IX_MIN_MAYBE_YES) {
-        errorCode=U_INVALID_FORMAT_ERROR;  // Not enough indexes.
-        return;
-    }
-
+Normalizer2Impl::init(const int32_t *inIndexes, const UTrie2 *inTrie,
+                      const uint16_t *inExtraData, const uint8_t *inSmallFCD) {
     minDecompNoCP=inIndexes[IX_MIN_DECOMP_NO_CP];
     minCompNoMaybeCP=inIndexes[IX_MIN_COMP_NO_MAYBE_CP];
 
@@ -306,23 +268,12 @@ Normalizer2Impl::load(const char *packageName, const char *name, UErrorCode &err
     limitNoNo=inIndexes[IX_LIMIT_NO_NO];
     minMaybeYes=inIndexes[IX_MIN_MAYBE_YES];
 
-    int32_t offset=inIndexes[IX_NORM_TRIE_OFFSET];
-    int32_t nextOffset=inIndexes[IX_EXTRA_DATA_OFFSET];
-    normTrie=utrie2_openFromSerialized(UTRIE2_16_VALUE_BITS,
-                                       inBytes+offset, nextOffset-offset, NULL,
-                                       &errorCode);
-    if(U_FAILURE(errorCode)) {
-        return;
-    }
+    normTrie=inTrie;
 
-    offset=nextOffset;
-    nextOffset=inIndexes[IX_SMALL_FCD_OFFSET];
-    maybeYesCompositions=(const uint16_t *)(inBytes+offset);
+    maybeYesCompositions=inExtraData;
     extraData=maybeYesCompositions+(MIN_NORMAL_MAYBE_YES-minMaybeYes);
 
-    // smallFCD: new in formatVersion 2
-    offset=nextOffset;
-    smallFCD=inBytes+offset;
+    smallFCD=inSmallFCD;
 
     // Build tccc180[].
     // gennorm2 enforces lccc=0 for c<MIN_CCC_LCCC_CP=U+0300.
@@ -357,7 +308,69 @@ uint8_t Normalizer2Impl::getTrailCCFromCompYesAndZeroCC(const UChar *cpStart, co
     }
 }
 
+namespace {
+
+class LcccContext {
+public:
+    LcccContext(const Normalizer2Impl &ni, UnicodeSet &s) : impl(ni), set(s) {}
+
+    void handleRange(UChar32 start, UChar32 end, uint16_t norm16) {
+        if(impl.isAlgorithmicNoNo(norm16)) {
+            // Range of code points with same-norm16-value algorithmic decompositions.
+            // They might have different non-zero FCD16 values.
+            do {
+                uint16_t fcd16=impl.getFCD16(start);
+                if(fcd16>0xff) { set.add(start); }
+            } while(++start<=end);
+        } else {
+            uint16_t fcd16=impl.getFCD16(start);
+            if(fcd16>0xff) { set.add(start, end); }
+        }
+    }
+
+private:
+    const Normalizer2Impl &impl;
+    UnicodeSet &set;
+};
+
+struct PropertyStartsContext {
+    PropertyStartsContext(const Normalizer2Impl &ni, const USetAdder *adder)
+            : impl(ni), sa(adder) {}
+
+    const Normalizer2Impl &impl;
+    const USetAdder *sa;
+};
+
+}  // namespace
+
 U_CDECL_BEGIN
+
+static UBool U_CALLCONV
+enumLcccRange(const void *context, UChar32 start, UChar32 end, uint32_t value) {
+    ((LcccContext *)context)->handleRange(start, end, (uint16_t)value);
+    return TRUE;
+}
+
+static UBool U_CALLCONV
+enumNorm16PropertyStartsRange(const void *context, UChar32 start, UChar32 end, uint32_t value) {
+    /* add the start code point to the USet */
+    const PropertyStartsContext *ctx=(const PropertyStartsContext *)context;
+    const USetAdder *sa=ctx->sa;
+    sa->add(sa->set, start);
+    if(start!=end && ctx->impl.isAlgorithmicNoNo((uint16_t)value)) {
+        // Range of code points with same-norm16-value algorithmic decompositions.
+        // They might have different non-zero FCD16 values.
+        uint16_t prevFCD16=ctx->impl.getFCD16(start);
+        while(++start<=end) {
+            uint16_t fcd16=ctx->impl.getFCD16(start);
+            if(fcd16!=prevFCD16) {
+                sa->add(sa->set, start);
+                prevFCD16=fcd16;
+            }
+        }
+    }
+    return TRUE;
+}
 
 static UBool U_CALLCONV
 enumPropertyStartsRange(const void *context, UChar32 start, UChar32 /*end*/, uint32_t /*value*/) {
@@ -375,9 +388,17 @@ segmentStarterMapper(const void * /*context*/, uint32_t value) {
 U_CDECL_END
 
 void
+Normalizer2Impl::addLcccChars(UnicodeSet &set) const {
+    /* add the start code point of each same-value range of each trie */
+    LcccContext context(*this, set);
+    utrie2_enum(normTrie, NULL, enumLcccRange, &context);
+}
+
+void
 Normalizer2Impl::addPropertyStarts(const USetAdder *sa, UErrorCode & /*errorCode*/) const {
     /* add the start code point of each same-value range of each trie */
-    utrie2_enum(normTrie, NULL, enumPropertyStartsRange, sa);
+    PropertyStartsContext context(*this, sa);
+    utrie2_enum(normTrie, NULL, enumNorm16PropertyStartsRange, &context);
 
     /* add Hangul LV syllables and LV+1 because of skippables */
     for(UChar c=Hangul::HANGUL_BASE; c<Hangul::HANGUL_LIMIT; c+=Hangul::JAMO_T_COUNT) {
@@ -417,6 +438,38 @@ Normalizer2Impl::copyLowPrefixFromNulTerminated(const UChar *src,
         }
     }
     return src;
+}
+
+UnicodeString &
+Normalizer2Impl::decompose(const UnicodeString &src, UnicodeString &dest,
+                           UErrorCode &errorCode) const {
+    if(U_FAILURE(errorCode)) {
+        dest.setToBogus();
+        return dest;
+    }
+    const UChar *sArray=src.getBuffer();
+    if(&dest==&src || sArray==NULL) {
+        errorCode=U_ILLEGAL_ARGUMENT_ERROR;
+        dest.setToBogus();
+        return dest;
+    }
+    decompose(sArray, sArray+src.length(), dest, src.length(), errorCode);
+    return dest;
+}
+
+void
+Normalizer2Impl::decompose(const UChar *src, const UChar *limit,
+                           UnicodeString &dest,
+                           int32_t destLengthEstimate,
+                           UErrorCode &errorCode) const {
+    if(destLengthEstimate<0 && limit!=NULL) {
+        destLengthEstimate=(int32_t)(limit-src);
+    }
+    dest.remove();
+    ReorderingBuffer buffer(*this, dest);
+    if(buffer.init(destLengthEstimate, errorCode)) {
+        decompose(src, limit, &buffer, errorCode);
+    }
 }
 
 // Dual functionality:

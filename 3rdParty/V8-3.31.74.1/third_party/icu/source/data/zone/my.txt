@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/my.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/my.xml
  */
 my{
-    Version{"2.0.93.16"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"အာဘီဂျွန်း"}
@@ -459,9 +459,6 @@ my{
         "America:Montevideo"{
             ec{"မွန်တီဗီဒီအို"}
         }
-        "America:Montreal"{
-            ec{"မွန်ထရီအာ"}
-        }
         "America:Montserrat"{
             ec{"မွန့်(တ်)ဆေးရတ်"}
         }
@@ -552,9 +549,6 @@ my{
         "America:Scoresbysund"{
             ec{"အို့တိုခိုတိုမစ်"}
         }
-        "America:Shiprock"{
-            ec{"ရှီးပ်ရို့ခ်"}
-        }
         "America:Sitka"{
             ec{"စစ်ကာ"}
         }
@@ -636,11 +630,11 @@ my{
         "Antarctica:Rothera"{
             ec{"ရိုသီရာ"}
         }
-        "Antarctica:South_Pole"{
-            ec{"စောက်သ်ပိုလ်"}
-        }
         "Antarctica:Syowa"{
             ec{"ရှိုးဝါ"}
+        }
+        "Antarctica:Troll"{
+            ec{"ထရိုလ်"}
         }
         "Antarctica:Vostok"{
             ec{"ဗိုစ်တိုခ်"}
@@ -992,7 +986,7 @@ my{
         }
         "Europe:Dublin"{
             ec{"ဒတ်ဘလင်"}
-            ld{"အိုင်းရစ်နွေရာသီအချိန်"}
+            ld{"အိုင်းရစ်စံတော်ချိန်"}
         }
         "Europe:Gibraltar"{
             ec{"ဂျီဘရော်လ်တာ"}
@@ -1318,6 +1312,11 @@ my{
             lg{"ပစိဖိတ် အချိန်"}
             ls{"ပစိဖိတ် စံတော်ချိန်"}
         }
+        "meta:Apia"{
+            ld{"အပီယာနေ့ပိုင်းအချိန်"}
+            lg{"အပီယာအချိန်"}
+            ls{"အပီယာစံတော်ချိန်"}
+        }
         "meta:Arabian"{
             ld{"အာရေဗျ နေ့ပိုင်း အချိန်"}
             lg{"အာရေဗျ အချိန်"}
@@ -1467,6 +1466,9 @@ my{
             ld{"အရှေ့ဥရောပ နွေရာသီ အချိန်"}
             lg{"အရှေ့ဥရောပ အချိန်"}
             ls{"အရှေ့ဥရောပ စံတော်ချိန်"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"ထပ်တိုးအရှေ့ပိုင်းဥရောပအချိန်"}
         }
         "meta:Europe_Western"{
             ld{"အနောက်ပိုင်း ဥရောပ နွေရာသီ အချိန်"}
@@ -1640,6 +1642,16 @@ my{
         }
         "meta:Mawson"{
             ls{"မော်စွန်အချိန်"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"အနောက်တောင် မက္ကဆီကို နေ့ပိုင်းအချိန်"}
+            lg{"အနောက်တောင် မက္ကဆီကို အချိန်"}
+            ls{"အနောက်တောင် မက္ကဆီကို စံတော်ချိန်"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"မက္ကဆီကန် ပစိဖိတ် နေ့ပိုင်းအချိန်"}
+            lg{"မက္ကဆီကန် ပစိဖိတ်အချိန်"}
+            ls{"မက္ကဆီကန် ပစိဖိတ် စံတော်ချိန်"}
         }
         "meta:Mongolia"{
             ld{"ဥလန်ဘာတောနွေရာသီအချိန်"}

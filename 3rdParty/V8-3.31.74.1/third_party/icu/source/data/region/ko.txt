@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ko.xml
@@ -112,7 +112,7 @@ ko{
         GU{"괌"}
         GW{"기네비쏘"}
         GY{"가이아나"}
-        HK{"홍콩, 중국 특별행정구"}
+        HK{"홍콩"}
         HM{"허드섬-맥도널드제도"}
         HN{"온두라스"}
         HR{"크로아티아"}
@@ -138,7 +138,7 @@ ko{
         KH{"캄보디아"}
         KI{"키리바시"}
         KM{"코모로스"}
-        KN{"세인트크리스토퍼 네비스"}
+        KN{"세인트 키츠 네비스"}
         KP{"조선 민주주의 인민 공화국"}
         KR{"대한민국"}
         KW{"쿠웨이트"}
@@ -166,7 +166,7 @@ ko{
         ML{"말리"}
         MM{"미얀마"}
         MN{"몽골"}
-        MO{"마카오, 중국 특별행정구"}
+        MO{"마카오"}
         MP{"북마리아나제도"}
         MQ{"말티니크"}
         MR{"모리타니"}
@@ -198,10 +198,10 @@ ko{
         PH{"필리핀"}
         PK{"파키스탄"}
         PL{"폴란드"}
-        PM{"세인트피에르-미케롱"}
-        PN{"핏케언섬"}
+        PM{"생피에르 미클롱"}
+        PN{"핏케언 섬"}
         PR{"푸에르토리코"}
-        PS{"팔레스타인 지구"}
+        PS{"팔레스타인"}
         PT{"포르투갈"}
         PW{"팔라우"}
         PY{"파라과이"}
@@ -271,14 +271,17 @@ ko{
         ZA{"남아프리카"}
         ZM{"잠비아"}
         ZW{"짐바브웨"}
-        ZZ{"알수없거나 유효하지 않은 지역"}
+        ZZ{"알려지지 않은 지역"}
+    }
+    Countries%variant{
+        CD{"콩고민주공화국"}
+        CG{"콩고 공화국"}
+        FK{"포클랜드 제도(말비나스 군도)"}
+        MK{"마케도니아(FYROM)"}
     }
     CountriesShort{
         GB{"영국"}
-        HK{"홍콩"}
-        MO{"마카오"}
-        PS{"팔레스타인"}
         US{"미국"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.9.31"}
 }

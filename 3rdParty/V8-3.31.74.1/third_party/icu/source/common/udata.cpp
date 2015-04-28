@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -71,8 +71,6 @@ might have to #include some other header
 #   include <stdio.h>
 #endif
 
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
-
 U_NAMESPACE_USE
 
 /*
@@ -122,7 +120,7 @@ udata_cleanup(void)
     }
     gCommonDataCacheInitOnce.reset();
 
-    for (i = 0; i < LENGTHOF(gCommonICUDataArray) && gCommonICUDataArray[i] != NULL; ++i) {
+    for (i = 0; i < UPRV_LENGTHOF(gCommonICUDataArray) && gCommonICUDataArray[i] != NULL; ++i) {
         udata_close(gCommonICUDataArray[i]);
         gCommonICUDataArray[i] = NULL;
     }
@@ -141,7 +139,7 @@ findCommonICUDataByName(const char *inBasename)
     if (pData == NULL)
         return FALSE;
 
-    for (i = 0; i < LENGTHOF(gCommonICUDataArray); ++i) {
+    for (i = 0; i < UPRV_LENGTHOF(gCommonICUDataArray); ++i) {
         if ((gCommonICUDataArray[i] != NULL) && (gCommonICUDataArray[i]->pHeader == pData->pHeader)) {
             /* The data pointer is already in the array. */
             found = TRUE;
@@ -175,10 +173,9 @@ setCommonICUData(UDataMemory *pData,     /*  The new common data.  Belongs to ca
     /*    their locals.                                                              */
     UDatamemory_assign(newCommonData, pData);
     umtx_lock(NULL);
-    for (i = 0; i < LENGTHOF(gCommonICUDataArray); ++i) {
+    for (i = 0; i < UPRV_LENGTHOF(gCommonICUDataArray); ++i) {
         if (gCommonICUDataArray[i] == NULL) {
             gCommonICUDataArray[i] = newCommonData;
-            ucln_common_registerCleanup(UCLN_COMMON_UDATA, udata_cleanup);
             didUpdate = TRUE;
             break;
         } else if (gCommonICUDataArray[i]->pHeader == pData->pHeader) {
@@ -188,10 +185,12 @@ setCommonICUData(UDataMemory *pData,     /*  The new common data.  Belongs to ca
     }
     umtx_unlock(NULL);
 
-    if (i == LENGTHOF(gCommonICUDataArray) && warn) {
+    if (i == UPRV_LENGTHOF(gCommonICUDataArray) && warn) {
         *pErr = U_USING_DEFAULT_WARNING;
     }
-    if (!didUpdate) {
+    if (didUpdate) {
+        ucln_common_registerCleanup(UCLN_COMMON_UDATA, udata_cleanup);
+    } else {
         uprv_free(newCommonData);
     }
     return didUpdate;
@@ -661,7 +660,7 @@ openCommonData(const char *path,          /*  Path from OpenChoice?          */
     /* ??????? TODO revisit this */ 
     if (commonDataIndex >= 0) {
         /* "mini-cache" for common ICU data */
-        if(commonDataIndex >= LENGTHOF(gCommonICUDataArray)) {
+        if(commonDataIndex >= UPRV_LENGTHOF(gCommonICUDataArray)) {
             return NULL;
         }
         if(gCommonICUDataArray[commonDataIndex] == NULL) {
@@ -1066,6 +1065,17 @@ static UDataMemory *doLoadFromCommonData(UBool isICUData, const char * /*pkgName
 }
 
 /*
+ * Identify the Time Zone resources that are subject to special override data loading.
+ */
+static UBool isTimeZoneFile(const char *name, const char *type) {
+    return ((uprv_strcmp(type, "res") == 0) &&
+            (uprv_strcmp(name, "zoneinfo64") == 0 ||
+             uprv_strcmp(name, "timezoneTypes") == 0 ||
+             uprv_strcmp(name, "windowsZones") == 0 ||
+             uprv_strcmp(name, "metaZones") == 0));
+}
+
+/*
  *  A note on the ownership of Mapped Memory
  *
  *  For common format files, ownership resides with the UDataMemory object
@@ -1232,6 +1242,21 @@ doOpenChoice(const char *path, const char *type, const char *name,
 
     /* End of dealing with a null basename */
     dataPath = u_getDataDirectory();
+
+    /****    Time zone individual files override  */
+    if (isTimeZoneFile(name, type) && isICUData) {
+        const char *tzFilesDir = u_getTimeZoneFilesDirectory(pErrorCode);
+        if (tzFilesDir[0] != 0) {
+#ifdef UDATA_DEBUG
+            fprintf(stderr, "Trying Time Zone Files directory = %s\n", tzFilesDir);
+#endif
+            retVal = doLoadFromIndividualFiles(/* pkgName.data() */ "", tzFilesDir, tocEntryPathSuffix,
+                            /* path */ "", type, name, isAcceptable, context, &subErrorCode, pErrorCode);
+            if((retVal != NULL) || U_FAILURE(*pErrorCode)) {
+                return retVal;
+            }
+        }
+    }
 
     /****    COMMON PACKAGE  - only if packages are first. */
     if(gDataFileAccess == UDATA_PACKAGES_FIRST) {

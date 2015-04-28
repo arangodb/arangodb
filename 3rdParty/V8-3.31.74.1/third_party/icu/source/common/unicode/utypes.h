@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1996-2012, International Business Machines
+*   Copyright (C) 1996-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -305,7 +305,11 @@ typedef double UDate;
 #define U_IO_API
 #define U_TOOLUTIL_API
 #elif defined(U_COMMON_IMPLEMENTATION)
+#if defined(U_ICUDATAENTRY_IN_COMMON)
 #define U_DATA_API     U_EXPORT
+#else
+#define U_DATA_API     U_IMPORT
+#endif
 #define U_COMMON_API   U_EXPORT
 #define U_I18N_API     U_IMPORT
 #define U_LAYOUT_API   U_IMPORT
@@ -641,12 +645,13 @@ typedef enum UErrorCode {
     U_REGEX_INVALID_FLAG,                 /**< Invalid value for match mode flags.                */
     U_REGEX_LOOK_BEHIND_LIMIT,            /**< Look-Behind pattern matches must have a bounded maximum length.    */
     U_REGEX_SET_CONTAINS_STRING,          /**< Regexps cannot have UnicodeSets containing strings.*/
-    U_REGEX_OCTAL_TOO_BIG,                /**< Octal character constants must be <= 0377.         */
+    U_REGEX_OCTAL_TOO_BIG,                /**< Octal character constants must be <= 0377. @deprecated ICU 54. This error cannot occur. */
     U_REGEX_MISSING_CLOSE_BRACKET,        /**< Missing closing bracket on a bracket expression.   */
     U_REGEX_INVALID_RANGE,                /**< In a character range [x-y], x is greater than y.   */
     U_REGEX_STACK_OVERFLOW,               /**< Regular expression backtrack stack overflow.       */
     U_REGEX_TIME_OUT,                     /**< Maximum allowed match time exceeded                */
     U_REGEX_STOPPED_BY_CALLER,            /**< Matching operation aborted by user callback fn.    */
+    U_REGEX_PATTERN_TOO_BIG,              /**< Pattern exceeds limits on size or complexity.   @draft ICU 55   */
     U_REGEX_ERROR_LIMIT,                  /**< This must always be the last value to indicate the limit for regexp errors */
 
     /*

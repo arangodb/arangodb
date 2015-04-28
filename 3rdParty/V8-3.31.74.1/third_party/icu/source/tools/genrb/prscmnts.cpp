@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- *   Copyright (C) 2003-2007, International Business Machines
+ *   Copyright (C) 2003-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *******************************************************************************
  *
@@ -12,6 +12,16 @@
  *   08/22/2003    ram         Creation.
  *******************************************************************************
  */
+
+// Safer use of UnicodeString.
+#ifndef UNISTR_FROM_CHAR_EXPLICIT
+#   define UNISTR_FROM_CHAR_EXPLICIT explicit
+#endif
+
+// Less important, but still a good idea.
+#ifndef UNISTR_FROM_STRING_EXPLICIT
+#   define UNISTR_FROM_STRING_EXPLICIT explicit
+#endif
 
 #include "unicode/regex.h"
 #include "unicode/unistr.h"
@@ -57,18 +67,18 @@ removeText(UChar *source, int32_t srcLen,
 }
 U_CFUNC int32_t
 trim(UChar *src, int32_t srcLen, UErrorCode *status){
-     srcLen = removeText(src, srcLen, "^[ \\r\\n]+ ", 0, "", status); // remove leading new lines
-     srcLen = removeText(src, srcLen, "^\\s+", 0, "", status); // remove leading spaces
-     srcLen = removeText(src, srcLen, "\\s+$", 0, "", status); // remvoe trailing spcaes
+     srcLen = removeText(src, srcLen, UnicodeString("^[ \\r\\n]+ "), 0, UnicodeString(), status); // remove leading new lines
+     srcLen = removeText(src, srcLen, UnicodeString("^\\s+"), 0, UnicodeString(), status); // remove leading spaces
+     srcLen = removeText(src, srcLen, UnicodeString("\\s+$"), 0, UnicodeString(), status); // remvoe trailing spcaes
      return srcLen;
 }
 
 U_CFUNC int32_t 
 removeCmtText(UChar* source, int32_t srcLen, UErrorCode* status){
     srcLen = trim(source, srcLen, status);
-    UnicodeString     patString = "^\\s*?\\*\\s*?";     // remove pattern like " * " at the begining of the line
-    srcLen = removeText(source, srcLen, patString, UREGEX_MULTILINE, "", status);
-    return removeText(source, srcLen, "[ \\r\\n]+", 0, " ", status);// remove new lines;
+    UnicodeString patString("^\\s*?\\*\\s*?");  // remove pattern like " * " at the begining of the line
+    srcLen = removeText(source, srcLen, patString, UREGEX_MULTILINE, UnicodeString(), status);
+    return removeText(source, srcLen, UnicodeString("[ \\r\\n]+"), 0, UnicodeString(" "), status);// remove new lines;
 }
 
 U_CFUNC int32_t 
@@ -82,7 +92,7 @@ getText(const UChar* source, int32_t srcLen,
     }
 
     UnicodeString     stringArray[MAX_SPLIT_STRINGS];
-    RegexPattern      *pattern = RegexPattern::compile("@", 0, *status);
+    RegexPattern      *pattern = RegexPattern::compile(UnicodeString("@"), 0, *status);
     UnicodeString src (source,srcLen);
     
     if (U_FAILURE(*status)) {
@@ -117,7 +127,7 @@ getDescription( const UChar* source, int32_t srcLen,
     }
 
     UnicodeString     stringArray[MAX_SPLIT_STRINGS];
-    RegexPattern      *pattern = RegexPattern::compile("@", UREGEX_MULTILINE, *status);
+    RegexPattern      *pattern = RegexPattern::compile(UnicodeString("@"), UREGEX_MULTILINE, *status);
     UnicodeString src(source, srcLen);
     
     if (U_FAILURE(*status)) {
@@ -141,7 +151,7 @@ getCount(const UChar* source, int32_t srcLen,
     }
 
     UnicodeString     stringArray[MAX_SPLIT_STRINGS];
-    RegexPattern      *pattern = RegexPattern::compile("@", UREGEX_MULTILINE, *status);
+    RegexPattern      *pattern = RegexPattern::compile(UnicodeString("@"), UREGEX_MULTILINE, *status);
     UnicodeString src (source, srcLen);
 
 
@@ -150,7 +160,8 @@ getCount(const UChar* source, int32_t srcLen,
     }
     int32_t retLen = pattern->split(src, stringArray, MAX_SPLIT_STRINGS, *status);
     
-    RegexMatcher matcher(patternStrings[option], UREGEX_DOTALL, *status);
+    UnicodeString patternString(patternStrings[option]);
+    RegexMatcher matcher(patternString, UREGEX_DOTALL, *status);
     if (U_FAILURE(*status)) {
         return 0;
     } 
@@ -180,7 +191,7 @@ getAt(const UChar* source, int32_t srcLen,
     }
 
     UnicodeString     stringArray[MAX_SPLIT_STRINGS];
-    RegexPattern      *pattern = RegexPattern::compile("@", UREGEX_MULTILINE, *status);
+    RegexPattern      *pattern = RegexPattern::compile(UnicodeString("@"), UREGEX_MULTILINE, *status);
     UnicodeString src (source, srcLen);
 
 
@@ -189,7 +200,8 @@ getAt(const UChar* source, int32_t srcLen,
     }
     int32_t retLen = pattern->split(src, stringArray, MAX_SPLIT_STRINGS, *status);
     
-    RegexMatcher matcher(patternStrings[option], UREGEX_DOTALL, *status);
+    UnicodeString patternString(patternStrings[option]);
+    RegexMatcher matcher(patternString, UREGEX_DOTALL, *status);
     if (U_FAILURE(*status)) {
         return 0;
     } 
@@ -213,7 +225,7 @@ U_CFUNC int32_t
 getTranslate( const UChar* source, int32_t srcLen,
               UChar** dest, int32_t destCapacity,
               UErrorCode* status){
-    UnicodeString     notePatternString = "^translate\\s*?(.*)"; 
+    UnicodeString     notePatternString("^translate\\s*?(.*)");
     
     int32_t destLen = getText(source, srcLen, dest, destCapacity, notePatternString, status);
     return trim(*dest, destLen, status);
@@ -224,7 +236,7 @@ getNote(const UChar* source, int32_t srcLen,
         UChar** dest, int32_t destCapacity,
         UErrorCode* status){
 
-    UnicodeString     notePatternString = "^note\\s*?(.*)"; 
+    UnicodeString     notePatternString("^note\\s*?(.*)");
     int32_t destLen =  getText(source, srcLen, dest, destCapacity, notePatternString, status);
     return trim(*dest, destLen, status);
 

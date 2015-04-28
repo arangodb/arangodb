@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 1997-2013, International Business Machines Corporation and
+* Copyright (C) 1997-2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -189,6 +189,7 @@ DecimalFormatSymbols::initialize(const Locale& loc, UErrorCode& status, UBool us
         NULL, /* seven digit - get it from the numbering system */
         NULL, /* eight digit - get it from the numbering system */
         NULL, /* nine digit - get it from the numbering system */
+        "superscriptingExponent", /* Multiplication (x) symbol for exponents */
     };
 
     static const char *gLatn =  "latn";
@@ -420,6 +421,7 @@ DecimalFormatSymbols::initialize() {
     fSymbols[kNaNSymbol] = (UChar)0xfffd;               // SUB NaN
     fSymbols[kSignificantDigitSymbol] = (UChar)0x0040;  // '@' significant digit
     fSymbols[kMonetaryGroupingSeparatorSymbol].remove(); // 
+    fSymbols[kExponentMultiplicationSymbol] = (UChar)0xd7; // 'x' multiplication symbol for exponents
 }
 
 Locale

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2003-2009, International Business Machines
+*   Copyright (C) 2003-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -32,16 +32,6 @@
 U_INTERNAL UBool U_EXPORT2
 ucol_looksLikeCollationBinary(const UDataSwapper *ds,
                               const void *inData, int32_t length);
-
-/**
- * Swap a header-less collation binary, inside a resource bundle or ucadata.icu.
- * See udataswp.h.
- * @internal
- */
-U_CAPI int32_t U_EXPORT2
-ucol_swapBinary(const UDataSwapper *ds,
-                const void *inData, int32_t length, void *outData,
-                UErrorCode *pErrorCode);
 
 /**
  * Swap ICU collation data like ucadata.icu. See udataswp.h.

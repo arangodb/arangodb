@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1997-2013, International Business Machines
+*   Copyright (C) 1997-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -272,7 +272,7 @@
  * Useful constant for the maximum size of keywords in a locale
  * @stable ICU 2.8
  */
-#define ULOC_KEYWORDS_CAPACITY 50
+#define ULOC_KEYWORDS_CAPACITY 96
 
 /**
  * Useful constant for the maximum total size of keywords and their values in a locale
@@ -886,6 +886,25 @@ uloc_setKeywordValue(const char* keywordName,
                      char* buffer, int32_t bufferCapacity,
                      UErrorCode* status);
 
+#ifndef U_HIDE_DRAFT_API
+/**
+ * Returns whether the locale's script is written right-to-left.
+ * If there is no script subtag, then the likely script is used, see uloc_addLikelySubtags().
+ * If no likely script is known, then FALSE is returned.
+ *
+ * A script is right-to-left according to the CLDR script metadata
+ * which corresponds to whether the script's letters have Bidi_Class=R or AL.
+ *
+ * Returns TRUE for "ar" and "en-Hebr", FALSE for "zh" and "fa-Cyrl".
+ *
+ * @param locale input locale ID
+ * @return TRUE if the locale's script is written right-to-left
+ * @draft ICU 54
+ */
+U_DRAFT UBool U_EXPORT2
+uloc_isRightToLeft(const char *locale);
+#endif  /* U_HIDE_DRAFT_API */
+
 /**
  * enums for the  return value for the character and line orientation
  * functions.
@@ -1131,5 +1150,107 @@ uloc_toLanguageTag(const char* localeID,
                    int32_t langtagCapacity,
                    UBool strict,
                    UErrorCode* err);
+
+#ifndef U_HIDE_DRAFT_API
+/**
+ * Converts the specified keyword (legacy key, or BCP 47 Unicode locale
+ * extension key) to the equivalent BCP 47 Unicode locale extension key.
+ * For example, BCP 47 Unicode locale extension key "co" is returned for
+ * the input keyword "collation".
+ * <p>
+ * When the specified keyword is unknown, but satisfies the BCP syntax,
+ * then the pointer to the input keyword itself will be returned.
+ * For example,
+ * <code>uloc_toUnicodeLocaleKey("ZZ")</code> returns "ZZ".
+ * 
+ * @param keyword       the input locale keyword (either legacy key
+ *                      such as "collation" or BCP 47 Unicode locale extension
+ *                      key such as "co").
+ * @return              the well-formed BCP 47 Unicode locale extension key,
+ *                      or NULL if the specified locale keyword cannot be
+ *                      mapped to a well-formed BCP 47 Unicode locale extension
+ *                      key. 
+ * @see uloc_toLegacyKey
+ * @draft ICU 54
+ */
+U_DRAFT const char* U_EXPORT2
+uloc_toUnicodeLocaleKey(const char* keyword);
+
+/**
+ * Converts the specified keyword value (legacy type, or BCP 47
+ * Unicode locale extension type) to the well-formed BCP 47 Unicode locale
+ * extension type for the specified keyword (category). For example, BCP 47
+ * Unicode locale extension type "phonebk" is returned for the input
+ * keyword value "phonebook", with the keyword "collation" (or "co").
+ * <p>
+ * When the specified keyword is not recognized, but the specified value
+ * satisfies the syntax of the BCP 47 Unicode locale extension type,
+ * or when the specified keyword allows 'variable' type and the specified
+ * value satisfies the syntax,  then the pointer to the input type value itself
+ * will be returned.
+ * For example,
+ * <code>uloc_toUnicodeLocaleType("Foo", "Bar")</code> returns "Bar",
+ * <code>uloc_toUnicodeLocaleType("variableTop", "00A4")</code> returns "00A4".
+ * 
+ * @param keyword       the locale keyword (either legacy key such as
+ *                      "collation" or BCP 47 Unicode locale extension
+ *                      key such as "co").
+ * @param value         the locale keyword value (either legacy type
+ *                      such as "phonebook" or BCP 47 Unicode locale extension
+ *                      type such as "phonebk").
+ * @return              the well-formed BCP47 Unicode locale extension type,
+ *                      or NULL if the locale keyword value cannot be mapped to
+ *                      a well-formed BCP 47 Unicode locale extension type.
+ * @see uloc_toLegacyType
+ * @draft ICU 54
+ */
+U_DRAFT const char* U_EXPORT2
+uloc_toUnicodeLocaleType(const char* keyword, const char* value);
+
+/**
+ * Converts the specified keyword (BCP 47 Unicode locale extension key, or
+ * legacy key) to the legacy key. For example, legacy key "collation" is
+ * returned for the input BCP 47 Unicode locale extension key "co".
+ * 
+ * @param keyword       the input locale keyword (either BCP 47 Unicode locale
+ *                      extension key or legacy key).
+ * @return              the well-formed legacy key, or NULL if the specified
+ *                      keyword cannot be mapped to a well-formed legacy key.
+ * @see toUnicodeLocaleKey
+ * @draft ICU 54
+ */
+U_DRAFT const char* U_EXPORT2
+uloc_toLegacyKey(const char* keyword);
+
+/**
+ * Converts the specified keyword value (BCP 47 Unicode locale extension type,
+ * or legacy type or type alias) to the canonical legacy type. For example,
+ * the legacy type "phonebook" is returned for the input BCP 47 Unicode
+ * locale extension type "phonebk" with the keyword "collation" (or "co").
+ * <p>
+ * When the specified keyword is not recognized, but the specified value
+ * satisfies the syntax of legacy key, or when the specified keyword
+ * allows 'variable' type and the specified value satisfies the syntax,
+ * then the pointer to the input type value itself will be returned.
+ * For example,
+ * <code>uloc_toLegacyType("Foo", "Bar")</code> returns "Bar",
+ * <code>uloc_toLegacyType("vt", "00A4")</code> returns "00A4".
+ *
+ * @param keyword       the locale keyword (either legacy keyword such as
+ *                      "collation" or BCP 47 Unicode locale extension
+ *                      key such as "co").
+ * @param value         the locale keyword value (either BCP 47 Unicode locale
+ *                      extension type such as "phonebk" or legacy keyword value
+ *                      such as "phonebook").
+ * @return              the well-formed legacy type, or NULL if the specified
+ *                      keyword value cannot be mapped to a well-formed legacy
+ *                      type.
+ * @see toUnicodeLocaleType
+ * @draft ICU 54
+ */
+U_DRAFT const char* U_EXPORT2
+uloc_toLegacyType(const char* keyword, const char* value);
+
+#endif  /* U_HIDE_DRAFT_API */
 
 #endif /*_ULOC*/

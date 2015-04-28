@@ -1,14 +1,14 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
-// * Source File: <path>/icu-config.xml & build.xml
+// * Source File: <path>/common/collation/it.xml
 // *
 // ***************************************************************************
 /**
- * validSubLocale of "root"
+ * ICU <specials> source: <path>/xml/collation/it.xml
  */
 it{
-    ___{""}
+    Version{"2.0.97.57"}
 }

@@ -1,0 +1,23 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/lkt.xml
+// *
+// ***************************************************************************
+lkt{
+    Version{"2.0.97.42"}
+    collations{
+        standard{
+            Sequence{
+                "&C<č<<<Č"
+                "&G<ǧ<<<Ǧ"
+                "&H<ȟ<<<Ȟ"
+                "&S<š<<<Š"
+                "&Z<ž<<<Ž"
+            }
+            Version{"26"}
+        }
+    }
+}
