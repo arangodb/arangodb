@@ -837,7 +837,6 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
   var arangosh = fs.join("bin","arangosh");
   var result;
-  print(toArgv(args));
   var rc = executeAndWait(arangosh, toArgv(args));
   try {
     result = JSON.parse(fs.read("testresult.json"));
