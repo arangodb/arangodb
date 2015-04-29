@@ -1093,7 +1093,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
       isConstant &= r.isConstant();
     }
     _anyBoundVariable |= ! isConstant;
-    _allBoundsConstant.emplace_back(isConstant);
+    _allBoundsConstant.emplace(isConstant); // note: emplace_back() is not supported in C++11 but only from C++14
   }
 }
 
