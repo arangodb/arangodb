@@ -1059,13 +1059,18 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _hasV8Expression(false) {
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
+
   if (trxCollection != nullptr) {
     _trx->orderBarrier(trxCollection);
   }
-     
-  for (size_t i = 0; i < en->_ranges.size(); i++) {
+    
+  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+  size_t const n = orRanges.size(); 
+
+  for (size_t i = 0; i < n; i++) {
     _condition->emplace_back(IndexAndCondition());
-    for (auto ri: en->_ranges[i]) {
+
+    for (auto const& ri: en->_ranges[i]) {
       _condition->at(i).emplace_back(ri.clone());
     }
   }
@@ -1074,7 +1079,6 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     removeOverlapsIndexOr(*_condition);
   }
 
-  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
   TRI_ASSERT(en->_index != nullptr);
 
   _allBoundsConstant.clear();
@@ -1083,8 +1087,9 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   // Detect, whether all ranges are constant:
   for (size_t i = 0; i < orRanges.size(); i++) {
     bool isConstant = true;
+
     std::vector<RangeInfo> const& attrRanges = orRanges[i];
-    for (auto r : attrRanges) {
+    for (auto const& r : attrRanges) {
       isConstant &= r.isConstant();
     }
     _anyBoundVariable |= ! isConstant;
