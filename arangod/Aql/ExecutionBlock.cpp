@@ -33,6 +33,8 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
+#include "Dispatcher/DispatcherThread.h"
+#include "Cluster/ClusterMethods.h"
 #include "HashIndex/hash-index.h"
 #include "V8/v8-globals.h"
 #include "VocBase/edge-collection.h"
@@ -5874,6 +5876,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
     headers.emplace(make_pair("Shard-Id", _ownName));
   }
 
+  triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
   auto result = cc->syncRequest(clientTransactionId,
                                 coordTransactionId,
                                 _server,
@@ -5884,6 +5887,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
                                 body,
                                 headers,
                                 defaultTimeOut);
+  triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
 
   return result;
   LEAVE_BLOCK
