@@ -234,6 +234,86 @@ function ahuacatlSubqueryTestSuite () {
 
       actual = getQueryResults("RETURN UNION(FOR i IN [ 1, 2, 3 ] RETURN i, FOR i IN [ 4, 5, 6 ] RETURN i)");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test copying of subquery results
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndependentSubqueries1: function () {
+      var expected = [ [ [ ], [ ] ] ];
+      // use a single block
+      for (var i = 1; i <= 100; ++i) {
+        expected[0][0].push(i);
+        expected[0][1].push(i);
+      }
+
+      var actual = getQueryResults("LET a = (FOR i IN 1..100 RETURN i) LET b = (FOR i IN 1..100 RETURN i) RETURN [a, b]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test copying of subquery results
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndependentSubqueries2: function () {
+      var expected = [ [ [ ], [ ] ] ];
+      // use multiple blocks
+      for (var i = 1; i <= 10000; ++i) {
+        expected[0][0].push(i);
+        expected[0][1].push(i);
+      }
+
+      var actual = getQueryResults("LET a = (FOR i IN 1..10000 RETURN i) LET b = (FOR i IN 1..10000 RETURN i) RETURN [a, b]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test copying of subquery results
+////////////////////////////////////////////////////////////////////////////////
+
+    testDependentSubqueries1: function () {
+      var expected = [ [ [ ], [ ] ] ];
+      for (var i = 1; i <= 100; ++i) {
+        expected[0][0].push(i);
+        expected[0][1].push(i);
+      }
+
+      var actual = getQueryResults("LET a = (FOR i IN 1..100 RETURN i) LET b = (FOR i IN 1..100 FILTER i IN a RETURN i) RETURN [a, b]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test copying of subquery results
+////////////////////////////////////////////////////////////////////////////////
+
+    testDependentSubqueries2: function () {
+      var expected = [ [ [ ], [ ] ] ];
+      for (var i = 1; i <= 100; ++i) {
+        if (i < 50) {
+          expected[0][0].push(i);
+        }
+        else {
+          expected[0][1].push(i);
+        }
+      }
+
+      var actual = getQueryResults("LET a = (FOR i IN 1..100 FILTER i < 50 RETURN i) LET b = (FOR i IN 1..100 FILTER i NOT IN a RETURN i) RETURN [a, b]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test copying of subquery results
+////////////////////////////////////////////////////////////////////////////////
+
+    testDependentSubqueries3: function () {
+      var expected = [ ];
+      for (var i = 1; i <= 2000; ++i) {
+        expected.push(i);
+      }
+
+      var actual = getQueryResults("LET a = (FOR i IN 1..2000 RETURN i) FOR i IN 1..10000 FILTER i IN a RETURN i");
+      assertEqual(expected, actual);
     }
 
   };

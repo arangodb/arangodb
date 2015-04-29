@@ -6112,6 +6112,7 @@ int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
   
   int res = BlockWithClients::initializeCursor(items, pos);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -6119,6 +6120,7 @@ int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   // local clean up
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
+
   for (size_t i = 0; i < _nrClients; i++) {
     _distBuffer.emplace_back();
   }
@@ -6148,6 +6150,7 @@ int DistributeBlock::shutdown (int errorCode) {
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore: any more for any shard?
 ////////////////////////////////////////////////////////////////////////////////
@@ -6240,7 +6243,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
         }
       }
 
-      unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+      std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
       collector.emplace_back(more.get());
       more.release(); // do not delete it!
     }
