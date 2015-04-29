@@ -1088,7 +1088,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
       isConstant &= r.isConstant();
     }
     _anyBoundVariable |= ! isConstant;
-    _allBoundsConstant.push_back(isConstant);
+    _allBoundsConstant.emplace_back(isConstant);
   }
 }
 
@@ -1113,6 +1113,7 @@ IndexRangeBlock::~IndexRangeBlock () {
 bool IndexRangeBlock::hasV8Expression () const {
   for (auto expression : _allVariableBoundExpressions) {
     TRI_ASSERT(expression != nullptr);
+
     if (expression->isV8()) {
       return true;
     }
@@ -1137,16 +1138,15 @@ void IndexRangeBlock::buildExpressions () {
 
     // collect the evaluated bounds here
     for (size_t k = 0; k < n; k++) {
-      auto r = en->_ranges[i][k];
+      auto const& r = en->_ranges[i][k];
       // First create a new RangeInfo containing only the constant 
       // low and high bound of r:
-      RangeInfo riConst(r._var, r._attr, r._lowConst, r._highConst,
-          r.is1ValueRangeInfo());
+      RangeInfo riConst(r._var, r._attr, r._lowConst, r._highConst, r.is1ValueRangeInfo());
       collector[k].emplace_back(riConst);
 
       // Now work the actual values of the variable lows and highs into 
       // this constant range:
-      for (auto l : r._lows) {
+      for (auto const& l : r._lows) {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
         TRI_ASSERT(e != nullptr);
         TRI_document_collection_t const* myCollection = nullptr; 
@@ -1198,7 +1198,7 @@ void IndexRangeBlock::buildExpressions () {
         } 
       }
 
-      for (auto h : r._highs) {
+      for (auto const& h : r._highs) {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
         TRI_ASSERT(e != nullptr);
         TRI_document_collection_t const* myCollection = nullptr; 
@@ -1467,17 +1467,25 @@ bool IndexRangeBlock::initRanges () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexRangeBlock::sortConditions () {
-  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-
   size_t const n = _condition->size(); 
-  // first sort by the prefix of the index
-  std::vector<std::vector<size_t>> prefix;
-  prefix.reserve(n);
 
   if (! _sortCoords.empty()) {
     _sortCoords.clear();
     _sortCoords.reserve(n);
   }
+  
+  if (n == 1) {
+    // nothing to do
+    _sortCoords.emplace_back(0);
+    return;
+  }
+  
+  // first sort by the prefix of the index
+  std::vector<std::vector<size_t>> prefix;
+  prefix.reserve(n);
+
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  size_t const numFields = en->_index->fields.size();
 
   for (size_t s = 0; s < n; s++) {
     _sortCoords.emplace_back(s);
@@ -1486,18 +1494,20 @@ void IndexRangeBlock::sortConditions () {
     TRI_IF_FAILURE("IndexRangeBlock::sortConditions") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    next.reserve(en->_index->fields.size());
+    next.reserve(numFields);
     prefix.emplace_back(next);
     // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
     // field
-    for (size_t t = 0; t < en->_index->fields.size(); t++) {
+    for (size_t t = 0; t < numFields; t++) {
       for (size_t u = 0; u < _condition->at(s).size(); u++) {
-        auto ri = _condition->at(s)[u];
+        auto const& ri = _condition->at(s)[u];
+
         if (en->_index->fields[t].compare(ri._attr) == 0) {
     
           TRI_IF_FAILURE("IndexRangeBlock::sortConditionsInner") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
+
           prefix.at(s).insert(prefix.at(s).begin() + t, u);
           break;
         }
@@ -1517,7 +1527,7 @@ void IndexRangeBlock::sortConditions () {
 // @brief: is _condition[i] < _condition[j]? these are IndexAndConditions. 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
+bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) const {
   size_t l, r;
 
   if (! _reverse) {
@@ -1529,18 +1539,18 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
     r = i;
   }
 
-  size_t shortest = (std::min)(_prefix.at(i).size(), _prefix.at(j).size());
+  size_t shortest = (std::min)(_prefix[i].size(), _prefix[j].size());
 
   for (size_t k = 0; k < shortest; k++) {
-    RangeInfo const& lhs = _condition->at(l).at(_prefix.at(l).at(k));
-    RangeInfo const& rhs = _condition->at(r).at(_prefix.at(r).at(k));
+    RangeInfo const& lhs = _condition->at(l).at(_prefix[l][k]);
+    RangeInfo const& rhs = _condition->at(r).at(_prefix[r][k]);
     int cmp;
       
     if (lhs.is1ValueRangeInfo() && rhs.is1ValueRangeInfo()) {
       cmp = TRI_CompareValuesJson(lhs._lowConst.bound().json(), 
                                   rhs._lowConst.bound().json());
       if (cmp != 0) {
-        return (cmp == -1);
+        return (cmp < 0);
       }
     } 
     else {
@@ -1549,11 +1559,10 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
       if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
         cmp = (TRI_CompareValuesJson(lhs._highConst.bound().json(), 
                                      rhs._lowConst.bound().json()));
-        return (cmp == 0 || cmp == -1);
+        return (cmp == 0 || cmp < 0);
       } 
-      else { // lhs._lowConst.isDefined() && rhs._highConst.isDefined()
-        return false;
-      }
+      // lhs._lowConst.isDefined() && rhs._highConst.isDefined()
+      return false;
     }
   }
   TRI_ASSERT(false); 
@@ -1595,9 +1604,9 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<Ran
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexOrCondition* IndexRangeBlock::cartesian (std::vector<std::vector<RangeInfo>> const& collector) {
-  
   std::vector<size_t> indexes;
   indexes.reserve(collector.size());
+
   for (size_t i = 0; i < collector.size(); i++) {
     indexes.emplace_back(0);
   }
@@ -1885,7 +1894,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   ENTER_BLOCK;
   TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
-  
+ 
   for (size_t i = 0; i < ranges.size(); i++) {
     std::string key;
 
@@ -1950,6 +1959,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
       }
     }
   }
+
   LEAVE_BLOCK;
 }
 
