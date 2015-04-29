@@ -412,10 +412,8 @@ namespace triagens {
     class SingletonBlock : public ExecutionBlock {
 
       void deleteInputVariables() {
-          if (_inputRegisterValues != nullptr) {
-            delete _inputRegisterValues;
-            _inputRegisterValues = nullptr;
-          }
+        delete _inputRegisterValues;
+        _inputRegisterValues = nullptr;
       }
 
       public:
