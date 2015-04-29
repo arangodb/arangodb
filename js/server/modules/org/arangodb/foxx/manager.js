@@ -1412,6 +1412,27 @@ var configure = function(mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Set up dependencies of the app at the mountpoint
+////////////////////////////////////////////////////////////////////////////////
+
+var updateDeps = function(mount, options) {
+  checkParameter(
+    "updateDeps(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+  utils.validateMount(mount, true);
+  var app = lookupApp(mount);
+  var invalid = app.updateDeps(options.dependencies || {});
+  if (invalid.length > 0) {
+    // TODO Error handling
+    console.log(invalid);
+  }
+  utils.updateApp(mount, app.toJSON());
+  reloadRouting();
+  return app.simpleJSON();
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the configuration for the app at the given mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1500,6 +1521,7 @@ exports.upgrade = upgrade;
 exports.development = setDevelopment;
 exports.production = setProduction;
 exports.configure = configure;
+exports.updateDeps = updateDeps;
 exports.configuration = configuration;
 exports.dependencies = dependencies;
 exports.requireApp = requireApp;
