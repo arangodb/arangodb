@@ -1679,8 +1679,8 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
       if (enumCollVar != nullptr) {
         foundSomething = true;
 
-        std::unordered_set<Variable*> varsUsed 
-          = Ast::getReferencedVariables(lhs);
+        std::unordered_set<Variable*>&& varsUsed = Ast::getReferencedVariables(lhs);
+
         if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
             == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
@@ -1847,9 +1847,7 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
             for (size_t i = 0; i < n; i++) {
               RangeInfo ri(enumCollVar->name, 
                            attr.substr(0, attr.size() - 1), 
-                           RangeInfoBound(rhs->getMember(i), true),
-                           RangeInfoBound(rhs->getMember(i), true), 
-                           true);
+                           RangeInfoBound(rhs->getMember(i), true));
               // the following does not seem to be necessary here, but will slow things down
               // considerably if the array is very big
               // rimv->differenceRangeInfo(ri);
@@ -1863,9 +1861,7 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
           else { 
             RangeInfo ri(enumCollVar->name, 
                          attr.substr(0, attr.size() - 1), 
-                         RangeInfoBound(rhs, true),
-                         RangeInfoBound(rhs, true), 
-                         true);
+                         RangeInfoBound(rhs, true));
             rimv->differenceRangeInfo(ri);
             if (ri.isValid()) { 
               std::unique_ptr<RangeInfoMap> temp(new RangeInfoMap(ri));
@@ -2105,14 +2101,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // results), for example
             // x.a == 1 || y.c == 2 || x.a == 3
             if (_rangeInfoMapVec->isMapped(var->name)) {
-              std::vector<size_t> const validPos = _rangeInfoMapVec->validPositions(var->name);
+              std::vector<size_t>&& validPos = _rangeInfoMapVec->validPositions(var->name);
 
               // are any of the RangeInfoMaps in the vector valid? 
 
               if (! _canThrow) {
                 if (validPos.empty()) { // ranges are not valid . . . 
                   auto parents = node->getParents();
-                  for (auto x : parents) {
+                  for (auto const& x : parents) {
                     auto noRes = new NoResultsNode(_plan, _plan->nextId());
                     _plan->registerNode(noRes);
                     _plan->insertDependency(x, noRes);
@@ -2127,8 +2123,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                   // note: prefixes are only used for skiplist indexes
                   // for all other index types, the prefix value will always be 0
-                  node->getIndexesForIndexRangeNode(
-                      _rangeInfoMapVec->attributes(var->name), idxs, prefixes);
+                  node->getIndexesForIndexRangeNode(_rangeInfoMapVec->attributes(var->name), idxs, prefixes);
                   // make one new plan for every index in <idxs> that replaces the
                   // enumerate collection node with a IndexRangeNode ... 
 
@@ -4347,7 +4342,7 @@ struct RemoveRedundantOr {
   // returns false if the existing value is better and true if the input value is
   // better
   bool compareBounds (AstNodeType type, AstNode const* value, int lowhigh) { 
-    int cmp = CompareAstNodes(bestValue, value);
+    int cmp = CompareAstNodes(bestValue, value, true);
 
     if (cmp == 0 && (isInclusiveBound(comparison) != isInclusiveBound(type))) {
       return (isInclusiveBound(type) ? true : false);

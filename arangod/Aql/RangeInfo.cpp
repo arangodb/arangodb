@@ -427,7 +427,7 @@ void RangeInfoMap::attributes (std::unordered_set<std::string>& set,
   std::unordered_map<std::string, RangeInfo> const* map = find(var);
 
   if (map != nullptr) {
-    for (auto x: *map) {
+    for (auto const& x: *map) {
       set.emplace(x.first);
     }
   }
@@ -527,7 +527,9 @@ bool RangeInfoMapVec::isMapped (std::string const& var) const {
 std::vector<size_t> RangeInfoMapVec::validPositions (std::string const& var) const {
   std::vector<size_t> valid;
 
-  for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
+  size_t const n = _rangeInfoMapVec.size();
+
+  for (size_t i = 0; i < n; i++) {
     if (_rangeInfoMapVec[i]->isValid(var)) {
       valid.emplace_back(i);
     }
