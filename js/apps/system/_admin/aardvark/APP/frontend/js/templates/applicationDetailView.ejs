@@ -4,12 +4,12 @@
       <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li>
-            <a id="configure-app" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %>">
+            <a id="app-config" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %>">
               <span class="icon_arangodb_settings2" title="Configure"></span>
             </a>
           </li>
           <li>
-            <a id="app-dependencies" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %>">
+            <a id="app-deps" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %>">
               <span class="fa fa-cubes" title="Dependencies"></span>
             </a>
           </li>

@@ -46,7 +46,7 @@ var mountNumberRegEx = /^\/[\d\-%]/;
 var pathRegex = /^((\.{0,2}(\/|\\))|(~\/)|[a-zA-Z]:\\)/;
 
 var getReadableName = function(name) {
-  return name.split(/([-_]|\s)/).map(function (token) {
+  return name.split(/([-_]|\s)+/).map(function (token) {
     return token.slice(0, 1).toUpperCase() + token.slice(1);
   }).join(' ');
 };
@@ -317,6 +317,7 @@ function getConfiguration(definitions, options) {
   var cfg = {};
   _.each(definitions, function (definition, name) {
     cfg[name] = _.clone(definition);
+    cfg[name].title = getReadableName(name);
     cfg[name].current = options[name];
   });
   return cfg;
@@ -325,8 +326,11 @@ function getConfiguration(definitions, options) {
 function getDependencies(definitions, options) {
   var deps = {};
   _.each(definitions, function (definition, name) {
-    deps[name] = {definition: definition};
-    deps[name].current = options[name];
+    deps[name] = {
+      definition: definition,
+      title: getReadableName(name),
+      current: options[name]
+    };
   });
   return deps;
 }

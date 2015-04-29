@@ -11,7 +11,7 @@
     events: {
       'click .open': 'openApp',
       'click .delete': 'deleteApp',
-      'click #configure-app': 'showConfigureDialog',
+      'click #app-config': 'showConfigDialog',
       'click #app-deps': 'showDepsDialog',
       'click #app-switch-mode': 'toggleDevelopment',
       "click #app-scripts [data-script]": "runScript",
@@ -138,7 +138,7 @@
         this.model.get('mount');
     },
 
-    readConfig: function() {
+    applyConfig: function() {
       var cfg = {};
       _.each(this.model.get('config'), function(opt, key) {
         var $el = $("#app_config_" + key);
@@ -166,81 +166,117 @@
       }.bind(this));
     },
 
-    showConfigureDialog: function(e) {
+    showConfigDialog: function() {
       if (_.isEmpty(this.model.get('config'))) {
         return;
       }
-      var buttons = [],
-          tableContent = [],
-          entry;
-      _.each(this.model.get('config'), function(obj, name) {
-        var def;
-        var current;
-        var check;
-        switch (obj.type) {
-          case "boolean":
-          case "bool":
-            def = obj.current || false;
-            entry = window.modalView.createCheckboxEntry(
-              "app_config_" + name,
-              name,
-              def,
-              obj.description,
-              def
-            );
-            break;
-          case "integer":
-            check = [{
-              rule: Joi.number().integer().optional().allow(""),
-              msg: "Has to be an integer."
-            }];
-            /* falls through */
-          case "number":
-            if (check === undefined) {
-              check = [{
-                rule: Joi.number().optional().allow(""),
-                msg: "Has to be a number."
-              }];
-            }
-            /* falls through */
-          default:
-            if (check === undefined) {
-              check = [{
-                rule: Joi.string().optional().allow(""),
-                msg: "Has to be a string."
-              }];
-            }
-            if (obj.hasOwnProperty("default")) {
-              def = String(obj.default);
-            } else {
-              def = "";
-              check.push({
-                rule: Joi.string().required(),
-                msg: "No default found. Has to be added"
-              });
-            }
-            if (obj.hasOwnProperty("current")) {
-              current = String(obj.current);
-            } else {
-              current = "";
-            }
-            entry = window.modalView.createTextEntry(
-              "app_config_" + name,
-              name,
-              current,
-              obj.description,
-              def,
-              true,
-              check
-            );
+      var tableContent = _.map(this.model.get('config'), function(obj, name) {
+        if (obj.type === 'bool' || obj.type === 'boolean') {
+          return window.modalView.createCheckboxEntry(
+            "app_config_" + name,
+            name,
+            obj.current || false,
+            obj.description,
+            obj.current || false
+          );
         }
-        tableContent.push(entry);
+        var defaultValue;
+        var currentValue;
+        var checks = [];
+        if (obj.type === 'integer') {
+          checks.push({
+            rule: Joi.number().integer().optional().allow(""),
+            msg: "Has to be an integer."
+          });
+        } else if (obj.type === 'number') {
+          checks.push({
+            rule: Joi.number().optional().allow(""),
+            msg: "Has to be a number."
+          });
+        } else {
+          checks.push({
+            rule: Joi.string().optional().allow(""),
+            msg: "Has to be a string."
+          });
+        }
+        if (obj.default !== undefined) {
+          defaultValue = String(obj.default);
+        } else {
+          defaultValue = "";
+          checks.push({
+            rule: Joi.string().required(),
+            msg: "No default found. Has to be added"
+          });
+        }
+        if (obj.current !== undefined) {
+          currentValue = String(obj.current);
+        } else {
+          currentValue = "";
+        }
+        return window.modalView.createTextEntry(
+          "app_config_" + name,
+          name,
+          currentValue,
+          obj.description,
+          defaultValue,
+          true,
+          checks
+        );
       });
-      buttons.push(
-        window.modalView.createSuccessButton("Configure", this.readConfig.bind(this))
-      );
+      var buttons = [
+        window.modalView.createSuccessButton("Apply", this.applyConfig.bind(this))
+      ];
       window.modalView.show(
-        "modalTable.ejs", "Configure application", buttons, tableContent
+        "modalTable.ejs", "Configuration", buttons, tableContent
+      );
+
+    },
+
+    applyDeps: function() {
+      var deps = {};
+      _.each(this.model.get('deps'), function(title, name) {
+        var $el = $("#app_deps_" + name);
+        deps[name] = window.arangoHelper.escapeHtml($el.val());
+      });
+      this.model.setDependencies(deps, function() {
+        window.modalView.hide();
+        this.updateDeps();
+      }.bind(this));
+    },
+
+    showDepsDialog: function() {
+      if (_.isEmpty(this.model.get('deps'))) {
+        return;
+      }
+      var tableContent = _.map(this.model.get('deps'), function(obj, name) {
+        var currentValue = obj.current === undefined ? '' : String(obj.current);
+        var defaultValue = '';
+        var description = obj.definition;
+        var checks = [
+          {
+            rule: Joi.string().optional().allow(""),
+            msg: "Has to be a string."
+          },
+          {
+            rule: Joi.string().required(),
+            msg: "This value is required."
+          }
+        ];
+        return window.modalView.createTextEntry(
+          "app_deps_" + name,
+          obj.title,
+          currentValue,
+          description,
+          defaultValue,
+          true,
+          checks
+        );
+      });
+      var buttons = [
+        window.modalView.createSuccessButton("Apply", this.applyDeps.bind(this))
+      ];
+      window.modalView.show(
+        "modalTable.ejs", "Dependencies", buttons, tableContent
       );
 
     },
@@ -254,6 +290,5 @@
     hideDropdown: function () {
       $("#scripts_dropdown").hide();
     }
-
   });
 }());

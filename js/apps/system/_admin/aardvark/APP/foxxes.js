@@ -233,7 +233,7 @@
   controller.patch("/deps", function(req, res) {
     var mount = validateMount(req);
     var data = req.body();
-    res.json(FoxxManager.configure(mount, {dependencies: data}));
+    res.json(FoxxManager.updateDeps(mount, {dependencies: data}));
   }).queryParam("mount", mountPoint);
 
   /** Run tests for an app
