@@ -736,12 +736,12 @@ namespace triagens {
             }
 
             bool operator() (size_t const&,
-                             size_t const&);
+                             size_t const&) const;
 
           private:
-            std::vector<std::vector<size_t>> _prefix;
+            std::vector<std::vector<size_t>> const& _prefix;
             IndexOrCondition* _condition;
-            bool _reverse;
+            bool const _reverse;
         };
 
 // -----------------------------------------------------------------------------

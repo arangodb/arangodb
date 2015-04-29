@@ -183,23 +183,28 @@ RangeInfo::RangeInfo (triagens::basics::Json const& json)
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::basics::Json RangeInfo::toJson () const {
-  triagens::basics::Json item(basics::Json::Object);
+  triagens::basics::Json item(basics::Json::Object, 8);
+
   item("variable", triagens::basics::Json(_var))
       ("attr", triagens::basics::Json(_attr))
       ("lowConst", _lowConst.toJson())
       ("highConst", _highConst.toJson());
+
   triagens::basics::Json lowList(triagens::basics::Json::Array, _lows.size());
   for (auto l : _lows) {
     lowList(l.toJson());
   }
   item("lows", lowList);
+
   triagens::basics::Json highList(triagens::basics::Json::Array, _highs.size());
   for (auto h : _highs) {
     highList(h.toJson());
   }
   item("highs", highList);
+
   item("valid", triagens::basics::Json(_valid));
   item("equality", triagens::basics::Json(_equality));
+
   return item;
 }
 
@@ -558,7 +563,7 @@ void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
     if (oldRi != nullptr) {
       differenceRangeInfos(*oldRi, newRi);
       if (! newRi.isValid() || 
-          (newRi._lowConst.bound().isEmpty() && newRi._highConst.bound().isEmpty())){
+          (newRi._lowConst.bound().isEmpty() && newRi._highConst.bound().isEmpty())) {
         break;
       }
     }
@@ -946,36 +951,111 @@ void triagens::aql::differenceIndexAnd (IndexAndCondition& and1,
 ////////////////////////////////////////////////////////////////////////////////
 
 void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
+  bool only1ValueRangeInfos = true;
+
   // remove invalid ranges
-  for (auto it = ioc.begin(); it < ioc.end(); ) {
+  for (auto it = ioc.begin(); it < ioc.end(); /* no hoisting */ ) {
     bool invalid = false;
 
-    for (RangeInfo ri: *it) {
+    if (it->size() != 1) {
+      only1ValueRangeInfos = false;
+    }
+
+    for (RangeInfo const& ri: *it) {
       if (! ri.isValid()) {
         invalid = true;
         it = ioc.erase(it);
         break;
       }
-    } 
+
+      if (only1ValueRangeInfos &&
+          (! ri.is1ValueRangeInfo() || ! ri.isConstant())) {
+        only1ValueRangeInfos = false;
+      }
+    }
+
     if (! invalid) { 
       it++;
     }
   }
 
   // do de-duplication
-  for (size_t i = 1; i < ioc.size(); i++) {
-    for (size_t j = 0; j < i; j++) {
-      differenceIndexAnd(ioc[j], ioc[i]);
+
+  if (only1ValueRangeInfos && ioc.size() >= 5) {
+    // for the case that we have many equality-only conditions, we
+    // employ a much simpler de-deduplication
+    std::sort(ioc.begin(), ioc.end(), [] (IndexAndCondition const& lhs, IndexAndCondition const& rhs) -> bool {
+      // sort by attribute name first
+      auto const& lBound = lhs[0];
+      auto const& rBound = rhs[0];
+
+      int cmp = lBound._var.compare(rBound._var);
+
+      if (cmp < 0) {
+        // different variable name
+        return true;
+      }
+
+      cmp = lBound._attr.compare(rBound._attr);
+
+      if (cmp < 0) {
+        // different attribute names
+        return true;
+      }
+
+      // then by lower bound
+      // note: UTF-8-aware string comparison is not needed here as the only goal is to have a defined order 
+      // for the bounds
+      cmp = TRI_CompareValuesJson(lBound._lowConst.bound().json(), rBound._lowConst.bound().json(), false);
+
+      if (cmp < 0) {
+        return true;
+      }
+
+      // all things equal
+      return false;
+    });
+
+    // now the IndexOrConditions are sorted by attribute names, then attribute values
+    auto* lastValid = &ioc[0][0];
+    auto lastHash = TRI_FastHashJson(lastValid->_lowConst.bound().json());
+
+    for (size_t i = 1; i < ioc.size(); ++i) {
+      auto* current = &ioc[i][0];
+      auto currentHash = TRI_FastHashJson(current->_lowConst.bound().json());
+
+      if (current->_var == lastValid->_var &&
+          current->_attr == lastValid->_attr) {
+
+        if (currentHash == lastHash &&
+            TRI_CompareValuesJson(lastValid->_lowConst.bound().json(), current->_lowConst.bound().json(), false) == 0) {
+          // equal condition, now remove it!
+          ioc[i].clear();
+          continue;
+        }
+      }
+      
+      lastValid = &ioc[i][0];
+      lastHash = currentHash;
     }
+
+  }
+  else {
+    // brute-force de-duplication
+    for (size_t i = 1; i < ioc.size(); i++) {
+      for (size_t j = 0; j < i; j++) {
+        differenceIndexAnd(ioc[j], ioc[i]);
+      }
+    } 
   }
 
   // remove empty 
-  for (auto it = ioc.begin(); it < ioc.end(); ) {
-    if (it->empty()) {
-      it = ioc.erase(it);
-    } 
-    else {
-      it++;
-    }
-  }
+  ioc.erase(std::remove_if(ioc.begin(), ioc.end(), [] (IndexAndCondition const& item) -> bool {
+    return item.empty();
+  }), ioc.end());
 }
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
