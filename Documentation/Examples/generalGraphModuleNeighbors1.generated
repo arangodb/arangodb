@@ -5,56 +5,56 @@ arangosh> graph._neighbors({isCapital : true});
   { 
     "_id" : "germanCity/Cologne", 
     "_key" : "Cologne", 
-    "_rev" : "592189264", 
+    "_rev" : "589938338", 
     "isCapital" : false, 
     "population" : 1000000 
   }, 
   { 
     "_id" : "germanCity/Hamburg", 
     "_key" : "Hamburg", 
-    "_rev" : "592385872", 
+    "_rev" : "590134946", 
     "isCapital" : false, 
     "population" : 1000000 
   }, 
   { 
     "_id" : "frenchCity/Lyon", 
     "_key" : "Lyon", 
-    "_rev" : "592779088", 
+    "_rev" : "590528162", 
     "isCapital" : false, 
     "population" : 80000 
   }, 
   { 
     "_id" : "frenchCity/Paris", 
     "_key" : "Paris", 
-    "_rev" : "592975696", 
+    "_rev" : "590724770", 
     "isCapital" : true, 
     "population" : 4000000 
   }, 
   { 
     "_id" : "frenchCity/Lyon", 
     "_key" : "Lyon", 
-    "_rev" : "592779088", 
+    "_rev" : "590528162", 
     "isCapital" : false, 
     "population" : 80000 
   }, 
   { 
     "_id" : "germanCity/Berlin", 
     "_key" : "Berlin", 
-    "_rev" : "591992656", 
+    "_rev" : "589741730", 
     "isCapital" : true, 
     "population" : 3000000 
   }, 
   { 
     "_id" : "germanCity/Cologne", 
     "_key" : "Cologne", 
-    "_rev" : "592189264", 
+    "_rev" : "589938338", 
     "isCapital" : false, 
     "population" : 1000000 
   }, 
   { 
     "_id" : "germanCity/Hamburg", 
     "_key" : "Hamburg", 
-    "_rev" : "592385872", 
+    "_rev" : "590134946", 
     "isCapital" : false, 
     "population" : 1000000 
   } 

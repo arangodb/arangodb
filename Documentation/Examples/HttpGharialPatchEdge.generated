@@ -5,15 +5,15 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharia
 
 HTTP/1.1 202 Accepted
 content-type: application/json
-etag: 1486362448
+etag: 1484963490
 
 { 
   "error" : false, 
   "code" : 202, 
   "edge" : { 
     "_id" : "relation/aliceAndBob", 
-    "_rev" : "1486362448", 
-    "_oldRev" : "1485248336", 
+    "_rev" : "1484963490", 
+    "_oldRev" : "1483849378", 
     "_key" : "aliceAndBob" 
   } 
 }

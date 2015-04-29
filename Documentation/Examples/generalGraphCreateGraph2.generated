@@ -1,5 +1,8 @@
 arangosh> var graph_module = require("org/arangodb/general-graph");
 arangosh> graph = graph_module._create("myGraph",
-........> [graph_module._relation("myRelation", ["male", "female"])], ["sessions"]);
-[ArangoError 1935: Invalid number of arguments. Expected: 3]
-[ArangoError 1924: graph not found]
+........> [graph_module._relation("myRelation", ["male", "female"], ["male", "female"])], ["sessions"]);
+[ Graph myGraph EdgeDefinitions: [ 
+  "myRelation: [female, male] -> [female, male]" 
+] VertexCollections: [ 
+  "sessions" 
+] ]

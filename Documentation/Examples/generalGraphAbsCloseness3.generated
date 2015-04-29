@@ -5,8 +5,8 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
 ........> "direction : 'outbound', weight : 'distance'})").toArray();
 [ 
   { 
-    "germanCity/Hamburg" : 2600, 
     "germanCity/Berlin" : 3550, 
+    "germanCity/Hamburg" : 2600, 
     "germanCity/Cologne" : 1250 
   } 
 ]

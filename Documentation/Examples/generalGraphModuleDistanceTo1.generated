@@ -5,56 +5,12 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
 [ 
   [ 
     { 
-      "startVertex" : "germanCity/Berlin", 
-      "distance" : 1100, 
-      "vertex" : { 
-        "_id" : "frenchCity/Lyon", 
-        "_key" : "Lyon", 
-        "_rev" : "629675856", 
-        "isCapital" : false, 
-        "population" : 80000 
-      } 
-    }, 
-    { 
-      "startVertex" : "germanCity/Berlin", 
-      "distance" : 1200, 
-      "vertex" : { 
-        "_id" : "frenchCity/Paris", 
-        "_key" : "Paris", 
-        "_rev" : "629872464", 
-        "isCapital" : true, 
-        "population" : 4000000 
-      } 
-    }, 
-    { 
-      "startVertex" : "germanCity/Cologne", 
-      "distance" : 550, 
-      "vertex" : { 
-        "_id" : "frenchCity/Paris", 
-        "_key" : "Paris", 
-        "_rev" : "629872464", 
-        "isCapital" : true, 
-        "population" : 4000000 
-      } 
-    }, 
-    { 
-      "startVertex" : "germanCity/Cologne", 
-      "distance" : 700, 
-      "vertex" : { 
-        "_id" : "frenchCity/Lyon", 
-        "_key" : "Lyon", 
-        "_rev" : "629675856", 
-        "isCapital" : false, 
-        "population" : 80000 
-      } 
-    }, 
-    { 
       "startVertex" : "germanCity/Hamburg", 
       "distance" : 1200, 
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "629675856", 
+        "_rev" : "627359394", 
         "isCapital" : false, 
         "population" : 80000 
       } 
@@ -65,7 +21,51 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "629872464", 
+        "_rev" : "627556002", 
+        "isCapital" : true, 
+        "population" : 4000000 
+      } 
+    }, 
+    { 
+      "startVertex" : "germanCity/Cologne", 
+      "distance" : 700, 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "627359394", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    }, 
+    { 
+      "startVertex" : "germanCity/Cologne", 
+      "distance" : 550, 
+      "vertex" : { 
+        "_id" : "frenchCity/Paris", 
+        "_key" : "Paris", 
+        "_rev" : "627556002", 
+        "isCapital" : true, 
+        "population" : 4000000 
+      } 
+    }, 
+    { 
+      "startVertex" : "germanCity/Berlin", 
+      "distance" : 1100, 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "627359394", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    }, 
+    { 
+      "startVertex" : "germanCity/Berlin", 
+      "distance" : 1200, 
+      "vertex" : { 
+        "_id" : "frenchCity/Paris", 
+        "_key" : "Paris", 
+        "_rev" : "627556002", 
         "isCapital" : true, 
         "population" : 4000000 
       } 

@@ -6,49 +6,49 @@ arangosh> query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
   { 
     "_id" : "female/diana", 
     "_key" : "diana", 
-    "_rev" : "1010767696", 
+    "_rev" : "1009827490", 
     "name" : "Diana" 
   }, 
   { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "1010046800", 
+    "_rev" : "1009106594", 
     "name" : "Alice" 
   }, 
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "1010374480", 
+    "_rev" : "1009434274", 
     "name" : "Bob" 
   }, 
   { 
     "_id" : "male/charly", 
     "_key" : "charly", 
-    "_rev" : "1010571088", 
+    "_rev" : "1009630882", 
     "name" : "Charly" 
   }, 
   { 
     "_id" : "female/diana", 
     "_key" : "diana", 
-    "_rev" : "1010767696", 
+    "_rev" : "1009827490", 
     "name" : "Diana" 
   }, 
   { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "1010046800", 
+    "_rev" : "1009106594", 
     "name" : "Alice" 
   }, 
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "1010374480", 
+    "_rev" : "1009434274", 
     "name" : "Bob" 
   }, 
   { 
     "_id" : "male/charly", 
     "_key" : "charly", 
-    "_rev" : "1010571088", 
+    "_rev" : "1009630882", 
     "name" : "Charly" 
   } 
 ]

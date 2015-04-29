@@ -9,13 +9,13 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "vertices/v1", 
       "_key" : "v1", 
-      "_rev" : "1200101200", 
+      "_rev" : "1199292066", 
       "optional1" : "val1" 
     }, 
     { 
       "_id" : "vertices/v4", 
       "_key" : "v4", 
-      "_rev" : "1201280848", 
+      "_rev" : "1200471714", 
       "optional1" : "val1" 
     } 
   ], 
