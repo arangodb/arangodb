@@ -20,6 +20,14 @@ v2.5.3 (2015-04-29)
   If the user-provided value is higher than SOMAXCONN, arangod will log a warning 
   on startup.
 
+* Fixed a cluster deadlock bug. Mark a thread that is in a RemoteBlock as
+  blocked to allow for additional dispatcher threads to be started.
+
+* Fix locking in cluster by using another ReadWriteLock class for collections.
+
+* Add a second DispatcherQueue for AQL in the cluster. This fixes a
+  cluster-AQL thread explosion bug.
+
 
 v2.5.2 (2015-04-11)
 -------------------
