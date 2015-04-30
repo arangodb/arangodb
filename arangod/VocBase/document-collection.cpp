@@ -4884,6 +4884,47 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+CountingAggregation* TRI_AggregateBySingleAttribute (
+                          TRI_transaction_collection_t* trxCollection,
+                          TRI_shape_pid_t pid ) {
+
+  TRI_document_collection_t* document = trxCollection->_collection->_collection;
+
+  CountingAggregation* agg = new CountingAggregation();
+
+  TRI_shaper_t* shaper = document->getShaper();
+
+  // do a full scan
+  TRI_doc_mptr_t** ptr = (TRI_doc_mptr_t**) (document->_primaryIndex._table);
+  TRI_doc_mptr_t** end = (TRI_doc_mptr_t**) ptr + document->_primaryIndex._nrAlloc;
+
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr != nullptr) {
+      TRI_doc_mptr_t* m = *ptr;
+      TRI_shape_sid_t sid;
+      TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, m->getDataPtr());
+      TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(shaper, 
+                                                                     sid, pid);
+      TRI_shaped_json_t shapedJson;
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, m->getDataPtr());
+      TRI_shaped_json_t resultJson;
+      TRI_ExecuteShapeAccessor(accessor, &shapedJson, &resultJson);
+      auto it = agg->find(resultJson);
+      if (it == agg->end()) {
+        agg->insert(std::make_pair(resultJson, 1));
+      }
+      else {
+        it->second++;
+      }
+    }
+  }
+  return agg;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 

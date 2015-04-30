@@ -44,6 +44,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
 #include "v8-wrapshapedjson.h"
@@ -1522,6 +1523,89 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief aggregate(count) value of a single attribute, experiment
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_AggregateCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // expecting example, skip, limit
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AGGREGATE_COUNT(<attribute>)");
+  }
+
+  // extract the attribute name
+  if (! args[0]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("<attribute> must be a string");
+  }
+  std::string attName = TRI_ObjectToString(args[0]);
+
+  TRI_vocbase_col_t const* col;
+  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+
+  if (col == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
+
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_shaper_t* shaper = document->getShaper();
+
+  // to extract sub-documents in the attribute:
+  TRI_shape_pid_t pid 
+      = shaper->lookupAttributePathByName(shaper, attName.c_str());
+
+  // ...........................................................................
+  // inside a read transaction
+  // ...........................................................................
+
+  CountingAggregation* agg;
+
+  trx.lockRead();
+
+  // find documents by example
+  try {
+    agg = TRI_AggregateBySingleAttribute(trx.trxCollection(), pid);
+  }
+  catch (std::exception&) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  trx.finish(res);
+
+  // ...........................................................................
+  // outside a read transaction
+  // ...........................................................................
+
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  v8::Handle<v8::Array> documents = v8::Array::New(isolate);
+  result->Set(TRI_V8_ASCII_STRING("documents"), documents);
+  uint32_t count = 0;
+  for (auto& x : *agg) {
+    v8::Handle<v8::Object> w = v8::Object::New(isolate);
+    Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &x.first));
+    w->Set(TRI_V8_ASCII_STRING("value"),
+           TRI_ObjectJson(isolate, json.json()));
+    w->Set(TRI_V8_ASCII_STRING("count"), 
+           v8::Number::New(isolate, static_cast<double>(x.second)));
+    documents->Set(count++, w);
+  }
+  delete agg;
+  TRI_V8_RETURN(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief selects documents by example using a hash index
 ///
 /// It is the callers responsibility to acquire and free the required locks
@@ -2530,6 +2614,7 @@ void TRI_InitV8Queries (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("INEDGES"), JS_InEdgesQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("LAST"), JS_LastQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NEAR"), JS_NearQuery, true);
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("AGGREGATE_COUNT"), JS_AggregateCount, true);
 
   // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH"), JS_NthQuery, true);
