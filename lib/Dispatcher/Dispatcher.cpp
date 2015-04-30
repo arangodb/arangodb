@@ -47,6 +47,7 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
   
 std::string const Dispatcher::QUEUE_NAME = "STANDARD";
+std::string const Dispatcher::AQL_QUEUE_NAME = "AQL";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -121,6 +122,30 @@ int Dispatcher::addStandardQueue (size_t nrThreads,
     _scheduler,
     this,
     QUEUE_NAME,
+    DefaultDispatcherThread,
+    nullptr,
+    nrThreads,
+    maxSize);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds the AQL queue (used for the cluster)
+////////////////////////////////////////////////////////////////////////////////
+
+int Dispatcher::addAQLQueue (size_t nrThreads,
+                             size_t maxSize) {
+  MUTEX_LOCKER(_accessDispatcher);
+
+  if (_queues.find(AQL_QUEUE_NAME) != _queues.end()) {
+    return TRI_ERROR_QUEUE_ALREADY_EXISTS;
+  }
+
+  _queues[AQL_QUEUE_NAME] = new DispatcherQueue(
+    _scheduler,
+    this,
+    AQL_QUEUE_NAME,
     DefaultDispatcherThread,
     nullptr,
     nrThreads,
