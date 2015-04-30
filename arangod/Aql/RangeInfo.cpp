@@ -932,7 +932,8 @@ void triagens::aql::differenceIndexAnd (IndexAndCondition& and1,
       // and1 and and2 have non-empty intersection
       for (auto& ri1: and1) {
         for (auto& ri2: and2) {
-          if (ri2._attr == ri1._attr && ContainmentRangeInfos(ri1, ri2) == 0) {
+          if (ri2._var == ri1._var && ri2._attr == ri1._attr && 
+              ContainmentRangeInfos(ri1, ri2) == 0) {
             int LoLo = CompareRangeInfoBound(ri1._lowConst, ri2._lowConst, -1);
 
             if (LoLo == 1) { // replace low bound of new with high bound of old
@@ -985,7 +986,6 @@ void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
   }
 
   // do de-duplication
-
   if (only1ValueRangeInfos && ioc.size() >= 5) {
     // for the case that we have many equality-only conditions, we
     // employ a much simpler de-deduplication
