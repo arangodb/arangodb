@@ -87,27 +87,28 @@ var ArangoError = arangodb.ArangoError;
 
 exports.checkRequestResult = function (requestResult) {
   if (requestResult === undefined) {
-    requestResult = {
+    throw new ArangoError({
       "error" : true,
       "code"  : 500,
       "errorNum" : arangodb.ERROR_INTERNAL,
       "errorMessage" : "Unknown error. Request result is empty"
-    };
+    });
   }
 
-  if (requestResult.error !== undefined && requestResult.error) {
-    if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
-      throw new TypeError(requestResult.errorMessage);
+  if (requestResult.hasOwnProperty('error')) {
+    if (requestResult.error) {
+      if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
+        throw new TypeError(requestResult.errorMessage);
+      }
+
+      throw new ArangoError(requestResult);
     }
 
-    throw new ArangoError(requestResult);
+    // remove the property from the original object
+    delete requestResult.error;
   }
 
-  var copy = requestResult._shallowCopy;
-
-  delete copy.error;
-
-  return copy;
+  return requestResult;
 };
 
 // -----------------------------------------------------------------------------
