@@ -247,11 +247,10 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     return new MaintenanceHandler(request);
   }
 
-  map<string, create_fptr> const& ii = _constructors;
+  unordered_map<string, create_fptr> const& ii = _constructors;
   string path = request->requestPath();
-  map<string, create_fptr>::const_iterator i = ii.find(path);
+  auto i = ii.find(path);
   void* data = nullptr;
-
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
@@ -339,8 +338,8 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
 
   // look up data
-  map<string, void*> const& jj = _datas;
-  map<string, void*>::const_iterator j = jj.find(path);
+  unordered_map<string, void*> const& jj = _datas;
+  auto j = jj.find(path);
 
   if (j != jj.end()) {
     data = j->second;
