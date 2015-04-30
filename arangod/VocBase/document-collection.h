@@ -34,6 +34,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/ReadWriteLockCPP11.h"
+#include "Basics/fasthash.h"
 
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
@@ -962,6 +963,38 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           size_t,
                           TRI_shape_pid_t*,
                           TRI_shaped_json_t**);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+struct ShapedJsonHash {
+  size_t operator() (TRI_shaped_json_t const& shap) const {
+    size_t hash = 0x12345678;
+    hash = fasthash64(&shap._sid, sizeof(shap._sid), hash);
+    return fasthash64(shap._data.data, shap._data.length, hash);
+  }
+};
+
+struct ShapedJsonEq {
+  bool operator() (TRI_shaped_json_t const& left,
+                   TRI_shaped_json_t const& right) const {
+    if (left._sid != right._sid) {
+      return false;
+    }
+    if (left._data.length != right._data.length) {
+      return false;
+    }
+    return (memcmp(left._data.data, right._data.data, left._data.length) == 0);
+  }
+};
+
+typedef std::unordered_map<TRI_shaped_json_t, size_t, 
+                           ShapedJsonHash, ShapedJsonEq> CountingAggregation;
+
+CountingAggregation* TRI_AggregateBySingleAttribute (
+                          TRI_transaction_collection_t* trxCollection,
+                          TRI_shape_pid_t pid );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a documet given by a master pointer
