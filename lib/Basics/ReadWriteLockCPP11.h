@@ -83,13 +83,13 @@ namespace triagens {
             _state = -1;
             return;
           }
-          while (_state != 0) {
+          do {
             _wantWrite = true;
             _bell.wait(guard);
           }
+          while (_state != 0);
           _state = -1;
           _wantWrite = false;
-          return;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +124,6 @@ namespace triagens {
             }
           }
           _state += 1;
-          return;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
