@@ -734,7 +734,7 @@ namespace triagens {
           
           auto it = map->find(attr);
 
-          if (it == map->end()){
+          if (it == map->end()) {
             return nullptr;
           }
 
@@ -751,8 +751,8 @@ namespace triagens {
     
         void insert (std::string const& var, 
                      std::string const& name, 
-                     RangeInfoBound low, 
-                     RangeInfoBound high,
+                     RangeInfoBound const& low, 
+                     RangeInfoBound const& high,
                      bool equality);
 
 ////////////////////////////////////////////////////////////////////////////////
