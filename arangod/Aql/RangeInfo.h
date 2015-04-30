@@ -373,8 +373,8 @@ namespace triagens {
 
         RangeInfo (std::string const& var,
                    std::string const& attr,
-                   RangeInfoBound low, 
-                   RangeInfoBound high,
+                   RangeInfoBound const& low, 
+                   RangeInfoBound const& high,
                    bool equality)
           : _var(var), 
             _attr(attr), 
@@ -412,6 +412,28 @@ namespace triagens {
                 _valid = false;
               }
             }
+          }
+        }
+        
+        RangeInfo (std::string const& var,
+                   std::string const& attr,
+                   RangeInfoBound const& bound) 
+          : _var(var), 
+            _attr(attr), 
+            _valid(true), 
+            _defined(true),
+            _equality(true) {
+
+          // must be an equality here!
+          TRI_ASSERT(bound.inclusive());
+
+          if (bound.isConstant()) {
+            _lowConst.assign(bound);
+            _highConst.assign(bound);
+          }
+          else {
+            _lows.emplace_back(bound);
+            _highs.emplace_back(bound);
           }
         }
 
@@ -1079,3 +1101,8 @@ namespace triagens {
 }
 
 #endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

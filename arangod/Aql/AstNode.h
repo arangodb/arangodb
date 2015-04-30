@@ -751,7 +751,7 @@ namespace triagens {
 
     };
 
-    int CompareAstNodes (AstNode const*, AstNode const*);
+    int CompareAstNodes (AstNode const*, AstNode const*, bool);
   }
 }
 

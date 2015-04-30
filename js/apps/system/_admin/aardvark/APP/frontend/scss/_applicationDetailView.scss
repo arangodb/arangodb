@@ -4,7 +4,6 @@
     padding: 13px 0 0;
 
     .header {
-      float: left;
       height: 200px;
       margin-bottom: 10px;
       position: relative;
@@ -38,29 +37,48 @@
       }
 
       .header_right {
-        left: 300px;
+        margin-left: 300px;
         padding: 5px;
-        position: relative;
 
-        h3 {
-          float: left;
-          padding-right: 5px;
+        .header_line {
+          h3 {
+            float: left;
+            padding-right: 5px;
+          }
+
+          .license,
+          .version {
+            @include border-radius(6px);
+
+            border: 1px solid $c-editor-toolbar;
+            color: $c-editor-toolbar;
+            font-size: .6em;
+            padding: 0 8px;
+            position: relative;
+            top: -2px;
+          }
+
+          &:after {
+            content: '';
+            display: table;
+            clear: both;
+          }
         }
+      }
 
-        .license,
-        .version {
-          @include border-radius(6px);
+      .app-warning {
+        position: absolute;
+        top: 0;
+        right: 20px;
+        @include border-radius(6px);
+        border: 1px solid $c-negative-hover;
+        color: $c-negative;
+        background: $c-negative-bg;
+        padding: 4px 8px;
 
-          border: 1px solid $c-editor-toolbar;
-          color: $c-editor-toolbar;
-          font-size: .6em;
-          padding: 0 8px;
-          position: relative;
-          top: -2px;
-        }
-
-        .description {
-          clear: left;
+        h4, p {
+          margin: 0;
+          font-size: 1em;
         }
       }
     }

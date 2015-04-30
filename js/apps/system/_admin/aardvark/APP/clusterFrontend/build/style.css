@@ -2399,6 +2399,27 @@ div .tile, div .bigtile {
   margin-right: 6px;
   position: relative;
   text-align: center; }
+  div .tile .warning-icons, div .bigtile .warning-icons {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-color: #da4f49;
+    color: white;
+    font-size: 11px;
+    height: 17px;
+    line-height: 13px;
+    padding-left: 9px;
+    padding-right: 4px; }
+    div .tile .warning-icons:before, div .bigtile .warning-icons:before {
+      content: '';
+      position: absolute;
+      right: -17px;
+      border-top: 17px solid #da4f49;
+      border-right: 17px solid transparent; }
+    div .tile .warning-icons .fa + .fa, div .bigtile .warning-icons .fa + .fa {
+      margin-left: 1px; }
+    div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
+      font-size: 8px; }
   div .tile img.icon, div .bigtile img.icon {
     height: 50px;
     width: 50px; }
@@ -2694,8 +2715,6 @@ div.resizecontainer {
     width: 0; }
   .application-detail-view section.info {
     width: 228px; }
-    .application-detail-view section.info .header_right {
-      width: 58px; }
   .application-detail-view aside.meta {
     display: none; } }
 
@@ -2861,8 +2880,6 @@ div.resizecontainer {
     width: 0; }
   .application-detail-view section.info {
     width: 468px; }
-    .application-detail-view section.info .header_right {
-      width: 298px; }
   .application-detail-view aside.meta {
     display: none; } }
 
@@ -3027,9 +3044,7 @@ div.resizecontainer {
     height: 100px;
     width: 0; }
   .application-detail-view section.info {
-    width: 508px; }
-    .application-detail-view section.info .header_right {
-      width: 338px; } }
+    width: 508px; } }
 
 @media (min-width: 970px) and (max-width: 1209px) {
   div.resizecontainer {
@@ -3189,9 +3204,7 @@ div.resizecontainer {
     height: 117.5px;
     width: 60px; }
   .application-detail-view section.info {
-    width: 748px; }
-    .application-detail-view section.info .header_right {
-      width: 578px; } }
+    width: 748px; } }
 
 @media (min-width: 1210px) and (max-width: 1449px) {
   div.resizecontainer {
@@ -3351,9 +3364,7 @@ div.resizecontainer {
     height: 135px;
     width: 65px; }
   .application-detail-view section.info {
-    width: 988px; }
-    .application-detail-view section.info .header_right {
-      width: 818px; } }
+    width: 988px; } }
 
 @media (min-width: 1450px) and (max-width: 1689px) {
   div.resizecontainer {
@@ -3513,9 +3524,7 @@ div.resizecontainer {
     height: 150px;
     width: 70px; }
   .application-detail-view section.info {
-    width: 1228px; }
-    .application-detail-view section.info .header_right {
-      width: 1058px; } }
+    width: 1228px; } }
 
 @media (min-width: 1690px) and (max-width: 1929px) {
   div.resizecontainer {
@@ -3675,9 +3684,7 @@ div.resizecontainer {
     height: 170px;
     width: 80px; }
   .application-detail-view section.info {
-    width: 1468px; }
-    .application-detail-view section.info .header_right {
-      width: 1298px; } }
+    width: 1468px; } }
 
 @media (min-width: 1930px) and (max-width: 2169px) {
   div.resizecontainer {
@@ -3837,9 +3844,7 @@ div.resizecontainer {
     height: 200px;
     width: 85px; }
   .application-detail-view section.info {
-    width: 1708px; }
-    .application-detail-view section.info .header_right {
-      width: 1538px; } }
+    width: 1708px; } }
 
 @media (min-width: 2170px) and (max-width: 2409px) {
   div.resizecontainer {
@@ -3999,9 +4004,7 @@ div.resizecontainer {
     height: 150px;
     width: 70px; }
   .application-detail-view section.info {
-    width: 1948px; }
-    .application-detail-view section.info .header_right {
-      width: 1778px; } }
+    width: 1948px; } }
 
 @media (min-width: 2410px) and (max-width: 2649px) {
   div.resizecontainer {
@@ -4161,9 +4164,7 @@ div.resizecontainer {
     height: 150px;
     width: 70px; }
   .application-detail-view section.info {
-    width: 2188px; }
-    .application-detail-view section.info .header_right {
-      width: 2018px; } }
+    width: 2188px; } }
 
 @media (min-width: 2650px) and (max-width: 2889px) {
   div.resizecontainer {
@@ -4323,9 +4324,7 @@ div.resizecontainer {
     height: 150px;
     width: 70px; }
   .application-detail-view section.info {
-    width: 2428px; }
-    .application-detail-view section.info .header_right {
-      width: 2258px; } }
+    width: 2428px; } }
 
 div.centralRow {
   margin-top: 65px;
@@ -4982,6 +4981,27 @@ div .tile, div .bigtile {
   margin-right: 6px;
   position: relative;
   text-align: center; }
+  div .tile .warning-icons, div .bigtile .warning-icons {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-color: #da4f49;
+    color: white;
+    font-size: 11px;
+    height: 17px;
+    line-height: 13px;
+    padding-left: 9px;
+    padding-right: 4px; }
+    div .tile .warning-icons:before, div .bigtile .warning-icons:before {
+      content: '';
+      position: absolute;
+      right: -17px;
+      border-top: 17px solid #da4f49;
+      border-right: 17px solid transparent; }
+    div .tile .warning-icons .fa + .fa, div .bigtile .warning-icons .fa + .fa {
+      margin-left: 1px; }
+    div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
+      font-size: 8px; }
   div .tile img.icon, div .bigtile img.icon {
     height: 50px;
     width: 50px; }

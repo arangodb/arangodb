@@ -9,6 +9,7 @@ attributes are required though):
 * **contributors**: An array containing objects, each represents a contributor (with **name** and optional **email**)
 * **controllers**: Map routes to FoxxControllers
 * **defaultDocument**: The default document when the application's root (`/`) is called (defaults to `"index.html"`)
+* **dependencies**: Map names to Foxx apps
 * **description**: A short description of the application (Meta information)
 * **engines**: Should be an object with **arangodb** set to the ArangoDB version your Foxx app is compatible with
 * **exports**: Map names to Foxx exports
@@ -69,7 +70,12 @@ A more complete example for a Manifest file:
   "tests": [
     "test/**",
     "test-*.js"
-  ]
+  ],
+
+  "dependencies": {
+    "sessions": "sessions@^1.0.0",
+    "systemUsers": "users"
+  }
 }
 ```
 
@@ -106,6 +112,30 @@ the [minimatch module](https://github.com/isaacs/minimatch), for example:
 * brace expansion: `./tests/{a,b,c}.js` will match the files "a.js", "b.js" and "c.js"
 
  For more information on the supported patterns see the minimatch documentation.
+
+!SUBSECTION Defining dependencies
+
+Foxx apps can depend on other Foxx apps to be installed on the same server.
+
+The **dependencies** object maps aliases to Foxx apps:
+
+* The **key** is the name under which the dependency's exports will be available
+  on your **applicationContext.dependencies** object.
+
+* The **value** is a dependency definition.
+
+The dependency definition can use any of the following formats:
+
+* `*` will allow using any app to be used to meet the dependency.
+* `sessions` or `sessions@*` will match any app with the name `sessions`
+  (such as the *sessions* app in the Foxx application store).
+* `sessions@1.0.0` will match the version `1.0.0` of any app with the name `sessions`.
+
+Instead of using a specific version number, you can also use any expression supported by
+the [semver](https://github.com/npm/node-semver) module.
+
+Currently the dependency definitions are not enforced in ArangoDB
+but this may change in a future version.
 
 !SUBSECTION Defining controllers
 
