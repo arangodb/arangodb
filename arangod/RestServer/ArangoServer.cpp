@@ -301,7 +301,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableAuthentication(false),
     _disableAuthenticationUnixSockets(false),
     _dispatcherThreads(8),
-    _dispatcherQueueSize(8192),
+    _dispatcherQueueSize(16384),
     _v8Contexts(8),
     _indexThreads(2),
     _databasePath(),
