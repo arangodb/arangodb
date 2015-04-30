@@ -1,6 +1,8 @@
 v2.5.3 (2015-04-29)
 -------------------
 
+* Fix foxx app install when installed on a different drive on windows
+
 * issue #1322: strange AQL result
 
 * issue #1318: Inconsistent db._create() syntax
