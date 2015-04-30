@@ -137,6 +137,22 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
   _dispatcher->addStandardQueue(nrThreads, maxSize);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the dispatcher queue
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationDispatcher::buildAQLQueue (size_t nrThreads,
+                                           size_t maxSize) {
+  if (_dispatcher == nullptr) {
+    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
+  }
+
+  LOG_TRACE("setting up the AQL standard queue with %d threads", (int) nrThreads);
+
+  TRI_ASSERT(_dispatcher != nullptr);
+  _dispatcher->addAQLQueue(nrThreads, maxSize);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------

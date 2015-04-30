@@ -869,9 +869,19 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
+  const auto role = ServerState::instance()->getRole();
+
   // now we can create the queues
   if (startServer) {
-    _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
+    _applicationDispatcher->buildStandardQueue(_dispatcherThreads, 
+                                               (int) _dispatcherQueueSize);
+
+    if (role == ServerState::ROLE_COORDINATOR || 
+        role == ServerState::ROLE_PRIMARY || 
+        role == ServerState::ROLE_SECONDARY) {
+      _applicationDispatcher->buildAQLQueue(_dispatcherThreads,
+                                            (int) _dispatcherQueueSize);
+    }
   }
 
   startupProgress();
@@ -941,8 +951,7 @@ int ArangoServer::startupServer () {
 
   // for a cluster coordinator, the users are loaded at a later stage;
   // the kickstarter will trigger a bootstrap process
-  const auto role = ServerState::instance()->getRole();
-
+  //
   if (role != ServerState::ROLE_COORDINATOR && role != ServerState::ROLE_PRIMARY && role != ServerState::ROLE_SECONDARY) {
 
     // if the authentication info could not be loaded, but authentication is turned on,

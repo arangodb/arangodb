@@ -56,7 +56,10 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 DispatcherThread::DispatcherThread (DispatcherQueue* queue)
-  : Thread("dispatcher"),
+  : Thread("dispat"+ 
+           (queue->name() == "STANDARD" 
+            ? std::string("_def")
+            : std::string("_aql"))),
     _queue(queue),
     _jobType(Job::READ_JOB) {
   allowAsynchronousCancelation();
