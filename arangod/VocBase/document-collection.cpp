@@ -2002,7 +2002,6 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
 
   TRI_InitBarrierList(&document->_barrierList, document);
 
-  TRI_InitReadWriteLock(&document->_lock);
   TRI_InitReadWriteLock(&document->_compactionLock);
 
   return TRI_ERROR_NO_ERROR;
@@ -2019,7 +2018,6 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
   }
 
   TRI_DestroyReadWriteLock(&document->_compactionLock);
-  TRI_DestroyReadWriteLock(&document->_lock);
 
   TRI_DestroyPrimaryIndex(&document->_primaryIndex);
 
