@@ -149,7 +149,7 @@ int Dispatcher::addAQLQueue (size_t nrThreads,
     _scheduler,
     this,
     AQL_QUEUE_NAME,
-    DefaultDispatcherThread,
+    defaultDispatcherThread,
     nullptr,
     nrThreads,
     maxSize);
