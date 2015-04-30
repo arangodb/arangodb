@@ -709,8 +709,8 @@ namespace triagens {
 /// value if the intersection is valid. 
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<RangeInfo> andCombineRangeInfoVecs (std::vector<RangeInfo>&, 
-                                                        std::vector<RangeInfo>&);
+        std::vector<RangeInfo> andCombineRangeInfoVecs (std::vector<RangeInfo> const&, 
+                                                        std::vector<RangeInfo> const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cartesian: form the cartesian product of the inner vectors. This is
@@ -718,7 +718,7 @@ namespace triagens {
 /// "and" condition containing an "or" condition, which we must then distribute. 
 ////////////////////////////////////////////////////////////////////////////////
 
-        IndexOrCondition* cartesian (std::vector<std::vector<RangeInfo>> const&);
+        IndexOrCondition* cartesian (std::vector<std::vector<RangeInfo>> const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief: subclass for comparing IndexAndConditions in _condition. Similar to
