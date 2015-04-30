@@ -970,9 +970,9 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
 
 struct ShapedJsonHash {
   size_t operator() (TRI_shaped_json_t const& shap) const {
-    size_t hash = 0x12345678;
+    uint64_t hash = 0x12345678;
     hash = fasthash64(&shap._sid, sizeof(shap._sid), hash);
-    return fasthash64(shap._data.data, shap._data.length, hash);
+    return static_cast<size_t>(fasthash64(shap._data.data, shap._data.length, hash));
   }
 };
 
