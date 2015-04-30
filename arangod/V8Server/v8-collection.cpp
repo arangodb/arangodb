@@ -899,7 +899,7 @@ void ReplaceVocbaseCol (bool useCollection,
   // - creating a shape, which might trigger a write into the collection
   trx.lockWrite();
 
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
     const string cidString = StringUtils::itoa(document->_info._planId);
 
@@ -1234,7 +1234,7 @@ static void UpdateVocbaseCol (bool useCollection,
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
     const string cidString = StringUtils::itoa(document->_info._planId);
 

@@ -153,7 +153,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
 
 
   if (ServerState::instance()->isCoordinator() ||
-      ServerState::instance()->isDBserver()) {
+      ServerState::instance()->isDBServer()) {
     // create-collection is not supported in a cluster
     generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED);
     return false;

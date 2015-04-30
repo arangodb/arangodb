@@ -568,7 +568,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
   string collectionName = collection;
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     collectionName = trx.resolver()->getCollectionName(cid);
   }
   TRI_doc_mptr_copy_t mptr;
@@ -1429,7 +1429,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
   string collectionName = collection;
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     collectionName = trx.resolver()->getCollectionName(cid);
   }
 
@@ -1507,7 +1507,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-    if (ServerState::instance()->isDBserver()) {
+    if (ServerState::instance()->isDBServer()) {
       // compare attributes in shardKeys
       if (shardKeysChanged(_request->databaseName(), cidString, old, json, true)) {
         TRI_FreeJson(shaper->_memoryZone, old);
@@ -1539,7 +1539,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   else {
     // replacing an existing document, using a lock
 
-    if (ServerState::instance()->isDBserver()) {
+    if (ServerState::instance()->isDBServer()) {
       // compare attributes in shardKeys
       // read the existing document
       TRI_doc_mptr_copy_t oldDocument;
@@ -1826,7 +1826,7 @@ bool RestDocumentHandler::deleteDocument () {
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
   string collectionName = collection;
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     collectionName = trx.resolver()->getCollectionName(cid);
   }
 

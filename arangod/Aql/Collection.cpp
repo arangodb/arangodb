@@ -147,7 +147,7 @@ std::vector<std::string> Collection::shardKeys () const {
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
   
   std::string id;
-  if (triagens::arango::ServerState::instance()->isDBserver() && 
+  if (triagens::arango::ServerState::instance()->isDBServer() && 
       documentCollection()->_info._planId > 0) {
     id = std::to_string(documentCollection()->_info._planId);
   }
@@ -236,7 +236,7 @@ void Collection::fillIndexes () const {
   // must have a collection  
   TRI_ASSERT(collection != nullptr);
 
-  if (triagens::arango::ServerState::instance()->isDBserver() && 
+  if (triagens::arango::ServerState::instance()->isDBServer() && 
       documentCollection()->_info._planId > 0) {
     fillIndexesDBServer();
     return;

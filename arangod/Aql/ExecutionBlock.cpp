@@ -4190,6 +4190,10 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
   if (res.get() == nullptr) {
     return nullptr;
   }
+  
+  if (_returnInheritedResults) {
+    return res.release();
+  }
 
   size_t const n = res->size();
 
@@ -4198,46 +4202,58 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
-  AqlItemBlock* stripped = new AqlItemBlock(n, 1);
 
-  try {
-    for (size_t i = 0; i < n; i++) {
-      auto a = res->getValueReference(i, registerId);
+  std::unique_ptr<AqlItemBlock> stripped(new AqlItemBlock(n, 1));
 
-      if (! a.isEmpty()) {
-        if (a.requiresDestruction()) {
-          res->steal(a);
-          try {
-            TRI_IF_FAILURE("ReturnBlock::getSome") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-            }
+  for (size_t i = 0; i < n; i++) {
+    auto a = res->getValueReference(i, registerId);
 
-            stripped->setValue(i, 0, a);
+    if (! a.isEmpty()) {
+      if (a.requiresDestruction()) {
+        res->steal(a);
+
+        try {
+          TRI_IF_FAILURE("ReturnBlock::getSome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          catch (...) {
-            a.destroy();
-            throw;
-          }
-          // If the following does not go well, we do not care, since
-          // the value is already stolen and installed in stripped
-          res->eraseValue(i, registerId);
-        }
-        else {
+
           stripped->setValue(i, 0, a);
         }
+        catch (...) {
+          a.destroy();
+          throw;
+        }
+        // If the following does not go well, we do not care, since
+        // the value is already stolen and installed in stripped
+        res->eraseValue(i, registerId);
+      }
+      else {
+        stripped->setValue(i, 0, a);
       }
     }
-  }
-  catch (...) {
-    delete stripped;
-    throw;
   }
 
   stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
   delete res.get();
   res.release();
 
-  return stripped;
+  return stripped.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make the return block return the results inherited from above, 
+/// without creating new blocks
+/// returns the id of the register the final result can be found in
+////////////////////////////////////////////////////////////////////////////////
+
+RegisterId ReturnBlock::returnInheritedResults () {
+  _returnInheritedResults = true;
+
+  auto ep = static_cast<ReturnNode const*>(getPlanNode());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
+
+  return it->second.registerId;
 }
 
 // -----------------------------------------------------------------------------
@@ -4273,7 +4289,7 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
   }
             
   // check if we're a DB server in a cluster
-  _isDBServer = triagens::arango::ServerState::instance()->isDBserver();
+  _isDBServer = triagens::arango::ServerState::instance()->isDBServer();
 
   if (_isDBServer) {
     _usesDefaultSharding = _collection->usesDefaultSharding();
