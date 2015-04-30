@@ -480,16 +480,8 @@ div.resizecontainer {
       section.info {
         @if $i < 3 {
           width: $content-size;
-
-          .header_right {
-            width: $content-size - 170px;
-          }
         } @else {
           width: $content-size - 200px;
-
-          .header_right {
-            width: $content-size - 370px;
-          }
         }
       }
 

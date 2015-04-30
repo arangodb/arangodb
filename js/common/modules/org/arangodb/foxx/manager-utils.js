@@ -31,6 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var fs = require("fs");
+var _ = require('underscore');
 var arangodb = require("org/arangodb");
 var db = arangodb.db;
 var download = require("internal").download;
@@ -45,7 +46,7 @@ var mountNumberRegEx = /^\/[\d\-%]/;
 var pathRegex = /^((\.{0,2}(\/|\\))|(~\/)|[a-zA-Z]:\\)/;
 
 var getReadableName = function(name) {
-  return name.split(/([-_]|\s)/).map(function (token) {
+  return name.split(/([-_]|\s)+/).map(function (token) {
     return token.slice(0, 1).toUpperCase() + token.slice(1);
   }).join(' ');
 };
@@ -284,17 +285,8 @@ function listJson (showPrefix, onlyDevelopment) {
   } else {
     cursor = mounts.all();
   }
-  var result = [];
-  var doc, res;
-  function toScriptItem(scriptName) {
+  return cursor.toArray().map(function (doc) {
     return {
-      name: scriptName,
-      title: getReadableName(scriptName)
-    };
-  }
-  while (cursor.hasNext()) {
-    doc = cursor.next();
-    res = {
       mountId: doc._key,
       mount: doc.mount,
       name: doc.name,
@@ -305,21 +297,42 @@ function listJson (showPrefix, onlyDevelopment) {
       license: doc.manifest.license,
       version: doc.version,
       path: fs.join(fs.makeAbsolute(doc.root), doc.path),
-      scripts: (
-        doc.manifest.scripts ?
-        Object.keys(doc.manifest.scripts)
-        .map(toScriptItem) : []
-      )
+      config: getConfiguration(doc.manifest.configuration, doc.options.configuration),
+      deps: getDependencies(doc.manifest.dependencies, doc.options.dependencies),
+      scripts: getScripts(doc.manifest.scripts),
+      collectionPrefix: showPrefix ? doc.options.collectionPrefix : undefined
     };
+  });
+}
 
-    if (showPrefix) {
-      res.collectionPrefix = doc.options.collectionPrefix;
-    }
+function getScripts(scripts) {
+  var names = {};
+  _.each(scripts, function (script, name) {
+    names[name] = getReadableName(name);
+  });
+  return names;
+}
 
-    result.push(res);
-  }
+function getConfiguration(definitions, options) {
+  var cfg = {};
+  _.each(definitions, function (definition, name) {
+    cfg[name] = _.clone(definition);
+    cfg[name].title = getReadableName(name);
+    cfg[name].current = options[name];
+  });
+  return cfg;
+}
 
-  return result;
+function getDependencies(definitions, options) {
+  var deps = {};
+  _.each(definitions, function (definition, name) {
+    deps[name] = {
+      definition: definition,
+      title: getReadableName(name),
+      current: options[name]
+    };
+  });
+  return deps;
 }
 
 

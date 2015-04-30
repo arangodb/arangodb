@@ -238,7 +238,8 @@ static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::CompareAstNodes (AstNode const* lhs, 
-                                    AstNode const* rhs) {
+                                    AstNode const* rhs,
+                                    bool compareUtf8) {
   if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     lhs = ResolveAttribute(lhs);
   }
@@ -251,6 +252,7 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
 
   if (lType != rType) {
     int diff = static_cast<int>(lType) - static_cast<int>(rType);
+
     TRI_ASSERT_EXPENSIVE(diff != 0);
 
     if (diff < 0) {
@@ -268,6 +270,7 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
   }
   else if (lType == TRI_JSON_BOOLEAN) {
     int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
+
     if (diff != 0) {
       if (diff < 0) {
         return -1; 
@@ -286,7 +289,10 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
     }
   }
   else if (lType == TRI_JSON_STRING) {
-    return TRI_compare_utf8(lhs->getStringValue(), rhs->getStringValue());
+    if (compareUtf8) {
+      return TRI_compare_utf8(lhs->getStringValue(), rhs->getStringValue());
+    }
+    return strcmp(lhs->getStringValue(), rhs->getStringValue());
   }
   else if (lType == TRI_JSON_ARRAY) {
     size_t const numLhs = lhs->numMembers();
@@ -294,7 +300,8 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
     size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
  
     for (size_t i = 0; i < n; ++i) {
-      int res = triagens::aql::CompareAstNodes(lhs->getMember(i), rhs->getMember(i));
+      int res = triagens::aql::CompareAstNodes(lhs->getMember(i), rhs->getMember(i), compareUtf8);
+
       if (res != 0) {
         return res;
       }    
@@ -314,7 +321,9 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
     // for array AstNodes)
     auto lJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
     auto rJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
-    int res = TRI_CompareValuesJson(lJson, rJson, true);
+
+    int res = TRI_CompareValuesJson(lJson, rJson, compareUtf8);
+
     if (lJson != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, lJson);
     }
@@ -590,11 +599,12 @@ void AstNode::sort () {
 
   auto const ptr = members._buffer;
   auto const end = ptr + members._length;
+
   std::sort(ptr, end, [] (void const* lhs, void const* rhs) {
     auto const l = static_cast<AstNode const*>(lhs);
     auto const r = static_cast<AstNode const*>(rhs);
 
-    return (triagens::aql::CompareAstNodes(l, r) < 0);
+    return (triagens::aql::CompareAstNodes(l, r, false) < 0);
   });
 
   setFlag(DETERMINED_SORTED, VALUE_SORTED);
@@ -606,6 +616,7 @@ void AstNode::sort () {
 
 std::string const& AstNode::getTypeString () const {
   auto it = TypeNames.find(static_cast<int>(type));
+
   if (it != TypeNames.end()) {
     return (*it).second;
   }
