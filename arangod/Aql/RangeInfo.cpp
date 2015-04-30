@@ -286,13 +286,13 @@ void RangeInfo::fuse (RangeInfo const& that) {
 
 RangeInfoMap::RangeInfoMap (std::string const& var, 
                             std::string const& name, 
-                            RangeInfoBound low, 
-                            RangeInfoBound high,
+                            RangeInfoBound const& low, 
+                            RangeInfoBound const& high,
                             bool equality) {
   RangeInfoMap(RangeInfo(var, name, low, high, equality));
 }
 
-RangeInfoMap::RangeInfoMap (RangeInfo ri) : 
+RangeInfoMap::RangeInfoMap (RangeInfo const& ri) : 
   _ranges() {
 
   std::unordered_map<std::string, RangeInfo> map;

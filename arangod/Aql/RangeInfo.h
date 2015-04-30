@@ -674,11 +674,11 @@ namespace triagens {
         
         RangeInfoMap (std::string const& var, 
                       std::string const& name, 
-                      RangeInfoBound low, 
-                      RangeInfoBound high,
+                      RangeInfoBound const& low, 
+                      RangeInfoBound const& high,
                       bool equality); 
         
-        RangeInfoMap (RangeInfo);
+        RangeInfoMap (RangeInfo const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor

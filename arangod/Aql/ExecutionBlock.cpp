@@ -1128,13 +1128,14 @@ bool IndexRangeBlock::hasV8Expression () const {
 
 void IndexRangeBlock::buildExpressions () {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+
   size_t posInExpressions = 0;
     
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
   AqlItemBlock* cur = _buffer.front();
         
-  IndexOrCondition* newCondition = nullptr;
+  std::unique_ptr<IndexOrCondition> newCondition;
 
   for (size_t i = 0; i < en->_ranges.size(); i++) {
     size_t const n = en->_ranges[i].size(); 
@@ -1226,10 +1227,10 @@ void IndexRangeBlock::buildExpressions () {
         if (! bound.isArray()) {
           auto b(bound.copy());
           RangeInfo ri(r._var, 
-                       r._attr, 
-                       RangeInfoBound(), 
-                       RangeInfoBound(h.inclusive(), true, b), // will steal b's JSON
-                       false);
+                        r._attr, 
+                        RangeInfoBound(), 
+                        RangeInfoBound(h.inclusive(), true, b), // will steal b's JSON
+                        false);
 
           for (size_t j = 0; j < collector[k].size(); j++) {
             collector[k][j].fuse(ri);
@@ -1244,18 +1245,21 @@ void IndexRangeBlock::buildExpressions () {
             auto b2(bound.at(static_cast<int>(j)).copy()); // second instance of same bound
 
             riv.emplace_back(RangeInfo(r._var, 
-                                       r._attr, 
-                                       RangeInfoBound(h.inclusive(), true, b1), // will steal b1's JSON
-                                       RangeInfoBound(h.inclusive(), true, b2), // will steal b2's JSON
-                                       true));
+                                        r._attr, 
+                                        RangeInfoBound(h.inclusive(), true, b1), // will steal b1's JSON
+                                        RangeInfoBound(h.inclusive(), true, b2), // will steal b2's JSON
+                                        true));
           } 
           collector[k] = andCombineRangeInfoVecs(collector[k], riv);
         } 
       }
+
     }
 
+
     bool isEmpty = false;
-    for (auto x: collector) {
+
+    for (auto const& x : collector) {
       if (x.empty()) { 
         isEmpty = true;
         break;
@@ -1266,28 +1270,34 @@ void IndexRangeBlock::buildExpressions () {
       // otherwise the condition is impossible to fulfill
       // the elements of the direct product of the collector are and
       // conditions which should be added to newCondition 
-      auto indexAnds = cartesian(collector);
+      std::unique_ptr<IndexOrCondition> indexAnds(cartesian(collector));
 
-      if (newCondition != nullptr) {
-        for (auto indexAnd: *indexAnds) {
-          newCondition->push_back(indexAnd);
-        }
-        delete indexAnds;
-      } 
-      else {
-        newCondition = indexAnds;
+      if (newCondition == nullptr) {
+        newCondition.reset(indexAnds.release());
       }
+      else {
+        for (auto const& indexAnd: *indexAnds) {
+          newCondition->emplace_back(indexAnd);
+        }
+      } 
     }
   }
-  //_condition = newCondition.release();
+    
+    
+  freeCondition(); 
+
   if (newCondition != nullptr) {
-    freeCondition(); 
-    _condition = newCondition;
+    _condition = newCondition.release();
+    _freeCondition = true;
+  
+    // remove duplicates . . .
+    removeOverlapsIndexOr(*_condition);
+  }
+  else {
+    // create at least an empty condition
+    _condition = new IndexOrCondition;
     _freeCondition = true;
   }
-
-  // remove duplicates . . .
-  removeOverlapsIndexOr(*_condition);
 }
 
 int IndexRangeBlock::initialize () {
@@ -1432,7 +1442,7 @@ bool IndexRangeBlock::initRanges () {
   }
   
   if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
-    if (_condition->empty()) {
+    if (_condition == nullptr || _condition->empty()) {
       return false;
     }
 
@@ -1442,7 +1452,7 @@ bool IndexRangeBlock::initRanges () {
   }
       
   if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
-    if (_condition->empty()) {
+    if (_condition == nullptr || _condition->empty()) {
       return false;
     }
 
@@ -1452,7 +1462,7 @@ bool IndexRangeBlock::initRanges () {
   }
   
   if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    if (_condition->empty()) {
+    if (_condition == nullptr || _condition->empty()) {
       return false;
     }
 
@@ -1582,8 +1592,8 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) co
 /// value if the intersection is valid. 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<RangeInfo>& riv1, 
-                                                                 std::vector<RangeInfo>& riv2) {
+std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<RangeInfo> const& riv1, 
+                                                                 std::vector<RangeInfo> const& riv2) const {
   std::vector<RangeInfo> out;
 
   for (RangeInfo const& ri1: riv1) {
@@ -1608,42 +1618,43 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<Ran
 /// "and" condition containing an "or" condition, which we must then distribute. 
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexOrCondition* IndexRangeBlock::cartesian (std::vector<std::vector<RangeInfo>> const& collector) {
+IndexOrCondition* IndexRangeBlock::cartesian (std::vector<std::vector<RangeInfo>> const& collector) const {
+  size_t const n = collector.size();
+  
   std::vector<size_t> indexes;
-  indexes.reserve(collector.size());
+  indexes.reserve(n);
 
-  for (size_t i = 0; i < collector.size(); i++) {
+  for (size_t i = 0; i < n; i++) {
     indexes.emplace_back(0);
   }
   
-  auto out = new IndexOrCondition();
-  try {
-    while (true) {
-      IndexAndCondition next;
-      for (size_t i = 0; i < collector.size(); i++) {
-        next.push_back(collector[i][indexes[i]].clone());
-      }
-      TRI_IF_FAILURE("IndexRangeBlock::cartesian") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      out->push_back(next);
-      size_t j = collector.size() - 1;
-      while (true) {
-        indexes[j]++;
-        if (indexes[j] < collector[j].size()) {
-          break;
-        }
-        indexes[j] = 0;
-        if (j == 0) { 
-          return out;
-        }
-        j--;
-      }
+  std::unique_ptr<IndexOrCondition> out(new IndexOrCondition());
+
+  while (true) {
+    IndexAndCondition next;
+    for (size_t i = 0; i < n; i++) {
+      next.emplace_back(collector[i][indexes[i]].clone());
     }
-  }
-  catch (...) {
-    delete out;
-    throw;
+
+    TRI_IF_FAILURE("IndexRangeBlock::cartesian") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    out->emplace_back(next);
+    size_t j = n - 1;
+
+    while (true) {
+      indexes[j]++;
+      if (indexes[j] < collector[j].size()) {
+        break;
+      }
+
+      indexes[j] = 0;
+      if (j == 0) { 
+        return out.release();
+      }
+      j--;
+    }
   }
 }
 
@@ -1680,7 +1691,7 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-    if (_flag) {
+    if (_flag && _condition != nullptr) {
       readPrimaryIndex(*_condition);
     }
   }
