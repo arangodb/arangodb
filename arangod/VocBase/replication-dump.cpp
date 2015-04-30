@@ -158,7 +158,7 @@ static int AppendCollection (TRI_replication_dump_t* dump,
   if (translateCollectionIds) {
     if (cid > 0) {
       std::string name;
-      if (triagens::arango::ServerState::instance()->isDBserver()) {
+      if (triagens::arango::ServerState::instance()->isDBServer()) {
         name = resolver->getCollectionNameCluster(cid);
       }
       else {

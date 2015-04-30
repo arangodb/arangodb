@@ -1468,7 +1468,8 @@ namespace triagens {
 
         ReturnBlock (ExecutionEngine* engine,
                      ReturnNode const* ep)
-          : ExecutionBlock(engine, ep) {
+          : ExecutionBlock(engine, ep),
+            _returnInheritedResults(false) {
 
         }
 
@@ -1485,6 +1486,29 @@ namespace triagens {
 
         AqlItemBlock* getSome (size_t atLeast,
                                size_t atMost) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make the return block return the results inherited from above, 
+/// without creating new blocks
+/// returns the id of the register the final result can be found in
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId returnInheritedResults ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief if set to true, the return block will return the AqlItemBlocks it
+/// gets from above directly. if set to false, the return block will create a
+/// new AqlItemBlock with one output register and copy the data from its input
+/// block into it
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _returnInheritedResults;
 
     };
 

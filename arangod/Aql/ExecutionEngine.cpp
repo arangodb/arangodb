@@ -46,7 +46,7 @@ using Json = triagens::basics::Json;
 /// @brief helper function to create a block
 ////////////////////////////////////////////////////////////////////////////////
 
-static ExecutionBlock* createBlock (ExecutionEngine* engine,
+static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
                                     ExecutionNode const* en,
                                     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) {
   switch (en->getType()) {
@@ -178,6 +178,7 @@ ExecutionEngine::ExecutionEngine (Query* query)
     _blocks(),
     _root(nullptr),
     _query(query),
+    _resultRegister(0),
     _wasShutdown(false),
     _previouslyLockedShards(nullptr),
     _lockedShards(nullptr) {
@@ -220,42 +221,44 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
   }
 
   virtual void after (ExecutionNode* en) override final {
-    ExecutionBlock* eb = createBlock(engine, en, cache);
-        
-    if (eb == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
+    ExecutionBlock* block = nullptr;
+    {
+      std::unique_ptr<ExecutionBlock> eb(CreateBlock(engine, en, cache));
+          
+      if (eb == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
+      }
+
+      // do we need to adjust the root node?
+      auto const nodeType = en->getType();
+
+      if (en->getParents().empty()) {
+        // yes. found a new root!
+        root = eb.get();
+      }
+      
+      if (nodeType == ExecutionNode::DISTRIBUTE ||
+          nodeType == ExecutionNode::SCATTER ||
+          nodeType == ExecutionNode::GATHER) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
+      }
+
+      engine->addBlock(eb.get());
+      block = eb.release();
     }
 
-    // do we need to adjust the root node?
-    auto const nodeType = en->getType();
-
-    if (en->getParents().empty()) {
-      root = eb;
-    }
-    
-    if (nodeType == ExecutionNode::DISTRIBUTE ||
-        nodeType == ExecutionNode::SCATTER ||
-        nodeType == ExecutionNode::GATHER) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
-    }
-
-    try {
-      engine->addBlock(eb);
-    }
-    catch (...) {
-      delete eb;
-      throw;
-    }
+    TRI_ASSERT(block != nullptr);
 
     // Now add dependencies:
-    std::vector<ExecutionNode*> deps = en->getDependencies();
-    for (auto it = deps.begin(); it != deps.end(); ++it) {
-      auto it2 = cache.find(*it);
+    std::vector<ExecutionNode*> const& deps = en->getDependencies();
+
+    for (auto const& it : deps) {
+      auto it2 = cache.find(it);
       TRI_ASSERT(it2 != cache.end());
-      eb->addDependency(it2->second);
+      block->addDependency(it2->second);
     }
 
-    cache.emplace(std::make_pair(en, eb));
+    cache.emplace(std::make_pair(en, block));
   }
 
 };
@@ -685,7 +688,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
 
         // for all node types but REMOTEs, we create blocks
-        ExecutionBlock* eb = createBlock(engine.get(), (*en), cache);
+        ExecutionBlock* eb = CreateBlock(engine.get(), (*en), cache);
          
         if (eb == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
@@ -898,6 +901,9 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
                                                        Query* query,
                                                        ExecutionPlan* plan,
                                                        bool planRegisters) {
+  bool const isCoordinator = triagens::arango::ServerState::instance()->isCoordinator();
+  bool const isDBServer    = triagens::arango::ServerState::instance()->isDBServer();
+
   ExecutionEngine* engine = nullptr;
 
   try {
@@ -910,7 +916,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
 
     ExecutionBlock* root = nullptr;
 
-    if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    if (isCoordinator) {
       // instanciate the engine on the coordinator
 
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
@@ -1070,6 +1076,18 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     }
 
     TRI_ASSERT(root != nullptr);
+
+    // inspect the root block of the query
+    if (! isDBServer &&
+        root->getPlanNode()->getType() == ExecutionNode::RETURN) {
+      // it's a return node. now tell it to not copy its results from above,
+      // but directly return it. we also need to note the RegisterId the
+      // caller needs to look into when fetching the results
+
+      // in short: this avoids copying the return values
+      engine->resultRegister(static_cast<ReturnBlock*>(root)->returnInheritedResults());
+    }
+
     engine->_root = root;
     root->initialize();
     root->initializeCursor(nullptr, 0);
@@ -1077,7 +1095,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     return engine;
   }
   catch (...) {
-    if (! triagens::arango::ServerState::instance()->isCoordinator()) {
+    if (! isCoordinator) {
       delete engine;
     }
     throw;

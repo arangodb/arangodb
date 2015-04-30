@@ -2618,7 +2618,7 @@ int TRI_ParseVertex (const v8::FunctionCallbackInfo<v8::Value>& args,
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     cid = resolver->getCollectionIdCluster(collectionName);
   }
   else {

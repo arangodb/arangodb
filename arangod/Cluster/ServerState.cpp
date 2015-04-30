@@ -242,7 +242,7 @@ bool ServerState::isCoordinator () {
 /// running in cluster mode.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ServerState::isDBserver () {
+bool ServerState::isDBServer () {
   auto role = loadRole();
 
   return (role == ServerState::ROLE_PRIMARY ||

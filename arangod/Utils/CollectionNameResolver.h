@@ -151,7 +151,7 @@ namespace triagens {
           }
 
           std::string name;
-          if (ServerState::instance()->isDBserver()) {
+          if (ServerState::instance()->isDBServer()) {
             TRI_READ_LOCK_COLLECTIONS_VOCBASE(_vocbase);
 
             TRI_vocbase_col_t* found

@@ -82,7 +82,7 @@ VocbaseContext::~VocbaseContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VocbaseContext::useClusterAuthentication () const {
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     return true;
   }
 
