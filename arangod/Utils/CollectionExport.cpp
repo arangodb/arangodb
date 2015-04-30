@@ -124,9 +124,9 @@ void CollectionExport::run (uint64_t maxWaitTime) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    size_t const n = _document->_primaryIndex._nrAlloc;
+    size_t const n = static_cast<size_t>(_document->_primaryIndex._nrAlloc);
   
-    _documents->reserve(_document->_primaryIndex._nrUsed);
+    _documents->reserve(static_cast<size_t>(_document->_primaryIndex._nrUsed));
   
     for (size_t i = 0; i < n; ++i) {
       auto ptr = _document->_primaryIndex._table[i];

@@ -835,7 +835,7 @@ uint64_t SkiplistIndex_getNrUsed (SkiplistIndex* skiplistIndex) {
 size_t SkiplistIndex_memoryUsage (SkiplistIndex const* skiplistIndex) {
   return sizeof(SkiplistIndex) + 
          skiplistIndex->skiplist->memoryUsage() +
-         skiplistIndex->skiplist->getNrUsed() * SkiplistIndex_ElementSize(skiplistIndex);
+         static_cast<size_t>(skiplistIndex->skiplist->getNrUsed()) * SkiplistIndex_ElementSize(skiplistIndex);
 }
 
 // -----------------------------------------------------------------------------

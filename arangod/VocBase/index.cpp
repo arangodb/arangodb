@@ -498,7 +498,7 @@ static int RemovePrimary (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t MemoryPrimary (TRI_index_t const* idx) {
-  return idx->_collection->_primaryIndex._nrAlloc * sizeof(void*);
+  return static_cast<size_t>(idx->_collection->_primaryIndex._nrAlloc) * sizeof(void*);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

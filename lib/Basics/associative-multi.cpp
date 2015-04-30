@@ -381,7 +381,7 @@ size_t TRI_MemoryUsageMultiPointer (TRI_multi_pointer_t const* array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_SelectivityEstimateMultiPointer (TRI_multi_pointer_t const* array) {
-  size_t numTotal = array->_nrUnique + array->_nrDuplicate;
+  size_t numTotal = static_cast<size_t>(array->_nrUnique + array->_nrDuplicate);
 
   if (numTotal == 0) {
     return 1.0;
