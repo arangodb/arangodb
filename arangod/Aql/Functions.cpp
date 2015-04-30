@@ -45,7 +45,7 @@ using Json = triagens::basics::Json;
 
 struct JsonHash {
   size_t operator() (TRI_json_t const* value) const {
-    return TRI_FastHashJson(value);
+    return static_cast<size_t>(TRI_FastHashJson(value));
   }
 };
 

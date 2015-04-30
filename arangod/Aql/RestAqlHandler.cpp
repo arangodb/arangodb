@@ -708,9 +708,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
               ("code", Json(static_cast<double>(res)));
   }
   else if (operation == "getSome") {
-    auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
-                                                         "atLeast", 1);
-    auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+    auto atLeast = JsonHelper::getNumericValue<size_t>(queryJson.json(), "atLeast", 1);
+    auto atMost = JsonHelper::getNumericValue<size_t>(queryJson.json(),
                                "atMost", ExecutionBlock::DefaultBatchSize);
     std::unique_ptr<AqlItemBlock> items;
     if (shardId.empty()) {
@@ -744,9 +743,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
   }
   else if (operation == "skipSome") {
-    auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
-                                                         "atLeast", 1);
-    auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+    auto atLeast = JsonHelper::getNumericValue<size_t>(queryJson.json(), "atLeast", 1);
+    auto atMost = JsonHelper::getNumericValue<size_t>(queryJson.json(),
                                "atMost", ExecutionBlock::DefaultBatchSize);
     size_t skipped;
     try {
@@ -773,8 +771,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     answerBody.set("stats", query->getStats());
   }
   else if (operation == "skip") {
-    auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
-                                                        "number", 1);
+    auto number = JsonHelper::getNumericValue<size_t>(queryJson.json(), "number", 1);
     try {
       bool exhausted;
       if (shardId.empty()) {

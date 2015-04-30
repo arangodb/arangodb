@@ -762,7 +762,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_SelectivityHashArrayMulti (TRI_hash_array_multi_t* array) {
-  size_t numTotal = array->_nrUsed + array->_nrOverflowUsed;
+  size_t numTotal = static_cast<size_t>(array->_nrUsed + array->_nrOverflowUsed);
 
   if (numTotal == 0) {
     return 1.0;

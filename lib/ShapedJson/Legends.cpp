@@ -153,7 +153,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
       _have_shape.insert(it, sid);
       Shape sh(sid, _shape_data.length(), shape->_size);
       _shapes.push_back(sh);
-      _shape_data.appendText(reinterpret_cast<char const*>(shape), shape->_size);
+      _shape_data.appendText(reinterpret_cast<char const*>(shape), static_cast<size_t>(shape->_size));
     }
   }
 
@@ -257,12 +257,12 @@ static inline TRI_shape_size_t roundup8 (TRI_shape_size_t x) {
 size_t JsonLegend::getSize () const {
   // Add string pool size and shape pool size and add space for header
   // and tables in bytes.
-  return   sizeof(TRI_shape_size_t)                 // number of aids
-         + sizeof(AttributeId) * _attribs.size()    // aid entries
-         + sizeof(TRI_shape_size_t)                 // number of sids
-         + sizeof(Shape) * _shapes.size()           // sid entries
-         + roundup8(_att_data.length())             // string data, padded
-         + roundup8(_shape_data.length());          // shape data, padded
+  return   sizeof(TRI_shape_size_t)                               // number of aids
+         + sizeof(AttributeId) * _attribs.size()                  // aid entries
+         + sizeof(TRI_shape_size_t)                               // number of sids
+         + sizeof(Shape) * _shapes.size()                         // sid entries
+         + static_cast<size_t>(roundup8(_att_data.length()))      // string data, padded
+         + static_cast<size_t>(roundup8(_shape_data.length()));   // shape data, padded
 }
 
 JsonLegend::AttributeComparerClass JsonLegend::AttributeComparerObject;
@@ -289,10 +289,9 @@ void JsonLegend::dump (void* buf) {
 
   // Attribute ID table:
   TRI_shape_size_t* p = reinterpret_cast<TRI_shape_size_t*>(buf);
-  TRI_shape_size_t i;
   *p++ = _attribs.size();
   AttributeId* a = reinterpret_cast<AttributeId*>(p);
-  for (i = 0; i < _attribs.size(); i++) {
+  for (size_t i = 0; i < _attribs.size(); i++) {
     _attribs[i].offset += socle;
     *a++ = _attribs[i];
     _attribs[i].offset -= socle;
@@ -307,7 +306,7 @@ void JsonLegend::dump (void* buf) {
   p = reinterpret_cast<TRI_shape_size_t*>(a);
   *p++ = n;
   Shape* s = reinterpret_cast<Shape*>(p);
-  for (i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     _shapes[i].offset += socle;
     *s++ = _shapes[i];
     _shapes[i].offset -= socle;
@@ -316,9 +315,9 @@ void JsonLegend::dump (void* buf) {
   // Attribute ID string data:
   char* c = reinterpret_cast<char*>(s);
   memcpy(c, _att_data.c_str(), attDataLength);
-  i = roundup8(attDataLength);
+  TRI_shape_size_t i = roundup8(attDataLength);
   if (i > attDataLength) {
-    memset(c + attDataLength, 0, i - attDataLength);
+    memset(c + attDataLength, 0, static_cast<size_t>(i) - attDataLength);
   }
   c += i;
 
@@ -327,7 +326,7 @@ void JsonLegend::dump (void* buf) {
   memcpy(c, _shape_data.c_str(), shapeDataLength);
   i = roundup8(shapeDataLength);
   if (i > shapeDataLength) {
-    memset(c + shapeDataLength, 0, i - shapeDataLength);
+    memset(c + shapeDataLength, 0, static_cast<size_t>(i) - shapeDataLength);
   }
 }
 // -----------------------------------------------------------------------------
