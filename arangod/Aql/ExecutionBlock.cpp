@@ -1145,10 +1145,13 @@ void IndexRangeBlock::buildExpressions () {
     // collect the evaluated bounds here
     for (size_t k = 0; k < n; k++) {
       auto const& r = en->_ranges[i][k];
-      // First create a new RangeInfo containing only the constant 
-      // low and high bound of r:
-      RangeInfo riConst(r._var, r._attr, r._lowConst, r._highConst, r.is1ValueRangeInfo());
-      collector[k].emplace_back(riConst);
+
+      {
+        // First create a new RangeInfo containing only the constant 
+        // low and high bound of r:
+        RangeInfo riConst(r._var, r._attr, r._lowConst, r._highConst, r.is1ValueRangeInfo());
+        collector[k].emplace_back(std::move(riConst));
+      }
 
       // Now work the actual values of the variable lows and highs into 
       // this constant range:
@@ -1200,7 +1203,7 @@ void IndexRangeBlock::buildExpressions () {
                                        true));
           }
 
-          collector[k] = andCombineRangeInfoVecs(collector[k], riv);
+          collector[k] = std::move(andCombineRangeInfoVecs(collector[k], riv));
         } 
       }
 
@@ -1250,7 +1253,8 @@ void IndexRangeBlock::buildExpressions () {
                                         RangeInfoBound(h.inclusive(), true, b2), // will steal b2's JSON
                                         true));
           } 
-          collector[k] = andCombineRangeInfoVecs(collector[k], riv);
+
+          collector[k] = std::move(andCombineRangeInfoVecs(collector[k], riv));
         } 
       }
 
@@ -1270,6 +1274,8 @@ void IndexRangeBlock::buildExpressions () {
       // otherwise the condition is impossible to fulfill
       // the elements of the direct product of the collector are and
       // conditions which should be added to newCondition 
+
+      // create cartesian product
       std::unique_ptr<IndexOrCondition> indexAnds(cartesian(collector));
 
       if (newCondition == nullptr) {
@@ -1277,15 +1283,15 @@ void IndexRangeBlock::buildExpressions () {
       }
       else {
         for (auto const& indexAnd: *indexAnds) {
-          newCondition->emplace_back(indexAnd);
+          newCondition->emplace_back(std::move(indexAnd));
         }
       } 
     }
+
   }
     
-    
   freeCondition(); 
-
+    
   if (newCondition != nullptr) {
     _condition = newCondition.release();
     _freeCondition = true;
@@ -1294,7 +1300,6 @@ void IndexRangeBlock::buildExpressions () {
     removeOverlapsIndexOr(*_condition);
   }
   else {
-    // create at least an empty condition
     _condition = new IndexOrCondition;
     _freeCondition = true;
   }
@@ -1313,20 +1318,17 @@ int IndexRangeBlock::initialize () {
   _allVariableBoundExpressions.clear();
 
   // instanciate expressions:
-  auto instanciateExpression = [&] (RangeInfoBound& b) -> void {
+  auto instanciateExpression = [&] (RangeInfoBound const& b) -> void {
     AstNode const* a = b.getExpressionAst(_engine->getQuery()->ast());
     // all new AstNodes are registered with the Ast in the Query
-    auto e = new Expression(_engine->getQuery()->ast(), a);
-    try {
-      TRI_IF_FAILURE("IndexRangeBlock::initialize") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      _allVariableBoundExpressions.emplace_back(e);
+    std::unique_ptr<Expression> e(new Expression(_engine->getQuery()->ast(), a));
+
+    TRI_IF_FAILURE("IndexRangeBlock::initialize") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    catch (...) {
-      delete e;
-      throw;
-    }
+
+    _allVariableBoundExpressions.emplace_back(e.get());
+    auto expression = e.release();
 
     // Prepare _inVars and _inRegs:
     _inVars.emplace_back();
@@ -1334,7 +1336,8 @@ int IndexRangeBlock::initialize () {
     _inRegs.emplace_back();
     std::vector<RegisterId>& inRegsCur = _inRegs.back();
 
-    std::unordered_set<Variable*> inVars = e->variables();
+    std::unordered_set<Variable*> inVars = expression->variables();
+
     for (auto v : inVars) {
       inVarsCur.emplace_back(v);
       auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
@@ -1342,7 +1345,6 @@ int IndexRangeBlock::initialize () {
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
       inRegsCur.emplace_back(it->second.registerId);
     }
-
   };
 
   // Get the ranges from the node:
@@ -1352,11 +1354,11 @@ int IndexRangeBlock::initialize () {
   for (size_t i = 0; i < orRanges.size(); i++) {
     if (! _allBoundsConstant[i]) {
       try {
-        for (auto r : orRanges[i]) {
-          for (auto l : r._lows) {
+        for (auto const& r : orRanges[i]) {
+          for (auto const& l : r._lows) {
             instanciateExpression(l);
           }
-          for (auto h : r._highs) {
+          for (auto const& h : r._highs) {
             instanciateExpression(h);
           }
         }
@@ -1504,13 +1506,17 @@ void IndexRangeBlock::sortConditions () {
 
   for (size_t s = 0; s < n; s++) {
     _sortCoords.emplace_back(s);
-    std::vector<size_t> next;
         
     TRI_IF_FAILURE("IndexRangeBlock::sortConditions") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    next.reserve(numFields);
-    prefix.emplace_back(next);
+
+    {
+      std::vector<size_t> next;
+      next.reserve(numFields);
+      prefix.emplace_back(std::move(next));
+    }
+
     // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
     // field
     for (size_t t = 0; t < numFields; t++) {
@@ -1595,6 +1601,12 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) co
 std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<RangeInfo> const& riv1, 
                                                                  std::vector<RangeInfo> const& riv2) const {
   std::vector<RangeInfo> out;
+  
+  std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+    16, 
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
 
   for (RangeInfo const& ri1: riv1) {
     for (RangeInfo const& ri2: riv2) {
@@ -1605,10 +1617,21 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<Ran
         TRI_IF_FAILURE("IndexRangeBlock::andCombineRangeInfoVecs") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        out.emplace_back(x);
+
+        if (x.is1ValueRangeInfo()) {
+          // de-duplicate
+          if (cache.find(x._lowConst.bound().json()) != cache.end()) {
+            continue;
+          }
+
+          cache.emplace(x._lowConst.bound().json());
+        }
+
+        out.emplace_back(std::move(x));
       }
     }
   }
+
   return out;
 }
 
@@ -2699,7 +2722,7 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
     _inRegs(),
     _outReg(ExecutionNode::MaxRegisterId) {
 
-  std::unordered_set<Variable*> inVars = _expression->variables();
+  std::unordered_set<Variable*> const& inVars = _expression->variables();
   _inVars.reserve(inVars.size());
   _inRegs.reserve(inVars.size());
 

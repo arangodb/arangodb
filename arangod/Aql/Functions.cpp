@@ -40,28 +40,6 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hasher for JSON value
-////////////////////////////////////////////////////////////////////////////////
-
-struct JsonHash {
-  size_t operator() (TRI_json_t const* value) const {
-    return TRI_FastHashJson(value);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief equality comparator for JSON values
-////////////////////////////////////////////////////////////////////////////////
-
-struct JsonEqual {    
-  bool operator() (TRI_json_t const* lhs,
-                   TRI_json_t const* rhs) const {
-    int res = TRI_CompareValuesJson(lhs, rhs, false);
-    return (res == 0);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register warning
 ////////////////////////////////////////////////////////////////////////////////
             
@@ -855,7 +833,11 @@ AqlValue Functions::Unique (triagens::aql::Query* query,
   TRI_json_t const* valueJson = value.json();
   size_t const n = valueJson->_value._objects._length;
 
-  std::unordered_set<TRI_json_t const*, JsonHash, JsonEqual> values(512, JsonHash(), JsonEqual());
+  std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
+    512, 
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
 
   for (size_t i = 0; i < n; ++i) {
     auto value = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, i));
@@ -941,7 +923,11 @@ AqlValue Functions::UnionDistinct (triagens::aql::Query* query,
                                    triagens::arango::AqlTransaction* trx,
                                    TRI_document_collection_t const* collection,
                                    AqlValue const parameters) {
-  std::unordered_set<TRI_json_t const*, JsonHash, JsonEqual> values(512, JsonHash(), JsonEqual());
+  std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
+    512, 
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
 
   size_t const n = parameters.arraySize();
 
@@ -993,7 +979,11 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
                                   triagens::arango::AqlTransaction* trx,
                                   TRI_document_collection_t const* collection,
                                   AqlValue const parameters) {
-  std::unordered_set<TRI_json_t const*, JsonHash, JsonEqual> values(512, JsonHash(), JsonEqual());
+  std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
+    512, 
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
 
   size_t const n = parameters.arraySize();
 

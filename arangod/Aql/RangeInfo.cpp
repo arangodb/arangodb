@@ -239,15 +239,17 @@ void RangeInfo::fuse (RangeInfo const& that) {
 
   // First sort out the constant low bounds:
   _lowConst.andCombineLowerBounds(that._lowConst);
+
   // Simply append the variable ones:
-  for (auto l : that._lows) {
+  for (auto const& l : that._lows) {
     _lows.emplace_back(l);
   }
 
   // Sort out the constant high bounds:
   _highConst.andCombineUpperBounds(that._highConst);
+
   // Simply append the variable ones:
-  for (auto h : that._highs) {
+  for (auto const& h : that._highs) {
     _highs.emplace_back(h);
   }
     
@@ -307,8 +309,8 @@ RangeInfoMap::RangeInfoMap (RangeInfo const& ri) :
 
 void RangeInfoMap::insert (std::string const& var, 
                            std::string const& name, 
-                           RangeInfoBound low, 
-                           RangeInfoBound high,
+                           RangeInfoBound const& low, 
+                           RangeInfoBound const& high,
                            bool equality) { 
   insert(RangeInfo(var, name, low, high, equality));
 }
@@ -601,11 +603,12 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
     delete rhs;
     return lhs;
   }
+ 
+  try {
+    // avoid inserting overlapping conditions
+    for (size_t i = 0; i < rhs->size(); i++) {
+      std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
 
-  //avoid inserting overlapping conditions
-  for (size_t i = 0; i < rhs->size(); i++) {
-    auto rim = new RangeInfoMap();
-    try {
       for (auto x: (*rhs)[i]->_ranges) {
         for (auto y: x.second) {
           RangeInfo ri = y.second.clone();
@@ -613,20 +616,20 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
         }
       }
       if (! rim->empty()) {
-        lhs->emplace_back(rim);
+        lhs->emplace_back(rim.get());
+        rim.release();
       } 
-      else {
-        delete rim;
-      }
     }
-    catch (...) {
-      delete rim;
-      throw;
-    }
-  }
   
-  delete rhs;
-  return lhs;
+    delete rhs;
+    return lhs;
+  }
+  catch (...) {
+    // avoid leaking
+    delete lhs;
+    delete rhs;
+    throw;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -673,7 +676,7 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
   std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec()); // must be a new one
   for (size_t i = 0; i < lhs->size(); i++) {
     for (size_t j = 0; j < rhs->size(); j++) {
-      rimv->emplace_back(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone()));
+      rimv->emplace_back(std::move(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone())));
     }
   }
 
@@ -866,7 +869,7 @@ bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition const& and1
                                                    IndexAndCondition const& and2) {
   for (auto const& ri1: and1) {
     for (auto const& ri2: and2) {
-      if (ri2._attr == ri1._attr) {
+      if (ri2._var == ri1._var && ri2._attr == ri1._attr) {
         if (areDisjointRangeInfos(ri1, ri2)) {
           return true;
         }
@@ -888,7 +891,7 @@ bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition const& and1
     bool contained = false;
 
     for (auto const& ri2: and2) {
-      if (ri2._attr == ri1._attr) {
+      if (ri2._var == ri1._var && ri2._attr == ri1._attr) {
         if (ContainmentRangeInfos(ri2, ri1) == 1) {
           contained = true;
           break;
@@ -1051,7 +1054,7 @@ void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
     } 
   }
 
-  // remove empty 
+  // remove empty bounds 
   ioc.erase(std::remove_if(ioc.begin(), ioc.end(), [] (IndexAndCondition const& item) -> bool {
     return item.empty();
   }), ioc.end());
