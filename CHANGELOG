@@ -1,6 +1,8 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* allow `@` character in document keys, too
+
 * added alternative implementation for AQL COLLECT
 
   The alternative method uses a hash table for grouping and does not require its input elements

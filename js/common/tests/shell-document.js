@@ -290,6 +290,57 @@ function CollectionDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document w/ invalid primary key values
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveInvalidDocumentKeyValue : function () {
+      [ "", " ", " a", "a ", "/", "|", "#", "a/a" ].forEach(function (key) {
+        try {
+          collection.save({ _key: key });
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document w/ special characters
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveSpecialCharsDocumentKey : function () {
+      [ ":", "-", "_", "@", "a@b", "a@b.c", "a-b-c", "_a", "@a", "@a-b", ":80", ":_", "@:_" ].forEach(function (key) {
+        var doc1 = collection.save({ _key: key, value: key });
+        assertEqual(key, doc1._key);
+        assertEqual(cn + "/" + key, doc1._id);
+        
+        assertTrue(collection.exists(key));
+        assertTrue(db._exists(cn + "/" + key));
+
+        var doc2 = collection.document(key);
+        assertEqual(key, doc2._key);
+        assertEqual(cn + "/" + key, doc2._id);
+        assertEqual(key, doc2.value);
+
+        var doc3 = collection.document(cn + "/" + key);
+        assertEqual(key, doc3._key);
+        assertEqual(cn + "/" + key, doc3._id);
+        assertEqual(key, doc3.value);
+
+        var doc4 = db._document(cn + "/" + key);
+        assertEqual(key, doc4._key);
+        assertEqual(cn + "/" + key, doc4._id);
+        assertEqual(key, doc4.value);
+
+        collection.remove(key);
+
+        assertFalse(collection.exists(key));
+        assertFalse(db._exists(cn + "/" + key));
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document w/ primary key violation
 ////////////////////////////////////////////////////////////////////////////////
 
