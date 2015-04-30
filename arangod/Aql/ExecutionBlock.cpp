@@ -1494,6 +1494,9 @@ void IndexRangeBlock::sortConditions () {
   if (n == 1) {
     // nothing to do
     _sortCoords.emplace_back(0);
+    TRI_IF_FAILURE("IndexRangeBlock::sortConditions") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     return;
   }
   
