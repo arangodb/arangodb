@@ -2806,7 +2806,7 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_SLEEP"), JS_QuerySleepAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_IS_KILLED"), JS_QueryIsKilledAql, true);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_SHORTEST_PATH"), JS_QueryShortestPath, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_SHORTEST_PATH"), JS_QueryShortestPath, true);
 
 
 
