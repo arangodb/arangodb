@@ -206,6 +206,7 @@ class Searcher {
       //std::lock_guard<std::mutex> guard(_myInfo._mutex);
       Traverser::Step* s2 = _myInfo._pq.find(v);
       s2->_done = true;
+      return true;
     }
 
     // std::thread _thread;
