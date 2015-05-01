@@ -73,7 +73,7 @@ class EdgeCollectionInfo {
 
     EdgeCollectionInfo(
       TRI_edge_direction_e direction,
-      string edgeCollectionName,
+      string& edgeCollectionName,
       TRI_document_collection_t* edgeCollection
     )  : _direction(direction), 
        _edgeCollection(edgeCollection) {
@@ -85,7 +85,7 @@ class EdgeCollectionInfo {
       return _edgeIdPrefix + key;
     };
 
-    vector<TRI_doc_mptr_copy_t> getEdges (VertexId vertexId) {
+    vector<TRI_doc_mptr_copy_t> getEdges (VertexId& vertexId) {
       return TRI_LookupEdgesDocumentCollection(_edgeCollection, _direction, vertexId.first, (char *) vertexId.second.c_str());
     };
 
@@ -217,11 +217,12 @@ class MultiCollectionEdgeExpander {
       }
     };
 
-    void operator() (VertexId source,
+    void operator() (VertexId& source,
                      vector<Traverser::Step>& result) {
       TransactionBase fake(true); // Fake a transaction to please checks. 
                                   // This is due to multi-threading
 
+      equal_to<VertexId> eq;
       for (auto edgeCollection : _edgeCollections) { 
         auto edges = edgeCollection->getEdges(source); 
 
@@ -244,10 +245,10 @@ class MultiCollectionEdgeExpander {
               }
             }
           };
-          if (from != source) {
+          if (!eq(from, source)) {
             inserter(to, from);
           } 
-          else if (to != source) {
+          else if (!eq(to, source)) {
             inserter(from, to);
           }
         }
@@ -286,16 +287,17 @@ class SimpleEdgeExpander {
       _edgeCollection = new EdgeCollectionInfo(direction, edgeCollectionName, edgeCollection);
     };
 
-    void operator() (VertexId source,
+    void operator() (VertexId& source,
                      vector<Traverser::Step>& result) {
       TransactionBase fake(true); // Fake a transaction to please checks. 
                                   // This is due to multi-threading
       auto edges = _edgeCollection->getEdges(source); 
 
+      equal_to<VertexId> eq;
       unordered_map<VertexId, size_t> candidates;
       for (size_t j = 0;  j < edges.size(); ++j) {
-        VertexId from = extractFromId(edges[j]);
-        VertexId to = extractToId(edges[j]);
+        VertexId&& from = extractFromId(edges[j]);
+        VertexId&& to = extractToId(edges[j]);
         double currentWeight = weighter(edges[j]);
         auto inserter = [&](VertexId& s, VertexId& t) {
           auto cand = candidates.find(t);
@@ -311,10 +313,10 @@ class SimpleEdgeExpander {
             }
           }
         };
-        if (from != source) {
+        if (!eq(from, source)) {
           inserter(to, from);
         } 
-        else if (to != source) {
+        else if (!eq(to, source)) {
           inserter(from, to);
         }
       }
