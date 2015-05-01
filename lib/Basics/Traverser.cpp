@@ -40,14 +40,14 @@ class Searcher {
     Traverser* _traverser;
     Traverser::ThreadInfo& _myInfo;
     Traverser::ThreadInfo& _peerInfo;
-    Traverser::VertexId _start;
+    VertexId _start;
     Traverser::ExpanderFunction _expander;
     string _id;
 
   public:
 
     Searcher (Traverser* traverser, Traverser::ThreadInfo& myInfo, 
-              Traverser::ThreadInfo& peerInfo, Traverser::VertexId start,
+              Traverser::ThreadInfo& peerInfo, VertexId start,
               Traverser::ExpanderFunction expander, string id)
       : _traverser(traverser), _myInfo(myInfo), 
         _peerInfo(peerInfo), _start(start), _expander(expander), _id(id) {
@@ -59,8 +59,8 @@ class Searcher {
 
   private:
 
-    void insertNeighbor (Traverser::VertexId& neighbor,
-                         Traverser::VertexId& predecessor,
+    void insertNeighbor (VertexId& neighbor,
+                         VertexId& predecessor,
                          Traverser::EdgeId& edge,
                          Traverser::EdgeWeight weight) {
 
@@ -86,7 +86,7 @@ class Searcher {
 /// @brief Lookup our current vertex in the data of our peer.
 ////////////////////////////////////////////////////////////////////////////////
 
-    void lookupPeer (Traverser::VertexId& vertex,
+    void lookupPeer (VertexId& vertex,
                      Traverser::EdgeWeight weight) {
 
       std::lock_guard<std::mutex> guard(_peerInfo._mutex);
@@ -140,7 +140,7 @@ class Searcher {
 
     void run () {
 
-      Traverser::VertexId v;
+      VertexId v;
       Traverser::Step s;
       bool b = _myInfo._pq.popMinimal(v, s, true);
       
@@ -192,19 +192,20 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
 
   // For the result:
   std::deque<VertexId> r_vertices;
-  std::deque<VertexId> r_edges;
+  std::deque<EdgeId> r_edges;
   _highscoreSet = false;
   _highscore = 0;
   _bingo = false;
 
   // Forward with initialization:
-  string empty;
+  VertexId emptyVertex(0, "");
+  EdgeId emptyEdge;
   ThreadInfo forward;
-  forward._pq.insert(start, Step(start, empty, 0, empty));
+  forward._pq.insert(start, Step(start, emptyVertex, 0, emptyEdge));
 
   // backward with initialization:
   ThreadInfo backward;
-  backward._pq.insert(target, Step(target, empty, 0, empty));
+  backward._pq.insert(target, Step(target, emptyVertex, 0, emptyEdge));
 
   // Now the searcher threads:
   Searcher forwardSearcher(this, forward, backward, start,
@@ -223,7 +224,8 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
     backwardSearcher->join();
   }
 
-  if (!_bingo || _intermediate == "") {
+  if (!_bingo || _intermediate.second == "") {
+    cout << !_bingo << " vs " << _intermediate.second << endl;
     return nullptr;
   }
 
@@ -233,7 +235,7 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
   // FORWARD Go path back from intermediate -> start.
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
-  while (s->_predecessor != "") {
+  while (s->_predecessor.second != "") {
     r_edges.push_front(s->_edge);
     r_vertices.push_front(s->_predecessor);
     s = forward._pq.find(s->_predecessor);
@@ -243,7 +245,7 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
   // Insert all vertices and edges at back of vector
   // Also insert the intermediate vertex
   s = backward._pq.find(_intermediate);
-  while (s->_predecessor != "") {
+  while (s->_predecessor.second != "") {
     r_edges.push_back(s->_edge);
     r_vertices.push_back(s->_predecessor);
     s = backward._pq.find(s->_predecessor);

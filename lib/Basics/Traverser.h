@@ -34,6 +34,26 @@
 
 #include <mutex>
 
+/// Forward declaration of typedef for VertexId.
+namespace triagens {
+  namespace basics {
+    typedef std::pair<uint64_t, std::string> VertexId;
+  }
+}
+
+namespace std {
+  template<>
+    struct hash<triagens::basics::VertexId> {
+      public:
+        size_t operator()(const triagens::basics::VertexId & s) const 
+        {
+          size_t h1 = std::hash<uint64_t>()(s.first);
+          size_t h2 = std::hash<std::string>()(s.second);
+          return h1 ^ ( h2 << 1 );
+        }
+    };
+}
+
 namespace triagens {
   namespace basics {
 
@@ -456,7 +476,6 @@ namespace triagens {
 /// @brief types for vertices, edges and weights
 ////////////////////////////////////////////////////////////////////////////////
 
-      typedef std::string VertexId;
       typedef std::string EdgeId;
       typedef double EdgeWeight;
 
@@ -537,7 +556,7 @@ namespace triagens {
           : _highscoreSet(false),
             _highscore(0),
             _bingo(false),
-            _intermediate(""),
+            _intermediate(),
             _forwardExpander(forwardExpander),
             _backwardExpander(backwardExpander),
             _bidirectional(bidirectional) {

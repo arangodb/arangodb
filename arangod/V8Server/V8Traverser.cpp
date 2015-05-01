@@ -51,6 +51,45 @@ using namespace triagens::arango;
 
 typedef function<double(TRI_doc_mptr_copy_t& edge)> WeightCalculatorFunction;
 
+class EdgeCollectionInfo {
+  private:
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Edge direction for this collection
+////////////////////////////////////////////////////////////////////////////////
+    TRI_edge_direction_e _direction;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prefix for edge collection id
+////////////////////////////////////////////////////////////////////////////////
+    string _edgeIdPrefix;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge collection
+////////////////////////////////////////////////////////////////////////////////
+    TRI_document_collection_t* _edgeCollection;
+
+  public:
+
+    EdgeCollectionInfo(
+      TRI_edge_direction_e direction,
+      string edgeCollectionName,
+      TRI_document_collection_t* edgeCollection
+    )  : _direction(direction), 
+       _edgeCollection(edgeCollection) {
+      _edgeIdPrefix = edgeCollectionName + "/";
+    };
+
+    Traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
+      char const* key = TRI_EXTRACT_MARKER_KEY(&ptr);
+      return _edgeIdPrefix + key;
+    };
+
+    vector<TRI_doc_mptr_copy_t> getEdges (VertexId vertexId) {
+      return TRI_LookupEdgesDocumentCollection(_edgeCollection, _direction, vertexId.first, (char *) vertexId.second.c_str());
+    };
+
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Define edge weight by the number of hops.
@@ -72,6 +111,7 @@ class HopWeightCalculator {
 /// @brief Define edge weight by ony special attribute.
 ///        Respectively 1 for any edge.
 ////////////////////////////////////////////////////////////////////////////////
+
 class AttributeWeightCalculator {
 
   TRI_shape_pid_t _shape_pid;
@@ -116,25 +156,112 @@ class AttributeWeightCalculator {
     };
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _from Id out of mptr
+////////////////////////////////////////////////////////////////////////////////
+
+static inline VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
+  VertexId res(
+    TRI_EXTRACT_MARKER_FROM_CID(&ptr),
+    TRI_EXTRACT_MARKER_FROM_KEY(&ptr)
+  );
+  return res;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _to Id out of mptr
+////////////////////////////////////////////////////////////////////////////////
+
+static inline VertexId extractToId(TRI_doc_mptr_copy_t& ptr) {
+  VertexId res(
+    TRI_EXTRACT_MARKER_TO_CID(&ptr),
+    TRI_EXTRACT_MARKER_TO_KEY(&ptr)
+  );
+  return res;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Expander for Multiple edge collections
+////////////////////////////////////////////////////////////////////////////////
+
+class MultiCollectionEdgeExpander {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief all info required for edge collection
+////////////////////////////////////////////////////////////////////////////////
+
+    vector<EdgeCollectionInfo*> _edgeCollections;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the weight calculation function
+////////////////////////////////////////////////////////////////////////////////
+
+    WeightCalculatorFunction weighter;
+
+  public: 
+
+    MultiCollectionEdgeExpander(TRI_edge_direction_e direction,
+                       vector<TRI_document_collection_t*> edgeCollections,
+                       vector<string> edgeCollectionNames,
+                       WeightCalculatorFunction weighter)
+      : weighter(weighter)
+    {
+      for(size_t i = 0; i != edgeCollectionNames.size(); ++i) {
+        _edgeCollections.push_back(new EdgeCollectionInfo(
+          direction,
+          edgeCollectionNames[i],
+          edgeCollections[i]
+        ));
+      }
+    };
+
+    void operator() (VertexId source,
+                     vector<Traverser::Step>& result) {
+      TransactionBase fake(true); // Fake a transaction to please checks. 
+                                  // This is due to multi-threading
+
+      for (auto edgeCollection : _edgeCollections) { 
+        auto edges = edgeCollection->getEdges(source); 
+
+        unordered_map<VertexId, size_t> candidates;
+        for (size_t j = 0;  j < edges.size(); ++j) {
+          VertexId from = extractFromId(edges[j]);
+          VertexId to = extractToId(edges[j]);
+          double currentWeight = weighter(edges[j]);
+          auto inserter = [&](VertexId& s, VertexId& t) {
+            auto cand = candidates.find(t);
+            if (cand == candidates.end()) {
+              // Add weight
+              result.emplace_back(t, s, currentWeight, edgeCollection->extractEdgeId(edges[j]));
+              candidates.emplace(t, result.size() - 1);
+            } else {
+              // Compare weight
+              auto oldWeight = result[cand->second].weight();
+              if (currentWeight < oldWeight) {
+                result[cand->second].setWeight(currentWeight);
+              }
+            }
+          };
+          if (from != source) {
+            inserter(to, from);
+          } 
+          else if (to != source) {
+            inserter(from, to);
+          }
+        }
+      }
+    } 
+};
+
 class SimpleEdgeExpander {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief direction of expansion
+/// @brief all info required for edge collection
 ////////////////////////////////////////////////////////////////////////////////
 
-    TRI_edge_direction_e direction;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge collection
-////////////////////////////////////////////////////////////////////////////////
-
-    TRI_document_collection_t* edgeCollection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection name and /
-////////////////////////////////////////////////////////////////////////////////
-
-    string edgeIdPrefix;
+    EdgeCollectionInfo* _edgeCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the collection name resolver
@@ -153,72 +280,28 @@ class SimpleEdgeExpander {
     SimpleEdgeExpander(TRI_edge_direction_e direction,
                        TRI_document_collection_t* edgeCollection,
                        string edgeCollectionName,
-                       CollectionNameResolver* resolver,
                        WeightCalculatorFunction weighter)
-      : direction(direction), edgeCollection(edgeCollection),
-        resolver(resolver), weighter(weighter)
+      : weighter(weighter)
     {
-      edgeIdPrefix = edgeCollectionName + "/";
+      _edgeCollection = new EdgeCollectionInfo(direction, edgeCollectionName, edgeCollection);
     };
 
-    Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
-      char const* key = TRI_EXTRACT_MARKER_FROM_KEY(&ptr);
-      TRI_voc_cid_t cid = TRI_EXTRACT_MARKER_FROM_CID(&ptr);
-      string col = resolver->getCollectionName(cid);
-      col.append("/");
-      col.append(key);
-      return col;
-    };
-
-    Traverser::VertexId extractToId(TRI_doc_mptr_copy_t& ptr) {
-      char const* key = TRI_EXTRACT_MARKER_TO_KEY(&ptr);
-      TRI_voc_cid_t cid = TRI_EXTRACT_MARKER_TO_CID(&ptr);
-      string col = resolver->getCollectionName(cid);
-      col.append("/");
-      col.append(key);
-      return col;
-    };
-
-    Traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
-      char const* key = TRI_EXTRACT_MARKER_KEY(&ptr);
-      return edgeIdPrefix + key;
-    };
-
-    void operator() (Traverser::VertexId source,
+    void operator() (VertexId source,
                      vector<Traverser::Step>& result) {
-      std::vector<TRI_doc_mptr_copy_t> edges;
       TransactionBase fake(true); // Fake a transaction to please checks. 
                                   // This is due to multi-threading
+      auto edges = _edgeCollection->getEdges(source); 
 
-      // Process Vertex Id!
-      size_t split;
-      char const* str = source.c_str();
-      if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-        // TODO Error Handling
-        return;
-      }
-      string collectionName = source.substr(0, split);
-
-      auto col = resolver->getCollectionStruct(collectionName);
-      if (col == nullptr) {
-        // collection not found
-        throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-      }
-      auto collectionCId = col->_cid;
-      edges = TRI_LookupEdgesDocumentCollection(edgeCollection, direction, collectionCId, const_cast<char*>(str + split + 1));
-
-      unordered_map<Traverser::VertexId, size_t> candidates;
-      Traverser::VertexId from;
-      Traverser::VertexId to;
+      unordered_map<VertexId, size_t> candidates;
       for (size_t j = 0;  j < edges.size(); ++j) {
-        from = extractFromId(edges[j]);
-        to = extractToId(edges[j]);
+        VertexId from = extractFromId(edges[j]);
+        VertexId to = extractToId(edges[j]);
         double currentWeight = weighter(edges[j]);
-        auto inserter = [&](Traverser::VertexId s, Traverser::VertexId t) {
+        auto inserter = [&](VertexId& s, VertexId& t) {
           auto cand = candidates.find(t);
           if (cand == candidates.end()) {
             // Add weight
-            result.emplace_back(t, s, currentWeight, extractEdgeId(edges[j]));
+            result.emplace_back(t, s, currentWeight, _edgeCollection->extractEdgeId(edges[j]));
             candidates.emplace(t, result.size() - 1);
           } else {
             // Compare weight
@@ -246,7 +329,7 @@ static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& 
   v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
 
   for (size_t j = 0;  j < vn;  ++j) {
-    vertices->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.vertices[j].c_str()));
+    vertices->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.vertices[j].second.c_str()));
   }
   result->Set(TRI_V8_STRING("vertices"), vertices);
 
@@ -428,12 +511,43 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   } else {
     weighter = HopWeightCalculator();
   }
-  forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, edgeCollectionName, &resolver1, weighter));
-  backwardExpander.reset(new SimpleEdgeExpander(backward, ecol, edgeCollectionName, &resolver2, weighter));
+  forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, edgeCollectionName, weighter));
+  backwardExpander.reset(new SimpleEdgeExpander(backward, ecol, edgeCollectionName, weighter));
 
+  // Transform string ids to VertexIds
+  // Needs refactoring!
+  size_t split;
+  char const* str = startVertex.c_str();
+  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+    // TODO Error Handling
+    return;
+  }
+  string collectionName = startVertex.substr(0, split);
+
+  auto coli = resolver1.getCollectionStruct(collectionName);
+  if (coli == nullptr) {
+    // collection not found
+    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  VertexId sv(coli->_cid, const_cast<char*>(str + split + 1));
+
+  str = targetVertex.c_str();
+  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+    // TODO Error Handling
+    return;
+  }
+  collectionName = targetVertex.substr(0, split);
+
+  coli = resolver2.getCollectionStruct(collectionName);
+  if (coli == nullptr) {
+    // collection not found
+    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  VertexId tv(coli->_cid, const_cast<char*>(str + split + 1));
 
   Traverser traverser(*forwardExpander, *backwardExpander, bidirectional);
-  unique_ptr<Traverser::Path> path(traverser.shortestPath(startVertex, targetVertex));
+  unique_ptr<Traverser::Path> path(traverser.shortestPath(sv, tv));
   if (path.get() == nullptr) {
     res = trx.finish(res);
     v8::EscapableHandleScope scope(isolate);
