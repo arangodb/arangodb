@@ -64,7 +64,7 @@ class Searcher {
                          Traverser::EdgeId& edge,
                          Traverser::EdgeWeight weight) {
 
-      std::lock_guard<std::mutex> guard(_myInfo._mutex);
+      // std::lock_guard<std::mutex> guard(_myInfo._mutex);
       Traverser::Step* s = _myInfo._pq.find(neighbor);
 
       // Not found, so insert it:
@@ -89,7 +89,7 @@ class Searcher {
     void lookupPeer (Traverser::VertexId& vertex,
                      Traverser::EdgeWeight weight) {
 
-      std::lock_guard<std::mutex> guard(_peerInfo._mutex);
+      //std::lock_guard<std::mutex> guard(_peerInfo._mutex);
       Traverser::Step* s = _peerInfo._pq.find(vertex);
       if (s == nullptr) {
         // Not found, nothing more to do
@@ -98,7 +98,7 @@ class Searcher {
       Traverser::EdgeWeight total = s->_weight + weight;
 
       // Update the highscore:
-      std::lock_guard<std::mutex> guard2(_traverser->_resultMutex);
+      //std::lock_guard<std::mutex> guard2(_traverser->_resultMutex);
       if (!_traverser->_highscoreSet || total < _traverser->_highscore) {
         _traverser->_highscoreSet = true;
         _traverser->_highscore = total;
@@ -138,6 +138,7 @@ class Searcher {
 /// direction only
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     void run () {
 
       Traverser::VertexId v;
@@ -169,17 +170,54 @@ class Searcher {
       //    => No path possible. Set bingo, intermediate is empty.
       _traverser->_bingo = true;
     }
+#endif
 
-    std::thread _thread;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Do one step only.
+////////////////////////////////////////////////////////////////////////////////
+
+  public:
+
+    bool oneStep () {
+
+      Traverser::VertexId v;
+      Traverser::Step s;
+      bool b = _myInfo._pq.popMinimal(v, s, true);
+      
+      std::vector<Traverser::Step> neighbors;
+
+      if (_traverser->_bingo || ! b) {
+        // We can leave this functino only under 2 conditions:
+        // 1) already bingo==true => bingo = true no effect
+        // 2) This queue is empty => if there would be a
+        //    path we would have found it here
+        //    => No path possible. Set bingo, intermediate is empty.
+        _traverser->_bingo = true;
+        return false;
+      }
+
+      _expander(v, neighbors);
+      for (auto& neighbor : neighbors) {
+        insertNeighbor(neighbor._vertex, v, neighbor._edge, 
+                       s._weight + neighbor._weight);
+      }
+      lookupPeer(v, s._weight);
+
+      //std::lock_guard<std::mutex> guard(_myInfo._mutex);
+      Traverser::Step* s2 = _myInfo._pq.find(v);
+      s2->_done = true;
+    }
+
+    // std::thread _thread;
 
   public:
 
     void start () {
-      _thread = std::thread(&Searcher::run, this);
+      // _thread = std::thread(&Searcher::run, this);
     }
 
     void join () {
-      _thread.join();
+      // _thread.join();
     }
 };
 
@@ -214,13 +252,13 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
     backwardSearcher.reset(new Searcher(this, backward, forward, target,
                                         _backwardExpander, "Backward"));
   }
-  forwardSearcher.start();
-  if (_bidirectional) {
-    backwardSearcher->start();
-  }
-  forwardSearcher.join();
-  if (_bidirectional) {
-    backwardSearcher->join();
+  while (! _bingo) {
+    if (! forwardSearcher.oneStep()) {
+      break;
+    }
+    if (! backwardSearcher->oneStep()) {
+      break;
+    }
   }
 
   if (!_bingo || _intermediate == "") {
