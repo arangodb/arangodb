@@ -7,7 +7,8 @@
 
   window.Airports = Backbone.Collection.extend({
 
-    initialize: function() {
+    initialize: function(options) {
+      this.collectionName = options.collectionName;
     },
 
     getAirports: function(callback) {
@@ -35,6 +36,50 @@
       });
     },
 
+    getShortestFlight: function(from, to, callback) {
+      $.ajax({
+        type: "POST",
+        url: "/_api/cursor",
+        data: JSON.stringify({
+          query: "RETURN SHORTEST_PATH(@@airports,@@flights,@start,@dest,'outbound',{})",
+          bindVars: {
+            "@flights": this.collectionName,
+            "@airports": "airports",
+            "start": "airports/" + from,
+            "dest": "airports/" + to
+          }
+        }),
+        contentType: "application/json",
+        processData: false,
+        success: function (data) {
+          callback(data.result[0]);
+        },
+        error: function (data) {
+        }
+      });
+    },
+
+    getFlightDistribution: function(callback) {
+      $.ajax({
+        type: "POST",
+        url: "/_api/cursor",
+        data: JSON.stringify({
+          query: "FOR f IN @@flights COLLECT dest = f._to " + 
+            "WITH COUNT INTO n SORT n RETURN {Dest: SPLIT(dest, '/')[1], count: n}",
+          bindVars: {
+            "@flights": this.collectionName
+          }
+        }),
+        contentType: "application/json",
+        processData: false,
+        success: function (data) {
+          callback(data.result);
+        },
+        error: function (data) {
+        }
+      });
+    },
+
     getFlightsForAirport: function(airport, callback) {
       var self = this;
 
@@ -42,9 +87,12 @@
         type: "POST",
         url: "/_api/cursor",
         data: JSON.stringify({
-          query: "for f in flights12 filter f.Origin == @airport COLLECT dest = f.Dest " + 
-                 "WITH COUNT INTO n SORT n RETURN {Dest: dest, count: n}",
-          bindVars: {"airport": airport}
+          query: "for f in @@flights filter f._from == @airport COLLECT dest = f._to " + 
+            "WITH COUNT INTO n SORT n RETURN {Dest: SPLIT(dest, '/')[1], count: n}",
+          bindVars: {
+            "airport": "airports/" + airport,
+            "@flights": this.collectionName
+          }
         }),
         contentType: "application/json",
         processData: false,

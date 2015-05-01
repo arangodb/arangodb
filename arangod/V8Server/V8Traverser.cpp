@@ -45,22 +45,75 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
-struct WeightInfo {
-  string keyWeight;
-  double defaultWeight; 
-  bool usesWeight;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback to weight an edge
+////////////////////////////////////////////////////////////////////////////////
 
-  WeightInfo(
-    string keyWeight,
-    double defaultWeight
-  ) :
-    keyWeight(keyWeight), defaultWeight(defaultWeight), usesWeight(true)
-  {
-  };
+typedef function<double(TRI_doc_mptr_copy_t& edge)> WeightCalculatorFunction;
 
-  WeightInfo() : usesWeight(false) {
-  };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Define edge weight by the number of hops.
+///        Respectively 1 for any edge.
+////////////////////////////////////////////////////////////////////////////////
+class HopWeightCalculator {
+  public: 
+    HopWeightCalculator() {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Callable weight calculator for edge
+////////////////////////////////////////////////////////////////////////////////
+    double operator() (TRI_doc_mptr_copy_t& edge) {
+      return 1;
+    };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Define edge weight by ony special attribute.
+///        Respectively 1 for any edge.
+////////////////////////////////////////////////////////////////////////////////
+class AttributeWeightCalculator {
+
+  TRI_shape_pid_t _shape_pid;
+  double _defaultWeight;
+  TRI_shaper_t* _shaper;
+
+  public: 
+    AttributeWeightCalculator(
+      string keyWeight,
+      double defaultWeight,
+      TRI_shaper_t* shaper
+    ) : _defaultWeight(defaultWeight),
+        _shaper(shaper)
+    {
+      _shape_pid = _shaper->lookupAttributePathByName(_shaper, keyWeight.c_str());
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Callable weight calculator for edge
+////////////////////////////////////////////////////////////////////////////////
+    double operator() (TRI_doc_mptr_copy_t& edge) {
+      if (_shape_pid == 0) {
+        return _defaultWeight;
+      }
+      TRI_shape_sid_t sid;
+      TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, edge.getDataPtr());
+      TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(_shaper, sid, _shape_pid);
+      TRI_shaped_json_t shapedJson;
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, edge.getDataPtr());
+      TRI_shaped_json_t resultJson;
+      TRI_ExecuteShapeAccessor(accessor, &shapedJson, &resultJson);
+      if (resultJson._sid != TRI_SHAPE_NUMBER) {
+        return _defaultWeight;
+      }
+      TRI_json_t* json = TRI_JsonShapedJson(_shaper, &resultJson);
+      if (json == nullptr) {
+        return _defaultWeight;
+      }
+      double realResult = json->_value._number;
+      TRI_FreeJson(_shaper->_memoryZone, json);
+      return realResult ;
+    };
 };
 
 class SimpleEdgeExpander {
@@ -90,33 +143,20 @@ class SimpleEdgeExpander {
     CollectionNameResolver* resolver;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this is the information required to compute weight by a given
-///        attribute. It contains an indicator if weight should be used.
-///        Also it includes a default weight and the name of the weight
-///        attribute.
+/// @brief the weight calculation function
 ////////////////////////////////////////////////////////////////////////////////
 
-    WeightInfo weightInfo;
+    WeightCalculatorFunction weighter;
 
   public: 
 
     SimpleEdgeExpander(TRI_edge_direction_e direction,
                        TRI_document_collection_t* edgeCollection,
                        string edgeCollectionName,
-                       CollectionNameResolver* resolver)
-      : direction(direction), edgeCollection(edgeCollection),
-        resolver(resolver)
-    {
-      edgeIdPrefix = edgeCollectionName + "/";
-    };
-
-    SimpleEdgeExpander(TRI_edge_direction_e direction,
-                       TRI_document_collection_t* edgeCollection,
-                       string edgeCollectionName,
                        CollectionNameResolver* resolver,
-                       WeightInfo weightInfo)
+                       WeightCalculatorFunction weighter)
       : direction(direction), edgeCollection(edgeCollection),
-        resolver(resolver), weightInfo(weightInfo)
+        resolver(resolver), weighter(weighter)
     {
       edgeIdPrefix = edgeCollectionName + "/";
     };
@@ -170,61 +210,32 @@ class SimpleEdgeExpander {
       unordered_map<Traverser::VertexId, size_t> candidates;
       Traverser::VertexId from;
       Traverser::VertexId to;
-      if (weightInfo.usesWeight) {
-        for (size_t j = 0;  j < edges.size(); ++j) {
-          from = extractFromId(edges[j]);
-          to = extractToId(edges[j]);
-          double currentWeight = weightInfo.defaultWeight;
-          if (from != source) {
-            auto cand = candidates.find(from);
-            if (cand == candidates.end()) {
-              // Add weight
-              result.emplace_back(to, from, currentWeight, extractEdgeId(edges[j]));
-              candidates.emplace(from, result.size() - 1);
-            } else {
-              // Compare weight
-              auto oldWeight = result[cand->second].weight();
-              if (currentWeight < oldWeight) {
-                result[cand->second].setWeight(currentWeight);
-              }
-            }
-          } 
-          else if (to != source) {
-            auto cand = candidates.find(to);
-            if (cand == candidates.end()) {
-              // Add weight
-              result.emplace_back(to, from, currentWeight, extractEdgeId(edges[j]));
-              candidates.emplace(to, result.size() - 1);
-            } else {
-              auto oldWeight = result[cand->second].weight();
-              if (currentWeight < oldWeight) {
-                result[cand->second].setWeight(currentWeight);
-              }
+      for (size_t j = 0;  j < edges.size(); ++j) {
+        from = extractFromId(edges[j]);
+        to = extractToId(edges[j]);
+        double currentWeight = weighter(edges[j]);
+        auto inserter = [&](Traverser::VertexId s, Traverser::VertexId t) {
+          auto cand = candidates.find(t);
+          if (cand == candidates.end()) {
+            // Add weight
+            result.emplace_back(t, s, currentWeight, extractEdgeId(edges[j]));
+            candidates.emplace(t, result.size() - 1);
+          } else {
+            // Compare weight
+            auto oldWeight = result[cand->second].weight();
+            if (currentWeight < oldWeight) {
+              result[cand->second].setWeight(currentWeight);
             }
           }
-        }
-      } 
-      else {
-        for (size_t j = 0;  j < edges.size();  ++j) {
-          from = extractFromId(edges[j]);
-          to = extractToId(edges[j]);
-          if (from != source) {
-            auto cand = candidates.find(from);
-            if (cand == candidates.end()) {
-              result.emplace_back(from, to, 1, extractEdgeId(edges[j]));
-              candidates.emplace(from, result.size()-1);
-            }
-          } 
-          else if (to != source) {
-            auto cand = candidates.find(to);
-            if (cand == candidates.end()) {
-              result.emplace_back(to, from, 1, extractEdgeId(edges[j]));
-              candidates.emplace(to, result.size()-1);
-            }
-          }
+        };
+        if (from != source) {
+          inserter(to, from);
+        } 
+        else if (to != source) {
+          inserter(from, to);
         }
       }
-    }
+    } 
 };
 
 static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& p) {
@@ -283,7 +294,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   vector<string> writeCollections;
 
   double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  bool embed = false;
+  bool embed = true;
   bool waitForSync = false;
 
   // get the vertex collection
@@ -409,15 +420,16 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   unique_ptr<SimpleEdgeExpander> forwardExpander;
   unique_ptr<SimpleEdgeExpander> backwardExpander;
+  WeightCalculatorFunction weighter;
   if (useWeight) {
-    forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, edgeCollectionName,
-                                                 &resolver1, WeightInfo(weightAttribute, defaultWeight)));
-    backwardExpander.reset(new SimpleEdgeExpander(backward, ecol, edgeCollectionName,
-                                                 &resolver2, WeightInfo(weightAttribute, defaultWeight)));
+    weighter = AttributeWeightCalculator(
+      weightAttribute, defaultWeight, ecol->getShaper()
+    );
   } else {
-    forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, edgeCollectionName, &resolver1));
-    backwardExpander.reset(new SimpleEdgeExpander(backward, ecol, edgeCollectionName, &resolver2));
+    weighter = HopWeightCalculator();
   }
+  forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, edgeCollectionName, &resolver1, weighter));
+  backwardExpander.reset(new SimpleEdgeExpander(backward, ecol, edgeCollectionName, &resolver2, weighter));
 
 
   Traverser traverser(*forwardExpander, *backwardExpander, bidirectional);
