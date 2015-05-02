@@ -137,6 +137,9 @@ typedef long suseconds_t;
 #include <unordered_set>
 #include <memory>
 #include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            basic triAGENS headers

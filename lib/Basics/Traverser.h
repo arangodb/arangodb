@@ -36,55 +36,6 @@
 #include <mutex>
 #include <functional>
 
-/// Forward declaration of typedef for VertexId.
-namespace triagens {
-  namespace basics {
-    struct VertexId {
-      uint64_t first;
-      const char* second;
-
-      VertexId() {}
-
-      VertexId(
-        uint64_t first,
-        const char* second
-      ):first(first), second(second) {
-
-      }
-
-      // Find unnecessary copies
-//       VertexId(const VertexId&) = delete;
-      // VertexId(const VertexId& v) : first(v.first), second(v.second) { std::cout << "move failed!\n";}
-      // VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
-
-    };
-    // typedef std::pair<uint64_t, std::string> VertexId;
-  }
-}
-
-namespace std {
-  template<>
-    struct hash<triagens::basics::VertexId> {
-      public:
-        size_t operator()(const triagens::basics::VertexId & s) const 
-        {
-          size_t h1 = std::hash<uint64_t>()(s.first);
-          size_t h2 = TRI_FnvHashString(s.second);
-          return h1 ^ ( h2 << 1 );
-        }
-    };
-
-   template<>
-    struct equal_to<triagens::basics::VertexId> {
-      public:
-        bool operator()(const triagens::basics::VertexId & s, const triagens::basics::VertexId & t) const 
-        {
-          return s.first == t.first && strcmp(s.second, t.second);
-        }
-    };
-    
-}
-
 namespace triagens {
   namespace basics {
 
@@ -102,8 +53,10 @@ namespace triagens {
       // is at the same time a priority queue in that it is possible
       // to ask for (one of) the value(s) with the smallest weight and
       // remove this efficiently.
-      // The Value type must be copyable and should be movable. Finally,
-      // the Value type must have a method getKey that returns a Key
+      // All methods only work with pointers to Values for efficiency
+      // reasons. This class deletes all Value* that are stored on 
+      // destruction.
+      // The Value type must have a method getKey that returns a Key
       // const&.
       // This data structure makes the following complexity promises 
       // (amortized), where n is the number of key/value pairs stored
@@ -138,6 +91,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~PriorityQueue () {
+          for (Value* v : _heap) {
+            delete v;
+          }
+          for (Value* v : _history) {
+            delete v;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +120,7 @@ namespace triagens {
 /// yet exist, and false, in which case nothing else is changed.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool insert (Key const& k, Value const& v) {
+        bool insert (Key const& k, Value* v) {
           auto it = _lookup.find(k);
           if (it != _lookup.end()) {
             return false;
@@ -169,7 +128,7 @@ namespace triagens {
 
           // Are we still in the simple case of a deque?
           if (! _isHeap) {
-            Weight w = v.weight();
+            Weight w = v->weight();
             if (w < _maxWeight) {
               // Oh dear, we have to upgrade to heap:
               _isHeap = true;
@@ -219,10 +178,10 @@ namespace triagens {
             return nullptr;
           }
           if (it->second >= 0) {   // still in the queue
-            return &(_heap[static_cast<size_t>(it->second) - _popped]);
+            return _heap[static_cast<size_t>(it->second) - _popped];
           }
           else {  // already in the history
-            return &(_history[static_cast<size_t>(-it->second) - 1]);
+            return _history[static_cast<size_t>(-it->second) - 1];
           }
         }
 
@@ -240,12 +199,12 @@ namespace triagens {
           }
           if (it->second >= 0) {  // still in the queue
             size_t pos = static_cast<size_t>(it->second) - _popped;
-            _heap[pos].setWeight(newWeight);
+            _heap[pos]->setWeight(newWeight);
             repairUp(pos);
           }
           else {  // already in the history
             size_t pos = static_cast<size_t>(-it->second) - 1;
-            _history[pos].setWeight(newWeight);
+            _history[pos]->setWeight(newWeight);
           }
           return true;
         }
@@ -261,7 +220,7 @@ namespace triagens {
           if (_heap.empty()) {
             return nullptr;
           }
-          return &(_heap[0]);
+          return _heap[0];
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,11 +230,11 @@ namespace triagens {
 /// hash table but removed from the priority queue.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool popMinimal (Key& k, Value& v, bool keepForLookup = false) {
+        bool popMinimal (Key& k, Value*& v, bool keepForLookup = false) {
           if (_heap.empty()) {
             return false;
           }
-          k = _heap[0].getKey();
+          k = _heap[0]->getKey();
           v = _heap[0];
           if (! _isHeap) {
             auto it = _lookup.find(k);
@@ -308,18 +267,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void swap (size_t p, size_t q) {
-          Value v(std::move(_heap[p]));
-          _heap[p] = std::move(_heap[q]);
-          _heap[q] = std::move(v);
+          Value* v = _heap[p];
+          _heap[p] = _heap[q];
+          _heap[q] = v;
 
           // Now fix the lookup:
-          Key const& keyp(_heap[p].getKey());
+          Key const& keyp(_heap[p]->getKey());
           auto it = _lookup.find(keyp);
           TRI_ASSERT(it != _lookup.end());
           TRI_ASSERT(it->second - _popped == q);
           it->second = static_cast<ssize_t>(p) + _popped;
 
-          Key const& keyq(_heap[q].getKey());
+          Key const& keyq(_heap[q]->getKey());
           it = _lookup.find(keyq);
           TRI_ASSERT(it != _lookup.end());
           TRI_ASSERT(it->second - _popped == p);
@@ -357,8 +316,8 @@ namespace triagens {
         void repairUp (size_t pos) {
           while (pos > 0) {
             size_t par = parent(pos);
-            Weight wpos = _heap[pos].weight();
-            Weight wpar = _heap[par].weight();
+            Weight wpos = _heap[pos]->weight();
+            Weight wpar = _heap[par]->weight();
             if (wpos < wpar) {
               swap(pos, par);
               pos = par;
@@ -381,8 +340,8 @@ namespace triagens {
             if (lchi >= _heap.size()) {
               return;
             }
-            Weight wpos = _heap[pos].weight();
-            Weight wlchi = _heap[lchi].weight();
+            Weight wpos = _heap[pos]->weight();
+            Weight wlchi = _heap[lchi]->weight();
             size_t rchi = rchild(pos);
             if (rchi >= _heap.size()) {
               if (wpos > wlchi) {
@@ -390,7 +349,7 @@ namespace triagens {
               }
               return;
             }
-            Weight wrchi = _heap[rchi].weight();
+            Weight wrchi = _heap[rchi]->weight();
             if (wlchi <= wrchi) {
               if (wpos <= wlchi) {
                 return;
@@ -413,7 +372,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void removeFromHeap (bool keepForLookup) {
-          auto it = _lookup.find(_heap[0].getKey());
+          auto it = _lookup.find(_heap[0]->getKey());
           TRI_ASSERT(it != _lookup.end());
           if (keepForLookup) {
             _history.push_back(_heap[0]);
@@ -433,7 +392,7 @@ namespace triagens {
           // Move one in front:
           _heap[0] = _heap.back();
           _heap.pop_back();
-          it = _lookup.find(_heap[0].getKey());
+          it = _lookup.find(_heap[0]->getKey());
           TRI_ASSERT(it != _lookup.end());
           it->second = static_cast<ssize_t>(_popped);
           repairDown();
@@ -470,7 +429,7 @@ namespace triagens {
 /// @brief _heap, the actual data
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::deque<Value> _heap;
+        std::deque<Value*> _heap;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _maxWeight, the current maximal weight ever seen
@@ -482,7 +441,7 @@ namespace triagens {
 /// @brief _history, the actual data that is only in the key/value store
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Value> _history;
+        std::vector<Value*> _history;
 
     };
 
@@ -490,91 +449,407 @@ namespace triagens {
 // --SECTION--                                                   class Traverser
 // -----------------------------------------------------------------------------
 
+    template <typename VertexId, typename EdgeId, typename EdgeWeight>
     class Traverser {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   data structures
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             types
 // -----------------------------------------------------------------------------
 
-
-    public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief types for vertices, edges and weights
-////////////////////////////////////////////////////////////////////////////////
-
-      typedef std::string EdgeId;
-      typedef double EdgeWeight;
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Path, type for the result
 ////////////////////////////////////////////////////////////////////////////////
 
-      // Convention vertices.size() -1 === edges.size()
-      // path is vertices[0] , edges[0], vertices[1] etc.
-      struct Path {
-        std::deque<VertexId> vertices; 
-        std::deque<EdgeId> edges; 
-        EdgeWeight weight;
+        // Convention vertices.size() -1 === edges.size()
+        // path is vertices[0] , edges[0], vertices[1] etc.
+        struct Path {
+          std::deque<VertexId> vertices; 
+          std::deque<EdgeId> edges; 
+          EdgeWeight weight;
 
-        Path (std::deque<VertexId> vertices, std::deque<EdgeId> edges,
-              EdgeWeight weight) 
-          : vertices(vertices), edges(edges), weight(weight) {
+          Path (std::deque<VertexId> vertices, std::deque<EdgeId> edges,
+                EdgeWeight weight) 
+            : vertices(vertices), edges(edges), weight(weight) {
+          };
         };
-      };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Step, one position with a predecessor and the edge
 ////////////////////////////////////////////////////////////////////////////////
 
-      struct Step {
-        VertexId _vertex;
-        VertexId _predecessor;
-        EdgeWeight _weight;
-        EdgeId _edge;
-        bool _done;
+        struct Step {
+            VertexId _vertex;
+            VertexId _predecessor;
+          private:
+            EdgeWeight _weight;
+          public:
+            EdgeId _edge;
+            bool _done;
 
-        Step () : _done(false) {
-        }
+            Step () : _done(false) {
+            }
 
-        Step (VertexId& vert, VertexId& pred,
-              EdgeWeight weig, EdgeId const& edge)
-          : _vertex(std::move(vert)), _predecessor(std::move(pred)), _weight(weig), _edge(edge),
-            _done(false) {
-        }
+            Step (VertexId& vert, VertexId& pred,
+                  EdgeWeight weig, EdgeId const& edge)
+              : _vertex(vert), _predecessor(pred), _weight(weig), _edge(edge),
+                _done(false) {
+            }
 
-        EdgeWeight weight () const {
-          return _weight;
-        }
+            EdgeWeight weight () const {
+              return _weight;
+            }
 
-        void setWeight (EdgeWeight w) {
-          _weight = w;
-        }
+            void setWeight (EdgeWeight w) {
+              _weight = w;
+            }
 
-        VertexId const& getKey () const {
-          return _vertex;
-        }
-      };
+            VertexId const& getKey () const {
+              return _vertex;
+            }
+        };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge direction
 ////////////////////////////////////////////////////////////////////////////////
 
-      typedef enum {FORWARD, BACKWARD} Direction;
+        typedef enum {FORWARD, BACKWARD} Direction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to find neighbours
 ////////////////////////////////////////////////////////////////////////////////
 
-      typedef std::function<void(VertexId& V, std::vector<Step>& result)>
-              ExpanderFunction;
+        typedef std::function<void(VertexId& V, std::vector<Step*>& result)>
+                ExpanderFunction;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our specialization of the priority queue
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef triagens::basics::PriorityQueue<VertexId, Step, EdgeWeight>
+                PQueue;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief information for each thread
+////////////////////////////////////////////////////////////////////////////////
+
+        struct ThreadInfo {
+          PQueue     _pq;
+          std::mutex _mutex;
+        };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                          subclasses for searching
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a Dijkstra searcher for the multi-threaded search
+////////////////////////////////////////////////////////////////////////////////
+
+        class SearcherTwoThreads {
+
+            Traverser* _traverser;
+            ThreadInfo& _myInfo;
+            ThreadInfo& _peerInfo;
+            VertexId _start;
+            ExpanderFunction _expander;
+            std::string _id;
+
+          public:
+
+            SearcherTwoThreads (Traverser* traverser, 
+                                ThreadInfo& myInfo, 
+                                ThreadInfo& peerInfo,
+                                VertexId& start,
+                                ExpanderFunction expander,
+                                std::string id)
+              : _traverser(traverser), _myInfo(myInfo), 
+                _peerInfo(peerInfo), _start(std::move(start)),
+                _expander(expander), _id(id) {
+            }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a neighbor to the todo list.
+////////////////////////////////////////////////////////////////////////////////
+
+          private:
+
+            void insertNeighbor (Step* step, EdgeWeight newWeight) {
+
+              std::lock_guard<std::mutex> guard(_myInfo._mutex);
+              Step* s = _myInfo._pq.find(step->_vertex);
+
+              // Not found, so insert it:
+              if (s == nullptr) {
+                step->setWeight(newWeight);
+                _myInfo._pq.insert(step->_vertex, step);
+                // step is consumed!
+                return;
+              }
+              delete step;
+              if (s->_done) {
+                return;
+              }
+              if (s->weight() > newWeight) {
+                _myInfo._pq.lowerWeight(s->_vertex, newWeight);
+              }
+            }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Lookup our current vertex in the data of our peer.
+////////////////////////////////////////////////////////////////////////////////
+
+            void lookupPeer (VertexId& vertex,
+                             EdgeWeight weight) {
+
+              std::lock_guard<std::mutex> guard(_peerInfo._mutex);
+              Step* s = _peerInfo._pq.find(vertex);
+              if (s == nullptr) {
+                // Not found, nothing more to do
+                return;
+              }
+              EdgeWeight total = s->weight() + weight;
+
+              // Update the highscore:
+              std::lock_guard<std::mutex> guard2(_traverser->_resultMutex);
+              if (!_traverser->_highscoreSet || total < _traverser->_highscore) {
+                _traverser->_highscoreSet = true;
+                _traverser->_highscore = total;
+                _traverser->_intermediate = vertex;
+                _traverser->_intermediateSet = true;
+              }
+
+              // Now the highscore is set!
+
+              // Did we find a solution together with the other thread?
+              if (s->_done) {
+                if (total <= _traverser->_highscore) {
+                  _traverser->_intermediate = vertex;
+                  _traverser->_intermediateSet = true;
+                }
+                // Hacki says: If the highscore was set, and even if
+                // it is better than total, then this observation here
+                // proves that it will never be better, so: BINGO.
+                _traverser->_bingo = true;
+                // We found a way, but somebody else found a better way, so
+                // this is not the shortest path
+                return;
+              }
+
+              // Did we find a solution on our own? This is for the
+              // single thread case and for the case that the other
+              // thread is too slow to even finish its own start vertex!
+              if (s->weight() == 0) {
+                // We have found the target, we have finished all
+                // vertices with a smaller weight than this one (and did
+                // not succeed), so this must be a best solution:
+                _traverser->_intermediate = vertex;
+                _traverser->_intermediateSet = true;
+                _traverser->_bingo = true;
+              }
+            }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Search graph starting at Start following edges of the given
+/// direction only
+////////////////////////////////////////////////////////////////////////////////
+
+            void run () {
+
+              VertexId v;
+              Step* s;
+              bool b = _myInfo._pq.popMinimal(v, s, true);
+              
+              std::vector<Step*> neighbors;
+
+              // Iterate while no bingo found and
+              // there still is a vertex on the stack.
+              while (!_traverser->_bingo && b) {
+                neighbors.clear();
+                _expander(v, neighbors);
+                for (auto* neighbor : neighbors) {
+                  insertNeighbor(neighbor, s->weight() + neighbor->weight());
+                }
+                lookupPeer(v, s->weight());
+
+                std::lock_guard<std::mutex> guard(_myInfo._mutex);
+                Step* s2 = _myInfo._pq.find(v);
+                s2->_done = true;
+                b = _myInfo._pq.popMinimal(v, s, true);
+              }
+              // We can leave this loop only under 2 conditions:
+              // 1) already bingo==true => bingo = true no effect
+              // 2) This queue is empty => if there would be a
+              //    path we would have found it here
+              //    => No path possible. Set bingo, intermediate is empty.
+              _traverser->_bingo = true;
+            }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start and join functions
+////////////////////////////////////////////////////////////////////////////////
+
+          public:
+
+            void start () {
+              _thread = std::thread(&SearcherTwoThreads::run, this);
+            }
+
+            void join () {
+              _thread.join();
+            }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief The thread object.
+////////////////////////////////////////////////////////////////////////////////
+
+          private:
+
+            std::thread _thread;
+
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a Dijkstra searcher for the single-threaded search
+////////////////////////////////////////////////////////////////////////////////
+
+        class Searcher {
+
+            Traverser* _traverser;
+            ThreadInfo& _myInfo;
+            ThreadInfo& _peerInfo;
+            VertexId _start;
+            ExpanderFunction _expander;
+            std::string _id;
+
+          public:
+
+            Searcher (Traverser* traverser, ThreadInfo& myInfo, 
+                      ThreadInfo& peerInfo, VertexId& start,
+                      ExpanderFunction expander, std::string id)
+              : _traverser(traverser), _myInfo(myInfo), 
+                _peerInfo(peerInfo), _start(start), _expander(expander),
+                _id(id) {
+            }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a neighbor to the todo list.
+////////////////////////////////////////////////////////////////////////////////
+
+          private:
+
+            void insertNeighbor (Step* step, EdgeWeight newWeight) {
+
+              Step* s = _myInfo._pq.find(step->_vertex);
+
+              // Not found, so insert it:
+              if (s == nullptr) {
+                step->setWeight(newWeight);
+                _myInfo._pq.insert(step->_vertex, step);
+                return;
+              }
+              delete step;
+              if (s->_done) {
+                return;
+              }
+              if (s->weight() > newWeight) {
+                _myInfo._pq.lowerWeight(s->_vertex, newWeight);
+              }
+            }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Lookup our current vertex in the data of our peer.
+////////////////////////////////////////////////////////////////////////////////
+
+            void lookupPeer (VertexId& vertex,
+                             EdgeWeight weight) {
+
+              Step* s = _peerInfo._pq.find(vertex);
+              if (s == nullptr) {
+                // Not found, nothing more to do
+                return;
+              }
+              EdgeWeight total = s->weight() + weight;
+
+              // Update the highscore:
+              if (!_traverser->_highscoreSet || 
+                  total < _traverser->_highscore) {
+                _traverser->_highscoreSet = true;
+                _traverser->_highscore = total;
+                _traverser->_intermediate = vertex;
+                _traverser->_intermediateSet = true;
+              }
+
+              // Now the highscore is set!
+
+              // Did we find a solution together with the other thread?
+              if (s->_done) {
+                if (total <= _traverser->_highscore) {
+                  _traverser->_intermediate = vertex;
+                  _traverser->_intermediateSet = true;
+                }
+                // Hacki says: If the highscore was set, and even if
+                // it is better than total, then this observation here
+                // proves that it will never be better, so: BINGO.
+                _traverser->_bingo = true;
+                // We found a way, but somebody else found a better way,
+                // so this is not the shortest path
+                return;
+              }
+
+              // Did we find a solution on our own? This is for the
+              // single thread case and for the case that the other
+              // thread is too slow to even finish its own start vertex!
+              if (s->weight() == 0) {
+                // We have found the target, we have finished all
+                // vertices with a smaller weight than this one (and did
+                // not succeed), so this must be a best solution:
+                _traverser->_intermediate = vertex;
+                _traverser->_intermediateSet = true;
+                _traverser->_bingo = true;
+              }
+            }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Do one step only.
+////////////////////////////////////////////////////////////////////////////////
+
+          public:
+
+            bool oneStep () {
+
+              VertexId v;
+              Step* s;
+              bool b = _myInfo._pq.popMinimal(v, s, true);
+              
+              std::vector<Step*> neighbors;
+
+              if (_traverser->_bingo || ! b) {
+                // We can leave this functino only under 2 conditions:
+                // 1) already bingo==true => bingo = true no effect
+                // 2) This queue is empty => if there would be a
+                //    path we would have found it here
+                //    => No path possible. Set bingo, intermediate is empty.
+                _traverser->_bingo = true;
+                return false;
+              }
+
+              _expander(v, neighbors);
+              for (Step* neighbor : neighbors) {
+                insertNeighbor(neighbor, s->weight() + neighbor->weight());
+              }
+              lookupPeer(v, s->weight());
+
+              Step* s2 = _myInfo._pq.find(v);
+              s2->_done = true;
+              return true;
+            }
+
+        };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                           Traverser: constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -587,6 +862,7 @@ namespace triagens {
           : _highscoreSet(false),
             _highscore(0),
             _bingo(false),
+            _intermediateSet(false),
             _intermediate(),
             _forwardExpander(forwardExpander),
             _backwardExpander(backwardExpander),
@@ -612,17 +888,219 @@ namespace triagens {
 
         // Caller has to free the result
         // nullptr indicates there is no path
-        Path* shortestPath (
-          VertexId& start,
-          VertexId& target
-        );
+        Path* shortestPath (VertexId& start,
+                            VertexId& target) {
+
+          // For the result:
+          std::deque<VertexId> r_vertices;
+          std::deque<EdgeId> r_edges;
+          _highscoreSet = false;
+          _highscore = 0;
+          _bingo = false;
+
+          // Forward with initialization:
+          VertexId emptyVertex(0, "");
+          EdgeId emptyEdge;
+          ThreadInfo forward;
+          forward._pq.insert(start,
+                             new Step(start, emptyVertex, 0, emptyEdge));
+
+          // backward with initialization:
+          ThreadInfo backward;
+          backward._pq.insert(target,
+                              new Step(target, emptyVertex, 0, emptyEdge));
+
+          // Now the searcher threads:
+          Searcher forwardSearcher(this, forward, backward, start,
+                                   _forwardExpander, "Forward");
+          std::unique_ptr<Searcher> backwardSearcher;
+          if (_bidirectional) {
+            backwardSearcher.reset(new Searcher(this, backward, forward, target,
+                                                _backwardExpander, "Backward"));
+          }
+          while (! _bingo) {
+            if (! forwardSearcher.oneStep()) {
+              break;
+            }
+            if (! backwardSearcher->oneStep()) {
+              break;
+            }
+          }
+
+          if (!_bingo || _intermediateSet == false) {
+            return nullptr;
+          }
+
+          Step* s = forward._pq.find(_intermediate);
+          r_vertices.push_back(_intermediate);
+
+          // FORWARD Go path back from intermediate -> start.
+          // Insert all vertices and edges at front of vector
+          // Do NOT! insert the intermediate vertex
+          while (strcmp(s->_predecessor.key,"") != 0) {
+            r_edges.push_front(s->_edge);
+            r_vertices.push_front(s->_predecessor);
+            s = forward._pq.find(s->_predecessor);
+          }
+
+          // BACKWARD Go path back from intermediate -> target.
+          // Insert all vertices and edges at back of vector
+          // Also insert the intermediate vertex
+          s = backward._pq.find(_intermediate);
+          while (strcmp(s->_predecessor.key, "") != 0) {
+            r_edges.push_back(s->_edge);
+            r_vertices.push_back(s->_predecessor);
+            s = backward._pq.find(s->_predecessor);
+          }
+          return new Path(r_vertices, r_edges, _highscore);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the shortest path between the start and target vertex,
+/// multi-threaded version using SearcherTwoThreads.
+////////////////////////////////////////////////////////////////////////////////
 
         // Caller has to free the result
         // nullptr indicates there is no path
-        Path* shortestPathTwoThreads (
-          VertexId& start,
-          VertexId& target
-        );
+
+        Path* shortestPathTwoThreads (VertexId& start,
+                                      VertexId& target) {
+
+          // For the result:
+          std::deque<VertexId> r_vertices;
+          std::deque<EdgeId> r_edges;
+          _highscoreSet = false;
+          _highscore = 0;
+          _bingo = false;
+
+          // Forward with initialization:
+          VertexId emptyVertex;
+          EdgeId emptyEdge;
+          ThreadInfo forward;
+          forward._pq.insert(start,
+                             new Step(start, emptyVertex, 0, emptyEdge));
+
+          // backward with initialization:
+          ThreadInfo backward;
+          backward._pq.insert(target,
+                              new Step(target, emptyVertex, 0, emptyEdge));
+
+          // Now the searcher threads:
+          SearcherTwoThreads forwardSearcher(this, forward, backward, start,
+                                             _forwardExpander, "Forward");
+          std::unique_ptr<SearcherTwoThreads> backwardSearcher;
+          if (_bidirectional) {
+            backwardSearcher.reset(new SearcherTwoThreads(this, backward, forward, 
+                                                          target, _backwardExpander, 
+                                                          "Backward"));
+          }
+          forwardSearcher.start();
+          if (_bidirectional) {
+            backwardSearcher->start();
+          }
+          forwardSearcher.join();
+          if (_bidirectional) {
+            backwardSearcher->join();
+          }
+
+          if (!_bingo || _intermediateSet == false) {
+            return nullptr;
+          }
+
+          Step* s = forward._pq.find(_intermediate);
+          r_vertices.push_back(_intermediate);
+
+          // FORWARD Go path back from intermediate -> start.
+          // Insert all vertices and edges at front of vector
+          // Do NOT! insert the intermediate vertex
+          while (strcmp(s->_predecessor.key, "") != 0) {
+            r_edges.push_front(s->_edge);
+            r_vertices.push_front(s->_predecessor);
+            s = forward._pq.find(s->_predecessor);
+          }
+
+          // BACKWARD Go path back from intermediate -> target.
+          // Insert all vertices and edges at back of vector
+          // Also insert the intermediate vertex
+          s = backward._pq.find(_intermediate);
+          while (strcmp(s->_predecessor.key, "") != 0) {
+            r_edges.push_back(s->_edge);
+            r_vertices.push_back(s->_predecessor);
+            s = backward._pq.find(s->_predecessor);
+          }
+          return new Path(r_vertices, r_edges, _highscore);
+        }
+
+/* Here is a proof for the correctness of this algorithm:
+ *
+ * Assume we are looking for a shortest path from vertex A to vertex B.
+ * 
+ * We do Dijkstra from both sides, thread 1 from A in forward direction and
+ * thread 2 from B in backward direction. That is, we administrate a (hash)
+ * table of distances from A to vertices in forward direction and one of
+ * distances from B to vertices in backward direction.
+ * 
+ * We get the following guarantees:
+ * 
+ * When thread 1 is working on a vertex X, then it knows the distance w
+ * from A to X.
+ * 
+ * When thread 2 is working on a vertex Y, then it knows the distance v
+ * from Y to B.
+ * 
+ * When thread 1 is working on a vertex X at distance w from A, then it has
+ * completed the work on all vertices X' at distance < w from A.
+ * 
+ * When thread 2 is working on a vertex Y at distance v to B, then it has
+ * completed the work on all vertices X' at (backward) distance < v to B.
+ * 
+ * This all follows from the standard Dijkstra algorithm.
+ * 
+ * Additionally, we do the following after we complete the normal work on a 
+ * vertex:
+ * 
+ * Thread 1 checks for each vertex X at distance w from A whether thread 2
+ * already knows it. If so, it makes sure that the highscore and intermediate
+ * are set to the total length. Thread 2 does the analogous thing.
+ * 
+ * If Thread 1 finds that vertex X (at distance v to B, say) has already
+ * been completed by thread 2, then we call bingo. Thread 2 does the
+ * analogous thing.
+ * 
+ * We need to prove that the result is a shortest path.
+ * 
+ * Assume that there is a shortest path of length <v+w from A to B. Let X'
+ * be the latest vertex on this path with distance w' < w from A and let Y'
+ * be the next one on the path. Then Y' is at distance w'+z' >= w from A
+ * and thus at distance v' < v to B:
+ * 
+ *    |     >=w      |   v'<v  |
+ *    |  w'<w  |  z' |         |
+ *    A -----> X' -> Y' -----> B
+ * 
+ * Therefore, X' has already been completed by thread 1 and Y' has
+ * already been completed by thread 2. 
+ * 
+ * Therefore, thread 1 has (in this temporal order) done:
+ * 
+ *   1a: discover Y' and store it in table 1 under mutex 1
+ *   1b: lookup X' in thread 2's table under mutex 2
+ *   1c: mark X' as complete in table 1 under mutex 1
+ * 
+ * And thread 2 has (in this temporal order) done:
+ * 
+ *   2a: discover X' and store it in table 2 under mutex 2
+ *   2b: lookup Y' in thread 1's table under mutex 1
+ *   2c: mark Y' as complete in table 2 under mutex 2
+ * 
+ * If 1b has happened before 2a, then 1a has happened before 2a and
+ * thus 2b, so thread 2 has found the highscore w'+z'+v' < v+w.
+ * Otherwise, 1b has happened after 2a and thus thread 1 has found the
+ * highscore.
+ * 
+ * Thus the highscore of this shortest path has already been set and the 
+ * algorithm is correct.
+ */ 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       public data
@@ -653,22 +1131,18 @@ namespace triagens {
         std::mutex _resultMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _intermediate, one vertex on the shortest path found
+/// @brief _intermediate, one vertex on the shortest path found, flag indicates
+/// whether or not it was set.
 ////////////////////////////////////////////////////////////////////////////////
 
-        VertexId* _intermediate;
+        bool _intermediateSet;
+        VertexId _intermediate;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      private data
 // -----------------------------------------------------------------------------
 
-        typedef triagens::basics::PriorityQueue<VertexId, Step, EdgeWeight>
-                PQueue;
-
-        struct ThreadInfo {
-          PQueue     _pq;
-          std::mutex _mutex;
-        };
+      private:
 
         ExpanderFunction _forwardExpander;
         ExpanderFunction _backwardExpander;

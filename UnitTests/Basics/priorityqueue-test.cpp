@@ -84,15 +84,15 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
 
   bool b;
 
-  b = pq.insert("a", MyValue("a", 1));
+  b = pq.insert("a", new MyValue("a", 1));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("b", MyValue("b", 2));
+  b = pq.insert("b", new MyValue("b", 2));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("c", MyValue("c", 2));
+  b = pq.insert("c", new MyValue("c", 2));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("d", MyValue("d", 4));
+  b = pq.insert("d", new MyValue("d", 4));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("c", MyValue("c", 5));
+  b = pq.insert("c", new MyValue("c", 5));
   BOOST_CHECK_EQUAL(b, false);
 
   BOOST_CHECK_EQUAL(4, pq.size());
@@ -112,31 +112,34 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
   BOOST_CHECK(p == nullptr);
 
   std::string k;
-  MyValue v("", 12);
+  MyValue* v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "a");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "a");
-  BOOST_CHECK_EQUAL(v._key, "a");
-  BOOST_CHECK_EQUAL(v._weight, 1);
+  BOOST_CHECK_EQUAL(v->_key, "a");
+  BOOST_CHECK_EQUAL(v->_weight, 1);
+  delete v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "b");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "b");
-  BOOST_CHECK_EQUAL(v._key, "b");
-  BOOST_CHECK_EQUAL(v._weight, 2);
+  BOOST_CHECK_EQUAL(v->_key, "b");
+  BOOST_CHECK_EQUAL(v->_weight, 2);
+  delete v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "c");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "c");
-  BOOST_CHECK_EQUAL(v._key, "c");
-  BOOST_CHECK_EQUAL(v._weight, 2);
+  BOOST_CHECK_EQUAL(v->_key, "c");
+  BOOST_CHECK_EQUAL(v->_weight, 2);
+  delete v;
 
   BOOST_CHECK_EQUAL(pq.size(), 1);
   BOOST_CHECK_EQUAL(pq.empty(), false);
@@ -146,8 +149,9 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "d");
-  BOOST_CHECK_EQUAL(v._key, "d");
-  BOOST_CHECK_EQUAL(v._weight, 4);
+  BOOST_CHECK_EQUAL(v->_key, "d");
+  BOOST_CHECK_EQUAL(v->_weight, 4);
+  delete v;
 
   BOOST_CHECK_EQUAL(pq.size(), 0);
   BOOST_CHECK_EQUAL(pq.empty(), true);
@@ -156,6 +160,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
   BOOST_CHECK(p == nullptr);
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, false);
+  delete v;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,15 +175,15 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
 
   bool b;
 
-  b = pq.insert("a", MyValue("a", 4));
+  b = pq.insert("a", new MyValue("a", 4));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("b", MyValue("b", 1));
+  b = pq.insert("b", new MyValue("b", 1));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("c", MyValue("c", 2));
+  b = pq.insert("c", new MyValue("c", 2));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("d", MyValue("d", 2));
+  b = pq.insert("d", new MyValue("d", 2));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("c", MyValue("c", 5));
+  b = pq.insert("c", new MyValue("c", 5));
   BOOST_CHECK_EQUAL(b, false);
 
   BOOST_CHECK_EQUAL(4, pq.size());
@@ -198,31 +203,34 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
   BOOST_CHECK(p == nullptr);
 
   std::string k;
-  MyValue v("", 12);
+  MyValue* v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "b");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "b");
-  BOOST_CHECK_EQUAL(v._key, "b");
-  BOOST_CHECK_EQUAL(v._weight, 1);
+  BOOST_CHECK_EQUAL(v->_key, "b");
+  BOOST_CHECK_EQUAL(v->_weight, 1);
+  delete v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "d");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "d");
-  BOOST_CHECK_EQUAL(v._key, "d");
-  BOOST_CHECK_EQUAL(v._weight, 2);
+  BOOST_CHECK_EQUAL(v->_key, "d");
+  BOOST_CHECK_EQUAL(v->_weight, 2);
+  delete v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "c");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "c");
-  BOOST_CHECK_EQUAL(v._key, "c");
-  BOOST_CHECK_EQUAL(v._weight, 2);
+  BOOST_CHECK_EQUAL(v->_key, "c");
+  BOOST_CHECK_EQUAL(v->_weight, 2);
+  delete v;
 
   BOOST_CHECK_EQUAL(pq.size(), 1);
   BOOST_CHECK_EQUAL(pq.empty(), false);
@@ -232,8 +240,9 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "a");
-  BOOST_CHECK_EQUAL(v._key, "a");
-  BOOST_CHECK_EQUAL(v._weight, 4);
+  BOOST_CHECK_EQUAL(v->_key, "a");
+  BOOST_CHECK_EQUAL(v->_weight, 4);
+  delete v;
 
   BOOST_CHECK_EQUAL(pq.size(), 0);
   BOOST_CHECK_EQUAL(pq.empty(), true);
@@ -242,6 +251,7 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
   BOOST_CHECK(p == nullptr);
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, false);
+  delete v;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,15 +266,15 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
 
   bool b;
 
-  b = pq.insert("a", MyValue("a", 1));
+  b = pq.insert("a", new MyValue("a", 1));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("b", MyValue("b", 2));
+  b = pq.insert("b", new MyValue("b", 2));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("c", MyValue("c", 2));
+  b = pq.insert("c", new MyValue("c", 2));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("d", MyValue("d", 4));
+  b = pq.insert("d", new MyValue("d", 4));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("c", MyValue("c", 5));
+  b = pq.insert("c", new MyValue("c", 5));
   BOOST_CHECK_EQUAL(b, false);
 
   BOOST_CHECK_EQUAL(4, pq.size());
@@ -286,31 +296,34 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   BOOST_CHECK(p == nullptr);
 
   std::string k;
-  MyValue v("", 12);
+  MyValue* v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "a");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "a");
-  BOOST_CHECK_EQUAL(v._key, "a");
-  BOOST_CHECK_EQUAL(v._weight, 1);
+  BOOST_CHECK_EQUAL(v->_key, "a");
+  BOOST_CHECK_EQUAL(v->_weight, 1);
+  delete v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "d");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "d");
-  BOOST_CHECK_EQUAL(v._key, "d");
-  BOOST_CHECK_EQUAL(v._weight, 1);
+  BOOST_CHECK_EQUAL(v->_key, "d");
+  BOOST_CHECK_EQUAL(v->_weight, 1);
+  delete v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "c");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "c");
-  BOOST_CHECK_EQUAL(v._key, "c");
-  BOOST_CHECK_EQUAL(v._weight, 2);
+  BOOST_CHECK_EQUAL(v->_key, "c");
+  BOOST_CHECK_EQUAL(v->_weight, 2);
+  delete v;
 
   BOOST_CHECK_EQUAL(pq.size(), 1);
   BOOST_CHECK_EQUAL(pq.empty(), false);
@@ -320,8 +333,9 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "b");
-  BOOST_CHECK_EQUAL(v._key, "b");
-  BOOST_CHECK_EQUAL(v._weight, 2);
+  BOOST_CHECK_EQUAL(v->_key, "b");
+  BOOST_CHECK_EQUAL(v->_weight, 2);
+  delete v;
 
   BOOST_CHECK_EQUAL(pq.size(), 0);
   BOOST_CHECK_EQUAL(pq.empty(), true);
@@ -330,6 +344,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   BOOST_CHECK(p == nullptr);
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, false);
+  delete v;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,15 +359,15 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
 
   bool b;
 
-  b = pq.insert("a", MyValue("a", 4));
+  b = pq.insert("a", new MyValue("a", 4));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("b", MyValue("b", 2));
+  b = pq.insert("b", new MyValue("b", 2));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("c", MyValue("c", 3));
+  b = pq.insert("c", new MyValue("c", 3));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("d", MyValue("d", 3));
+  b = pq.insert("d", new MyValue("d", 3));
   BOOST_CHECK_EQUAL(b, true);
-  b = pq.insert("c", MyValue("c", 5));
+  b = pq.insert("c", new MyValue("c", 5));
   BOOST_CHECK_EQUAL(b, false);
 
   BOOST_CHECK_EQUAL(4, pq.size());
@@ -374,31 +389,34 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   BOOST_CHECK(p == nullptr);
 
   std::string k;
-  MyValue v("", 12);
+  MyValue* v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "a");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "a");
-  BOOST_CHECK_EQUAL(v._key, "a");
-  BOOST_CHECK_EQUAL(v._weight, 1);
+  BOOST_CHECK_EQUAL(v->_key, "a");
+  BOOST_CHECK_EQUAL(v->_weight, 1);
+  delete v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "b");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "b");
-  BOOST_CHECK_EQUAL(v._key, "b");
-  BOOST_CHECK_EQUAL(v._weight, 2);
+  BOOST_CHECK_EQUAL(v->_key, "b");
+  BOOST_CHECK_EQUAL(v->_weight, 2);
+  delete v;
 
   p = pq.getMinimal();
   BOOST_CHECK_EQUAL(p->_key, "c");
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "c");
-  BOOST_CHECK_EQUAL(v._key, "c");
-  BOOST_CHECK_EQUAL(v._weight, 3);
+  BOOST_CHECK_EQUAL(v->_key, "c");
+  BOOST_CHECK_EQUAL(v->_weight, 3);
+  delete v;
 
   BOOST_CHECK_EQUAL(pq.size(), 1);
   BOOST_CHECK_EQUAL(pq.empty(), false);
@@ -408,8 +426,9 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "d");
-  BOOST_CHECK_EQUAL(v._key, "d");
-  BOOST_CHECK_EQUAL(v._weight, 3);
+  BOOST_CHECK_EQUAL(v->_key, "d");
+  BOOST_CHECK_EQUAL(v->_weight, 3);
+  delete v;
 
   BOOST_CHECK_EQUAL(pq.size(), 0);
   BOOST_CHECK_EQUAL(pq.empty(), true);
@@ -418,6 +437,7 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   BOOST_CHECK(p == nullptr);
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, false);
+  delete v;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

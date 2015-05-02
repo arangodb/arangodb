@@ -93,7 +93,6 @@ add_library(
     Basics/Thread.cpp
     Basics/ThreadPool.cpp
     Basics/Timing.cpp
-    Basics/Traversal.cpp
     Basics/tri-strings.cpp
     Basics/tri-zip.cpp
     Basics/Utf8Helper.cpp
