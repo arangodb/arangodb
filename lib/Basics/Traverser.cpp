@@ -188,14 +188,14 @@ class Searcher {
     Traverser* _traverser;
     Traverser::ThreadInfo& _myInfo;
     Traverser::ThreadInfo& _peerInfo;
-    Traverser::VertexId _start;
+    VertexId _start;
     Traverser::ExpanderFunction _expander;
     string _id;
 
   public:
 
     Searcher (Traverser* traverser, Traverser::ThreadInfo& myInfo, 
-              Traverser::ThreadInfo& peerInfo, Traverser::VertexId start,
+              Traverser::ThreadInfo& peerInfo, VertexId& start,
               Traverser::ExpanderFunction expander, string id)
       : _traverser(traverser), _myInfo(myInfo), 
         _peerInfo(peerInfo), _start(start), _expander(expander), _id(id) {
@@ -207,8 +207,8 @@ class Searcher {
 
   private:
 
-    void insertNeighbor (Traverser::VertexId& neighbor,
-                         Traverser::VertexId& predecessor,
+    void insertNeighbor (VertexId& neighbor,
+                         VertexId& predecessor,
                          Traverser::EdgeId& edge,
                          Traverser::EdgeWeight weight) {
 
@@ -233,7 +233,7 @@ class Searcher {
 /// @brief Lookup our current vertex in the data of our peer.
 ////////////////////////////////////////////////////////////////////////////////
 
-    void lookupPeer (Traverser::VertexId& vertex,
+    void lookupPeer (VertexId& vertex,
                      Traverser::EdgeWeight weight) {
 
       //std::lock_guard<std::mutex> guard(_peerInfo._mutex);
@@ -248,7 +248,7 @@ class Searcher {
       if (!_traverser->_highscoreSet || total < _traverser->_highscore) {
         _traverser->_highscoreSet = true;
         _traverser->_highscore = total;
-        _traverser->_intermediate = vertex;
+        _traverser->_intermediate = &vertex;
       }
 
       // Now the highscore is set!
@@ -256,7 +256,7 @@ class Searcher {
       // Did we find a solution together with the other thread?
       if (s->_done) {
         if (total <= _traverser->_highscore) {
-          _traverser->_intermediate = vertex;
+          _traverser->_intermediate = &vertex;
         }
         // Hacki says: If the highscore was set, and even if it is better
         // than total, then this observation here proves that it will never
@@ -274,7 +274,7 @@ class Searcher {
         // We have found the target, we have finished all vertices with
         // a smaller weight than this one (and did not succeed), so this
         // must be a best solution:
-        _traverser->_intermediate = vertex;
+        _traverser->_intermediate = &vertex;
         _traverser->_bingo = true;
       }
     }
@@ -287,7 +287,7 @@ class Searcher {
 
     bool oneStep () {
 
-      Traverser::VertexId v;
+      VertexId v;
       Traverser::Step s;
       bool b = _myInfo._pq.popMinimal(v, s, true);
       
@@ -359,17 +359,17 @@ Traverser::Path* Traverser::shortestPath (VertexId& start,
     }
   }
 
-  if (!_bingo || _intermediate == "") {
+  if (!_bingo || _intermediate == nullptr) {
     return nullptr;
   }
 
-  Step* s = forward._pq.find(_intermediate);
-  r_vertices.push_back(_intermediate);
+  Step* s = forward._pq.find(*_intermediate);
+  r_vertices.push_back(*_intermediate);
 
   // FORWARD Go path back from intermediate -> start.
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
-  while (s->_predecessor != "") {
+  while (!strcmp(s->_predecessor.second,"")) {
     r_edges.push_front(s->_edge);
     r_vertices.push_front(s->_predecessor);
     s = forward._pq.find(s->_predecessor);
@@ -378,8 +378,8 @@ Traverser::Path* Traverser::shortestPath (VertexId& start,
   // BACKWARD Go path back from intermediate -> target.
   // Insert all vertices and edges at back of vector
   // Also insert the intermediate vertex
-  s = backward._pq.find(_intermediate);
-  while (s->_predecessor != "") {
+  s = backward._pq.find(*_intermediate);
+  while (!strcmp(s->_predecessor.second, "")) {
     r_edges.push_back(s->_edge);
     r_vertices.push_back(s->_predecessor);
     s = backward._pq.find(s->_predecessor);
@@ -392,24 +392,25 @@ Traverser::Path* Traverser::shortestPath (VertexId& start,
 /// multi-threaded version using SearcherTwoThreads.
 ////////////////////////////////////////////////////////////////////////////////
 
-Traverser::Path* Traverser::shortestPathTwoThreads (VertexId const& start,
-                                                    VertexId const& target) {
+Traverser::Path* Traverser::shortestPathTwoThreads (VertexId& start,
+                                                    VertexId& target) {
 
   // For the result:
   std::deque<VertexId> r_vertices;
-  std::deque<VertexId> r_edges;
+  std::deque<EdgeId> r_edges;
   _highscoreSet = false;
   _highscore = 0;
   _bingo = false;
 
   // Forward with initialization:
-  string empty;
+  VertexId emptyVertex;
+  EdgeId emptyEdge;
   ThreadInfo forward;
-  forward._pq.insert(start, Step(start, empty, 0, empty));
+  forward._pq.insert(start, Step(start, emptyVertex, 0, emptyEdge));
 
   // backward with initialization:
   ThreadInfo backward;
-  backward._pq.insert(target, Step(target, empty, 0, empty));
+  backward._pq.insert(target, Step(target, emptyVertex, 0, emptyEdge));
 
   // Now the searcher threads:
   SearcherTwoThreads forwardSearcher(this, forward, backward, start,
@@ -439,7 +440,7 @@ Traverser::Path* Traverser::shortestPathTwoThreads (VertexId const& start,
   // FORWARD Go path back from intermediate -> start.
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
-  while (s->_predecessor.second != nullptr) {
+  while (!strcmp(s->_predecessor.second, "")) {
     r_edges.push_front(s->_edge);
     r_vertices.push_front(s->_predecessor);
     s = forward._pq.find(s->_predecessor);
@@ -449,7 +450,7 @@ Traverser::Path* Traverser::shortestPathTwoThreads (VertexId const& start,
   // Insert all vertices and edges at back of vector
   // Also insert the intermediate vertex
   s = backward._pq.find(*_intermediate);
-  while (s->_predecessor.second != nullptr) {
+  while (strcmp(s->_predecessor.second, "")) {
     r_edges.push_back(s->_edge);
     r_vertices.push_back(s->_predecessor);
     s = backward._pq.find(s->_predecessor);
