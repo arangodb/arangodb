@@ -419,6 +419,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string weightAttribute = "";
   double defaultWeight = 1;
   bool bidirectional = true;
+  bool multiThreaded = false;
 
   if (args.Length() == 5) {
     if (! args[4]->IsObject()) {
@@ -446,6 +447,10 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Local<v8::String> keyBidirectional = TRI_V8_ASCII_STRING("bidirectional");
     if (options->Has(keyBidirectional)) {
       bidirectional = TRI_ObjectToBoolean(options->Get(keyBidirectional));
+    }
+    v8::Local<v8::String> keyMultiThreaded = TRI_V8_ASCII_STRING("multiThreaded");
+    if (options->Has(keyMultiThreaded)) {
+      multiThreaded = TRI_ObjectToBoolean(options->Get(keyMultiThreaded));
     }
   } 
 
@@ -549,7 +554,13 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   VertexId tv(coli->_cid, const_cast<char*>(str + split + 1));
 
   Traverser traverser(*forwardExpander, *backwardExpander, bidirectional);
-  unique_ptr<Traverser::Path> path(traverser.shortestPath(sv, tv));
+  unique_ptr<Traverser::Path> path;
+  if (multiThreaded) {
+    path.reset(traverser.shortestPathTwoThreads(sv, tv));
+  }
+  else {
+    path.reset(traverser.shortestPath(sv, tv));
+  } 
   if (path.get() == nullptr) {
     res = trx.finish(res);
     v8::EscapableHandleScope scope(isolate);
