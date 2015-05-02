@@ -31,13 +31,34 @@
 #define ARANGODB_TRAVERSAL_H 1
 
 #include "Basics/Common.h"
+#include "Basics/hashes.h"
 
 #include <mutex>
+#include <functional>
 
 /// Forward declaration of typedef for VertexId.
 namespace triagens {
   namespace basics {
-    typedef std::pair<uint64_t, std::string> VertexId;
+    struct VertexId {
+      uint64_t first;
+      const char* second;
+
+      VertexId() {}
+
+      VertexId(
+        uint64_t first,
+        const char* second
+      ):first(first), second(second) {
+
+      }
+
+      // Find unnecessary copies
+//       VertexId(const VertexId&) = delete;
+      VertexId(const VertexId& v) : first(v.first), second(v.second) { std::cout << "move failed!\n";}
+      VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
+
+    };
+    // typedef std::pair<uint64_t, std::string> VertexId;
   }
 }
 
@@ -48,10 +69,20 @@ namespace std {
         size_t operator()(const triagens::basics::VertexId & s) const 
         {
           size_t h1 = std::hash<uint64_t>()(s.first);
-          size_t h2 = std::hash<std::string>()(s.second);
+          size_t h2 = TRI_FnvHashString(s.second);
           return h1 ^ ( h2 << 1 );
         }
     };
+
+   template<>
+    struct equal_to<triagens::basics::VertexId> {
+      public:
+        bool operator()(const triagens::basics::VertexId & s, const triagens::basics::VertexId & t) const 
+        {
+          return s.first == t.first && strcmp(s.second, t.second);
+        }
+    };
+    
 }
 
 namespace triagens {
@@ -510,9 +541,9 @@ namespace triagens {
         Step () : _done(false) {
         }
 
-        Step (VertexId const& vert, VertexId const& pred,
+        Step (VertexId& vert, VertexId& pred,
               EdgeWeight weig, EdgeId const& edge)
-          : _vertex(vert), _predecessor(pred), _weight(weig), _edge(edge),
+          : _vertex(std::move(vert)), _predecessor(std::move(pred)), _weight(weig), _edge(edge),
             _done(false) {
         }
 
@@ -539,7 +570,7 @@ namespace triagens {
 /// @brief callback to find neighbours
 ////////////////////////////////////////////////////////////////////////////////
 
-      typedef std::function<void(VertexId V, std::vector<Step>& result)>
+      typedef std::function<void(VertexId& V, std::vector<Step>& result)>
               ExpanderFunction;
 
 // -----------------------------------------------------------------------------
@@ -582,8 +613,8 @@ namespace triagens {
         // Caller has to free the result
         // nullptr indicates there is no path
         Path* shortestPath (
-          VertexId const& start,
-          VertexId const& target
+          VertexId& start,
+          VertexId& target
         );
 
 // -----------------------------------------------------------------------------
@@ -618,7 +649,7 @@ namespace triagens {
 /// @brief _intermediate, one vertex on the shortest path found
 ////////////////////////////////////////////////////////////////////////////////
 
-        VertexId _intermediate;
+        VertexId* _intermediate;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      private data
