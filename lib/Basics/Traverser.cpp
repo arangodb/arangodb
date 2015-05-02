@@ -47,10 +47,10 @@ class Searcher {
   public:
 
     Searcher (Traverser* traverser, Traverser::ThreadInfo& myInfo, 
-              Traverser::ThreadInfo& peerInfo, VertexId start,
+              Traverser::ThreadInfo& peerInfo, VertexId& start,
               Traverser::ExpanderFunction expander, string id)
       : _traverser(traverser), _myInfo(myInfo), 
-        _peerInfo(peerInfo), _start(start), _expander(expander), _id(id) {
+        _peerInfo(peerInfo), _start(std::move(start)), _expander(expander), _id(id) {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ class Searcher {
       if (!_traverser->_highscoreSet || total < _traverser->_highscore) {
         _traverser->_highscoreSet = true;
         _traverser->_highscore = total;
-        _traverser->_intermediate = vertex;
+        _traverser->_intermediate = &vertex;
       }
 
       // Now the highscore is set!
@@ -110,7 +110,7 @@ class Searcher {
       // Did we find a solution together with the other thread?
       if (s->_done) {
         if (total <= _traverser->_highscore) {
-          _traverser->_intermediate = vertex;
+          _traverser->_intermediate = &vertex;
         }
         // Hacki says: If the highscore was set, and even if it is better
         // than total, then this observation here proves that it will never
@@ -128,7 +128,7 @@ class Searcher {
         // We have found the target, we have finished all vertices with
         // a smaller weight than this one (and did not succeed), so this
         // must be a best solution:
-        _traverser->_intermediate = vertex;
+        _traverser->_intermediate = &vertex;
         _traverser->_bingo = true;
       }
     }
@@ -187,8 +187,8 @@ class Searcher {
 /// @brief return the shortest path between the start and target vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
-Traverser::Path* Traverser::shortestPath (VertexId const& start,
-                                          VertexId const& target) {
+Traverser::Path* Traverser::shortestPath (VertexId& start,
+                                          VertexId& target) {
 
   // For the result:
   std::deque<VertexId> r_vertices;
@@ -224,18 +224,17 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
     backwardSearcher->join();
   }
 
-  if (!_bingo || _intermediate.second == "") {
-    cout << !_bingo << " vs " << _intermediate.second << endl;
+  if (!_bingo || _intermediate == nullptr) {
     return nullptr;
   }
 
-  Step* s = forward._pq.find(_intermediate);
-  r_vertices.push_back(_intermediate);
+  Step* s = forward._pq.find(*_intermediate);
+  r_vertices.push_back(*_intermediate);
 
   // FORWARD Go path back from intermediate -> start.
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
-  while (s->_predecessor.second != "") {
+  while (s->_predecessor.second != nullptr) {
     r_edges.push_front(s->_edge);
     r_vertices.push_front(s->_predecessor);
     s = forward._pq.find(s->_predecessor);
@@ -244,8 +243,8 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
   // BACKWARD Go path back from intermediate -> target.
   // Insert all vertices and edges at back of vector
   // Also insert the intermediate vertex
-  s = backward._pq.find(_intermediate);
-  while (s->_predecessor.second != "") {
+  s = backward._pq.find(*_intermediate);
+  while (s->_predecessor.second != nullptr) {
     r_edges.push_back(s->_edge);
     r_vertices.push_back(s->_predecessor);
     s = backward._pq.find(s->_predecessor);
