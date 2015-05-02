@@ -937,7 +937,8 @@ namespace triagens {
           // FORWARD Go path back from intermediate -> start.
           // Insert all vertices and edges at front of vector
           // Do NOT! insert the intermediate vertex
-          while (strcmp(s->_predecessor.key,"") != 0) {
+          while (s->_predecessor.key != nullptr &&
+                 strcmp(s->_predecessor.key,"") != 0) {
             r_edges.push_front(s->_edge);
             r_vertices.push_front(s->_predecessor);
             s = forward._pq.find(s->_predecessor);
@@ -947,7 +948,8 @@ namespace triagens {
           // Insert all vertices and edges at back of vector
           // Also insert the intermediate vertex
           s = backward._pq.find(_intermediate);
-          while (strcmp(s->_predecessor.key, "") != 0) {
+          while (s->_predecessor.key != nullptr &&
+                 strcmp(s->_predecessor.key, "") != 0) {
             r_edges.push_back(s->_edge);
             r_vertices.push_back(s->_predecessor);
             s = backward._pq.find(s->_predecessor);
@@ -1013,7 +1015,8 @@ namespace triagens {
           // FORWARD Go path back from intermediate -> start.
           // Insert all vertices and edges at front of vector
           // Do NOT! insert the intermediate vertex
-          while (strcmp(s->_predecessor.key, "") != 0) {
+          while (s->_predecessor.key != nullptr &&
+                 strcmp(s->_predecessor.key, "") != 0) {
             r_edges.push_front(s->_edge);
             r_vertices.push_front(s->_predecessor);
             s = forward._pq.find(s->_predecessor);
@@ -1023,7 +1026,8 @@ namespace triagens {
           // Insert all vertices and edges at back of vector
           // Also insert the intermediate vertex
           s = backward._pq.find(_intermediate);
-          while (strcmp(s->_predecessor.key, "") != 0) {
+          while (s->_predecessor.key != nullptr &&
+                 strcmp(s->_predecessor.key, "") != 0) {
             r_edges.push_back(s->_edge);
             r_vertices.push_back(s->_predecessor);
             s = backward._pq.find(s->_predecessor);
