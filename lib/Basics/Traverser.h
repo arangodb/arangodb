@@ -54,8 +54,8 @@ namespace triagens {
 
       // Find unnecessary copies
 //       VertexId(const VertexId&) = delete;
-      VertexId(const VertexId& v) : first(v.first), second(v.second) { std::cout << "move failed!\n";}
-      VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
+      // VertexId(const VertexId& v) : first(v.first), second(v.second) { std::cout << "move failed!\n";}
+      // VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
 
     };
     // typedef std::pair<uint64_t, std::string> VertexId;

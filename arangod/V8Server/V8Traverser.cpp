@@ -86,7 +86,7 @@ class EdgeCollectionInfo {
     };
 
     vector<TRI_doc_mptr_copy_t> getEdges (VertexId& vertexId) {
-      return TRI_LookupEdgesDocumentCollection(_edgeCollection, _direction, vertexId.first, (char *) vertexId.second.c_str());
+      return TRI_LookupEdgesDocumentCollection(_edgeCollection, _direction, vertexId.first, (char *) vertexId.second);
     };
 
 };
@@ -331,7 +331,7 @@ static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& 
   v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
 
   for (size_t j = 0;  j < vn;  ++j) {
-    vertices->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.vertices[j].second.c_str()));
+    vertices->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.vertices[j].second));
   }
   result->Set(TRI_V8_STRING("vertices"), vertices);
 
