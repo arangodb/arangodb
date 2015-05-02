@@ -45,6 +45,51 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
+struct VertexId {
+  TRI_voc_cid_t cid;
+  char const*   key;
+
+  VertexId() : cid(0), key(nullptr) {
+  }
+
+  VertexId( TRI_voc_cid_t cid, char const* key) 
+    : cid(cid), key(key) {
+  }
+
+  // Find unnecessary copies
+  //   VertexId(const VertexId&) = delete;
+  // VertexId(const VertexId& v) : first(v.first), second(v.second) { std::cout << "move failed!\n";}
+  // VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
+
+};
+
+namespace std {
+  template<>
+  struct hash<VertexId> {
+    public:
+      size_t operator()(VertexId const& s) const {
+        size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
+        size_t h2 = TRI_FnvHashString(s.key);
+        return h1 ^ ( h2 << 1 );
+      }
+  };
+
+  template<>
+  struct equal_to<VertexId> {
+    public:
+      bool operator()(VertexId const& s, VertexId const& t) const {
+        return s.cid == t.cid && strcmp(s.key, t.key) == 0;
+      }
+  };
+}
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef the template instanciation of the Traverser
+////////////////////////////////////////////////////////////////////////////////
+
+typedef triagens::basics::Traverser<VertexId, std::string, double> 
+        ArangoDBTraverser;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to weight an edge
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,16 +102,19 @@ class EdgeCollectionInfo {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Edge direction for this collection
 ////////////////////////////////////////////////////////////////////////////////
+
     TRI_edge_direction_e _direction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prefix for edge collection id
 ////////////////////////////////////////////////////////////////////////////////
+
     string _edgeIdPrefix;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge collection
 ////////////////////////////////////////////////////////////////////////////////
+
     TRI_document_collection_t* _edgeCollection;
 
   public:
@@ -78,16 +126,17 @@ class EdgeCollectionInfo {
     )  : _direction(direction), 
        _edgeCollection(edgeCollection) {
       _edgeIdPrefix = edgeCollectionName + "/";
-    };
+    }
 
-    Traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
+    std::string extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
       char const* key = TRI_EXTRACT_MARKER_KEY(&ptr);
       return _edgeIdPrefix + key;
-    };
+    }
 
     vector<TRI_doc_mptr_copy_t> getEdges (VertexId& vertexId) {
-      return TRI_LookupEdgesDocumentCollection(_edgeCollection, _direction, vertexId.first, (char *) vertexId.second);
-    };
+      return TRI_LookupEdgesDocumentCollection(_edgeCollection,
+                   _direction, vertexId.cid, const_cast<char*>(vertexId.key));
+    }
 
 };
 
@@ -95,6 +144,7 @@ class EdgeCollectionInfo {
 /// @brief Define edge weight by the number of hops.
 ///        Respectively 1 for any edge.
 ////////////////////////////////////////////////////////////////////////////////
+
 class HopWeightCalculator {
   public: 
     HopWeightCalculator() {};
@@ -102,9 +152,10 @@ class HopWeightCalculator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Callable weight calculator for edge
 ////////////////////////////////////////////////////////////////////////////////
+
     double operator() (TRI_doc_mptr_copy_t& edge) {
       return 1;
-    };
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,11 +178,12 @@ class AttributeWeightCalculator {
         _shaper(shaper)
     {
       _shape_pid = _shaper->lookupAttributePathByName(_shaper, keyWeight.c_str());
-    };
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Callable weight calculator for edge
 ////////////////////////////////////////////////////////////////////////////////
+
     double operator() (TRI_doc_mptr_copy_t& edge) {
       if (_shape_pid == 0) {
         return _defaultWeight;
@@ -153,32 +205,27 @@ class AttributeWeightCalculator {
       double realResult = json->_value._number;
       TRI_FreeJson(_shaper->_memoryZone, json);
       return realResult ;
-    };
+    }
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the _from Id out of mptr
+/// @brief extract the _from Id out of mptr, we return an RValue reference
+/// to explicitly allow move semantics.
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
-  VertexId res(
-    TRI_EXTRACT_MARKER_FROM_CID(&ptr),
-    TRI_EXTRACT_MARKER_FROM_KEY(&ptr)
-  );
-  return res;
+  return VertexId(TRI_EXTRACT_MARKER_FROM_CID(&ptr),
+                  TRI_EXTRACT_MARKER_FROM_KEY(&ptr));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the _to Id out of mptr
+/// @brief extract the _to Id out of mptr, we return an RValue reference
+/// to explicitly allow move semantics.
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline VertexId extractToId(TRI_doc_mptr_copy_t& ptr) {
-  VertexId res(
-    TRI_EXTRACT_MARKER_TO_CID(&ptr),
-    TRI_EXTRACT_MARKER_TO_KEY(&ptr)
-  );
-  return res;
+  return VertexId(TRI_EXTRACT_MARKER_TO_CID(&ptr),
+                  TRI_EXTRACT_MARKER_TO_KEY(&ptr));
 };
 
 
@@ -218,7 +265,7 @@ class MultiCollectionEdgeExpander {
     };
 
     void operator() (VertexId& source,
-                     vector<Traverser::Step>& result) {
+                     vector<ArangoDBTraverser::Step*>& result) {
       TransactionBase fake(true); // Fake a transaction to please checks. 
                                   // This is due to multi-threading
 
@@ -235,13 +282,14 @@ class MultiCollectionEdgeExpander {
             auto cand = candidates.find(t);
             if (cand == candidates.end()) {
               // Add weight
-              result.emplace_back(t, s, currentWeight, edgeCollection->extractEdgeId(edges[j]));
+              result.push_back(new ArangoDBTraverser::Step(t, s, currentWeight,
+                               edgeCollection->extractEdgeId(edges[j])));
               candidates.emplace(t, result.size() - 1);
             } else {
               // Compare weight
-              auto oldWeight = result[cand->second].weight();
+              auto oldWeight = result[cand->second]->weight();
               if (currentWeight < oldWeight) {
-                result[cand->second].setWeight(currentWeight);
+                result[cand->second]->setWeight(currentWeight);
               }
             }
           };
@@ -282,13 +330,12 @@ class SimpleEdgeExpander {
                        TRI_document_collection_t* edgeCollection,
                        string edgeCollectionName,
                        WeightCalculatorFunction weighter)
-      : weighter(weighter)
-    {
+      : weighter(weighter) {
       _edgeCollection = new EdgeCollectionInfo(direction, edgeCollectionName, edgeCollection);
     };
 
     void operator() (VertexId& source,
-                     vector<Traverser::Step>& result) {
+                     vector<ArangoDBTraverser::Step*>& result) {
       TransactionBase fake(true); // Fake a transaction to please checks. 
                                   // This is due to multi-threading
       auto edges = _edgeCollection->getEdges(source); 
@@ -296,20 +343,21 @@ class SimpleEdgeExpander {
       equal_to<VertexId> eq;
       unordered_map<VertexId, size_t> candidates;
       for (size_t j = 0;  j < edges.size(); ++j) {
-        VertexId&& from = extractFromId(edges[j]);
-        VertexId&& to = extractToId(edges[j]);
+        VertexId from = extractFromId(edges[j]);
+        VertexId to = extractToId(edges[j]);
         double currentWeight = weighter(edges[j]);
         auto inserter = [&](VertexId& s, VertexId& t) {
           auto cand = candidates.find(t);
           if (cand == candidates.end()) {
             // Add weight
-            result.emplace_back(t, s, currentWeight, _edgeCollection->extractEdgeId(edges[j]));
+            result.push_back(new ArangoDBTraverser::Step(t, s, currentWeight, 
+                             _edgeCollection->extractEdgeId(edges[j])));
             candidates.emplace(t, result.size() - 1);
           } else {
             // Compare weight
-            auto oldWeight = result[cand->second].weight();
+            auto oldWeight = result[cand->second]->weight();
             if (currentWeight < oldWeight) {
-              result[cand->second].setWeight(currentWeight);
+              result[cand->second]->setWeight(currentWeight);
             }
           }
         };
@@ -323,7 +371,8 @@ class SimpleEdgeExpander {
     } 
 };
 
-static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& p) {
+static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, 
+                                         ArangoDBTraverser::Path& p) {
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -331,7 +380,7 @@ static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& 
   v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
 
   for (size_t j = 0;  j < vn;  ++j) {
-    vertices->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.vertices[j].second));
+    vertices->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.vertices[j].key));
   }
   result->Set(TRI_V8_STRING("vertices"), vertices);
 
@@ -361,6 +410,10 @@ struct LocalCollectionGuard {
   TRI_vocbase_col_t* _collection;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Implementation of Dijkstra's algorithm for shortest path
+////////////////////////////////////////////////////////////////////////////////
+
 void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -369,7 +422,6 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_SHORTEST_PATH(<vertexcollection>, <edgecollection>, <start>, <end>, <options>)");
   }
 
-  std::unique_ptr<char[]> key;
   TRI_vocbase_t* vocbase;
   TRI_vocbase_col_t const* col = nullptr;
 
@@ -419,7 +471,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string weightAttribute = "";
   double defaultWeight = 1;
   bool bidirectional = true;
-  bool multiThreaded = false;
+  bool multiThreaded = true;
 
   if (args.Length() == 5) {
     if (! args[4]->IsObject()) {
@@ -492,7 +544,8 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  TRI_document_collection_t* ecol = trx.trxCollection(col->_cid)->_collection->_collection;
+  TRI_document_collection_t* ecol 
+    = trx.trxCollection(col->_cid)->_collection->_collection;
   CollectionNameResolver resolver1(vocbase);
   CollectionNameResolver resolver2(vocbase);
   TRI_edge_direction_e forward;
@@ -518,8 +571,10 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   } else {
     weighter = HopWeightCalculator();
   }
-  forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, edgeCollectionName, weighter));
-  backwardExpander.reset(new SimpleEdgeExpander(backward, ecol, edgeCollectionName, weighter));
+  forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, 
+                                           edgeCollectionName, weighter));
+  backwardExpander.reset(new SimpleEdgeExpander(backward, ecol,
+                                           edgeCollectionName, weighter));
 
   // Transform string ids to VertexIds
   // Needs refactoring!
@@ -551,10 +606,12 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // collection not found
     throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  VertexId tv(coli->_cid, const_cast<char*>(str + split + 1));
+  VertexId tv(coli->_cid, str + split + 1);
 
-  Traverser traverser(*forwardExpander, *backwardExpander, bidirectional);
-  unique_ptr<Traverser::Path> path;
+  ArangoDBTraverser traverser(*forwardExpander, 
+                              *backwardExpander,
+                              bidirectional);
+  unique_ptr<ArangoDBTraverser::Path> path;
   if (multiThreaded) {
     path.reset(traverser.shortestPathTwoThreads(sv, tv));
   }
@@ -571,3 +628,4 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   TRI_V8_RETURN(result);
 }
+
