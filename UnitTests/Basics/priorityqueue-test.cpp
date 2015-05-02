@@ -160,7 +160,6 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
   BOOST_CHECK(p == nullptr);
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, false);
-  delete v;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,7 +250,6 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
   BOOST_CHECK(p == nullptr);
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, false);
-  delete v;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,7 +342,6 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   BOOST_CHECK(p == nullptr);
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, false);
-  delete v;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,7 +434,6 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   BOOST_CHECK(p == nullptr);
   b = pq.popMinimal(k, v);
   BOOST_CHECK_EQUAL(b, false);
-  delete v;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
