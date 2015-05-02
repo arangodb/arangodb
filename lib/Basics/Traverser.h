@@ -620,8 +620,8 @@ namespace triagens {
         // Caller has to free the result
         // nullptr indicates there is no path
         Path* shortestPathTwoThreads (
-          VertexId const& start,
-          VertexId const& target
+          VertexId& start,
+          VertexId& target
         );
 
 // -----------------------------------------------------------------------------
