@@ -31,11 +31,82 @@
 #define ARANGODB_V8_TRAVERSER_H 1
 
 #include "Basics/Common.h"
+#include "Traverser.h"
+
+namespace triagens {
+  namespace basics {
+    namespace traverser {
+      struct ShortestPathOptions {
+        std::string direction;
+        bool useWeight;
+        std::string weightAttribute;
+        double defaultWeight;
+        bool bidirectional;
+        bool multiThreaded;
+
+        ShortestPathOptions() :
+          direction("outbound"),
+          useWeight(false),
+          weightAttribute(""),
+          defaultWeight(1),
+          bidirectional(true),
+          multiThreaded(true) {
+        }
+
+      };
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Implementation of Dijkstra's algorithm for shortest path
+/// @brief Template for a vertex id. Is simply a pair of cid and key
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args);
+struct VertexId {
+  TRI_voc_cid_t cid;
+  char const*   key;
+
+  VertexId() : cid(0), key(nullptr) {
+  }
+
+  VertexId( TRI_voc_cid_t cid, char const* key) 
+    : cid(cid), key(key) {
+  }
+
+  // Find unnecessary copies
+  //   VertexId(const VertexId&) = delete;
+  // VertexId(const VertexId& v) : first(v.first), second(v.second) { std::cout << "move failed!\n";}
+  // VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef the template instanciation of the PathFinder
+////////////////////////////////////////////////////////////////////////////////
+
+typedef triagens::basics::PathFinder<VertexId, std::string, double> 
+        ArangoDBPathFinder;
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Wrapper for the shortest path computation
+////////////////////////////////////////////////////////////////////////////////
+std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
+  v8::Isolate* isolate,
+  TRI_vocbase_t* vocbase,
+  std::string const& vertexCollectionName,
+  std::string const& edgeCollectionName,
+  std::string const& startVertex,
+  std::string const& targetVertex,
+  triagens::basics::traverser::ShortestPathOptions& opts
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Wrapper for the neighbors computation
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RunNeighborsSearch (const v8::FunctionCallbackInfo<v8::Value>& args);
 
 #endif
