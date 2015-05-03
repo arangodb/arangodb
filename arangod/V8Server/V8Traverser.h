@@ -107,6 +107,12 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
 /// @brief Wrapper for the neighbors computation
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RunNeighborsSearch (const v8::FunctionCallbackInfo<v8::Value>& args);
+std::vector<VertexId> TRI_RunNeighborsSearch (
+  v8::Isolate* isolate,
+  TRI_vocbase_t* vocbase,
+  std::string const& vertexCollectionName,
+  std::string const& edgeCollectionName,
+  std::string const& startVertex
+);
 
 #endif
