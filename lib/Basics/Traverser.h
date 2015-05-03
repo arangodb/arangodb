@@ -446,11 +446,11 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   class Traverser
+// --SECTION--                                                  class PathFinder
 // -----------------------------------------------------------------------------
 
     template <typename VertexId, typename EdgeId, typename EdgeWeight>
-    class Traverser {
+    class PathFinder {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             types
@@ -549,7 +549,7 @@ namespace triagens {
 
         class SearcherTwoThreads {
 
-            Traverser* _traverser;
+            PathFinder* _pathFinder;
             ThreadInfo& _myInfo;
             ThreadInfo& _peerInfo;
             VertexId _start;
@@ -558,13 +558,13 @@ namespace triagens {
 
           public:
 
-            SearcherTwoThreads (Traverser* traverser, 
+            SearcherTwoThreads (PathFinder* pathFinder, 
                                 ThreadInfo& myInfo, 
                                 ThreadInfo& peerInfo,
                                 VertexId& start,
                                 ExpanderFunction expander,
                                 std::string id)
-              : _traverser(traverser), _myInfo(myInfo), 
+              : _pathFinder(pathFinder), _myInfo(myInfo), 
                 _peerInfo(peerInfo), _start(std::move(start)),
                 _expander(expander), _id(id) {
             }
@@ -612,26 +612,26 @@ namespace triagens {
               EdgeWeight total = s->weight() + weight;
 
               // Update the highscore:
-              std::lock_guard<std::mutex> guard2(_traverser->_resultMutex);
-              if (!_traverser->_highscoreSet || total < _traverser->_highscore) {
-                _traverser->_highscoreSet = true;
-                _traverser->_highscore = total;
-                _traverser->_intermediate = vertex;
-                _traverser->_intermediateSet = true;
+              std::lock_guard<std::mutex> guard2(_pathFinder->_resultMutex);
+              if (!_pathFinder->_highscoreSet || total < _pathFinder->_highscore) {
+                _pathFinder->_highscoreSet = true;
+                _pathFinder->_highscore = total;
+                _pathFinder->_intermediate = vertex;
+                _pathFinder->_intermediateSet = true;
               }
 
               // Now the highscore is set!
 
               // Did we find a solution together with the other thread?
               if (s->_done) {
-                if (total <= _traverser->_highscore) {
-                  _traverser->_intermediate = vertex;
-                  _traverser->_intermediateSet = true;
+                if (total <= _pathFinder->_highscore) {
+                  _pathFinder->_intermediate = vertex;
+                  _pathFinder->_intermediateSet = true;
                 }
                 // Hacki says: If the highscore was set, and even if
                 // it is better than total, then this observation here
                 // proves that it will never be better, so: BINGO.
-                _traverser->_bingo = true;
+                _pathFinder->_bingo = true;
                 // We found a way, but somebody else found a better way, so
                 // this is not the shortest path
                 return;
@@ -644,9 +644,9 @@ namespace triagens {
                 // We have found the target, we have finished all
                 // vertices with a smaller weight than this one (and did
                 // not succeed), so this must be a best solution:
-                _traverser->_intermediate = vertex;
-                _traverser->_intermediateSet = true;
-                _traverser->_bingo = true;
+                _pathFinder->_intermediate = vertex;
+                _pathFinder->_intermediateSet = true;
+                _pathFinder->_bingo = true;
               }
             }
 
@@ -665,7 +665,7 @@ namespace triagens {
 
               // Iterate while no bingo found and
               // there still is a vertex on the stack.
-              while (!_traverser->_bingo && b) {
+              while (!_pathFinder->_bingo && b) {
                 neighbors.clear();
                 _expander(v, neighbors);
                 for (auto* neighbor : neighbors) {
@@ -683,7 +683,7 @@ namespace triagens {
               // 2) This queue is empty => if there would be a
               //    path we would have found it here
               //    => No path possible. Set bingo, intermediate is empty.
-              _traverser->_bingo = true;
+              _pathFinder->_bingo = true;
             }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -716,7 +716,7 @@ namespace triagens {
 
         class Searcher {
 
-            Traverser* _traverser;
+            PathFinder* _pathFinder;
             ThreadInfo& _myInfo;
             ThreadInfo& _peerInfo;
             VertexId _start;
@@ -725,10 +725,10 @@ namespace triagens {
 
           public:
 
-            Searcher (Traverser* traverser, ThreadInfo& myInfo, 
+            Searcher (PathFinder* pathFinder, ThreadInfo& myInfo, 
                       ThreadInfo& peerInfo, VertexId& start,
                       ExpanderFunction expander, std::string id)
-              : _traverser(traverser), _myInfo(myInfo), 
+              : _pathFinder(pathFinder), _myInfo(myInfo), 
                 _peerInfo(peerInfo), _start(start), _expander(expander),
                 _id(id) {
             }
@@ -773,26 +773,26 @@ namespace triagens {
               EdgeWeight total = s->weight() + weight;
 
               // Update the highscore:
-              if (!_traverser->_highscoreSet || 
-                  total < _traverser->_highscore) {
-                _traverser->_highscoreSet = true;
-                _traverser->_highscore = total;
-                _traverser->_intermediate = vertex;
-                _traverser->_intermediateSet = true;
+              if (!_pathFinder->_highscoreSet || 
+                  total < _pathFinder->_highscore) {
+                _pathFinder->_highscoreSet = true;
+                _pathFinder->_highscore = total;
+                _pathFinder->_intermediate = vertex;
+                _pathFinder->_intermediateSet = true;
               }
 
               // Now the highscore is set!
 
               // Did we find a solution together with the other thread?
               if (s->_done) {
-                if (total <= _traverser->_highscore) {
-                  _traverser->_intermediate = vertex;
-                  _traverser->_intermediateSet = true;
+                if (total <= _pathFinder->_highscore) {
+                  _pathFinder->_intermediate = vertex;
+                  _pathFinder->_intermediateSet = true;
                 }
                 // Hacki says: If the highscore was set, and even if
                 // it is better than total, then this observation here
                 // proves that it will never be better, so: BINGO.
-                _traverser->_bingo = true;
+                _pathFinder->_bingo = true;
                 // We found a way, but somebody else found a better way,
                 // so this is not the shortest path
                 return;
@@ -805,9 +805,9 @@ namespace triagens {
                 // We have found the target, we have finished all
                 // vertices with a smaller weight than this one (and did
                 // not succeed), so this must be a best solution:
-                _traverser->_intermediate = vertex;
-                _traverser->_intermediateSet = true;
-                _traverser->_bingo = true;
+                _pathFinder->_intermediate = vertex;
+                _pathFinder->_intermediateSet = true;
+                _pathFinder->_bingo = true;
               }
             }
 
@@ -825,13 +825,13 @@ namespace triagens {
               
               std::vector<Step*> neighbors;
 
-              if (_traverser->_bingo || ! b) {
+              if (_pathFinder->_bingo || ! b) {
                 // We can leave this functino only under 2 conditions:
                 // 1) already bingo==true => bingo = true no effect
                 // 2) This queue is empty => if there would be a
                 //    path we would have found it here
                 //    => No path possible. Set bingo, intermediate is empty.
-                _traverser->_bingo = true;
+                _pathFinder->_bingo = true;
                 return false;
               }
 
@@ -849,14 +849,14 @@ namespace triagens {
         };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                           Traverser: constructors and destructors
+// --SECTION--                          PathFinder: constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the Traverser
+/// @brief create the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
-        Traverser (ExpanderFunction forwardExpander,
+        PathFinder (ExpanderFunction forwardExpander,
                    ExpanderFunction backwardExpander,
                    bool bidirectional = true) 
           : _highscoreSet(false),
@@ -873,7 +873,7 @@ namespace triagens {
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~Traverser () {
+        ~PathFinder () {
         };
 
 // -----------------------------------------------------------------------------

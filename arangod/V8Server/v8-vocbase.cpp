@@ -1479,13 +1479,138 @@ static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms an ArangoDBPathFinder Path to v8 json values
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, 
+                                         ArangoDBPathFinder::Path& p) {
+  v8::EscapableHandleScope scope(isolate);
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
+  v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
+
+  for (size_t j = 0;  j < vn;  ++j) {
+    vertices->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.vertices[j].key));
+  }
+  result->Set(TRI_V8_STRING("vertices"), vertices);
+
+  uint32_t const en = static_cast<uint32_t>(p.edges.size());
+  v8::Handle<v8::Array> edges = v8::Array::New(isolate, static_cast<int>(en));
+
+  for (size_t j = 0;  j < en;  ++j) {
+    edges->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.edges[j].c_str()));
+  }
+  result->Set(TRI_V8_STRING("edges"), edges);
+  result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, p.weight));
+
+  return scope.Escape<v8::Value>(result);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Executes a shortest Path Traversal
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& args) {
-   TRI_RunDijkstraSearch(args);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() < 4 || args.Length() > 5) {
+    TRI_V8_THROW_EXCEPTION_USAGE("CPP_SHORTEST_PATH(<vertexcollection>, <edgecollection>, <start>, <end>, <options>)");
+  }
+
+  TRI_vocbase_t* vocbase;
+
+  vocbase = GetContextVocBase(isolate);
+
+  // get the vertex collection
+  if (! args[0]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <vertexcollection>");
+  }
+  string vertexCollectionName = TRI_ObjectToString(args[0]);
+
+  // get the edge collection
+  if (! args[1]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <edgecollection>");
+  }
+  string const edgeCollectionName = TRI_ObjectToString(args[1]);
+
+  vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (! args[2]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <startVertex>");
+  }
+  string const startVertex = TRI_ObjectToString(args[2]);
+ 
+  if (! args[3]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <targetVertex>");
+  }
+  string const targetVertex = TRI_ObjectToString(args[3]);
+
+  traverser::ShortestPathOptions opts;
+
+  if (args.Length() == 5) {
+    if (! args[4]->IsObject()) {
+      TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
+    }
+    v8::Handle<v8::Object> options = args[4]->ToObject();
+    v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
+    v8::Local<v8::String> keyWeight= TRI_V8_ASCII_STRING("distance");
+    v8::Local<v8::String> keyDefaultWeight= TRI_V8_ASCII_STRING("defaultDistance");
+
+    if (options->Has(keyDirection) ) {
+      opts.direction = TRI_ObjectToString(options->Get(keyDirection));
+      if (   opts.direction != "outbound"
+          && opts.direction != "inbound"
+          && opts.direction != "any"
+         ) {
+        TRI_V8_THROW_TYPE_ERROR("expecting direction to be 'outbound', 'inbound' or 'any'");
+      }
+    }
+    if (options->Has(keyWeight) && options->Has(keyDefaultWeight) ) {
+      opts.useWeight = true;
+      opts.weightAttribute = TRI_ObjectToString(options->Get(keyWeight));
+      opts.defaultWeight = TRI_ObjectToDouble(options->Get(keyDefaultWeight));
+    }
+    v8::Local<v8::String> keyBidirectional = TRI_V8_ASCII_STRING("bidirectional");
+    if (options->Has(keyBidirectional)) {
+      opts.bidirectional = TRI_ObjectToBoolean(options->Get(keyBidirectional));
+    }
+    v8::Local<v8::String> keyMultiThreaded = TRI_V8_ASCII_STRING("multiThreaded");
+    if (options->Has(keyMultiThreaded)) {
+      opts.multiThreaded = TRI_ObjectToBoolean(options->Get(keyMultiThreaded));
+    }
+  } 
+  unique_ptr<ArangoDBPathFinder::Path> path = TRI_RunShortestPathSearch(
+    isolate,
+    vocbase,
+    vertexCollectionName,
+    edgeCollectionName,
+    startVertex,
+    targetVertex,
+    opts
+  );
+
+  if (path.get() == nullptr) {
+    v8::EscapableHandleScope scope(isolate);
+    TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Object::New(isolate)));
+  }
+  auto result = pathIdsToV8(isolate, *path);
+
+  TRI_V8_RETURN(result);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Executes a shortest Path Traversal
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) {
+   TRI_RunNeighborsSearch(args);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sleeps and checks for query abortion in between
