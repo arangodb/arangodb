@@ -1650,19 +1650,19 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock REST_DOCUMENT_DELETE
-/// @brief deletes a document
+/// @brief removes a document
 ///
-/// @RESTHEADER{DELETE /_api/document/{document-handle}, Deletes document}
+/// @RESTHEADER{DELETE /_api/document/{document-handle}, Removes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// Deletes the document identified by *document-handle*.
+/// Removes the document identified by *document-handle*.
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally delete a document based on a target revision id by
+/// You can conditionally remove a document based on a target revision id by
 /// using the *rev* URL parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
@@ -1671,18 +1671,18 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// documents (see replacing documents for more details).
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been synced to disk.
+/// Wait until deletion operation has been synced to disk.
 ///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally delete a document based on a target revision id by
+/// You can conditionally remove a document based on a target revision id by
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the deleted document, *_key* contains the key which 
+/// *document-handle* of the removed document, *_key* contains the key which 
 /// uniquely identifies a document in a given collection, and the attribute *_rev*
 /// contains the new document revision.
 ///
@@ -1695,11 +1695,11 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the document was deleted successfully and *waitForSync* was
+/// is returned if the document was removed successfully and *waitForSync* was
 /// *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was deleted successfully and *waitForSync* was
+/// is returned if the document was removed successfully and *waitForSync* was
 /// *false*.
 ///
 /// @RESTRETURNCODE{404}

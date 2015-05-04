@@ -4565,7 +4565,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
   TRI_doc_mptr_copy_t nptr;
   auto trxCollection = _trx->trxCollection(_collection->cid());
-
+  
+  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr);
 
   result.reset(new AqlItemBlock(count,
@@ -4631,18 +4632,17 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
                                 nullptr,
                                 ep->_options.waitForSync);
 
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) {
-          auto* node = static_cast<RemoveNode const*>(getPlanNode());
-          if (node->getOptions().ignoreDocumentNotFound) {
-            // Ignore document not found on the DBserver:
-            errorCode = TRI_ERROR_NO_ERROR;
-          }
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
+            _isDBServer &&
+            ignoreDocumentNotFound) {
+          // Ignore document not found on the DBserver:
+          errorCode = TRI_ERROR_NO_ERROR;
         }
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           result->setValue(dstRow,
-                          _outRegOld,
-                          AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
+                           _outRegOld,
+                           AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
         }
       }
         
@@ -4824,6 +4824,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   RegisterId const docRegisterId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
   
+  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
 
   TRI_doc_mptr_copy_t nptr;
@@ -4954,12 +4955,11 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) {
-          auto* node = static_cast<UpdateNode const*>(getPlanNode());
-          if (node->getOptions().ignoreDocumentNotFound) {
-            // Ignore document not found on the DBserver:
-            errorCode = TRI_ERROR_NO_ERROR;
-          }
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
+            _isDBServer &&
+            ignoreDocumentNotFound) {
+          // Ignore document not found on the DBserver:
+          errorCode = TRI_ERROR_NO_ERROR;
         }
       }
 
@@ -5249,8 +5249,10 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
-
+  
   TRI_doc_mptr_copy_t nptr;
+          
+  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   
   if (hasKeyVariable) {
@@ -5327,16 +5329,15 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
 
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) { 
-          auto* node = static_cast<ReplaceNode const*>(getPlanNode());
-          if (! node->getOptions().ignoreDocumentNotFound) {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
-          }
-          else {
+          if (ignoreDocumentNotFound) {
             // Note that this is coded here for the sake of completeness, 
             // but it will intentionally never happen, since this flag is
             // not set in the REPLACE case, because we will always use
             // a DistributeNode rather than a ScatterNode:
             errorCode = TRI_ERROR_NO_ERROR;
+          }
+          else {
+            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
           }
         }
 

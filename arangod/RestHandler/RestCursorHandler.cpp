@@ -164,7 +164,7 @@ triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) 
     return TRI_LookupObjectJson(json, name);
   };
 
-  triagens::basics::Json options(triagens::basics::Json::Object);
+  triagens::basics::Json options(triagens::basics::Json::Object, 3);
 
   auto attribute = getAttribute("count");
   options.set("count", triagens::basics::Json(TRI_IsBooleanJson(attribute) ? attribute->_value._boolean : false));
@@ -624,7 +624,7 @@ void RestCursorHandler::createCursor () {
       _response->setContentType("application/json; charset=utf-8");
 
       // build "extra" attribute
-      triagens::basics::Json extra(triagens::basics::Json::Object); 
+      triagens::basics::Json extra(triagens::basics::Json::Object, 3); 
  
       if (queryResult.stats != nullptr) {
         extra.set("stats", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.stats, triagens::basics::Json::AUTOFREE));
@@ -649,7 +649,7 @@ void RestCursorHandler::createCursor () {
       if (n <= batchSize) {
         // result is smaller than batchSize and will be returned directly. no need to create a cursor
 
-        triagens::basics::Json result(triagens::basics::Json::Object);
+        triagens::basics::Json result(triagens::basics::Json::Object, 6);
         result.set("result", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
         queryResult.json = nullptr;
 
