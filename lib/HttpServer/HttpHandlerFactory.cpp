@@ -320,7 +320,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
   // no match
   if (i == ii.end()) {
-    if (_notFound != 0) {
+    if (_notFound != nullptr) {
       HttpHandler* notFoundHandler = _notFound(request, data);
       notFoundHandler->setServer(this);
 
@@ -328,7 +328,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     }
     else {
       LOG_TRACE("no not-found handler, giving up");
-      return 0;
+      return nullptr;
     }
   }
 
