@@ -1,5 +1,7 @@
 v2.5.3 (2015-04-29)
 -------------------
+* Fix JS-Move to work across filesystem borders; Fixes foxx app installation problems;
+  issue #1292. 
 
 * Fix foxx app install when installed on a different drive on windows
 
