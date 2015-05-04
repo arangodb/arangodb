@@ -1,7 +1,14 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
-* added return value optimization for AQL queries
+* subquery optimizations for AQL queries
+
+  This optimization avoids copying intermediate results into subqueries that are not required
+  by the subquery.
+
+* return value optimization for AQL queries
+  
+  This optimization avoids copying the final query result inside the query's main `ReturnNode`.
 
 * allow `@` character in document keys, too
 
