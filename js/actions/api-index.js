@@ -73,6 +73,7 @@ var API = "_api/index";
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,6 +147,7 @@ function get_api_indexes (req, res) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,6 +270,7 @@ function get_api_index (req, res) {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -349,6 +352,7 @@ function get_api_index (req, res) {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Creating a geo index with latitude and longitude attributes:
@@ -369,6 +373,7 @@ function get_api_index (req, res) {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -451,6 +456,7 @@ function get_api_index (req, res) {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Creating a non-unique hash index:
@@ -472,6 +478,7 @@ function get_api_index (req, res) {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Creating a sparse index:
@@ -494,6 +501,7 @@ function get_api_index (req, res) {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -577,6 +585,7 @@ function get_api_index (req, res) {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Creating a sparse skiplist index:
@@ -599,6 +608,7 @@ function get_api_index (req, res) {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -665,6 +675,7 @@ function get_api_index (req, res) {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -807,6 +818,7 @@ function post_api_index (req, res) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

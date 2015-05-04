@@ -380,6 +380,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Executes a query and extracts part of the result:
@@ -407,6 +408,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Using query option "fullCount":
@@ -473,6 +475,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(JSON.parse(response.body).extra.stats.writesIgnored === 0);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Executes a data-modification query with option *ignoreErrors*:
@@ -496,6 +499,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(JSON.parse(response.body).extra.stats.writesIgnored === 1);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Bad queries:
@@ -549,6 +553,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(response.code === 404);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// @endDocuBlock
@@ -772,6 +777,7 @@ void RestCursorHandler::createCursor () {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Missing identifier
@@ -911,6 +917,7 @@ void RestCursorHandler::modifyCursor () {
 ///     response = logCurlRequest('DELETE', url + '/' + _id);
 ///
 ///     assert(response.code === 202);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
