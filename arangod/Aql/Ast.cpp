@@ -1772,7 +1772,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   if (rhs->type != NODE_TYPE_ARRAY &&
       (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
        node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-    // right operand of IN or NOT IN must be a list, otherwise we return false
+    // right operand of IN or NOT IN must be an array, otherwise we return false
     return createNodeValueBool(false);
   }
 

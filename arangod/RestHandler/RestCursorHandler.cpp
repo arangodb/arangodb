@@ -164,7 +164,7 @@ triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) 
     return TRI_LookupObjectJson(json, name);
   };
 
-  triagens::basics::Json options(triagens::basics::Json::Object);
+  triagens::basics::Json options(triagens::basics::Json::Object, 3);
 
   auto attribute = getAttribute("count");
   options.set("count", triagens::basics::Json(TRI_IsBooleanJson(attribute) ? attribute->_value._boolean : false));
@@ -380,6 +380,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Executes a query and extracts part of the result:
@@ -407,6 +408,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Using query option "fullCount":
@@ -473,6 +475,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(JSON.parse(response.body).extra.stats.writesIgnored === 0);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Executes a data-modification query with option *ignoreErrors*:
@@ -496,6 +499,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(JSON.parse(response.body).extra.stats.writesIgnored === 1);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Bad queries:
@@ -549,6 +553,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     assert(response.code === 404);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// @endDocuBlock
@@ -624,7 +629,7 @@ void RestCursorHandler::createCursor () {
       _response->setContentType("application/json; charset=utf-8");
 
       // build "extra" attribute
-      triagens::basics::Json extra(triagens::basics::Json::Object); 
+      triagens::basics::Json extra(triagens::basics::Json::Object, 3); 
  
       if (queryResult.stats != nullptr) {
         extra.set("stats", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.stats, triagens::basics::Json::AUTOFREE));
@@ -649,7 +654,7 @@ void RestCursorHandler::createCursor () {
       if (n <= batchSize) {
         // result is smaller than batchSize and will be returned directly. no need to create a cursor
 
-        triagens::basics::Json result(triagens::basics::Json::Object);
+        triagens::basics::Json result(triagens::basics::Json::Object, 6);
         result.set("result", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
         queryResult.json = nullptr;
 
@@ -772,6 +777,7 @@ void RestCursorHandler::createCursor () {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Missing identifier
@@ -911,6 +917,7 @@ void RestCursorHandler::modifyCursor () {
 ///     response = logCurlRequest('DELETE', url + '/' + _id);
 ///
 ///     assert(response.code === 202);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

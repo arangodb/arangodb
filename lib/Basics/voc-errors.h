@@ -223,6 +223,9 @@
 /// - 1236: @LIT{write-throttling timeout}
 ///   Will be raised when the server is write-throttled and a write operation
 ///   has waited too long for the server to process queued operations.
+/// - 1237: @LIT{collection type mismatch}
+///   Will be raised when a collection has a different type from what has been
+///   expected.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
@@ -1627,6 +1630,17 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT                           (1236)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1237: ERROR_ARANGO_COLLECTION_TYPE_MISMATCH
+///
+/// collection type mismatch
+///
+/// Will be raised when a collection has a different type from what has been
+/// expected.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH                         (1237)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

@@ -2388,7 +2388,7 @@ static void JS_RemoveVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///   c = db.example;
 ///   c.rename("better-example");
 ///   c;
-/// ~ db._drop("example");
+/// ~ db._drop("better-example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
