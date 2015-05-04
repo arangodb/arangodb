@@ -1636,11 +1636,21 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<Ran
                                                                  std::vector<RangeInfo> const& riv2) const {
   std::vector<RangeInfo> out;
   
-  std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+  std::unordered_set<TRI_json_t*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
     16, 
     triagens::basics::JsonHash(), 
     triagens::basics::JsonEqual()
   );
+      
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&cache]() -> void {
+      // free the JSON values in the cache
+      for (auto& it : cache) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it);
+      }
+    }
+  };
 
   for (RangeInfo const& ri1: riv1) {
     for (RangeInfo const& ri2: riv2) {
@@ -1654,18 +1664,29 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<Ran
 
         if (x.is1ValueRangeInfo()) {
           // de-duplicate
-          if (cache.find(x._lowConst.bound().json()) != cache.end()) {
+          auto lowBoundValue = x._lowConst.bound().json();
+
+          if (cache.find(lowBoundValue) != cache.end()) {
+            // already seen the same value
             continue;
           }
 
-          cache.emplace(x._lowConst.bound().json());
+          std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, lowBoundValue));
+
+          if (copy == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          // every JSON in the cache is a copy
+          cache.emplace(copy.get());
+          copy.release();
         }
 
         out.emplace_back(std::move(x));
       }
     }
   }
-
+  
   return out;
 }
 
@@ -3801,6 +3822,9 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
  
           returnBlock(cur);         
           _done = true;
+  
+          allGroups.clear();  
+          groupValues.clear();
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -3816,6 +3840,9 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
       cur = _buffer.front();
     }
   }
+  
+  allGroups.clear();  
+  groupValues.clear();
 
   if (! skipping) {
     TRI_ASSERT(skipped > 0);
