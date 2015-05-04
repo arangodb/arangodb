@@ -482,16 +482,12 @@ bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
     return false;
   }
 
-  try {
-    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    _buffer.emplace_back(docs.get());
-    docs.release();
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  catch (...) {
-    throw;
-  }
+
+  _buffer.emplace_back(docs.get());
+  docs.release();
 
   return true;
 }
@@ -508,6 +504,7 @@ AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout (size_t atLeast,
                                                               size_t atMost) {
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
+
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
 
@@ -528,12 +525,16 @@ void ExecutionBlock::clearRegisters (AqlItemBlock* result) {
 size_t ExecutionBlock::skipSome (size_t atLeast, size_t atMost) {
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
+
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSome(atLeast, atMost, true, result, skipped);
+
   TRI_ASSERT(result == nullptr);
+
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
   }
+
   return skipped;
 }
 
@@ -582,12 +583,13 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
                                    size_t& skipped) {
   
   TRI_ASSERT(result == nullptr && skipped == 0);
+
   if (_done) {
     return TRI_ERROR_NO_ERROR;
   }
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
-  vector<AqlItemBlock*> collector;
+  std::vector<AqlItemBlock*> collector;
 
   auto freeCollector = [&collector]() {
     for (auto x : collector) {
@@ -635,7 +637,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         // The current block fits into our result, but it is already
         // half-eaten:
         if (! skipping) {
-          unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
+          std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
 
           TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -653,6 +655,8 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         // The current block fits into our result and is fresh:
         skipped += cur->size();
         if (! skipping) {
+          // if any of the following statements throw, then cur is not lost,
+          // as it is still contained in _buffer
           TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
@@ -670,6 +674,8 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
     freeCollector();
     throw;
   }
+
+  TRI_ASSERT(result == nullptr);
 
   if (! skipping) {
     if (collector.size() == 1) {
@@ -2941,8 +2947,7 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
 AqlItemBlock* CalculationBlock::getSome (size_t atLeast,
                                          size_t atMost) {
 
-  unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(
-                               atLeast, atMost));
+  std::unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
   if (res.get() == nullptr) {
     return nullptr;
@@ -3023,6 +3028,11 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
     }
     else {
       // initial subquery execution or subquery is not constant
+
+      // prevent accidental double-freeing in case of exception
+      subqueryResults = nullptr;
+
+      // and execute the subquery
       subqueryResults = executeSubquery(); 
       TRI_ASSERT(subqueryResults != nullptr);
 
@@ -3039,8 +3049,8 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
     } 
       
     throwIfKilled(); // check if we were aborted
-
   }
+
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
@@ -3179,7 +3189,8 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
   }
 
   // if _buffer.size() is > 0 then _pos is valid
-  vector<AqlItemBlock*> collector;
+  std::vector<AqlItemBlock*> collector;
+
   try {
     while (skipped < atLeast) {
       if (_buffer.empty()) {
@@ -3196,8 +3207,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
       if (_chosen.size() - _pos + skipped > atMost) {
         // The current block of chosen ones is too large for atMost:
         if (! skipping) {
-          unique_ptr<AqlItemBlock> more(cur->slice(_chosen,
-                                                   _pos, _pos + (atMost - skipped)));
+          std::unique_ptr<AqlItemBlock> more(cur->slice(_chosen, _pos, _pos + (atMost - skipped)));
         
           TRI_IF_FAILURE("FilterBlock::getOrSkipSome1") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -3213,7 +3223,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         // The current block fits into our result, but it is already
         // half-eaten or needs to be copied anyway:
         if (! skipping) {
-          unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
+          std::unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
           
           TRI_IF_FAILURE("FilterBlock::getOrSkipSome2") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -3233,6 +3243,8 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         // takes them all, so we can just hand it on:
         skipped += cur->size();
         if (! skipping) {
+          // if any of the following statements throw, then cur is not lost,
+          // as it is still contained in _buffer
           TRI_IF_FAILURE("FilterBlock::getOrSkipSome3") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
@@ -3408,7 +3420,7 @@ int SortedAggregateBlock::getOrSkipSome (size_t atLeast,
   }
 
   bool const isTotalAggregation = _aggregateRegisters.empty();
-  unique_ptr<AqlItemBlock> res;
+  std::unique_ptr<AqlItemBlock> res;
 
   if (_buffer.empty()) {
     if (! ExecutionBlock::getBlock(atLeast, atMost)) {
@@ -3514,7 +3526,17 @@ int SortedAggregateBlock::getOrSkipSome (size_t atLeast,
       bool hasMore = ! _buffer.empty();
 
       if (! hasMore) {
-        hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+        try {
+          TRI_IF_FAILURE("SortedAggregateBlock::hasMore") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+        }
+        catch (...) {
+          // prevent leak
+          delete cur;
+          throw;
+        }
       }
 
       if (! hasMore) {
@@ -3534,14 +3556,12 @@ int SortedAggregateBlock::getOrSkipSome (size_t atLeast,
             ++skipped;
           }
           delete cur;
-          cur = nullptr;
           _done = true;
           result = res.release();
           return TRI_ERROR_NO_ERROR;
         }
         catch (...) {
           delete cur;
-          cur = nullptr;
           throw;
         }
       }
@@ -3719,7 +3739,6 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
     GroupKeyHash(_trx, colls), 
     GroupKeyEqual(_trx, colls)
   );
-    
 
   auto buildResult = [&] (AqlItemBlock const* src) {
     auto planNode = static_cast<AggregateNode const*>(getPlanNode());
@@ -3742,12 +3761,13 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
 
     size_t row = 0;
     for (auto const& it : allGroups) {
-      auto const& keys = it.first;
+      auto& keys = it.first;
 
       TRI_ASSERT_EXPENSIVE(keys.size() == n);
       size_t i = 0;
-      for (auto const& key : keys) {
+      for (auto& key : keys) {
         result->setValue(row, _aggregateRegisters[i++].first, key);
+        const_cast<AqlValue*>(&key)->erase(); // to prevent double-freeing later
       }
     
       if (planNode->_count) {
@@ -3770,75 +3790,87 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
   std::vector<AqlValue> group;
   group.reserve(n);
 
-  while (skipped < atMost) {
-    groupValues.clear();
+  try {
+    while (skipped < atMost) {
+      groupValues.clear();
 
-    // for hashing simply re-use the aggregate registers, without cloning their contents
-    for (size_t i = 0; i < n; ++i) {
-      groupValues.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second));
-    }
-
-    // now check if we already know this group
-    auto it = allGroups.find(groupValues);
-
-    if (it == allGroups.end()) {
-      // new group
-      group.clear();
-
-      // copy the group values before they get invalidated
+      // for hashing simply re-use the aggregate registers, without cloning their contents
       for (size_t i = 0; i < n; ++i) {
-        group.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second).clone());
+        groupValues.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second));
       }
 
-      allGroups.emplace(group, 1);
-    }
-    else {
-      // existing group. simply increase the counter
-      (*it).second++;
-    }
+      // now check if we already know this group
+      auto it = allGroups.find(groupValues);
 
-    if (++_pos >= cur->size()) {
-      _buffer.pop_front();
-      _pos = 0;
+      if (it == allGroups.end()) {
+        // new group
+        group.clear();
 
-      bool hasMore = ! _buffer.empty();
+        // copy the group values before they get invalidated
+        for (size_t i = 0; i < n; ++i) {
+          group.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second).clone());
+        }
 
-      if (! hasMore) {
-        hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+        allGroups.emplace(group, 1);
+      }
+      else {
+        // existing group. simply increase the counter
+        (*it).second++;
       }
 
-      if (! hasMore) {
-        // no more input. we're done
-        try {
-          // emit last buffered group
-          if (! skipping) {
-            TRI_IF_FAILURE("HashedAggregateBlock::getOrSkipSome") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();
+        _pos = 0;
+
+        bool hasMore = ! _buffer.empty();
+
+        if (! hasMore) {
+          hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+        }
+
+        if (! hasMore) {
+          // no more input. we're done
+          try {
+            // emit last buffered group
+            if (! skipping) {
+              TRI_IF_FAILURE("HashedAggregateBlock::getOrSkipSome") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
             }
+
+            ++skipped;
+            result = buildResult(cur);
+   
+            returnBlock(cur);         
+            _done = true;
+    
+            allGroups.clear();  
+            groupValues.clear();
+
+            return TRI_ERROR_NO_ERROR;
           }
-
-          ++skipped;
-          result = buildResult(cur);
- 
-          returnBlock(cur);         
-          _done = true;
-  
-          allGroups.clear();  
-          groupValues.clear();
-
-          return TRI_ERROR_NO_ERROR;
+          catch (...) {
+            returnBlock(cur);         
+            throw;
+          }
         }
-        catch (...) {
-          returnBlock(cur);         
-          throw;
-        }
+
+        // hasMore
+
+        returnBlock(cur);
+        cur = _buffer.front();
       }
-
-      // hasMore
-
-      returnBlock(cur);
-      cur = _buffer.front();
     }
+  }
+  catch (...) {
+    // clean up
+    for (auto& it : allGroups) {
+      for (auto& it2 : it.first) {
+        const_cast<AqlValue*>(&it2)->destroy();
+      }
+    }
+    allGroups.clear();
+    throw;
   }
   
   allGroups.clear();  
@@ -4198,6 +4230,7 @@ int LimitBlock::getOrSkipSome (size_t atLeast,
     }
 
     ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
+
     if (skipped == 0) {
       return TRI_ERROR_NO_ERROR;
     }
@@ -4222,10 +4255,12 @@ int LimitBlock::getOrSkipSome (size_t atLeast,
         skipped = 0;
         AqlItemBlock* ignore = nullptr;
         ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, ignore, skipped);
+
         if (ignore != nullptr) {
           _engine->_stats.fullCount += static_cast<int64_t>(ignore->size());
           delete ignore;
         }
+
         if (skipped == 0) {
           break;
         }

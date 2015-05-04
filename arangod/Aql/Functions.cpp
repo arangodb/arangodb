@@ -831,7 +831,7 @@ AqlValue Functions::Unique (triagens::aql::Query* query,
   }
 
   TRI_json_t const* valueJson = value.json();
-  size_t const n = valueJson->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(valueJson);
 
   std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
     512, 
@@ -888,27 +888,35 @@ AqlValue Functions::Union (triagens::aql::Query* query,
     }
 
     TRI_json_t const* valueJson = value.json();
+    size_t const nrValues = TRI_LengthArrayJson(valueJson);
 
-    std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, valueJson));
-
-    if (copy == nullptr) {
+    if (TRI_ReserveVector(&(result.get()->_value._objects), nrValues) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    size_t const toAppend = TRI_LengthArrayJson(copy.get());
-  
-    if (TRI_ReserveVector(&(result.get()->_value._objects), toAppend) != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     
     // this passes ownership for the JSON contens into result
-    for (size_t j = 0; j < toAppend; ++j) {
-      TRI_PushBack2ArrayJson(result.get(), static_cast<TRI_json_t const*>(TRI_AddressVector(&(copy.get()->_value._objects), j)));
-    } 
+    for (size_t j = 0; j < nrValues; ++j) {
+      TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_LookupArrayJson(valueJson, j));
 
-    // free the top-level pointer of copy (but not its internals as they have been handed over into result)
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy.release());
+      if (copy == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+    
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), copy);
+
+      TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    } 
   } 
+      
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
@@ -923,47 +931,77 @@ AqlValue Functions::UnionDistinct (triagens::aql::Query* query,
                                    triagens::arango::AqlTransaction* trx,
                                    TRI_document_collection_t const* collection,
                                    AqlValue const parameters) {
-  std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
+  std::unordered_set<TRI_json_t*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
     512, 
     triagens::basics::JsonHash(), 
     triagens::basics::JsonEqual()
   );
 
+  auto freeValues = [&values] () -> void {
+    for (auto& it : values) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it);
+    }
+  };
+
+  std::unique_ptr<TRI_json_t> result;
   size_t const n = parameters.arraySize();
 
-  for (size_t i = 0; i < n; ++i) {
-    Json value(parameters.extractArrayMember(trx, collection, i, false));
+  try {
+    for (size_t i = 0; i < n; ++i) {
+      Json value(parameters.extractArrayMember(trx, collection, i, false));
 
-    if (! value.isArray()) {
-      // not an array
-      RegisterWarning(query, "UNION_DISTINCT", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-      return AqlValue(new Json(Json::Null));
-    }
-
-    TRI_json_t const* valueJson = value.json();
-    size_t const nrValues = valueJson->_value._objects._length;
-
-    for (size_t j = 0; j < nrValues; ++j) {
-      auto value = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, j));
-
-      if (value == nullptr) {
-        continue;
+      if (! value.isArray()) {
+        // not an array
+        freeValues();
+        RegisterWarning(query, "UNION_DISTINCT", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+        return AqlValue(new Json(Json::Null));
       }
 
-      values.emplace(value); 
+      TRI_json_t const* valueJson = value.json();
+      size_t const nrValues = TRI_LengthArrayJson(valueJson);
+
+      for (size_t j = 0; j < nrValues; ++j) {
+        auto value = static_cast<TRI_json_t*>(TRI_AddressVector(&valueJson->_value._objects, j));
+
+        if (values.find(value) == values.end()) { 
+          std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value));
+
+          if (copy == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+      
+          TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
+          values.emplace(copy.get());
+          copy.release();
+        }
+      }
     }
-  }
 
-  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, values.size()));
- 
-  for (auto const& it : values) {
-    auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it);
+    result.reset(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, values.size()));
 
-    if (copy == nullptr) {
+    if (result == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
- 
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), copy); 
+          
+    TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+   
+    for (auto const& it : values) {
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), it); 
+    }
+
+  }
+  catch (...) {  
+    freeValues();
+    throw;
+  }
+    
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
       
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
@@ -979,62 +1017,108 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
                                   triagens::arango::AqlTransaction* trx,
                                   TRI_document_collection_t const* collection,
                                   AqlValue const parameters) {
-  std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
+  std::unordered_map<TRI_json_t*, size_t, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
     512, 
     triagens::basics::JsonHash(), 
     triagens::basics::JsonEqual()
   );
 
+  auto freeValues = [&values] () -> void {
+    for (auto& it : values) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.first);
+    }
+    values.clear();
+  };
+
+  std::unique_ptr<TRI_json_t> result;
   size_t const n = parameters.arraySize();
 
-  for (size_t i = 0; i < n; ++i) {
-    Json value(parameters.extractArrayMember(trx, collection, i, false));
+  try {
+    for (size_t i = 0; i < n; ++i) {
+      Json value(parameters.extractArrayMember(trx, collection, i, false));
 
-    if (! value.isArray()) {
-      // not an array
-      RegisterWarning(query, "INTERSECTION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-      return AqlValue(new Json(Json::Null));
-    }
-
-    // create a copy of the previous set
-    auto old(values);
-    values.clear();
-
-    TRI_json_t const* valueJson = value.json();
-    size_t const nrValues = valueJson->_value._objects._length;
-
-    for (size_t j = 0; j < nrValues; ++j) {
-      auto value = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, j));
-
-      if (value == nullptr) {
-        continue;
+      if (! value.isArray()) {
+        // not an array
+        freeValues();
+        RegisterWarning(query, "INTERSECTION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+        return AqlValue(new Json(Json::Null));
       }
 
-      if (i == 0) {
-        // round one
-        values.emplace(value); 
-      }
-      else {
-        // check if we have seen the same element before
-        auto it = old.find(value);
+      TRI_json_t const* valueJson = value.json();
+      size_t const nrValues = TRI_LengthArrayJson(valueJson);
 
-        if (it != old.end()) {
-          values.emplace(value);
+      for (size_t j = 0; j < nrValues; ++j) {
+        auto value = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, j));
+
+        if (i == 0) {
+          // round one
+          std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value));
+
+          if (copy == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+    
+          TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
+          auto r = values.emplace(copy.get(), 1);
+ 
+          if (r.second) {
+            // successfully inserted
+            copy.release();
+          }
+        }
+        else {
+          // check if we have seen the same element before
+          auto it = values.find(const_cast<TRI_json_t*>(value));
+
+          if (it != values.end()) {
+            // already seen
+            TRI_ASSERT((*it).second > 0);
+            ++((*it).second);
+          }
         }
       }
     }
-  }
-
-  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, values.size()));
  
-  for (auto const& it : values) {
-    auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it);
+    // count how many valid we have 
+    size_t total = 0;
 
-    if (copy == nullptr) {
+    for (auto const& it : values) {
+      if (it.second == n) {
+        ++total;
+      }
+    }
+
+    result.reset(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, total));
+
+    if (result == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
- 
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), copy); 
+          
+    TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+   
+    for (auto& it : values) {
+      if (it.second == n) {
+        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), it.first); 
+      }
+      else {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.first);
+      }
+    }
+    values.clear();
+   
+  } 
+  catch (...) {
+    freeValues();
+    throw;
+  }
+    
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
       
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
