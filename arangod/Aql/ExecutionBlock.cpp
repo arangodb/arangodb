@@ -1636,11 +1636,21 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<Ran
                                                                  std::vector<RangeInfo> const& riv2) const {
   std::vector<RangeInfo> out;
   
-  std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+  std::unordered_set<TRI_json_t*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
     16, 
     triagens::basics::JsonHash(), 
     triagens::basics::JsonEqual()
   );
+      
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&cache]() -> void {
+      // free the JSON values in the cache
+      for (auto& it : cache) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it);
+      }
+    }
+  };
 
   for (RangeInfo const& ri1: riv1) {
     for (RangeInfo const& ri2: riv2) {
@@ -1654,18 +1664,29 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<Ran
 
         if (x.is1ValueRangeInfo()) {
           // de-duplicate
-          if (cache.find(x._lowConst.bound().json()) != cache.end()) {
+          auto lowBoundValue = x._lowConst.bound().json();
+
+          if (cache.find(lowBoundValue) != cache.end()) {
+            // already seen the same value
             continue;
           }
 
-          cache.emplace(x._lowConst.bound().json());
+          std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, lowBoundValue));
+
+          if (copy == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          // every JSON in the cache is a copy
+          cache.emplace(copy.get());
+          copy.release();
         }
 
         out.emplace_back(std::move(x));
       }
     }
   }
-
+  
   return out;
 }
 
@@ -3801,6 +3822,9 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
  
           returnBlock(cur);         
           _done = true;
+  
+          allGroups.clear();  
+          groupValues.clear();
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -3816,6 +3840,9 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
       cur = _buffer.front();
     }
   }
+  
+  allGroups.clear();  
+  groupValues.clear();
 
   if (! skipping) {
     TRI_ASSERT(skipped > 0);
@@ -4538,7 +4565,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
   TRI_doc_mptr_copy_t nptr;
   auto trxCollection = _trx->trxCollection(_collection->cid());
-
+  
+  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr);
 
   result.reset(new AqlItemBlock(count,
@@ -4604,18 +4632,17 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
                                 nullptr,
                                 ep->_options.waitForSync);
 
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) {
-          auto* node = static_cast<RemoveNode const*>(getPlanNode());
-          if (node->getOptions().ignoreDocumentNotFound) {
-            // Ignore document not found on the DBserver:
-            errorCode = TRI_ERROR_NO_ERROR;
-          }
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
+            _isDBServer &&
+            ignoreDocumentNotFound) {
+          // Ignore document not found on the DBserver:
+          errorCode = TRI_ERROR_NO_ERROR;
         }
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           result->setValue(dstRow,
-                          _outRegOld,
-                          AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
+                           _outRegOld,
+                           AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
         }
       }
         
@@ -4797,6 +4824,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   RegisterId const docRegisterId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
   
+  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
 
   TRI_doc_mptr_copy_t nptr;
@@ -4927,12 +4955,11 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) {
-          auto* node = static_cast<UpdateNode const*>(getPlanNode());
-          if (node->getOptions().ignoreDocumentNotFound) {
-            // Ignore document not found on the DBserver:
-            errorCode = TRI_ERROR_NO_ERROR;
-          }
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
+            _isDBServer &&
+            ignoreDocumentNotFound) {
+          // Ignore document not found on the DBserver:
+          errorCode = TRI_ERROR_NO_ERROR;
         }
       }
 
@@ -5222,8 +5249,10 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
-
+  
   TRI_doc_mptr_copy_t nptr;
+          
+  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   
   if (hasKeyVariable) {
@@ -5300,16 +5329,15 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
 
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) { 
-          auto* node = static_cast<ReplaceNode const*>(getPlanNode());
-          if (! node->getOptions().ignoreDocumentNotFound) {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
-          }
-          else {
+          if (ignoreDocumentNotFound) {
             // Note that this is coded here for the sake of completeness, 
             // but it will intentionally never happen, since this flag is
             // not set in the REPLACE case, because we will always use
             // a DistributeNode rather than a ScatterNode:
             errorCode = TRI_ERROR_NO_ERROR;
+          }
+          else {
+            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
           }
         }
 

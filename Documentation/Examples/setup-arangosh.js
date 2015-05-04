@@ -1,5 +1,7 @@
+
 db._drop("demo");
 db._create("demo");
+collectionAlreadyThere.push("demo");
 db.demo.save({
   "_key" : "schlonz",
   "firstName" : "Hugo",
@@ -17,3 +19,4 @@ db.demo.save({
 
 db._drop("animals");
 db._create("animals"); 
+collectionAlreadyThere.push("animals");

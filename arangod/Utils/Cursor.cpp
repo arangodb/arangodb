@@ -142,6 +142,18 @@ void JsonCursor::dump (triagens::basics::StringBuffer& buffer) {
 
   size_t const n = batchSize();
 
+  // reserve 48 bytes per result document by default, but only
+  // if the specified batch size does not get out of hand
+  // otherwise specifying a very high batch size would make the allocation fail
+  // in every case, even if there were much less documents in the collection
+  if (n <= 50000) {
+    int res = buffer.reserve(n * 48);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+
   for (size_t i = 0; i < n; ++i) {
     if (! hasNext()) {
       break;

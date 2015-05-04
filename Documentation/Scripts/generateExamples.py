@@ -82,6 +82,14 @@ ArangoshExpect = {}
 ################################################################################
 
 ArangoshRun = {}
+
+################################################################################
+### @brief arangosh run
+###
+### starting Line Numbers of ArangoshRun
+################################################################################
+ArangoshRunLineNo = {}
+
 ################################################################################
 ### @brief arangosh output files
 ################################################################################
@@ -141,6 +149,7 @@ var output = '';
 var XXX;
 var testFunc;
 var countErrors;
+var collectionAlreadyThere = [];
 internal.startPrettyPrint(true);
 internal.stopColorPrint(true);
 var appender = function(text) {
@@ -244,6 +253,36 @@ var runTestFuncCatch = function (execFunction, testName, expectError) {
   }
 };
 
+var checkForOrphanTestCollections = function(msg) {
+  var cols = db._collections().map(function(c){return c.name()});
+  var orphanColls = [];
+  var i;
+  for (i = 0; i < cols.length; i++) {
+     if (cols[i][0] != '_') {
+       var found = false;
+       var j = 0;
+       for (j=0; j < collectionAlreadyThere.length; j++) {
+         if (collectionAlreadyThere[j] === cols[i]) {
+            found = true;
+         }
+       }
+       if (!found) {
+          orphanColls.push(cols[i]);
+          collectionAlreadyThere.push(cols[i]);
+       }
+     }
+  }
+  
+  if (orphanColls.length > 0) {
+    allErrors += msg + ' - ' + JSON.stringify(orphanColls) + '\\n';
+  }
+};
+
+// Set the first available list of already there collections:
+var err = allErrors;
+checkForOrphanTestCollections('Collections already there which we will ignore from now on:');
+print(allErrors + '\\n');
+allErrors = err;
 ''' % ('#' * 80)
 
 ################################################################################
@@ -300,6 +339,7 @@ def analyzeFile(f, filename):
     partialCmd = ""
     partialLine = ""
     partialLineStart = 0
+    exampleStartLine = 0
     state = STATE_BEGIN
     lineNo = 0;
 
@@ -316,6 +356,8 @@ def analyzeFile(f, filename):
             (name, state) = matchStartLine(line, filename)
             if state != STATE_BEGIN: 
                 MapSourceFiles[name] = filename
+            if state == STATE_ARANGOSH_RUN:
+                ArangoshRunLineNo[name] = lineNo
             continue
 
         # we are within a example
@@ -388,19 +430,21 @@ def generateArangoshOutput():
     keys.sort()
     for key in keys:
         value = ArangoshOutput[key]
-
+        #print value
+        #print value[0][2]
         print '''
 ////////////////////////////////////////////////////////////////////////////////
 /// %s
 (function() {
   countErrors = 0;
   var testName = '%s';
+  var startLineCount = %d;
   var lineCount = 0;
   var outputDir = '%s';
   var sourceFile = '%s';
   var startTime = time();
   internal.startCaptureMode();
-''' %(key, key, OutputDir, MapSourceFiles[key])
+''' %(key, key, value[0][2], OutputDir, MapSourceFiles[key])
         for l in value:
             # try to match for errors, and remove the comment.
             expectError = 'undefined'
@@ -428,6 +472,7 @@ def generateArangoshOutput():
         print '''  var output = internal.stopCaptureMode();
   print("[" + (time () - startTime) + "s] done with  " + testName);
   fs.write(outputDir + '/' + testName + '.generated', output);
+  checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 '''
 
@@ -457,6 +502,7 @@ def generateArangoshRun():
   internal.stopColorPrint(true);
   var testName = '%s';
   var lineCount = 0;
+  var startLineCount = %d;
   var outputDir = '%s';
   var sourceFile = '%s';
   var startTime = time();
@@ -464,7 +510,7 @@ def generateArangoshRun():
   var assert = function(a) { globalAssert(a, testName, sourceFile); };
   testFunc = function() {
 %s};
-''' %(key, key, OutputDir, MapSourceFiles[key], value.lstrip().rstrip())
+''' %(key, key, ArangoshRunLineNo[key], OutputDir, MapSourceFiles[key], value.lstrip().rstrip())
 
         if key in ArangoshExpect: 
             print "  rc = runTestFuncCatch(testFunc, testName, errors.%s);" % (ArangoshExpect[key])
@@ -474,6 +520,7 @@ def generateArangoshRun():
         print '''
   print("[" + (time () - startTime) + "s] " + rc);
   fs.write(outputDir + '/' + testName + '.generated', output);
+  checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 '''
 
