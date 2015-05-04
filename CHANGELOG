@@ -1,6 +1,8 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* added return value optimization for AQL queries
+
 * allow `@` character in document keys, too
 
 * added alternative implementation for AQL COLLECT
