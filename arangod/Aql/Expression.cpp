@@ -620,10 +620,17 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
     AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
-        
-    auto res2 = func->implementation(_ast->query(), trx, myCollection, result);
-    result.destroy();
-    return res2;
+       
+    try { 
+      auto res2 = func->implementation(_ast->query(), trx, myCollection, result);
+      result.destroy();
+      return res2;
+    }
+    catch (...) {
+      // prevent leak and rethrow error
+      result.destroy();
+      throw; 
+    }
   }
 
   else if (node->type == NODE_TYPE_RANGE) {

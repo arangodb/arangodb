@@ -141,10 +141,10 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   
   // list functions
   { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, false, true) },
-  { "UNION",                       Function("UNION",                       "AQL_UNION", "l,l|+",true, false, true) },
-  { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "AQL_UNION_DISTINCT", "l,l|+", true, false, true) },
+  { "UNION",                       Function("UNION",                       "AQL_UNION", "l,l|+",true, false, true, &Functions::Union) },
+  { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "AQL_UNION_DISTINCT", "l,l|+", true, false, true, &Functions::UnionDistinct) },
   { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, false, true) },
-  { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, false, true) },
+  { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, false, true, &Functions::Intersection) },
   { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, false, true) },
   { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, false, true, &Functions::Length) },
   { "MIN",                         Function("MIN",                         "AQL_MIN", "l", true, false, true, &Functions::Min) },
