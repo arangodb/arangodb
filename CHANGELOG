@@ -231,6 +231,12 @@ v2.6.0 (XXXX-XX-XX)
     * `graph._radius`
     * `graph._diameter`
 
+* First started Arango Databases will create the '_graph' collection without waitForSync, so default behaviour
+  of Create & Delete operations on whole graphs change:
+  * POST /_api/graph would by default return HTTP 201 Created, will now return 202 Accepted
+  * DELETE /_api/graph/`graph-name` would by default return with HTTP 200, will now return 202 Accepted
+  unless waitForSync is specified as parameter, or the '_graph' collections waitForSync attribute was set.
+
 * Improved GRAPH_SHORTEST_PATH computation
 
   This involved a change in the default behaviour.
