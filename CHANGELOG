@@ -1,6 +1,14 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* added batch document removal and lookup commands:
+
+      collection.lookupByKeys(keys)
+      collection.removeByKeys(keys)
+
+  These commands can be used to perform multi-document lookup and removal operations efficiently
+  from the ArangoShell. The argument to these operations is an array of document keys.
+
 * properly prefix document address URLs with the current database name for calls to
   API method GET `/_api/document?collection=...` (that method will return partial URLs to all 
   documents in the collection). 
