@@ -815,46 +815,39 @@ bool RestDocumentHandler::readAllDocuments () {
     return false;
   }
 
-  // generate result
-  string result("{ \"documents\" : [\n");
-
-  bool first = true;
   string prefix;
 
   if (returnType == "key") {
-    prefix = '"';
+    prefix = "";
   }
   else if (returnType == "id") {
-    prefix = '"' + trx.resolver()->getCollectionName(cid) + "\\/";
+    prefix = trx.resolver()->getCollectionName(cid) + "/";
   }
   else {
     // default return type: paths to documents
     if (type == TRI_COL_TYPE_EDGE) {
-      prefix = '"' + EDGE_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
+      prefix = "/_db/" + _request->databaseName() + EDGE_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
     }
     else {
-      prefix = '"' + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
+      prefix = "/_db/" + _request->databaseName() + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
     }
   }
+  
+  // generate result
+  triagens::basics::Json documents(triagens::basics::Json::Array);
+  documents.reserve(ids.size());
 
-  for (auto id : ids) {
-    // collection names do not need to be JSON-escaped
-    // keys do not need to be JSON-escaped
-    result += prefix + id + '"';
-
-    if (first) {
-      prefix = ",\n" + prefix;
-      first = false;
-    }
+  for (auto const& id : ids) {
+    std::string v(prefix);
+    v.append(id);
+    documents.add(triagens::basics::Json(v));
   }
 
-  result += "\n] }";
+  triagens::basics::Json result(triagens::basics::Json::Object);
+  result("documents", documents);
 
   // and generate a response
-  _response = createResponse(HttpResponse::OK);
-  _response->setContentType("application/json; charset=utf-8");
-
-  _response->body().appendText(result);
+  generateResult(result.json());
 
   return true;
 }

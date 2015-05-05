@@ -149,7 +149,7 @@ function get_edges (req, res) {
     actions.resultBad(req,
                       res,
                       arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expect GET /" + API +
+                      "expected GET " + API +
                       "/<collection-identifier>?vertex=<vertex-handle>&direction=<direction>");
     return;
   }

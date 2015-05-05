@@ -9,7 +9,7 @@ describe ArangoDB do
   context "reading a document:" do
  
   before do  
-    @rePath = Regexp.new('^/_api/document/[a-zA-Z0-9_\-]+/\d+$')
+    @rePath = Regexp.new('^/_db/[^/]+/_api/document/[a-zA-Z0-9_@:\.\-]+/\d+$')
     @reFull = Regexp.new('^[a-zA-Z0-9_\-]+/\d+$')
     @reRev  = Regexp.new('^[0-9]+$')
   end
@@ -317,7 +317,7 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionAll"
         @cid = ArangoDB.create_collection(@cn)
-        @reStart = Regexp.new('^/_api/document/' + @cn + '/')
+        @reStart = Regexp.new('^/_db/[^/]+/_api/document/' + @cn + '/')
       end
 
       after do

@@ -1369,6 +1369,49 @@ ArangoCollection.prototype.updateByExample = function (example,
   return requestResult.updated;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up documents by keys
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.lookupByKeys = function (keys) {
+  var data = {
+    collection: this._name,
+    keys: keys || [ ]
+  };
+
+  var requestResult = this._database._connection.PUT(
+    this._prefixurl("/_api/simple/lookup-by-keys"),
+    JSON.stringify(data));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return {
+    documents: requestResult.documents
+  };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes documents by keys
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.removeByKeys = function (keys) {
+  var data = {
+    collection: this._name,
+    keys: keys || [ ]
+  };
+
+  var requestResult = this._database._connection.PUT(
+    this._prefixurl("/_api/simple/remove-by-keys"),
+    JSON.stringify(data));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return {
+    removed: requestResult.removed,
+    ignored: requestResult.ignored
+  };
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
