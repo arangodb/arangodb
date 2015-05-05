@@ -1,17 +1,18 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1 <<EOF
 { 
   "optional3" : "val3" 
 }
+EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1227499683
+etag: 1383670837
 
 { 
   "edge" : { 
     "_id" : "edges/edge1", 
     "_key" : "edge1", 
-    "_rev" : "1227499683", 
+    "_rev" : "1383670837", 
     "_from" : "vertices/vert1", 
     "_to" : "vertices/vert2", 
     "$label" : null, 

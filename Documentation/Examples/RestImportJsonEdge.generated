@@ -1,6 +1,7 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&type=documents
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&type=documents <<EOF
 { "_from": "products/123", "_to": "products/234" }
 { "_from": "products/332", "_to": "products/abc", "name": "other name" }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
@@ -9,5 +10,7 @@ content-type: application/json; charset=utf-8
   "error" : false, 
   "created" : 2, 
   "errors" : 0, 
-  "empty" : 0 
+  "empty" : 0, 
+  "updated" : 0, 
+  "ignored" : 0 
 }

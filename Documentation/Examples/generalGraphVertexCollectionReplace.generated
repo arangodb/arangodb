@@ -2,15 +2,13 @@ arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js")
 arangosh> var graph = examples.loadGraph("social");
 arangosh> graph.male.save({neym: "Jon", _key: "john"});
 { 
-  "error" : false, 
   "_id" : "male/john", 
-  "_rev" : "583674019", 
+  "_rev" : "1191257141", 
   "_key" : "john" 
 }
 arangosh> graph.male.replace("male/john", {name: "John"});
 { 
-  "error" : false, 
   "_id" : "male/john", 
-  "_rev" : "583870627", 
+  "_rev" : "1191453749", 
   "_key" : "john" 
 }

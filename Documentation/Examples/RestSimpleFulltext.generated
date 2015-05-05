@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext <<EOF
 { "collection": "products", "attribute" : "text", "query" : "word" }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
@@ -7,15 +8,15 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1267542179", 
-      "_key" : "1267542179", 
-      "_rev" : "1267542179", 
+      "_id" : "products/1486169141", 
+      "_key" : "1486169141", 
+      "_rev" : "1486169141", 
       "text" : "this text also has a word" 
     }, 
     { 
-      "_id" : "products/1267345571", 
-      "_key" : "1267345571", 
-      "_rev" : "1267345571", 
+      "_id" : "products/1485972533", 
+      "_key" : "1485972533", 
+      "_rev" : "1485972533", 
       "text" : "this text contains word" 
     } 
   ], 

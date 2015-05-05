@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
 {"query":"FOR p IN products REMOVE p IN products"}
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8

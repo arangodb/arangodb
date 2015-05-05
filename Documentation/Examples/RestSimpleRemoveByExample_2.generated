@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/remove-by-example
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/remove-by-example <<EOF
 {"collection": "products","example" : { "a" : { "j" : 1 } },"options": {"waitForSync": true, "limit": 2} }
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8

@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products <<EOF
 { 
   "type" : "geo", 
   "fields" : [ 
@@ -6,12 +6,13 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?c
     "f" 
   ] 
 }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1242245283", 
+  "id" : "products/1247093813", 
   "type" : "geo2", 
   "unique" : false, 
   "sparse" : true, 

@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/replace-by-example
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/replace-by-example <<EOF
 { "collection": "products", "example" : { "a" : { "j" : 1 } }, "newValue" : {"foo" : "bar"}, "options": {"limit" : 3,  "waitForSync": true  }}
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
