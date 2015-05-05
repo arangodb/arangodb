@@ -34,6 +34,9 @@ dispose the server-side cursor afterwards.
 <!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_first_example
 
+<!-- arangod/RestHandler/RestSimpleHandler.cpp -->
+@startDocuBlock RestLookupByKeys
+
 <!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_any
 
@@ -48,6 +51,9 @@ dispose the server-side cursor afterwards.
 
 <!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_fulltext
+
+<!-- arangod/RestHandler/RestSimpleHandler.cpp -->
+@startDocuBlock RestRemoveByKeys
 
 <!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_remove_by_example
