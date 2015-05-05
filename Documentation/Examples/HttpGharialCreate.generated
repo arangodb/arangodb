@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial <<EOF
 { 
   "name" : "myGraph", 
   "edgeDefinitions" : [ 
@@ -13,10 +13,11 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
     } 
   ] 
 }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json
-etag: 1423911075
+etag: 1559438389
 
 { 
   "error" : false, 
@@ -36,6 +37,6 @@ etag: 1423911075
     ], 
     "orphanCollections" : [ ], 
     "_id" : "_graphs/myGraph", 
-    "_rev" : "1423911075" 
+    "_rev" : "1559438389" 
   } 
 }

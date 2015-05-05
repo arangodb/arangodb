@@ -1,4 +1,4 @@
-shell> curl --data-binary @- --dump - http://localhost:8529/_admin/statistics-description
+shell> curl --dump - http://localhost:8529/_admin/statistics-description
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8

@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products <<EOF
 { "_key": "foo", "value1": "bar" }
+EOF
 
 HTTP/1.1 400 Bad Request
 content-type: application/json; charset=utf-8

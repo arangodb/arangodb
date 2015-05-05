@@ -1,6 +1,7 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=documents&complete=true
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=documents&complete=true <<EOF
 { "_key": "abc", "value1": 25, "value2": "test" }
 { "_key": "abc", "value1": "bar", "value2": "baz" }
+EOF
 
 HTTP/1.1 409 Conflict
 content-type: application/json; charset=utf-8

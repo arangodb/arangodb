@@ -1,19 +1,20 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/female/alice
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/female/alice <<EOF
 { 
   "age" : 26 
 }
+EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json
-etag: 1483417763
+etag: 1613898805
 
 { 
   "error" : false, 
   "code" : 202, 
   "vertex" : { 
     "_id" : "female/alice", 
-    "_rev" : "1483417763", 
-    "_oldRev" : "1480927395", 
+    "_rev" : "1613898805", 
+    "_oldRev" : "1611736117", 
     "_key" : "alice" 
   } 
 }

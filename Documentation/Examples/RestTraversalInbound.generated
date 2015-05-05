@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal <<EOF
 { "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "inbound"}
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -11,13 +12,13 @@ content-type: application/json; charset=utf-8
         { 
           "_id" : "persons/alice", 
           "_key" : "alice", 
-          "_rev" : "1308895395", 
+          "_rev" : "1256596533", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "persons/eve", 
           "_key" : "eve", 
-          "_rev" : "1309747363", 
+          "_rev" : "1257448501", 
           "name" : "Eve" 
         } 
       ], 
@@ -28,7 +29,7 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1308895395", 
+              "_rev" : "1256596533", 
               "name" : "Alice" 
             } 
           ] 
@@ -36,9 +37,9 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1310599331", 
-              "_key" : "1310599331", 
-              "_rev" : "1310599331", 
+              "_id" : "knows/1258300469", 
+              "_key" : "1258300469", 
+              "_rev" : "1258300469", 
               "_from" : "persons/eve", 
               "_to" : "persons/alice" 
             } 
@@ -47,13 +48,13 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1308895395", 
+              "_rev" : "1256596533", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/eve", 
               "_key" : "eve", 
-              "_rev" : "1309747363", 
+              "_rev" : "1257448501", 
               "name" : "Eve" 
             } 
           ] 
