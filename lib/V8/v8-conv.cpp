@@ -1485,7 +1485,7 @@ static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, TRI_json_t 
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Object> object = v8::Object::New(isolate);
 
-  size_t const n = json->_value._objects._length;
+  size_t const n = TRI_LengthVector(&json->_value._objects);
 
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));
@@ -1507,7 +1507,7 @@ static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, TRI_json_t 
 
 static v8::Handle<v8::Value> ObjectJsonArray (v8::Isolate* isolate, TRI_json_t const* json) {
   v8::EscapableHandleScope scope(isolate);
-  uint32_t const n = static_cast<uint32_t>(json->_value._objects._length);
+  uint32_t const n = static_cast<uint32_t>(TRI_LengthArrayJson(json));
 
   v8::Handle<v8::Array> object = v8::Array::New(isolate, static_cast<int>(n));
 

@@ -688,7 +688,7 @@ namespace triagens {
       TRI_json_t const* details = TRI_LookupObjectJson(json.get(), "details");
 
       if (TRI_IsArrayJson(details)) {
-        size_t const n = details->_value._objects._length;
+        size_t const n = TRI_LengthArrayJson(details);
 
         for (size_t i = 0; i < n; ++i) {
           TRI_json_t const* detail = static_cast<TRI_json_t const*>(TRI_AtVector(&details->_value._objects, i));

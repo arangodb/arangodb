@@ -807,7 +807,7 @@ static void FillParametersFromJson (TRI_col_info_t* parameters,
   parameters->_initialCount = -1;
         
   // convert json
-  size_t const n = json->_value._objects._length;
+  size_t const n = TRI_LengthVector(&json->_value._objects);
 
   for (size_t i = 0;  i < n;  i += 2) {
     auto key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));

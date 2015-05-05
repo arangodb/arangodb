@@ -755,7 +755,8 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
                         sizeof(TRI_df_footer_marker_t) +
                         256; // allow for some overhead
 
-  size_t const n = compactions->_length;
+  size_t const n = TRI_LengthVector(compactions);
+
   for (size_t i = 0; i < n; ++i) {
     compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
     TRI_datafile_t* df = compaction->_datafile;
@@ -789,7 +790,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   compaction_context_t context;
   size_t i, j, n;
 
-  n = compactions->_length;
+  n = TRI_LengthVector(compactions);
   TRI_ASSERT(n > 0);
 
   // create a fake transaction
@@ -1122,14 +1123,14 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   // can now continue without the lock
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
   
-  if (vector._length == 0) {
+  if (TRI_LengthVector(&vector) == 0) {
     // cleanup local variables
     TRI_DestroyVector(&vector);
     return false;
   }
 
   // handle datafiles with dead objects
-  TRI_ASSERT(vector._length >= 1);
+  TRI_ASSERT(TRI_LengthVector(&vector) >= 1);
 
   CompactifyDatafiles(document, &vector);
 
@@ -1185,7 +1186,7 @@ static bool CheckAndLockCompaction (TRI_vocbase_t* vocbase) {
   double now = TRI_microtime();
 
   // check if we have a still-valid compaction blocker
-  size_t const n = vocbase->_compactionBlockers._data._length;
+  size_t const n = TRI_LengthVector(&vocbase->_compactionBlockers._data);
   for (size_t i = 0; i < n; ++i) {
     compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(TRI_AtVector(&vocbase->_compactionBlockers._data, i));
 
@@ -1237,7 +1238,7 @@ bool TRI_CleanupCompactorVocBase (TRI_vocbase_t* vocbase) {
   // we are now holding the write lock
   double now = TRI_microtime();
 
-  size_t n = vocbase->_compactionBlockers._data._length;
+  size_t n = TRI_LengthVector(&vocbase->_compactionBlockers._data);
   size_t i = 0;
   while (i < n) {
     compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(TRI_AtVector(&vocbase->_compactionBlockers._data, i));
@@ -1301,7 +1302,7 @@ int TRI_TouchBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
 
   LockCompaction(vocbase);
 
-  size_t const n = vocbase->_compactionBlockers._data._length;
+  size_t const n = TRI_LengthVector(&vocbase->_compactionBlockers._data);
 
   for (size_t i = 0; i < n; ++i) {
     compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(TRI_AtVector(&vocbase->_compactionBlockers._data, i));
@@ -1350,7 +1351,7 @@ int TRI_RemoveBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
 
   LockCompaction(vocbase);
 
-  size_t const n = vocbase->_compactionBlockers._data._length;
+  size_t const n = TRI_LengthVector(&vocbase->_compactionBlockers._data);
 
   for (size_t i = 0; i < n; ++i) {
     compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(TRI_AtVector(&vocbase->_compactionBlockers._data, i));

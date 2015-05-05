@@ -647,15 +647,16 @@ static int ProcessInputDirectory (string& errorMsg) {
       TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collections, json);
     }
   }
+    
+  size_t const n = TRI_LengthArrayJson(collections);
 
   // sort collections according to type (documents before edges)
-  qsort(collections->_value._objects._buffer, collections->_value._objects._length, sizeof(TRI_json_t), &SortCollections);
+  qsort(collections->_value._objects._buffer, n, sizeof(TRI_json_t), &SortCollections);
 
   StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
 
   // step2: run the actual import
   {
-    const size_t n = collections->_value._objects._length;
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* json = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
       TRI_json_t const* parameters = JsonHelper::getObjectElement(json, "parameters");

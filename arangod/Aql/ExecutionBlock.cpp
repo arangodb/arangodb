@@ -2196,7 +2196,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
 
-  size_t const n = hashIndex->_paths._length;
+  size_t const n = TRI_LengthVector(&hashIndex->_paths);
 
   TRI_ASSERT(_hashIndexSearchValue._values == nullptr); // to prevent leak
   _hashIndexSearchValue._length = 0;

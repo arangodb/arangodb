@@ -458,8 +458,10 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone,
 void TRI_CopyPathVector (TRI_vector_t* dst, TRI_vector_t* src) {
   TRI_InitVector(dst, TRI_CORE_MEM_ZONE, sizeof(TRI_shape_pid_t));
 
-  for (size_t j = 0;  j < src->_length;  ++j) {
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(src,j)));
+  size_t const n = TRI_LengthVector(src);
+
+  for (size_t j = 0;  j < n;  ++j) {
+    TRI_shape_pid_t shape = *((TRI_shape_pid_t*) (TRI_AtVector(src, j)));
 
     TRI_PushBackVector(dst, &shape);
   }
@@ -1101,7 +1103,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
       TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*) slOperator;
-      relationOperator->_numFields = relationOperator->_parameters->_value._objects._length;
+      relationOperator->_numFields = TRI_LengthVector(&relationOperator->_parameters->_value._objects);
       relationOperator->_fields = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false));
 
       if (relationOperator->_fields != nullptr) {
@@ -1224,7 +1226,9 @@ static int SkiplistIndexHelper (TRI_skiplist_index_t const* skiplistIndex,
 
   auto subObjects = SkiplistIndex_Subobjects(skiplistElement);
 
-  for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
+  size_t const n = TRI_LengthVector(&skiplistIndex->_paths);
+
+  for (size_t j = 0; j < n; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
 
     // ..........................................................................
@@ -1366,14 +1370,16 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   // ..........................................................................
   // Allocate sufficent memory for the field list
   // ..........................................................................
+  
+  size_t const n = TRI_LengthVector(&skiplistIndex->_paths);
 
-  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * skiplistIndex->_paths._length) , false));
+  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * n) , false));
 
   // ..........................................................................
   // Convert the attributes (field list of the skiplist index) into strings
   // ..........................................................................
 
-  for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
+  for (size_t j = 0; j < n; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
     TRI_shape_path_t const* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
@@ -1392,7 +1398,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
   TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-  for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
+  for (size_t j = 0; j < n; ++j) {
     TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j], strlen(fieldList[j])));
   }
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
@@ -1487,7 +1493,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
   TRI_CopyDataFromVectorPointerVectorString(TRI_CORE_MEM_ZONE, &idx->_fields, fields);
 
   skiplistIndex->_skiplistIndex = SkiplistIndex_new(document,
-                                                    paths->_length,
+                                                    TRI_LengthVector(paths),
                                                     unique);
 
   if (skiplistIndex->_skiplistIndex == nullptr) {
@@ -1884,20 +1890,24 @@ bool IndexComparator (TRI_json_t const* lhs,
 
   if (TRI_IsArrayJson(value)) {
     if (type == TRI_IDX_TYPE_HASH_INDEX) {
+      size_t const nv = TRI_LengthArrayJson(value);
+ 
       // compare fields in arbitrary order
       TRI_json_t const* r = TRI_LookupObjectJson(rhs, "fields");
 
       if (! TRI_IsArrayJson(r) ||
-          value->_value._objects._length != r->_value._objects._length) {
+          nv != TRI_LengthArrayJson(r)) {
         return false;
       }
 
-      for (size_t i = 0; i < value->_value._objects._length; ++i) {
+      size_t const nr = TRI_LengthArrayJson(r);
+
+      for (size_t i = 0; i < nv; ++i) {
         TRI_json_t const* v = TRI_LookupArrayJson(value, i);
 
         bool found = false;
 
-        for (size_t j = 0; j < r->_value._objects._length; ++j) {
+        for (size_t j = 0; j < nr; ++j) {
           if (TRI_CheckSameValueJson(v, TRI_LookupArrayJson(r, j))) {
             found = true;
             break;
