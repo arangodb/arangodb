@@ -1,10 +1,11 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction <<EOF
 { 
   "collections" : { 
     "write" : "products" 
   }, 
   "action" : "function () { var db = require('internal').db; db.products.save({});  return db.products.count(); }" 
 }
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8

@@ -1,19 +1,20 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/ <<EOF
 { 
   "_key" : "graph", 
   "vertices" : "vertices", 
   "edges" : "edges" 
 }
+EOF
 
-HTTP/1.1 201 Created
+HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1177757859
+etag: 1334191157
 
 { 
   "graph" : { 
     "_id" : "_graphs/graph", 
     "_key" : "graph", 
-    "_rev" : "1177757859", 
+    "_rev" : "1334191157", 
     "edgeDefinitions" : [ 
       { 
         "collection" : "edges", 
@@ -27,5 +28,5 @@ etag: 1177757859
     ] 
   }, 
   "error" : false, 
-  "code" : 201 
+  "code" : 202 
 }

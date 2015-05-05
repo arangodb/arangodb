@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/last
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/last <<EOF
 { "collection": "products", "count" : 2 }
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -7,9 +8,9 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1282680995", 
-      "_key" : "1282680995", 
-      "_rev" : "1282680995", 
+      "_id" : "products/1501307957", 
+      "_key" : "1501307957", 
+      "_rev" : "1501307957", 
       "i" : 1, 
       "a" : { 
         "k" : 2, 
@@ -17,9 +18,9 @@ content-type: application/json; charset=utf-8
       } 
     }, 
     { 
-      "_id" : "products/1282484387", 
-      "_key" : "1282484387", 
-      "_rev" : "1282484387", 
+      "_id" : "products/1501111349", 
+      "_key" : "1501111349", 
+      "_rev" : "1501111349", 
       "i" : 1 
     } 
   ], 

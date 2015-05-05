@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
+  "errorMessage" : "cursor not found", 
   "code" : 404, 
-  "errorNum" : 1600, 
-  "errorMessage" : "cursor not found" 
+  "errorNum" : 1600 
 }

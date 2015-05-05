@@ -1,19 +1,20 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/aliceAndBob
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/aliceAndBob <<EOF
 { 
   "since" : "01.01.2001" 
 }
+EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json
-etag: 1505765539
+etag: 1634608181
 
 { 
   "error" : false, 
   "code" : 202, 
   "edge" : { 
     "_id" : "relation/aliceAndBob", 
-    "_rev" : "1505765539", 
-    "_oldRev" : "1504323747", 
+    "_rev" : "1634608181", 
+    "_oldRev" : "1633494069", 
     "_key" : "aliceAndBob" 
   } 
 }

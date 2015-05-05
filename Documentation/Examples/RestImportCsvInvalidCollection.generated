@@ -1,7 +1,8 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products <<EOF
 [ "_key", "value1", "value2" ]
 [ "abc", 25, "test" ]
 [ "foo", "bar", "baz" ]
+EOF
 
 HTTP/1.1 404 Not Found
 content-type: application/json; charset=utf-8

@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products <<EOF
 { 
   "type" : "hash", 
   "unique" : false, 
@@ -7,12 +7,13 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?c
     "b" 
   ] 
 }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1243293859", 
+  "id" : "products/1248142389", 
   "type" : "hash", 
   "unique" : false, 
   "sparse" : false, 

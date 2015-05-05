@@ -1,20 +1,21 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/female/alice
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/female/alice <<EOF
 { 
   "name" : "Alice Cooper", 
   "age" : 26 
 }
+EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json
-etag: 1478895779
+etag: 1609704501
 
 { 
   "error" : false, 
   "code" : 202, 
   "vertex" : { 
     "_id" : "female/alice", 
-    "_rev" : "1478895779", 
-    "_oldRev" : "1476405411", 
+    "_rev" : "1609704501", 
+    "_oldRev" : "1607541813", 
     "_key" : "alice" 
   } 
 }

@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
 {"query":"FOR i IN 1..1000 FILTER i > 500 LIMIT 10 RETURN i","count":true,"options":{"fullCount":true}}
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8

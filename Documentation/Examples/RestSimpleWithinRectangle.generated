@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/within-rectangle
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/within-rectangle <<EOF
 {"collection":"products","latitude1":0,"longitude1":0,"latitude2":0.2,"longitude2":0.2,"skip":1,"limit":2}
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
@@ -7,9 +8,9 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1266362531", 
-      "_key" : "1266362531", 
-      "_rev" : "1266362531", 
+      "_id" : "products/1484989493", 
+      "_key" : "1484989493", 
+      "_rev" : "1484989493", 
       "name" : "Name/0.008/", 
       "loc" : [ 
         0.008, 
@@ -17,9 +18,9 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     { 
-      "_id" : "products/1266165923", 
-      "_key" : "1266165923", 
-      "_rev" : "1266165923", 
+      "_id" : "products/1484792885", 
+      "_key" : "1484792885", 
+      "_rev" : "1484792885", 
       "name" : "Name/0.006/", 
       "loc" : [ 
         0.006, 
