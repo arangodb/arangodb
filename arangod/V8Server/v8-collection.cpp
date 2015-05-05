@@ -4266,7 +4266,7 @@ static void JS_DatafileScanVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>
   v8::Handle<v8::Array> entries = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("entries"), entries);
 
-  for (size_t i = 0;  i < scan._entries._length;  ++i) {
+  for (size_t i = 0;  i < TRI_LengthVector(&scan._entries);  ++i) {
     TRI_df_scan_entry_t* entry = (TRI_df_scan_entry_t*) TRI_AtVector(&scan._entries, i);
 
     v8::Handle<v8::Object> o = v8::Object::New(isolate);

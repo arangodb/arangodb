@@ -398,7 +398,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
                                                  nullptr, 
                                                  clonedParams, 
                                                  shaper, 
-                                                 clonedParams->_value._objects._length); 
+                                                 TRI_LengthVector(&clonedParams->_value._objects)); 
           numEq = 0;
         }
 
@@ -410,7 +410,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
                                           nullptr, 
                                           cloned, 
                                           shaper, 
-                                          cloned->_value._objects._length); 
+                                          TRI_LengthVector(&cloned->_value._objects)); 
 
         if (current == nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
@@ -458,7 +458,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
                                            nullptr,
                                            clonedParams, 
                                            shaper, 
-                                           clonedParams->_value._objects._length); 
+                                           TRI_LengthVector(&clonedParams->_value._objects)); 
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
@@ -512,14 +512,14 @@ static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
   }
 
-  if (parameters->_value._objects._length > 0) {
+  if (TRI_LengthArrayJson(parameters) > 0) {
     // example means equality comparisons only
     return TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, 
                                    nullptr, 
                                    nullptr,
                                    parameters, 
                                    shaper, 
-                                   parameters->_value._objects._length);
+                                   TRI_LengthArrayJson(parameters));
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
@@ -556,7 +556,7 @@ static int SetupSearchValue (TRI_vector_t const* paths,
   v8::Isolate* isolate = args.GetIsolate();
 
   // extract attribute paths
-  size_t n = paths->_length;
+  size_t n = TRI_LengthVector(paths);
 
   // setup storage
   result._length = n;

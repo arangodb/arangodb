@@ -491,7 +491,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial (v8::Isolate* isolate,
   TRI_json_t const* json = _json->json();
 
   if (TRI_IsObjectJson(json)) {
-    size_t const n = json->_value._objects._length;
+    size_t const n = TRI_LengthVector(&json->_value._objects);
 
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 

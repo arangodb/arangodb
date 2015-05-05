@@ -177,8 +177,11 @@ triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) 
   }
 
   attribute = getAttribute("options");
+
   if (TRI_IsObjectJson(attribute)) {
-    for (size_t i = 0; i < attribute->_value._objects._length; i += 2) {
+    size_t const n = TRI_LengthVector(&attribute->_value._objects);
+
+    for (size_t i = 0; i < n; i += 2) {
       auto key   = static_cast<TRI_json_t const*>(TRI_AtVector(&attribute->_value._objects, i));
       auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&attribute->_value._objects, i + 1));
 
