@@ -191,7 +191,8 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
 void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode responseCode,
                                           string const& collectionName,
                                           TRI_voc_key_t key,
-                                          TRI_voc_rid_t rid) {
+                                          TRI_voc_rid_t rid,
+                                          TRI_col_type_e type) {
   string const&& handle = DocumentHelper::assembleDocumentId(collectionName, key);
   string const&& rev = StringUtils::itoa(rid);
 
@@ -202,15 +203,21 @@ void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode respons
     // 200 OK is sent is case of delete or update.
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
-    // handle does not need to be RFC 2047-encoded
+
+    string const&& escapedHandle = DocumentHelper::assembleDocumentId(collectionName, key, true);
 
     if (_request->compatibility() < 10400L) {
       // pre-1.4 location header (e.g. /_api/document/xyz)
-      _response->setHeader("location", 8, string(DOCUMENT_PATH + "/" + handle));
+      _response->setHeader("location", 8, string(DOCUMENT_PATH + "/" + escapedHandle));
     }
     else {
       // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
-      _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + handle));
+      if (type == TRI_COL_TYPE_EDGE) {
+        _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + EDGE_PATH + "/" + escapedHandle));
+      }
+      else {
+        _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + escapedHandle));
+      }
     }
   }
 
