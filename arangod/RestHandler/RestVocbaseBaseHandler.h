@@ -177,7 +177,8 @@ namespace triagens {
         void generate20x (rest::HttpResponse::HttpResponseCode,
                           std::string const&,
                           TRI_voc_key_t,
-                          TRI_voc_rid_t);
+                          TRI_voc_rid_t,
+                          TRI_col_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates ok message without content
@@ -212,7 +213,8 @@ namespace triagens {
             statusCode = rest::HttpResponse::ACCEPTED;
           }
 
-          generate20x(statusCode, trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), mptr._rid);  // PROTECTED by trx here
+          TRI_col_type_e type = trx.documentCollection()->_info._type;
+          generate20x(statusCode, trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), mptr._rid, type);  // PROTECTED by trx here
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,7 +234,8 @@ namespace triagens {
             statusCode = rest::HttpResponse::ACCEPTED;
           }
 
-          generate20x(statusCode, trx.resolver()->getCollectionName(cid), key, rid);
+          TRI_col_type_e type = trx.documentCollection()->_info._type;
+          generate20x(statusCode, trx.resolver()->getCollectionName(cid), key, rid, type);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

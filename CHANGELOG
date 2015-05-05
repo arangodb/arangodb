@@ -1,6 +1,14 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* properly prefix document address URLs with the current database name for calls to
+  API method GET `/_api/document?collection=...` (that method will return partial URLs to all 
+  documents in the collection). 
+
+  Previous versions of ArangoDB returned the URLs starting with `/_api/` but without the current 
+  database name, e.g. `/_api/document/mycollection/mykey`. Starting with 2.6, the response URLs
+  will include the database name as well, e.g. `/_db/_system/_api/document/mycollection/mykey`.
+
 * subquery optimizations for AQL queries
 
   This optimization avoids copying intermediate results into subqueries that are not required
@@ -10,7 +18,10 @@ v2.6.0 (XXXX-XX-XX)
   
   This optimization avoids copying the final query result inside the query's main `ReturnNode`.
 
-* allow `@` character in document keys, too
+* allow `@` and `.` characters in document keys, too
+
+  This change also lead to document keys being URL-encoded when returned in HTTP `location` 
+  response headers.
 
 * added alternative implementation for AQL COLLECT
 
