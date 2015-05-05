@@ -348,8 +348,9 @@ void RestSimpleHandler::removeDocuments (TRI_json_t const* json) {
 /// Keys for which no document can be found in the underlying collection are ignored, 
 /// and no exception will be thrown for them.
 ///
-/// The body of the response contains a JSON object with a *result* attribute. The
-/// *result* attribute is an array containing the matching documents.
+/// The body of the response contains a JSON object with a *documents* attribute. The
+/// *documents* attribute is an array containing the matching documents. The order in
+/// which matching documents are present in the result array is unspecified.
 ///
 /// @RESTRETURNCODES
 ///
@@ -465,7 +466,7 @@ void RestSimpleHandler::lookupDocuments (TRI_json_t const* json) {
       }
 
       triagens::basics::Json result(triagens::basics::Json::Object, 3);
-      result.set("result", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
+      result.set("documents", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
       queryResult.json = nullptr;
       
       result.set("error", triagens::basics::Json(false));

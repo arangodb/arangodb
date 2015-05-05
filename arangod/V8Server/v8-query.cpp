@@ -28,8 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-query.h"
-#include "v8-vocindex.h"
-
+#include "Aql/Query.h"
 #include "Basics/logging.h"
 #include "Basics/random.h"
 #include "Basics/string-buffer.h"
@@ -44,6 +43,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
+#include "V8Server/v8-vocindex.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
@@ -2577,6 +2577,142 @@ static void JS_WithinQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   // .............................................................................
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up documents by their keys
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_LookupByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+
+  if (col == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  
+  if (args.Length() != 1 || 
+      ! args[0]->IsArray()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("lookupByKeys(<keys>)");
+  }
+  
+  try { 
+    triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
+    bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
+    bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_ObjectToJson(isolate, args[0])));
+
+    std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
+    
+    TRI_GET_GLOBALS();
+    triagens::aql::Query query(v8g->_applicationV8, 
+                               true, 
+                               col->_vocbase, 
+                               aql.c_str(),
+                               aql.size(),
+                               bindVars.steal(),
+                               nullptr,
+                               triagens::aql::PART_MAIN);
+ 
+    auto queryResult = query.executeV8(isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED || 
+          queryResult.code == TRI_ERROR_QUERY_KILLED) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+      }
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    }
+
+    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+    result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+
+    TRI_V8_RETURN(result);
+  }  
+  catch (triagens::basics::Exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  }
+  catch (...) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up documents by their keys
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_RemoveByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+
+  if (col == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  
+  if (args.Length() != 1 || 
+      ! args[0]->IsArray()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("removeByKeys(<keys>)");
+  }
+  
+  try { 
+    triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
+    bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
+    bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_ObjectToJson(isolate, args[0])));
+
+    std::string const aql("FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: true }");
+    
+    TRI_GET_GLOBALS();
+    triagens::aql::Query query(v8g->_applicationV8, 
+                               true, 
+                               col->_vocbase, 
+                               aql.c_str(),
+                               aql.size(),
+                               bindVars.steal(),
+                               nullptr,
+                               triagens::aql::PART_MAIN);
+ 
+    auto queryResult = query.executeV8(isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED || 
+          queryResult.code == TRI_ERROR_QUERY_KILLED) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+      }
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    }
+    
+    size_t ignored = 0;
+    size_t removed = 0;
+      
+    if (queryResult.stats != nullptr) {
+      auto found = TRI_LookupObjectJson(queryResult.stats, "writesIgnored");
+      if (TRI_IsNumberJson(found)) {
+        ignored = static_cast<size_t>(found->_value._number);
+      }
+        
+      found = TRI_LookupObjectJson(queryResult.stats, "writesExecuted");
+      if (TRI_IsNumberJson(found)) {
+        removed = static_cast<size_t>(found->_value._number);
+      }
+    }
+
+    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+    result->Set(TRI_V8_ASCII_STRING("removed"), v8::Number::New(isolate, static_cast<double>(removed)));
+    result->Set(TRI_V8_ASCII_STRING("ignored"), v8::Number::New(isolate, static_cast<double>(ignored)));
+
+    TRI_V8_RETURN(result);
+  }  
+  catch (triagens::basics::Exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  }
+  catch (...) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
@@ -2614,18 +2750,17 @@ void TRI_InitV8Queries (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("INEDGES"), JS_InEdgesQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("LAST"), JS_LastQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NEAR"), JS_NearQuery, true);
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("OUTEDGES"), JS_OutEdgesQuery, true);
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("WITHIN"), JS_WithinQuery, true);
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("lookupByKeys"), JS_LookupByKeys, false);
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("removeByKeys"), JS_RemoveByKeys, false);
+  
+  // internal methods. not intended to be used by end-users
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("AGGREGATE_COUNT"), JS_AggregateCount, true);
-
-  // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH"), JS_NthQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH2"), JS_Nth2Query, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH3"), JS_Nth3Query, true);
-
-  // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("OFFSET"), JS_OffsetQuery, true);
-
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("OUTEDGES"), JS_OutEdgesQuery, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("WITHIN"), JS_WithinQuery, true);
 }
 
 // -----------------------------------------------------------------------------
