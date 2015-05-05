@@ -1,4 +1,4 @@
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/replication/inventory
+shell> curl --dump - http://localhost:8529/_api/replication/inventory
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -9,7 +9,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "7153827", 
+        "cid" : "7152693", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -19,7 +19,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "7415971", 
+          "id" : "7414837", 
           "type" : "hash", 
           "unique" : true, 
           "sparse" : false, 
@@ -34,7 +34,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "4532387", 
+        "cid" : "4400181", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 4194304, 
@@ -48,13 +48,13 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2173091", 
+        "cid" : "2040885", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
         "name" : "_graphs", 
         "isVolatile" : false, 
-        "waitForSync" : true 
+        "waitForSync" : false 
       }, 
       "indexes" : [ ] 
     }, 
@@ -62,7 +62,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2304163", 
+        "cid" : "2171957", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -76,7 +76,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2435235", 
+        "cid" : "2303029", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 33554432, 
@@ -90,11 +90,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "17311907", 
+        "cid" : "19080245", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
-        "name" : "_system_sessions_sessions", 
+        "name" : "_sessions", 
         "isVolatile" : false, 
         "waitForSync" : false 
       }, 
@@ -104,17 +104,31 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "403619", 
+        "cid" : "19801141", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
+        "name" : "_system_users_users", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ ] 
+    }, 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 2, 
+        "cid" : "205877", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 4194304, 
         "name" : "_users", 
         "isVolatile" : false, 
-        "waitForSync" : true 
+        "waitForSync" : false 
       }, 
       "indexes" : [ 
         { 
-          "id" : "665763", 
+          "id" : "533557", 
           "type" : "hash", 
           "unique" : true, 
           "sparse" : true, 
@@ -129,7 +143,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1092036771", 
+        "cid" : "1244603445", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -143,11 +157,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "758917283", 
+        "cid" : "21046325", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
-        "name" : "better-example", 
+        "name" : "collectable_foxx_data_firstCollection", 
         "isVolatile" : false, 
         "waitForSync" : false 
       }, 
@@ -157,35 +171,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1001597091", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "Company", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "1001334947", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "Customer", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "1091119267", 
+        "cid" : "1243685941", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -199,104 +185,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1001859235", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "Electronics", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "1506945187", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "female", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "1405626531", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "frenchCity", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "805382307", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "geo", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ 
-        { 
-          "id" : "805644451", 
-          "type" : "geo1", 
-          "unique" : false, 
-          "sparse" : true, 
-          "geoJson" : false, 
-          "constraint" : false, 
-          "ignoreNull" : true, 
-          "fields" : [ 
-            "loc" 
-          ] 
-        } 
-      ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "1405364387", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "germanCity", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "1001728163", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "Groceries", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "1548298403", 
+        "cid" : "1645356085", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -306,7 +195,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "1548560547", 
+          "id" : "1645618229", 
           "type" : "hash", 
           "unique" : false, 
           "sparse" : false, 
@@ -316,7 +205,7 @@ content-type: application/json; charset=utf-8
           ] 
         }, 
         { 
-          "id" : "1548888227", 
+          "id" : "1645945909", 
           "type" : "skiplist", 
           "unique" : true, 
           "sparse" : false, 
@@ -326,7 +215,7 @@ content-type: application/json; charset=utf-8
           ] 
         }, 
         { 
-          "id" : "1549084835", 
+          "id" : "1646142517", 
           "type" : "cap", 
           "unique" : false, 
           "size" : 500, 
@@ -338,7 +227,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1549281443", 
+        "cid" : "1646339125", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -348,7 +237,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "1549543587", 
+          "id" : "1646601269", 
           "type" : "fulltext", 
           "unique" : false, 
           "sparse" : true, 
@@ -358,7 +247,7 @@ content-type: application/json; charset=utf-8
           ] 
         }, 
         { 
-          "id" : "1549805731", 
+          "id" : "1646863413", 
           "type" : "skiplist", 
           "unique" : false, 
           "sparse" : false, 
@@ -367,7 +256,7 @@ content-type: application/json; charset=utf-8
           ] 
         }, 
         { 
-          "id" : "1550002339", 
+          "id" : "1647060021", 
           "type" : "cap", 
           "unique" : false, 
           "size" : 0, 
@@ -379,137 +268,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1507076259", 
+        "cid" : "20915253", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
-        "name" : "male", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "1442916515", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "otherVertices", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "1180182691", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "vertices1", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 3, 
-        "cid" : "1181624483", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "edges2", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 3, 
-        "cid" : "1405757603", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "frenchHighway", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 3, 
-        "cid" : "1001466019", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "friend_of", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 3, 
-        "cid" : "1405495459", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "germanHighway", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 3, 
-        "cid" : "1001990307", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "has_bought", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 3, 
-        "cid" : "1405888675", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "internationalHighway", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 3, 
-        "cid" : "1507207331", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 1048576, 
-        "name" : "relation", 
+        "name" : "tescht_todos", 
         "isVolatile" : false, 
         "waitForSync" : false 
       }, 
@@ -518,9 +281,9 @@ content-type: application/json; charset=utf-8
   ], 
   "state" : { 
     "running" : true, 
-    "lastLogTick" : "1548953763", 
-    "totalEvents" : 9538, 
-    "time" : "2015-02-23T09:47:22Z" 
+    "lastLogTick" : "1645225013", 
+    "totalEvents" : 9994, 
+    "time" : "2015-05-05T07:28:48Z" 
   }, 
-  "tick" : "1550133411" 
+  "tick" : "1647191093" 
 }

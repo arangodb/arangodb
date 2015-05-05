@@ -1,4 +1,4 @@
-shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/male
+shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social/vertex/male
 
 HTTP/1.1 400 Bad Request
 content-type: application/json

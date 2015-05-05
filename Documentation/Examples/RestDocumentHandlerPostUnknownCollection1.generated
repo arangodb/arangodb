@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products <<EOF
 { "Hello": "World" }
+EOF
 
 HTTP/1.1 404 Not Found
 content-type: application/json; charset=utf-8

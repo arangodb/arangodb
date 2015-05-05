@@ -1,11 +1,12 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex <<EOF
 { 
   "collection" : "otherVertices" 
 }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json
-etag: 1436166307
+etag: 1570055221
 
 { 
   "error" : false, 
@@ -29,6 +30,6 @@ etag: 1436166307
       "otherVertices" 
     ], 
     "_id" : "_graphs/social", 
-    "_rev" : "1436166307" 
+    "_rev" : "1570055221" 
   } 
 }

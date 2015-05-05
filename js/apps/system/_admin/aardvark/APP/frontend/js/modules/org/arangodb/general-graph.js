@@ -446,6 +446,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered edges by a single example:
@@ -455,6 +456,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges({type: "married"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered edges by multiple examples:
@@ -464,6 +466,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges([{type: "married"}, {type: "friend"}]).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -498,6 +501,7 @@ AQLGenerator.prototype.edges = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered outbound edges by a single example:
@@ -507,6 +511,7 @@ AQLGenerator.prototype.edges = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges({type: "married"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered outbound edges by multiple examples:
@@ -516,6 +521,7 @@ AQLGenerator.prototype.edges = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges([{type: "married"}, {type: "friend"}]).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -551,6 +557,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered inbound edges by a single example:
@@ -560,6 +567,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges({type: "married"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered inbound edges by multiple examples:
@@ -569,6 +577,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges([{type: "married"}, {type: "friend"}]).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -652,6 +661,7 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered vertices by a single example:
@@ -661,6 +671,7 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices({name: "Alice"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered vertices by multiple examples:
@@ -670,6 +681,7 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices([{name: "Alice"}, {name: "Charly"}]).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -710,6 +722,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.fromVertices().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered source vertices by a single example:
@@ -719,6 +732,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.fromVertices({name: "Alice"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered source vertices by multiple examples:
@@ -728,6 +742,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -767,6 +782,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered target vertices by a single example:
@@ -776,6 +792,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices({name: "Bob"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered target vertices by multiple examples:
@@ -785,6 +802,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices([{name: "Bob"}, {name: "Diana"}]).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -836,6 +854,7 @@ AQLGenerator.prototype.getLastVar = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.outEdges().toVertices().path().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// When requesting neighbors the path to these neighbors is expanded:
@@ -845,6 +864,7 @@ AQLGenerator.prototype.getLastVar = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.neighbors().path().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -906,6 +926,7 @@ AQLGenerator.prototype.pathEdges = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.neighbors().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered neighbors by a single example:
@@ -915,6 +936,7 @@ AQLGenerator.prototype.pathEdges = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.neighbors({name: "Bob"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered neighbors by multiple examples:
@@ -924,6 +946,7 @@ AQLGenerator.prototype.pathEdges = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices([{name: "Bob"}, {name: "Charly"}]).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -1005,6 +1028,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.edges().vertices().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Apply a restriction to the directly connected vertices:
@@ -1014,6 +1038,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.edges().vertices().restrict("female").toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Restriction of a query is only valid for collections known to the graph:
@@ -1023,6 +1048,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.edges().vertices().restrict(["female", "male", "products"]).toArray(); // xpError(ERROR_BAD_PARAMETER);
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -1082,6 +1108,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Request vertices filtered:
@@ -1091,6 +1118,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().filter({name: "Alice"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Request edges unfiltered:
@@ -1100,6 +1128,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().outEdges().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Request edges filtered:
@@ -1109,6 +1138,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().outEdges().filter({type: "married"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -1178,6 +1208,7 @@ AQLGenerator.prototype.execute = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -1210,6 +1241,7 @@ AQLGenerator.prototype.toArray = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.count();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 //
@@ -1242,6 +1274,7 @@ AQLGenerator.prototype.count = function() {
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.hasNext();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Iterate over the result as long as it has more elements:
@@ -1254,6 +1287,7 @@ AQLGenerator.prototype.count = function() {
 /// |   var entry = query.next();
 /// |   // Do something with the entry
 ///   }
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -1290,6 +1324,7 @@ AQLGenerator.prototype.hasNext = function() {
 ///   query.next();
 ///   query.next();
 ///   query.next();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// The cursor is recreated if the query is changed:
@@ -1301,6 +1336,7 @@ AQLGenerator.prototype.hasNext = function() {
 ///   query.next();
 ///   query.edges();
 ///   query.next();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -2067,6 +2103,7 @@ var updateBindCollections = function(graph) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.male.save({name: "Floyd", _key: "floyd"});
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2096,6 +2133,7 @@ var updateBindCollections = function(graph) {
 ///   var graph = examples.loadGraph("social");
 ///   graph.male.save({neym: "Jon", _key: "john"});
 ///   graph.male.replace("male/john", {name: "John"});
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2125,6 +2163,7 @@ var updateBindCollections = function(graph) {
 ///   var graph = examples.loadGraph("social");
 ///   graph.female.save({name: "Lynda", _key: "linda"});
 ///   graph.female.update("female/linda", {name: "Linda", _key: "linda"});
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2156,6 +2195,7 @@ var updateBindCollections = function(graph) {
 ///   db._exists("male/kermit")
 ///   graph.male.remove("male/kermit")
 ///   db._exists("male/kermit")
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2187,6 +2227,7 @@ var updateBindCollections = function(graph) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// If the collections of *from* and *to* are not defined in an edge definition of the graph,
@@ -2199,6 +2240,7 @@ var updateBindCollections = function(graph) {
 ///   |  "relation/aliceAndBob",
 ///   |   "female/alice",
 ///      {type: "married", _key: "bobAndAlice"}); // xpError(ERROR_GRAPH_INVALID_EDGE)
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -2227,6 +2269,7 @@ var updateBindCollections = function(graph) {
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("female/alice", "female/diana", {typo: "nose", _key: "aliceAndDiana"});
 ///   graph.relation.replace("relation/aliceAndDiana", {type: "knows"});
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2256,6 +2299,7 @@ var updateBindCollections = function(graph) {
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("female/alice", "female/diana", {type: "knows", _key: "aliceAndDiana"});
 ///   graph.relation.update("relation/aliceAndDiana", {type: "quarrelled", _key: "aliceAndDiana"});
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2286,6 +2330,7 @@ var updateBindCollections = function(graph) {
 ///   db._exists("relation/aliceAndDiana")
 ///   graph.relation.remove("relation/aliceAndDiana")
 ///   db._exists("relation/aliceAndDiana")
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2348,6 +2393,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 /// ~ var g1 = examples.loadGraph("social");
 ///   var graph_module = require("org/arangodb/general-graph");
 ///   graph = graph_module._graph("social");
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2465,6 +2511,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 /// ~ db._drop("female");
 /// ~ db._drop("male");
 /// ~ db._drop("relation");
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphDropCollections}
@@ -2670,6 +2717,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._edges().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered edges:
@@ -2678,6 +2726,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._edges({type: "married"}).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -2718,6 +2767,7 @@ Graph.prototype._edges = function(edgeExample) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._vertices().toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered vertices:
@@ -2726,6 +2776,7 @@ Graph.prototype._edges = function(edgeExample) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._vertices([{name: "Alice"}, {name: "Bob"}]).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -2755,6 +2806,7 @@ Graph.prototype._vertices = function(example) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._fromVertex("relation/aliceAndBob")
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2797,6 +2849,7 @@ Graph.prototype._fromVertex = function(edgeId) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._toVertex("relation/aliceAndBob")
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2885,6 +2938,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._neighbors({isCapital : true});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all outbound neighbors of Hamburg.
@@ -2893,6 +2947,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2934,6 +2989,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._commonNeighbors({isCapital : true}, {isCapital : true});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all common outbound neighbors of Hamburg with any other location
@@ -2947,6 +3003,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// |   {},
 /// |   {direction : 'outbound', maxDepth : 2},
 ///     {direction : 'outbound', maxDepth : 2});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2991,6 +3048,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._countCommonNeighbors({isCapital : true}, {isCapital : true});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all common outbound neighbors of Hamburg with any other location
@@ -3001,6 +3059,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
 ///   {direction : 'outbound', maxDepth : 2});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3080,6 +3139,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._commonProperties({}, {});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all cities which share same properties except for population.
@@ -3088,6 +3148,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._commonProperties({}, {}, {ignoreProperties: 'population'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3132,6 +3193,7 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._countCommonProperties({}, {});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all German cities which share same properties except for population.
@@ -3141,6 +3203,7 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// var graph = examples.loadGraph("routeplanner");
 /// | graph._countCommonProperties({}, {}, {vertex1CollectionRestriction : 'germanCity',
 ///   vertex2CollectionRestriction : 'germanCity' ,ignoreProperties: 'population'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3205,6 +3268,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._paths();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Return all inbound paths of the graph "social" with a maximal
@@ -3214,6 +3278,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 //
@@ -3301,6 +3366,7 @@ Graph.prototype._paths = function(options) {
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
 ///   startVertexCollectionRestriction : 'germanCity'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, shortest path from Hamburg and Cologne to Lyon:
@@ -3310,6 +3376,7 @@ Graph.prototype._paths = function(options) {
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
 ///   {weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3354,6 +3421,7 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
 ///   startVertexCollectionRestriction : 'germanCity'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
@@ -3363,6 +3431,7 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._distanceTo([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
 ///   {weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3437,6 +3506,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 /// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 /// |   + "'routeplanner', {})"
 ///   ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all locations.
@@ -3446,6 +3516,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteEccentricity({}, {weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all cities regarding only
@@ -3456,6 +3527,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._absoluteEccentricity({}, {startVertexCollectionRestriction : 'germanCity',
 ///   direction : 'outbound', weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3502,6 +3574,7 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._eccentricity();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the weighted eccentricity.
@@ -3510,6 +3583,7 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._eccentricity({weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3581,6 +3655,7 @@ Graph.prototype._eccentricity = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteCloseness({});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all locations.
@@ -3590,6 +3665,7 @@ Graph.prototype._eccentricity = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteCloseness({}, {weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all German Cities regarding only
@@ -3600,6 +3676,7 @@ Graph.prototype._eccentricity = function(options) {
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._absoluteCloseness({}, {startVertexCollectionRestriction : 'germanCity',
 ///   direction : 'outbound', weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3646,6 +3723,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._closeness();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the closeness of all locations.
@@ -3655,6 +3733,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._closeness({weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the closeness of all cities regarding only
@@ -3664,6 +3743,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._closeness({direction : 'outbound', weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3720,6 +3800,7 @@ Graph.prototype._closeness = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteBetweenness({});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute betweenness of all locations.
@@ -3729,6 +3810,7 @@ Graph.prototype._closeness = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteBetweenness({weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute betweenness of all cities regarding only
@@ -3738,6 +3820,7 @@ Graph.prototype._closeness = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteBetweenness({direction : 'outbound', weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3781,6 +3864,7 @@ Graph.prototype._absoluteBetweenness = function(example, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._betweenness();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the betweenness of all locations.
@@ -3790,6 +3874,7 @@ Graph.prototype._absoluteBetweenness = function(example, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._betweenness({weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the betweenness of all cities regarding only
@@ -3799,6 +3884,7 @@ Graph.prototype._absoluteBetweenness = function(example, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._betweenness({direction : 'outbound', weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3858,6 +3944,7 @@ Graph.prototype._betweenness = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._radius();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the radius of the graph.
@@ -3867,6 +3954,7 @@ Graph.prototype._betweenness = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._radius({weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the radius of the graph regarding only
@@ -3876,6 +3964,7 @@ Graph.prototype._betweenness = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._radius({direction : 'outbound', weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3935,6 +4024,7 @@ Graph.prototype._radius = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._diameter();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the diameter of the graph.
@@ -3944,6 +4034,7 @@ Graph.prototype._radius = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._diameter({weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the diameter of the graph regarding only
@@ -3953,6 +4044,7 @@ Graph.prototype._radius = function(options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._diameter({direction : 'outbound', weight : 'distance'});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -4262,6 +4354,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 ///   var graph = graph_module._create("myGraph", [ed1, ed2]);
 ///   graph._deleteEdgeDefinition("myEC1");
 ///   db._collection("myEC1");
+/// ~ db._drop("myEC1");
 /// ~ var blub = graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -4275,6 +4368,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 ///   var graph = graph_module._create("myGraph", [ed1, ed2]);
 ///   graph._deleteEdgeDefinition("myEC1", true);
 ///   db._collection("myEC1");
+/// ~ db._drop("myEC1");
 /// ~ var blub = graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -4358,6 +4452,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection)
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
 ///   graph._addVertexCollection("myVC3", true);
+/// ~ db._drop("myVC3");
 /// ~ var blub = graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -4461,6 +4556,7 @@ Graph.prototype._orphanCollections = function() {
 ///   graph._orphanCollections();
 ///   graph._removeVertexCollection("myVC3");
 ///   graph._orphanCollections();
+/// ~ db._drop("myVC3");
 /// ~ var blub = graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -4530,6 +4626,7 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._getConnectingEdges({isCapital : true}, {isCapital : true});
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 ///
@@ -4645,6 +4742,12 @@ exports._listObjects = _listObjects;
 ///   "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
 ///   graph_module._create("myStore", edgeDefinitions);
 /// ~ graph_module._drop("myStore");
+/// ~ db._drop("Electronics");
+/// ~ db._drop("Customer");
+/// ~ db._drop("Groceries");
+/// ~ db._drop("Company");
+/// ~ db._drop("has_bought");
+/// ~ db._drop("friend_of");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -4660,6 +4763,12 @@ exports._listObjects = _listObjects;
 ///    "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
 ///   graph_module._create("myStore", edgeDefinitions);
 /// ~ graph_module._drop("myStore");
+/// ~ db._drop("Electronics");
+/// ~ db._drop("Customer");
+/// ~ db._drop("Groceries");
+/// ~ db._drop("Company");
+/// ~ db._drop("has_bought");
+/// ~ db._drop("friend_of");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock

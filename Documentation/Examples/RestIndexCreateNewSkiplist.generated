@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products <<EOF
 { 
   "type" : "skiplist", 
   "unique" : false, 
@@ -7,12 +7,13 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?c
     "b" 
   ] 
 }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1244276899", 
+  "id" : "products/1249125429", 
   "type" : "skiplist", 
   "unique" : false, 
   "sparse" : false, 

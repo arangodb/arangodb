@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/replication/applier-config
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/replication/applier-config <<EOF
 {"endpoint":"tcp://127.0.0.1:8529","username":"replicationApplier","password":"applier1234@foxx","chunkSize":4194304,"autoStart":false,"adaptivePolling":true}
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
