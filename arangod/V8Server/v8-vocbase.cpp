@@ -105,6 +105,20 @@ int32_t const WRP_VOCBASE_TYPE = 1;
 int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private constants
+// -----------------------------------------------------------------------------
+
+struct CollectionBarrierInfo {
+  TRI_barrier_t* barrier;
+  TRI_transaction_collection_t* col;
+
+  CollectionBarrierInfo(
+    TRI_barrier_t* barrier,
+    TRI_transaction_collection_t* col
+  ) : barrier(barrier), col(col) {}
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
 // -----------------------------------------------------------------------------
   
@@ -1490,20 +1504,49 @@ static inline v8::Local<v8::String> vertexIdToString (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to v8 json
+////////////////////////////////////////////////////////////////////////////////
+
+static inline v8::Handle<v8::Value> vertexIdToData( 
+                                      v8::Isolate* isolate,
+                                      CollectionNameResolver const* resolver,
+                                      ExplicitTransaction* trx,
+                                      unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
+                                      VertexId& vertexId
+                                    ) {
+  auto i = barriers.find(vertexId.cid);
+  TRI_ASSERT(i != barriers.end());
+  TRI_doc_mptr_copy_t document;
+
+  trx->readSingle(i->second.col, &document, vertexId.key);
+  return TRI_WrapShapedJson(isolate, resolver, i->second.barrier,
+      vertexId.cid, i->second.col->_collection->_collection, document.getDataPtr());
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms an ArangoDBPathFinder Path to v8 json values
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, 
+                                         ExplicitTransaction* trx,
                                          CollectionNameResolver const* resolver,
-                                         ArangoDBPathFinder::Path& p) {
+                                         ArangoDBPathFinder::Path& p,
+                                         unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
+                                         bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
   v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
 
-  for (uint32_t j = 0;  j < vn;  ++j) {
-    vertices->Set(j, vertexIdToString(isolate, resolver, p.vertices[j]));
+  if (includeData) {
+    for (uint32_t j = 0;  j < vn;  ++j) {
+      vertices->Set(j, vertexIdToData(isolate, resolver, trx, barriers, p.vertices[j]));
+    }
+  } else {
+    for (uint32_t j = 0;  j < vn;  ++j) {
+      vertices->Set(j, vertexIdToString(isolate, resolver, p.vertices[j]));
+    }
   }
   result->Set(TRI_V8_STRING("vertices"), vertices);
 
@@ -1517,7 +1560,61 @@ static inline v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate,
   result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, p.weight));
 
   return scope.Escape<v8::Value>(result);
-};
+}
+
+
+static inline ExplicitTransaction* beginTransaction(
+    TRI_vocbase_t* vocbase,
+    vector<string> readCollections,
+    vector<string> writeCollections
+  ) {
+
+  // IHHF isCoordinator
+  double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
+  bool embed = true;
+  bool waitForSync = false;
+
+  // Start Transaction to collect all parts of the path
+  ExplicitTransaction* trx = new ExplicitTransaction(
+    vocbase,
+    readCollections,
+    writeCollections,
+    lockTimeout,
+    waitForSync,
+    embed
+  );
+  
+  int res = trx->begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    trx->finish(res);
+    throw res;
+  }
+  return trx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Request a barrier for the given collection
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void addBarrier(
+    ExplicitTransaction* trx,
+    CollectionNameResolver const* resolver,
+    string const& collectionName,
+    unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers
+  ) {
+  TRI_vocbase_col_t const* col = resolver->getCollectionStruct(collectionName);
+  if (col == nullptr) {
+    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  TRI_barrier_t* barrier = trx->orderBarrier(trx->trxCollection(col->_cid));
+  if (barrier == nullptr) {
+    throw TRI_ERROR_OUT_OF_MEMORY;
+  }
+  TRI_transaction_collection_t* dcol 
+    = trx->trxCollection(col->_cid);
+  barriers.emplace(col->_cid, CollectionBarrierInfo(barrier, dcol));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Executes a shortest Path Traversal
@@ -1597,24 +1694,69 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       opts.multiThreaded = TRI_ObjectToBoolean(options->Get(keyMultiThreaded));
     }
   } 
-  unique_ptr<ArangoDBPathFinder::Path> path = TRI_RunShortestPathSearch(
-    isolate,
-    vocbase,
-    vertexCollectionName,
-    edgeCollectionName,
-    startVertex,
-    targetVertex,
-    opts
-  );
 
+  vector<string> readCollections;
+  vector<string> writeCollections;
+
+  readCollections.push_back(vertexCollectionName);
+  readCollections.push_back(edgeCollectionName);
+
+  V8ResolverGuard resolverGuard(vocbase);
+
+  ExplicitTransaction* trx = nullptr;
+  int res = 0;
+  CollectionNameResolver const* resolver = resolverGuard.getResolver();
+
+  // Start the transaction
+  try {
+    trx = beginTransaction(vocbase, readCollections, writeCollections);
+  } catch (int e) {
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  // Order Barriers
+  unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
+  try {
+    addBarrier(trx, resolver, vertexCollectionName, barriers);
+    addBarrier(trx, resolver, edgeCollectionName, barriers);
+  } catch (int e) {
+    trx->finish(e);
+    // Free all the pointers
+    delete trx;
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  // Compute the path
+  unique_ptr<ArangoDBPathFinder::Path> path;
+  TRI_voc_cid_t edgeCid = resolver->getCollectionId(edgeCollectionName);
+
+  TRI_ASSERT(barriers.find(edgeCid) != barriers.end());
+  try {
+    path = TRI_RunShortestPathSearch(
+      vertexCollectionName,
+      edgeCollectionName,
+      startVertex,
+      targetVertex,
+      resolver,
+      barriers.find(edgeCid)->second.col->_collection->_collection,
+      opts
+    );
+  } catch (int e) {
+    trx->finish(e);
+    delete trx;
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  // Lift the result to v8
   if (path.get() == nullptr) {
     v8::EscapableHandleScope scope(isolate);
+    trx->finish(res);
+    delete trx;
     TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Object::New(isolate)));
   }
-  V8ResolverGuard resolverGuard(vocbase);
-  CollectionNameResolver const* resolver = resolverGuard.getResolver();
-  auto result = pathIdsToV8(isolate, resolver, *path);
-
+  auto result = pathIdsToV8(isolate, trx, resolver, *path, barriers, true);
+  trx->finish(res);
+  delete trx;
   TRI_V8_RETURN(result);
 }
 

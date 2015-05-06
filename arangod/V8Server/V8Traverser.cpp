@@ -352,71 +352,14 @@ class SimpleEdgeExpander {
 ////////////////////////////////////////////////////////////////////////////////
 
 unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
-    v8::Isolate* isolate,
-    TRI_vocbase_t* vocbase,
     string const& vertexCollectionName,
     string const& edgeCollectionName,
     string const& startVertex,
     string const& targetVertex,
+    CollectionNameResolver const* resolver,
+    TRI_document_collection_t* ecol,
     ShortestPathOptions& opts) {
 
-  vector<string> readCollections;
-  vector<string> writeCollections;
-
-  readCollections.push_back(vertexCollectionName);
-  readCollections.push_back(edgeCollectionName);
-
-
-  // IHHF isCoordinator
-  double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  bool embed = true;
-  bool waitForSync = false;
-
-  V8ResolverGuard resolver(vocbase);
-
-  // Start Transaction to collect all parts of the path
-  ExplicitTransaction trx(
-    vocbase,
-    readCollections,
-    writeCollections,
-    lockTimeout,
-    waitForSync,
-    embed
-  );
-  
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    trx.finish(res);
-    throw res;
-  }
-
-  TRI_vocbase_col_t const* col = resolver.getResolver()->getCollectionStruct(vertexCollectionName);
-  if (col == nullptr) {
-    trx.finish(res);
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  if (trx.orderBarrier(trx.trxCollection(col->_cid)) == nullptr) {
-    trx.finish(res);
-    throw TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  col = resolver.getResolver()->getCollectionStruct(edgeCollectionName);
-  if (col == nullptr) {
-    trx.finish(res);
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  if (trx.orderBarrier(trx.trxCollection(col->_cid)) == nullptr) {
-    trx.finish(res);
-    throw TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  TRI_document_collection_t* ecol 
-    = trx.trxCollection(col->_cid)->_collection->_collection;
-  CollectionNameResolver resolver1(vocbase);
-  CollectionNameResolver resolver2(vocbase);
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
   if (opts.direction == "outbound") {
@@ -450,16 +393,12 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
   size_t split;
   char const* str = startVertex.c_str();
   if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    // TODO Error Handling
-    trx.finish(res);
     return nullptr;
   }
   string collectionName = startVertex.substr(0, split);
 
-  auto coli = resolver1.getCollectionStruct(collectionName);
+  auto coli = resolver->getCollectionStruct(collectionName);
   if (coli == nullptr) {
-    // collection not found
-    trx.finish(res);
     throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -467,16 +406,12 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
 
   str = targetVertex.c_str();
   if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    // TODO Error Handling
-    trx.finish(res);
     return nullptr;
   }
   collectionName = targetVertex.substr(0, split);
 
-  coli = resolver2.getCollectionStruct(collectionName);
+  coli = resolver->getCollectionStruct(collectionName);
   if (coli == nullptr) {
-    // collection not found
-    trx.finish(res);
     throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   VertexId tv(coli->_cid, str + split + 1);
@@ -491,7 +426,6 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
   else {
     path.reset(pathFinder.shortestPath(sv, tv));
   } 
-  res = trx.finish(res);
   return path;
 }
 
