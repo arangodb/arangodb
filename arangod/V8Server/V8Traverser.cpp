@@ -64,6 +64,17 @@ namespace std {
         return s.cid == t.cid && strcmp(s.key, t.key) == 0;
       }
   };
+
+  template<>
+    struct less<VertexId> {
+      public:
+        bool operator()(const VertexId& lhs, const VertexId& rhs) {
+          if (lhs.cid != rhs.cid) {
+            return lhs.cid < rhs.cid;
+          }
+          return strcmp(lhs.key, rhs.key);
+        }
+    };
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,64 +445,10 @@ vector<VertexId> TRI_RunNeighborsSearch (
   TRI_vocbase_t* vocbase,
   std::string const& vertexCollectionName,
   std::string const& edgeCollectionName,
-  std::string const& startVertex
+  std::string const& startVertex,
+  CollectionNameResolver const* resolver,
+  TRI_document_collection_t* ecol
 ) {
-  vector<string> readCollections;
-  vector<string> writeCollections;
-
-  readCollections.push_back(vertexCollectionName);
-  readCollections.push_back(edgeCollectionName);
-
-  // IHHF isCoordinator
-  double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  bool embed = true;
-  bool waitForSync = false;
-
-  V8ResolverGuard resolverGuard(vocbase);
-  CollectionNameResolver const* resolver = resolverGuard.getResolver();
-
-  // Start Transaction to collect all parts of the path
-  ExplicitTransaction trx(
-    vocbase,
-    readCollections,
-    writeCollections,
-    lockTimeout,
-    waitForSync,
-    embed
-  );
-  
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    trx.finish(res);
-    throw res;
-  }
-
-  TRI_vocbase_col_t const* col = resolver->getCollectionStruct(vertexCollectionName);
-  if (col == nullptr) {
-    trx.finish(res);
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  if (trx.orderBarrier(trx.trxCollection(col->_cid)) == nullptr) {
-    trx.finish(res);
-    throw TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  col = resolver->getCollectionStruct(edgeCollectionName);
-  if (col == nullptr) {
-    trx.finish(res);
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  if (trx.orderBarrier(trx.trxCollection(col->_cid)) == nullptr) {
-    trx.finish(res);
-    throw TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  TRI_document_collection_t* ecol 
-    = trx.trxCollection(col->_cid)->_collection->_collection;
-
   // Transform string ids to VertexIds
   // Needs refactoring!
   size_t split;
@@ -500,7 +457,6 @@ vector<VertexId> TRI_RunNeighborsSearch (
 
   if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
     // TODO Error Handling
-    trx.finish(res);
     return result;
   }
   string collectionName = startVertex.substr(0, split);
@@ -508,7 +464,6 @@ vector<VertexId> TRI_RunNeighborsSearch (
   auto coli = resolver->getCollectionStruct(collectionName);
   if (coli == nullptr) {
     // collection not found
-    trx.finish(res);
     throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -518,6 +473,5 @@ vector<VertexId> TRI_RunNeighborsSearch (
   for (size_t j = 0;  j < edges.size(); ++j) {
     result.push_back(extractToId(edges[j]));
   }
-  trx.finish(res);
   return result;
 };

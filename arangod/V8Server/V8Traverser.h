@@ -78,7 +78,9 @@ struct VertexId {
   // VertexId(const VertexId& v) : first(v.first), second(v.second) { std::cout << "move failed!\n";}
   // VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
 
+
 };
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef the template instanciation of the PathFinder
@@ -112,7 +114,9 @@ std::vector<VertexId> TRI_RunNeighborsSearch (
   TRI_vocbase_t* vocbase,
   std::string const& vertexCollectionName,
   std::string const& edgeCollectionName,
-  std::string const& startVertex
+  std::string const& startVertex,
+  triagens::arango::CollectionNameResolver const* resolver,
+  TRI_document_collection_t* ecol
 );
 
 #endif
