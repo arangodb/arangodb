@@ -2132,9 +2132,9 @@ static void FulltextQuery (SingleCollectionReadOnlyTransaction& trx,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  // expect: FULLTEXT(<index-handle>, <query>)
-  if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("FULLTEXT(<index-handle>, <query>)");
+  // expect: FULLTEXT(<index-handle>, <query>, <limit>)
+  if (args.Length() < 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("FULLTEXT(<index-handle>, <query>, <limit>)");
   }
 
   // extract the index
@@ -2146,8 +2146,16 @@ static void FulltextQuery (SingleCollectionReadOnlyTransaction& trx,
 
   string const&& queryString = TRI_ObjectToString(args[1]);
   bool isSubstringQuery = false;
+  size_t maxResults = 0; // 0 means "all results"
 
-  TRI_fulltext_query_t* query = TRI_CreateQueryFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS);
+  if (args.Length() >= 3 && args[2]->IsNumber()) {
+    int64_t value = TRI_ObjectToInt64(args[2]);
+    if (value > 0) {
+      maxResults = static_cast<size_t>(value);
+    }
+  }
+
+  TRI_fulltext_query_t* query = TRI_CreateQueryFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
 
   if (! query) {
     TRI_V8_THROW_EXCEPTION_MEMORY();

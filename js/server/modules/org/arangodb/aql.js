@@ -3812,7 +3812,7 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
 /// @brief return documents that match a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_FULLTEXT (collection, attribute, query) {
+function AQL_FULLTEXT (collection, attribute, query, limit) {
   'use strict';
 
   var idx = INDEX_FULLTEXT(COLLECTION(collection), attribute);
@@ -3822,10 +3822,13 @@ function AQL_FULLTEXT (collection, attribute, query) {
   }
 
   if (isCoordinator) {
+    if (limit !== undefined && limit !== null && limit > 0) {
+      return COLLECTION(collection).fulltext(attribute, query, idx).limit(limit).toArray();
+    }
     return COLLECTION(collection).fulltext(attribute, query, idx).toArray();
   }
 
-  return COLLECTION(collection).FULLTEXT(idx, query).documents;
+  return COLLECTION(collection).FULLTEXT(idx, query, limit).documents;
 }
 
 // -----------------------------------------------------------------------------

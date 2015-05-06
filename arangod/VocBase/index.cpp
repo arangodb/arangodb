@@ -1541,6 +1541,27 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+static bool TextExtractor (TRI_shaper_t* shaper, 
+                           TRI_shape_t const* shape, 
+                           char const*, 
+                           char const* shapedJson, 
+                           uint64_t length, 
+                           void* data) {
+  char* text;
+  size_t textLength;
+  bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
+
+  if (ok) {
+    // add string value found
+    try {
+      static_cast<std::vector<std::pair<char const*, size_t>>*>(data)->emplace_back(text, textLength);
+    }
+    catch (...) {
+    }
+  }
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
@@ -1553,8 +1574,6 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   TRI_shaped_json_t shaped;
   TRI_shaped_json_t shapedJson;
   TRI_shape_t const* shape;
-  char* text;
-  size_t textLength;
   TRI_vector_string_t* words;
   bool ok;
 
@@ -1569,14 +1588,35 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   }
 
   // extract the string value for the indexed attribute
-  ok = TRI_StringValueShapedJson(shape, shapedJson._data.data, &text, &textLength);
+  if (shape->_type == TRI_SHAPE_SHORT_STRING || shape->_type == TRI_SHAPE_LONG_STRING) {
+    char* text;
+    size_t textLength;
+    ok = TRI_StringValueShapedJson(shape, shapedJson._data.data, &text, &textLength);
 
-  if (! ok) {
-    return nullptr;
+    if (! ok) {
+      return nullptr;
+    }
+
+    // parse the document text
+    words = TRI_get_words(text, textLength, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true);
   }
-
-  // parse the document text
-  words = TRI_get_words(text, textLength, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+  else if (shape->_type == TRI_SHAPE_ARRAY) {
+    std::vector<std::pair<char const*, size_t>> values;
+    TRI_IterateShapeDataArray(fulltextIndex->base._collection->getShaper(), shape, shapedJson._data.data, TextExtractor, &values);
+  
+    words = nullptr; 
+    for (auto const& it : values) {
+      if (! TRI_get_words(words, it.first, it.second, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
+        if (words != nullptr) {
+          TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+        }
+        return nullptr;
+      }
+    }
+  }
+  else {
+    words = nullptr;
+  }
 
   if (words == nullptr) {
     return nullptr;
