@@ -211,6 +211,24 @@ actions.defineHttp({
   })
 });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Run tests for an app
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/tests",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var mount = body.mount;
+      var options = body.options;
+      return foxxManager.runTests(mount, options)
+    }
+  })
+});
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

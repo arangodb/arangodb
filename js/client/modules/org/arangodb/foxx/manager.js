@@ -503,12 +503,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a Foxx application's tests
-///
-/// Input:
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
 ////////////////////////////////////////////////////////////////////////////////
 
   var runTests = function (mount, options) {
@@ -517,8 +511,12 @@
       [ [ "Mount path", "string" ] ],
       [ mount ]
     );
-
-    var res = arango.POST("/_admin/aardvark/foxxes/tests?mount=" + encodeURIComponent(mount), JSON.stringify(options));
+    utils.validateMount(mount);
+    var req = {
+      mount: mount,
+      options: options
+    }
+    var res = arango.POST("/_admin/foxx/tests", JSON.stringify(req));
     arangosh.checkRequestResult(res);
     return res;
   };
