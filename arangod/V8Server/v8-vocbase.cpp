@@ -1824,8 +1824,8 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE("CPP_NEIGHBORS(<vertexcollection>, <edgecollection>, <start>)");
+  if (args.Length() < 3 || args.Length() > 4) {
+    TRI_V8_THROW_EXCEPTION_USAGE("CPP_NEIGHBORS(<vertexcollection>, <edgecollection>, <start>, <options>)");
   }
 
   TRI_vocbase_t* vocbase;
@@ -1855,6 +1855,8 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
   string const startVertex = TRI_ObjectToString(args[2]);
  
+
+  // TODO Option parsing
 
   vector<string> readCollections;
   vector<string> writeCollections;
