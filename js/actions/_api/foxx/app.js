@@ -269,6 +269,24 @@ actions.defineHttp({
   })
 });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Run script for an app
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/script",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var name = body.name;
+      var mount = body.mount;
+      return foxxManager.runScript(name, mount)
+    }
+  })
+});
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
