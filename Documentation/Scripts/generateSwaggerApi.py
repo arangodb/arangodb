@@ -99,7 +99,7 @@ apis = [ ];
 # print "Generating Swagger docs for code in " + scriptDir + ", outdir: " + outDir + "\n"
 
 for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
-  tmpname = "/tmp/arango-swagger-" + name
+  tmpname = scriptDir + "/arango-swagger-" + name
   if os.path.isfile(tmpname):
     os.remove(tmpname)
 
