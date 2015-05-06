@@ -148,28 +148,30 @@
 
     /*jshint maxlen: 200 */
     var commands = {
-      "setup"        : "executes the setup script",
-      "install"      : "installs a foxx application identified by the given information to the given mountpoint",
-      "tests"        : "runs the tests of a foxx application mounted at the given mountpoint",
-      "replace"      : ["replaces an installed Foxx application",
+      "setup"           : "executes the setup script",
+      "install"         : "installs a foxx application identified by the given information to the given mountpoint",
+      "tests"           : "runs the tests of a foxx application mounted at the given mountpoint",
+      "replace"         : ["replaces an installed Foxx application",
                            "WARNING: this action will remove application data if the application implements teardown!" ],
-      "upgrade"      : ["upgrades an installed Foxx application",
+      "upgrade"         : ["upgrades an installed Foxx application",
                            "Note: this action will not call setup or teardown" ],
-      "teardown"     : [ "executes the teardown script",
+      "teardown"        : [ "executes the teardown script",
                              "WARNING: this action will remove application data if the application implements teardown!" ],
-      "uninstall"    : ["uninstalls a Foxx application and calls its teardown method",
+      "uninstall"       : ["uninstalls a Foxx application and calls its teardown method",
                          "WARNING: this will remove all data and code of the application!" ],
-      "list"         : "lists all installed Foxx applications",
-      "installed"    : "alias for the 'list' command",
-      "available"    : "lists all Foxx applications available in the local repository",
-      "info"         : "displays information about a Foxx application",
-      "search"       : "searches the local foxx-apps repository",
-      "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
-      "help"         : "shows this help",
-      "development"  : "activates development mode for the given mountpoint",
-      "production"   : "activates production mode for the given mountpoint",
-      "configuration": "request the configuration information for the given mountpoint",
-      "configure"    : "sets the configuration for the given mountpoint",
+      "list"            : "lists all installed Foxx applications",
+      "installed"       : "alias for the 'list' command",
+      "available"       : "lists all Foxx applications available in the local repository",
+      "info"            : "displays information about a Foxx application",
+      "search"          : "searches the local foxx-apps repository",
+      "update"          : "updates the local foxx-apps repository with data from the central foxx-apps repository",
+      "help"            : "shows this help",
+      "development"     : "activates development mode for the given mountpoint",
+      "production"      : "activates production mode for the given mountpoint",
+      "configuration"   : "request the configuration information for the given mountpoint",
+      "configure"       : "sets the configuration for the given mountpoint",
+      "dependencies"    : "request the dependencies information for the given mountpoint",
+      "set-dependencies": "sets the dependencies for the given mountpoint"
     };
 
     arangodb.print("\nThe following commands are available:\n");
@@ -501,6 +503,47 @@
     return res;
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Configure the dependencies of the app at the mountpoint
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var setDependencies = function(mount, options) {
+    checkParameter(
+      "setDependencies(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    utils.validateMount(mount);
+    var req = {
+      mount: mount,
+      options: options
+    };
+    var res = arango.POST("/_admin/foxx/set-dependencies", JSON.stringify(req));
+    arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the dependencies of the app at the given mountpoint
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var dependencies = function(mount) {
+    checkParameter(
+      "dependencies(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    utils.validateMount(mount);
+    var req = {
+      mount: mount
+    };
+    var res = arango.POST("/_admin/foxx/dependencies", JSON.stringify(req));
+    arangosh.checkRequestResult(res);
+    return res;
+  };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a Foxx application's tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,6 +685,18 @@
         case "configuration":
           res = configuration(args[1]);
           printf("Configuration options:\n%s\n", JSON.stringify(res, undefined, 2));
+          break;
+        case "set-dependencies":
+          options = extractOptions(args);
+          res = setDependencies(args[1], options);
+          printf("Reconfigured dependencies of Application %s version %s on mount point %s\n",
+             res.name,
+             res.version,
+             res.mount);
+          break;
+        case "dependencies":
+          res = dependencies(args[1]);
+          printf("Dependencies:\n%s\n", JSON.stringify(res, undefined, 2));
           break;
         default:
           arangodb.printf("Unknown command '%s', please try:\n", type);
