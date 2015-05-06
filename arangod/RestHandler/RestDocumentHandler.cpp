@@ -668,6 +668,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
   // OK or an error:
   _response = createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+  
   if (! generateBody) {
     // a head request...
     _response->headResponse((size_t) StringUtils::uint64(resultHeaders["content-length"]));
@@ -772,8 +773,8 @@ bool RestDocumentHandler::getDocumentCoordinator (
 
 bool RestDocumentHandler::readAllDocuments () {
   bool found;
-  string collection = _request->value("collection", found);
-  string returnType = _request->value("type", found);
+  std::string collection = _request->value("collection", found);
+  std::string returnType = _request->value("type", found);
 
   if (returnType.empty()) {
     returnType = "path";
@@ -786,19 +787,20 @@ bool RestDocumentHandler::readAllDocuments () {
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
 
-  vector<string> ids;
+  std::vector<std::string> ids;
 
   // .............................................................................
   // inside read transaction
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
     return false;
   }
 
-  const TRI_voc_cid_t cid = trx.cid();
+  TRI_voc_cid_t const cid = trx.cid();
 
   res = trx.read(ids);
 
@@ -815,7 +817,7 @@ bool RestDocumentHandler::readAllDocuments () {
     return false;
   }
 
-  string prefix;
+  std::string prefix;
 
   if (returnType == "key") {
     prefix = "";
@@ -832,7 +834,7 @@ bool RestDocumentHandler::readAllDocuments () {
       prefix = "/_db/" + _request->databaseName() + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
     }
   }
-  
+
   // generate result
   triagens::basics::Json documents(triagens::basics::Json::Array);
   documents.reserve(ids.size());
