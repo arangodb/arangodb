@@ -1541,12 +1541,32 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-static bool TextExtractor (TRI_shaper_t* shaper, 
-                           TRI_shape_t const* shape, 
-                           char const*, 
-                           char const* shapedJson, 
-                           uint64_t length, 
-                           void* data) {
+static bool ArrayTextExtractor (TRI_shaper_t* shaper, 
+                                TRI_shape_t const* shape, 
+                                char const*, 
+                                char const* shapedJson, 
+                                uint64_t length, 
+                                void* data) {
+  char* text;
+  size_t textLength;
+  bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
+
+  if (ok) {
+    // add string value found
+    try {
+      static_cast<std::vector<std::pair<char const*, size_t>>*>(data)->emplace_back(text, textLength);
+    }
+    catch (...) {
+    }
+  }
+  return true;
+}
+
+static bool ListTextExtractor (TRI_shaper_t* shaper, 
+                               TRI_shape_t const* shape, 
+                               char const* shapedJson, 
+                               uint64_t length, 
+                               void* data) {
   char* text;
   size_t textLength;
   bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
@@ -1602,7 +1622,23 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   }
   else if (shape->_type == TRI_SHAPE_ARRAY) {
     std::vector<std::pair<char const*, size_t>> values;
-    TRI_IterateShapeDataArray(fulltextIndex->base._collection->getShaper(), shape, shapedJson._data.data, TextExtractor, &values);
+    TRI_IterateShapeDataArray(fulltextIndex->base._collection->getShaper(), shape, shapedJson._data.data, ArrayTextExtractor, &values);
+  
+    words = nullptr; 
+    for (auto const& it : values) {
+      if (! TRI_get_words(words, it.first, it.second, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
+        if (words != nullptr) {
+          TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+        }
+        return nullptr;
+      }
+    }
+  }
+  else if (shape->_type == TRI_SHAPE_LIST ||
+           shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST ||
+           shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
+    std::vector<std::pair<char const*, size_t>> values;
+    TRI_IterateShapeDataList(fulltextIndex->base._collection->getShaper(), shape, shapedJson._data.data, ListTextExtractor, &values);
   
     words = nullptr; 
     for (auto const& it : values) {

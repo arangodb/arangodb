@@ -2425,7 +2425,7 @@ bool TRI_StringifyJsonShapeData (TRI_shaper_t* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over a shaped json array, using a callback function
+/// @brief iterate over a shaped json object, using a callback function
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_IterateShapeDataArray (TRI_shaper_t* shaper,
@@ -2445,6 +2445,8 @@ void TRI_IterateShapeDataArray (TRI_shaper_t* shaper,
   TRI_shape_sid_t cachedSid;
   TRI_shape_t const* cachedShape;
   char const* qtr;
+
+  TRI_ASSERT(shape->_type == TRI_SHAPE_ARRAY);
 
   s = (TRI_array_shape_t const*) shape;
   f = s->_fixedEntries;
@@ -2540,8 +2542,108 @@ void TRI_IterateShapeDataArray (TRI_shaper_t* shaper,
       return;
     }
   }
+}
 
-  return;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over a shaped json list, using a callback function
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_IterateShapeDataList (TRI_shaper_t* shaper,
+                               TRI_shape_t const* shape,
+                               char const* data,
+                               bool (*filter)(TRI_shaper_t*, TRI_shape_t const*, char const*, uint64_t, void*),
+                               void* ptr) {
+    
+  TRI_shape_length_list_t i;
+  TRI_shape_length_list_t l;
+
+  if (shape->_type == TRI_SHAPE_LIST) {
+    shape_cache_t shapeCache;
+
+    char const* p = data;
+    l = * (TRI_shape_length_list_t const*) p;
+
+    p += sizeof(TRI_shape_length_list_t);
+    TRI_shape_sid_t const* sids = (TRI_shape_sid_t const*) p;
+
+    p += l * sizeof(TRI_shape_sid_t);
+    TRI_shape_size_t const* offsets = (TRI_shape_size_t const*) p;
+
+    shapeCache._sid = 0;
+    shapeCache._shape = nullptr;
+
+    for (i = 0;  i < l;  ++i, ++sids, ++offsets) {
+      TRI_shape_sid_t sid = *sids;
+      TRI_shape_size_t offset = *offsets;
+
+      // use last sid if in cache
+      TRI_shape_t const* subshape;
+      if (sid == shapeCache._sid && shapeCache._sid > 0) {
+        subshape = shapeCache._shape;
+      }
+      else {
+        shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+        shapeCache._sid = sid;
+      }
+
+      if (subshape == nullptr) {
+        LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+        continue;
+      }
+
+      if (! filter(shaper, subshape, data + offset, offsets[1] - offset, ptr)) {
+        return;
+      }
+    }
+  }
+  else if (shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST) {
+    TRI_homogeneous_list_shape_t const* s = (TRI_homogeneous_list_shape_t const*) shape;
+    TRI_shape_sid_t sid = s->_sidEntry;
+
+    TRI_shape_t const* subshape = shaper->lookupShapeId(shaper, sid);
+
+    if (subshape == nullptr) {
+      LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+      return;
+    }
+
+    char const* p = data;
+    l = * (TRI_shape_length_list_t const*) p;
+
+    p += sizeof(TRI_shape_length_list_t);
+    TRI_shape_size_t const* offsets = (TRI_shape_size_t const*) p;
+
+    for (i = 0;  i < l;  ++i, ++offsets) {
+      TRI_shape_size_t offset = *offsets;
+
+      if (! filter(shaper, subshape, data + offset, offsets[1] - offset, ptr)) {
+        return;
+      }
+    }
+  }
+  else if (shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
+    TRI_homogeneous_sized_list_shape_t const* s = (TRI_homogeneous_sized_list_shape_t const*) shape;
+    TRI_shape_sid_t sid = s->_sidEntry;
+
+    TRI_shape_t const* subshape = shaper->lookupShapeId(shaper, sid);
+
+    if (subshape == nullptr) {
+      LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+      return;
+    }
+
+    char const* p = data;
+    l = * (TRI_shape_length_list_t const*) p;
+
+    TRI_shape_size_t length = s->_sizeEntry;
+    TRI_shape_size_t offset = sizeof(TRI_shape_length_list_t);
+
+    for (i = 0;  i < l;  ++i, offset += length) {
+      if (! filter(shaper, subshape, data + offset, length, ptr)) {
+        return;
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
