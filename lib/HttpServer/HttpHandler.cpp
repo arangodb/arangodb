@@ -143,9 +143,9 @@ Job* HttpHandler::createJob (HttpServer* server, bool isDetached) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpHandler::removePreviousResponse () {
-  if (_response != 0) {
+  if (_response != nullptr) {
     delete _response;
-    _response = 0;
+    _response = nullptr;
   }
 }
 

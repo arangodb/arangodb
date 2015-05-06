@@ -346,8 +346,8 @@ void AsyncJobManager::initAsyncJob (HttpServerJob* job, uint64_t* jobId) {
 
   TRI_ASSERT(job != nullptr);
 
-  *jobId = (AsyncJobResult::IdType) generate();
-  job->assignId((uint64_t) *jobId);
+  *jobId = generate();
+  job->assignId(*jobId);
 
   AsyncCallbackContext* ctx = nullptr;
 
