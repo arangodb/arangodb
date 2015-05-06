@@ -264,7 +264,7 @@ actions.defineHttp({
     callback: function (body) {
       var mount = body.mount;
       var options = body.options;
-      return foxxManager.runTests(mount, options)
+      return foxxManager.runTests(mount, options);
     }
   })
 });
@@ -282,7 +282,7 @@ actions.defineHttp({
     callback: function (body) {
       var name = body.name;
       var mount = body.mount;
-      return foxxManager.runScript(name, mount)
+      return foxxManager.runScript(name, mount);
     }
   })
 });

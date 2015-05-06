@@ -310,6 +310,7 @@ function computeRootAppPath(mount, isValidation) {
       if (!expected[name]) {
         invalid.push("Unexpected Option " + name);
       } else {
+        var type = expected[name].type;
         var result = utils.parameterTypes[type].validate(value);
         if (result.error) {
           invalid.push(result.error.message.replace(/^"value"/, '"' + name + '"'));
