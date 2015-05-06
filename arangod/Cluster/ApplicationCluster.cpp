@@ -461,7 +461,7 @@ void ApplicationCluster::close () {
     return;
   }
 
-  if (_heartbeat != 0) {
+  if (_heartbeat != nullptr) {
     _heartbeat->stop();
   }
 
@@ -487,7 +487,7 @@ void ApplicationCluster::stop () {
   AgencyComm comm;
   comm.sendServerState(0.0);
 
-  if (_heartbeat != 0) {
+  if (_heartbeat != nullptr) {
     _heartbeat->stop();
   }
 
