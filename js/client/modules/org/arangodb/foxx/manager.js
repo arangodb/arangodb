@@ -258,7 +258,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Zips and copies a local app to the server.
-///
 ////////////////////////////////////////////////////////////////////////////////
 
   var moveAppToServer = function(appInfo) {
@@ -723,6 +722,7 @@
   exports.install = install;
   exports.setup = setup;
   exports.teardown = teardown;
+  exports.tests = tests;
   exports.uninstall = uninstall;
   exports.replace = replace;
   exports.upgrade = upgrade;
@@ -730,11 +730,13 @@
   exports.production = production;
   exports.configure = configure;
   exports.configuration = configuration;
+  exports.setDependencies = setDependencies;
+  exports.dependencies = dependencies;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Clientside only API
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   exports.run = run;
   exports.help = help;
 
