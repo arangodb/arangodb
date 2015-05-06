@@ -1498,7 +1498,7 @@ static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args
 static inline v8::Local<v8::String> vertexIdToString (
     v8::Isolate* isolate,
     CollectionNameResolver const* resolver,
-    VertexId& id
+    VertexId const& id
   ) {
   return TRI_V8_STD_STRING((resolver->getCollectionName(id.cid) + "/" + string(id.key)));
 }
@@ -1512,7 +1512,7 @@ static inline v8::Handle<v8::Value> vertexIdToData(
                                       CollectionNameResolver const* resolver,
                                       ExplicitTransaction* trx,
                                       unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
-                                      VertexId& vertexId
+                                      VertexId const& vertexId
                                     ) {
   auto i = barriers.find(vertexId.cid);
   TRI_ASSERT(i != barriers.end());
@@ -1766,19 +1766,52 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> vertexIdsToV8(v8::Isolate* isolate, 
+                                         ExplicitTransaction* trx,
                                          CollectionNameResolver const* resolver,
-                                         vector<VertexId>& ids) {
+                                         vector<VertexId>& ids,
+                                         unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
+                                         bool includeData = false,
+                                         bool includeDuplicates = true) {
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  uint32_t const vn = static_cast<uint32_t>(ids.size());
-  v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
+  if (includeDuplicates) {
+    uint32_t const vn = static_cast<uint32_t>(ids.size());
+    v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
 
-  for (uint32_t j = 0;  j < vn;  ++j) {
-    vertices->Set(j, vertexIdToString(isolate, resolver, ids[j]));
+    if (includeData) {
+      for (uint32_t j = 0;  j < vn;  ++j) {
+        vertices->Set(j, vertexIdToData(isolate, resolver, trx, barriers, ids[j]));
+      }
+    } else {
+      for (uint32_t j = 0;  j < vn;  ++j) {
+        vertices->Set(j, vertexIdToString(isolate, resolver, ids[j]));
+      }
+    }
+    result->Set(TRI_V8_STRING("vertices"), vertices);
+    return scope.Escape<v8::Value>(result);
+  } else {
+    // set<VertexId> uniqueIds(ids.begin(), ids.end());
+    // TODO
+    auto uniqueIds = ids;
+    uint32_t const vn = static_cast<uint32_t>(uniqueIds.size());
+    v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
+    auto iterator = uniqueIds.begin();
+    if (includeData) {
+      for (uint32_t j = 0;  j < vn;  ++j) {
+        vertices->Set(j, vertexIdToData(isolate, resolver, trx, barriers, *iterator));
+        ++iterator;
+      }
+    } else {
+      for (uint32_t j = 0;  j < vn;  ++j) {
+        vertices->Set(j, vertexIdToString(isolate, resolver, *iterator));
+        ++iterator;
+      }
+    }
+    result->Set(TRI_V8_STRING("vertices"), vertices);
+    return scope.Escape<v8::Value>(result);
+ 
   }
-  result->Set(TRI_V8_STRING("vertices"), vertices);
-  return scope.Escape<v8::Value>(result);
 };
 
 
@@ -1822,18 +1855,61 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
   string const startVertex = TRI_ObjectToString(args[2]);
  
-  vector<VertexId> res = TRI_RunNeighborsSearch(
-    isolate,
-    vocbase,
-    vertexCollectionName,
-    edgeCollectionName,
-    startVertex
-  );
+
+  vector<string> readCollections;
+  vector<string> writeCollections;
+
+  readCollections.push_back(vertexCollectionName);
+  readCollections.push_back(edgeCollectionName);
 
   V8ResolverGuard resolverGuard(vocbase);
-  CollectionNameResolver const* resolver = resolverGuard.getResolver();
-  auto result = vertexIdsToV8(isolate, resolver, res);
 
+  ExplicitTransaction* trx = nullptr;
+  int res = 0;
+  CollectionNameResolver const* resolver = resolverGuard.getResolver();
+
+  // Start the transaction
+  try {
+    trx = beginTransaction(vocbase, readCollections, writeCollections);
+  } catch (int e) {
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  // Order Barriers
+  unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
+  try {
+    addBarrier(trx, resolver, vertexCollectionName, barriers);
+    addBarrier(trx, resolver, edgeCollectionName, barriers);
+  } catch (int e) {
+    trx->finish(e);
+    // Free all the pointers
+    delete trx;
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  TRI_voc_cid_t edgeCid = resolver->getCollectionId(edgeCollectionName);
+  TRI_ASSERT(barriers.find(edgeCid) != barriers.end());
+  vector<VertexId> neighbors;
+  try {
+    neighbors = TRI_RunNeighborsSearch(
+      isolate,
+      vocbase,
+      vertexCollectionName,
+      edgeCollectionName,
+      startVertex,
+      resolver,
+      barriers.find(edgeCid)->second.col->_collection->_collection
+    );
+  } catch (int e) {
+    trx->finish(e);
+    delete trx;
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  auto result = vertexIdsToV8(isolate, trx, resolver, neighbors, barriers, true);
+
+  trx->finish(res);
+  delete trx;
   TRI_V8_RETURN(result);
 }
 
