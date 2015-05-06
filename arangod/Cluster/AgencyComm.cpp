@@ -588,23 +588,32 @@ AgencyComm::~AgencyComm () {
 
 void AgencyComm::cleanup () {
   AgencyComm::disconnect();
+  
+  while (true) {
+    bool busyFound = false;
+    {
+      WRITE_LOCKER(AgencyComm::_globalLock);
 
-  {
-    WRITE_LOCKER(AgencyComm::_globalLock);
+      std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
-    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+      while (it != _globalEndpoints.end()) {
+        AgencyEndpoint* agencyEndpoint = (*it);
 
-    while (it != _globalEndpoints.end()) {
-      AgencyEndpoint* agencyEndpoint = (*it);
-
-      TRI_ASSERT(agencyEndpoint != nullptr);
-      delete agencyEndpoint;
-
-      ++it;
+        TRI_ASSERT(agencyEndpoint != nullptr);
+        if (agencyEndpoint->_busy) {
+          busyFound = true;
+          ++it;
+        }
+        else {
+          it = _globalEndpoints.erase(it);
+          delete agencyEndpoint;
+        }
+      }
+      if (!busyFound) {
+        break;
+      }
     }
-
-    // empty the list
-    _globalEndpoints.clear();
+    usleep(100000);
   }
 }
 
