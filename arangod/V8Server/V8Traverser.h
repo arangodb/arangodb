@@ -94,12 +94,12 @@ typedef triagens::basics::PathFinder<VertexId, std::string, double>
 /// @brief Wrapper for the shortest path computation
 ////////////////////////////////////////////////////////////////////////////////
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
-  v8::Isolate* isolate,
-  TRI_vocbase_t* vocbase,
   std::string const& vertexCollectionName,
   std::string const& edgeCollectionName,
   std::string const& startVertex,
   std::string const& targetVertex,
+  triagens::arango::CollectionNameResolver const* resolver,
+  TRI_document_collection_t* ecol,
   triagens::basics::traverser::ShortestPathOptions& opts
 );
 
