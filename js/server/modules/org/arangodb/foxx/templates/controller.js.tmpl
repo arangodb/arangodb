@@ -52,7 +52,7 @@ controller.get('/<%= basePath %>/:id', function (req, res) {
   res.json(<%= repositoryInstance %>.byId(id).forClient());
 }).pathParam('id', <%=model %>Description);
 
-/** Updates a <%= model %>
+/** Replaces a <%= model %>
  *
  * Changes a <%= model %>-Item. The information has to be in the
  * requestBody.
@@ -65,6 +65,21 @@ controller.put('/<%= basePath %>/:id', function (req, res) {
 .bodyParam('<%= modelInstance %>', {
   description: 'The <%= model %> you want your old one to be replaced with',
   type: <%= model %>
+});
+
+/** Updates a <%= model %>
+ *
+ * Changes a <%= model %>-Item. The information has to be in the
+ * requestBody.
+ */
+controller.patch('/<%= basePath %>/:id', function (req, res) {
+  var id = req.params('id'),
+  <%= modelInstance %> = req.params('<%= modelInstance %>');
+  res.json(<%= repositoryInstance %>.updateById(id, <%= modelInstance %>));
+}).pathParam('id', <%=model %>Description)
+.bodyParam('<%= modelInstance %>', {
+  description: 'The <%= model %> you want your old one to be updated with',
+  type: joi.object().required()
 });
 
 /** Removes a <%= model %>
