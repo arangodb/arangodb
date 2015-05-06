@@ -161,6 +161,7 @@
       "production"      : "activates production mode for the given mountpoint",
       "replace"         : ["replaces an installed Foxx application",
                            "WARNING: this action will remove application data if the application implements teardown!" ],
+      "script"          : "runs the given script of a foxx app mounted at the given mountpoint",
       "search"          : "searches the local foxx-apps repository",
       "set-dependencies": "sets the dependencies for the given mountpoint",
       "setup"           : "executes the setup script",
@@ -201,53 +202,26 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up a Foxx application
+/// @brief runs a script on a Foxx application
 ///
 /// Input:
+/// * name: the name of the script
 /// * mount: the mount path starting with a "/"
 ///
 /// Output:
 /// -
 ////////////////////////////////////////////////////////////////////////////////
-  var setup = function(mount) {
+  var script = function(name, mount) {
     checkParameter(
-      "setup(<mount>)",
-      [ [ "Mount path", "string" ] ],
-      [ mount ] );
+      "script(<name>, <mount>)",
+      [ [ "Script name", "string" ], [ "Mount path", "string" ] ],
+      [ name, mount ] );
     var res;
     var req = {
-      mount: mount,
+      name: name,
+      mount: mount
     };
-    res = arango.POST("/_admin/foxx/setup", JSON.stringify(req));
-    arangosh.checkRequestResult(res);
-    return {
-      name: res.name,
-      version: res.version,
-      mount: res.mount
-    };
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a Foxx application
-///
-/// Input:
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
-////////////////////////////////////////////////////////////////////////////////
-
-  var teardown = function(mount) {
-    checkParameter(
-      "teardown(<mount>)",
-      [ [ "Mount path", "string" ] ],
-      [ mount ] );
-    var res;
-    var req = {
-      mount: mount,
-    };
-
-    res = arango.POST("/_admin/foxx/teardown", JSON.stringify(req));
+    res = arango.POST("/_admin/foxx/script", JSON.stringify(req));
     arangosh.checkRequestResult(res);
     return {
       name: res.name,
@@ -583,10 +557,13 @@
     try {
       switch (type) {
         case "setup":
-          setup(args[1]);
+          script("setup", args[1]);
           break;
         case "teardown":
-          teardown(args[1]);
+          script("teardown", args[1]);
+          break;
+        case "script":
+          script(args[2], args[1]);
           break;
         case "tests":
           options = extractOptions(args);
@@ -720,8 +697,9 @@
 // -----------------------------------------------------------------------------
 
   exports.install = install;
-  exports.setup = setup;
-  exports.teardown = teardown;
+  exports.setup = script.bind(null, "setup");
+  exports.teardown = script.bind(null, "teardown");
+  exports.script = script;
   exports.tests = tests;
   exports.uninstall = uninstall;
   exports.replace = replace;
