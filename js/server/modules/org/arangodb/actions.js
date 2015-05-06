@@ -970,7 +970,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
 
       result = result.concat(flattenRouting(
         parameter.match,
-        path + "/<parameters>",
+        path + "/:" + parameter.parameter,
         cur,
         newUrlParameters,
         depth + 1,
@@ -1009,7 +1009,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
   if (routes.hasOwnProperty('prefix')) {
     result = result.concat(flattenRouting(
       routes.prefix,
-      path + "/...",
+      path + "/*",
       rexpr + "(/[^/]+)*/?",
       urlParameters._shallowCopy,
       depth + 1,
@@ -1290,6 +1290,22 @@ function routeRequest (req, res, routes) {
     }
     else {
       req.urlParameters = {};
+    }
+
+    if (req.path) {
+      var path = req.path;
+      req.path = function (params, suffix) {
+        var p = path;
+        params = params || req.urlParameters;
+        Object.keys(params).forEach(function (key) {
+          p = p.replace(new RegExp(':' + key, 'g'), params[key]);
+        });
+        suffix = suffix || req.suffix;
+        if (Array.isArray(suffix)) {
+          suffix = suffix.join('/');
+        }
+        return p.replace(/\*$/, suffix || '');
+      };
     }
 
     var func = action.route.callback.controller;
