@@ -417,7 +417,11 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
 
   var error = false;
   for (i = 0;i < endpoints.length;i++) {
-    if (! waitForServerUp(endpoints[i], 50)) {
+    var timeout = 50;
+    if (cmd.valgrind !== '') {
+      timeout *= 1000;
+    }
+    if (! waitForServerUp(endpoints[i], timeout)) {
       error = true;
     }
   }
