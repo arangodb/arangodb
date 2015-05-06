@@ -95,7 +95,7 @@ console.groupEnd();
 
 `console.groupCollapsed(format, argument1, ...)`
 
-Same as *console.group*, but with the group initially collapsed.
+Same as *console.group*.
 
 !SUBSECTION console.groupEnd
 
