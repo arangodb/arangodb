@@ -165,8 +165,11 @@ actions.defineHttp({
     callback: function (body) {
       var mount = body.mount;
       var options = body.options;
+      if (options && options.configuration) {
+        options = options.configuration;
+      }
 
-      return foxxManager.configure(mount, options);
+      return foxxManager.configure(mount, {configuration: options || {}});
     }
   })
 });
@@ -185,6 +188,43 @@ actions.defineHttp({
       var mount = body.mount;
 
       return foxxManager.configuration(mount);
+    }
+  })
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configures a Foxx application's dependencies
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/set-dependencies",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var mount = body.mount;
+      var options = body.options;
+
+      return foxxManager.updateDeps(mount, {dependencies: options || {}});
+    }
+  })
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the dependencies of a Foxx application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/dependencies",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var mount = body.mount;
+
+      return foxxManager.dependencies(mount);
     }
   })
 });
