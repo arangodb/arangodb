@@ -135,17 +135,21 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const,
 /// @brief find all documents that contain a word (exact match)
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 struct TRI_fulltext_result_s* TRI_FindExactFulltextIndex (TRI_fts_index_t* const,
                                                           const char* const,
                                                           const size_t);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (prefix match)
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 struct TRI_fulltext_result_s* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* const,
                                                            const char*,
                                                            const size_t);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a query on the fulltext index

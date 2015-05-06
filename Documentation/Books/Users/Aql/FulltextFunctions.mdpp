@@ -2,9 +2,10 @@
 
 AQL offers the following functions to filter data based on [fulltext indexes](../Glossary/README.html#fulltext_index):
 
-- *FULLTEXT(collection, attribute, query)*: 
+- *FULLTEXT(collection, attribute, query, limit)*: 
   Returns all documents from collection *collection* for which the attribute *attribute*
-  matches the fulltext query *query*.
+  matches the fulltext query *query*. The *limit* parameter is optional. If set to a non-zero
+  value, it will cap the result to at most this number of documents.
   *query* is a comma-separated list of sought words (or prefixes of sought words). To 
   distinguish between prefix searches and complete-match searches, each word can optionally be
   prefixed with either the *prefix:* or *complete:* qualifier. Different qualifiers can

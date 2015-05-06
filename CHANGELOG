@@ -1,6 +1,27 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* added optional `limit` parameter for AQL function `FULLTEXT`
+
+* make fulltext index also index text values that are contained in direct sub-objects of the indexed 
+  attribute.
+
+  Previous versions of ArangoDB only indexed the attribute value if it was a string. Sub-attributes
+  in objects were ignored for the fulltext index.
+
+  Now, if the index attribute value is an object, the objects' values will each be included in the
+  fulltext index if they are strings.
+
+  For example, with a fulltext index present on the `translations` attribute, the following text
+  values will now be indexed:
+
+     var c = db._create("example");
+     c.insert({ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } });
+     c.insert({ translations: "Fox is the English translation of the German word Fuchs" });
+
+     c.fulltext("translations", "лиса").toArray();  // returns first document
+     c.fulltext("translations", "Fox").toArray();   // returns both documents
+
 * added batch document removal and lookup commands:
 
       collection.lookupByKeys(keys)

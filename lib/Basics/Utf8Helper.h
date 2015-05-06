@@ -168,6 +168,17 @@ namespace triagens {
                                        size_t maximalWordLength,
                                        bool lowerCase);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the words of a UTF-8 string.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool getWords (TRI_vector_string_t*& words,
+                       char const* text,
+                       size_t textLength,
+                       size_t minimalWordLength,
+                       size_t maximalWordLength,
+                       bool lowerCase);
+
       private:
         Collator* _coll;
     };
@@ -262,11 +273,22 @@ char* TRI_toupper_utf8 (TRI_memory_zone_t* zone,
 /// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t* TRI_get_words (const char* const text,
-                                    const size_t textLength,
-                                    const size_t minimalWordLength,
-                                    const size_t maximalWordLength,
+TRI_vector_string_t* TRI_get_words (char const* text,
+                                    size_t textLength,
+                                    size_t minimalWordLength,
+                                    size_t maximalWordLength,
                                     bool lowerCase);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_get_words (TRI_vector_string_t*& words,
+                    char const* text,
+                    size_t textLength,
+                    size_t minimalWordLength,
+                    size_t maximalWordLength,
+                    bool lowerCase);
 
 #endif
 
