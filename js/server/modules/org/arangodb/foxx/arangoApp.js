@@ -310,11 +310,11 @@ function computeRootAppPath(mount, isValidation) {
       if (!expected[name]) {
         invalid.push("Unexpected Option " + name);
       } else {
-        var type = expected[name].type;
-        if (!(utils.typeToRegex[type]).test(value)) {
-          invalid.push("Option " + name + " has wrong type, expected: " + type);
+        var result = utils.parameterTypes[type].validate(value);
+        if (result.error) {
+          invalid.push(result.error.message.replace(/^"value"/, '"' + name + '"'));
         } else {
-          this._options.configuration[name] = value;
+          this._options.configuration[name] = result.value;
         }
       }
     }, this);

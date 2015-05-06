@@ -90,8 +90,8 @@ var manifestSchema = {
       .keys({
         default: joi.any().optional(),
         type: (
-          joi.string().required()
-          .valid(Object.keys(utils.typeToRegex))
+          joi.only(Object.keys(utils.parameterTypes))
+          .default("string")
         ),
         description: joi.string().optional()
       })
