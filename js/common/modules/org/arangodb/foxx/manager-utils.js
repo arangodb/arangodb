@@ -452,15 +452,16 @@ function updateApp (mount, update) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief define regex for parameter types
+/// @brief define validators for parameter types
 ////////////////////////////////////////////////////////////////////////////////
-var typeToRegex = {
-  "int": /[0-9]+/,
-  "integer": /[0-9]+/,
-  "boolean": /(true)|(false)/,
-  "bool": /(true)|(false)/,
-  "string": /[\w\W]*/
+var parameterTypes = {
+  integer: joi.number().integer().required(),
+  boolean: joi.boolean().required(),
+  string: joi.string().required(),
+  number: joi.number().required()
 };
+parameterTypes.int = parameterTypes.integer;
+parameterTypes.bool = parameterTypes.boolean;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a zip archive of a foxx app. Returns the absolute path
@@ -507,7 +508,7 @@ exports.processDirectory = processDirectory;
 exports.processGithubRepository = processGithubRepository;
 exports.validateAppName = validateAppName;
 exports.validateMount = validateMount;
-exports.typeToRegex = typeToRegex;
+exports.parameterTypes = parameterTypes;
 exports.zipDirectory = zipDirectory;
 exports.getStorage = getStorage;
 exports.pathRegex = pathRegex;

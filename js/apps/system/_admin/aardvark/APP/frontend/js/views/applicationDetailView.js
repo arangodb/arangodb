@@ -143,7 +143,7 @@
       _.each(this.model.get('config'), function(opt, key) {
         var $el = $("#app_config_" + key);
         var val = window.arangoHelper.escapeHtml($el.val());
-        if (opt.type === "boolean") {
+        if (opt.type === "boolean" || obj.type === "bool") {
           cfg[key] = $el.is(":checked");
           return;
         }
@@ -153,7 +153,7 @@
         }
         if (opt.type === "number") {
           cfg[key] = parseFloat(val);
-        } else if (opt.type === "integer") {
+        } else if (opt.type === "integer" || obj.type === "int") {
           cfg[key] = parseInt(val, 10);
         } else {
           cfg[key] = val;
@@ -171,7 +171,7 @@
         return;
       }
       var tableContent = _.map(this.model.get('config'), function(obj, name) {
-        if (obj.type === 'bool' || obj.type === 'boolean') {
+        if (obj.type === 'boolean' || obj.type === 'bool') {
           return window.modalView.createCheckboxEntry(
             "app_config_" + name,
             name,
@@ -183,7 +183,7 @@
         var defaultValue;
         var currentValue;
         var checks = [];
-        if (obj.type === 'integer') {
+        if (obj.type === 'integer' || obj.type === 'int') {
           checks.push({
             rule: Joi.number().integer().optional().allow(""),
             msg: "Has to be an integer."
