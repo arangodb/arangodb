@@ -274,9 +274,11 @@ if (global.FS_MAKE_ABSOLUTE) {
 /// @brief join
 ////////////////////////////////////////////////////////////////////////////////
 
+var join;
+
 if (isWindows) {
 
-  exports.join = function () {
+  join = function () {
     function f(p) {
       if (typeof p !== 'string') {
         throw new TypeError('Arguments to path.join must be strings');
@@ -310,7 +312,7 @@ if (isWindows) {
 
 }
 else {
-  exports.join = function () {
+  join = function () {
     var paths = Array.prototype.slice.call(arguments, 0);
 
     return normalize(paths.filter(function(p) {
@@ -324,12 +326,23 @@ else {
 
 }
 
+exports.join = function () {
+  var args = Array.prototype.slice.call(arguments);
+  var path = join(args.shift(), args.shift());
+  while (args.length) {
+    path = join(path, args.shift());
+  }
+  return path;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief safe-join
 ////////////////////////////////////////////////////////////////////////////////
 
+var safeJoin;
+
 if (isWindows) {
-  exports.safeJoin = function (base, relative) {
+  safeJoin = function (base, relative) {
     base = normalize(base + "/");
     var path = normalizeArray(relative.split(/[\\\/]+/), false).join("/");
 
@@ -337,7 +350,7 @@ if (isWindows) {
   };
 }
 else {
-  exports.safeJoin = function (base, relative) {
+  safeJoin = function (base, relative) {
     base = normalize(base + "/");
     var path = normalizeArray(relative.split("/"), false).join("/");
     base = normalize(base + "/");
@@ -345,6 +358,15 @@ else {
     return base + path;
   };
 }
+
+exports.safeJoin = function () {
+  var args = Array.prototype.slice.call(arguments);
+  var path = safeJoin(args.shift(), args.shift());
+  while (args.length) {
+    path = safeJoin(path, args.shift());
+  }
+  return path;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list
