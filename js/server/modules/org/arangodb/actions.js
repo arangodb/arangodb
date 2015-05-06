@@ -2241,14 +2241,8 @@ function pathHandler (req, res, options, next) {
 /// @brief helper function to stringify a request
 ////////////////////////////////////////////////////////////////////////////////
 
-function stringifyRequestAddress (req) {
-  var out = req.requestType + " " +
-            req.protocol + "://" +
-            req.server.address + ":" +
-            req.server.port +
-            req.url;
-
-  return out;
+function stringifyRequest(req) {
+  return req.requestType + " " + req.absoluteUrl();
 }
 
 // -----------------------------------------------------------------------------
@@ -2275,7 +2269,7 @@ exports.reloadRouting            = reloadRouting;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.addCookie                = addCookie;
-exports.stringifyRequestAddress  = stringifyRequestAddress;
+exports.stringifyRequest         = stringifyRequest;
 
 // standard HTTP responses
 exports.badParameter             = badParameter;

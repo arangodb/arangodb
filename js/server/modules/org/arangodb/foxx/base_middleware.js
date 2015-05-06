@@ -415,7 +415,7 @@ function BaseMiddleware() {
       console.log("%s, incoming request from %s: %s",
                   options.mount,
                   request.client.address,
-                  actions.stringifyRequestAddress(request));
+                  actions.stringifyRequest(request));
     }
 
     _.extend(request, requestFunctions);
