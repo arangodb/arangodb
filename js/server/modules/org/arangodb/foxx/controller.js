@@ -33,7 +33,8 @@ var RequestContext = require("org/arangodb/foxx/request_context").RequestContext
   _ = require("underscore"),
   extend = _.extend,
   is = require("org/arangodb/is"),
-  internal = require("org/arangodb/foxx/internals");
+  internal = require("org/arangodb/foxx/internals"),
+  swagger = require("org/arangodb/foxx/swagger");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Controller
@@ -747,6 +748,21 @@ extend(Controller.prototype, {
     }
     var sessions = require("org/arangodb/foxx/sessions");
     return this[method](route, sessions.createDestroySessionHandler(this.getSessions(), opts));
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_apiDocumentation
+///
+/// `FoxxController#apiDocumentation(path, opts)`
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  apiDocumentation: function (route, beforeFn) {
+    if (route.charAt(route.length - 1) !== '/') {
+      route += '/';
+    }
+    var mountPath = this.applicationContext.mount;
+    return this.get(route + '*', swagger.createSwaggerRouteHandler(mountPath, beforeFn));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
