@@ -156,9 +156,9 @@ void DispatcherThread::run () {
       }
       catch (std::exception const& ex) {
         try {
-          Exception ex(TRI_ERROR_INTERNAL, string("job failed with unknown in work: ") + ex.what(), __FILE__, __LINE__);
+          Exception ex2(TRI_ERROR_INTERNAL, string("job failed with unknown in work: ") + ex.what(), __FILE__, __LINE__);
 
-          job->handleError(ex);
+          job->handleError(ex2);
         }
         catch (Exception const& ex) {
           LOG_WARNING("caught error while handling error: %s", ex.what());
