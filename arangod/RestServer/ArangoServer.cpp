@@ -494,8 +494,8 @@ void ArangoServer::buildApplicationServer () {
   ;
   string languageName;
 
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
-    const char *ICU_env = getenv("ICU_DATA");
+  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
+    char const* ICU_env = getenv("ICU_DATA");
     LOG_FATAL_AND_EXIT("failed to initialise ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
   }
 
