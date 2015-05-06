@@ -9,6 +9,11 @@ v2.6.0 (XXXX-XX-XX)
   These commands can be used to perform multi-document lookup and removal operations efficiently
   from the ArangoShell. The argument to these operations is an array of document keys.
 
+  Also added HTTP APIs for batch document commands:
+
+  * PUT /_api/simple/lookup-by-keys
+  * PUT /_api/simple/remove-by-keys
+
 * properly prefix document address URLs with the current database name for calls to
   API method GET `/_api/document?collection=...` (that method will return partial URLs to all 
   documents in the collection). 
