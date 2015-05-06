@@ -1240,24 +1240,16 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          // WRITE-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_WRITE);
+          int res = readAll(trxCollection, ids, false);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          res = readAll(trxCollection, ids, false);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            this->unlock(trxCollection, TRI_TRANSACTION_WRITE);
             return res;
           }
 
           try {
-            for (auto it = ids.begin(); it != ids.end(); ++it) {
+            for (auto const& it : ids) {
               res = TRI_RemoveShapedJsonDocumentCollection(trxCollection,
-                                                           (TRI_voc_key_t) (*it).c_str(),
+                                                           (TRI_voc_key_t) it.c_str(),
                                                            0,
                                                            nullptr, // marker 
                                                            nullptr, // policy
@@ -1276,10 +1268,7 @@ namespace triagens {
           catch (...) {
             res = TRI_ERROR_INTERNAL;
           }
-
-          this->unlock(trxCollection, TRI_TRANSACTION_WRITE);
-          // WRITE-LOCK END
-
+          
           return res;
         }
 
