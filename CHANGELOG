@@ -7,7 +7,7 @@ v2.6.0 (XXXX-XX-XX)
   attribute.
 
   Previous versions of ArangoDB only indexed the attribute value if it was a string. Sub-attributes
-  of the index attribute were for fulltext indexing.
+  of the index attribute were ignored when fulltext indexing.
 
   Now, if the index attribute value is an object, the object's values will each be included in the
   fulltext index if they are strings. If the index attribute value is an array, the array's values
