@@ -531,7 +531,7 @@
     var req = {
       mount: mount,
       options: options
-    }
+    };
     var res = arango.POST("/_admin/foxx/tests", JSON.stringify(req));
     arangosh.checkRequestResult(res);
     return res;

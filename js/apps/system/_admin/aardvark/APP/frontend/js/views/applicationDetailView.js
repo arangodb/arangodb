@@ -143,7 +143,7 @@
       _.each(this.model.get('config'), function(opt, key) {
         var $el = $("#app_config_" + key);
         var val = window.arangoHelper.escapeHtml($el.val());
-        if (opt.type === "boolean" || obj.type === "bool") {
+        if (opt.type === "boolean" || opt.type === "bool") {
           cfg[key] = $el.is(":checked");
           return;
         }
@@ -153,7 +153,7 @@
         }
         if (opt.type === "number") {
           cfg[key] = parseFloat(val);
-        } else if (opt.type === "integer" || obj.type === "int") {
+        } else if (opt.type === "integer" || opt.type === "int") {
           cfg[key] = parseInt(val, 10);
         } else {
           cfg[key] = val;
