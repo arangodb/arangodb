@@ -91,7 +91,7 @@ namespace {
     AsyncWatcher* watcher = reinterpret_cast<AsyncWatcher*>(w);
     Task* task = watcher->task;
 
-    if (task != 0 && (revents & EV_ASYNC) && task->isActive()) {
+    if (task != nullptr && (revents & EV_ASYNC) && task->isActive()) {
       task->handleEvent(watcher->token, EVENT_ASYNC);
     }
   }
@@ -123,7 +123,7 @@ namespace {
     SocketWatcher* watcher = reinterpret_cast<SocketWatcher*>(w);
     Task* task = watcher->task;
 
-    if (task != 0 && task->isActive()) {
+    if (task != nullptr && task->isActive()) {
       if (revents & EV_READ) {
         if (revents & EV_WRITE) {
           task->handleEvent(watcher->token, EVENT_SOCKET_READ | EVENT_SOCKET_WRITE);
@@ -157,7 +157,7 @@ namespace {
     PeriodicWatcher* watcher = reinterpret_cast<PeriodicWatcher*>(w);
     Task* task = watcher->task;
 
-    if (task != 0 && (revents & EV_PERIODIC) && task->isActive()) {
+    if (task != nullptr && (revents & EV_PERIODIC) && task->isActive()) {
       task->handleEvent(watcher->token, EVENT_PERIODIC);
     }
   }
@@ -181,7 +181,7 @@ namespace {
     SignalWatcher* watcher = reinterpret_cast<SignalWatcher*>(w);
     Task* task = watcher->task;
 
-    if (task != 0 && (revents & EV_SIGNAL) && task->isActive()) {
+    if (task != nullptr && (revents & EV_SIGNAL) && task->isActive()) {
       task->handleEvent(watcher->token, EVENT_SIGNAL);
     }
   }
@@ -205,7 +205,7 @@ namespace {
     TimerWatcher* watcher = reinterpret_cast<TimerWatcher*>(w);
     Task* task = watcher->task;
 
-    if (task != 0 && (revents & EV_TIMER) && task->isActive()) {
+    if (task != nullptr && (revents & EV_TIMER) && task->isActive()) {
       task->handleEvent(watcher->token, EVENT_TIMER);
     }
   }
@@ -382,7 +382,7 @@ void SchedulerLibev::uninstallEvent (EventToken token) {
   EventType type;
   void* watcher = lookupWatcher(token, type);
 
-  if (watcher == 0) {
+  if (watcher == nullptr) {
     return;
   }
 
@@ -430,7 +430,7 @@ void SchedulerLibev::uninstallEvent (EventToken token) {
 
     case EVENT_TIMER: {
       TimerWatcher* w = reinterpret_cast<TimerWatcher*>(watcher);
-      ev_timer_stop(w->loop, (ev_timer*) w);
+      ev_timer_stop(w->loop, &w->timer);
 
       unregisterWatcher(token);
       delete w;
@@ -450,7 +450,7 @@ EventToken SchedulerLibev::installAsyncEvent (EventLoop loop, Task* task) {
   watcher->task = task;
   watcher->token = registerWatcher(watcher, EVENT_ASYNC);
 
-  ev_async* w = (ev_async*) watcher;
+  ev_async* w = &watcher->async;
   ev_async_init(w, asyncCallback);
   ev_async_start(watcher->loop, w);
 
@@ -464,7 +464,7 @@ EventToken SchedulerLibev::installAsyncEvent (EventLoop loop, Task* task) {
 void SchedulerLibev::sendAsync (EventToken token) {
   AsyncWatcher* watcher = reinterpret_cast<AsyncWatcher*>(lookupWatcher(token));
 
-  if (watcher == 0) {
+  if (watcher == nullptr) {
     return;
   }
 
@@ -482,7 +482,7 @@ EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, dou
   watcher->task = task;
   watcher->token = registerWatcher(watcher, EVENT_PERIODIC);
 
-  ev_periodic* w = (ev_periodic*) watcher;
+  ev_periodic* w = &watcher->periodic;
   ev_periodic_init(w, periodicCallback, offset, interval, 0);
   ev_periodic_start(watcher->loop, w);
 
@@ -496,7 +496,7 @@ EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, dou
 void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double interval) {
   PeriodicWatcher* watcher = reinterpret_cast<PeriodicWatcher*>(lookupWatcher(token));
 
-  if (watcher == 0) {
+  if (watcher == nullptr) {
     return;
   }
 
@@ -515,7 +515,7 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
   watcher->task = task;
   watcher->token = registerWatcher(watcher, EVENT_SIGNAL);
 
-  ev_signal* w = (ev_signal*) watcher;
+  ev_signal* w = &watcher->signal;
   ev_signal_init(w, signalCallback, signal);
   ev_signal_start(watcher->loop, w);
 
@@ -565,7 +565,7 @@ EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, T
 void SchedulerLibev::startSocketEvents (EventToken token) {
   SocketWatcher* watcher = reinterpret_cast<SocketWatcher*>(lookupWatcher(token));
 
-  if (watcher == 0) {
+  if (watcher == nullptr) {
     return;
   }
 
@@ -583,7 +583,7 @@ void SchedulerLibev::startSocketEvents (EventToken token) {
 void SchedulerLibev::stopSocketEvents (EventToken token) {
   SocketWatcher* watcher = reinterpret_cast<SocketWatcher*>(lookupWatcher(token));
 
-  if (watcher == 0) {
+  if (watcher == nullptr) {
     return;
   }
 
@@ -604,7 +604,7 @@ EventToken SchedulerLibev::installTimerEvent (EventLoop loop, Task* task, double
   watcher->task = task;
   watcher->token = registerWatcher(watcher, EVENT_TIMER);
 
-  ev_timer* w = (ev_timer*) watcher;
+  ev_timer* w = &watcher->timer;
   ev_timer_init(w, timerCallback, timeout, 0.0);
   ev_timer_start(watcher->loop, w);
 
@@ -618,11 +618,11 @@ EventToken SchedulerLibev::installTimerEvent (EventLoop loop, Task* task, double
 void SchedulerLibev::clearTimer (EventToken token) {
   TimerWatcher* watcher = reinterpret_cast<TimerWatcher*>(lookupWatcher(token));
 
-  if (watcher == 0) {
+  if (watcher == nullptr) {
     return;
   }
 
-  ev_timer* w = (ev_timer*) watcher;
+  ev_timer* w = &watcher->timer;
   ev_timer_stop(watcher->loop, w);
 }
 
@@ -633,11 +633,11 @@ void SchedulerLibev::clearTimer (EventToken token) {
 void SchedulerLibev::rearmTimer (EventToken token, double timeout) {
   TimerWatcher* watcher = reinterpret_cast<TimerWatcher*>(lookupWatcher(token));
 
-  if (watcher == 0) {
+  if (watcher == nullptr) {
     return;
   }
 
-  ev_timer* w = (ev_timer*) watcher;
+  ev_timer* w = &watcher->timer;
   ev_timer_set(w, 0.0, timeout);
   ev_timer_again(watcher->loop, w);
 }
@@ -655,7 +655,7 @@ void* SchedulerLibev::lookupWatcher (EventToken token) {
 
   if (token >= (EventToken) _watchers.size()) {
     SCHEDULER_UNLOCK(&_watcherLock);
-    return 0;
+    return nullptr;
   }
 
   void* watcher = _watchers[token];
@@ -673,7 +673,7 @@ void* SchedulerLibev::lookupWatcher (EventToken token, EventType& type) {
 
   if (token >= (EventToken) _watchers.size()) {
     SCHEDULER_UNLOCK(&_watcherLock);
-    return 0;
+    return nullptr;
   }
 
   type = _types[token];
@@ -728,7 +728,7 @@ void SchedulerLibev::unregisterWatcher (EventToken token) {
   SCHEDULER_LOCK(&_watcherLock);
 
   _frees.push_back(token);
-  _watchers[token] = 0;
+  _watchers[token] = nullptr;
 
   SCHEDULER_UNLOCK(&_watcherLock);
 }
