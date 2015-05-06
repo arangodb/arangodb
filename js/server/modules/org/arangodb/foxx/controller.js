@@ -148,13 +148,13 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   handleRequest: function (method, route, callback) {
-    var constraints = {queryParams: {}, urlParams: {}},
-      newRoute = internal.constructRoute(method, route, callback, this, constraints),
-      requestContext = new RequestContext(
-        this.allRoutes, this.models, newRoute, this.rootElement, constraints, this.extensions
-      ),
-      summary,
-      undocumentedBody;
+    var constraints = {queryParams: {}, urlParams: {}};
+    var newRoute = internal.constructRoute(method, route, callback, this, constraints);
+    var requestContext = new RequestContext(
+      this.allRoutes, this.models, newRoute, route, this.rootElement, constraints, this.extensions
+    );
+    var summary;
+    var undocumentedBody;
 
     this.routingInfo.routes.push(newRoute);
 
@@ -758,7 +758,6 @@ extend(Controller.prototype, {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-
   extend: function(extensions) {
     var attr;
     for (attr in extensions) {

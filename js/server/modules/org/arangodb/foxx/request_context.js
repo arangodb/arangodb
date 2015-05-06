@@ -112,7 +112,8 @@ function validateOrThrow(raw, schema, allowInvalid) {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-function RequestContext(executionBuffer, models, route, rootElement, constraints, extensions) {
+function RequestContext(executionBuffer, models, route, path, rootElement, constraints, extensions) {
+  this.path = path;
   this.route = route;
   this.typeToRegex = {
     "int": "/[0-9]+/",
