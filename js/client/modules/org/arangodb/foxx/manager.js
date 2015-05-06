@@ -521,9 +521,9 @@
 /// @brief run a Foxx application's tests
 ////////////////////////////////////////////////////////////////////////////////
 
-  var runTests = function (mount, options) {
+  var tests = function (mount, options) {
     checkParameter(
-      "runTests(<mount>, [<options>])",
+      "tests(<mount>, [<options>])",
       [ [ "Mount path", "string" ] ],
       [ mount ]
     );
@@ -567,7 +567,7 @@
           break;
         case "tests":
           options = extractOptions(args);
-          res = runTests(args[1], options);
+          res = tests(args[1], options);
           printf(JSON.stringify(res, null, 2) + "\n");
           break;
         case "install":
