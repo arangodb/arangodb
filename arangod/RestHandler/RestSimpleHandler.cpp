@@ -85,10 +85,10 @@ HttpHandler::status_t RestSimpleHandler::execute () {
     char const* prefix = _request->requestPath();
 
     if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH.c_str()) == 0) {
-      removeDocuments(json.get());
+      removeByKeys(json.get());
     }
     else if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH.c_str()) == 0) {
-      lookupDocuments(json.get());
+      lookupByKeys(json.get());
     }
     else {
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "unsupported value for <operation>");
@@ -166,10 +166,10 @@ bool RestSimpleHandler::wasCancelled () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock REST_SIMPLE_REMOVE
+/// @startDocuBlock RestRemoveByKeys
 /// @brief removes multiple documents by their keys
 ///
-/// @RESTHEADER{PUT /_api/simple/remove-by-keys, Deletes multiple documents by their keys}
+/// @RESTHEADER{PUT /_api/simple/remove-by-keys, Remove documents by their keys}
 ///
 /// @RESTBODYPARAM{payload,json,required}
 /// A JSON object containing an attribute *collection* with the collection name
@@ -247,7 +247,7 @@ bool RestSimpleHandler::wasCancelled () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::removeDocuments (TRI_json_t const* json) {
+void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
   try { 
     auto const collectionName = TRI_LookupObjectJson(json, "collection");
 
@@ -331,10 +331,10 @@ void RestSimpleHandler::removeDocuments (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock REST_SIMPLE_LOOKUP
+/// @startDocuBlock RestLookupByKeys
 /// @brief fetches multiple documents by their keys
 ///
-/// @RESTHEADER{PUT /_api/simple/lookup-by-keys, Fetches multiple documents by their keys}
+/// @RESTHEADER{PUT /_api/simple/lookup-by-keys, Find documents by their keys}
 ///
 /// @RESTBODYPARAM{payload,json,required}
 /// A JSON object containing an attribute *collection* with the collection name
@@ -412,7 +412,7 @@ void RestSimpleHandler::removeDocuments (TRI_json_t const* json) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::lookupDocuments (TRI_json_t const* json) {
+void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
   try { 
     auto const collectionName = TRI_LookupObjectJson(json, "collection");
 

@@ -121,13 +121,13 @@ namespace triagens {
 /// @brief execute a batch remove operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        void removeDocuments (struct TRI_json_t const*);
+        void removeByKeys (struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a batch lookup operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        void lookupDocuments (struct TRI_json_t const*);
+        void lookupByKeys (struct TRI_json_t const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

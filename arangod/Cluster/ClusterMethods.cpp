@@ -987,18 +987,18 @@ int getAllDocumentsOnCoordinator (
 
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection="+
-                           it->first + "&type=" + StringUtils::urlEncode(returnType), 0, false, headers, NULL, 3600.0);
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection=" +
+                           it->first + "&type=" + StringUtils::urlEncode(returnType), 0, false, headers, nullptr, 3600.0);
     delete res;
   }
   // Now listen to the results:
   int count;
   responseCode = triagens::rest::HttpResponse::OK;
   contentType = "application/json; charset=utf-8";
-  resultBody.clear();
-  resultBody.reserve(1024 * 1024);
-  resultBody += "{ \"documents\" : [\n";
-  char const* p;
+
+  triagens::basics::Json result(triagens::basics::Json::Object);
+  triagens::basics::Json documents(triagens::basics::Json::Array);
+  
   for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_TIMEOUT) {
@@ -1012,28 +1012,38 @@ int getAllDocumentsOnCoordinator (
       cc->drop( "", coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }
-    p = res->answer->body();
 
-    char const* q = p + res->answer->bodySize();
-    while (*p != '\n' && *p != 0) {
-      p++;
-    }
-    p++;
+    std::unique_ptr<TRI_json_t> shardResult(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body()));
 
-    while (*q != '\n' && q > p) {
-      q--;
+    if (shardResult == nullptr || ! TRI_IsObjectJson(shardResult.get())) {
+      delete res;
+      return TRI_ERROR_INTERNAL;
     }
 
-    if (p != q) {
-      resultBody.append(p, q - p);
-      resultBody += ",\n";
+    auto docs = TRI_LookupObjectJson(shardResult.get(), "documents");
+
+    if (! TRI_IsArrayJson(docs)) {
+      delete res;
+      return TRI_ERROR_INTERNAL;
     }
+
+    size_t const n = TRI_LengthArrayJson(docs);
+    documents.reserve(n);
+
+    for (size_t j = 0; j < n; ++j) {
+      auto doc = static_cast<TRI_json_t*>(TRI_AtVector(&docs->_value._objects, j));
+
+      // this will transfer the ownership for the JSON into "documents"
+      documents.transfer(doc);
+    }
+
     delete res;
   }
-  if (resultBody[resultBody.size() - 2] == ',') {
-    resultBody.erase(resultBody.size() - 2);
-  }
-  resultBody += "\n] }\n";
+  
+  result("documents", documents);
+
+  resultBody = triagens::basics::JsonHelper::toString(result.json()); 
+
   return TRI_ERROR_NO_ERROR;
 }
 
