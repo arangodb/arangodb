@@ -106,7 +106,7 @@
           throw "Collection Name has to start with a letter";
         }
         if (modelBase === repositoryBase) {
-          repositoryBase += "_repo";
+          repositoryBase += "Repo";
         }
         modelName = collectionStart.toUpperCase() + modelBase;
         modelInstance = collectionStart.toLowerCase() + modelBase;
@@ -119,8 +119,8 @@
         this.controllers.push({
           url: '/' + collectionName,
           path: 'controllers/' + collectionName + '.js',
-          repositoryInstance: repositoryName,
-          repository: repositoryInstance,
+          repositoryInstance: repositoryInstance,
+          repository: repositoryName,
           repositoryPath: repositoryPath,
           modelInstance: modelInstance,
           model: modelName,
