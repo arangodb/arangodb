@@ -144,12 +144,7 @@
         author: this.author,
         version: '0.0.1',
         license: this.license,
-        isSystem: false,
-
-        contributors: [],
-
         controllers: {},
-
         scripts: {
           setup: "scripts/setup.js",
           teardown: "scripts/teardown.js"
