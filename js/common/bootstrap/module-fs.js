@@ -274,11 +274,9 @@ if (global.FS_MAKE_ABSOLUTE) {
 /// @brief join
 ////////////////////////////////////////////////////////////////////////////////
 
-var join;
-
 if (isWindows) {
 
-  join = function () {
+  exports.join = function () {
     function f(p) {
       if (typeof p !== 'string') {
         throw new TypeError('Arguments to path.join must be strings');
@@ -312,7 +310,7 @@ if (isWindows) {
 
 }
 else {
-  join = function () {
+  exports.join = function () {
     var paths = Array.prototype.slice.call(arguments, 0);
 
     return normalize(paths.filter(function(p) {
@@ -325,15 +323,6 @@ else {
   };
 
 }
-
-exports.join = function () {
-  var args = Array.prototype.slice.call(arguments);
-  var path = join(args.shift(), args.shift());
-  while (args.length) {
-    path = join(path, args.shift());
-  }
-  return path;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief safe-join
@@ -353,7 +342,6 @@ else {
   safeJoin = function (base, relative) {
     base = normalize(base + "/");
     var path = normalizeArray(relative.split("/"), false).join("/");
-    base = normalize(base + "/");
 
     return base + path;
   };
