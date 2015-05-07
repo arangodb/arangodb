@@ -6468,8 +6468,8 @@ function AQL_NEIGHBORS (vertexCollection,
   'use strict';
 
   vertex = TO_ID(vertex, vertexCollection);
-  if (examples === undefined && direction === "outbound") {
-    return CPP_NEIGHBORS(vertexCollection, edgeCollection, vertex);
+  if (examples === undefined) {
+    return CPP_NEIGHBORS(vertexCollection, edgeCollection, vertex, {direction: direction});
   }
   
   var edges = AQL_EDGES(edgeCollection, vertex, direction);

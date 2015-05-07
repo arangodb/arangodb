@@ -1857,6 +1857,25 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
  
 
   // TODO Option parsing
+  traverser::NeighborsOptions opts;
+
+  if (args.Length() == 4) {
+    if (! args[3]->IsObject()) {
+      TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
+    }
+    v8::Handle<v8::Object> options = args[3]->ToObject();
+    v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
+
+    if (options->Has(keyDirection) ) {
+      opts.direction = TRI_ObjectToString(options->Get(keyDirection));
+      if (   opts.direction != "outbound"
+          && opts.direction != "inbound"
+          && opts.direction != "any"
+         ) {
+        TRI_V8_THROW_TYPE_ERROR("expecting direction to be 'outbound', 'inbound' or 'any'");
+      }
+    }
+  }
 
   vector<string> readCollections;
   vector<string> writeCollections;
@@ -1900,7 +1919,8 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       edgeCollectionName,
       startVertex,
       resolver,
-      barriers.find(edgeCid)->second.col->_collection->_collection
+      barriers.find(edgeCid)->second.col->_collection->_collection,
+      opts
     );
   } catch (int e) {
     trx->finish(e);

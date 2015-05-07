@@ -447,7 +447,8 @@ vector<VertexId> TRI_RunNeighborsSearch (
   std::string const& edgeCollectionName,
   std::string const& startVertex,
   CollectionNameResolver const* resolver,
-  TRI_document_collection_t* ecol
+  TRI_document_collection_t* ecol,
+  NeighborsOptions& opts
 ) {
   // Transform string ids to VertexIds
   // Needs refactoring!
@@ -466,12 +467,31 @@ vector<VertexId> TRI_RunNeighborsSearch (
     // collection not found
     throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-
-  auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-         TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
-
-  for (size_t j = 0;  j < edges.size(); ++j) {
-    result.push_back(extractToId(edges[j]));
+  if (opts.direction == "any") {
+    auto edges = TRI_LookupEdgesDocumentCollection(ecol,
+           TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
+    for (size_t j = 0;  j < edges.size(); ++j) {
+      result.push_back(extractFromId(edges[j]));
+    }
+    edges = TRI_LookupEdgesDocumentCollection(ecol,
+           TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
+    for (size_t j = 0;  j < edges.size(); ++j) {
+      result.push_back(extractToId(edges[j]));
+    }
+  } else if (opts.direction == "inbound") {
+    auto edges = TRI_LookupEdgesDocumentCollection(ecol,
+           TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
+    for (size_t j = 0;  j < edges.size(); ++j) {
+      result.push_back(extractFromId(edges[j]));
+    }
+  } else {
+    auto edges = TRI_LookupEdgesDocumentCollection(ecol,
+           TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
+    for (size_t j = 0;  j < edges.size(); ++j) {
+      result.push_back(extractToId(edges[j]));
+    }
   }
+
+
   return result;
 };
