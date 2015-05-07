@@ -329,7 +329,10 @@
   // ------------------------------------------------------------
 
   controller.apiDocumentation('/docs', function (req, res) {
-    return {appPath: req.parameters.mount};
+    return {
+      indexFile: 'index-alt.html',
+      appPath: req.parameters.mount
+    };
   });
 
   /** Returns the billboard URL for swagger
