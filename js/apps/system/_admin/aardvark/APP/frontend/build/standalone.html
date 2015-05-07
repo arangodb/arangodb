@@ -1888,9 +1888,17 @@ if (list.length > 0) {
 </script>
 
 <script id="modalDeleteConfirmation.ejs" type="text/template">
-  <div>
-    Are you sure? There is no way back...
-  </div>
+  <table>
+    <tbody>
+      <tr class="tableRow">
+        <th class="collectionInfoTh">Run teardown?:</th>
+        <th class="collectionInfoTh">
+          <input type="checkbox" id="app_delete_run_teardown" checked>
+        </th>
+      </tr>
+    </tbody>
+  </table>
+  <p>Are you sure? There is no way back...</p>
 </script>
 
 
@@ -2819,7 +2827,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1431006918048"></script>
+<script src="app.js?version=1431026498229"></script>
 
   </body>
 </html>
