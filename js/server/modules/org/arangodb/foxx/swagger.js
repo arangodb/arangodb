@@ -1,4 +1,3 @@
-/*global ArangoServerState */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +94,7 @@ function swaggerPath(path, basePath) {
     return path;
   }
   if (!basePath) {
-    basePath = fs.safeJoin(ArangoServerState.javaScriptPath(), 'server/assets/swagger');
+    basePath = fs.join(module.startupPath(), 'server', 'assets', 'swagger');
   }
   return fs.safeJoin(basePath, path);
 }
