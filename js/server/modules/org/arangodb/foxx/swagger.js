@@ -42,26 +42,32 @@ var jsonSchemaPrimitives = [
   'string'
 ];
 
-function createSwaggerRouteHandler(appPath, beforeFn) {
+function createSwaggerRouteHandler(appPath, opts) {
+  if (!opts) {
+    opts = {};
+  }
+  if (typeof opts === 'function') {
+    opts = {before: opts};
+  }
   return function (req, res) {
-    if (typeof beforeFn === 'function') {
-      var shouldContinue = beforeFn();
-      if (shouldContinue === false) {
+    var result;
+    if (typeof opts.before === 'function') {
+      result = opts.before.apply(this, arguments);
+      if (result === false) {
         return;
       }
     }
-    var path = req.suffix.join('/');
-    if (!path) {
+    var pathInfo = req.suffix.join('/');
+    if (!pathInfo) {
       res.status(302);
       res.set('location', req.absoluteUrl(appPath + req.path(null, 'index.html')));
       return;
     }
-    if (path === 'swagger.json') {
-      res.json(swaggerJson(req, appPath));
+    if (pathInfo === 'swagger.json') {
+      res.json(swaggerJson(req, (result && result.appPath) || opts.appPath || appPath));
       return;
     }
-    path = fs.safeJoin(ArangoServerState.javaScriptPath(), 'server/assets/swagger', path);
-    require('console').log('PATH', path);
+    var path = fs.safeJoin(ArangoServerState.javaScriptPath(), 'server/assets/swagger', pathInfo);
     if (!fs.exists(path)) {
       resultNotFound(req, res, 404, "unknown path '" + req.url + "'");
       return;

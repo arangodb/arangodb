@@ -419,7 +419,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   for (i = 0;i < endpoints.length;i++) {
     var timeout = 50;
     if (cmd.valgrind !== '') {
-      timeout *= 1000;
+      timeout *= 10000;
     }
     if (! waitForServerUp(endpoints[i], timeout)) {
       error = true;
@@ -542,26 +542,48 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     // we cannot do much with the result...
   }
 
-  console.info("Waiting 8 seconds for servers to shutdown gracefully...");
-  wait(8);
+  var shutdownWait = 8;
+  if (cmd.valgrind !== '') {
+    shutdownWait *= 10000;
+  }
+  console.info("Waiting " + shutdownWait + " seconds for servers to shutdown gracefully...");
+  var j = 0; 
+  var runpids = run.pids.length;
+  while ((j < shutdownWait) && (runpids > 0)) {
+    wait(1);
+    j++;
+    for (i = 0; i < run.pids.length; i++) {
 
-  for (i = 0;i < run.pids.length;i++) {
-    var s = statusExternal(run.pids[i]);
-    if (s.status !== "TERMINATED") {
-      if (s.hasOwnProperty('signal')) {
-        error = true;
-        console.error("shuting down %s %s done - with problems: " + s,
-                      run.roles[i],
-                      run.endpointNames[i],
-                      JSON.stringify(run.pids[i]));
+      if (serverStates[JSON.stringify(run.pids[i].pid)] === undefined) {
+        var s = statusExternal(run.pids[i]);
+
+        if ((s.status === "NOT-FOUND")  ||
+            (s.status === "TERMINATED") ||
+            s.hasOwnProperty('signal')) {
+          runpids -=1;
+          serverStates[JSON.stringify(run.pids[i])] = s;
+          error = true;
+        }
+        else if (j > shutdownWait) {
+          if (s.status !== "TERMINATED") {
+            if (s.hasOwnProperty('signal')) {
+              error = true;
+              console.error("shuting down %s %s done - with problems: " + s,
+                            run.roles[i],
+                            run.endpointNames[i],
+                            JSON.stringify(run.pids[i]));
+            }
+            else {
+              console.info("Shutting down %s the hard way...",
+                           JSON.stringify(run.pids[i]));
+              s.killedState = killExternal(run.pids[i]);
+              console.info("done.");
+              runpids -=1;
+            }
+            serverStates[JSON.stringify(run.pids[i])] = s;
+          }
+        }
       }
-      else {
-        console.info("Shutting down %s the hard way...",
-                     JSON.stringify(run.pids[i]));
-        s.killedState = killExternal(run.pids[i]);
-        console.info("done.");
-      }
-      serverStates[run.pids[i]] = s;
     }
   }
   return {"error": error, "isStartServers": true, "serverStates" : serverStates};
