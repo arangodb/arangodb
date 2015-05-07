@@ -54,6 +54,15 @@ namespace triagens {
         }
 
       };
+      struct NeighborsOptions {
+        std::string direction;
+
+        NeighborsOptions() :
+          direction("outbound") {
+        }
+
+      };
+ 
     }
   }
 }
@@ -116,7 +125,8 @@ std::vector<VertexId> TRI_RunNeighborsSearch (
   std::string const& edgeCollectionName,
   std::string const& startVertex,
   triagens::arango::CollectionNameResolver const* resolver,
-  TRI_document_collection_t* ecol
+  TRI_document_collection_t* ecol,
+  triagens::basics::traverser::NeighborsOptions& opts
 );
 
 #endif
