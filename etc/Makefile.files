@@ -8,6 +8,7 @@ BUILT_SOURCES += \
 	etc/arangodb/arango-dfdb$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangob$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangod$(PROGRAM_SUFFIX).conf \
+	etc/arangodb/arangod-docker$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangodump$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangoimp$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangorestore$(PROGRAM_SUFFIX).conf \
