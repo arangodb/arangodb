@@ -2230,7 +2230,7 @@ static void FulltextQuery (SingleCollectionReadOnlyTransaction& trx,
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}
 /// ~ db._drop("emails");
 /// ~ db._create("emails");
-///   db.emails.ensureFulltextIndex("content").id;
+///   db.emails.ensureFulltextIndex("content");
 ///   db.emails.save({ content: "Hello Alice, how are you doing? Regards, Bob" });
 ///   db.emails.save({ content: "Hello Charlie, do Alice and Bob know about it?" });
 ///   db.emails.save({ content: "I think they don't know. Regards, Eve" });
@@ -2586,7 +2586,30 @@ static void JS_WithinQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up documents by their keys
+/// @brief fetches multiple documents by their keys
+/// @startDocuBlock collectionLookupByKeys
+/// `collection.lookupByKeys(keys)`
+///
+/// Looks up the documents in the specified collection using the array of keys
+/// provided. All documents for which a matching key was specified in the *keys*
+/// array and that exist in the collection will be returned. 
+/// Keys for which no document can be found in the underlying collection are ignored, 
+/// and no exception will be thrown for them.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionLookupByKeys}
+/// ~ db._drop("example");
+/// ~ db._create("example");
+///   keys = [ ];
+/// | for (var i = 0; i < 10; ++i) {
+/// |   db.example.insert({ _key: "test" + i, value: i });
+/// |   keys.push("test" + i);
+///   }
+///   db.example.lookupByKeys(keys);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LookupByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2646,7 +2669,34 @@ static void JS_LookupByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up documents by their keys
+/// @brief removes multiple documents by their keys
+/// @startDocuBlock collectionRemoveByKeys
+/// `collection.removeByKeys(keys)`
+///
+/// Looks up the documents in the specified collection using the array of keys
+/// provided, and removes all documents from the collection whose keys are
+/// contained in the *keys* array. Keys for which no document can be found in
+/// the underlying collection are ignored, and no exception will be thrown for 
+/// them.
+///
+/// The method will return an object containing the number of removed documents 
+/// in the *removed* sub-attribute, and the number of not-removed/ignored
+/// documents in the *ignored* sub-attribute.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionRemoveByKeys}
+/// ~ db._drop("example");
+/// ~ db._create("example");
+///   keys = [ ];
+/// | for (var i = 0; i < 10; ++i) {
+/// |   db.example.insert({ _key: "test" + i, value: i });
+/// |   keys.push("test" + i);
+///   }
+///   db.example.removeByKeys(keys);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {

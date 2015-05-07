@@ -40,6 +40,10 @@
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionExists
 
+!SUBSECTION Lookup By Keys
+<!-- arangod/V8Server/v8-query.cpp-->
+@startDocuBlock collectionLookupByKeys
+
 !SUBSECTION Insert
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionInsert
@@ -55,6 +59,10 @@
 !SUBSECTION Remove
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionRemove
+
+!SUBSECTION Remove By Keys
+<!-- arangod/V8Server/v8-query.cpp-->
+@startDocuBlock collectionRemoveByKeys
 
 !SUBSECTION Remove By Example
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->

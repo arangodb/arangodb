@@ -210,7 +210,7 @@ bool RestSimpleHandler::wasCancelled () {
 ///   ~ db._drop(cn);
 ///     db._create(cn);
 ///     keys = [ ];
-///     for (i = 0; i < 10; ++i) {
+///     for (var i = 0; i < 10; ++i) {
 ///       db.test.insert({ _key: "test" + i });
 ///       keys.push("test" + i);
 ///     }
@@ -230,7 +230,7 @@ bool RestSimpleHandler::wasCancelled () {
 ///   ~ db._drop(cn);
 ///     db._create(cn);
 ///     keys = [ ];
-///     for (i = 0; i < 10; ++i) {
+///     for (var i = 0; i < 10; ++i) {
 ///       db.test.insert({ _key: "test" + i });
 ///     }
 ///
@@ -399,7 +399,7 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 ///       db.test.insert({ _key: "test" + i, value: i });
 ///     }
 ///
-///     var url = "/_api/simple/remove-by-keys";
+///     var url = "/_api/simple/lookup-by-keys";
 ///     var data = { keys: [ "foo", "bar", "baz" ], collection: cn };
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(data));
 ///
