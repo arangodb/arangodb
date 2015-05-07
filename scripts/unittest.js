@@ -56,7 +56,7 @@ function resultsToXml(results, baseName, cluster) {
     return xml;
   }
 
-  var clprefix = ""
+  var clprefix = '';
   if (cluster) {
     clprefix = 'CL_';
   }
