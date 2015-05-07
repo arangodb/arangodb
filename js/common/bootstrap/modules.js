@@ -960,7 +960,7 @@ function require (path) {
       this,
       app._context,
       "/" + (path ? path : ""),
-      path2FileUri(libpath),
+      path2FileUri(path ? fs.join(libpath, path) : libpath),
       false
     );
   };
