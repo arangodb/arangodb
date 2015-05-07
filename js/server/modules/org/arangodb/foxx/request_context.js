@@ -529,10 +529,10 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_errorResponse
 ///
-/// `FoxxController#errorResponse(errorClass, code, description)`
+/// `FoxxController#errorResponse(errorClassOrName, code, description)`
 ///
 /// Define a reaction to a thrown error for this route: If your handler throws an error
-/// of the defined errorClass, it will be caught and the response will have the given
+/// of the errorClass or with the name, it will be caught and the response will have the given
 /// status code and a JSON with error set to your description as the body.
 ///
 /// If you want more control over the returned JSON, you can give an optional fourth
@@ -548,6 +548,7 @@ extend(RequestContext.prototype, {
 /// ```js
 /// /* define our own error type, FoxxyError */
 /// var FoxxyError = function (message) {
+///   this.name = "FError";
 ///   this.message = "the following FoxxyError occurred: ' + message;
 /// };
 /// FoxxyError.prototype = new Error();
@@ -559,7 +560,7 @@ extend(RequestContext.prototype, {
 ///
 /// app.get("/foxx", function {
 ///   throw new FoxxyError("oops!");
-/// }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
+/// }).errorResponse("FError", 303, "This went completely wrong. Sorry!", function (e) {
 ///   return {
 ///     code: 123,
 ///     desc: e.message
