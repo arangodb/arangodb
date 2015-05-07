@@ -62,6 +62,7 @@
       fs.makeDirectory(fs.join(this.folder, 'models'));
       fs.makeDirectory(fs.join(this.folder, 'repositories'));
       fs.makeDirectory(fs.join(this.folder, 'scripts'));
+      fs.makeDirectory(fs.join(this.folder, 'test'));
       fs.write(fs.join(this.folder, 'manifest.json'), this.buildManifest());
 
       _.each(this.repositories, function (repository) {
@@ -79,6 +80,8 @@
       fs.write(fs.join(this.folder, "scripts", "setup.js"), this.buildSetup(this.collectionNames));
 
       fs.write(fs.join(this.folder, "scripts", "teardown.js"), this.buildTeardown(this.collectionNames));
+
+      fs.write(fs.join(this.folder, "test", "example.js"), this.buildTest());
     },
 
     template: function(name) {
@@ -148,7 +151,8 @@
         scripts: {
           setup: "scripts/setup.js",
           teardown: "scripts/teardown.js"
-        }
+        },
+        tests: "test/**/*.js"
       };
 
       _.each(this.controllers, function (controller) {
@@ -193,6 +197,12 @@
 
       return templ();
     },
+
+    buildTest: function () {
+      var templ = this.template("test.js.tmpl");
+
+      return templ();
+    }
   });
 
   exports.Engine = Engine;
