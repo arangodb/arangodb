@@ -1587,6 +1587,8 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
     return TRI_CreateResultFulltextIndex(0);
   }
 
+  auto maxResults = query->_maxResults;
+
   idx = (index_t*) ftx;
 
   TRI_ReadLockReadWriteLock(&idx->_lock);
@@ -1669,7 +1671,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
 
   // now convert the handle list into a result (this will also filter out
   // deleted documents)
-  return MakeListResult(idx, result, query->_maxResults);
+  return MakeListResult(idx, result, maxResults);
 }
 
 // -----------------------------------------------------------------------------
