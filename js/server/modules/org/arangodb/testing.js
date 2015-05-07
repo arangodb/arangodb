@@ -462,7 +462,6 @@ function checkInstanceAlive(instanceInfo, options) {
     var ret = res.status === "RUNNING";
     if (! ret) {
       print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
-      instanceInfo.exitStatus = res;
       print(instanceInfo);
       if (res.hasOwnProperty('signal') && 
           ((res.signal === 11) ||
@@ -485,9 +484,10 @@ function checkInstanceAlive(instanceInfo, options) {
           statusExternal(instanceInfo.monitor, true);
         }
         else {
-          copy("bin/arangod", instanceInfo.tmpDataDir);
+          copy("bin/arangod", storeArangodPath);
         }
       }
+      instanceInfo.exitStatus = res;
     }
     if (!ret) {
       serverCrashed = true;
@@ -506,11 +506,21 @@ function checkInstanceAlive(instanceInfo, options) {
             storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
             print("Core dump written; copying arangod to " + 
                   storeArangodPath + " for later analysis.");
-            instanceInfo.exitStatus = ress;
             ress.gdbHint = "Run debugger with 'gdb " + 
               storeArangodPath + 
               " /var/tmp/core*" + checkpid.pid + "*'";
-            copy("bin/arangod", storeArangodPath);
+
+            if (require("internal").platform.substr(0,3) === 'win') {
+              copy("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
+              copy("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
+              // Windows: wait for procdump to do its job...
+              statusExternal(instanceInfo.monitor, true);
+            }
+            else {
+              copy("bin/arangod", storeArangodPath);
+            }
+            
+            instanceInfo.exitStatus = ress;
             ClusterFit = false;
           }
         }
@@ -539,15 +549,24 @@ function shutdownInstance (instanceInfo, options) {
       instanceInfo.kickstarter.cleanup();
     }
     if (rc.error) {
-      for (var i in rc.serverStates) {
-        if (rc.serverStates.hasOwnProperty(i)){
-          if (rc.serverStates[i].hasOwnProperty('signal')) {
-            print("Server shut down with : " + yaml.safeDump(rc.serverStates[i]) + " marking run as crashy.");
-            serverCrashed = true;
+      for (var i = 0; i < rc.results.length; i++ ) {
+        if (rc.results[i].hasOwnProperty('isStartServers') && 
+            (rc.results[i].isStartServers === true)) {
+          for (var serverState in rc.results[i].serverStates) {
+            if (rc.results[i].serverStates.hasOwnProperty(serverState)){
+              if ((rc.results[i].serverStates[serverState].status === "NOT-FOUND") || 
+                  (rc.results[i].serverStates[serverState].hasOwnProperty('signal'))) {
+                print("Server " + serverState + " shut down with:\n" +
+                      yaml.safeDump(rc.results[i].serverStates[serverState]) +
+                      " marking run as crashy.");
+                serverCrashed = true;
+              }
+            }
           }
         }
       }
     }
+
   }
   else {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
