@@ -1,0 +1,91 @@
+# ArangoDB configuration file for running in docker containers
+# 
+# Documentation: 
+# https://docs.arangodb.com/ConfigureArango/README.html
+# 
+
+temp-path = /tmp/arangodb
+
+[database]
+# We don't follow LHFS for docker, since the data directory will be mounted
+# flat to the top of the container:
+directory = /data
+# directory = @LOCALSTATEDIR@/lib/arangodb
+# directory = @HOMEDRIVE@/@HOMEPATH@/arangodb/databases
+
+# maximal-journal-size = 33554432
+
+[server]
+# Specify the endpoint for HTTP requests by clients.
+#  tcp://ipv4-address:port
+#  tcp://[ipv6-address]:port
+#  ssl://ipv4-address:port
+#  ssl://[ipv6-address]:port
+#  unix:///path/to/socket
+#
+# Examples:
+#   endpoint = tcp://0.0.0.0:8529
+#   endpoint = tcp://127.0.0.1:8529
+#   endpoint = tcp://localhost:8529
+#   endpoint = tcp://myserver.arangodb.com:8529
+#   endpoint = tcp://[::]:8529
+#   endpoint = tcp://[fe80::21a:5df1:aede:98cf]:8529
+#
+# bind everything for docker, since we expect to have our own IP:
+endpoint = tcp://0.0.0.0:8529
+# endpoint = tcp://127.0.0.1:8529
+
+# resuse a port on restart or wait until it is freed by the operating system
+# reuse-address = false
+
+# disable authentication for the admin frontend
+disable-authentication = yes
+
+# number of server threads
+threads = 4
+
+# the user and group are normally set in the start script
+uid = arangodb
+gid = arangodb
+
+[scheduler]
+
+# number of threads used for I/O
+threads = 2
+
+[javascript]
+startup-directory = @PKGDATADIR@/js
+# We don't follow LHFS for docker, since the apps directory will be mounted
+# flat to the top of the container:
+app-path = /apps
+#app-path = @LOCALSTATEDIR@/lib/arangodb-apps
+# app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
+
+# number of worker threads for V8
+v8-contexts = 5
+
+[log]
+level = info
+severity = human
+# We don't follow LHFS for docker, since the logs directory will be mounted
+# flat to the top of the container:
+file = /logs/arangodb.log
+# file = @LOCALSTATEDIR@/log/arangodb/arangod.log
+
+[cluster]
+disable-dispatcher-kickstarter = yes
+disable-dispatcher-frontend = yes
+# We don't follow LHFS for docker, since the directories will be mounted
+# flat to the top of the container:
+data-path = /lib/cluster
+log-path = /log/cluster
+agent-path = @LIBEXECDIR@/arangodb/etcd-arango@PROGRAM_SUFFIX@
+arangod-path = @SBINDIR@/arangod@PROGRAM_SUFFIX@
+dbserver-config = @SYSCONFDIR@/arangod-docker.conf
+coordinator-config = @SYSCONFDIR@/arangod-docker.conf
+# data-path = @LOCALSTATEDIR@/lib/arangodb/cluster
+# log-path = @LOCALSTATEDIR@/log/arangodb/cluster
+# agent-path = @LIBEXECDIR@/arangodb/etcd-arango@PROGRAM_SUFFIX@
+# arangod-path = @SBINDIR@/arangod@PROGRAM_SUFFIX@
+# dbserver-config = @SYSCONFDIR@/arangod.conf
+# coordinator-config = @SYSCONFDIR@/arangod.conf
