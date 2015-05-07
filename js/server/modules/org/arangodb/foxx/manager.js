@@ -456,14 +456,14 @@ var computeAppPath = function(mount) {
 /// @brief executes an app script
 ////////////////////////////////////////////////////////////////////////////////
 
-var executeAppScript = function (scriptName, app) {
+var executeAppScript = function (scriptName, app, options) {
   var readableName = utils.getReadableName(scriptName);
   var scripts = app._manifest.scripts;
 
   // Only run setup/teardown scripts if they exist
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
     try {
-      app.loadAppScript(scripts[scriptName]);
+      app.loadAppScript(scripts[scriptName], options && {context: {options: options}});
     } catch (err) {
       console.errorLines(
         "Running script '" + readableName + "' not possible for mount '%s': %s",
@@ -739,15 +739,15 @@ var installAppFromLocal = function(path, targetPath) {
 /// -
 ////////////////////////////////////////////////////////////////////////////////
 
-var runScript = function (scriptName, mount) {
+var runScript = function (scriptName, mount, options) {
   checkParameter(
-    "runScript(<scriptName>, <mount>)",
+    "runScript(<scriptName>, <mount>, [<options>])",
     [ [ "Script name", "string" ], [ "Mount path", "string" ] ],
     [ scriptName, mount ]
   );
 
   var app = lookupApp(mount);
-  executeAppScript(scriptName, app);
+  executeAppScript(scriptName, app, options);
 
   return app.simpleJSON();
 };

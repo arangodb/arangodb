@@ -282,7 +282,8 @@ actions.defineHttp({
     callback: function (body) {
       var name = body.name;
       var mount = body.mount;
-      return foxxManager.runScript(name, mount);
+      var options = body.options;
+      return foxxManager.runScript(name, mount, options);
     }
   })
 });

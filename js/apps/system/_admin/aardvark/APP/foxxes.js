@@ -275,9 +275,16 @@
   controller.post("/scripts/:name", function (req, res) {
     var mount = validateMount(req);
     var name = req.params("name");
-    res.json(FoxxManager.runScript(name, mount));
+    var options = req.params("options");
+    res.json(FoxxManager.runScript(name, mount, options));
   })
-  .queryParam("mount", mountPoint).pathParam("name", scriptName);
+  .queryParam("mount", mountPoint)
+  .pathParam("name", scriptName)
+  .bodyParam(
+    "options",
+    joi.any().default(null)
+    .description('Options to pass to the script.')
+  );
 
   /** Trigger setup script for an app
    *
