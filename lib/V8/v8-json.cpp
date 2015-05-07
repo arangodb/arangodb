@@ -196,7 +196,15 @@ typedef void* yyscan_t;
 
 /* Size of default input buffer. */
 #ifndef YY_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k.
+ * Moreover, YY_BUF_SIZE is 2*YY_READ_BUF_SIZE in the general case.
+ * Ditto for the __ia64__ case accordingly.
+ */
+#define YY_BUF_SIZE 32768
+#else
 #define YY_BUF_SIZE 16384
+#endif /* __ia64__ */
 #endif
 
 /* The state buf must be large enough to hold one state per character in the main buffer.
@@ -388,8 +396,8 @@ static void yy_fatal_error (yyconst char msg[] ,yyscan_t yyscanner );
 	*yy_cp = '\0'; \
 	yyg->yy_c_buf_p = yy_cp;
 
-#define YY_NUM_RULES 14
-#define YY_END_OF_BUFFER 15
+#define YY_NUM_RULES 15
+#define YY_END_OF_BUFFER 16
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -397,13 +405,13 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static yyconst flex_int16_t yy_accept[43] =
+static yyconst flex_int16_t yy_accept[45] =
     {   0,
-       12,   12,   15,   13,   12,   12,   13,   13,   10,    5,
-        5,   11,   13,   13,   13,    8,    9,    6,    7,   12,
-        0,    4,    0,    5,    5,    0,    0,    5,    0,    0,
-        0,    5,    0,    5,    0,    0,    0,    0,    2,    3,
-        1,    0
+       13,   13,   16,   14,   13,   13,   14,   14,   11,    6,
+        6,   12,   14,   14,   14,    9,   10,    7,    8,   13,
+        0,    0,    4,    0,    6,    6,    0,    0,    6,    0,
+        0,    0,    5,    6,    0,    6,    0,    0,    0,    0,
+        2,    3,    1,    0
     } ;
 
 static yyconst flex_int32_t yy_ec[256] =
@@ -411,17 +419,17 @@ static yyconst flex_int32_t yy_ec[256] =
         1,    1,    1,    1,    1,    1,    1,    1,    2,    3,
         1,    1,    2,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    2,    1,    4,    1,    1,    1,    1,    1,    1,
-        1,    1,    5,    6,    7,    8,    1,    9,   10,   10,
-       10,   10,   10,   10,   10,   10,   10,   11,    1,    1,
-        1,    1,    1,    1,   12,    1,    1,    1,   13,   14,
-        1,    1,    1,    1,    1,   15,    1,   16,    1,    1,
-        1,   17,   18,   19,   20,    1,    1,    1,    1,    1,
-       21,   22,   23,    1,    1,    1,   24,    1,    1,    1,
+        1,    4,    5,    6,    5,    5,    5,    5,    5,    5,
+        5,    5,    7,    8,    9,   10,    5,   11,   12,   12,
+       12,   12,   12,   12,   12,   12,   12,   13,    5,    5,
+        5,    5,    5,    5,   14,    5,    5,    5,   15,   16,
+        5,    5,    5,    5,    5,   17,    5,   18,    5,    5,
+        5,   19,   20,   21,   22,    5,    5,    5,    5,    5,
+       23,   24,   25,    5,    5,    5,   26,    5,    5,    5,
 
-       25,   26,    1,    1,    1,    1,    1,   27,    1,   28,
-        1,    1,    1,   29,   30,   31,   32,    1,    1,    1,
-        1,    1,   33,    1,   34,    1,    1,    1,    1,    1,
+       27,   28,    5,    5,    5,    5,    5,   29,    5,   30,
+        5,    5,    5,   31,   32,   33,   34,    5,    5,    5,
+        1,    1,   35,    1,   36,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -438,70 +446,74 @@ static yyconst flex_int32_t yy_ec[256] =
         1,    1,    1,    1,    1
     } ;
 
-static yyconst flex_int32_t yy_meta[35] =
+static yyconst flex_int32_t yy_meta[37] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1
+        1,    1,    1,    1,    1,    1
     } ;
 
-static yyconst flex_int16_t yy_base[44] =
+static yyconst flex_int16_t yy_base[47] =
     {   0,
-        0,    0,   84,  112,   33,   35,   35,   31,  112,   34,
-       35,  112,   34,   29,   33,  112,  112,  112,  112,   49,
-       49,  112,   64,   55,   56,   45,   65,   69,   58,   61,
-       63,   77,   82,   87,   71,   78,   85,   86,  112,  112,
-      112,  112,   55
+        0,    0,  119,  131,   35,   38,   42,   35,  131,   40,
+       41,  131,   35,   35,   39,  131,  131,  131,  131,   60,
+       48,   78,  131,   93,   61,   79,   48,   86,   89,   56,
+       57,   53,  131,   96,   71,   98,   83,   88,   97,  103,
+      131,  131,  131,  131,   91,   64
     } ;
 
-static yyconst flex_int16_t yy_def[44] =
+static yyconst flex_int16_t yy_def[47] =
     {   0,
-       42,    1,   42,   42,   42,   42,   43,   42,   42,   42,
-       42,   42,   42,   42,   42,   42,   42,   42,   42,   42,
-       43,   42,   43,   42,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42,   42,   42,   42,   42,
-       42,    0,   42
+       44,    1,   44,   44,   44,   44,   45,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
+       46,   45,   44,   46,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,    0,   44,   44
     } ;
 
-static yyconst flex_int16_t yy_nxt[147] =
+static yyconst flex_int16_t yy_nxt[168] =
     {   0,
-        4,    5,    6,    7,    8,    9,    8,    4,   10,   11,
-       12,    4,    4,   13,    4,   14,    4,    4,   15,    4,
-       16,    4,   17,    4,    4,   13,    4,   14,    4,    4,
-       15,    4,   18,   19,   20,   20,   20,   20,   22,   24,
-       25,   26,   26,   28,   28,   29,   27,   27,   30,   31,
-       20,   20,   22,   32,   32,   21,   23,   29,   27,   27,
-       30,   31,   26,   26,   28,   28,   42,   27,   27,   33,
-       23,   33,   35,   34,   34,   36,   26,   28,   28,   27,
-       27,   27,   37,   42,   35,   32,   32,   36,   38,   27,
-       34,   34,   39,   27,   37,   34,   34,   40,   41,   42,
+        4,    5,    6,    5,    4,    7,    8,    9,    8,    4,
+       10,   11,   12,    4,    4,   13,    4,   14,    4,    4,
+       15,    4,   16,    4,   17,    4,    4,   13,    4,   14,
+        4,    4,   15,    4,   18,   19,   20,   20,   20,   20,
+       20,   20,   21,   21,   21,   25,   26,   23,   30,   27,
+       27,   29,   29,   33,   28,   28,   31,   32,   34,   34,
+       30,   20,   20,   20,   21,   24,   28,   28,   31,   32,
+       27,   24,   37,   38,   39,   28,   21,   21,   21,   21,
+       21,   36,   36,   23,   37,   38,   39,   28,   27,   29,
+       29,   22,   35,   28,   35,   44,   36,   36,   27,   29,
 
-       38,   27,   42,   42,   39,   42,   42,   42,   42,   40,
-       41,    3,   42,   42,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42
+       29,   24,   40,   28,   41,   28,   34,   34,   36,   36,
+       28,   42,   21,   21,   40,   28,   41,   43,   44,   44,
+       44,   44,   28,   42,   44,   44,   44,   44,   44,   43,
+        3,   44,   44,   44,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44
     } ;
 
-static yyconst flex_int16_t yy_chk[147] =
+static yyconst flex_int16_t yy_chk[168] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1,    5,    5,    6,    6,    7,    8,
-        8,   10,   11,   11,   11,   13,   10,   11,   14,   15,
-       20,   20,   21,   26,   26,   43,    7,   13,   10,   11,
-       14,   15,   24,   25,   25,   25,   23,   24,   25,   27,
-       21,   27,   29,   27,   27,   30,   28,   28,   28,   24,
-       25,   28,   31,    3,   29,   32,   32,   30,   35,   32,
-       33,   33,   36,   28,   31,   34,   34,   37,   38,    0,
+        1,    1,    1,    1,    1,    1,    5,    5,    5,    6,
+        6,    6,    7,    7,    7,    8,    8,    7,   13,   10,
+       11,   11,   11,   21,   10,   11,   14,   15,   27,   27,
+       13,   20,   20,   20,   46,    7,   10,   11,   14,   15,
+       25,   21,   30,   31,   32,   25,    7,    7,   22,   22,
+       22,   35,   35,   22,   30,   31,   32,   25,   26,   26,
+       26,   45,   28,   26,   28,   24,   28,   28,   29,   29,
 
-       35,   32,    0,    0,   36,    0,    0,    0,    0,   37,
-       38,   42,   42,   42,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42
+       29,   22,   37,   29,   38,   26,   34,   34,   36,   36,
+       34,   39,   22,   22,   37,   29,   38,   40,    3,    0,
+        0,    0,   34,   39,    0,    0,    0,    0,    0,   40,
+       44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -525,6 +537,7 @@ static yyconst flex_int16_t yy_chk[147] =
 #define COMMA 10
 #define COLON 11
 #define UNQUOTED_STRING 12
+#define STRING_CONSTANT_ASCII 13
 
 struct jsonData {
   char const* _message;
@@ -657,7 +670,12 @@ static int input (yyscan_t yyscanner );
 
 /* Amount of stuff to slurp up with each read. */
 #ifndef YY_READ_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k */
+#define YY_READ_BUF_SIZE 16384
+#else
 #define YY_READ_BUF_SIZE 8192
+#endif /* __ia64__ */
 #endif
 
 /* Copy whatever the last rule matched to the standard output. */
@@ -816,13 +834,13 @@ yy_match:
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 43 )
+				if ( yy_current_state >= 45 )
 					yy_c = yy_meta[(unsigned int) yy_c];
 				}
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 			++yy_cp;
 			}
-		while ( yy_current_state != 42 );
+		while ( yy_current_state != 44 );
 		yy_cp = yyg->yy_last_accepting_cpos;
 		yy_current_state = yyg->yy_last_accepting_state;
 
@@ -864,7 +882,16 @@ YY_RULE_SETUP
   * strings
   * ----------------------------------------------------------------------------- */
 case 4:
-/* rule 4 can match eol */
+YY_RULE_SETUP
+{
+  // performance optimisation for all-ASCII strings without escape characters
+  // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
+  // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
+  return STRING_CONSTANT_ASCII;
+}
+	YY_BREAK
+case 5:
+/* rule 5 can match eol */
 YY_RULE_SETUP
 {
   return STRING_CONSTANT;
@@ -873,7 +900,7 @@ YY_RULE_SETUP
 /* -----------------------------------------------------------------------------
   * numbers
   * ----------------------------------------------------------------------------- */
-case 5:
+case 6:
 YY_RULE_SETUP
 {
   return NUMBER_CONSTANT;
@@ -882,37 +909,37 @@ YY_RULE_SETUP
 /* -----------------------------------------------------------------------------
   * special characters
   * ----------------------------------------------------------------------------- */
-case 6:
+case 7:
 YY_RULE_SETUP
 {
   return OPEN_BRACE;
 }
 	YY_BREAK
-case 7:
+case 8:
 YY_RULE_SETUP
 {
   return CLOSE_BRACE;
 }
 	YY_BREAK
-case 8:
+case 9:
 YY_RULE_SETUP
 {
   return OPEN_BRACKET;
 }
 	YY_BREAK
-case 9:
+case 10:
 YY_RULE_SETUP
 {
   return CLOSE_BRACKET;
 }
 	YY_BREAK
-case 10:
+case 11:
 YY_RULE_SETUP
 {
  return COMMA;
 }
 	YY_BREAK
-case 11:
+case 12:
 YY_RULE_SETUP
 {
   return COLON;
@@ -922,19 +949,19 @@ YY_RULE_SETUP
   * Skip whitespaces. Whatever is left, should be an unquoted string appearing
   * somewhere. This will be reported as an error.
   * ----------------------------------------------------------------------------- */
-case 12:
-/* rule 12 can match eol */
+case 13:
+/* rule 13 can match eol */
 YY_RULE_SETUP
 {
 }
 	YY_BREAK
-case 13:
+case 14:
 YY_RULE_SETUP
 {
   return UNQUOTED_STRING;
 }
 	YY_BREAK
-case 14:
+case 15:
 YY_RULE_SETUP
 ECHO;
 	YY_BREAK
@@ -1233,7 +1260,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
-			if ( yy_current_state >= 43 )
+			if ( yy_current_state >= 45 )
 				yy_c = yy_meta[(unsigned int) yy_c];
 			}
 		yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
@@ -1262,11 +1289,11 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
-		if ( yy_current_state >= 43 )
+		if ( yy_current_state >= 45 )
 			yy_c = yy_meta[(unsigned int) yy_c];
 		}
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
-	yy_is_jam = (yy_current_state == 42);
+	yy_is_jam = (yy_current_state == 44);
 
 	(void)yyg;
 	return yy_is_jam ? 0 : yy_current_state;
@@ -2069,12 +2096,12 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate, yyscan_t scanner,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
-                                        yyscan_t scanner) {
+                                         yyscan_t scanner) {
   v8::EscapableHandleScope scope(isolate);
 
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
-  v8::Handle<v8::Array> list = v8::Array::New(isolate);
+  v8::Handle<v8::Array> array = v8::Array::New(isolate);
   bool comma = false;
   uint32_t pos = 0;
 
@@ -2082,58 +2109,6 @@ static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
 
   while (c != END_OF_FILE) {
     if (c == CLOSE_BRACKET) {
-      return scope.Escape<v8::Value>(list);
-    }
-
-    if (comma) {
-      if (c != COMMA) {
-        yyextra._message = "expecting comma";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
-      }
-
-      c = tri_v8_lex(scanner);
-    }
-    else {
-      comma = true;
-    }
-
-    v8::Handle<v8::Value> sub = ParseValue(isolate, scanner, c);
-
-    if (sub->IsUndefined()) {
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
-    }
-
-    list->Set(v8::Number::New(isolate, pos++), sub);
-
-    c = tri_v8_lex(scanner);
-  }
-
-  yyextra._message = "expecting a list element, got end-of-file";
-
-  return scope.Escape<v8::Value>(v8::Undefined(isolate));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses an array
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
-                                         yyscan_t scanner) {
-  v8::EscapableHandleScope scope(isolate);
-
-  struct yyguts_t * yyg = (struct yyguts_t*) scanner;
-
-  v8::Handle<v8::Object> array = v8::Object::New(isolate);
-  bool comma = false;
-  char* name;
-  char const* ptr;
-  size_t len;
-  size_t outLength;
-
-  int c = tri_v8_lex(scanner);
-
-  while (c != END_OF_FILE) {
-    if (c == CLOSE_BRACE) {
       return scope.Escape<v8::Value>(array);
     }
 
@@ -2149,18 +2124,76 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
       comma = true;
     }
 
-    // attribute name
-    if (c != STRING_CONSTANT) {
-      yyextra._message = "expecting attribute name";
+    v8::Handle<v8::Value> sub = ParseValue(isolate, scanner, c);
+
+    if (sub->IsUndefined()) {
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
     }
 
-    ptr = yytext;
-    len = yyleng;
-    name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, ptr + 1, len - 2, &outLength);
+    array->Set(pos++, sub);
 
-    if (name == nullptr) {
-      yyextra._message = "out-of-memory";
+    c = tri_v8_lex(scanner);
+  }
+
+  yyextra._message = "expecting an array element, got end-of-file";
+
+  return scope.Escape<v8::Value>(v8::Undefined(isolate));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses an object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
+                                         yyscan_t scanner) {
+  v8::EscapableHandleScope scope(isolate);
+
+  struct yyguts_t * yyg = (struct yyguts_t*) scanner;
+
+  v8::Handle<v8::Object> object = v8::Object::New(isolate);
+  bool comma = false;
+
+  int c = tri_v8_lex(scanner);
+
+  while (c != END_OF_FILE) {
+    if (c == CLOSE_BRACE) {
+      return scope.Escape<v8::Value>(object);
+    }
+
+    if (comma) {
+      if (c != COMMA) {
+        yyextra._message = "expecting comma";
+        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      }
+
+      c = tri_v8_lex(scanner);
+    }
+    else {
+      comma = true;
+    }
+
+    // attribute name
+    v8::Handle<v8::String> attributeName;
+
+    if (c == STRING_CONSTANT) {
+      // utf-8 attribute name
+      size_t outLength;
+      char* name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+    
+      if (name == nullptr) {
+        yyextra._message = "out-of-memory";
+        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      }
+
+      attributeName = TRI_V8_PAIR_STRING(name, outLength);
+      TRI_FreeString(yyextra._memoryZone, name);
+    }
+    else if (c == STRING_CONSTANT_ASCII) {
+      // ASCII-only attribute name
+      attributeName = TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2);
+    }
+    else {
+      yyextra._message = "expecting attribute name";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
     }
 
@@ -2168,28 +2201,24 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
     c = tri_v8_lex(scanner);
 
     if (c != COLON) {
-      TRI_FreeString(yyextra._memoryZone, name);
       yyextra._message = "expecting colon";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
     }
 
-    // fallowed by an object
+    // followed by an object
     c = tri_v8_lex(scanner);
     v8::Handle<v8::Value> sub = ParseValue(isolate, scanner, c);
 
     if (sub->IsUndefined()) {
-      TRI_FreeString(yyextra._memoryZone, name);
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
     }
 
-    array->Set(v8::String::NewFromUtf8(isolate, name, v8::String::kNormalString, (int) outLength), sub);
-
-    TRI_FreeString(yyextra._memoryZone, name);
+    object->ForceSet(attributeName, sub);
 
     c = tri_v8_lex(scanner);
   }
 
-  yyextra._message = "expecting a object attribute name or element, got end-of-file";
+  yyextra._message = "expecting an object attribute name or element, got end-of-file";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
 }
 
@@ -2198,42 +2227,43 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
-                                          yyscan_t scanner, int c) {
+                                         yyscan_t scanner, 
+                                         int c) {
   v8::EscapableHandleScope scope(isolate);
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
-  char buffer[1024];
-
-  char* ep;
-  char* ptr;
-  double d;
-  size_t outLength;
-
-  v8::Handle<v8::String> str;
-
   switch (c) {
-    case END_OF_FILE:
+    case END_OF_FILE: {
       yyextra._message = "expecting atom, got end-of-file";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
-    case FALSE_CONSTANT:
+    }
+
+    case FALSE_CONSTANT: {
       return scope.Escape<v8::Value>(v8::False(isolate));
+    }
 
-    case TRUE_CONSTANT:
+    case TRUE_CONSTANT: {
       return scope.Escape<v8::Value>(v8::True(isolate));
+    }
 
-    case NULL_CONSTANT:
+    case NULL_CONSTANT: {
       return scope.Escape<v8::Value>(v8::Null(isolate));
+    }
 
-    case NUMBER_CONSTANT:
-      if ((size_t) yyleng >= sizeof(buffer)) {
+    case NUMBER_CONSTANT: {
+      char* ep;
+      double d;
+
+      if ((size_t) yyleng >= 512) {
         yyextra._message = "number too big";
         return scope.Escape<v8::Value>(v8::Undefined(isolate));
       }
 
-      memcpy(buffer, yytext, yyleng);
-      buffer[yyleng] = '\0';
+      // need to reset errno because return value of 0 is not distinguishable from an error on Linux
+      errno = 0;
 
-      d = strtod(buffer, &ep);
+      // yytext is null-terminated. can use it directly without copying it into a temporary buffer
+      d = strtod(yytext, &ep);
 
       if (d == HUGE_VAL && errno == ERANGE) {
         yyextra._message = "number too big";
@@ -2245,62 +2275,77 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
         return scope.Escape<v8::Value>(v8::Undefined(isolate));
       }
 
-      if (ep != buffer + yyleng) {
+      if (ep != yytext + yyleng) {
         yyextra._message = "cannot parse number";
         return scope.Escape<v8::Value>(v8::Undefined(isolate));
       }
 
       return scope.Escape<v8::Value>(v8::Number::New(isolate, d));
+    }
 
-    case STRING_CONSTANT:
+    case STRING_CONSTANT: {
       if (yyleng <= 2) {
         // string is empty
-        ptr = yytext + 1;
-        outLength = 0;
-      }
-      else {
-        // string is not empty
-        ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
-
-        if (ptr == nullptr || outLength == 0) {
-          yyextra._message = "out-of-memory";
-          return scope.Escape<v8::Value>(v8::Undefined(isolate));
-        }
+        return scope.Escape<v8::Value>(v8::String::Empty(isolate));
       }
 
-      str = v8::String::NewFromUtf8(isolate, ptr, v8::String::kNormalString, (int) outLength);
+      // string is not empty
+      size_t outLength;
+      char* ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
 
-      if (0 < outLength) {
-        TRI_FreeString(yyextra._memoryZone, ptr);
+      if (ptr == nullptr || outLength == 0) {
+        yyextra._message = "out-of-memory";
+        return scope.Escape<v8::Value>(v8::Undefined(isolate));
       }
+
+      v8::Handle<v8::String> str = TRI_V8_PAIR_STRING(ptr, outLength);
+      TRI_FreeString(yyextra._memoryZone, ptr);
 
       return scope.Escape<v8::Value>(str);
+    }
+    
+    case STRING_CONSTANT_ASCII: {
+      if (yyleng <= 2) {
+        // string is empty
+        return scope.Escape<v8::Value>(v8::String::Empty(isolate));
+      }
 
-    case OPEN_BRACE:
+      // string is not empty
+      return scope.Escape<v8::Value>(TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2));
+    }
+
+    case OPEN_BRACE: {
       return scope.Escape<v8::Value>(ParseObject(isolate, scanner));
+    }
 
-    case CLOSE_BRACE:
+    case CLOSE_BRACE: {
       yyextra._message = "expected value, got '}'";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
 
-    case OPEN_BRACKET:
+    case OPEN_BRACKET: {
       return scope.Escape<v8::Value>(ParseArray(isolate, scanner));
+    }
 
-    case CLOSE_BRACKET:
+    case CLOSE_BRACKET: {
       yyextra._message = "expected value, got ']'";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
 
-    case COMMA:
+    case COMMA: {
       yyextra._message = "expected value, got ','";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
 
-    case COLON:
+    case COLON: {
       yyextra._message = "expected value, got ':'";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
 
-    case UNQUOTED_STRING:
+    case UNQUOTED_STRING: {
       yyextra._message = "expected value, got unquoted string";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
   }
 
   yyextra._message = "unknown atom";
@@ -2320,7 +2365,7 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
                                           char** error) {
   v8::EscapableHandleScope scope(isolate);
 
-  v8::Handle<v8::Value> value = v8::Undefined(isolate);
+  v8::Handle<v8::Value> value;
   YY_BUFFER_STATE buf;
   int c;
   struct yyguts_t * yyg;

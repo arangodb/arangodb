@@ -282,7 +282,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
 
     // attribute name
     if (c == STRING_CONSTANT) {
-      // "complex" attribute name
+      // utf-8 attribute name
       size_t outLength;
       nameLen = yyleng - 2;
 
