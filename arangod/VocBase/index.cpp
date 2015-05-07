@@ -1547,6 +1547,19 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extraction context
+////////////////////////////////////////////////////////////////////////////////
+
+struct TextExtractorContext {
+  std::vector<std::pair<char const*, size_t>>* _positions;
+  TRI_shaper_t*                                _shaper;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief walk over an array shape and extract the string values
+////////////////////////////////////////////////////////////////////////////////
+
 static bool ArrayTextExtractor (TRI_shaper_t* shaper, 
                                 TRI_shape_t const* shape, 
                                 char const*, 
@@ -1560,7 +1573,7 @@ static bool ArrayTextExtractor (TRI_shaper_t* shaper,
   if (ok) {
     // add string value found
     try {
-      static_cast<std::vector<std::pair<char const*, size_t>>*>(data)->emplace_back(text, textLength);
+      static_cast<TextExtractorContext*>(data)->_positions->emplace_back(text, textLength);
     }
     catch (...) {
     }
@@ -1568,23 +1581,36 @@ static bool ArrayTextExtractor (TRI_shaper_t* shaper,
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief walk over a list shape and extract the string values
+////////////////////////////////////////////////////////////////////////////////
+
 static bool ListTextExtractor (TRI_shaper_t* shaper, 
                                TRI_shape_t const* shape, 
                                char const* shapedJson, 
                                uint64_t length, 
                                void* data) {
-  char* text;
-  size_t textLength;
-  bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
+  if (shape->_type == TRI_SHAPE_ARRAY) {
+    // a sub-object
+    TRI_IterateShapeDataArray(static_cast<TextExtractorContext*>(data)->_shaper, shape, shapedJson, ArrayTextExtractor, data);
+  }
+  else if (shape->_type == TRI_SHAPE_SHORT_STRING ||
+           shape->_type == TRI_SHAPE_LONG_STRING) {
 
-  if (ok) {
-    // add string value found
-    try {
-      static_cast<std::vector<std::pair<char const*, size_t>>*>(data)->emplace_back(text, textLength);
-    }
-    catch (...) {
+    char* text;
+    size_t textLength;
+    bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
+
+    if (ok) {
+      // add string value found
+      try {
+        static_cast<TextExtractorContext*>(data)->_positions->emplace_back(text, textLength);
+      }
+      catch (...) {
+      }
     }
   }
+
   return true;
 }
 
@@ -1606,8 +1632,10 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   // extract the shape
+  TRI_shaper_t* shaper = fulltextIndex->base._collection->getShaper();
+
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-  ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->getShaper(), &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  ok = TRI_ExtractShapedJsonVocShaper(shaper, &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (! ok || shape == nullptr) {
     return nullptr;
@@ -1628,7 +1656,8 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   }
   else if (shape->_type == TRI_SHAPE_ARRAY) {
     std::vector<std::pair<char const*, size_t>> values;
-    TRI_IterateShapeDataArray(fulltextIndex->base._collection->getShaper(), shape, shapedJson._data.data, ArrayTextExtractor, &values);
+    TextExtractorContext context{ &values, shaper };
+    TRI_IterateShapeDataArray(shaper, shape, shapedJson._data.data, ArrayTextExtractor, &context);
   
     words = nullptr; 
     for (auto const& it : values) {
@@ -1644,7 +1673,8 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
            shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST ||
            shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
     std::vector<std::pair<char const*, size_t>> values;
-    TRI_IterateShapeDataList(fulltextIndex->base._collection->getShaper(), shape, shapedJson._data.data, ListTextExtractor, &values);
+    TextExtractorContext context{ &values, shaper };
+    TRI_IterateShapeDataList(shaper, shape, shapedJson._data.data, ListTextExtractor, &context);
   
     words = nullptr; 
     for (auto const& it : values) {
