@@ -35,7 +35,14 @@
     controller = new FoxxController(applicationContext),
     cluster = require("org/arangodb/cluster"),
     load = require("internal").download,
+    db = require("internal").db,
     _ = require("underscore");
+
+  controller.activateSessions({
+    type: "cookie",
+    autoCreateSession: true,
+    cookie: {name: "arango_sid_" + db._name()}
+  });
 
   /** Plan and start a new cluster
    *

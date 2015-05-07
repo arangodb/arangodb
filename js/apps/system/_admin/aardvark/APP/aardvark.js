@@ -30,13 +30,33 @@
 
 "use strict";
 
-var FoxxController = require("org/arangodb/foxx").Controller,
-  controller = new FoxxController(applicationContext),
+var Foxx = require("org/arangodb/foxx"),
+  controller = new Foxx.Controller(applicationContext),
   ArangoError = require("org/arangodb").ArangoError,
   underscore = require("underscore"),
   cluster = require("org/arangodb/cluster"),
+  joi = require("joi"),
+  util = require("util"),
+  internal = require("internal"),
   notifications = require("org/arangodb/configuration").notifications,
-  db = require("internal").db;
+  db = require("internal").db,
+  foxxInstallKey = joi.string().required().description(
+    "The _key attribute, where the information of this Foxx-Install is stored."
+  );
+
+function UnauthorizedError() {
+  ArangoError.apply(this, arguments);
+};
+util.inherits(UnauthorizedError, ArangoError);
+
+var foxxes = new (require("lib/foxxes").Foxxes)();
+var FoxxManager = require("org/arangodb/foxx/manager");
+
+controller.activateSessions({
+  type: "cookie",
+  autoCreateSession: true,
+  cookie: {name: "arango_sid_" + db._name()}
+});
 
 controller.get("/index.html", function(req, res) {
   var prefix = '/_db/' + encodeURIComponent(req.database) + applicationContext.mount;
@@ -50,14 +70,52 @@ controller.get("/index.html", function(req, res) {
 });
 
 controller.get("/whoAmI", function(req, res) {
-  res.json({
-    name: req.user
-  });
+  var uid = req.session.get("uid");
+  var user = null;
+  if (uid) {
+    var users = Foxx.requireApp("_system/users").userStorage;
+    try {
+      user = users.get(uid).get("user");
+    } catch (e) {
+      if (!(e instanceof users.errors.UserNotFound)) {
+        throw e;
+      }
+      req.session.setUser(null);
+    }
+  } else if (internal.options()["server.disable-authentication"]) {
+    user = false;
+  }
+  res.json({user: user});
 });
 
+controller.destroySession("/logout", function (req, res) {
+  res.json({success: true});
+});
+
+controller.post("/login", function (req, res) {
+  var users = Foxx.requireApp("_system/users").userStorage;
+  var credentials = req.parameters.credentials;
+  var user = users.resolve(credentials.get("username"));
+  if (!user) throw new UnauthorizedError();
+  var auth = Foxx.requireApp("_system/simple-auth").auth;
+  var valid = auth.verifyPassword(user.get("authData").simple, credentials.get("password"));
+  if (!valid) throw new UnauthorizedError();
+  req.session.setUser(user);
+  req.session.save();
+  res.json({
+    user: user.get("user")
+  });
+}).bodyParam("credentials", {
+  type: Foxx.Model.extend({
+    username: joi.string().required(),
+    password: joi.string().required()
+  }),
+  description: "Login credentials."
+}).errorResponse(UnauthorizedError, 401, "unauthorized");
+
 controller.get("/unauthorized", function() {
-  throw new ArangoError();
-}).errorResponse(ArangoError, 401, "unauthorized");
+  throw new UnauthorizedError();
+}).errorResponse(UnauthorizedError, 401, "unauthorized");
 
 /** Is version check allowed
  *
