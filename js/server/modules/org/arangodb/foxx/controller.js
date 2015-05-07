@@ -40,6 +40,239 @@ var RequestContext = require("org/arangodb/foxx/request_context").RequestContext
 // --SECTION--                                                       Controller
 // -----------------------------------------------------------------------------
 
+var authControllerProps = {
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_getUsers
+/// @brief Get the users of this controller
+////////////////////////////////////////////////////////////////////////////////
+  getUsers: function () {
+    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
+      users = new foxxAuthentication.Users(this.applicationContext);
+
+    return users;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_getAuth
+/// @brief Get the auth object of this controller
+////////////////////////////////////////////////////////////////////////////////
+  getAuth: function () {
+    return this.auth;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_login
+///
+/// `FoxxController#login(path, opts)`
+///
+/// Add a route for the login. You can provide further customizations via the
+/// the options:
+///
+/// * *usernameField* and *passwordField* can be used to adjust the expected attributes
+///   in the *post* request. They default to *username* and *password*.
+/// * *onSuccess* is a function that you can define to do something if the login was
+///   successful. This includes sending a response to the user. This defaults to a
+///   function that returns a JSON with *user* set to the identifier of the user and
+/// * *key* set to the session key.
+/// * *onError* is a function that you can define to do something if the login did not
+///   work. This includes sending a response to the user. This defaults to a function
+///   that sets the response to 401 and returns a JSON with *error* set to
+///   "Username or Password was wrong".
+///
+/// Both *onSuccess* and *onError* should take request and result as arguments.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.login('/login', {
+///   onSuccess: function (req, res) {
+///     res.json({"success": true});
+///   }
+/// });
+/// ```
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  login: function (route, opts) {
+    var authentication = require("org/arangodb/foxx/authentication");
+    return this.post(route, authentication.createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_logout
+///
+/// `FoxxController#logout(path, opts)`
+///
+/// This works pretty similar to the logout function and adds a path to your
+/// app for the logout functionality. You can customize it with a custom *onSuccess*
+/// and *onError* function:
+///
+/// * *onSuccess* is a function that you can define to do something if the logout was
+///   successful. This includes sending a response to the user. This defaults to a
+///   function that returns a JSON with *message* set to "logged out".
+/// * *onError* is a function that you can define to do something if the logout did not
+///   work. This includes sending a response to the user. This defaults to a function
+///   that sets the response to 401 and returns a JSON with *error* set to
+///   "No session was found".
+///
+/// Both *onSuccess* and *onError* should take request and result as arguments.
+///
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.logout('/logout', {
+///   onSuccess: function (req, res) {
+///     res.json({"message": "Bye, Bye"});
+///   }
+/// });
+/// ```
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  logout: function (route, opts) {
+    var authentication = require("org/arangodb/foxx/authentication");
+    return this.post(route, authentication.createStandardLogoutHandler(this.getAuth(), opts));
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_register
+///
+/// `FoxxController#register(path, opts)`
+///
+/// This works pretty similar to the logout function and adds a path to your
+/// app for the register functionality. You can customize it with a custom *onSuccess*
+/// and *onError* function:
+///
+/// * *onSuccess* is a function that you can define to do something if the registration was
+///   successful. This includes sending a response to the user. This defaults to a
+///   function that returns a JSON with *user* set to the created user document.
+/// * *onError* is a function that you can define to do something if the registration did not
+///   work. This includes sending a response to the user. This defaults to a function
+///   that sets the response to 401 and returns a JSON with *error* set to
+///   "Registration failed".
+///
+/// Both *onSuccess* and *onError* should take request and result as arguments.
+///
+/// You can also set the fields containing the username and password via *usernameField*
+/// (defaults to *username*) and *passwordField* (defaults to *password*).
+/// If you want to accept additional attributes for the user document, use the option
+/// *acceptedAttributes* and set it to an array containing strings with the names of
+/// the additional attributes you want to accept. All other attributes in the request
+/// will be ignored.
+///
+/// If you want default attributes for the accepted attributes or set additional fields
+/// (for example *admin*) use the option *defaultAttributes* which should be a hash
+/// mapping attribute names to default values.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.register('/logout', {
+///   acceptedAttributes: ['name'],
+///   defaultAttributes: {
+///     admin: false
+///   }
+/// });
+/// ```
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  register: function (route, opts) {
+    var authentication = require("org/arangodb/foxx/authentication");
+    return this.post(
+      route,
+      authentication.createStandardRegistrationHandler(this.getAuth(), this.getUsers(), opts)
+    ).errorResponse(authentication.UserAlreadyExistsError, 400, "User already exists");
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_changePassword
+///
+/// FoxxController#changePassword(route, opts)`
+///
+/// Add a route for the logged in user to change the password.
+/// You can provide further customizations via the
+/// the options:
+///
+/// * *passwordField* can be used to adjust the expected attribute
+///   in the *post* request. It defaults to *password*.
+/// * *onSuccess* is a function that you can define to do something if the change was
+///   successful. This includes sending a response to the user. This defaults to a
+///   function that returns a JSON with *notice* set to "Changed password!".
+/// * *onError* is a function that you can define to do something if the login did not
+///   work. This includes sending a response to the user. This defaults to a function
+///   that sets the response to 401 and returns a JSON with *error* set to
+///   "No session was found".
+///
+/// Both *onSuccess* and *onError* should take request and result as arguments.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.changePassword('/changePassword', {
+///   onSuccess: function (req, res) {
+///     res.json({"success": true});
+///   }
+/// });
+/// ```
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  changePassword: function (route, opts) {
+    var authentication = require("org/arangodb/foxx/authentication");
+    return this.post(route, authentication.createStandardChangePasswordHandler(this.getUsers(), opts));
+  }
+};
+
+var sessionControllerProps = {
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_getSessions
+/// @brief Get the sessions object of this controller
+////////////////////////////////////////////////////////////////////////////////
+  getSessions: function () {
+    return this.sessions;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_destroySession
+///
+/// `FoxxController#destroySession(path, opts)`
+///
+/// This adds a path to your app for the destroySession functionality.
+/// You can customize it with custom *before* and *after* function:
+/// *before* is a function that you can define to do something before
+/// the session is destroyed.
+/// *after* is a function that you can define to do something after the
+/// session is destroyed. This defaults to a function that returns a
+/// JSON object with *message* set to "logged out".
+/// Both *before* and *after* should take request and result as arguments.
+/// If you only want to provide an *after* function, you can pass the
+/// function directly instead of an object.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.destroySession('/logout', function (req, res) {
+///   res.json({"message": "Bye, Bye"});
+/// });
+/// ```
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  destroySession: function (route, opts) {
+    var method = opts.method;
+    if (typeof method === 'string') {
+      method = method.toLowerCase();
+    }
+    if (!method || typeof this[method] !== 'function') {
+      method = 'post';
+    }
+    var sessions = require("org/arangodb/foxx/sessions");
+    return this[method](route, sessions.createDestroySessionHandler(this.getSessions(), opts));
+  }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_initializer
 ///
@@ -319,12 +552,12 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  'delete': function (route, callback) {
+  delete: function (route, callback) {
     return this.handleRequest("delete", route, callback);
   },
 
   del: function (route, callback) {
-    return this['delete'](route, callback);
+    return this.delete(route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,29 +682,6 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_getUsers
-/// @brief Get the users of this controller
-////////////////////////////////////////////////////////////////////////////////
-  getUsers: function () {
-    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
-      users = new foxxAuthentication.Users(this.applicationContext);
-
-    return users;
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_getAuth
-/// @brief Get the auth object of this controller
-////////////////////////////////////////////////////////////////////////////////
-  getAuth: function () {
-    if (is.notExisty(this.auth)) {
-      throw new Error("Setup authentication first");
-    }
-
-    return this.auth;
-  },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_activateAuthentication
 ///
 /// `FoxxController#activateAuthentication(opts)`
@@ -499,182 +709,11 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
     var authentication = require("org/arangodb/foxx/authentication");
+    _.extend(this, authControllerProps);
 
     this.auth = authentication.createAuthObject(this.applicationContext, opts);
     this.before("/*", authentication.createAuthenticationMiddleware(this.auth, this.applicationContext));
     this.after("/*", authentication.createSessionUpdateMiddleware());
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_login
-///
-/// `FoxxController#login(path, opts)`
-///
-/// Add a route for the login. You can provide further customizations via the
-/// the options:
-///
-/// * *usernameField* and *passwordField* can be used to adjust the expected attributes
-///   in the *post* request. They default to *username* and *password*.
-/// * *onSuccess* is a function that you can define to do something if the login was
-///   successful. This includes sending a response to the user. This defaults to a
-///   function that returns a JSON with *user* set to the identifier of the user and
-/// * *key* set to the session key.
-/// * *onError* is a function that you can define to do something if the login did not
-///   work. This includes sending a response to the user. This defaults to a function
-///   that sets the response to 401 and returns a JSON with *error* set to
-///   "Username or Password was wrong".
-///
-/// Both *onSuccess* and *onError* should take request and result as arguments.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// app.login('/login', {
-///   onSuccess: function (req, res) {
-///     res.json({"success": true});
-///   }
-/// });
-/// ```
-///
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-  login: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
-    return this.post(route, authentication.createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_logout
-///
-/// `FoxxController#logout(path, opts)`
-///
-/// This works pretty similar to the logout function and adds a path to your
-/// app for the logout functionality. You can customize it with a custom *onSuccess*
-/// and *onError* function:
-///
-/// * *onSuccess* is a function that you can define to do something if the logout was
-///   successful. This includes sending a response to the user. This defaults to a
-///   function that returns a JSON with *message* set to "logged out".
-/// * *onError* is a function that you can define to do something if the logout did not
-///   work. This includes sending a response to the user. This defaults to a function
-///   that sets the response to 401 and returns a JSON with *error* set to
-///   "No session was found".
-///
-/// Both *onSuccess* and *onError* should take request and result as arguments.
-///
-///
-/// @EXAMPLES
-///
-/// ```js
-/// app.logout('/logout', {
-///   onSuccess: function (req, res) {
-///     res.json({"message": "Bye, Bye"});
-///   }
-/// });
-/// ```
-///
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-  logout: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
-    return this.post(route, authentication.createStandardLogoutHandler(this.getAuth(), opts));
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_register
-///
-/// `FoxxController#register(path, opts)`
-///
-/// This works pretty similar to the logout function and adds a path to your
-/// app for the register functionality. You can customize it with a custom *onSuccess*
-/// and *onError* function:
-///
-/// * *onSuccess* is a function that you can define to do something if the registration was
-///   successful. This includes sending a response to the user. This defaults to a
-///   function that returns a JSON with *user* set to the created user document.
-/// * *onError* is a function that you can define to do something if the registration did not
-///   work. This includes sending a response to the user. This defaults to a function
-///   that sets the response to 401 and returns a JSON with *error* set to
-///   "Registration failed".
-///
-/// Both *onSuccess* and *onError* should take request and result as arguments.
-///
-/// You can also set the fields containing the username and password via *usernameField*
-/// (defaults to *username*) and *passwordField* (defaults to *password*).
-/// If you want to accept additional attributes for the user document, use the option
-/// *acceptedAttributes* and set it to an array containing strings with the names of
-/// the additional attributes you want to accept. All other attributes in the request
-/// will be ignored.
-///
-/// If you want default attributes for the accepted attributes or set additional fields
-/// (for example *admin*) use the option *defaultAttributes* which should be a hash
-/// mapping attribute names to default values.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// app.register('/logout', {
-///   acceptedAttributes: ['name'],
-///   defaultAttributes: {
-///     admin: false
-///   }
-/// });
-/// ```
-///
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-  register: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
-    return this.post(
-      route,
-      authentication.createStandardRegistrationHandler(this.getAuth(), this.getUsers(), opts)
-    ).errorResponse(authentication.UserAlreadyExistsError, 400, "User already exists");
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_changePassword
-///
-/// FoxxController#changePassword(route, opts)`
-///
-/// Add a route for the logged in user to change the password.
-/// You can provide further customizations via the
-/// the options:
-///
-/// * *passwordField* can be used to adjust the expected attribute
-///   in the *post* request. It defaults to *password*.
-/// * *onSuccess* is a function that you can define to do something if the change was
-///   successful. This includes sending a response to the user. This defaults to a
-///   function that returns a JSON with *notice* set to "Changed password!".
-/// * *onError* is a function that you can define to do something if the login did not
-///   work. This includes sending a response to the user. This defaults to a function
-///   that sets the response to 401 and returns a JSON with *error* set to
-///   "No session was found".
-///
-/// Both *onSuccess* and *onError* should take request and result as arguments.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// app.changePassword('/changePassword', {
-///   onSuccess: function (req, res) {
-///     res.json({"success": true});
-///   }
-/// });
-/// ```
-///
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-  changePassword: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
-    return this.post(route, authentication.createStandardChangePasswordHandler(this.getUsers(), opts));
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_getSessions
-/// @brief Get the sessions object of this controller
-////////////////////////////////////////////////////////////////////////////////
-  getSessions: function () {
-    return this.sessions;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -707,47 +746,10 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   activateSessions: function (opts) {
     var sessions = require("org/arangodb/foxx/sessions");
+    _.extend(this, sessionControllerProps);
 
     this.sessions = new sessions.Sessions(opts);
     sessions.decorateController(this.sessions, this);
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_destroySession
-///
-/// `FoxxController#destroySession(path, opts)`
-///
-/// This adds a path to your app for the destroySession functionality.
-/// You can customize it with custom *before* and *after* function:
-/// *before* is a function that you can define to do something before
-/// the session is destroyed.
-/// *after* is a function that you can define to do something after the
-/// session is destroyed. This defaults to a function that returns a
-/// JSON object with *message* set to "logged out".
-/// Both *before* and *after* should take request and result as arguments.
-/// If you only want to provide an *after* function, you can pass the
-/// function directly instead of an object.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// app.destroySession('/logout', function (req, res) {
-///   res.json({"message": "Bye, Bye"});
-/// });
-/// ```
-///
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-  destroySession: function (route, opts) {
-    var method = opts.method;
-    if (typeof method === 'string') {
-      method = method.toLowerCase();
-    }
-    if (!method || typeof this[method] !== 'function') {
-      method = 'post';
-    }
-    var sessions = require("org/arangodb/foxx/sessions");
-    return this[method](route, sessions.createDestroySessionHandler(this.getSessions(), opts));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
