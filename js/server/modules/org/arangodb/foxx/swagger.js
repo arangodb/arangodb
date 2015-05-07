@@ -59,8 +59,12 @@ function createSwaggerRouteHandler(appPath, opts) {
     }
     var pathInfo = req.suffix.join('/');
     if (!pathInfo) {
+      var params = Object.keys(req.parameters || {}).reduce(function (part, name) {
+        return part + encodeURIComponent(name) + '=' + encodeURIComponent(req.parameters[name]) + '&';
+      }, '?');
+      params = params.slice(0, params.length - 1);
       res.status(302);
-      res.set('location', req.absoluteUrl(appPath + req.path(null, 'index.html')));
+      res.set('location', req.absoluteUrl(appPath + req.path(null, 'index.html') + params));
       return;
     }
     if (pathInfo === 'swagger.json') {
