@@ -1139,7 +1139,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bufferFull     = false;
   ignoreMarkers  = false;
 
-  n = datafiles._length;
+  n = TRI_LengthVector(&datafiles);
 
   for (i = 0; i < n; ++i) {
     df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);

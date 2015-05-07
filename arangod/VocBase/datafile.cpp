@@ -1751,6 +1751,9 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   // create the footer
   TRI_InitMarkerDatafile((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
   // set a proper tick value
+  if (datafile->_tickMax == 0) {
+    datafile->_tickMax = TRI_NewTickServer();
+  }
   footer.base._tick = datafile->_tickMax;
 
   // reserve space and write footer to file

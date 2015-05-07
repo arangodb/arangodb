@@ -290,7 +290,7 @@ AqlValue Functions::Length (triagens::aql::Query*,
 
       case TRI_JSON_OBJECT: {
         // return number of attributes
-        length = json->_value._objects._length / 2;
+        length = TRI_LengthVector(&json->_value._objects) / 2;
         break;
       }
 
@@ -392,7 +392,7 @@ AqlValue Functions::Unset (triagens::aql::Query* query,
 
   // create result object
   TRI_json_t const* valueJson = value.json();
-  size_t const n = valueJson->_value._objects._length;
+  size_t const n = TRI_LengthVector(&valueJson->_value._objects);
 
   size_t size;
   if (names.size() >= n / 2) {
@@ -456,7 +456,7 @@ AqlValue Functions::Keep (triagens::aql::Query* query,
   }
 
   TRI_json_t const* valueJson = value.json();
-  size_t const n = valueJson->_value._objects._length;
+  size_t const n = TRI_LengthVector(&valueJson->_value._objects);
 
   for (size_t i = 0; i < n; i += 2) {
     auto key = static_cast<TRI_json_t const*>(TRI_AtVector(&valueJson->_value._objects, i));
@@ -584,7 +584,7 @@ AqlValue Functions::Min (triagens::aql::Query* query,
   }
 
   TRI_json_t const* valueJson = value.json();
-  size_t const n = valueJson->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(valueJson);
   TRI_json_t const* minValue = nullptr;;
 
   for (size_t i = 0; i < n; ++i) {
@@ -630,7 +630,7 @@ AqlValue Functions::Max (triagens::aql::Query* query,
   }
 
   TRI_json_t const* valueJson = value.json();
-  size_t const n = valueJson->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(valueJson);
   TRI_json_t const* maxValue = nullptr;;
 
   for (size_t i = 0; i < n; ++i) {
@@ -676,7 +676,7 @@ AqlValue Functions::Sum (triagens::aql::Query* query,
   }
 
   TRI_json_t const* valueJson = value.json();
-  size_t const n = valueJson->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(valueJson);
   double sum = 0.0;
 
   for (size_t i = 0; i < n; ++i) {
@@ -723,7 +723,7 @@ AqlValue Functions::Average (triagens::aql::Query* query,
   }
 
   TRI_json_t const* valueJson = value.json();
-  size_t const n = valueJson->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(valueJson);
   double sum = 0.0;
   size_t count = 0;
 

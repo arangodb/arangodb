@@ -345,7 +345,7 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
       TRI_json_t* obj = json.json();
       TRI_ASSERT(TRI_IsObjectJson(obj));
 
-      size_t const n = obj->_value._objects._length;
+      size_t const n = TRI_LengthVector(&obj->_value._objects);
 
       size_t j = 0;
       for (size_t i = 0; i < n; i += 2) {
@@ -379,8 +379,8 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
       }
 
       // finally adjust the length of the patched JSON so the NULL fields at
-      // the end will not be dumped 
-      obj->_value._objects._length = j;
+      // the end will not be dumped
+      TRI_SetLengthVector(&obj->_value._objects, j); 
     }
     else {
       // no restrictions

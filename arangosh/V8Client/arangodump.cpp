@@ -741,7 +741,7 @@ static int RunDump (string& errorMsg) {
   }
 
   // iterate over collections
-  const size_t n = collections->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(collections);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
@@ -1058,7 +1058,7 @@ static int RunClusterDump (string& errorMsg) {
   }
 
   // iterate over collections
-  const size_t n = collections->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(collections);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
