@@ -177,10 +177,10 @@ function BaseMiddleware() {
 ////////////////////////////////////////////////////////////////////////////////
 
       params: function (key) {
-        if (this.parameters.hasOwnProperty(key)) {
+        if (this.parameters && this.parameters.hasOwnProperty(key)) {
           return this.parameters[key];
         }
-        return this.urlParameters[key];
+        return this.urlParameters && this.urlParameters[key];
       }
     };
 
