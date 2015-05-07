@@ -68,7 +68,8 @@ function createSwaggerRouteHandler(appPath, opts) {
       return;
     }
     if (pathInfo === 'swagger.json') {
-      res.json(swaggerJson(req, result ? result.appPath : (opts.appPath || appPath)));
+      var swaggerJsonHandler = opts.swaggerJson || swaggerJson;
+      swaggerJsonHandler(req, res, {appPath: result ? result.appPath : (opts.appPath || appPath)});
       return;
     }
     var indexFile = result ? result.indexFile : opts.indexFile;
@@ -84,11 +85,11 @@ function createSwaggerRouteHandler(appPath, opts) {
   };
 }
 
-function swaggerJson(req, appPath) {
-  var foxx = FoxxManager.routes(appPath);
+function swaggerJson(req, res, opts) {
+  var foxx = FoxxManager.routes(opts.appPath);
   var app = foxx.appContext.app;
-  var swagger = parseRoutes(appPath, foxx.routes, foxx.models);
-  return {
+  var swagger = parseRoutes(opts.appPath, foxx.routes, foxx.models);
+  res.json({
     swagger: '2.0',
     info: {
       description: app._manifest.description,
@@ -101,7 +102,7 @@ function swaggerJson(req, appPath) {
     paths: swagger.paths,
     // securityDefinitions: {},
     definitions: swagger.definitions
-  };
+  });
 }
 
 function fixSchema(model) {
