@@ -328,6 +328,10 @@
   // SECTION                                        documentation
   // ------------------------------------------------------------
 
+  controller.apiDocumentation('/docs', function (req, res) {
+    return {appPath: req.parameters.mount};
+  });
+
   /** Returns the billboard URL for swagger
    *
    * Returns the billboard URL for the application mounted
