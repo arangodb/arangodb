@@ -311,7 +311,7 @@ function startInstance (protocol, options, addArgs, testname) {
                          "useSSLonCoordinators"   : protocol === "ssl",
                          "valgrind"               : runInValgrind,
                          "valgrindopts"           : toArgv(valgrindopts, true),
-                         "valgrindXmlFileBase"    : valgrindXmlFileBase,
+                         "valgrindXmlFileBase"    : '_cluster' + valgrindXmlFileBase,
                          "valgrindTestname"       : testname
                         });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
