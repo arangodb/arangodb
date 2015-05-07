@@ -77,7 +77,7 @@ function createSwaggerRouteHandler(appPath, opts) {
       pathInfo = indexFile;
     }
     var path = fs.safeJoin(ArangoServerState.javaScriptPath(), 'server/assets/swagger', pathInfo);
-    if (!fs.exists(path)) {
+    if (!fs.isFile(path)) {
       resultNotFound(req, res, 404, "unknown path '" + req.url + "'");
       return;
     }
