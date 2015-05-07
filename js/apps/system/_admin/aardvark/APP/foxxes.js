@@ -29,6 +29,7 @@
 (function() {
   "use strict";
 
+  var db = require("internal").db;
   var FoxxController = require("org/arangodb/foxx").Controller;
   var controller = new FoxxController(applicationContext);
   var ArangoError = require("org/arangodb").ArangoError;
@@ -50,6 +51,12 @@
   };
   var fs = require("fs");
   var defaultThumb = require("/lib/defaultThumbnail").defaultThumb;
+
+  controller.activateSessions({
+    type: "cookie",
+    autoCreateSession: true,
+    cookie: {name: "arango_sid_" + db._name()}
+  });
 
   controller.extend({
     installer: function() {

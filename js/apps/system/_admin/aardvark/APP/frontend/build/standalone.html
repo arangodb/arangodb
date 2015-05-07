@@ -1417,16 +1417,17 @@ if (list.length > 0) {
 
 
 <script id="loginView.ejs" type="text/template">
-<div id="loginWindow" class="login-window">
-  <div id="loginSpace" class="login-space"/>
-  <img id="loginLogo" src="img/logo_arangodb_transp.png"/>
-  <div id="loginSpace" class="login-space"/>
-  <form id="loginForm">
-    <input class="login-input" placeholder="Username" id="loginUsername" type="text" name="username">
-    <input class="login-input" placeholder="Password" id="loginPassword" type="password" name="password">
-  </form>
-  Testing: Enter custom data!
-  <button id="submitLogin" class="button-success pull-right">Login</button>
+<div class="loginFixedWindow">
+  <div id="loginWindow" class="login-window">
+    <div id="loginSpace" class="login-space"/>
+    <img id="loginLogo" src="img/logo_arangodb_transp.png"/>
+    <div id="loginSpace" class="login-space"/>
+    <form id="loginForm">
+      <input class="login-input" placeholder="Username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
+      <input class="login-input" placeholder="Password" id="loginPassword" type="password" name="password"><i class="fa fa-lock"></i>
+      <button id="submitLogin" class="button-success pull-right">Login</button>
+    </form>
+  </div>
 </div>
 </script>
 
@@ -2650,7 +2651,7 @@ var cutByResolution = function (str) {
         <a id="userProfile" class="tab" href="#user">User profile</a>
       </li>
       <li class="dropdown-item">
-        <a id="userLogout" class="tab" href="#user">Logout</a>
+        <a id="userLogout" class="tab">Logout</a>
       </li>
     </ul>
   </li>
@@ -2818,7 +2819,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1430999892132"></script>
+<script src="app.js?version=1431006918048"></script>
 
   </body>
 </html>

@@ -44,6 +44,7 @@
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "RestServer/VocbaseContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -1401,6 +1402,90 @@ static void JS_SendChunk (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_RETURN(res == TRI_ERROR_NO_ERROR ? v8::True(isolate) : v8::False(isolate));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createSid
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_CreateSid (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("createSid(<sid>, <username>)");
+  }
+
+  TRI_GET_GLOBALS();
+
+  TRI_Utf8ValueNFC sidStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC username(TRI_UNKNOWN_MEM_ZONE, args[1]);
+
+  if (v8g->_vocbase != nullptr) {
+    string sid = v8g->_vocbase->_name;
+    sid += "/";
+    sid += *sidStr;
+
+    VocbaseContext::createSid(sid, *username);
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clearSid
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ClearSid (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("clearSid(<sid>)");
+  }
+
+  TRI_GET_GLOBALS();
+
+  TRI_Utf8ValueNFC sidStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  if (v8g->_vocbase != nullptr) {
+    string sid = v8g->_vocbase->_name;
+    sid += "/";
+    sid += *sidStr;
+
+    VocbaseContext::clearSid(sid);
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief accessSid
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_AccessSid (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("accessSid(<sid>)");
+  }
+
+  TRI_GET_GLOBALS();
+
+  TRI_Utf8ValueNFC sidStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  uint64_t t = 0;
+
+  if (v8g->_vocbase != nullptr) {
+    string sid = v8g->_vocbase->_name;
+    sid += "/";
+    sid += *sidStr;
+
+    t = VocbaseContext::accessSid(sid);
+  }
+
+  TRI_V8_RETURN(v8::Number::New(isolate, t));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1422,7 +1507,10 @@ void TRI_InitV8Actions (v8::Isolate* isolate,
   // create the global functions
   // .............................................................................
 
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_ACCESS_SID"), JS_AccessSid);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_CLEAR_SID"), JS_ClearSid);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_CLUSTER_TEST"), JS_ClusterTest, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_CREATE_SID"), JS_CreateSid);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEFINE_ACTION"), JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"), JS_ExecuteGlobalContextFunction);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_GET_CURRENT_REQUEST"), JS_GetCurrentRequest);

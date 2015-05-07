@@ -32,7 +32,14 @@
   var FoxxController = require("org/arangodb/foxx").Controller,
       Configuration = require("models/configuration").Model,
       controller = new FoxxController(applicationContext),
+      db = require("internal").db,
       FoxxManager = require("org/arangodb/foxx/manager");
+
+  controller.activateSessions({
+    type: "cookie",
+    autoCreateSession: true,
+    cookie: {name: "arango_sid_" + db._name()}
+  });
 
   controller.get("/devMode", function(req, res) {
     res.json(false);
