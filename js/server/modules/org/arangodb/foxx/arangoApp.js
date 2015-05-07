@@ -378,21 +378,17 @@ function computeRootAppPath(mount, isValidation) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoApp.prototype.loadAppScript = function (filename, options) {
-    var appContext;
-    if (options !== undefined && options.appContext) {
-      appContext = _.extend(options.appContext, this._context);
-    } else {
-      appContext = _.extend({}, this._context);
-    }
-
     options = options || {};
 
+    var appContext = _.extend({}, options.appContext, this._context);
     var full = fs.join(this._root, this._path, filename);
+
     if (!fs.exists(full)) {
       throwFileNotFound(full);
     }
 
     var fileContent = fs.read(full);
+
     if (options.transform) {
       fileContent = options.transform(fileContent);
     } else if (/\.coffee$/.test(filename)) {
@@ -401,6 +397,7 @@ function computeRootAppPath(mount, isValidation) {
     }
 
     var context = {};
+
     if (options.context) {
       Object.keys(options.context).forEach(function (key) {
         context[key] = options.context[key];
@@ -408,6 +405,7 @@ function computeRootAppPath(mount, isValidation) {
     }
 
     var localModule = appContext.appPackage.createAppModule(this, filename);
+
     context.__filename = full;
     context.__dirname = module.normalizeModuleName(full + "/..");
     context.console = require("org/arangodb/foxx/console")(this._mount);
@@ -428,9 +426,7 @@ function computeRootAppPath(mount, isValidation) {
     }
   };
 
-
   exports.ArangoApp = ArangoApp;
-
 }());
 
 // -----------------------------------------------------------------------------
