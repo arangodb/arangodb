@@ -936,7 +936,7 @@ function require (path) {
     var i;
     var pkg;
 
-    for (i = 0;  i < modulesPaths.length;  ++i) {
+    for (i = 0;  i < modulesPaths.length; ++i) {
       var path = modulesPaths[i];
 
       pkg = new Package("/", { name: "ArangoDB root" }, undefined, path2FileUri(path), true);
