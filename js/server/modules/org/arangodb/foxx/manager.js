@@ -39,6 +39,7 @@ var R = require("ramda");
 var db = require("internal").db;
 var fs = require("fs");
 var joi = require("joi");
+var util = require("util");
 var utils = require("org/arangodb/foxx/manager-utils");
 var store = require("org/arangodb/foxx/store");
 var console = require("console");
@@ -135,7 +136,7 @@ var manifestSchema = {
   keywords: joi.array().optional(),
   lib: joi.string().optional(),
   license: joi.string().optional(),
-  name: joi.string().required(),
+  name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).required(),
   repository: (
     joi.object().optional()
     .keys({
@@ -163,7 +164,7 @@ var manifestSchema = {
     )
   ),
   thumbnail: joi.string().optional(),
-  version: joi.string().required(),
+  version: joi.string().regex(/^\d+\.\d+(\.\d+)?$/).required(),
   rootElement: joi.boolean().default(false)
 };
 
@@ -292,7 +293,7 @@ var checkMountedSystemApps = function(dbname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var checkManifest = function(filename, manifest) {
-  var valid = true;
+  var errors = [];
 
   Object.keys(manifestSchema).forEach(function (key) {
     var schema = manifestSchema[key];
@@ -302,23 +303,14 @@ var checkManifest = function(filename, manifest) {
       manifest[key] = result.value;
     }
     if (result.error) {
-      valid = false;
+      var message = result.error.message.replace(/^"value"/, util.format('"%s"', key));
       if (value === undefined) {
-        console.error(
-          "Manifest '%s' %s for attribute '%s'",
-          filename,
-          result.error.message,
-          key
-        );
+        message = util.format('Manifest "%s": attribute %s.', filename, message);
       } else {
-        console.error(
-          "Manifest '%s' %s (%s) for attribute '%s'",
-          filename,
-          result.error.message,
-          manifest[key],
-          key
-        );
+        message = util.format('Manifest "%s": attribute %s (was "%s").', filename, message, manifest[key]);
       }
+      errors.push(message);
+      console.error(message);
     }
   });
 
@@ -352,7 +344,7 @@ var checkManifest = function(filename, manifest) {
   Object.keys(manifest).forEach(function (key) {
     if (!manifestSchema[key]) {
       console.warn(
-        "Manifest '%s' contains an unknown attribute '%s'",
+        'Manifest "%s": unknown attribute "%s"',
         filename,
         key
       );
@@ -367,10 +359,10 @@ var checkManifest = function(filename, manifest) {
     manifest.tests = [manifest.tests];
   }
 
-  if (!valid) {
+  if (errors.length) {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-      errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
+      errorMessage: errors.join('\n')
     });
   }
 };
@@ -385,37 +377,25 @@ var checkManifest = function(filename, manifest) {
 var validateManifestFile = function(file) {
   var mf, msg;
   if (!fs.exists(file)) {
-    msg = "Cannot find manifest file '" + file + "'";
+    msg = 'Cannot find manifest file "' + file + '"';
     console.errorLines(msg);
     throwFileNotFound(msg);
   }
   try {
     mf = JSON.parse(fs.read(file));
   } catch (err) {
-    msg = "Cannot parse app manifest '" + file + "': " + String(err);
+    msg = 'Cannot parse app manifest "' + file + '": ' + String(err.stack || err);
+    console.errorLines(msg);
     throw new ArangoError({
       errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
-      errorMessage: errors.ERROR_MALFORMED_MANIFEST_FILE.message
+      errorMessage: msg
     });
   }
   try {
     checkManifest(file, mf);
-    if (!/^[a-zA-Z\-_][a-zA-Z0-9\-_]*$/.test(mf.name)) {
-      throw new ArangoError({
-        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-        errorMessage: "The App name can only contain a to z, A to Z, 0-9, '-' and '_'." 
-      });
-    }
-    if (!/^\d+\.\d+(\.\d+)?$$/.test(mf.version)) {
-      throw new ArangoError({
-        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-        errorMessage: "The version requires the format: <major>.<minor>.<bugfix>, all have to be integer numbers." 
-      });
-
-    }
   } catch (err) {
-    console.error("Manifest file '%s' is invalid: %s", file, err.errorMessage);
-    if (err.hasOwnProperty("stack")) {
+    console.errorLines("Manifest file '%s' is invalid:\n%s", file, err.errorMessage);
+    if (err.stack) {
       console.errorLines(err.stack);
     }
     throw err;
