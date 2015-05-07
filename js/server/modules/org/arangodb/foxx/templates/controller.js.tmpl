@@ -6,7 +6,7 @@ var Foxx = require('org/arangodb/foxx'),
   joi = require('joi'),
   _ = require('underscore'),
   controller,
-  <%= model %>Description = {
+  <%= modelInstance %>Description = {
     type: joi.string().required().description(
       'The id of the <%= model %>-Item'
     ),
@@ -24,7 +24,7 @@ controller = new Foxx.Controller(applicationContext);
  *
  * This function simply returns the list of all <%= model %>.
  */
-controller.get('/<%= basePath %>', function (req, res) {
+controller.get('/', function (req, res) {
   res.json(_.map(<%= repositoryInstance %>.all(), function (model) {
     return model.forClient();
   }));
@@ -35,7 +35,7 @@ controller.get('/<%= basePath %>', function (req, res) {
  * Creates a new <%= model %>-Item. The information has to be in the
  * requestBody.
  */
-controller.post('/<%= basePath %>', function (req, res) {
+controller.post('/', function (req, res) {
   var <%= modelInstance %> = req.params('<%= modelInstance %>');
   res.json(<%= repositoryInstance %>.save(<%= modelInstance %>).forClient());
 }).bodyParam('<%= modelInstance %>', {
@@ -47,21 +47,21 @@ controller.post('/<%= basePath %>', function (req, res) {
  *
  * Reads a <%= model %>-Item.
  */
-controller.get('/<%= basePath %>/:id', function (req, res) {
+controller.get('/:id', function (req, res) {
   var id = req.params('id');
   res.json(<%= repositoryInstance %>.byId(id).forClient());
-}).pathParam('id', <%=model %>Description);
+}).pathParam('id', <%=modelInstance %>Description);
 
 /** Replaces a <%= model %>
  *
  * Changes a <%= model %>-Item. The information has to be in the
  * requestBody.
  */
-controller.put('/<%= basePath %>/:id', function (req, res) {
+controller.put('/:id', function (req, res) {
   var id = req.params('id'),
   <%= modelInstance %> = req.params('<%= modelInstance %>');
   res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>));
-}).pathParam('id', <%=model %>Description)
+}).pathParam('id', <%=modelInstance %>Description)
 .bodyParam('<%= modelInstance %>', {
   description: 'The <%= model %> you want your old one to be replaced with',
   type: <%= model %>
@@ -72,11 +72,11 @@ controller.put('/<%= basePath %>/:id', function (req, res) {
  * Changes a <%= model %>-Item. The information has to be in the
  * requestBody.
  */
-controller.patch('/<%= basePath %>/:id', function (req, res) {
+controller.patch('/:id', function (req, res) {
   var id = req.params('id'),
   <%= modelInstance %> = req.params('<%= modelInstance %>');
   res.json(<%= repositoryInstance %>.updateById(id, <%= modelInstance %>));
-}).pathParam('id', <%=model %>Description)
+}).pathParam('id', <%=modelInstance %>Description)
 .bodyParam('<%= modelInstance %>', {
   description: 'The <%= model %> you want your old one to be updated with',
   type: joi.object().required()
@@ -86,9 +86,9 @@ controller.patch('/<%= basePath %>/:id', function (req, res) {
  *
  * Removes a <%= model %>-Item.
  */
-controller.del('/<%= basePath %>/:id', function (req, res) {
+controller.del('/:id', function (req, res) {
   var id = req.params('id');
   <%= repositoryInstance %>.removeById(id);
   res.json({ success: true });
-}).pathParam('id', <%=model %>Description
+}).pathParam('id', <%=modelInstance %>Description
 ).errorResponse(ArangoError, 404, 'The document could not be found');
