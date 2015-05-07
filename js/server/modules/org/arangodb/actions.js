@@ -529,18 +529,13 @@ function splitUrl (url) {
   var parts;
   var re1;
   var re2;
-  var cut;
   var ors;
 
-  re1 = /^(:[a-zA-Z]+)(\|:[a-zA-Z]+)*$/;
+  re1 = /^(:[a-zA-Z]+)*$/;
   re2 = /^(:[a-zA-Z]+)\?$/;
 
   parts = url.split("/");
   cleaned = [];
-
-  cut = function (x) {
-    return x.substr(1);
-  };
 
   for (i = 0;  i < parts.length;  ++i) {
     var part = parts[i];
@@ -553,7 +548,7 @@ function splitUrl (url) {
         cleaned.push({ prefix: true });
       }
       else if (re1.test(part)) {
-        ors = part.split("|").map(cut);
+        ors = [ part.substr(1) ];
         cleaned.push({ parameters: ors });
       }
       else if (re2.test(part)) {
@@ -970,7 +965,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
 
       result = result.concat(flattenRouting(
         parameter.match,
-        path + "/:" + parameter.parameter,
+        path + "/:" + parameter.parameter + (parameter.optional ? '?' : ''),
         cur,
         newUrlParameters,
         depth + 1,
@@ -1298,8 +1293,9 @@ function routeRequest (req, res, routes) {
         var p = path;
         params = params || req.urlParameters;
         Object.keys(params).forEach(function (key) {
-          p = p.replace(new RegExp(':' + key, 'g'), params[key]);
+          p = p.replace(new RegExp(':' + key + '\\??', 'g'), params[key]);
         });
+        p = p.replace(/:[a-zA-Z]+\?$/, '');
         suffix = suffix || req.suffix;
         if (Array.isArray(suffix)) {
           suffix = suffix.join('/');
