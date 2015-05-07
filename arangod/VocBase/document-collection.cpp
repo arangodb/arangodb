@@ -1400,7 +1400,7 @@ static int OpenIteratorAddOperation (open_iterator_state_t* state,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void OpenIteratorResetOperations (open_iterator_state_t* state) {
-  size_t n = state->_operations._length;
+  size_t n = TRI_LengthVector(&state->_operations);
 
   if (n > OpenIteratorBufferSize * 2) {
     // free some memory
@@ -1426,7 +1426,7 @@ static int OpenIteratorStartTransaction (open_iterator_state_t* state,
   state->_tid = tid;
   state->_trxCollections = numCollections;
 
-  TRI_ASSERT(state->_operations._length == 0);
+  TRI_ASSERT(TRI_LengthVector(&state->_operations) == 0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1461,7 +1461,7 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
         int res = TRI_ERROR_NO_ERROR;
 
         LOG_INFO("recovering transaction %llu", (unsigned long long) state->_tid);
-        size_t const n = state->_operations._length;
+        size_t const n = TRI_LengthVector(&state->_operations);
 
         for (size_t i = 0; i < n; ++i) {
           open_iterator_operation_t* operation = static_cast<open_iterator_operation_t*>(TRI_AtVector(&state->_operations, i));
@@ -1497,11 +1497,9 @@ static int OpenIteratorCommitTransaction (open_iterator_state_t* state) {
   int res = TRI_ERROR_NO_ERROR;
 
   if (state->_trxCollections <= 1 || state->_trxPrepared) {
-    size_t i, n;
+    size_t const n = TRI_LengthVector(&state->_operations);
 
-    n = state->_operations._length;
-
-    for (i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
       open_iterator_operation_t* operation = static_cast<open_iterator_operation_t*>(TRI_AtVector(&state->_operations, i));
 
       int r = OpenIteratorApplyOperation(state, operation);
@@ -3076,19 +3074,19 @@ static TRI_json_t* ExtractFields (TRI_json_t const* json,
   TRI_json_t* fld = TRI_LookupObjectJson(json, "fields");
 
   if (! TRI_IsArrayJson(fld)) {
-    LOG_ERROR("ignoring index %llu, 'fields' must be a list", (unsigned long long) iid);
+    LOG_ERROR("ignoring index %llu, 'fields' must be an array", (unsigned long long) iid);
 
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     return nullptr;
   }
 
-  *fieldCount = fld->_value._objects._length;
+  *fieldCount = TRI_LengthArrayJson(fld);
 
   for (size_t j = 0;  j < *fieldCount;  ++j) {
     TRI_json_t* sub = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, j));
 
     if (! TRI_IsStringJson(sub)) {
-      LOG_ERROR("ignoring index %llu, 'fields' must be a list of attribute paths", (unsigned long long) iid);
+      LOG_ERROR("ignoring index %llu, 'fields' must be an array of attribute paths", (unsigned long long) iid);
 
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
       return nullptr;
@@ -3215,7 +3213,7 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
     // of the number of attributes
     // .........................................................................
 
-    if (paths->_length != indexPaths->_length) {
+    if (TRI_LengthVector(paths) != TRI_LengthVector(indexPaths)) {
       continue;
     }
 
@@ -3227,12 +3225,14 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
 
     if (allowAnyAttributeOrder) {
       // any permutation of attributes is allowed
-      for (size_t k = 0;  k < paths->_length;  ++k) {
+      size_t const n = TRI_LengthVector(paths);
+
+      for (size_t k = 0;  k < n;  ++k) {
         TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
 
         found = false;
 
-        for (size_t l = 0;  l < paths->_length;  ++l) {
+        for (size_t l = 0;  l < n;  ++l) {
           TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, l));
 
           if (indexShape == givenShape) {
@@ -3247,8 +3247,10 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       }
     }
     else {
-      // attributes need to present in a given order
-      for (size_t k = 0;  k < paths->_length;  ++k) {
+      // attributes need to bepresent in a given order
+      size_t const n = TRI_LengthVector(paths);
+
+      for (size_t k = 0;  k < n;  ++k) {
         TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
         TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, k));
 

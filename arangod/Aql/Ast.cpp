@@ -2215,7 +2215,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
 
   if (json->_type == TRI_JSON_ARRAY) {
     auto node = createNodeArray();
-    size_t const n = json->_value._objects._length;
+    size_t const n = TRI_LengthArrayJson(json);
 
     for (size_t i = 0; i < n; ++i) {
       node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i)))); 
@@ -2226,7 +2226,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
 
   if (json->_type == TRI_JSON_OBJECT) {
     auto node = createNodeObject();
-    size_t const n = json->_value._objects._length;
+    size_t const n = TRI_LengthVector(&json->_value._objects);
 
     for (size_t i = 0; i < n; i += 2) {
       auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));

@@ -247,7 +247,8 @@ int usersOnCoordinator (std::string const& dbname,
           TRI_json_t const* r = TRI_LookupObjectJson(json, "result");
 
           if (TRI_IsArrayJson(r)) {
-            for (size_t i = 0; i < r->_value._objects._length; ++i) {
+            size_t const n = TRI_LengthArrayJson(r);
+            for (size_t i = 0; i < n; ++i) {
               TRI_json_t const* p = TRI_LookupArrayJson(r, i);
 
               if (TRI_IsObjectJson(p)) {
@@ -1354,7 +1355,8 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
   TRI_json_t const* json = (*c).getIndexes();
 
   if (TRI_IsArrayJson(json)) {
-    for (size_t i = 0;  i < json->_value._objects._length; ++i) {
+    size_t const n = TRI_LengthArrayJson(json);
+    for (size_t i = 0;  i < n; ++i) {
       TRI_json_t const* v = TRI_LookupArrayJson(json, i);
 
       if (TRI_IsObjectJson(v)) {
@@ -1400,7 +1402,9 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
         value = TRI_LookupObjectJson(v, "fields");
 
         if (TRI_IsArrayJson(value)) {
-          for (size_t j = 0; j < value->_value._objects._length; ++j) {
+          size_t const n = TRI_LengthArrayJson(value);
+
+          for (size_t j = 0; j < n; ++j) {
             TRI_json_t const* f = TRI_LookupArrayJson(value, j);
 
             if (TRI_IsStringJson(f)) {

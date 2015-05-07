@@ -78,7 +78,8 @@ void BindParameters::process () {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID);
   }
   
-  size_t const n = _json->_value._objects._length;
+  size_t const n = TRI_LengthVector(&_json->_value._objects);
+
   for (size_t i = 0; i < n; i += 2) {
     TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&_json->_value._objects, i));
 

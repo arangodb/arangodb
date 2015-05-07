@@ -984,7 +984,7 @@ namespace triagens {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
           }
-          return _json->_value._objects._length;
+          return TRI_LengthVector(&_json->_value._objects);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -995,7 +995,7 @@ namespace triagens {
           if (! TRI_IsObjectJson(_json)) {
             throw JsonException("Json is no object");
           }
-          return _json->_value._objects._length / 2;
+          return TRI_LengthVector(&_json->_value._objects) / 2;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

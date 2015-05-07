@@ -882,7 +882,7 @@ bool RestImportHandler::createFromJson (string const& type) {
       return false;
     }
 
-    size_t const n = documents->_value._objects._length;
+    size_t const n = TRI_LengthArrayJson(documents);
 
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* json = static_cast<TRI_json_t const*>(TRI_AtVector(&documents->_value._objects, i));
@@ -1461,9 +1461,9 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
     return nullptr;
   }
 
-  size_t const n = keys->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(keys);
 
-  if (n !=  values->_value._objects._length) {
+  if (n != TRI_LengthArrayJson(values)) {
     errorMsg = positionise(lineNumber) + "wrong number of JSON values";
     return nullptr;
   }
@@ -1497,7 +1497,7 @@ bool RestImportHandler::checkKeys (TRI_json_t const* keys) const {
     return false;
   }
 
-  size_t const n = keys->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(keys);
 
   if (n == 0) {
     return false;

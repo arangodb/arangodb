@@ -439,10 +439,11 @@ bool ApplicationEndpointServer::loadEndpoints () {
     return false;
   }
 
-  const size_t n = json->_value._objects._length;
+  size_t const n = TRI_LengthVector(&json->_value._objects);
+
   for (size_t i = 0; i < n; i += 2) {
-    TRI_json_t const* e = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
-    TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
+    auto const* e = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+    auto const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
     if (! TRI_IsStringJson(e) || ! TRI_IsArrayJson(v)) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -452,16 +453,16 @@ bool ApplicationEndpointServer::loadEndpoints () {
     const string endpoint = string(e->_value._string.data, e->_value._string.length - 1);
 
     vector<string> dbNames;
-    for (size_t j = 0; j < v->_value._objects._length; ++j) {
-      TRI_json_t const* d = (TRI_json_t const*) TRI_AtVector(&v->_value._objects, j);
+    for (size_t j = 0; j < TRI_LengthVector(&v->_value._objects); ++j) {
+      auto d = static_cast<TRI_json_t const*>(TRI_AtVector(&v->_value._objects, j));
 
       if (! TRI_IsStringJson(d)) {
         TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         return false;
       }
 
-      const string dbName = string(d->_value._string.data, d->_value._string.length - 1);
-      dbNames.push_back(dbName);
+      std::string const dbName = string(d->_value._string.data, d->_value._string.length - 1);
+      dbNames.emplace_back(dbName);
     }
 
     endpoints[endpoint] = dbNames;

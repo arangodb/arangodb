@@ -1373,7 +1373,7 @@ TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start, bool use
     }
   }
 
-  qsort(TRI_BeginVector(result), result->_length, sizeof(TRI_log_buffer_t), LidCompare);
+  qsort(TRI_BeginVector(result), TRI_LengthVector(result), sizeof(TRI_log_buffer_t), LidCompare);
 
   return result;
 }
@@ -1383,7 +1383,7 @@ TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start, bool use
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBufferLogging (TRI_vector_t* buffer) {
-  for (size_t i = 0;  i < buffer->_length;  ++i) {
+  for (size_t i = 0;  i < TRI_LengthVector(buffer);  ++i) {
     TRI_log_buffer_t* buf = static_cast<TRI_log_buffer_t*>(TRI_AtVector(buffer, i));
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, buf->_text);
