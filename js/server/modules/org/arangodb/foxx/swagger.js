@@ -69,20 +69,35 @@ function createSwaggerRouteHandler(appPath, opts) {
     }
     if (pathInfo === 'swagger.json') {
       var swaggerJsonHandler = opts.swaggerJson || swaggerJson;
-      swaggerJsonHandler(req, res, {appPath: result ? result.appPath : (opts.appPath || appPath)});
-      return;
+      if (typeof swaggerJsonHandler === 'string') {
+        pathInfo = swaggerJsonHandler;
+      } else if (typeof swaggerJsonHandler === 'function') {
+        swaggerJsonHandler(req, res, {appPath: result ? result.appPath : (opts.appPath || appPath)});
+        return;
+      }
+    } else if (pathInfo === 'index.html') {
+      var indexFile = result ? result.indexFile : opts.indexFile;
+      if (indexFile) {
+        pathInfo = indexFile;
+      }
     }
-    var indexFile = result ? result.indexFile : opts.indexFile;
-    if (pathInfo === 'index.html' && indexFile) {
-      pathInfo = indexFile;
-    }
-    var path = fs.safeJoin(ArangoServerState.javaScriptPath(), 'server/assets/swagger', pathInfo);
+    var path = swaggerPath(pathInfo, result ? result.swaggerRoot : opts.swaggerRoot);
     if (!fs.isFile(path)) {
       resultNotFound(req, res, 404, "unknown path '" + req.url + "'");
       return;
     }
     res.sendFile(path);
   };
+}
+
+function swaggerPath(path, basePath) {
+  if (path.charAt(0) === '/') {
+    return path;
+  }
+  if (!basePath) {
+    basePath = fs.safeJoin(ArangoServerState.javaScriptPath(), 'server/assets/swagger');
+  }
+  return fs.safeJoin(basePath, path);
 }
 
 function swaggerJson(req, res, opts) {
