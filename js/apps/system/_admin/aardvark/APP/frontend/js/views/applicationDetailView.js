@@ -110,17 +110,17 @@
     },
 
     deleteApp: function() {
-      var buttons = [];
-      buttons.push(
+      var buttons = [
         window.modalView.createDeleteButton("Delete", function() {
-          this.model.destroy(function (err, result) {
+          var opts = {teardown: $('#app_delete_run_teardown').is(':checked')};
+          this.model.destroy(opts, function (err, result) {
             if (!err && result.error === false) {
               window.modalView.hide();
               window.App.navigate("applications", { trigger: true });
             }
           });
         }.bind(this))
-      );
+      ];
       window.modalView.show(
         "modalDeleteConfirmation.ejs",
         "Delete Foxx App mounted at '" + this.model.get('mount') + "'",

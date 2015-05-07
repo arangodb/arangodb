@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  var sendRequest = function (foxx, callback, type, part, body) {
+  var sendRequest = function (foxx, callback, method, part, body, args) {
     var req = {
       contentType: "application/json",
       processData: false,
@@ -18,12 +18,12 @@
         }
       }
     };
-    req.type = type;
-    if (part) {
-      req.url = "/_admin/aardvark/foxxes/" + part + "?mount=" + foxx.encodedMount();
-    } else {
-      req.url = "/_admin/aardvark/foxxes?mount=" + foxx.encodedMount();
-    }
+    req.type = method;
+    args = _.extend({mount: foxx.encodedMount()}, args);
+    var qs = _.reduce(args, function (base, value, key) {
+      return base + encodeURIComponent(key) + '=' + encodeURIComponent(value) + '&';
+    }, '?');
+    req.url = "/_admin/aardvark/foxxes" + (part ? '/' + part : '') + qs.slice(0, qs.length - 1);
     if (body !== undefined) {
       req.data = JSON.stringify(body);
     }
@@ -56,8 +56,8 @@
       return encodeURIComponent(this.get("mount"));
     },
 
-    destroy: function (callback) {
-      sendRequest(this, callback, "DELETE");
+    destroy: function (opts, callback) {
+      sendRequest(this, callback, "DELETE", undefined, undefined, opts);
     },
 
     isBroken: function () {
