@@ -68,8 +68,12 @@ function createSwaggerRouteHandler(appPath, opts) {
       return;
     }
     if (pathInfo === 'swagger.json') {
-      res.json(swaggerJson(req, (result && result.appPath) || opts.appPath || appPath));
+      res.json(swaggerJson(req, result ? result.appPath : (opts.appPath || appPath)));
       return;
+    }
+    var indexFile = result ? result.indexFile : opts.indexFile;
+    if (pathInfo === 'index.html' && indexFile) {
+      pathInfo = indexFile;
     }
     var path = fs.safeJoin(ArangoServerState.javaScriptPath(), 'server/assets/swagger', pathInfo);
     if (!fs.exists(path)) {
