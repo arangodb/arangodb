@@ -757,12 +757,12 @@ extend(Controller.prototype, {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  apiDocumentation: function (route, beforeFn) {
+  apiDocumentation: function (route, opts) {
     if (route.charAt(route.length - 1) !== '/') {
       route += '/';
     }
     var mountPath = this.applicationContext.mount;
-    return this.get(route + '*', swagger.createSwaggerRouteHandler(mountPath, beforeFn));
+    return this.get(route + '*', swagger.createSwaggerRouteHandler(mountPath, opts));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
