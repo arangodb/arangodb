@@ -211,15 +211,16 @@
 /// Output:
 /// -
 ////////////////////////////////////////////////////////////////////////////////
-  var script = function(name, mount) {
+  var script = function(name, mount, options) {
     checkParameter(
-      "script(<name>, <mount>)",
+      "script(<name>, <mount>, [<options>])",
       [ [ "Script name", "string" ], [ "Mount path", "string" ] ],
       [ name, mount ] );
     var res;
     var req = {
       name: name,
-      mount: mount
+      mount: mount,
+      options: options
     };
     res = arango.POST("/_admin/foxx/script", JSON.stringify(req));
     arangosh.checkRequestResult(res);
@@ -563,7 +564,8 @@
           script("teardown", args[1]);
           break;
         case "script":
-          script(args[2], args[1]);
+          options = extractOptions(args);
+          script(args[2], args[1], options);
           break;
         case "tests":
           options = extractOptions(args);
