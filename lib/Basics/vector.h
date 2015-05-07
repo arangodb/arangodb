@@ -45,13 +45,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vector_s {
-  char*              _buffer;
-  TRI_memory_zone_t* _memoryZone;
-  uint32_t           _lengthX;      // private. do not access from outside!
-  uint32_t           _capacityX;    // private. do not access from outside!
-  uint32_t           _elementSizeX; // private. do not access from outside!
+  char*                 _buffer;
+  TRI_memory_zone_id_t  _memoryZoneX;  // private. do not access from outside
+  uint32_t              _lengthX;      // private. do not access from outside!
+  uint32_t              _capacityX;    // private. do not access from outside!
+  uint32_t              _elementSizeX; // private. do not access from outside!
 }
 TRI_vector_t;
+
+static_assert(sizeof(TRI_memory_zone_id_t) == 4, "invalid size for TRI_memory_zone_id_t");
+
+static_assert(sizeof(TRI_vector_t) == sizeof(char*) + 4 * sizeof(uint32_t), "invalid size for TRI_vector_t");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
