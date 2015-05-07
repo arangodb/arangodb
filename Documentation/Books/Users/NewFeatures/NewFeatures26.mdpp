@@ -5,8 +5,14 @@ ArangoDB 2.6. ArangoDB 2.6 also contains several bugfixes that are not listed
 here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
 
 
+!SECTION Admin Frontend Authentication
+
 !SECTION Foxx Configuration
 
 !SECTION Foxx Dependencies
 
 !SECTION Foxx API Documentation
+
+!SECTION Foxx Scripts
+
+!SECTION Mocha Tests
