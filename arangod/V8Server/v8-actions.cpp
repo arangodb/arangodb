@@ -1483,7 +1483,7 @@ static void JS_AccessSid (const v8::FunctionCallbackInfo<v8::Value>& args) {
     t = VocbaseContext::accessSid(sid);
   }
 
-  TRI_V8_RETURN(v8::Number::New(isolate, t));
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(t)));
 }
 
 // -----------------------------------------------------------------------------

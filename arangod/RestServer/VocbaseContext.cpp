@@ -70,7 +70,7 @@ static unordered_map<string, pair<string, uint64_t>> SidCache;
 void VocbaseContext::createSid (const string& sid, const string& username) {
   MUTEX_LOCKER(SidLock);
 
-  uint64_t t = TRI_microtime() * 1000.0;
+  uint64_t t = static_cast<uint64_t>(TRI_microtime() * 1000.0);
   SidCache[sid] = make_pair(username, t);
 }
 
@@ -235,7 +235,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
     if (it != SidCache.end()) {
       _request->setUser(it->second.first);
-      uint64_t t = TRI_microtime() * 1000.0;
+      uint64_t t = static_cast<uint64_t>(TRI_microtime() * 1000.0);
       it->second.second = t;
       return HttpResponse::OK;
     }
