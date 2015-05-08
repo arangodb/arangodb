@@ -673,16 +673,23 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
     return rhs;
   }
 
-  std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec()); // must be a new one
-  for (size_t i = 0; i < lhs->size(); i++) {
-    for (size_t j = 0; j < rhs->size(); j++) {
-      rimv->emplace_back(std::move(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone())));
+  try {
+    std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec()); // must be a new one
+    for (size_t i = 0; i < lhs->size(); i++) {
+      for (size_t j = 0; j < rhs->size(); j++) {
+        rimv->emplace_back(std::move(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone())));
+      }
     }
-  }
 
-  delete lhs;
-  delete rhs;
-  return rimv.release();
+    delete lhs;
+    delete rhs;
+    return rimv.release();
+  }
+  catch (...) {
+    delete lhs;
+    delete rhs;
+    throw;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

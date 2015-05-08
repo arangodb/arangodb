@@ -149,7 +149,7 @@ namespace triagens {
 
         void setShaped (size_t index, RegisterId varNr, TRI_df_marker_t const* marker) {
           TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
-          TRI_ASSERT_EXPENSIVE(_data[index * _nrRegs + varNr].isEmpty());
+          TRI_ASSERT_EXPENSIVE(! _data[index * _nrRegs + varNr].requiresDestruction());
 
           auto& v = _data[index * _nrRegs + varNr];
           v._marker = marker;
