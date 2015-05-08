@@ -472,9 +472,9 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
   var result = download(url, body, options);
 
   if (result.code !== 200) {
-    var err = "bootstrapping DB servers failed: " + extractErrorMessage(result);
-    console.error("%s", err);
-    return {"error": true, "bootstrapServers": true, "errorMessage": err};
+    var err1 = "bootstrapping DB servers failed: " + extractErrorMessage(result);
+    console.error("%s", err1);
+    return {"error": true, "bootstrapServers": true, "errorMessage": err1};
   }
 
   // execute cluster database upgrade
@@ -483,9 +483,9 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
   result = download(url, body, options);
 
   if (result.code !== 200) {
-    var err = "upgrading cluster database failed: " + extractErrorMessage(result);
-    console.error("%s", err);
-    return {"error": true, "bootstrapServers": true, "errorMessage": err};
+    var err2 = "upgrading cluster database failed: " + extractErrorMessage(result);
+    console.error("%s", err2);
+    return {"error": true, "bootstrapServers": true, "errorMessage": err2};
   }
 
   // bootstrap coordinators
