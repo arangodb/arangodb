@@ -56,9 +56,11 @@ namespace triagens {
       };
       struct NeighborsOptions {
         std::string direction;
+        bool distinct;
 
         NeighborsOptions() :
-          direction("outbound") {
+          direction("outbound"),
+          distinct(false) {
         }
 
       };
