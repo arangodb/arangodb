@@ -293,7 +293,7 @@ var checkMountedSystemApps = function(dbname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var checkManifest = function(filename, manifest) {
-  var errors = [];
+  var validationErrors = [];
 
   Object.keys(manifestSchema).forEach(function (key) {
     var schema = manifestSchema[key];
@@ -309,7 +309,7 @@ var checkManifest = function(filename, manifest) {
       } else {
         message = util.format('Manifest "%s": attribute %s (was "%s").', filename, message, manifest[key]);
       }
-      errors.push(message);
+      validationErrors.push(message);
       console.error(message);
     }
   });
@@ -359,7 +359,7 @@ var checkManifest = function(filename, manifest) {
     manifest.tests = [manifest.tests];
   }
 
-  if (errors.length) {
+  if (validationErrors.length) {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
       errorMessage: errors.join('\n')
