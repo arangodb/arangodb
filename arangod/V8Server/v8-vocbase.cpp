@@ -1865,6 +1865,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     }
     v8::Handle<v8::Object> options = args[3]->ToObject();
     v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
+    v8::Local<v8::String> keyDistinct= TRI_V8_ASCII_STRING("distinct");
 
     if (options->Has(keyDirection) ) {
       opts.direction = TRI_ObjectToString(options->Get(keyDirection));
@@ -1874,6 +1875,9 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
          ) {
         TRI_V8_THROW_TYPE_ERROR("expecting direction to be 'outbound', 'inbound' or 'any'");
       }
+    }
+    if (options->Has(keyDistinct) ) {
+      opts.distinct  = TRI_ObjectToBoolean(options->Get(keyDistinct));
     }
   }
 
