@@ -779,10 +779,10 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
                              (res->result->getHttpReturnCode()));
   _response->setContentType(res->result->getHeaderField("content-type",dummy));
   _response->body().swap(& (res->result->getBody()));
-  map<string, string> resultHeaders = res->result->getHeaderFields();
-  map<string, string>::iterator it;
-  for (it = resultHeaders.begin(); it != resultHeaders.end(); ++it) {
-    _response->setHeader(it->first, it->second);
+
+  auto const& resultHeaders = res->result->getHeaderFields();
+  for (auto const& it : resultHeaders) {
+    _response->setHeader(it.first, it.second);
   }
   delete res;
 }

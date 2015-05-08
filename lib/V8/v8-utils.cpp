@@ -899,15 +899,15 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       result->Set(TRI_V8_ASCII_STRING("message"), TRI_V8_STD_STRING(returnMessage));
 
       // process response headers
-      auto responseHeaders = response->getHeaderFields();
+      auto const& responseHeaders = response->getHeaderFields();
 
       v8::Handle<v8::Object> headers = v8::Object::New(isolate);
 
-      for (auto it = responseHeaders.begin(); it != responseHeaders.end(); ++it) {
-        headers->Set(TRI_V8_STD_STRING((*it).first), TRI_V8_STD_STRING((*it).second));
+      for (auto const& it : responseHeaders) {
+        headers->ForceSet(TRI_V8_STD_STRING(it.first), TRI_V8_STD_STRING(it.second));
       }
 
-      result->Set(TRI_V8_ASCII_STRING("headers"), headers);
+      result->ForceSet(TRI_V8_ASCII_STRING("headers"), headers);
 
       if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
