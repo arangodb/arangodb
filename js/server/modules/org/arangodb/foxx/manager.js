@@ -362,7 +362,7 @@ var checkManifest = function(filename, manifest) {
   if (validationErrors.length) {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-      errorMessage: errors.join('\n')
+      errorMessage: validationErrors.join('\n')
     });
   }
 };
