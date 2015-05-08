@@ -46,32 +46,43 @@ using Json = triagens::basics::Json;
 /// @brief create the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-AttributeAccessor::AttributeAccessor (char const* name,
+AttributeAccessor::AttributeAccessor (std::vector<char const*> const& attributeParts,
                                       Variable const* variable)
-  : _name(name),
+  : _attributeParts(attributeParts),
+    _combinedName(),
     _variable(variable),
     _buffer(TRI_UNKNOWN_MEM_ZONE),
     _pid(0),
     _nameCache({ "", 0 }),
     _attributeType(ATTRIBUTE_TYPE_REGULAR) {
 
-  TRI_ASSERT(_name != nullptr);
   TRI_ASSERT(_variable != nullptr);
 
-  if (strcmp(name, TRI_VOC_ATTRIBUTE_KEY) == 0) {
-    _attributeType = ATTRIBUTE_TYPE_KEY;
+  if (_attributeParts.size() == 1) {
+    char const* n = _attributeParts[0];
+
+    if (strcmp(n, TRI_VOC_ATTRIBUTE_KEY) == 0) {
+      _attributeType = ATTRIBUTE_TYPE_KEY;
+    }
+    else if (strcmp(n, TRI_VOC_ATTRIBUTE_REV) == 0) {
+      _attributeType = ATTRIBUTE_TYPE_REV;
+    }
+    else if (strcmp(n, TRI_VOC_ATTRIBUTE_ID) == 0) {
+      _attributeType = ATTRIBUTE_TYPE_ID;
+    }
+    else if (strcmp(n, TRI_VOC_ATTRIBUTE_FROM) == 0) {
+      _attributeType = ATTRIBUTE_TYPE_FROM;
+    }
+    else if (strcmp(n, TRI_VOC_ATTRIBUTE_TO) == 0) {
+      _attributeType = ATTRIBUTE_TYPE_TO;
+    }
   }
-  else if (strcmp(name, TRI_VOC_ATTRIBUTE_REV) == 0) {
-    _attributeType = ATTRIBUTE_TYPE_REV;
-  }
-  else if (strcmp(name, TRI_VOC_ATTRIBUTE_ID) == 0) {
-    _attributeType = ATTRIBUTE_TYPE_ID;
-  }
-  else if (strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0) {
-    _attributeType = ATTRIBUTE_TYPE_FROM;
-  }
-  else if (strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0) {
-    _attributeType = ATTRIBUTE_TYPE_TO;
+
+  for (auto const& it : _attributeParts) {
+    if (! _combinedName.empty()) {
+      _combinedName.push_back('.');
+    }
+    _combinedName.append(it);
   }
 }
 
@@ -99,7 +110,6 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->id == _variable->id) {
-
       // get the AQL value
       auto& result = argv->getValueReference(startPos, regs[i]);
     
@@ -136,12 +146,23 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
       }
       else if (result.isJson()) {
         TRI_json_t const* json = result._json->json();
+        size_t const n = _attributeParts.size();
+        size_t i = 0;
 
-        if (TRI_IsObjectJson(json)) {
-          TRI_json_t const* found = TRI_LookupObjectJson(json, _name);
+        while (TRI_IsObjectJson(json)) {
+          TRI_ASSERT_EXPENSIVE(i < n);
 
-          if (found != nullptr) {
-            std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found));
+          json = TRI_LookupObjectJson(json, _attributeParts[i]);
+
+          if (json == nullptr) {
+            break;
+          }
+
+          ++i;
+
+          if (i == n) {
+            // reached the end
+            std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json));
             
             if (copy == nullptr) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -152,6 +173,7 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
             return AqlValue(result);
           }
         }
+
         // fall-through intentional
       }
 
@@ -272,7 +294,7 @@ AqlValue AttributeAccessor::extractRegular (AqlValue const& src,
   auto shaper = document->getShaper();
 
   if (_pid == 0) {
-    _pid = shaper->lookupAttributePathByName(shaper, _name);
+    _pid = shaper->lookupAttributePathByName(shaper, _combinedName.c_str());
   }
    
   if (_pid != 0) { 
