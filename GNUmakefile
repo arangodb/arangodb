@@ -251,6 +251,32 @@ pack-arm-cmake:
 	cd Build && cpack \
 		-G DEB
 
+
+pack-deb-cmake:
+	mkdir Build
+	cd Build && cmake \
+		-D "ARANGODB_VERSION=${VERSION}" \
+		-D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+		-D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
+		-D "READLINE_VERSION=${READLINE_VERSION}" \
+		-D "V8_VERSION=${V8_VERSION}" \
+		-D "VARDIR=${localstatedir}" \
+		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
+		$(MOREOPTS) \
+		..
+
+	${MAKE} ${BUILT_SOURCES}
+
+	cd Build && ${MAKE}
+
+	cd Build && cpack \
+		-G DEB
 ################################################################################
 ### @brief Windows 64-bit bundle
 ################################################################################
