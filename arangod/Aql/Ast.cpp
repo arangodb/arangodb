@@ -1111,6 +1111,8 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         // if no string value was inserted for the parameter name, this is an error
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, node->getStringValue());
       }
+      // convert into a regular attribute access node to simplify handling later
+      return createNodeAttributeAccess(node->getMember(0), name->getStringValue());
     }
 
     return node;
