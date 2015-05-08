@@ -2588,7 +2588,7 @@ static void JS_WithinQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches multiple documents by their keys
 /// @startDocuBlock collectionLookupByKeys
-/// `collection.lookupByKeys(keys)`
+/// `collection.documents(keys)`
 ///
 /// Looks up the documents in the specified collection using the array of keys
 /// provided. All documents for which a matching key was specified in the *keys*
@@ -2606,7 +2606,7 @@ static void JS_WithinQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// |   db.example.insert({ _key: "test" + i, value: i });
 /// |   keys.push("test" + i);
 ///   }
-///   db.example.lookupByKeys(keys);
+///   db.example.documents(keys);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -2624,7 +2624,7 @@ static void JS_LookupByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
   
   if (args.Length() != 1 || 
       ! args[0]->IsArray()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("lookupByKeys(<keys>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("documents(<keys>)");
   }
   
   try { 
@@ -2810,8 +2810,9 @@ void TRI_InitV8Queries (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NEAR"), JS_NearQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("OUTEDGES"), JS_OutEdgesQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("WITHIN"), JS_WithinQuery, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("lookupByKeys"), JS_LookupByKeys, false);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("removeByKeys"), JS_RemoveByKeys, false);
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("lookupByKeys"), JS_LookupByKeys, true); // an alias for .documents
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("documents"), JS_LookupByKeys, true);
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("removeByKeys"), JS_RemoveByKeys, true);
   
   // internal methods. not intended to be used by end-users
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("AGGREGATE_COUNT"), JS_AggregateCount, true);
