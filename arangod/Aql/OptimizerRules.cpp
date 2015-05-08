@@ -1554,6 +1554,18 @@ static void FindVarAndAttr (ExecutionPlan const* plan,
     }
     return;
   }
+  
+  if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS &&
+      node->getMember(1)->isStringValue()) {
+    FindVarAndAttr(plan, node->getMember(0), enumCollVar, attr);
+
+    if (enumCollVar != nullptr) {
+      char const* attributeName = node->getMember(1)->getStringValue();
+      attr.append(attributeName);
+      attr.push_back('.');
+    }
+    return;
+  }
 
   attr.clear();
   enumCollVar = nullptr;
@@ -1580,7 +1592,8 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
     auto rhs = node->getMember(1);
     std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
 
-    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) { 
+    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        rhs->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) { 
       FindVarAndAttr(plan, rhs, enumCollVar, attr);
       if (enumCollVar != nullptr) {
         foundSomething = true;
@@ -1604,15 +1617,14 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
       }
     }
 
-    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        lhs->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
       FindVarAndAttr(plan, lhs, enumCollVar, attr);
       if (enumCollVar != nullptr) {
         foundSomething = true;
 
-        std::unordered_set<Variable*> varsUsed 
-          = Ast::getReferencedVariables(rhs);
-        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
-            == varsUsed.end()) {
+        std::unordered_set<Variable*> varsUsed = Ast::getReferencedVariables(rhs);
+        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
           rim->insert(enumCollVar->name, 
@@ -1648,7 +1660,8 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
     auto lhs = node->getMember(0);
     auto rhs = node->getMember(1);
 
-    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        rhs->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
       // Attribute access on the right:
       // First find out whether there is a multiple attribute access
       // of a variable on the right:
@@ -1679,7 +1692,8 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
       }
     }
 
-    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        lhs->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
       // Attribute access on the left:
       // First find out whether there is a multiple attribute access
       // of a variable on the left:
@@ -1736,7 +1750,8 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
 
     std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec());
 
-    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        lhs->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
       FindVarAndAttr(plan, lhs, enumCollVar, attr);
 
       if (enumCollVar != nullptr) {
@@ -1856,9 +1871,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     };
 
     ~FilterToEnumCollFinder () {
-      if (_rangeInfoMapVec != nullptr) {
-        delete _rangeInfoMapVec;
-      }
+      delete _rangeInfoMapVec;
     }
     
     bool modified () const {
