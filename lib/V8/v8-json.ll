@@ -101,7 +101,7 @@ struct jsonData {
   * strings
   * ----------------------------------------------------------------------------- */
 
-\"[ !\x23-\x5b\x5d-x7f]*\" {
+\"[ !\x23-\x5b\x5d-\x7f]*\" {
   // performance optimisation for all-ASCII strings without escape characters
   // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
   // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
@@ -259,6 +259,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
 
     if (c == STRING_CONSTANT) {
       // utf-8 attribute name
+std::cout << "utf8 attribute name: " << std::string(yytext + 1, yyleng - 2) << "\n";
       size_t outLength;
       char* name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
     
