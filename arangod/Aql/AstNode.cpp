@@ -46,6 +46,25 @@ using Json = triagens::basics::Json;
 // --SECTION--                                            static initializations
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quick translation array from an AST node value type to a JSON type
+////////////////////////////////////////////////////////////////////////////////
+      
+std::array<TRI_json_type_e, 5> const JsonTypes{
+  TRI_JSON_NULL,     //    VALUE_TYPE_NULL   = 0,
+  TRI_JSON_BOOLEAN,  //    VALUE_TYPE_BOOL   = 1,
+  TRI_JSON_NUMBER,   //    VALUE_TYPE_INT    = 2,
+  TRI_JSON_NUMBER,   //    VALUE_TYPE_DOUBLE = 3,
+  TRI_JSON_STRING    //    VALUE_TYPE_STRING = 4
+};
+    
+static_assert(AstNodeValueType::VALUE_TYPE_NULL   == 0, "incorrect ast node value types");
+static_assert(AstNodeValueType::VALUE_TYPE_BOOL   == 1, "incorrect ast node value types");
+static_assert(AstNodeValueType::VALUE_TYPE_INT    == 2, "incorrect ast node value types");
+static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3, "incorrect ast node value types");
+static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4, "incorrect ast node value types");
+
+
 std::unordered_map<int, std::string const> const AstNode::Operators{ 
   { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT),       "!" },
   { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS),      "+" },
@@ -66,6 +85,10 @@ std::unordered_map<int, std::string const> const AstNode::Operators{
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),       "IN" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN),      "NOT IN" }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type names for AST nodes
+////////////////////////////////////////////////////////////////////////////////
 
 std::unordered_map<int, std::string const> const AstNode::TypeNames{ 
   { static_cast<int>(NODE_TYPE_ROOT),                     "root" },
@@ -124,6 +147,10 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_COLLECT_EXPRESSION),       "collect expression" },
   { static_cast<int>(NODE_TYPE_CALCULATED_OBJECT_ELEMENT),"calculated object element" }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief names for AST node value types
+////////////////////////////////////////////////////////////////////////////////
 
 std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
   { static_cast<int>(VALUE_TYPE_NULL),                    "null" },
@@ -206,23 +233,12 @@ static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   if (node->type == NODE_TYPE_VALUE) {
-    switch (node->value.type) {
-      case VALUE_TYPE_NULL:
-        return TRI_JSON_NULL;
-      case VALUE_TYPE_BOOL:
-        return TRI_JSON_BOOLEAN;
-      case VALUE_TYPE_INT:
-      case VALUE_TYPE_DOUBLE:
-        // numbers are treated the same here
-        return TRI_JSON_NUMBER;
-      case VALUE_TYPE_STRING:
-        return TRI_JSON_STRING;
-    }
+    return JsonTypes[node->value.type];
   }
-  else if (node->type == NODE_TYPE_ARRAY) {
+  if (node->type == NODE_TYPE_ARRAY) {
     return TRI_JSON_ARRAY;
   }
-  else if (node->type == NODE_TYPE_OBJECT) {
+  if (node->type == NODE_TYPE_OBJECT) {
     return TRI_JSON_OBJECT;
   }
 
@@ -268,7 +284,8 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
   if (lType == TRI_JSON_NULL) {
     return 0;
   }
-  else if (lType == TRI_JSON_BOOLEAN) {
+
+  if (lType == TRI_JSON_BOOLEAN) {
     int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
 
     if (diff != 0) {
@@ -279,7 +296,8 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
     }
     return 0;
   }
-  else if (lType == TRI_JSON_NUMBER) {
+
+  if (lType == TRI_JSON_NUMBER) {
     double d = lhs->getDoubleValue() - rhs->getDoubleValue();
     if (d < 0.0) {
       return -1;
@@ -287,14 +305,17 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
     else if (d > 0.0) {
       return 1;
     }
+    return 0;
   }
-  else if (lType == TRI_JSON_STRING) {
+
+  if (lType == TRI_JSON_STRING) {
     if (compareUtf8) {
       return TRI_compare_utf8(lhs->getStringValue(), rhs->getStringValue());
     }
     return strcmp(lhs->getStringValue(), rhs->getStringValue());
   }
-  else if (lType == TRI_JSON_ARRAY) {
+
+  if (lType == TRI_JSON_ARRAY) {
     size_t const numLhs = lhs->numMembers();
     size_t const numRhs = rhs->numMembers();
     size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
@@ -312,8 +333,10 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
     else if (numLhs > numRhs) {
       return 1;
     }
+    return 0;
   }
-  else if (lType == TRI_JSON_OBJECT) {
+
+  if (lType == TRI_JSON_OBJECT) {
     // this is a rather exceptional case, so we can
     // afford the inefficiency to convert to node to
     // JSON for comparison
@@ -598,7 +621,7 @@ void AstNode::sort () {
   TRI_ASSERT_EXPENSIVE(isConstant());
 
   auto const ptr = members._buffer;
-  auto const end = ptr + members._length;
+  auto const end = ptr + numMembers();
 
   std::sort(ptr, end, [] (void const* lhs, void const* rhs) {
     auto const l = static_cast<AstNode const*>(lhs);
@@ -1020,16 +1043,14 @@ void AstNode::toJson (TRI_json_t* json,
 int64_t AstNode::getIntValue () const {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
-      case VALUE_TYPE_NULL:
-        return 0;
       case VALUE_TYPE_BOOL:
         return (value.value._bool ? 1 : 0);
       case VALUE_TYPE_INT:
         return value.value._int;
       case VALUE_TYPE_DOUBLE:
         return static_cast<int64_t>(value.value._double);
-      case VALUE_TYPE_STRING:
-        return 0;
+      default: {
+      }
     }
   }
 
@@ -1043,18 +1064,17 @@ int64_t AstNode::getIntValue () const {
 double AstNode::getDoubleValue () const {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
-      case VALUE_TYPE_NULL:
-        return 0.0;
       case VALUE_TYPE_BOOL:
         return (value.value._bool ? 1.0 : 0.0);
       case VALUE_TYPE_INT:
         return static_cast<double>(value.value._int);
       case VALUE_TYPE_DOUBLE:
         return value.value._double;
-      case VALUE_TYPE_STRING:
-        return 0.0;
+      default: {
+      }
     }
   }
+
   return 0.0;
 }
 
@@ -1200,6 +1220,16 @@ bool AstNode::isSimple () const {
     return true;
   }
 
+  if (type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
+    if (! getMember(0)->isSimple()) {
+      setFlag(DETERMINED_SIMPLE);
+      return false;
+    }
+
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+    return true;
+  }
+
   if (type == NODE_TYPE_FCALL) {
     // some functions have C++ handlers
     // check if the called function is one of them
@@ -1299,7 +1329,8 @@ bool AstNode::isConstant () const {
     return true;
   }
 
-  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
     if (getMember(0)->isConstant()) {
       setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
       return true;

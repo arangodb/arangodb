@@ -73,7 +73,7 @@ function SimpleQueryLookupByKeysSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEmptyCollection : function () {
-      var result = c.lookupByKeys([ "foo", "bar", "baz" ]);
+      var result = c.documents([ "foo", "bar", "baz" ]);
 
       assertEqual({ documents: [ ] }, result);
     },
@@ -83,7 +83,7 @@ function SimpleQueryLookupByKeysSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEmptyCollectionAndArray : function () {
-      var result = c.lookupByKeys([ ]);
+      var result = c.documents([ ]);
 
       assertEqual({ documents: [ ] }, result);
     },
@@ -97,8 +97,12 @@ function SimpleQueryLookupByKeysSuite () {
         c.insert({ _key: "test" + i });
       }
 
-      var result = c.lookupByKeys([ ]);
+      var result = c.documents([ ]);
 
+      assertEqual({ documents: [ ] }, result);
+
+      // try with alias method
+      result = c.lookupByKeys([ ]);
       assertEqual({ documents: [ ] }, result);
     },
 
@@ -112,7 +116,11 @@ function SimpleQueryLookupByKeysSuite () {
       }
 
       // should have matches
-      var result = c.lookupByKeys([ "1", "2", "3", "0" ]);
+      var result = c.documents([ "1", "2", "3", "0" ]);
+      assertEqual(4, result.documents.length);
+      
+      // try with alias method
+      result = c.lookupByKeys([ "1", "2", "3", "0" ]);
       assertEqual(4, result.documents.length);
     },
 
@@ -121,7 +129,7 @@ function SimpleQueryLookupByKeysSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidKeys : function () {
-      var result = c.lookupByKeys([ " ", "*  ", " bfffff/\\&, ", "////.,;::" ]);
+      var result = c.documents([ " ", "*  ", " bfffff/\\&, ", "////.,;::" ]);
 
       assertEqual({ documents: [ ] }, result);
     },
@@ -137,7 +145,21 @@ function SimpleQueryLookupByKeysSuite () {
         keys.push("test" + i);
       }
 
-      var result = c.lookupByKeys(keys);
+      var result = c.documents(keys);
+      assertEqual(1000, result.documents.length);
+
+      result.documents.forEach(function(doc) {
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertMatch(/^test\d+$/, doc._key);
+        assertEqual(cn + "/" + doc._key, doc._id);
+        assertEqual(doc._key, "test" + doc.value);
+      });
+      
+      // try with alias method
+      result = c.lookupByKeys(keys);
       assertEqual(1000, result.documents.length);
 
       result.documents.forEach(function(doc) {
@@ -164,7 +186,7 @@ function SimpleQueryLookupByKeysSuite () {
         keys.push("test" + i);
       }
 
-      var result = c.lookupByKeys(keys);
+      var result = c.documents(keys);
       assertEqual(100, result.documents.length);
 
       result.documents.forEach(function(doc) {

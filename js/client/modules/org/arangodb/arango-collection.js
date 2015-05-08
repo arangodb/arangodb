@@ -1373,7 +1373,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// @brief looks up documents by keys
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.lookupByKeys = function (keys) {
+ArangoCollection.prototype.documents = function (keys) {
   var data = {
     collection: this._name,
     keys: keys || [ ]
@@ -1389,6 +1389,9 @@ ArangoCollection.prototype.lookupByKeys = function (keys) {
     documents: requestResult.documents
   };
 };
+
+// .lookupByKeys is now an alias for .documents
+ArangoCollection.prototype.lookupByKeys = ArangoCollection.prototype.documents;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes documents by keys

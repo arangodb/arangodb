@@ -297,9 +297,7 @@ RangeInfoMap::RangeInfoMap (std::string const& var,
 RangeInfoMap::RangeInfoMap (RangeInfo const& ri) : 
   _ranges() {
 
-  std::unordered_map<std::string, RangeInfo> map;
-  map.emplace(std::make_pair(ri._attr, ri));
-  _ranges.emplace(std::make_pair(ri._var, map));
+  _ranges.emplace(ri._var, std::unordered_map<std::string, RangeInfo>{ { ri._attr, ri } });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

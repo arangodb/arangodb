@@ -346,13 +346,18 @@ void Expression::analyzeExpression () {
     if (_node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       TRI_ASSERT_EXPENSIVE(_node->numMembers() == 1);
       auto member = _node->getMemberUnchecked(0);
+      std::vector<char const*> parts{ static_cast<char const*>(_node->getData()) };
+
+      while (member->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        parts.insert(parts.begin(), static_cast<char const*>(member->getData()));
+        member = member->getMemberUnchecked(0);
+      }
 
       if (member->type == NODE_TYPE_REFERENCE) {
-        auto name = static_cast<char const*>(_node->getData());
         auto v = static_cast<Variable const*>(member->getData());
 
         // specialize the simple expression into an attribute accessor
-        _accessor = new AttributeAccessor(name, v);
+        _accessor = new AttributeAccessor(parts, v);
         _type = ATTRIBUTE;
         _built = true;
       }
