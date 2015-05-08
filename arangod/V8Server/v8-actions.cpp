@@ -1356,12 +1356,11 @@ static void JS_ClusterTest (const v8::FunctionCallbackInfo<v8::Value>& args) {
     else {   // Everything is OK
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
-      map<string,string> headers = res->result->getHeaderFields();
-      map<string,string>::iterator i;
-      for (i = headers.begin(); i != headers.end(); ++i) {
-        h->Set(TRI_V8_STD_STRING(i->first), TRI_V8_STD_STRING(i->second));
+      auto const& headers = res->result->getHeaderFields();
+      for (auto const& it : headers) {
+        h->ForceSet(TRI_V8_STD_STRING(it.first), TRI_V8_STD_STRING(it.second));
       }
-      r->Set(TRI_V8_ASCII_STRING("headers"), h);
+      r->ForceSet(TRI_V8_ASCII_STRING("headers"), h);
 
       // The body:
       StringBuffer& theBody = res->result->getBody();

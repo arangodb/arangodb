@@ -352,8 +352,8 @@ namespace triagens {
             }
           }
           else {
-            const std::map<std::string, std::string>& headers = result->getHeaderFields();
-            std::map<std::string, std::string>::const_iterator it = headers.find(_errorHeader);
+            auto const& headers = result->getHeaderFields();
+            auto it = headers.find(_errorHeader);
 
             if (it != headers.end()) {
               uint32_t errorCount =  StringUtils::uint32((*it).second);
