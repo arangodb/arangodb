@@ -65,6 +65,9 @@ var optionsDocumentation = [
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - valgrindHosts  - configure which clustercomponents to run using valgrintd',
+  '        Coordinator - run Coordinator with valgrind',
+  '        DBServer    - run DBServers with valgrind',
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
@@ -283,6 +286,18 @@ function startInstance (protocol, options, addArgs, testname) {
     valgrindopts = options.valgrindargs;
   }
 
+  var valgrindHosts = '';
+  if (typof(options.valgrindHosts) !== undefined) {
+    if (options.valgrindHosts.Coordinator === true) {
+      valgrindHosts += 'Coordinator';
+    }
+
+    if (options.valgrindHosts.DBServer === true) {
+      valgrindHosts += 'DBServer';
+    }
+    
+  }
+
   var dispatcher;
   if (options.cluster) {
     var extraargs = makeTestingArgs(appDir);
@@ -312,7 +327,8 @@ function startInstance (protocol, options, addArgs, testname) {
                          "valgrind"               : runInValgrind,
                          "valgrindopts"           : toArgv(valgrindopts, true),
                          "valgrindXmlFileBase"    : '_cluster' + valgrindXmlFileBase,
-                         "valgrindTestname"       : testname
+                         "valgrindTestname"       : testname,
+                         "valgrindHosts"          : valgrindHosts
                         });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     var rc = instanceInfo.kickstarter.launch();
