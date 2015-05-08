@@ -1786,7 +1786,7 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
     }
 
     if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-        rhs->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
+        lhs->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
       // Attribute access on the left:
       // First find out whether there is a multiple attribute access
       // of a variable on the left:
