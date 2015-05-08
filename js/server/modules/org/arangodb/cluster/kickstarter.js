@@ -398,7 +398,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     if (arangodPath !== cmd.arangodPath) {
       arangodPath = ArangoServerState.arangodPath();
     }
-    if (cmd.valgrind !== '') {
+    if ((cmd.valgrind !== '') && (cmd.valgrindServers.indexOf(roles[i]) > -1)) {
       var valgrindopts = cmd.valgrindopts.concat(
         ["--xml-file="+cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.xml',
          "--log-file="+cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.valgrind.log']);
@@ -445,7 +445,7 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
 
   // we need at least one coordinator
   if (0 === coordinators.length) {
-    return {"error": true, "bootstrapServers": true};
+    return {"error": true, "bootstrapServers": true, "errorMessage": "No coordinators to start"};
   }
 
   // autorization header for coordinator
@@ -454,9 +454,13 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
   };
 
   // default options
+  var timeout = 90;
+  if (cmd.valgrind !== '') {
+    timeout *= 10000;
+  }
   var options = {
     method: "POST",
-    timeout: 90,
+    timeout: timeout,
     headers: hdrs,
     returnBodyOnError: true
   };
@@ -468,8 +472,9 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
   var result = download(url, body, options);
 
   if (result.code !== 200) {
-    console.error("bootstrapping DB servers failed: %s", extractErrorMessage(result));
-    return {"error": true, "bootstrapServers": true};
+    var err = "bootstrapping DB servers failed: " + extractErrorMessage(result);
+    console.error("%s", err);
+    return {"error": true, "bootstrapServers": true, "errorMessage": err};
   }
 
   // execute cluster database upgrade
@@ -478,8 +483,9 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
   result = download(url, body, options);
 
   if (result.code !== 200) {
-    console.error("upgrading cluster database failed: %s", extractErrorMessage(result));
-    return {"error": true, "bootstrapServers": true};
+    var err = "upgrading cluster database failed: " + extractErrorMessage(result);
+    console.error("%s", err);
+    return {"error": true, "bootstrapServers": true, "errorMessage": err};
   }
 
   // bootstrap coordinators
@@ -491,14 +497,15 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
     result = download(url, body, options);
 
     if (result.code !== 200) {
-      console.error("bootstrapping coordinator %s failed: %s",
-                    coordinators[i],
-                    extractErrorMessage(result));
-      return {"error": true, "bootstrapServers": true};
+      var err = "bootstrapping coordinator " +
+        coordinators[i] + " failed: " + 
+        extractErrorMessage(result);
+      console.error("%s", err);
+      return {"error": true, "bootstrapServers": true, "errorMessage": err};
     }
   }
 
-  return {"error": false, "bootstrapServers": true};
+  return {"error": false, "bootstrapServers": true, "errorMessage": ''};
 };
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
@@ -900,9 +907,13 @@ upgradeActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
   };
 
   // default options
+  var timeout = 90;
+  if (cmd.valgrind !== '') {
+    timeout *= 10000;
+  }
   var options = {
     method: "POST",
-    timeout: 90,
+    timeout: timeout,
     headers: hdrs,
     returnBodyOnError: true
   };
@@ -1047,7 +1058,11 @@ Kickstarter.prototype.launch = function () {
           dispatchers[cmd.dispatcher].passwd !== undefined) {
         hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
-      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
+      var timeout = 90;
+      if (cmd.valgrind !== '') {
+        timeout *= 10000;
+      }
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: timeout});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -1149,7 +1164,11 @@ Kickstarter.prototype.relaunch = function (username, password) {
           dispatchers[cmd.dispatcher].passwd !== undefined) {
         hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
-      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
+      var timeout = 90;
+      if (cmd.valgrind !== '') {
+        timeout *= 10000;
+      }
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: timeout});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -1232,7 +1251,11 @@ Kickstarter.prototype.shutdown = function() {
           dispatchers[cmd.dispatcher].passwd !== undefined) {
         hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
-      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
+      var timeout = 90;
+      if (cmd.valgrind !== '') {
+        timeout *= 10000;
+      }
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: timeout});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -1310,7 +1333,11 @@ Kickstarter.prototype.cleanup = function() {
           dispatchers[cmd.dispatcher].passwd !== undefined) {
         hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
-      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
+      var timeout = 90;
+      if (cmd.valgrind !== '') {
+        timeout *= 10000;
+      }
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: timeout});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -1389,7 +1416,11 @@ Kickstarter.prototype.isHealthy = function() {
           dispatchers[cmd.dispatcher].passwd !== undefined) {
         hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
-      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
+      var timeout = 90;
+      if (cmd.valgrind !== '') {
+        timeout *= 10000;
+      }
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: timeout});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -1496,7 +1527,11 @@ Kickstarter.prototype.upgrade = function (username, password) {
           dispatchers[cmd.dispatcher].passwd !== undefined) {
         hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
-      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
+      var timeout = 90;
+      if (cmd.valgrind !== '') {
+        timeout *= 10000;
+      }
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: timeout});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
