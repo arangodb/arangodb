@@ -398,7 +398,9 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     if (arangodPath !== cmd.arangodPath) {
       arangodPath = ArangoServerState.arangodPath();
     }
-    if ((cmd.valgrind !== '') && (cmd.valgrindServers.indexOf(roles[i]) > -1)) {
+    if ((cmd.valgrind !== '') &&
+        (cmd.valgrindHosts !== undefined) &&
+        (cmd.valgrindHosts.indexOf(roles[i]) > -1)) {
       var valgrindopts = cmd.valgrindopts.concat(
         ["--xml-file="+cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.xml',
          "--log-file="+cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.valgrind.log']);
