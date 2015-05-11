@@ -73,7 +73,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
   : _requestPath(EMPTY_STR),
     _headers(5),
     _values(10),
-    _arrayValues(10),
+    _arrayValues(1),
     _cookies(1),
     _contentLength(0),
     _body(nullptr),
@@ -98,7 +98,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
   char* request = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, header, length);
 
   if (request != nullptr) {
-    _freeables.push_back(request);
+    _freeables.emplace_back(request);
 
     parseHeader(request, length);
   }
@@ -122,8 +122,8 @@ HttpRequest::~HttpRequest () {
     delete v;
   }
 
-  for (vector<char*>::iterator i = _freeables.begin();  i != _freeables.end();  ++i) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (*i));
+  for (auto& it : _freeables) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, it);
   }
 
   if (_requestContext != nullptr && _isRequestContextOwner) {
@@ -149,7 +149,7 @@ char const* HttpRequest::requestPath () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::write (TRI_string_buffer_t* buffer) const {
-  const string& method = translateMethod(_type);
+  string&& method = translateMethod(_type);
 
   TRI_AppendString2StringBuffer(buffer, method.c_str(), method.size());
   TRI_AppendCharStringBuffer(buffer, ' ');
@@ -362,38 +362,6 @@ map<string, string> HttpRequest::values () const {
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-vector<char const*> const* HttpRequest::arrayValue (char const* key) const {
-  Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
-
-  if (kv == nullptr) {
-    return nullptr;
-  }
-  else {
-    return kv->_value;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-vector<char const*> const* HttpRequest::arrayValue (char const* key, bool& found) const {
-  Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
-
-  if (kv == nullptr) {
-    found = false;
-    return nullptr;
-  }
-  else {
-    found = true;
-    return kv->_value;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1286,7 +1254,7 @@ vector<string> const& HttpRequest::suffix () const {
 /// @brief adds a suffix part
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::addSuffix (char const* part) {
+void HttpRequest::addSuffix (std::string const& part) {
   string decoded = StringUtils::urlDecode(part);
   size_t tmpLength = 0;
   char* utf8_nfc = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
@@ -1326,7 +1294,7 @@ void HttpRequest::setRequestContext (RequestContext* requestContext,
 /// @brief translate the HTTP protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpRequest::translateVersion (HttpVersion version) {
+std::string HttpRequest::translateVersion (HttpVersion version) {
   switch (version) {
     case HTTP_1_1: {
       return "HTTP/1.1";
