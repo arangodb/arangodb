@@ -1690,6 +1690,9 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
   v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
 
   if (result.IsEmpty()) {
+    if (ServerState::instance()->isCoordinator()) {
+      FreeCoordinatorCollection(collection);
+    }
     TRI_V8_RETURN_UNDEFINED();
   }
 
