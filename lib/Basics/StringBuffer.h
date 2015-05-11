@@ -88,7 +88,7 @@ namespace triagens {
 /// @brief initialises the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        StringBuffer (TRI_memory_zone_t* zone, const size_t initialSize) {
+        StringBuffer (TRI_memory_zone_t* zone, size_t initialSize) {
           TRI_InitSizedStringBuffer(&_buffer, zone, initialSize);
         }
 
