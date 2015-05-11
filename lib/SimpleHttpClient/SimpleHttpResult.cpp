@@ -215,7 +215,7 @@ namespace triagens {
     }
 
     bool SimpleHttpResult::isJson () const {
-      auto find = _headerFields.find("content-type");
+      auto const& find = _headerFields.find("content-type");
 
       if (find == _headerFields.end()) {
         return false;

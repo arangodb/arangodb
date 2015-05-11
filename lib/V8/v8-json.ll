@@ -259,7 +259,6 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
 
     if (c == STRING_CONSTANT) {
       // utf-8 attribute name
-std::cout << "utf8 attribute name: " << std::string(yytext + 1, yyleng - 2) << "\n";
       size_t outLength;
       char* name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
     
