@@ -43,6 +43,12 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief batch error count header
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const HttpResponse::BatchErrorHeader = "X-Arango-Errors";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief http response string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -239,16 +245,6 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the batch error count header
-////////////////////////////////////////////////////////////////////////////////
-
-const string& HttpResponse::getBatchErrorHeader () {
-  static const string header = "X-Arango-Errors";
-
-  return header;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -278,8 +274,8 @@ HttpResponse::HttpResponse (HttpResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse::~HttpResponse () {
-  for (vector<char const*>::iterator i = _freeables.begin();  i != _freeables.end();  ++i) {
-    delete[] (*i);
+  for (auto& it : _freeables) {
+    delete[] it;
   }
 }
 
@@ -311,15 +307,14 @@ size_t HttpResponse::contentLength () {
   if (_isHeadResponse) {
     return _bodySize;
   }
-  else {
-    Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length", 14);
 
-    if (kv == nullptr) {
-      return 0;
-    }
+  Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length", 14);
 
-    return StringUtils::uint32(kv->_value);
+  if (kv == nullptr) {
+    return 0;
   }
+
+  return StringUtils::uint32(kv->_value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,12 +341,10 @@ string HttpResponse::header (string const& key) const {
   string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     return "";
   }
-  else {
-    return kv->_value;
-  }
+  return kv->_value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -361,12 +354,10 @@ string HttpResponse::header (string const& key) const {
 string HttpResponse::header (const char* key, const size_t keyLength) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     return "";
   }
-  else {
-    return kv->_value;
-  }
+  return kv->_value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,14 +368,12 @@ string HttpResponse::header (string const& key, bool& found) const {
   string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     found = false;
     return "";
   }
-  else {
-    found = true;
-    return kv->_value;
-  }
+  found = true;
+  return kv->_value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -394,14 +383,12 @@ string HttpResponse::header (string const& key, bool& found) const {
 string HttpResponse::header (const char* key, const size_t keyLength, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     found = false;
     return "";
   }
-  else {
-    found = true;
-    return kv->_value;
-  }
+  found = true;
+  return kv->_value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,7 +404,7 @@ map<string, string> HttpResponse::headers () const {
   for (_headers.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
@@ -438,11 +425,11 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, string co
   else {
     char const* v = StringUtils::duplicate(value);
 
-    if (v != 0) {
+    if (v != nullptr) {
       _headers.insert(key, keyLength, v);
       checkHeader(key, v);
 
-      _freeables.push_back(v);
+      _freeables.emplace_back(v);
     }
   }
 }
@@ -694,11 +681,11 @@ void HttpResponse::writeHeader (StringBuffer* output) {
   for (_headers.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
-    const size_t keyLength = strlen(key);
+    size_t const keyLength = strlen(key);
 
     // ignore content-length
     if (keyLength == 14 && *key == 'c' && memcmp(key, "content-length", keyLength) == 0) {
@@ -812,9 +799,7 @@ size_t HttpResponse::bodySize () const {
   if (_isHeadResponse) {
     return _bodySize;
   }
-  else {
-    return _body.length();
-  }
+  return _body.length();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

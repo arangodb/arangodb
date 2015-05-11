@@ -97,14 +97,14 @@ namespace triagens {
             _sslProtocol(sslProtocol),
             _keepAlive(keepAlive),
             _async(async),
-            _client(0),
-            _connection(0),
+            _client(nullptr),
+            _connection(nullptr),
             _offset(0),
             _counter(0),
             _time(0.0),
             _verbose(verbose) {
 
-          _errorHeader = StringUtils::tolower(rest::HttpResponse::getBatchErrorHeader());
+          _errorHeader = StringUtils::tolower(rest::HttpResponse::BatchErrorHeader);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,13 +112,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~BenchmarkThread () {
-          if (_client != 0) {
-            delete _client;
-          }
-
-          if (_connection != 0) {
-            delete _connection;
-          }
+          delete _client;
+          delete _connection;
         }
 
 // -----------------------------------------------------------------------------
@@ -487,7 +482,7 @@ namespace triagens {
 /// @brief batch size
 ////////////////////////////////////////////////////////////////////////////////
 
-        const unsigned long _batchSize;
+        unsigned long const _batchSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief warning counter
@@ -517,19 +512,19 @@ namespace triagens {
 /// @brief database name
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _databaseName;
+        std::string const _databaseName;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP username
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _username;
+        std::string const _username;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP password
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _password;
+        std::string const _password;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the request timeout (in s)

@@ -385,7 +385,7 @@ Handler::status_t RestBatchHandler::execute () {
   _response->body().appendText(boundary + "--");
 
   if (errors > 0) {
-    _response->setHeader(HttpResponse::getBatchErrorHeader(), StringUtils::itoa(errors));
+    _response->setHeader(HttpResponse::BatchErrorHeader, StringUtils::itoa(errors));
   }
 
   // success
