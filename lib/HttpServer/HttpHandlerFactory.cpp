@@ -93,7 +93,7 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
     _allowMethodOverride(allowMethodOverride),
     _setContext(setContext),
     _setContextData(setContextData),
-    _notFound(0) {
+    _notFound(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,11 +252,9 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
     // find longest match
     string prefix;
-    vector<string> const& jj = _prefixes;
-    const size_t pathLength = path.size();
+    size_t const pathLength = path.size();
 
-    for (vector<string>::const_iterator j = jj.begin();  j != jj.end();  ++j) {
-      string const& p = *j;
+    for (auto const& p : _prefixes) {
       const size_t pSize = p.size();
 
       if (path.compare(0, pSize, p) == 0) {
@@ -279,13 +277,13 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
         size_t n = path.find_first_of('/', l);
 
         while (n != string::npos) {
-          request->addSuffix(path.substr(l, n - l).c_str());
+          request->addSuffix(path.substr(l, n - l));
           l = n + 1;
           n = path.find_first_of('/', l);
         }
 
         if (l < path.size()) {
-          request->addSuffix(path.substr(l).c_str());
+          request->addSuffix(path.substr(l));
         }
 
         path = "/";
@@ -300,13 +298,13 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
       size_t n = path.find_first_of('/', l);
 
       while (n != string::npos) {
-        request->addSuffix(path.substr(l, n - l).c_str());
+        request->addSuffix(path.substr(l, n - l));
         l = n + 1;
         n = path.find_first_of('/', l);
       }
 
       if (l < path.size()) {
-        request->addSuffix(path.substr(l).c_str());
+        request->addSuffix(path.substr(l));
       }
 
       path = prefix;
@@ -332,11 +330,12 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
 
   // look up data
-  unordered_map<string, void*> const& jj = _datas;
-  auto j = jj.find(path);
+  {
+    auto const& it = _datas.find(path);
 
-  if (j != jj.end()) {
-    data = j->second;
+    if (it != _datas.end()) {
+      data = (*it).second;
+    }
   }
 
   LOG_TRACE("found handler for path '%s'", path.c_str());
@@ -363,7 +362,7 @@ void HttpHandlerFactory::addHandler (string const& path, create_fptr func, void*
 void HttpHandlerFactory::addPrefixHandler (string const& path, create_fptr func, void* data) {
   _constructors[path] = func;
   _datas[path] = data;
-  _prefixes.push_back(path);
+  _prefixes.emplace_back(path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
