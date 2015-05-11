@@ -1806,7 +1806,7 @@ actions.defineHttp({
 /// - *example*: An example document that all collection documents are compared
 ///   against.
 ///
-/// - options: an json object which can contains following attributes:
+/// - options: a json object which can contains following attributes:
 ///
 /// - *waitForSync*: if set to true, then all removal operations will
 ///   instantly be synchronised to disk. If this is not specified, then the
@@ -1971,7 +1971,7 @@ actions.defineHttp({
 /// - *newValue*: The replacement document that will get inserted in place
 ///   of the "old" documents.
 ///
-/// - *options*: an json object which can contain following attributes
+/// - *options*: a json object which can contain following attributes
 ///
 /// - *waitForSync*: if set to true, then all removal operations will
 ///   instantly be synchronised to disk. If this is not specified, then the

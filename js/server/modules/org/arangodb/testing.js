@@ -287,7 +287,7 @@ function startInstance (protocol, options, addArgs, testname) {
   }
 
   var valgrindHosts = '';
-  if (typeof(options.valgrindHosts) !== undefined) {
+  if (typeof(options.valgrindHosts) === 'object') {
     if (options.valgrindHosts.Coordinator === true) {
       valgrindHosts += 'Coordinator';
     }
@@ -552,9 +552,44 @@ function checkInstanceAlive(instanceInfo, options) {
   }
 }
 
+function waitOnServerForGC(instanceInfo, options, waitTime) {
+  try {
+    print("waiting " + waitTime + " for server GC");
+    var r;
+    var t;
+    t = 'require("internal").wait(' + waitTime + ', true);';
+    var o = makeAuthorisationHeaders(options);
+    o.method = "POST";
+    o.timeout = 24 * 3600;
+    o.returnBodyOnError = true;
+    r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
+    print("waiting " + waitTime + " for server GC - done.");
+    if (! r.error && r.code === 200) {
+      r = JSON.parse(r.body);
+    } else {
+      return {
+        status: false,
+        message: r.body
+      };
+    }
+    return r;
+  } catch (e) {
+    return {
+      status: false,
+      message: e.message || String(e),
+      stack: e.stack
+    };
+  }
+
+}
+
+
 function shutdownInstance (instanceInfo, options) {
   if (!checkInstanceAlive(instanceInfo, options)) {
       print("Server already dead, doing nothing. This shouldn't happen?");
+  }
+  if (options.valgrind !== undefined) {
+    waitOnServerForGC(instanceInfo, options, 60);
   }
   if (options.cluster) {
     var rc = instanceInfo.kickstarter.shutdown();

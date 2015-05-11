@@ -171,10 +171,15 @@ bool RestSimpleHandler::wasCancelled () {
 ///
 /// @RESTHEADER{PUT /_api/simple/remove-by-keys, Remove documents by their keys}
 ///
-/// @RESTBODYPARAM{payload,json,required}
+/// @RESTBODYPARAM{query,json,required}
 /// A JSON object containing an attribute *collection* with the collection name
 /// to look in for the documents to remove, and an attribute *keys*, which must be
 /// an array with the _keys of documents to remove.
+///
+/// The JSON object can also contain an *options* object, which itself may
+/// contain the *waitForSync* attribute: if set to true, then all removal 
+/// operations will instantly be synchronised to disk. If this is not specified, 
+/// then the collection's default sync behavior will be applied.
 ///
 /// @RESTDESCRIPTION
 /// Looks up the documents in the specified collection using the array of keys
@@ -249,11 +254,26 @@ bool RestSimpleHandler::wasCancelled () {
 
 void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
   try { 
-    auto const collectionName = TRI_LookupObjectJson(json, "collection");
+    std::string collectionName;
+    {
+      auto const value = TRI_LookupObjectJson(json, "collection");
 
-    if (! TRI_IsStringJson(collectionName)) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
-      return;
+      if (! TRI_IsStringJson(value)) {
+        generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
+        return;
+      }
+    
+      collectionName = std::string(value->_value._string.data, value->_value._string.length - 1);
+
+      if (! collectionName.empty()) {
+        auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
+
+        if (col != nullptr && collectionName.compare(col->_name) != 0) {
+          // user has probably passed in a numeric collection id.
+          // translate it into a "real" collection name
+          collectionName = std::string(col->_name);
+        }
+      }
     }
 
     auto const* keys = TRI_LookupObjectJson(json, "keys");
@@ -262,13 +282,26 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting array for <keys>");
       return;
     }
+    
+    bool waitForSync = false;
+    {
+      auto const* value = TRI_LookupObjectJson(json, "options");
+      if (TRI_IsObjectJson(value)) {
+        value = TRI_LookupObjectJson(json, "waitForSync");
+        if (TRI_IsBooleanJson(value)) {
+          waitForSync = value->_value._boolean;
+        }
+      }
+    }
 
-    triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
-    bindVars("@collection", triagens::basics::Json(std::string(collectionName->_value._string.data, collectionName->_value._string.length - 1)));
+    triagens::basics::Json bindVars(triagens::basics::Json::Object, 3);
+    bindVars("@collection", triagens::basics::Json(collectionName));
     bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keys)));
 
-    std::string const aql("FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: true }");
-    
+    std::string aql("FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: true, waitForSync: ");
+    aql.append(waitForSync ? "true" : "false");
+    aql.append(" }");
+   
     triagens::aql::Query query(_applicationV8, 
                                false, 
                                _vocbase, 
@@ -413,12 +446,27 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
-  try { 
-    auto const collectionName = TRI_LookupObjectJson(json, "collection");
+  try {
+    std::string collectionName;
+    { 
+      auto const value = TRI_LookupObjectJson(json, "collection");
 
-    if (! TRI_IsStringJson(collectionName)) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
-      return;
+      if (! TRI_IsStringJson(value)) {
+        generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
+        return;
+      }
+
+      collectionName = std::string(value->_value._string.data, value->_value._string.length - 1);
+
+      if (! collectionName.empty()) {
+        auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
+
+        if (col != nullptr && collectionName.compare(col->_name) != 0) {
+          // user has probably passed in a numeric collection id.
+          // translate it into a "real" collection name
+          collectionName = std::string(col->_name);
+        }
+      }
     }
 
     auto const* keys = TRI_LookupObjectJson(json, "keys");
@@ -429,7 +477,7 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
     }
 
     triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
-    bindVars("@collection", triagens::basics::Json(std::string(collectionName->_value._string.data, collectionName->_value._string.length - 1)));
+    bindVars("@collection", triagens::basics::Json(collectionName));
     bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keys)));
 
     std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
