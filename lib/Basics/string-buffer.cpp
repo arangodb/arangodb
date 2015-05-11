@@ -338,7 +338,7 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone,
 void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) {
   self->_memoryZone = zone;
   self->_buffer = nullptr;
-  self->_current = 0;
+  self->_current = nullptr;
   self->_len = 0;
 
   Reserve(self, 120);
@@ -354,8 +354,8 @@ void TRI_InitSizedStringBuffer (TRI_string_buffer_t * self,
                                 TRI_memory_zone_t* zone,
                                 const size_t length) {
   self->_memoryZone = zone;
-  self->_buffer = 0;
-  self->_current = 0;
+  self->_buffer = nullptr;
+  self->_current = nullptr;
   self->_len = 0;
 
   Reserve(self, length);
