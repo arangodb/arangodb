@@ -1617,6 +1617,24 @@ static inline void addBarrier(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Extract collection names from v8 array.
+////////////////////////////////////////////////////////////////////////////////
+
+static inline unordered_set<string> v8ArrayToStrings (const v8::Handle<v8::Value>& parameter) {
+  v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
+  uint32_t const n = array->Length();
+  unordered_set<string> result;
+  for (uint32_t i = 0; i < n; ++i) {
+    if (!array->Get(i)->IsString()) {
+      // TODO Error Handling
+    } else {
+      result.insert(TRI_ObjectToString(array->Get(i)));
+    }
+  }
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Executes a shortest Path Traversal
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1625,7 +1643,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 4 || args.Length() > 5) {
-    TRI_V8_THROW_EXCEPTION_USAGE("CPP_SHORTEST_PATH(<vertexcollection>, <edgecollection>, <start>, <end>, <options>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("CPP_SHORTEST_PATH(<vertexcollections[]>, <edgecollections[]>, <start>, <end>, <options>)");
   }
 
   TRI_vocbase_t* vocbase;
@@ -1633,14 +1651,14 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   vocbase = GetContextVocBase(isolate);
 
   // get the vertex collection
-  if (! args[0]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("expecting string for <vertexcollection>");
+  if (! args[0]->IsArray()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting array for <vertexcollections[]>");
   }
-  string vertexCollectionName = TRI_ObjectToString(args[0]);
+  unordered_set<string> vertexCollectionNames = v8ArrayToStrings(args[0]); 
 
   // get the edge collection
   if (! args[1]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("expecting string for <edgecollection>");
+    TRI_V8_THROW_TYPE_ERROR("expecting array for <edgecollections[]>");
   }
   string const edgeCollectionName = TRI_ObjectToString(args[1]);
 
@@ -1698,7 +1716,9 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   vector<string> readCollections;
   vector<string> writeCollections;
 
-  readCollections.push_back(vertexCollectionName);
+  for (auto it :  vertexCollectionNames) {
+    readCollections.push_back(it);
+  }
   readCollections.push_back(edgeCollectionName);
 
   V8ResolverGuard resolverGuard(vocbase);
@@ -1717,7 +1737,9 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   // Order Barriers
   unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
   try {
-    addBarrier(trx, resolver, vertexCollectionName, barriers);
+    for (auto it :  vertexCollectionNames) {
+      addBarrier(trx, resolver, it, barriers);
+    }
     addBarrier(trx, resolver, edgeCollectionName, barriers);
   } catch (int e) {
     trx->finish(e);
@@ -1733,7 +1755,6 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   TRI_ASSERT(barriers.find(edgeCid) != barriers.end());
   try {
     path = TRI_RunShortestPathSearch(
-      vertexCollectionName,
       edgeCollectionName,
       startVertex,
       targetVertex,

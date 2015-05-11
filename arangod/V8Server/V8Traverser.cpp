@@ -363,7 +363,6 @@ class SimpleEdgeExpander {
 ////////////////////////////////////////////////////////////////////////////////
 
 unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
-    string const& vertexCollectionName,
     string const& edgeCollectionName,
     string const& startVertex,
     string const& targetVertex,

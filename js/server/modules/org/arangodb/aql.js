@@ -5606,7 +5606,7 @@ function AQL_SHORTEST_PATH (vertexCollection,
       opts.distance = params.distance;
       opts.defaultDistance = params.defaultDistance;
     }
-    return CPP_SHORTEST_PATH(vertexCollection, edgeCollection, startVertex, endVertex, opts);
+    return CPP_SHORTEST_PATH([vertexCollection], edgeCollection, startVertex, endVertex, opts);
   }
 
   params = SHORTEST_PATH_PARAMS(params);
