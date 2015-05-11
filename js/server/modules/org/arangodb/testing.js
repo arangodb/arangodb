@@ -287,7 +287,7 @@ function startInstance (protocol, options, addArgs, testname) {
   }
 
   var valgrindHosts = '';
-  if (typeof(options.valgrindHosts) !== undefined) {
+  if (typeof(options.valgrindHosts) !== 'object') {
     if (options.valgrindHosts.Coordinator === true) {
       valgrindHosts += 'Coordinator';
     }
