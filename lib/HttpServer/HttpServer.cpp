@@ -340,8 +340,16 @@ void HttpServer::stop () {
 void HttpServer::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
   HttpCommTask* task = createCommTask(s, info);
 
+
   GENERAL_SERVER_LOCK(&_commTasksLock);
-  _commTasks.insert(task);
+  try {
+    _commTasks.emplace(task);
+  }
+  catch (...) {
+    GENERAL_SERVER_UNLOCK(&_commTasksLock);
+    throw;
+  }
+
   GENERAL_SERVER_UNLOCK(&_commTasksLock);
 
   // registers the task and get the number of the scheduler thread
@@ -394,9 +402,9 @@ void HttpServer::handleAsync (HttpCommTask* task) {
   auto&& it = _task2handler.find(task);
 
   if (it == _task2handler.end() || it->second._task != task) {
+    GENERAL_SERVER_UNLOCK(&_mappingLock);
     LOG_WARNING("cannot find a task for the handler, giving up");
 
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
     return;
   }
 
@@ -474,17 +482,20 @@ bool HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
       LOG_WARNING("unable to initialize job");
       delete job;
       delete handler;
+
       return false;
     }
   }
 
   int error = _dispatcher->addJob(job);
+
   if (error != TRI_ERROR_NO_ERROR) {
     // could not add job to job queue
     RequestStatisticsAgentSetExecuteError(handler);
     LOG_WARNING("unable to add job to the job queue: %s", TRI_errno_string(error));
     delete job;
     delete handler;
+
     return false;
   }
 
@@ -577,9 +588,9 @@ void HttpServer::jobDone (Job* ajob) {
 
 
   if (it == _handlers.end() || it->second._handler != handler) {
-    LOG_WARNING("jobDone called, but handler is unknown");
-
     GENERAL_SERVER_UNLOCK(&_mappingLock);
+
+    LOG_WARNING("jobDone called, but handler is unknown");
     return;
   }
 
@@ -627,7 +638,7 @@ bool HttpServer::openEndpoint (Endpoint* endpoint) {
   }
 
   _scheduler->registerTask(task);
-  _listenTasks.push_back(task);
+  _listenTasks.emplace_back(task);
 
   return true;
 }
@@ -721,9 +732,9 @@ void HttpServer::shutdownHandlerByTask (Task* task) {
   auto&& it = _task2handler.find(task);
 
   if (it == _task2handler.end() || it->second._task != task) {
+    GENERAL_SERVER_UNLOCK(&_mappingLock);
     LOG_DEBUG("shutdownHandler called, but no handler is known for task");
 
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
     return;
   }
 
@@ -736,9 +747,9 @@ void HttpServer::shutdownHandlerByTask (Task* task) {
   auto&& jt = _handlers.find(handler);
 
   if (jt == _handlers.end() || jt->second._handler != handler) {
+    GENERAL_SERVER_UNLOCK(&_mappingLock);
     LOG_DEBUG("shutdownHandler called, but handler of task is unknown");
 
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
     return;
   }
 
@@ -752,17 +763,15 @@ void HttpServer::shutdownHandlerByTask (Task* task) {
     GENERAL_SERVER_UNLOCK(&_mappingLock);
 
     delete handler;
+
     return;
   }
 
   // initiate shutdown if a job is known
-  else {
-    element2._task = nullptr;
-    job->beginShutdown();
+  element2._task = nullptr;
+  job->beginShutdown();
 
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-    return;
-  }
+  GENERAL_SERVER_UNLOCK(&_mappingLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -770,12 +779,12 @@ void HttpServer::shutdownHandlerByTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::registerHandler (HttpHandler* handler, HttpCommTask* task) {
-  GENERAL_SERVER_LOCK(&_mappingLock);
-
   handler_task_job_t element;
   element._handler = handler;
   element._task = task;
   element._job = nullptr;
+
+  GENERAL_SERVER_LOCK(&_mappingLock);
 
   _handlers[handler] = element;
   _task2handler[task] = element;
@@ -794,9 +803,9 @@ void HttpServer::registerJob (HttpHandler* handler, HttpServerJob* job) {
   auto&& it = _handlers.find(handler);
 
   if (it == _handlers.end() || it->second._handler != handler) {
+    GENERAL_SERVER_UNLOCK(&_mappingLock);
     LOG_DEBUG("registerJob called for an unknown handler");
 
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
     return;
   }
 
