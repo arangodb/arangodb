@@ -88,16 +88,17 @@ struct VertexId {
   //   VertexId(const VertexId&) = delete;
   // VertexId(const VertexId& v) : first(v.first), second(v.second) { std::cout << "move failed!\n";}
   // VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
-
-
 };
+
+// EdgeId and VertexId are similar here. both have a key and a cid
+typedef VertexId EdgeId; 
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef the template instanciation of the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef triagens::basics::PathFinder<VertexId, std::string, double> 
+typedef triagens::basics::PathFinder<VertexId, EdgeId, double> 
         ArangoDBPathFinder;
 
 

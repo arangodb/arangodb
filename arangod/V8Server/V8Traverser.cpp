@@ -75,6 +75,7 @@ namespace std {
           return strcmp(lhs.key, rhs.key);
         }
     };
+
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,31 +94,30 @@ class EdgeCollectionInfo {
     TRI_edge_direction_e _direction;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prefix for edge collection id
-////////////////////////////////////////////////////////////////////////////////
-
-    string _edgeIdPrefix;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief edge collection
 ////////////////////////////////////////////////////////////////////////////////
 
     TRI_document_collection_t* _edgeCollection;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge collection
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_voc_cid_t _edgeCollectionCid;
+
   public:
 
     EdgeCollectionInfo(
       TRI_edge_direction_e direction,
-      string& edgeCollectionName,
+      TRI_voc_cid_t& edgeCollectionCid,
       TRI_document_collection_t* edgeCollection
     )  : _direction(direction), 
-       _edgeCollection(edgeCollection) {
-      _edgeIdPrefix = edgeCollectionName + "/";
+       _edgeCollection(edgeCollection),
+       _edgeCollectionCid(edgeCollectionCid) {
     }
 
-    std::string extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
-      char const* key = TRI_EXTRACT_MARKER_KEY(&ptr);
-      return _edgeIdPrefix + key;
+    EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
+      return EdgeId(_edgeCollectionCid, TRI_EXTRACT_MARKER_KEY(&ptr));
     }
 
     vector<TRI_doc_mptr_copy_t> getEdges (VertexId& vertexId) {
@@ -238,14 +238,14 @@ class MultiCollectionEdgeExpander {
 
     MultiCollectionEdgeExpander(TRI_edge_direction_e direction,
                        vector<TRI_document_collection_t*> edgeCollections,
-                       vector<string> edgeCollectionNames,
+                       vector<TRI_voc_cid_t> edgeCollectionCids,
                        WeightCalculatorFunction weighter)
       : weighter(weighter)
     {
-      for(size_t i = 0; i != edgeCollectionNames.size(); ++i) {
+      for(size_t i = 0; i != edgeCollectionCids.size(); ++i) {
         _edgeCollections.push_back(new EdgeCollectionInfo(
           direction,
-          edgeCollectionNames[i],
+          edgeCollectionCids[i],
           edgeCollections[i]
         ));
       }
@@ -315,10 +315,10 @@ class SimpleEdgeExpander {
 
     SimpleEdgeExpander(TRI_edge_direction_e direction,
                        TRI_document_collection_t* edgeCollection,
-                       string edgeCollectionName,
+                       TRI_voc_cid_t edgeCollectionCid,
                        WeightCalculatorFunction weighter)
       : weighter(weighter) {
-      _edgeCollection = new EdgeCollectionInfo(direction, edgeCollectionName, edgeCollection);
+      _edgeCollection = new EdgeCollectionInfo(direction, edgeCollectionCid, edgeCollection);
     };
 
     void operator() (VertexId& source,
@@ -394,9 +394,9 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
     weighter = HopWeightCalculator();
   }
   forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, 
-                                           edgeCollectionName, weighter));
+                                       resolver->getCollectionId(edgeCollectionName), weighter));
   backwardExpander.reset(new SimpleEdgeExpander(backward, ecol,
-                                           edgeCollectionName, weighter));
+                                       resolver->getCollectionId(edgeCollectionName), weighter));
 
   // Transform string ids to VertexIds
   // Needs refactoring!
