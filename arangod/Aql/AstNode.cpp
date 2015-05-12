@@ -653,9 +653,11 @@ std::string const& AstNode::getTypeString () const {
 
 std::string const& AstNode::getValueTypeString () const {
   auto it = ValueTypeNames.find(static_cast<int>(value.type));
+
   if (it != ValueTypeNames.end()) {
     return (*it).second;
   }
+
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in ValueTypeNames");
 }
 
@@ -665,8 +667,9 @@ std::string const& AstNode::getValueTypeString () const {
 
 void AstNode::validateType (int type) {
   auto it = TypeNames.find(static_cast<int>(type));
+
   if (it == TypeNames.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown AST-Node TypeID");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown AST node TypeID");
   }
 }
 
@@ -677,8 +680,9 @@ void AstNode::validateType (int type) {
 
 void AstNode::validateValueType (int type) {
   auto it = ValueTypeNames.find(static_cast<int>(type));
+
   if (it == ValueTypeNames.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "invalid AST-Node valueTypeName");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "invalid AST node valueTypeName");
   }
 }
 
@@ -688,7 +692,7 @@ void AstNode::validateValueType (int type) {
 
 AstNodeType AstNode::getNodeTypeFromJson (triagens::basics::Json const& json) {
   int type = JsonHelper::checkAndGetNumericValue<int>(json.json(), "typeID");
-  validateType (type);
+  validateType(type);
   return static_cast<AstNodeType>(type);
 }
 
@@ -711,8 +715,9 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
         return TRI_CreateNumberJson(zone, value.value._double);
       case VALUE_TYPE_STRING:
         return TRI_CreateStringCopyJson(zone, value.value._string, strlen(value.value._string));
-      default: {
-      }
+        // TODO: can we get away with a string reference only??
+        // this would speed things up considerably!
+        // return TRI_CreateStringReferenceJson(zone, value.value._string, strlen(value.value._string));
     }
   }
   
@@ -1009,7 +1014,7 @@ AstNode* AstNode::castToString (Ast* ast) {
 
   // stringify node
   triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-  stringify(&buffer, false);
+  stringify(&buffer, false, false);
 
   char const* value = ast->query()->registerString(buffer.c_str(), buffer.length(), false);
   TRI_ASSERT(value != nullptr);
@@ -1531,7 +1536,13 @@ AstNode* AstNode::clone (Ast* ast) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::stringify (triagens::basics::StringBuffer* buffer,
-                         bool verbose) const {
+                         bool verbose,
+                         bool failIfLong) const {
+
+  // any arrays/objects with more values than this will not be stringified if
+  // failIfLonf is set to true!
+  static size_t const TooLongThreshold = 80;
+
   if (type == NODE_TYPE_VALUE) {
     // must be JavaScript-compatible!
     appendValue(buffer);
@@ -1541,6 +1552,12 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
   if (type == NODE_TYPE_ARRAY) {
     // must be JavaScript-compatible!
     size_t const n = numMembers();
+
+    if (failIfLong && n > TooLongThreshold) {
+      // intentionally do not stringify this node because the output would be too long
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    } 
+
     if (verbose || n > 0) {
       if (verbose || n > 1) {
         buffer->appendChar('[');
@@ -1552,7 +1569,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
 
         AstNode* member = getMember(i);
         if (member != nullptr) {
-          member->stringify(buffer, verbose);
+          member->stringify(buffer, verbose, failIfLong);
         }
       }
       if (verbose || n > 1) {
@@ -1567,6 +1584,12 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     if (verbose) {
       buffer->appendChar('{');
       size_t const n = numMembers();
+    
+      if (failIfLong && n > TooLongThreshold) {
+        // intentionally do not stringify this node because the output would be too long
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      } 
+
       for (size_t i = 0; i < n; ++i) {
         if (i > 0) {
           buffer->appendChar(',');
@@ -1581,15 +1604,15 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
           buffer->appendJsonEncoded(member->getStringValue());
           buffer->appendText("\":", 2);
 
-          member->getMember(0)->stringify(buffer, verbose);
+          member->getMember(0)->stringify(buffer, verbose, failIfLong);
         }
         else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
           TRI_ASSERT(member->numMembers() == 2);
 
           buffer->appendText("$[", 2);
-          member->getMember(0)->stringify(buffer, verbose);
+          member->getMember(0)->stringify(buffer, verbose, failIfLong);
           buffer->appendText("]:", 2);
-          member->getMember(1)->stringify(buffer, verbose);
+          member->getMember(1)->stringify(buffer, verbose, failIfLong);
         }
         else {
           TRI_ASSERT(false);
@@ -1619,9 +1642,9 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     // not used by V8
     auto member = getMember(0);
     auto index = getMember(1);
-    member->stringify(buffer, verbose);
+    member->stringify(buffer, verbose, failIfLong);
     buffer->appendChar('[');
-    index->stringify(buffer, verbose);
+    index->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(']');
     return;
   }
@@ -1629,7 +1652,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // not used by V8
     auto member = getMember(0);
-    member->stringify(buffer, verbose);
+    member->stringify(buffer, verbose, failIfLong);
     buffer->appendChar('.');
     buffer->appendText(getStringValue());
     return;
@@ -1637,9 +1660,9 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
 
   if (type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
     // not used by V8
-    getMember(0)->stringify(buffer, verbose);
+    getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar('.');
-    getMember(1)->stringify(buffer, verbose);
+    getMember(1)->stringify(buffer, verbose, failIfLong);
     return;
   }
 
@@ -1655,7 +1678,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     auto func = static_cast<Function*>(getData());
     buffer->appendText(func->externalName);
     buffer->appendChar('(');
-    getMember(0)->stringify(buffer, verbose);
+    getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(')');
     return;
   }
@@ -1663,9 +1686,9 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
   if (type == NODE_TYPE_EXPAND) {
     // not used by V8
     buffer->appendText("_EXPAND(");
-    getMember(1)->stringify(buffer, verbose);
+    getMember(1)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
-    getMember(0)->stringify(buffer, verbose);
+    getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(')');
     return;
   }
@@ -1673,9 +1696,9 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
   if (type == NODE_TYPE_ITERATOR) {
     // not used by V8
     buffer->appendText("_ITERATOR(");
-    getMember(1)->stringify(buffer, verbose);
+    getMember(1)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
-    getMember(0)->stringify(buffer, verbose);
+    getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(')');
     return;
   }
@@ -1690,7 +1713,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     buffer->appendChar(' ');
     buffer->appendText((*it).second);
 
-    getMember(0)->stringify(buffer, verbose);
+    getMember(0)->stringify(buffer, verbose, failIfLong);
     return;
   }
 
@@ -1714,20 +1737,20 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     auto it = Operators.find(type);
     TRI_ASSERT(it != Operators.end());
 
-    getMember(0)->stringify(buffer, verbose);
+    getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(' ');
     buffer->appendText((*it).second);
     buffer->appendChar(' ');
-    getMember(1)->stringify(buffer, verbose);
+    getMember(1)->stringify(buffer, verbose, failIfLong);
     return;
   }
 
   if (type == NODE_TYPE_RANGE) {
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
-    getMember(0)->stringify(buffer, verbose);
+    getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendText("..", 2);
-    getMember(1)->stringify(buffer, verbose);
+    getMember(1)->stringify(buffer, verbose, failIfLong);
     return;
   }
   
@@ -1739,7 +1762,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
 
 std::string AstNode::toString () const {
    triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-   stringify(&buffer, false);
+   stringify(&buffer, false, false);
    return std::string(buffer.c_str(), buffer.length());
 }
 
