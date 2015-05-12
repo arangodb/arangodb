@@ -123,6 +123,7 @@ controller.get("/unauthorized", function() {
  */
 controller.get("shouldCheckVersion", function(req, res) {
   var versions = notifications.versions();
+
   if (!versions || versions.enableVersionNotification === false) {
     res.json(false);
   } else {

@@ -97,7 +97,7 @@ exports.notifications.versions = function () {
     d.enableVersionNotification = false;
   }
 
-  return d.versions;
+  return d;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,10 +116,7 @@ exports.notifications.setVersions = function (data) {
     d = configuration.save({ _key: n });
   }
 
-  d = d._shallowCopy;
-  d.versions = data;
-
-  configuration.replace(n, d);
+  configuration.update(n, data);
 };
 
 // -----------------------------------------------------------------------------
