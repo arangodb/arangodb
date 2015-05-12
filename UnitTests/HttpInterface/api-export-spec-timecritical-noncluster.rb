@@ -618,6 +618,51 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(404)
       end
 
+      it "using limit" do
+        cmd = api + "?collection=#{@cn}"
+        body = "{ \"count\" : true, \"batchSize\" : 2000, \"flush\" : true, \"limit\" : 5 }"
+        doc = ArangoDB.log_post("#{prefix}-limit", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['count'].should eq(5)
+        doc.parsed_response['result'].length.should eq(5)
+      end
+      
+      it "using limit == collection size" do
+        cmd = api + "?collection=#{@cn}"
+        body = "{ \"count\" : true, \"batchSize\" : 2000, \"flush\" : true, \"limit\" : 2000 }"
+        doc = ArangoDB.log_post("#{prefix}-limit-eq", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['count'].should eq(2000)
+        doc.parsed_response['result'].length.should eq(2000)
+      end
+      
+      it "using limit > collection size" do
+        cmd = api + "?collection=#{@cn}"
+        body = "{ \"count\" : true, \"batchSize\" : 2000, \"flush\" : true, \"limit\" : 200000 }"
+        doc = ArangoDB.log_post("#{prefix}-limit", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['count'].should eq(2000)
+        doc.parsed_response['result'].length.should eq(2000)
+      end
+
     end
 
 ################################################################################

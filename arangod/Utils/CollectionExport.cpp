@@ -79,7 +79,7 @@ CollectionExport::~CollectionExport () {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-void CollectionExport::run (uint64_t maxWaitTime) {
+void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
   // try to acquire the exclusive lock on the compaction
   while (! TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
     // didn't get it. try again...
@@ -125,18 +125,31 @@ void CollectionExport::run (uint64_t maxWaitTime) {
     }
 
     size_t const n = static_cast<size_t>(_document->_primaryIndex._nrAlloc);
-  
-    _documents->reserve(static_cast<size_t>(_document->_primaryIndex._nrUsed));
-  
-    for (size_t i = 0; i < n; ++i) {
-      auto ptr = _document->_primaryIndex._table[i];
 
-      if (ptr != nullptr) {
-        void const* marker = static_cast<TRI_doc_mptr_t const*>(ptr)->getDataPtr();
+    size_t maxDocuments = static_cast<size_t>(_document->_primaryIndex._nrUsed);
+    if (limit > 0 && limit < maxDocuments) {
+      maxDocuments = limit;
+    }
+    else {
+      limit = maxDocuments;
+    }
+    _documents->reserve(maxDocuments);
+ 
+    if (maxDocuments > 0) { 
+      for (size_t i = 0; i < n; ++i) {
+        auto ptr = _document->_primaryIndex._table[i];
 
-        // it is only safe to use the markers from the datafiles, not the WAL
-        if (! TRI_IsWalDataMarkerDatafile(marker)) {
-          _documents->emplace_back(marker);
+        if (ptr != nullptr) {
+          void const* marker = static_cast<TRI_doc_mptr_t const*>(ptr)->getDataPtr();
+
+          // it is only safe to use the markers from the datafiles, not the WAL
+          if (! TRI_IsWalDataMarkerDatafile(marker)) {
+            _documents->emplace_back(marker);
+
+            if (--limit == 0) {
+              break;
+            }
+          }
         }
       }
     }

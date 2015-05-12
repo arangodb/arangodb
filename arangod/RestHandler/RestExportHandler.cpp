@@ -115,6 +115,11 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
   if (TRI_IsNumberJson(attribute) && static_cast<size_t>(attribute->_value._number) == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for 'batchSize'");
   }
+
+  attribute = getAttribute("limit");
+  if (TRI_IsNumberJson(attribute)) {
+    options.set("limit", triagens::basics::Json(attribute->_value._number));
+  }
   
   attribute = getAttribute("flush");
   options.set("flush", triagens::basics::Json(TRI_IsBooleanJson(attribute) ? attribute->_value._boolean : false));
@@ -231,6 +236,12 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
 /// - *batchSize*: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is
 ///   not set, a server-controlled default value will be used.
+///
+/// - *limit*: an optional limit value, determining the maximum number of documents to
+///   be included in the cursor. Omitting the *limit* attribute or setting it to 0 will
+///   lead to no limit being used. If a limit is used, it is undefined which documents
+///   from the collection will be included in the export and which will be excluded. 
+///   This is because there is no natural order of documents in a collection.
 ///
 /// - *ttl*: an optional time-to-live for the cursor (in seconds). The cursor will be
 ///   removed on the server automatically after the specified amount of time. This
@@ -371,10 +382,12 @@ void RestExportHandler::createCursor () {
 
       waitTime = static_cast<uint64_t>(flushWait * 1000 * 1000); // flushWait is specified in s, but we need ns
     }
+    
+    size_t limit = triagens::basics::JsonHelper::getNumericValue<size_t>(options.json(), "limit", 0);
 
     // this may throw!
     std::unique_ptr<CollectionExport> collectionExport(new CollectionExport(_vocbase, name, _restrictions));
-    collectionExport->run(waitTime);
+    collectionExport->run(waitTime, limit);
 
     { 
       size_t batchSize = triagens::basics::JsonHelper::getNumericValue<size_t>(options.json(), "batchSize", 1000);
