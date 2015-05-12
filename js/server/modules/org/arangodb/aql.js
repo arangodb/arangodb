@@ -5597,26 +5597,20 @@ function AQL_SHORTEST_PATH (vertexCollection,
                             direction,
                             params) {
   'use strict';
-
-  if (typeof startVertex === "string" && typeof endVertex === "string") {
-    var opts = {
-      direction: direction
-    };
-    if (params.hasOwnProperty("distance") && params.hasOwnProperty("defaultDistance")) {
-      opts.distance = params.distance;
-      opts.defaultDistance = params.defaultDistance;
-    }
-    return CPP_SHORTEST_PATH([vertexCollection], edgeCollection, startVertex, endVertex, opts);
+  var opts = {
+    direction: direction
+  };
+  if (params.hasOwnProperty("distance") && params.hasOwnProperty("defaultDistance")) {
+    opts.distance = params.distance;
+    opts.defaultDistance = params.defaultDistance;
   }
-
-  params = SHORTEST_PATH_PARAMS(params);
-
-  return TRAVERSAL_FUNC("SHORTEST_PATH",
-                        TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
-                        TO_ID(startVertex, vertexCollection),
-                        TO_ID(endVertex, vertexCollection),
-                        direction,
-                        params);
+  if (params.hasOwnProperty("includeData") {
+    opts.includeData = params.includeData;
+  }
+  return CPP_SHORTEST_PATH(edgeCollection,
+                           TO_ID(startVertex, vertexCollection),
+                           TO_ID(endVertex, vertexCollection),
+                           opts);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -200,7 +200,7 @@ class AttributeWeightCalculator {
 /// to explicitly allow move semantics.
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
+static VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
   return VertexId(TRI_EXTRACT_MARKER_FROM_CID(&ptr),
                   TRI_EXTRACT_MARKER_FROM_KEY(&ptr));
 };
@@ -210,7 +210,7 @@ static inline VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
 /// to explicitly allow move semantics.
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline VertexId extractToId(TRI_doc_mptr_copy_t& ptr) {
+static VertexId extractToId(TRI_doc_mptr_copy_t& ptr) {
   return VertexId(TRI_EXTRACT_MARKER_TO_CID(&ptr),
                   TRI_EXTRACT_MARKER_TO_KEY(&ptr));
 };
