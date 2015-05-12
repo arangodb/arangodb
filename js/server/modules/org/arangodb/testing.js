@@ -65,6 +65,7 @@ var optionsDocumentation = [
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - `clusterNodes`: number of DB-Servers to use',
   '   - valgrindHosts  - configure which clustercomponents to run using valgrintd',
   '        Coordinator - run Coordinator with valgrind',
   '        DBServer    - run DBServers with valgrind',
@@ -300,6 +301,12 @@ function startInstance (protocol, options, addArgs, testname) {
 
   var dispatcher;
   if (options.cluster) {
+
+    var clusterNodes = 2;
+    if (options.clusterNodes) {
+      clusterNodes = options.clusterNodes;
+    }
+
     var extraargs = makeTestingArgs(appDir);
     extraargs = _.extend(extraargs, optionsExtraArgs);
     if (addArgs !== undefined) {
@@ -318,7 +325,7 @@ function startInstance (protocol, options, addArgs, testname) {
       valgrindXmlFileBase = options.valgrindXmlFileBase;
     }
 
-    var p = new Planner({"numberOfDBservers"      : 2,
+    var p = new Planner({"numberOfDBservers"      : clusterNodes,
                          "numberOfCoordinators"   : 1,
                          "dispatchers"            : {"me": dispatcher},
                          "dataPath"               : tmpDataDir,
@@ -588,7 +595,7 @@ function shutdownInstance (instanceInfo, options) {
   if (!checkInstanceAlive(instanceInfo, options)) {
       print("Server already dead, doing nothing. This shouldn't happen?");
   }
-  if (options.valgrind !== undefined) {
+  if (options.valgrind) {
     waitOnServerForGC(instanceInfo, options, 60);
   }
   if (options.cluster) {
