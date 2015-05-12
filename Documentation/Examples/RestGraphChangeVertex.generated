@@ -1,17 +1,18 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1 <<EOF
 { 
   "optional1" : "val2" 
 }
+EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1192831139
+etag: 1349067829
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1192831139", 
+    "_rev" : "1349067829", 
     "optional1" : "val2" 
   }, 
   "error" : false, 

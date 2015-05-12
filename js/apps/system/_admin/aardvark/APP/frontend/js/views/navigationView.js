@@ -44,7 +44,7 @@
       }));
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
-      if (this.userCollection.whoAmI() !== null) {
+      if (this.userCollection.whoAmI()) {
         this.userBarView.render();
       }
       this.statisticBarView.render($("#statisticBar"));

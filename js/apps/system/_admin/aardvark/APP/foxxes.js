@@ -29,6 +29,7 @@
 (function() {
   "use strict";
 
+  var db = require("internal").db;
   var FoxxController = require("org/arangodb/foxx").Controller;
   var controller = new FoxxController(applicationContext);
   var ArangoError = require("org/arangodb").ArangoError;
@@ -50,6 +51,12 @@
   };
   var fs = require("fs");
   var defaultThumb = require("/lib/defaultThumbnail").defaultThumb;
+
+  controller.activateSessions({
+    type: "cookie",
+    autoCreateSession: true,
+    cookie: {name: "arango_sid_" + db._name()}
+  });
 
   controller.extend({
     installer: function() {
@@ -109,7 +116,8 @@
         name = content.name,
         version = content.version;
     installApp(req, res, name + ":" + version);
-  }).installer();
+  })
+  .installer();
 
   /** Install a Foxx from Github
    *
@@ -120,7 +128,8 @@
         url = content.url,
         version = content.version;
     installApp(req, res, "git:" + url + ":" + (version || "master"));
-  }).installer();
+  })
+  .installer();
 
   /** Generate a new foxx
    *
@@ -129,7 +138,8 @@
   controller.put("/generate", function (req, res) {
     var info = JSON.parse(req.requestBody);
     installApp(req, res, "EMPTY", info);
-  }).installer();
+  })
+  .installer();
 
   /** Install a Foxx from temporary zip file
    *
@@ -140,17 +150,21 @@
     var content = JSON.parse(req.requestBody),
         file = content.zipFile;
     installApp(req, res, file);
-  }).installer();
+  })
+  .installer();
 
 
   /** Uninstall a Foxx
    *
    * Uninstall the Foxx at the given mount-point.
    */
-  controller.del("/", function (req, res) {
+  controller.delete("/", function (req, res) {
     var mount = validateMount(req);
+    var runTeardown = req.parameters.teardown;
     try {
-      var app = FoxxManager.uninstall(mount);
+      var app = FoxxManager.uninstall(mount, {
+        teardown: runTeardown
+      });
       res.json({
         error: false,
         name: app.name,
@@ -164,7 +178,9 @@
       res.json(e);
       res.status = actions.HTTP_SERVER_ERROR;
     }
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint)
+  .queryParam("teardown", joi.boolean().default(true));
 
   // ------------------------------------------------------------
   // SECTION                                          information
@@ -196,7 +212,8 @@
     if (start.indexOf("PNG") !== -1) {
       res.contentType = "image/png";
     }
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint);
 
   /** Get the configuration for an app
    *
@@ -205,7 +222,8 @@
   controller.get("/config", function(req, res) {
     var mount = validateMount(req);
     res.json(FoxxManager.configuration(mount));
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint);
 
   /** Set the configuration for an app
    *
@@ -215,7 +233,29 @@
     var mount = validateMount(req);
     var data = req.body();
     res.json(FoxxManager.configure(mount, {configuration: data}));
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint);
+
+  /** Get the dependencies for an app
+   *
+   * Used to request the dependencies options for apps
+   */
+  controller.get("/deps", function(req, res) {
+    var mount = validateMount(req);
+    res.json(FoxxManager.dependencies(mount));
+  })
+  .queryParam("mount", mountPoint);
+
+  /** Set the dependencies for an app
+   *
+   * Used to overwrite the dependencies options for apps
+   */
+  controller.patch("/deps", function(req, res) {
+    var mount = validateMount(req);
+    var data = req.body();
+    res.json(FoxxManager.updateDeps(mount, {dependencies: data}));
+  })
+  .queryParam("mount", mountPoint);
 
   /** Run tests for an app
    *
@@ -225,7 +265,8 @@
     var options = req.body();
     var mount = validateMount(req);
     res.json(FoxxManager.runTests(mount, options));
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint);
 
   /** Run a script for an app
    *
@@ -234,8 +275,16 @@
   controller.post("/scripts/:name", function (req, res) {
     var mount = validateMount(req);
     var name = req.params("name");
-    res.json(FoxxManager.runScript(name, mount));
-  }).queryParam("mount", mountPoint).pathParam("name", scriptName);
+    var options = req.params("options");
+    res.json(FoxxManager.runScript(name, mount, options));
+  })
+  .queryParam("mount", mountPoint)
+  .pathParam("name", scriptName)
+  .bodyParam(
+    "options",
+    joi.any().default(null)
+    .description('Options to pass to the script.')
+  );
 
   /** Trigger setup script for an app
    *
@@ -244,7 +293,8 @@
   controller.patch("/setup", function(req, res) {
     var mount = validateMount(req);
     res.json(FoxxManager.runScript("setup", mount));
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint);
 
   /** Trigger teardown script for an app
    *
@@ -253,7 +303,8 @@
   controller.patch("/teardown", function(req, res) {
     var mount = validateMount(req);
     res.json(FoxxManager.runScript("teardown", mount));
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint);
 
 
 
@@ -269,7 +320,8 @@
     } else {
       res.json(FoxxManager.production(mount));
     }
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint);
 
   /** Download an app as zip archive
    *
@@ -284,7 +336,8 @@
     res.set("Content-Type", "application/octet-stream");
     res.set("Content-Disposition", "attachment; filename=app.zip");
     res.body = fs.readFileSync(zipPath);
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint);
 
 
   // ------------------------------------------------------------
@@ -309,6 +362,13 @@
   // SECTION                                        documentation
   // ------------------------------------------------------------
 
+  controller.apiDocumentation('/docs', function (req, res) {
+    return {
+      indexFile: 'index-alt.html',
+      appPath: req.parameters.mount
+    };
+  });
+
   /** Returns the billboard URL for swagger
    *
    * Returns the billboard URL for the application mounted
@@ -326,7 +386,8 @@
         {path: mount}
       ]
     });
-  }).queryParam("mount", mountPoint);
+  })
+  .queryParam("mount", mountPoint);
 
   /** Returns the generated Swagger JSON description for one foxx
    *

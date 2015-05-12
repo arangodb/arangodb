@@ -126,7 +126,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
         }
       }
 
-      size_t const n = object->_value._objects._length;
+      size_t const n = TRI_LengthVector(&object->_value._objects);
 
       for (size_t i = 0;  i < n;  i += 2) {
         if (0 < i) {
@@ -176,7 +176,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
         }
       }
 
-      size_t const n = object->_value._objects._length;
+      size_t const n = TRI_LengthVector(&object->_value._objects);
 
       for (size_t i = 0;  i < n;  ++i) {
         if (0 < i) {
@@ -529,10 +529,10 @@ void TRI_DestroyJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
 
     case TRI_JSON_OBJECT:
     case TRI_JSON_ARRAY: {
-      size_t const n = object->_value._objects._length;
+      size_t const n = TRI_LengthVector(&object->_value._objects);
 
       for (size_t i = 0;  i < n;  ++i) {
-        TRI_json_t* v = static_cast<TRI_json_t*>(TRI_AddressVector(&object->_value._objects, i));
+        auto v = static_cast<TRI_json_t*>(TRI_AddressVector(&object->_value._objects, i));
         TRI_DestroyJson(zone, v);
       }
 
@@ -586,8 +586,18 @@ char const* TRI_GetTypeStringJson (TRI_json_t const* object) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_LengthArrayJson (TRI_json_t const* json) {
-  TRI_ASSERT(json != nullptr && json->_type==TRI_JSON_ARRAY);
-  return json->_value._objects._length;
+  TRI_ASSERT(json != nullptr && json->_type == TRI_JSON_ARRAY);
+  return TRI_LengthVector(&json->_value._objects);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines the length of the json's objects vector
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_LengthVectorJson (TRI_json_t const* json) {
+  TRI_ASSERT(json != nullptr && 
+             (json->_type == TRI_JSON_ARRAY || json->_type == TRI_JSON_OBJECT));
+  return TRI_LengthVector(&json->_value._objects);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -689,7 +699,7 @@ int TRI_PushBack3ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* array, TRI_json
 TRI_json_t* TRI_LookupArrayJson (TRI_json_t const* array, size_t pos) {
   TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
 
-  size_t n = array->_value._objects._length;
+  size_t const n = TRI_LengthVector(&array->_value._objects);
 
   if (pos >= n) {
     // out of bounds
@@ -801,7 +811,7 @@ TRI_json_t* TRI_LookupObjectJson (TRI_json_t const* object, char const* name) {
   TRI_ASSERT(object->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(name != nullptr);
 
-  size_t const n = object->_value._objects._length;
+  size_t const n = TRI_LengthVector(&object->_value._objects);
 
   if (n >= 16) {
     // if we have many attributes, try an algorithm that compares string length first
@@ -849,7 +859,7 @@ bool TRI_DeleteObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
   TRI_ASSERT(object->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(name != nullptr);
 
-  size_t const n = object->_value._objects._length;
+  size_t const n = TRI_LengthVector(&object->_value._objects);
 
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t* key = static_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i));
@@ -892,7 +902,7 @@ bool TRI_ReplaceObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char co
   TRI_ASSERT(object->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(name != nullptr);
 
-  size_t const n = object->_value._objects._length;
+  size_t const n = TRI_LengthVector(&object->_value._objects);
 
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t* key = static_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i));
@@ -1091,7 +1101,7 @@ int TRI_CopyToJson (TRI_memory_zone_t* zone,
 
     case TRI_JSON_OBJECT:
     case TRI_JSON_ARRAY: {
-      size_t const n = src->_value._objects._length;
+      size_t const n = TRI_LengthVector(&src->_value._objects);
 
       TRI_InitVector(&dst->_value._objects, zone, sizeof(TRI_json_t));
       int res = TRI_ResizeVector(&dst->_value._objects, n);

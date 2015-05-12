@@ -121,9 +121,11 @@ std::map<std::string, std::string> JsonHelper::stringObject (TRI_json_t const* j
   std::map<std::string, std::string> result;
 
   if (isObject(json)) {
-    for (size_t i = 0, n = json->_value._objects._length; i < n; i += 2) {
-      TRI_json_t const* k = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
-      TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+    size_t const n = TRI_LengthVectorJson(json);
+
+    for (size_t i = 0; i < n; i += 2) {
+      auto k = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+      auto v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
       if (isString(k) && isString(v)) {
         std::string const key = std::string(k->_value._string.data, k->_value._string.length - 1);
@@ -150,6 +152,7 @@ TRI_json_t* JsonHelper::stringArray (TRI_memory_zone_t* zone,
 
   for (size_t i = 0, n = values.size(); i < n; ++i) {
     TRI_json_t* v = TRI_CreateStringCopyJson(zone, values[i].c_str(), values[i].size());
+
     if (v != nullptr) {
       TRI_PushBack3ArrayJson(zone, json, v);
     }
@@ -166,8 +169,10 @@ std::vector<std::string> JsonHelper::stringArray (TRI_json_t const* json) {
   std::vector<std::string> result;
 
   if (isArray(json)) {
-    for (size_t i = 0, n = json->_value._objects._length; i < n; ++i) {
-      TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+    size_t const n = TRI_LengthArrayJson(json);
+
+    for (size_t i = 0; i < n; ++i) {
+      auto v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
 
       if (isString(v)) {
         result.emplace_back(std::string(v->_value._string.data, v->_value._string.length - 1));
@@ -183,9 +188,7 @@ std::vector<std::string> JsonHelper::stringArray (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* JsonHelper::fromString (std::string const& data) {
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
-
-  return json;
+  return TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,9 +196,7 @@ TRI_json_t* JsonHelper::fromString (std::string const& data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* JsonHelper::fromString (char const* data) {
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
-
-  return json;
+  return TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,9 +205,7 @@ TRI_json_t* JsonHelper::fromString (char const* data) {
 
 TRI_json_t* JsonHelper::fromString (char const* data,
                                     size_t length) {
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
-
-  return json;
+  return TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

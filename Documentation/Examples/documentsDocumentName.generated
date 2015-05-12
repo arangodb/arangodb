@@ -1,6 +1,6 @@
 arangosh> db._document("example/12345");
 { 
   "_id" : "example/12345", 
-  "_rev" : "1038035107", 
+  "_rev" : "490415157", 
   "_key" : "12345" 
 }

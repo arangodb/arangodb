@@ -149,7 +149,7 @@ namespace triagens {
 
         void setShaped (size_t index, RegisterId varNr, TRI_df_marker_t const* marker) {
           TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
-          TRI_ASSERT_EXPENSIVE(_data[index * _nrRegs + varNr].isEmpty());
+          TRI_ASSERT_EXPENSIVE(! _data[index * _nrRegs + varNr].requiresDestruction());
 
           auto& v = _data[index * _nrRegs + varNr];
           v._marker = marker;
@@ -317,6 +317,14 @@ namespace triagens {
 
         AqlItemBlock* slice (size_t from, 
                              size_t to) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AqlItemBlock with a single row, with copies of the
+/// specified registers from the current block
+////////////////////////////////////////////////////////////////////////////////
+        
+        AqlItemBlock* slice (size_t row, 
+                             std::unordered_set<RegisterId> const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone chosen rows for a subset, this does a deep copy

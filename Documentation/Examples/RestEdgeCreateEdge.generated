@@ -1,30 +1,31 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2 <<EOF
 { 
   "name" : "Emil" 
 }
+EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1530669219"
-location: /_db/_system/_api/document/edges/1530669219
+etag: "1641882677"
+location: /_db/_system/_api/document/edges/1641882677
 
 { 
   "error" : false, 
-  "_id" : "edges/1530669219", 
-  "_rev" : "1530669219", 
-  "_key" : "1530669219" 
+  "_id" : "edges/1641882677", 
+  "_rev" : "1641882677", 
+  "_key" : "1641882677" 
 }
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/edge/edges/1530669219
+shell> curl --dump - http://localhost:8529/_api/edge/edges/1641882677
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1530669219"
+etag: "1641882677"
 
 { 
   "name" : "Emil", 
-  "_id" : "edges/1530669219", 
-  "_rev" : "1530669219", 
-  "_key" : "1530669219", 
+  "_id" : "edges/1641882677", 
+  "_rev" : "1641882677", 
+  "_key" : "1641882677", 
   "_from" : "vertices/1", 
   "_to" : "vertices/2" 
 }

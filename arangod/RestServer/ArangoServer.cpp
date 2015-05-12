@@ -70,6 +70,7 @@
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestReplicationHandler.h"
+#include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
@@ -127,7 +128,7 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/document" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
                             RestHandlerCreator<RestDocumentHandler>::createNoData);
-
+  
   // add "/edge" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH,
                             RestHandlerCreator<RestEdgeHandler>::createNoData);
@@ -143,6 +144,16 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/replication" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
                             RestHandlerCreator<RestReplicationHandler>::createNoData);
+  
+  // add "/simple/lookup-by-key" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
+                            RestHandlerCreator<RestSimpleHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+                            _pairForAql);
+  
+  // add "/simple/remove-by-key" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
+                            RestHandlerCreator<RestSimpleHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+                            _pairForAql);
 
   // add "/upload" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
@@ -301,7 +312,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableAuthentication(false),
     _disableAuthenticationUnixSockets(false),
     _dispatcherThreads(8),
-    _dispatcherQueueSize(8192),
+    _dispatcherQueueSize(16384),
     _v8Contexts(8),
     _indexThreads(2),
     _databasePath(),
@@ -483,8 +494,8 @@ void ArangoServer::buildApplicationServer () {
   ;
   string languageName;
 
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
-    const char *ICU_env = getenv("ICU_DATA");
+  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
+    char const* ICU_env = getenv("ICU_DATA");
     LOG_FATAL_AND_EXIT("failed to initialise ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
   }
 
@@ -888,9 +899,19 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
+  const auto role = ServerState::instance()->getRole();
+
   // now we can create the queues
   if (startServer) {
-    _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
+    _applicationDispatcher->buildStandardQueue(_dispatcherThreads, 
+                                               (int) _dispatcherQueueSize);
+
+    if (role == ServerState::ROLE_COORDINATOR || 
+        role == ServerState::ROLE_PRIMARY || 
+        role == ServerState::ROLE_SECONDARY) {
+      _applicationDispatcher->buildAQLQueue(_dispatcherThreads,
+                                            (int) _dispatcherQueueSize);
+    }
   }
 
   startupProgress();
@@ -960,8 +981,7 @@ int ArangoServer::startupServer () {
 
   // for a cluster coordinator, the users are loaded at a later stage;
   // the kickstarter will trigger a bootstrap process
-  const auto role = ServerState::instance()->getRole();
-
+  //
   if (role != ServerState::ROLE_COORDINATOR && role != ServerState::ROLE_PRIMARY && role != ServerState::ROLE_SECONDARY) {
 
     // if the authentication info could not be loaded, but authentication is turned on,

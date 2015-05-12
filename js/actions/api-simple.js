@@ -286,7 +286,7 @@ setupIndexQueries();
 /// @startDocuBlock JSA_put_api_simple_all
 /// @brief returns all documents of a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/all, Return all}
+/// @RESTHEADER{PUT /_api/simple/all, Return all documents}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -416,7 +416,7 @@ actions.defineHttp({
 /// @startDocuBlock JSA_put_api_simple_any
 /// @brief returns a random document from a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/any, Random document}
+/// @RESTHEADER{PUT /_api/simple/any, Return a random document}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -509,7 +509,7 @@ actions.defineHttp({
 /// @startDocuBlock JSA_put_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
-/// @RESTHEADER{PUT /_api/simple/near, Near query}
+/// @RESTHEADER{PUT /_api/simple/near, Find documents near a coordinate}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -690,7 +690,7 @@ actions.defineHttp({
 /// @startDocuBlock JSA_put_api_simple_within
 /// @brief returns all documents of a collection within a given radius
 ///
-/// @RESTHEADER{PUT /_api/simple/within, Within query}
+/// @RESTHEADER{PUT /_api/simple/within, Find documents within a radius around a coordinate}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -1297,7 +1297,7 @@ actions.defineHttp({
 /// @startDocuBlock JSA_put_api_simple_first_example
 /// @brief returns one document of a collection matching a given example
 ///
-/// @RESTHEADER{PUT /_api/simple/first-example, Document matching an example}
+/// @RESTHEADER{PUT /_api/simple/first-example, Find documents matching an example}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
@@ -1806,7 +1806,7 @@ actions.defineHttp({
 /// - *example*: An example document that all collection documents are compared
 ///   against.
 ///
-/// - options: an json object which can contains following attributes:
+/// - options: a json object which can contains following attributes:
 ///
 /// - *waitForSync*: if set to true, then all removal operations will
 ///   instantly be synchronised to disk. If this is not specified, then the
@@ -1971,7 +1971,7 @@ actions.defineHttp({
 /// - *newValue*: The replacement document that will get inserted in place
 ///   of the "old" documents.
 ///
-/// - *options*: an json object which can contain following attributes
+/// - *options*: a json object which can contain following attributes
 ///
 /// - *waitForSync*: if set to true, then all removal operations will
 ///   instantly be synchronised to disk. If this is not specified, then the

@@ -532,9 +532,9 @@ void ArangoClient::_printLine (const string &s) {
     // save old cursor position
     pos = bufferInfo.dwCursorPosition;
 
-    auto newX = pos.X + s.size();
-    auto oldY = pos.Y;
-    if (newX >= bufferInfo.dwSize.X) {
+    size_t newX = static_cast<size_t>(pos.X) + s.size();
+    size_t oldY = static_cast<size_t>(pos.Y);
+    if (newX >= static_cast<size_t>(bufferInfo.dwSize.X)) {
       for (size_t i = 0; i <= newX / bufferInfo.dwSize.X; ++i) {
         // insert as many newlines as we need. this prevents running out of buffer space when printing lines
         // at the end of the console output buffer

@@ -1111,6 +1111,8 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         // if no string value was inserted for the parameter name, this is an error
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, node->getStringValue());
       }
+      // convert into a regular attribute access node to simplify handling later
+      return createNodeAttributeAccess(node->getMember(0), name->getStringValue());
     }
 
     return node;
@@ -1772,7 +1774,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   if (rhs->type != NODE_TYPE_ARRAY &&
       (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
        node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-    // right operand of IN or NOT IN must be a list, otherwise we return false
+    // right operand of IN or NOT IN must be an array, otherwise we return false
     return createNodeValueBool(false);
   }
 
@@ -2215,7 +2217,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
 
   if (json->_type == TRI_JSON_ARRAY) {
     auto node = createNodeArray();
-    size_t const n = json->_value._objects._length;
+    size_t const n = TRI_LengthArrayJson(json);
 
     for (size_t i = 0; i < n; ++i) {
       node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i)))); 
@@ -2226,11 +2228,11 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
 
   if (json->_type == TRI_JSON_OBJECT) {
     auto node = createNodeObject();
-    size_t const n = json->_value._objects._length;
+    size_t const n = TRI_LengthVector(&json->_value._objects);
 
     for (size_t i = 0; i < n; i += 2) {
-      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));
-      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i + 1));
+      auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));
+      auto value = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i + 1));
 
       if (! TRI_IsStringJson(key) || value == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type found in object node");

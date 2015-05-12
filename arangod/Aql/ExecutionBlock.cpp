@@ -33,6 +33,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
+#include "Dispatcher/DispatcherThread.h"
 #include "Cluster/ClusterMethods.h"
 #include "HashIndex/hash-index.h"
 #include "V8/v8-globals.h"
@@ -447,8 +448,8 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
 
       if (! value.isEmpty()) {
         AqlValue a = value.clone();
-        try {
 
+        try {
           TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
@@ -481,16 +482,12 @@ bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
     return false;
   }
 
-  try {
-    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    _buffer.emplace_back(docs.get());
-    docs.release();
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  catch (...) {
-    throw;
-  }
+
+  _buffer.emplace_back(docs.get());
+  docs.release();
 
   return true;
 }
@@ -507,6 +504,7 @@ AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout (size_t atLeast,
                                                               size_t atMost) {
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
+
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
 
@@ -527,12 +525,16 @@ void ExecutionBlock::clearRegisters (AqlItemBlock* result) {
 size_t ExecutionBlock::skipSome (size_t atLeast, size_t atMost) {
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
+
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSome(atLeast, atMost, true, result, skipped);
+
   TRI_ASSERT(result == nullptr);
+
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
   }
+
   return skipped;
 }
 
@@ -581,12 +583,13 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
                                    size_t& skipped) {
   
   TRI_ASSERT(result == nullptr && skipped == 0);
+
   if (_done) {
     return TRI_ERROR_NO_ERROR;
   }
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
-  vector<AqlItemBlock*> collector;
+  std::vector<AqlItemBlock*> collector;
 
   auto freeCollector = [&collector]() {
     for (auto x : collector) {
@@ -634,7 +637,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         // The current block fits into our result, but it is already
         // half-eaten:
         if (! skipping) {
-          unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
+          std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
 
           TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -652,6 +655,8 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         // The current block fits into our result and is fresh:
         skipped += cur->size();
         if (! skipping) {
+          // if any of the following statements throw, then cur is not lost,
+          // as it is still contained in _buffer
           TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
@@ -669,6 +674,8 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
     freeCollector();
     throw;
   }
+
+  TRI_ASSERT(result == nullptr);
 
   if (! skipping) {
     if (collector.size() == 1) {
@@ -701,13 +708,30 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
 /// @brief initializeCursor, store a copy of the register values coming from above
 ////////////////////////////////////////////////////////////////////////////////
 
-int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int SingletonBlock::initializeCursor (AqlItemBlock* items, 
+                                      size_t pos) {
   // Create a deep copy of the register values given to us:
   deleteInputVariables();
   
   if (items != nullptr) {
-    _inputRegisterValues = items->slice(pos, pos + 1);
+    auto en = static_cast<SingletonNode const*>(getPlanNode());
+    auto const& registerPlan = en->getRegisterPlan()->varInfo;
+    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
+    
+    // build a whitelist with all the registers that we will copy from above
+    std::unordered_set<RegisterId> whitelist;
+
+    for (auto it : varsUsedLater) {
+      auto it2 = registerPlan.find(it->id);
+
+      if (it2 != registerPlan.end()) {
+        whitelist.emplace((*it2).second.registerId);
+      }
+    }
+
+    _inputRegisterValues = items->slice(pos, whitelist);
   }
+
   _done = false;
   return TRI_ERROR_NO_ERROR;
 }
@@ -717,7 +741,6 @@ int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingletonBlock::shutdown (int errorCode) {
-
   int res = ExecutionBlock::shutdown(errorCode);
 
   deleteInputVariables();
@@ -726,7 +749,7 @@ int SingletonBlock::shutdown (int errorCode) {
 }
 
 int SingletonBlock::getOrSkipSome (size_t,   // atLeast,
-                                   size_t atMost,   // atMost,
+                                   size_t atMost,
                                    bool skipping,
                                    AqlItemBlock*& result,
                                    size_t& skipped) {
@@ -739,6 +762,7 @@ int SingletonBlock::getOrSkipSome (size_t,   // atLeast,
 
   if (! skipping) {
     result = new AqlItemBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
+
     try {
       if (_inputRegisterValues != nullptr) {
         skipped++;
@@ -858,7 +882,8 @@ int EnumerateCollectionBlock::initialize () {
   return ExecutionBlock::initialize();
 }
 
-int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items, 
+                                                size_t pos) {
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1040,13 +1065,18 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _hasV8Expression(false) {
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
+
   if (trxCollection != nullptr) {
     _trx->orderBarrier(trxCollection);
   }
-     
-  for (size_t i = 0; i < en->_ranges.size(); i++) {
+    
+  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+  size_t const n = orRanges.size(); 
+
+  for (size_t i = 0; i < n; i++) {
     _condition->emplace_back(IndexAndCondition());
-    for (auto ri: en->_ranges[i]) {
+
+    for (auto const& ri: en->_ranges[i]) {
       _condition->at(i).emplace_back(ri.clone());
     }
   }
@@ -1055,7 +1085,6 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     removeOverlapsIndexOr(*_condition);
   }
 
-  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
   TRI_ASSERT(en->_index != nullptr);
 
   _allBoundsConstant.clear();
@@ -1064,12 +1093,13 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   // Detect, whether all ranges are constant:
   for (size_t i = 0; i < orRanges.size(); i++) {
     bool isConstant = true;
+
     std::vector<RangeInfo> const& attrRanges = orRanges[i];
-    for (auto r : attrRanges) {
+    for (auto const& r : attrRanges) {
       isConstant &= r.isConstant();
     }
     _anyBoundVariable |= ! isConstant;
-    _allBoundsConstant.push_back(isConstant);
+    _allBoundsConstant.push_back(isConstant); // note: emplace_back() is not supported in C++11 but only from C++14
   }
 }
 
@@ -1091,9 +1121,15 @@ IndexRangeBlock::~IndexRangeBlock () {
   delete _edgeIndexIterator; 
 }
 
+bool IndexRangeBlock::useHighBounds () const {
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  return (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX);
+}
+
 bool IndexRangeBlock::hasV8Expression () const {
   for (auto expression : _allVariableBoundExpressions) {
     TRI_ASSERT(expression != nullptr);
+
     if (expression->isV8()) {
       return true;
     }
@@ -1102,14 +1138,16 @@ bool IndexRangeBlock::hasV8Expression () const {
 }
 
 void IndexRangeBlock::buildExpressions () {
-  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  bool const useHighBounds = this->useHighBounds(); 
+
   size_t posInExpressions = 0;
     
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
   AqlItemBlock* cur = _buffer.front();
         
-  IndexOrCondition* newCondition = nullptr;
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  std::unique_ptr<IndexOrCondition> newCondition;
 
   for (size_t i = 0; i < en->_ranges.size(); i++) {
     size_t const n = en->_ranges[i].size(); 
@@ -1118,16 +1156,18 @@ void IndexRangeBlock::buildExpressions () {
 
     // collect the evaluated bounds here
     for (size_t k = 0; k < n; k++) {
-      auto r = en->_ranges[i][k];
-      // First create a new RangeInfo containing only the constant 
-      // low and high bound of r:
-      RangeInfo riConst(r._var, r._attr, r._lowConst, r._highConst,
-          r.is1ValueRangeInfo());
-      collector[k].emplace_back(riConst);
+      auto const& r = en->_ranges[i][k];
+
+      {
+        // First create a new RangeInfo containing only the constant 
+        // low and high bound of r:
+        RangeInfo riConst(r._var, r._attr, r._lowConst, r._highConst, r.is1ValueRangeInfo());
+        collector[k].emplace_back(std::move(riConst));
+      }
 
       // Now work the actual values of the variable lows and highs into 
       // this constant range:
-      for (auto l : r._lows) {
+      for (auto const& l : r._lows) {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
         TRI_ASSERT(e != nullptr);
         TRI_document_collection_t const* myCollection = nullptr; 
@@ -1149,15 +1189,32 @@ void IndexRangeBlock::buildExpressions () {
         }
 
         if (! bound.isArray()) {
-          auto b(bound.copy());
-          RangeInfo ri(r._var, 
-                       r._attr, 
-                       RangeInfoBound(l.inclusive(), true, b), // will steal b's JSON
-                       RangeInfoBound(), 
-                       false);
+          if (useHighBounds) {
+            auto b(bound.copy());
 
-          for (size_t j = 0; j < collector[k].size(); j++) {
-            collector[k][j].fuse(ri);
+            RangeInfo ri(r._var, 
+                         r._attr, 
+                         RangeInfoBound(l.inclusive(), true, b), // will steal b's JSON
+                         RangeInfoBound(), 
+                         false);
+
+            for (size_t j = 0; j < collector[k].size(); j++) {
+              collector[k][j].fuse(ri);
+            }
+          }
+          else {
+            auto b1(bound.copy()); // first instance of bound
+            auto b2(bound.copy()); // second instance of same bound
+
+            RangeInfo ri(r._var, 
+                         r._attr, 
+                         RangeInfoBound(l.inclusive(), true, b1), // will steal b1's JSON
+                         RangeInfoBound(l.inclusive(), true, b2), // will steal b2's JSON
+                         false);
+
+            for (size_t j = 0; j < collector[k].size(); j++) {
+              collector[k][j].fuse(ri);
+            }
           }
         } 
         else {
@@ -1175,63 +1232,68 @@ void IndexRangeBlock::buildExpressions () {
                                        true));
           }
 
-          collector[k] = andCombineRangeInfoVecs(collector[k], riv);
+          collector[k] = std::move(andCombineRangeInfoVecs(collector[k], riv));
         } 
       }
 
-      for (auto h : r._highs) {
-        Expression* e = _allVariableBoundExpressions[posInExpressions];
-        TRI_ASSERT(e != nullptr);
-        TRI_document_collection_t const* myCollection = nullptr; 
-        AqlValue a = e->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
-        posInExpressions++;
+      if (useHighBounds) {
+        for (auto const& h : r._highs) {
+          Expression* e = _allVariableBoundExpressions[posInExpressions];
+          TRI_ASSERT(e != nullptr);
+          TRI_document_collection_t const* myCollection = nullptr; 
+          AqlValue a = e->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
+          posInExpressions++;
 
-        Json bound;
-        if (a._type == AqlValue::JSON) {
-          bound = *(a._json);
-          a.destroy();  // the TRI_json_t* of a._json has been stolen
-        } 
-        else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
-          bound = a.toJson(_trx, myCollection);
-          a.destroy();  // the TRI_json_t* of a._json has been stolen
-        } 
-        else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-              "AQL: computed a variable bound and got non-JSON");
-        }
-        if (! bound.isArray()) {
-          auto b(bound.copy());
-          RangeInfo ri(r._var, 
-                       r._attr, 
-                       RangeInfoBound(), 
-                       RangeInfoBound(h.inclusive(), true, b), // will steal b's JSON
-                       false);
-
-          for (size_t j = 0; j < collector[k].size(); j++) {
-            collector[k][j].fuse(ri);
-          }
-        } 
-        else {
-          std::vector<RangeInfo> riv; 
-          riv.reserve(bound.size());
-
-          for (size_t j = 0; j < bound.size(); j++) {
-            auto b1(bound.at(static_cast<int>(j)).copy()); // first instance of bound
-            auto b2(bound.at(static_cast<int>(j)).copy()); // second instance of same bound
-
-            riv.emplace_back(RangeInfo(r._var, 
-                                       r._attr, 
-                                       RangeInfoBound(h.inclusive(), true, b1), // will steal b1's JSON
-                                       RangeInfoBound(h.inclusive(), true, b2), // will steal b2's JSON
-                                       true));
+          Json bound;
+          if (a._type == AqlValue::JSON) {
+            bound = *(a._json);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
           } 
-          collector[k] = andCombineRangeInfoVecs(collector[k], riv);
-        } 
+          else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
+            bound = a.toJson(_trx, myCollection);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+          } 
+          else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                "AQL: computed a variable bound and got non-JSON");
+          }
+          if (! bound.isArray()) {
+            auto b(bound.copy());
+            RangeInfo ri(r._var, 
+                          r._attr, 
+                          RangeInfoBound(), 
+                          RangeInfoBound(h.inclusive(), true, b), // will steal b's JSON
+                          false);
+
+            for (size_t j = 0; j < collector[k].size(); j++) {
+              collector[k][j].fuse(ri);
+            }
+          } 
+          else {
+            std::vector<RangeInfo> riv; 
+            riv.reserve(bound.size());
+
+            for (size_t j = 0; j < bound.size(); j++) {
+              auto b1(bound.at(static_cast<int>(j)).copy()); // first instance of bound
+              auto b2(bound.at(static_cast<int>(j)).copy()); // second instance of same bound
+
+              riv.emplace_back(RangeInfo(r._var, 
+                                          r._attr, 
+                                          RangeInfoBound(h.inclusive(), true, b1), // will steal b1's JSON
+                                          RangeInfoBound(h.inclusive(), true, b2), // will steal b2's JSON
+                                          true));
+            } 
+
+            collector[k] = std::move(andCombineRangeInfoVecs(collector[k], riv));
+          } 
+        }
       }
     }
 
+
     bool isEmpty = false;
-    for (auto x: collector) {
+
+    for (auto const& x : collector) {
       if (x.empty()) { 
         isEmpty = true;
         break;
@@ -1242,28 +1304,35 @@ void IndexRangeBlock::buildExpressions () {
       // otherwise the condition is impossible to fulfill
       // the elements of the direct product of the collector are and
       // conditions which should be added to newCondition 
-      auto indexAnds = cartesian(collector);
 
-      if (newCondition != nullptr) {
-        for (auto indexAnd: *indexAnds) {
-          newCondition->push_back(indexAnd);
-        }
-        delete indexAnds;
-      } 
-      else {
-        newCondition = indexAnds;
+      // create cartesian product
+      std::unique_ptr<IndexOrCondition> indexAnds(cartesian(collector));
+
+      if (newCondition == nullptr) {
+        newCondition.reset(indexAnds.release());
       }
+      else {
+        for (auto const& indexAnd: *indexAnds) {
+          newCondition->emplace_back(std::move(indexAnd));
+        }
+      } 
     }
+
   }
-  //_condition = newCondition.release();
+    
+  freeCondition(); 
+    
   if (newCondition != nullptr) {
-    freeCondition(); 
-    _condition = newCondition;
+    _condition = newCondition.release();
+    _freeCondition = true;
+ 
+    // remove duplicates . . .
+    removeOverlapsIndexOr(*_condition);
+  }
+  else {
+    _condition = new IndexOrCondition;
     _freeCondition = true;
   }
-
-  // remove duplicates . . .
-  removeOverlapsIndexOr(*_condition);
 }
 
 int IndexRangeBlock::initialize () {
@@ -1279,19 +1348,20 @@ int IndexRangeBlock::initialize () {
   _allVariableBoundExpressions.clear();
 
   // instanciate expressions:
-  auto instanciateExpression = [&] (RangeInfoBound& b) -> void {
+  auto instanciateExpression = [&] (RangeInfoBound const& b) -> void {
     AstNode const* a = b.getExpressionAst(_engine->getQuery()->ast());
-    // all new AstNodes are registered with the Ast in the Query
-    auto e = new Expression(_engine->getQuery()->ast(), a);
-    try {
+    Expression* expression = nullptr;
+ 
+    {
+      // all new AstNodes are registered with the Ast in the Query
+      std::unique_ptr<Expression> e(new Expression(_engine->getQuery()->ast(), a));
+
       TRI_IF_FAILURE("IndexRangeBlock::initialize") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      _allVariableBoundExpressions.emplace_back(e);
-    }
-    catch (...) {
-      delete e;
-      throw;
+
+      _allVariableBoundExpressions.emplace_back(e.get());
+      expression = e.release();
     }
 
     // Prepare _inVars and _inRegs:
@@ -1300,7 +1370,8 @@ int IndexRangeBlock::initialize () {
     _inRegs.emplace_back();
     std::vector<RegisterId>& inRegsCur = _inRegs.back();
 
-    std::unordered_set<Variable*> inVars = e->variables();
+    std::unordered_set<Variable*>&& inVars = expression->variables();
+
     for (auto v : inVars) {
       inVarsCur.emplace_back(v);
       auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
@@ -1308,7 +1379,6 @@ int IndexRangeBlock::initialize () {
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
       inRegsCur.emplace_back(it->second.registerId);
     }
-
   };
 
   // Get the ranges from the node:
@@ -1318,12 +1388,15 @@ int IndexRangeBlock::initialize () {
   for (size_t i = 0; i < orRanges.size(); i++) {
     if (! _allBoundsConstant[i]) {
       try {
-        for (auto r : orRanges[i]) {
-          for (auto l : r._lows) {
+        for (auto const& r : orRanges[i]) {
+          for (auto const& l : r._lows) {
             instanciateExpression(l);
           }
-          for (auto h : r._highs) {
-            instanciateExpression(h);
+
+          if (useHighBounds()) {
+            for (auto const& h : r._highs) {
+              instanciateExpression(h);
+            }
           }
         }
         TRI_IF_FAILURE("IndexRangeBlock::initializeExpressions") {
@@ -1408,7 +1481,7 @@ bool IndexRangeBlock::initRanges () {
   }
   
   if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
-    if (_condition->empty()) {
+    if (_condition == nullptr || _condition->empty()) {
       return false;
     }
 
@@ -1418,7 +1491,7 @@ bool IndexRangeBlock::initRanges () {
   }
       
   if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
-    if (_condition->empty()) {
+    if (_condition == nullptr || _condition->empty()) {
       return false;
     }
 
@@ -1428,7 +1501,7 @@ bool IndexRangeBlock::initRanges () {
   }
   
   if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    if (_condition->empty()) {
+    if (_condition == nullptr || _condition->empty()) {
       return false;
     }
 
@@ -1448,37 +1521,54 @@ bool IndexRangeBlock::initRanges () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexRangeBlock::sortConditions () {
-  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-
   size_t const n = _condition->size(); 
-  // first sort by the prefix of the index
-  std::vector<std::vector<size_t>> prefix;
-  prefix.reserve(n);
 
   if (! _sortCoords.empty()) {
     _sortCoords.clear();
     _sortCoords.reserve(n);
   }
+  
+  if (n == 1) {
+    // nothing to do
+    _sortCoords.emplace_back(0);
+    TRI_IF_FAILURE("IndexRangeBlock::sortConditions") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    return;
+  }
+  
+  // first sort by the prefix of the index
+  std::vector<std::vector<size_t>> prefix;
+  prefix.reserve(n);
+
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  size_t const numFields = en->_index->fields.size();
 
   for (size_t s = 0; s < n; s++) {
     _sortCoords.emplace_back(s);
-    std::vector<size_t> next;
         
     TRI_IF_FAILURE("IndexRangeBlock::sortConditions") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    next.reserve(en->_index->fields.size());
-    prefix.emplace_back(next);
+
+    {
+      std::vector<size_t> next;
+      next.reserve(numFields);
+      prefix.emplace_back(std::move(next));
+    }
+
     // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
     // field
-    for (size_t t = 0; t < en->_index->fields.size(); t++) {
+    for (size_t t = 0; t < numFields; t++) {
       for (size_t u = 0; u < _condition->at(s).size(); u++) {
-        auto ri = _condition->at(s)[u];
+        auto const& ri = _condition->at(s)[u];
+
         if (en->_index->fields[t].compare(ri._attr) == 0) {
     
           TRI_IF_FAILURE("IndexRangeBlock::sortConditionsInner") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
+
           prefix.at(s).insert(prefix.at(s).begin() + t, u);
           break;
         }
@@ -1498,7 +1588,7 @@ void IndexRangeBlock::sortConditions () {
 // @brief: is _condition[i] < _condition[j]? these are IndexAndConditions. 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
+bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) const {
   size_t l, r;
 
   if (! _reverse) {
@@ -1510,18 +1600,18 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
     r = i;
   }
 
-  size_t shortest = (std::min)(_prefix.at(i).size(), _prefix.at(j).size());
+  size_t shortest = (std::min)(_prefix[i].size(), _prefix[j].size());
 
   for (size_t k = 0; k < shortest; k++) {
-    RangeInfo const& lhs = _condition->at(l).at(_prefix.at(l).at(k));
-    RangeInfo const& rhs = _condition->at(r).at(_prefix.at(r).at(k));
+    RangeInfo const& lhs = _condition->at(l).at(_prefix[l][k]);
+    RangeInfo const& rhs = _condition->at(r).at(_prefix[r][k]);
     int cmp;
       
     if (lhs.is1ValueRangeInfo() && rhs.is1ValueRangeInfo()) {
       cmp = TRI_CompareValuesJson(lhs._lowConst.bound().json(), 
                                   rhs._lowConst.bound().json());
       if (cmp != 0) {
-        return (cmp == -1);
+        return (cmp < 0);
       }
     } 
     else {
@@ -1530,11 +1620,10 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
       if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
         cmp = (TRI_CompareValuesJson(lhs._highConst.bound().json(), 
                                      rhs._lowConst.bound().json()));
-        return (cmp == 0 || cmp == -1);
+        return (cmp == 0 || cmp < 0);
       } 
-      else { // lhs._lowConst.isDefined() && rhs._highConst.isDefined()
-        return false;
-      }
+      // lhs._lowConst.isDefined() && rhs._highConst.isDefined()
+      return false;
     }
   }
   TRI_ASSERT(false); 
@@ -1549,9 +1638,25 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
 /// value if the intersection is valid. 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<RangeInfo>& riv1, 
-                                                                 std::vector<RangeInfo>& riv2) {
+std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<RangeInfo> const& riv1, 
+                                                                 std::vector<RangeInfo> const& riv2) const {
   std::vector<RangeInfo> out;
+  
+  std::unordered_set<TRI_json_t*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+    16, 
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
+      
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&cache]() -> void {
+      // free the JSON values in the cache
+      for (auto& it : cache) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it);
+      }
+    }
+  };
 
   for (RangeInfo const& ri1: riv1) {
     for (RangeInfo const& ri2: riv2) {
@@ -1562,10 +1667,32 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<Ran
         TRI_IF_FAILURE("IndexRangeBlock::andCombineRangeInfoVecs") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        out.emplace_back(x);
+
+        if (x.is1ValueRangeInfo()) {
+          // de-duplicate
+          auto lowBoundValue = x._lowConst.bound().json();
+
+          if (cache.find(lowBoundValue) != cache.end()) {
+            // already seen the same value
+            continue;
+          }
+
+          std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, lowBoundValue));
+
+          if (copy == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          // every JSON in the cache is a copy
+          cache.emplace(copy.get());
+          copy.release();
+        }
+
+        out.emplace_back(std::move(x));
       }
     }
   }
+  
   return out;
 }
 
@@ -1575,42 +1702,43 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<Ran
 /// "and" condition containing an "or" condition, which we must then distribute. 
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexOrCondition* IndexRangeBlock::cartesian (std::vector<std::vector<RangeInfo>> const& collector) {
+IndexOrCondition* IndexRangeBlock::cartesian (std::vector<std::vector<RangeInfo>> const& collector) const {
+  size_t const n = collector.size();
   
   std::vector<size_t> indexes;
-  indexes.reserve(collector.size());
-  for (size_t i = 0; i < collector.size(); i++) {
+  indexes.reserve(n);
+
+  for (size_t i = 0; i < n; i++) {
     indexes.emplace_back(0);
   }
   
-  auto out = new IndexOrCondition();
-  try {
-    while (true) {
-      IndexAndCondition next;
-      for (size_t i = 0; i < collector.size(); i++) {
-        next.push_back(collector[i][indexes[i]].clone());
-      }
-      TRI_IF_FAILURE("IndexRangeBlock::cartesian") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      out->push_back(next);
-      size_t j = collector.size() - 1;
-      while (true) {
-        indexes[j]++;
-        if (indexes[j] < collector[j].size()) {
-          break;
-        }
-        indexes[j] = 0;
-        if (j == 0) { 
-          return out;
-        }
-        j--;
-      }
+  std::unique_ptr<IndexOrCondition> out(new IndexOrCondition());
+
+  while (true) {
+    IndexAndCondition next;
+    for (size_t i = 0; i < n; i++) {
+      next.emplace_back(collector[i][indexes[i]].clone());
     }
-  }
-  catch (...) {
-    delete out;
-    throw;
+
+    TRI_IF_FAILURE("IndexRangeBlock::cartesian") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    out->emplace_back(next);
+    size_t j = n - 1;
+
+    while (true) {
+      indexes[j]++;
+      if (indexes[j] < collector[j].size()) {
+        break;
+      }
+
+      indexes[j] = 0;
+      if (j == 0) { 
+        return out.release();
+      }
+      j--;
+    }
   }
 }
 
@@ -1647,7 +1775,7 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-    if (_flag) {
+    if (_flag && _condition != nullptr) {
       readPrimaryIndex(*_condition);
     }
   }
@@ -1671,6 +1799,7 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
 int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK;
   int res = ExecutionBlock::initializeCursor(items, pos);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -1865,7 +1994,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   ENTER_BLOCK;
   TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
-  
+ 
   for (size_t i = 0; i < ranges.size(); i++) {
     std::string key;
 
@@ -1930,6 +2059,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
       }
     }
   }
+
   LEAVE_BLOCK;
 }
 
@@ -2066,7 +2196,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
 
-  size_t const n = hashIndex->_paths._length;
+  size_t const n = TRI_LengthVector(&hashIndex->_paths);
 
   TRI_ASSERT(_hashIndexSearchValue._values == nullptr); // to prevent leak
   _hashIndexSearchValue._length = 0;
@@ -2086,7 +2216,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
     TRI_ASSERT(pid != 0);
    
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
-    std::string const lookFor = std::string(name);
+    std::string const lookFor(name);
 
     for (auto x : range) {
       if (x._attr == lookFor) {    //found attribute
@@ -2348,9 +2478,11 @@ EnumerateListBlock::EnumerateListBlock (ExecutionEngine* engine,
     _inVarRegId(ExecutionNode::MaxRegisterId) {
 
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
+
   if (it == en->getRegisterPlan()->varInfo.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
   }
+
   _inVarRegId = (*it).second.registerId;
   TRI_ASSERT(_inVarRegId < ExecutionNode::MaxRegisterId);
 }
@@ -2651,7 +2783,7 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
     _inRegs(),
     _outReg(ExecutionNode::MaxRegisterId) {
 
-  std::unordered_set<Variable*> inVars = _expression->variables();
+  std::unordered_set<Variable*> const& inVars = _expression->variables();
   _inVars.reserve(inVars.size());
   _inRegs.reserve(inVars.size());
 
@@ -2815,8 +2947,7 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
 AqlItemBlock* CalculationBlock::getSome (size_t atLeast,
                                          size_t atMost) {
 
-  unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(
-                               atLeast, atMost));
+  std::unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
   if (res.get() == nullptr) {
     return nullptr;
@@ -2858,6 +2989,7 @@ SubqueryBlock::~SubqueryBlock () {
 
 int SubqueryBlock::initialize () {
   int res = ExecutionBlock::initialize();
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -2871,8 +3003,7 @@ int SubqueryBlock::initialize () {
 
 AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
                                       size_t atMost) {
-  unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(
-                                                    atLeast, atMost));
+  std::unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
   if (res.get() == nullptr) {
     return nullptr;
@@ -2897,6 +3028,11 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
     }
     else {
       // initial subquery execution or subquery is not constant
+
+      // prevent accidental double-freeing in case of exception
+      subqueryResults = nullptr;
+
+      // and execute the subquery
       subqueryResults = executeSubquery(); 
       TRI_ASSERT(subqueryResults != nullptr);
 
@@ -2913,8 +3049,8 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
     } 
       
     throwIfKilled(); // check if we were aborted
-
   }
+
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
@@ -2926,6 +3062,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
 
 int SubqueryBlock::shutdown (int errorCode) {
   int res = ExecutionBlock::shutdown(errorCode);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -2939,6 +3076,7 @@ int SubqueryBlock::shutdown (int errorCode) {
 
 std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
   auto results = new std::vector<AqlItemBlock*>;
+
   try {
     do {
       std::unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
@@ -3051,7 +3189,8 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
   }
 
   // if _buffer.size() is > 0 then _pos is valid
-  vector<AqlItemBlock*> collector;
+  std::vector<AqlItemBlock*> collector;
+
   try {
     while (skipped < atLeast) {
       if (_buffer.empty()) {
@@ -3068,8 +3207,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
       if (_chosen.size() - _pos + skipped > atMost) {
         // The current block of chosen ones is too large for atMost:
         if (! skipping) {
-          unique_ptr<AqlItemBlock> more(cur->slice(_chosen,
-                                                   _pos, _pos + (atMost - skipped)));
+          std::unique_ptr<AqlItemBlock> more(cur->slice(_chosen, _pos, _pos + (atMost - skipped)));
         
           TRI_IF_FAILURE("FilterBlock::getOrSkipSome1") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -3085,7 +3223,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         // The current block fits into our result, but it is already
         // half-eaten or needs to be copied anyway:
         if (! skipping) {
-          unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
+          std::unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
           
           TRI_IF_FAILURE("FilterBlock::getOrSkipSome2") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -3105,6 +3243,8 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         // takes them all, so we can just hand it on:
         skipped += cur->size();
         if (! skipping) {
+          // if any of the following statements throw, then cur is not lost,
+          // as it is still contained in _buffer
           TRI_IF_FAILURE("FilterBlock::getOrSkipSome3") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
@@ -3280,7 +3420,7 @@ int SortedAggregateBlock::getOrSkipSome (size_t atLeast,
   }
 
   bool const isTotalAggregation = _aggregateRegisters.empty();
-  unique_ptr<AqlItemBlock> res;
+  std::unique_ptr<AqlItemBlock> res;
 
   if (_buffer.empty()) {
     if (! ExecutionBlock::getBlock(atLeast, atMost)) {
@@ -3386,7 +3526,17 @@ int SortedAggregateBlock::getOrSkipSome (size_t atLeast,
       bool hasMore = ! _buffer.empty();
 
       if (! hasMore) {
-        hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+        try {
+          TRI_IF_FAILURE("SortedAggregateBlock::hasMore") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+        }
+        catch (...) {
+          // prevent leak
+          delete cur;
+          throw;
+        }
       }
 
       if (! hasMore) {
@@ -3406,14 +3556,12 @@ int SortedAggregateBlock::getOrSkipSome (size_t atLeast,
             ++skipped;
           }
           delete cur;
-          cur = nullptr;
           _done = true;
           result = res.release();
           return TRI_ERROR_NO_ERROR;
         }
         catch (...) {
           delete cur;
-          cur = nullptr;
           throw;
         }
       }
@@ -3591,7 +3739,6 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
     GroupKeyHash(_trx, colls), 
     GroupKeyEqual(_trx, colls)
   );
-    
 
   auto buildResult = [&] (AqlItemBlock const* src) {
     auto planNode = static_cast<AggregateNode const*>(getPlanNode());
@@ -3614,12 +3761,13 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
 
     size_t row = 0;
     for (auto const& it : allGroups) {
-      auto const& keys = it.first;
+      auto& keys = it.first;
 
       TRI_ASSERT_EXPENSIVE(keys.size() == n);
       size_t i = 0;
-      for (auto const& key : keys) {
+      for (auto& key : keys) {
         result->setValue(row, _aggregateRegisters[i++].first, key);
+        const_cast<AqlValue*>(&key)->erase(); // to prevent double-freeing later
       }
     
       if (planNode->_count) {
@@ -3642,73 +3790,91 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
   std::vector<AqlValue> group;
   group.reserve(n);
 
-  while (skipped < atMost) {
-    groupValues.clear();
+  try {
+    while (skipped < atMost) {
+      groupValues.clear();
 
-    // for hashing simply re-use the aggregate registers, without cloning their contents
-    for (size_t i = 0; i < n; ++i) {
-      groupValues.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second));
-    }
-
-    // now check if we already know this group
-    auto it = allGroups.find(groupValues);
-
-    if (it == allGroups.end()) {
-      // new group
-      group.clear();
-
-      // copy the group values before they get invalidated
+      // for hashing simply re-use the aggregate registers, without cloning their contents
       for (size_t i = 0; i < n; ++i) {
-        group.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second).clone());
+        groupValues.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second));
       }
 
-      allGroups.emplace(group, 1);
-    }
-    else {
-      // existing group. simply increase the counter
-      (*it).second++;
-    }
+      // now check if we already know this group
+      auto it = allGroups.find(groupValues);
 
-    if (++_pos >= cur->size()) {
-      _buffer.pop_front();
-      _pos = 0;
+      if (it == allGroups.end()) {
+        // new group
+        group.clear();
 
-      bool hasMore = ! _buffer.empty();
+        // copy the group values before they get invalidated
+        for (size_t i = 0; i < n; ++i) {
+          group.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second).clone());
+        }
 
-      if (! hasMore) {
-        hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+        allGroups.emplace(group, 1);
+      }
+      else {
+        // existing group. simply increase the counter
+        (*it).second++;
       }
 
-      if (! hasMore) {
-        // no more input. we're done
-        try {
-          // emit last buffered group
-          if (! skipping) {
-            TRI_IF_FAILURE("HashedAggregateBlock::getOrSkipSome") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();
+        _pos = 0;
+
+        bool hasMore = ! _buffer.empty();
+
+        if (! hasMore) {
+          hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+        }
+
+        if (! hasMore) {
+          // no more input. we're done
+          try {
+            // emit last buffered group
+            if (! skipping) {
+              TRI_IF_FAILURE("HashedAggregateBlock::getOrSkipSome") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
             }
+
+            ++skipped;
+            result = buildResult(cur);
+   
+            returnBlock(cur);         
+            _done = true;
+    
+            allGroups.clear();  
+            groupValues.clear();
+
+            return TRI_ERROR_NO_ERROR;
           }
-
-          ++skipped;
-          result = buildResult(cur);
- 
-          returnBlock(cur);         
-          _done = true;
-
-          return TRI_ERROR_NO_ERROR;
+          catch (...) {
+            returnBlock(cur);         
+            throw;
+          }
         }
-        catch (...) {
-          returnBlock(cur);         
-          throw;
-        }
+
+        // hasMore
+
+        returnBlock(cur);
+        cur = _buffer.front();
       }
-
-      // hasMore
-
-      returnBlock(cur);
-      cur = _buffer.front();
     }
   }
+  catch (...) {
+    // clean up
+    for (auto& it : allGroups) {
+      for (auto& it2 : it.first) {
+        const_cast<AqlValue*>(&it2)->destroy();
+      }
+    }
+    allGroups.clear();
+    throw;
+  }
+  
+  allGroups.clear();  
+  groupValues.clear();
 
   if (! skipping) {
     TRI_ASSERT(skipped > 0);
@@ -4064,6 +4230,7 @@ int LimitBlock::getOrSkipSome (size_t atLeast,
     }
 
     ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
+
     if (skipped == 0) {
       return TRI_ERROR_NO_ERROR;
     }
@@ -4088,10 +4255,12 @@ int LimitBlock::getOrSkipSome (size_t atLeast,
         skipped = 0;
         AqlItemBlock* ignore = nullptr;
         ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, ignore, skipped);
+
         if (ignore != nullptr) {
           _engine->_stats.fullCount += static_cast<int64_t>(ignore->size());
           delete ignore;
         }
+
         if (skipped == 0) {
           break;
         }
@@ -4114,6 +4283,10 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
   if (res.get() == nullptr) {
     return nullptr;
   }
+  
+  if (_returnInheritedResults) {
+    return res.release();
+  }
 
   size_t const n = res->size();
 
@@ -4122,46 +4295,58 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
-  AqlItemBlock* stripped = new AqlItemBlock(n, 1);
 
-  try {
-    for (size_t i = 0; i < n; i++) {
-      auto a = res->getValueReference(i, registerId);
+  std::unique_ptr<AqlItemBlock> stripped(new AqlItemBlock(n, 1));
 
-      if (! a.isEmpty()) {
-        if (a.requiresDestruction()) {
-          res->steal(a);
-          try {
-            TRI_IF_FAILURE("ReturnBlock::getSome") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-            }
+  for (size_t i = 0; i < n; i++) {
+    auto a = res->getValueReference(i, registerId);
 
-            stripped->setValue(i, 0, a);
+    if (! a.isEmpty()) {
+      if (a.requiresDestruction()) {
+        res->steal(a);
+
+        try {
+          TRI_IF_FAILURE("ReturnBlock::getSome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          catch (...) {
-            a.destroy();
-            throw;
-          }
-          // If the following does not go well, we do not care, since
-          // the value is already stolen and installed in stripped
-          res->eraseValue(i, registerId);
-        }
-        else {
+
           stripped->setValue(i, 0, a);
         }
+        catch (...) {
+          a.destroy();
+          throw;
+        }
+        // If the following does not go well, we do not care, since
+        // the value is already stolen and installed in stripped
+        res->eraseValue(i, registerId);
+      }
+      else {
+        stripped->setValue(i, 0, a);
       }
     }
-  }
-  catch (...) {
-    delete stripped;
-    throw;
   }
 
   stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
   delete res.get();
   res.release();
 
-  return stripped;
+  return stripped.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make the return block return the results inherited from above, 
+/// without creating new blocks
+/// returns the id of the register the final result can be found in
+////////////////////////////////////////////////////////////////////////////////
+
+RegisterId ReturnBlock::returnInheritedResults () {
+  _returnInheritedResults = true;
+
+  auto ep = static_cast<ReturnNode const*>(getPlanNode());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
+
+  return it->second.registerId;
 }
 
 // -----------------------------------------------------------------------------
@@ -4197,7 +4382,7 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
   }
             
   // check if we're a DB server in a cluster
-  _isDBServer = triagens::arango::ServerState::instance()->isDBserver();
+  _isDBServer = triagens::arango::ServerState::instance()->isDBServer();
 
   if (_isDBServer) {
     _usesDefaultSharding = _collection->usesDefaultSharding();
@@ -4415,7 +4600,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
   TRI_doc_mptr_copy_t nptr;
   auto trxCollection = _trx->trxCollection(_collection->cid());
-
+  
+  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr);
 
   result.reset(new AqlItemBlock(count,
@@ -4481,18 +4667,17 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
                                 nullptr,
                                 ep->_options.waitForSync);
 
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) {
-          auto* node = static_cast<RemoveNode const*>(getPlanNode());
-          if (node->getOptions().ignoreDocumentNotFound) {
-            // Ignore document not found on the DBserver:
-            errorCode = TRI_ERROR_NO_ERROR;
-          }
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
+            _isDBServer &&
+            ignoreDocumentNotFound) {
+          // Ignore document not found on the DBserver:
+          errorCode = TRI_ERROR_NO_ERROR;
         }
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           result->setValue(dstRow,
-                          _outRegOld,
-                          AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
+                           _outRegOld,
+                           AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
         }
       }
         
@@ -4674,6 +4859,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   RegisterId const docRegisterId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
   
+  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
 
   TRI_doc_mptr_copy_t nptr;
@@ -4804,12 +4990,11 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) {
-          auto* node = static_cast<UpdateNode const*>(getPlanNode());
-          if (node->getOptions().ignoreDocumentNotFound) {
-            // Ignore document not found on the DBserver:
-            errorCode = TRI_ERROR_NO_ERROR;
-          }
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
+            _isDBServer &&
+            ignoreDocumentNotFound) {
+          // Ignore document not found on the DBserver:
+          errorCode = TRI_ERROR_NO_ERROR;
         }
       }
 
@@ -5099,8 +5284,10 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
-
+  
   TRI_doc_mptr_copy_t nptr;
+          
+  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   
   if (hasKeyVariable) {
@@ -5177,16 +5364,15 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
 
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) { 
-          auto* node = static_cast<ReplaceNode const*>(getPlanNode());
-          if (! node->getOptions().ignoreDocumentNotFound) {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
-          }
-          else {
+          if (ignoreDocumentNotFound) {
             // Note that this is coded here for the sake of completeness, 
             // but it will intentionally never happen, since this flag is
             // not set in the REPLACE case, because we will always use
             // a DistributeNode rather than a ScatterNode:
             errorCode = TRI_ERROR_NO_ERROR;
+          }
+          else {
+            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
           }
         }
 
@@ -6088,6 +6274,7 @@ int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
   
   int res = BlockWithClients::initializeCursor(items, pos);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -6095,6 +6282,7 @@ int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   // local clean up
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
+
   for (size_t i = 0; i < _nrClients; i++) {
     _distBuffer.emplace_back();
   }
@@ -6124,6 +6312,7 @@ int DistributeBlock::shutdown (int errorCode) {
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore: any more for any shard?
 ////////////////////////////////////////////////////////////////////////////////
@@ -6216,7 +6405,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
         }
       }
 
-      unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+      std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
       collector.emplace_back(more.get());
       more.release(); // do not delete it!
     }
@@ -6614,6 +6803,12 @@ ClusterCommResult* RemoteBlock::sendRequest (
     headers.emplace(make_pair("Shard-Id", _ownName));
   }
 
+  auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
+
+  if (currentThread != nullptr) {
+    triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+  }
+
   auto result = cc->syncRequest(clientTransactionId,
                                 coordTransactionId,
                                 _server,
@@ -6624,6 +6819,10 @@ ClusterCommResult* RemoteBlock::sendRequest (
                                 body,
                                 headers,
                                 defaultTimeOut);
+
+  if (currentThread != nullptr) {
+    triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+  }
 
   return result;
   LEAVE_BLOCK

@@ -293,7 +293,7 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
 
   TRI_InitVector(&clean, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_log_buffer_t));
 
-  for (size_t i = 0;  i < logs->_length;  ++i) {
+  for (size_t i = 0;  i < TRI_LengthVector(logs);  ++i) {
     TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(logs, i);
 
     if (search) {
@@ -317,21 +317,21 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
   TRI_json_t* timestamp = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
   TRI_json_t* text      = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "totalAmount", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) clean._length));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "totalAmount", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) TRI_LengthVector(&clean)));
 
-  size_t length = clean._length;
+  size_t length = TRI_LengthVector(&clean);
 
   if (offset >= length) {
     length = 0;
     offset = 0;
   }
   else if (offset > 0) {
-    length -= offset;
+    length -= static_cast<size_t>(offset);
   }
 
   // restrict to at most <size> elements
   if (length > size) {
-    length = size;
+    length = static_cast<size_t>(size);
   }
 
   qsort(((char*) TRI_BeginVector(&clean)) + offset * sizeof(TRI_log_buffer_t),

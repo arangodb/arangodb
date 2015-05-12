@@ -6,9 +6,11 @@ attributes are required though):
 
 * **assets**: Deliver preprocessed files
 * **author**: The author name
+* **configuration**: Define your app's configuration parameters.
 * **contributors**: An array containing objects, each represents a contributor (with **name** and optional **email**)
 * **controllers**: Map routes to FoxxControllers
 * **defaultDocument**: The default document when the application's root (`/`) is called (defaults to `"index.html"`)
+* **dependencies**: Map names to Foxx apps
 * **description**: A short description of the application (Meta information)
 * **engines**: Should be an object with **arangodb** set to the ArangoDB version your Foxx app is compatible with
 * **exports**: Map names to Foxx exports
@@ -37,6 +39,14 @@ A more complete example for a Manifest file:
   "version": "1.2.1",
   "description": "My Website with a blog and a shop",
   "thumbnail": "images/website-logo.png",
+
+  "configuration": {
+    "currency": {
+      "description": "Currency symbol to use for prices in the shop.",
+      "default": "$",
+      "type": "string"
+    }
+  },
 
   "controllers": {
     "/blog": "apps/blog.js",
@@ -69,7 +79,12 @@ A more complete example for a Manifest file:
   "tests": [
     "test/**",
     "test-*.js"
-  ]
+  ],
+
+  "dependencies": {
+    "sessions": "sessions@^1.0.0",
+    "systemUsers": "users"
+  }
 }
 ```
 
@@ -105,7 +120,75 @@ the [minimatch module](https://github.com/isaacs/minimatch), for example:
 * globstar matching: `./tests/**` will match all files and subfolders of the folder "tests"
 * brace expansion: `./tests/{a,b,c}.js` will match the files "a.js", "b.js" and "c.js"
 
- For more information on the supported patterns see the minimatch documentation.
+For more information on the supported patterns see the minimatch documentation.
+
+!SUBSECTION Configuration parameters
+
+Foxx apps can define configuration parameters to make them more re-usable.
+
+The **configuration** object maps names to configuration parameters:
+
+* The **key** is the name under whicht the parameter will be available
+  on your **applicationContext.configuration** object
+
+* The **value** is a parameter definition.
+
+The parameter definition can have the following properties:
+
+* **description**: a human readable description of the parameter.
+* **type**: the type of the configuration parameter. Default: *string*.
+* **default**: the default value of the configuration parameter.
+
+The **type** can be any of the following:
+
+* **integer** or **int**: any finite integer number.
+* **boolean** or **bool**: `true` or `false`.
+* **number**: any finite decimal or integer number.
+* **string**: any string value.
+
+If the configuration has parameters that do not specify a default value,
+you need to configure the app before it becomes active.
+In the meantime a fallback application will be mounted that responds to all
+requests with a HTTP 500 status code indicating a server-side error.
+
+The configuration parameters of a mounted app can be adjusted
+from the admin frontend by clicking the *Configuration* button in the app details
+or using the **configure** command of the **foxx-manager** command-line utility.
+
+!SUBSECTION Defining dependencies
+
+Foxx apps can depend on other Foxx apps to be installed on the same server.
+
+The **dependencies** object maps aliases to Foxx apps:
+
+* The **key** is the name under which the dependency's exports will be available
+  on your **applicationContext.dependencies** object.
+
+* The **value** is a dependency definition.
+
+The dependency definition can use any of the following formats:
+
+* `*` will allow using any app to be used to meet the dependency.
+* `sessions` or `sessions@*` will match any app with the name `sessions`
+  (such as the *sessions* app in the Foxx application store).
+* `sessions@1.0.0` will match the version `1.0.0` of any app with the name `sessions`.
+
+Instead of using a specific version number, you can also use any expression supported by
+the [semver](https://github.com/npm/node-semver) module.
+
+Currently the dependency definitions are not enforced in ArangoDB
+but this may change in a future version.
+
+If an app declares any dependencies,
+you need to fulfill its dependencies before it becomes active.
+In the meantime a fallback application will be mounted that responds to all
+requests with a HTTP 500 status code indicating a server-side error.
+
+The dependencies of a mounted app can be adjusted
+from the admin frontend by clicking the *Dependencies* button in the app details
+or using the **set-dependencies** command of the **foxx-manager** command-line utility.
+
+For more information on dependencies see the chapter on Foxx Exports.
 
 !SUBSECTION Defining controllers
 

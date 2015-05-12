@@ -268,7 +268,7 @@ static bool SkiplistHasNextIterationCallback (TRI_skiplist_iterator_t const* ite
   // if we have more intervals than the one we are currently working
   // on then of course we have a next doc, since intervals are nonempty.
   // ...........................................................................
-  if (iterator->_intervals._length - 1 > iterator->_currentInterval) {
+  if (TRI_LengthVector(&iterator->_intervals) - 1 > iterator->_currentInterval) {
     return true;
   }
 
@@ -371,7 +371,7 @@ static TRI_skiplist_index_element_t* SkiplistNextIterationCallback (
         // Note that _cursor can be nullptr here!
         break;   // we found a next one
       }
-      if (iterator->_currentInterval == (iterator->_intervals._length - 1)) {
+      if (iterator->_currentInterval == (TRI_LengthVector(&iterator->_intervals) - 1)) {
         iterator->_cursor = nullptr;  // exhausted
         return nullptr;
       }
@@ -630,8 +630,10 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
       SkiplistIndex_findHelper(skiplistIndex,shapeList, logicalOperator->_left, &leftResult);
       SkiplistIndex_findHelper(skiplistIndex,shapeList, logicalOperator->_right, &rightResult);
 
-      for (size_t i = 0; i < leftResult._length; ++i) {
-        for (size_t j = 0; j < rightResult._length; ++j) {
+      size_t nl = TRI_LengthVector(&leftResult);
+      size_t nr = TRI_LengthVector(&rightResult);
+      for (size_t i = 0; i < nl; ++i) {
+        for (size_t j = 0; j < nr; ++j) {
           auto tempLeftInterval  = static_cast<TRI_skiplist_iterator_interval_t*>(TRI_AddressVector(&leftResult, i));
           auto tempRightInterval = static_cast<TRI_skiplist_iterator_interval_t*>(TRI_AddressVector(&rightResult, j));
 
@@ -835,7 +837,7 @@ uint64_t SkiplistIndex_getNrUsed (SkiplistIndex* skiplistIndex) {
 size_t SkiplistIndex_memoryUsage (SkiplistIndex const* skiplistIndex) {
   return sizeof(SkiplistIndex) + 
          skiplistIndex->skiplist->memoryUsage() +
-         skiplistIndex->skiplist->getNrUsed() * SkiplistIndex_ElementSize(skiplistIndex);
+         static_cast<size_t>(skiplistIndex->skiplist->getNrUsed()) * SkiplistIndex_ElementSize(skiplistIndex);
 }
 
 // -----------------------------------------------------------------------------

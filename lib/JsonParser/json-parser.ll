@@ -110,7 +110,7 @@ struct jsonData {
   * strings
   * ----------------------------------------------------------------------------- */
 
-\"[ !\x23-\x5b\x5d-x7f]*\" {
+\"[ !\x23-\x5b\x5d-\x7f]*\" {
   // performance optimisation for all-ASCII strings without escape characters
   // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
   // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
@@ -282,7 +282,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
 
     // attribute name
     if (c == STRING_CONSTANT) {
-      // "complex" attribute name
+      // utf-8 attribute name
       size_t outLength;
       nameLen = yyleng - 2;
 

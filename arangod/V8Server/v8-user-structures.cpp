@@ -520,7 +520,7 @@ class KeySpace {
 
       TRI_json_t* item = static_cast<TRI_json_t*>(TRI_AtVector(&current->_value._objects, n - 1));
       // hack: decrease the vector size
-      --current->_value._objects._length;
+      TRI_SetLengthVector(&current->_value._objects, TRI_LengthVector(&current->_value._objects) - 1);
 
       v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, item);
       TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, item);
@@ -572,7 +572,7 @@ class KeySpace {
           auto element = new KeySpaceElement(keyTo.c_str(), keyTo.size(), list);
           TRI_InsertKeyAssociativePointer(&_hash, element->key, element, false);
           // hack: decrease the vector size
-          --current->_value._objects._length;
+          TRI_SetLengthVector(&current->_value._objects, TRI_LengthVector(&current->_value._objects) - 1);
         
           TRI_V8_RETURN(TRI_ObjectJson(isolate, sourceItem));
         }
@@ -589,7 +589,7 @@ class KeySpace {
       TRI_PushBack2ArrayJson(dest->json, sourceItem);
 
       // hack: decrease the vector size
-      --current->_value._objects._length;
+      TRI_SetLengthVector(&current->_value._objects, TRI_LengthVector(&current->_value._objects) - 1);
 
       TRI_V8_RETURN(TRI_ObjectJson(isolate, sourceItem));
     }
@@ -653,7 +653,8 @@ class KeySpace {
             TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
           }
 
-          size_t const n = found->json->_value._objects._length;
+          size_t const n = TRI_LengthArrayJson(found->json);
+
           if (index < 0) {
             index = static_cast<int64_t>(n) + index;
           }
@@ -689,7 +690,8 @@ class KeySpace {
           return false;
         }
 
-        size_t const n = found->json->_value._objects._length;
+        size_t const n = TRI_LengthArrayJson(found->json);
+
         if (index < 0) {
           // TODO: change error code
           return false;

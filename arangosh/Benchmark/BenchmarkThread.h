@@ -352,17 +352,17 @@ namespace triagens {
             }
           }
           else {
-            const std::map<std::string, std::string>& headers = result->getHeaderFields();
-            std::map<std::string, std::string>::const_iterator it = headers.find(_errorHeader);
+            auto const& headers = result->getHeaderFields();
+            auto it = headers.find(_errorHeader);
 
             if (it != headers.end()) {
-              size_t errorCount = (size_t) StringUtils::uint32((*it).second);
+              uint32_t errorCount =  StringUtils::uint32((*it).second);
 
               if (errorCount > 0) {
                 _operationsCounter->incFailures(errorCount);
                 _warningCount++;
                 if (_warningCount < MaxWarnings) {
-                  LOG_WARNING("Server side warning count: %lu", errorCount);
+                  LOG_WARNING("Server side warning count: %u", errorCount);
                   if (_verbose) {
                     LOG_WARNING("Server reply: %s", result->getBody().c_str());
 #ifdef TRI_ENABLE_MAINTAINER_MODE

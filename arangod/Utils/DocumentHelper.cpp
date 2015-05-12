@@ -49,7 +49,11 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string DocumentHelper::assembleDocumentId (std::string const& collectionName,
-                                                std::string const& key) {
+                                                std::string const& key,
+                                                bool urlEncode) {
+  if (urlEncode) {
+    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::urlEncode(key);
+  }
   return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
 }
 
@@ -58,9 +62,14 @@ std::string DocumentHelper::assembleDocumentId (std::string const& collectionNam
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string DocumentHelper::assembleDocumentId (std::string const& collectionName,
-                                                const TRI_voc_key_t key) {
-  if (key == 0) {
+                                                const TRI_voc_key_t key,
+                                                bool urlEncode) {
+  if (key == nullptr) {
     return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + "_unknown";
+  }
+  
+  if (urlEncode) {
+    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::urlEncode(key);
   }
 
   return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;

@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal <<EOF
 { "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "filter" : "if (vertex.name === \"Bob\" || vertex.name === \"Charlie\") {return \"exclude\";}return;"}
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -11,13 +12,13 @@ content-type: application/json; charset=utf-8
         { 
           "_id" : "persons/alice", 
           "_key" : "alice", 
-          "_rev" : "1318267043", 
+          "_rev" : "1265968181", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "persons/dave", 
           "_key" : "dave", 
-          "_rev" : "1318922403", 
+          "_rev" : "1266623541", 
           "name" : "Dave" 
         } 
       ], 
@@ -28,7 +29,7 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1318267043", 
+              "_rev" : "1265968181", 
               "name" : "Alice" 
             } 
           ] 
@@ -36,16 +37,16 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1319381155", 
-              "_key" : "1319381155", 
-              "_rev" : "1319381155", 
+              "_id" : "knows/1267082293", 
+              "_key" : "1267082293", 
+              "_rev" : "1267082293", 
               "_from" : "persons/alice", 
               "_to" : "persons/bob" 
             }, 
             { 
-              "_id" : "knows/1319774371", 
-              "_key" : "1319774371", 
-              "_rev" : "1319774371", 
+              "_id" : "knows/1267475509", 
+              "_key" : "1267475509", 
+              "_rev" : "1267475509", 
               "_from" : "persons/bob", 
               "_to" : "persons/dave" 
             } 
@@ -54,19 +55,19 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1318267043", 
+              "_rev" : "1265968181", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1318463651", 
+              "_rev" : "1266164789", 
               "name" : "Bob" 
             }, 
             { 
               "_id" : "persons/dave", 
               "_key" : "dave", 
-              "_rev" : "1318922403", 
+              "_rev" : "1266623541", 
               "name" : "Dave" 
             } 
           ] 

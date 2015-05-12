@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal <<EOF
 { "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "filter" : "if (vertex.name === \"Bob\") {return \"prune\";}return;"}
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -11,13 +12,13 @@ content-type: application/json; charset=utf-8
         { 
           "_id" : "persons/alice", 
           "_key" : "alice", 
-          "_rev" : "1322723491", 
+          "_rev" : "1270424629", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "persons/bob", 
           "_key" : "bob", 
-          "_rev" : "1322920099", 
+          "_rev" : "1270621237", 
           "name" : "Bob" 
         } 
       ], 
@@ -28,7 +29,7 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1322723491", 
+              "_rev" : "1270424629", 
               "name" : "Alice" 
             } 
           ] 
@@ -36,9 +37,9 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1323837603", 
-              "_key" : "1323837603", 
-              "_rev" : "1323837603", 
+              "_id" : "knows/1271538741", 
+              "_key" : "1271538741", 
+              "_rev" : "1271538741", 
               "_from" : "persons/alice", 
               "_to" : "persons/bob" 
             } 
@@ -47,13 +48,13 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1322723491", 
+              "_rev" : "1270424629", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1322920099", 
+              "_rev" : "1270621237", 
               "name" : "Bob" 
             } 
           ] 

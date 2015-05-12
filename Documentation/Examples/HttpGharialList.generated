@@ -1,4 +1,4 @@
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/gharial
+shell> curl --dump - http://localhost:8529/_api/gharial
 
 HTTP/1.1 200 OK
 content-type: application/json
@@ -10,7 +10,7 @@ content-type: application/json
     { 
       "_id" : "_graphs/social", 
       "_key" : "social", 
-      "_rev" : "1401759907", 
+      "_rev" : "1548821557", 
       "edgeDefinitions" : [ 
         { 
           "collection" : "relation", 
@@ -29,7 +29,7 @@ content-type: application/json
     { 
       "_id" : "_graphs/routeplanner", 
       "_key" : "routeplanner", 
-      "_rev" : "1406085283", 
+      "_rev" : "1551967285", 
       "orphanCollections" : [ ], 
       "edgeDefinitions" : [ 
         { 

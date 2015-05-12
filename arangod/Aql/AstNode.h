@@ -613,7 +613,7 @@ namespace triagens {
 /// @brief return the int value stored for a node, regardless of the node type
 ////////////////////////////////////////////////////////////////////////////////
 
-        int64_t getIntValue (bool) const {
+        inline int64_t getIntValue (bool) const {
           return value.value._int;
         }
 
@@ -751,7 +751,7 @@ namespace triagens {
 
     };
 
-    int CompareAstNodes (AstNode const*, AstNode const*);
+    int CompareAstNodes (AstNode const*, AstNode const*, bool);
   }
 }
 

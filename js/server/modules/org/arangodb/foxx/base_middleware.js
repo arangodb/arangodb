@@ -177,10 +177,10 @@ function BaseMiddleware() {
 ////////////////////////////////////////////////////////////////////////////////
 
       params: function (key) {
-        var ps = {};
-        _.extend(ps, this.urlParameters);
-        _.extend(ps, this.parameters);
-        return ps[key];
+        if (this.parameters && this.parameters.hasOwnProperty(key)) {
+          return this.parameters[key];
+        }
+        return this.urlParameters && this.urlParameters[key];
       }
     };
 
@@ -415,7 +415,7 @@ function BaseMiddleware() {
       console.log("%s, incoming request from %s: %s",
                   options.mount,
                   request.client.address,
-                  actions.stringifyRequestAddress(request));
+                  actions.stringifyRequest(request));
     }
 
     _.extend(request, requestFunctions);

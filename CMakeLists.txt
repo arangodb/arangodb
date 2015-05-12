@@ -387,7 +387,11 @@ endif ()
 ### @brief project source
 ################################################################################
 
-include_directories(${PROJECT_SOURCE_DIR} ${CUSTOM_INCLUDES})
+include_directories(${PROJECT_SOURCE_DIR})
+
+if (CUSTOM_INCLUDES)
+  include_directories(${CUSTOM_INCLUDES})
+endif()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                     COMMON MACROS
@@ -917,14 +921,14 @@ if (MSVC)
 
     install(FILES WindowsLibraries/64/icudtl.dat
             DESTINATION share/arangodb
-            RENAME icudt52l.dat)
+            RENAME icudt54l.dat)
   else()
     install(PROGRAMS WindowsLibraries/32/bin/etcd-arango.exe
             DESTINATION ${TRI_SBINDIR_INSTALL})
 
     install(FILES WindowsLibraries/32/icudtl.dat
             DESTINATION share/arangodb
-            RENAME icudt52l.dat)
+            RENAME icudt54l.dat)
   endif()
 
 endif ()

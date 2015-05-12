@@ -2,4 +2,4 @@ arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js")
 arangosh> var graph = examples.loadGraph("social");
 arangosh> var query = graph._edges({type: "married"});
 arangosh> query.vertices([{name: "Alice"}, {name: "Charly"}]).toArray();
-[ArangoError 1503: TypeError: Cannot read property 'hasOwnProperty' of null (while executing)]
+[ ]

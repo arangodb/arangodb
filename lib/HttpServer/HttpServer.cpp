@@ -455,9 +455,7 @@ bool HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
   HttpServerJob* job = dynamic_cast<HttpServerJob*>(ajob);
 
   if (job == nullptr) {
-    if (ajob != nullptr) {
-      delete ajob;
-    }
+    delete ajob;
 
     RequestStatisticsAgentSetExecuteError(handler);
 
@@ -467,22 +465,26 @@ bool HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
     return false;
   }
 
-  if (jobId != 0) {
+  if (jobId != nullptr) {
     try {
       _jobManager->initAsyncJob(job, jobId);
     }
     catch (...) {
+      RequestStatisticsAgentSetExecuteError(handler);
       LOG_WARNING("unable to initialize job");
-              
+      delete job;
       delete handler;
       return false;
     }
   }
 
-  if (_dispatcher->addJob(job) != TRI_ERROR_NO_ERROR) {
+  int error = _dispatcher->addJob(job);
+  if (error != TRI_ERROR_NO_ERROR) {
     // could not add job to job queue
+    RequestStatisticsAgentSetExecuteError(handler);
+    LOG_WARNING("unable to add job to the job queue: %s", TRI_errno_string(error));
+    delete job;
     delete handler;
-
     return false;
   }
 
@@ -773,7 +775,7 @@ void HttpServer::registerHandler (HttpHandler* handler, HttpCommTask* task) {
   handler_task_job_t element;
   element._handler = handler;
   element._task = task;
-  element._job = 0;
+  element._job = nullptr;
 
   _handlers[handler] = element;
   _task2handler[task] = element;

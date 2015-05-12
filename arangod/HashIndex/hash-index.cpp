@@ -47,7 +47,7 @@ struct TRI_hash_index_element_multi_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline size_t NumPaths (TRI_hash_index_t const* idx) {
-  return idx->_paths._length;
+  return TRI_LengthVector(&idx->_paths);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,9 +425,10 @@ static TRI_json_t* JsonHashIndex (TRI_index_t const* idx) {
   // Allocate sufficent memory for the field list
   // ..........................................................................
 
-  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * hashIndex->_paths._length) , false));
+  size_t const n = TRI_LengthVector(&hashIndex->_paths);
+  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * n) , false));
 
-  for (size_t j = 0; j < hashIndex->_paths._length; ++j) {
+  for (size_t j = 0; j < n; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&hashIndex->_paths, j));
     TRI_shape_path_t const* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
@@ -451,7 +452,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t const* idx) {
 
   TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-  for (size_t j = 0; j < hashIndex->_paths._length; ++j) {
+  for (size_t j = 0; j < n; ++j) {
     TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j], strlen(fieldList[j])));
   }
 
@@ -640,12 +641,10 @@ TRI_index_t* TRI_CreateHashIndex (TRI_document_collection_t* document,
 
   int res;
   if (unique) {
-    res = TRI_InitHashArray(&hashIndex->_hashArray,
-                            hashIndex->_paths._length);
+    res = TRI_InitHashArray(&hashIndex->_hashArray, TRI_LengthVector(&hashIndex->_paths));
   }
   else {
-    res = TRI_InitHashArrayMulti(&hashIndex->_hashArrayMulti,
-                                 hashIndex->_paths._length);
+    res = TRI_InitHashArrayMulti(&hashIndex->_hashArrayMulti, TRI_LengthVector(&hashIndex->_paths));
   }
 
   // oops, out of memory?

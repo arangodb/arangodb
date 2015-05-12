@@ -5,8 +5,8 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 ........> "direction : 'outbound', weight : 'distance'})").toArray();
 [ 
   { 
-    "germanCity/Hamburg" : 1200, 
     "germanCity/Berlin" : 1200, 
+    "germanCity/Hamburg" : 1200, 
     "germanCity/Cologne" : 700 
   } 
 ]

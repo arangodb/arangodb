@@ -51,31 +51,6 @@ A sample version to help working with the arangod rescue console may look like t
     };
     print = internal.print;
 
-Documentation
--------------
--------------
-Dependencies:
- * swagger
- * gitbook (https://github.com/GitbookIO/gitbook)
- * markdown-pp (https://github.com/triAGENS/markdown-pp)
- * cURL if you want to cut'n'paste execute the examples
-
-Where...
---------
- - js/action/api/* - markdown comments in source with execution section
- - Documentation/Books/Users/SUMMARY.md - index of all sub documentations
- - Documentation/Scripts/generateSwaggerApi.py - list of all sections to be adjusted if
-
-generate
---------
- - make swagger - on toplevel to generate the documentation interactively with the server
- - cd Documentation/Books; make - to generate the HTML documentation
-
-read / use the documentation
-----------------------------
- - file:///Documentation/Books/books/Users/index.html contains the generated documentation
- - JS-Console - Tools/API - Interactive documentation which you can play with.
-
 
 JSLint
 ------
@@ -333,6 +308,33 @@ bin/arangod /tmp/dataUT --javascript.unit-tests="js/server/tests/aql-escaping.js
 make unittest
 
 js/common/modules/loadtestrunner.js
+
+
+Documentation
+-------------
+-------------
+Dependencies:
+ * swagger
+ * gitbook (https://github.com/GitbookIO/gitbook)
+ * markdown-pp (https://github.com/triAGENS/markdown-pp)
+ * cURL if you want to cut'n'paste execute the examples
+
+Where...
+--------
+ - js/action/api/* - markdown comments in source with execution section
+ - Documentation/Books/Users/SUMMARY.md - index of all sub documentations
+ - Documentation/Scripts/generateSwaggerApi.py - list of all sections to be adjusted if
+
+generate
+--------
+ - make examples - on toplevel to generate Documentation/Examples
+ - make swagger - on toplevel to generate the documentation interactively with the server
+ - cd Documentation/Books; make - to generate the HTML documentation
+
+read / use the documentation
+----------------------------
+ - file:///Documentation/Books/books/Users/index.html contains the generated documentation
+ - JS-Console - Tools/API - Interactive documentation which you can play with.
 
 
 arangod Example tool

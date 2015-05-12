@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/range
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/range <<EOF
 { "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
@@ -7,15 +8,15 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1285302435", 
-      "_key" : "1285302435", 
-      "_rev" : "1285302435", 
+      "_id" : "products/1503929397", 
+      "_key" : "1503929397", 
+      "_rev" : "1503929397", 
       "i" : 2 
     }, 
     { 
-      "_id" : "products/1285499043", 
-      "_key" : "1285499043", 
-      "_rev" : "1285499043", 
+      "_id" : "products/1504126005", 
+      "_key" : "1504126005", 
+      "_rev" : "1504126005", 
       "i" : 3 
     } 
   ], 

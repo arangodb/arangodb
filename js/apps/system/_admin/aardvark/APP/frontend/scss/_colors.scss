@@ -5,6 +5,7 @@ $c-positive-hover: #788f3d;
 
 $c-negative: #da4f49;
 $c-negative-hover: #be342e;
+$c-negative-bg: desaturate(lighten($c-negative-hover, 40%), 50%);
 
 $c-neutral: #8f8d8c;
 $c-neutral-hover: #736b68;

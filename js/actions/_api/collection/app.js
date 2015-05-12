@@ -520,6 +520,7 @@ function get_api_collections (req, res) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Using a name:

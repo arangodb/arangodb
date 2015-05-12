@@ -639,7 +639,7 @@ bool HeartbeatThread::fetchUsers (TRI_vocbase_t* vocbase) {
     // we were able to read from the _users collection
     TRI_ASSERT(TRI_IsArrayJson(json));
 
-    if (json->_value._objects._length == 0) {
+    if (TRI_LengthArrayJson(json) == 0) {
       // no users found, now insert initial default user
       TRI_InsertInitialAuthInfo(vocbase);
     }

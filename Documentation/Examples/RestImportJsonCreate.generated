@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&createCollection=true&type=list
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&createCollection=true&type=list <<EOF
 [{"id":"12553","active":true},{"id":"4433","active":false},{"id":"55932","count":4334}]
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
@@ -8,5 +9,7 @@ content-type: application/json; charset=utf-8
   "error" : false, 
   "created" : 3, 
   "errors" : 0, 
-  "empty" : 0 
+  "empty" : 0, 
+  "updated" : 0, 
+  "ignored" : 0 
 }

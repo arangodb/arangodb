@@ -2389,6 +2389,27 @@ div .tile, div .bigtile {
   margin-right: 6px;
   position: relative;
   text-align: center; }
+  div .tile .warning-icons, div .bigtile .warning-icons {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-color: #da4f49;
+    color: white;
+    font-size: 11px;
+    height: 17px;
+    line-height: 13px;
+    padding-left: 9px;
+    padding-right: 4px; }
+    div .tile .warning-icons:before, div .bigtile .warning-icons:before {
+      content: '';
+      position: absolute;
+      right: -17px;
+      border-top: 17px solid #da4f49;
+      border-right: 17px solid transparent; }
+    div .tile .warning-icons .fa + .fa, div .bigtile .warning-icons .fa + .fa {
+      margin-left: 1px; }
+    div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
+      font-size: 8px; }
   div .tile img.icon, div .bigtile img.icon {
     height: 50px;
     width: 50px; }
@@ -2684,8 +2705,6 @@ div.resizecontainer {
     width: 0; }
   .application-detail-view section.info {
     width: 228px; }
-    .application-detail-view section.info .header_right {
-      width: 58px; }
   .application-detail-view aside.meta {
     display: none; } }
 
@@ -2851,8 +2870,6 @@ div.resizecontainer {
     width: 0; }
   .application-detail-view section.info {
     width: 468px; }
-    .application-detail-view section.info .header_right {
-      width: 298px; }
   .application-detail-view aside.meta {
     display: none; } }
 
@@ -3017,9 +3034,7 @@ div.resizecontainer {
     height: 100px;
     width: 0; }
   .application-detail-view section.info {
-    width: 508px; }
-    .application-detail-view section.info .header_right {
-      width: 338px; } }
+    width: 508px; } }
 
 @media (min-width: 970px) and (max-width: 1209px) {
   div.resizecontainer {
@@ -3179,9 +3194,7 @@ div.resizecontainer {
     height: 117.5px;
     width: 60px; }
   .application-detail-view section.info {
-    width: 748px; }
-    .application-detail-view section.info .header_right {
-      width: 578px; } }
+    width: 748px; } }
 
 @media (min-width: 1210px) and (max-width: 1449px) {
   div.resizecontainer {
@@ -3341,9 +3354,7 @@ div.resizecontainer {
     height: 135px;
     width: 65px; }
   .application-detail-view section.info {
-    width: 988px; }
-    .application-detail-view section.info .header_right {
-      width: 818px; } }
+    width: 988px; } }
 
 @media (min-width: 1450px) and (max-width: 1689px) {
   div.resizecontainer {
@@ -3503,9 +3514,7 @@ div.resizecontainer {
     height: 150px;
     width: 70px; }
   .application-detail-view section.info {
-    width: 1228px; }
-    .application-detail-view section.info .header_right {
-      width: 1058px; } }
+    width: 1228px; } }
 
 @media (min-width: 1690px) and (max-width: 1929px) {
   div.resizecontainer {
@@ -3665,9 +3674,7 @@ div.resizecontainer {
     height: 170px;
     width: 80px; }
   .application-detail-view section.info {
-    width: 1468px; }
-    .application-detail-view section.info .header_right {
-      width: 1298px; } }
+    width: 1468px; } }
 
 @media (min-width: 1930px) and (max-width: 2169px) {
   div.resizecontainer {
@@ -3827,9 +3834,7 @@ div.resizecontainer {
     height: 200px;
     width: 85px; }
   .application-detail-view section.info {
-    width: 1708px; }
-    .application-detail-view section.info .header_right {
-      width: 1538px; } }
+    width: 1708px; } }
 
 @media (min-width: 2170px) and (max-width: 2409px) {
   div.resizecontainer {
@@ -3989,9 +3994,7 @@ div.resizecontainer {
     height: 150px;
     width: 70px; }
   .application-detail-view section.info {
-    width: 1948px; }
-    .application-detail-view section.info .header_right {
-      width: 1778px; } }
+    width: 1948px; } }
 
 @media (min-width: 2410px) and (max-width: 2649px) {
   div.resizecontainer {
@@ -4151,9 +4154,7 @@ div.resizecontainer {
     height: 150px;
     width: 70px; }
   .application-detail-view section.info {
-    width: 2188px; }
-    .application-detail-view section.info .header_right {
-      width: 2018px; } }
+    width: 2188px; } }
 
 @media (min-width: 2650px) and (max-width: 2889px) {
   div.resizecontainer {
@@ -4313,9 +4314,7 @@ div.resizecontainer {
     height: 150px;
     width: 70px; }
   .application-detail-view section.info {
-    width: 2428px; }
-    .application-detail-view section.info .header_right {
-      width: 2258px; } }
+    width: 2428px; } }
 
 div.centralRow {
   margin-top: 65px;
@@ -5222,6 +5221,41 @@ pre.gv-object-view {
   margin-left: 0;
   padding-left: 0; }
 
+.loginFixedWindow {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: #DEE8D0;
+  top: 0;
+  left: 0; }
+
+.login-window {
+  background-color: #fff;
+  border-radius: 5px;
+  height: 280px;
+  left: 50%;
+  margin-left: -220px !important;
+  margin-top: -150px;
+  padding-left: 10px;
+  padding-right: 10px;
+  position: absolute;
+  top: 50%;
+  width: 400px; }
+  .login-window img {
+    margin-left: 12px; }
+  .login-window .fa {
+    float: right;
+    margin-top: -34px;
+    font-size: 14pt;
+    color: rgba(0, 0, 0, 0.4);
+    margin-right: 5px; }
+
+.login-space {
+  height: 50px; }
+
+.login-input {
+  width: 387px; }
+
 .query-toolbar, .aql-editor {
   background-color: #f0f0f0;
   border-bottom: 0;
@@ -6122,7 +6156,6 @@ input.gv-radio-button {
   float: left;
   padding: 13px 0 0; }
   .application-detail-view section.info .header {
-    float: left;
     height: 200px;
     margin-bottom: 10px;
     position: relative; }
@@ -6144,13 +6177,12 @@ input.gv-radio-button {
       .application-detail-view section.info .header .header_left input.delete, .application-detail-view section.info .header .header_left input.upgrade, .application-detail-view section.info .header .header_left input.switch-mode {
         margin-top: 13.3333333333px; }
     .application-detail-view section.info .header .header_right {
-      left: 300px;
-      padding: 5px;
-      position: relative; }
-      .application-detail-view section.info .header .header_right h3 {
+      margin-left: 300px;
+      padding: 5px; }
+      .application-detail-view section.info .header .header_right .header_line h3 {
         float: left;
         padding-right: 5px; }
-      .application-detail-view section.info .header .header_right .license, .application-detail-view section.info .header .header_right .version {
+      .application-detail-view section.info .header .header_right .header_line .license, .application-detail-view section.info .header .header_right .header_line .version {
         -moz-border-radius: 6px;
         -webkit-border-radius: 6px;
         border-radius: 6px;
@@ -6160,8 +6192,24 @@ input.gv-radio-button {
         padding: 0 8px;
         position: relative;
         top: -2px; }
-      .application-detail-view section.info .header .header_right .description {
-        clear: left; }
+      .application-detail-view section.info .header .header_right .header_line:after {
+        content: '';
+        display: table;
+        clear: both; }
+    .application-detail-view section.info .header .app-warning {
+      position: absolute;
+      top: 0;
+      right: 20px;
+      -moz-border-radius: 6px;
+      -webkit-border-radius: 6px;
+      border-radius: 6px;
+      border: 1px solid #be342e;
+      color: #da4f49;
+      background: #e0d8d8;
+      padding: 4px 8px; }
+      .application-detail-view section.info .header .app-warning h4, .application-detail-view section.info .header .app-warning p {
+        margin: 0;
+        font-size: 1em; }
   .application-detail-view section.info .swagger iframe {
     height: 600px;
     width: 100%; }

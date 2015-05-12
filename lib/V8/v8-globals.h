@@ -65,7 +65,16 @@ static const uint32_t V8DataSlot = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_ASCII_STRING(name)                                             \
-  v8::String::NewFromOneByte(isolate, (const uint8_t*) name, v8::String::kNormalString, (int) strlen(name))
+  v8::String::NewFromOneByte(isolate, (uint8_t const*) (name), v8::String::kNormalString, (int) strlen(name))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for creating a v8 symbol for the specified string
+///   implicites isolate available.
+/// @param name local string constant to source
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_ASCII_PAIR_STRING(name, length)                                             \
+  v8::String::NewFromOneByte(isolate, (uint8_t const*) (name), v8::String::kNormalString, (int) (length))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for creating a v8 string for the specified string
@@ -75,7 +84,7 @@ static const uint32_t V8DataSlot = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_STRING(name)                     \
-  v8::String::NewFromUtf8(isolate, name, v8::String::kNormalString, (int)strlen(name))
+  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, (int) strlen(name))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for creating a v8 symbol for the specified string
@@ -92,7 +101,7 @@ static const uint32_t V8DataSlot = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_STRING_UTF16(name, length)                               \
-  v8::String::NewFromTwoByte(isolate, name, v8::String::kNormalString, length)
+  v8::String::NewFromTwoByte(isolate, (name), v8::String::kNormalString, length)
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +110,7 @@ static const uint32_t V8DataSlot = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_PAIR_STRING(name, length)                                \
-  v8::String::NewFromUtf8(isolate, name, v8::String::kNormalString, (int) length)
+  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, (int) length)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for current v8 globals and scope

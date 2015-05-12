@@ -1076,6 +1076,16 @@ void TRI_IterateShapeDataArray (struct TRI_shaper_s*,
                                 void*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over a shaped json list, using a callback function
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_IterateShapeDataList (struct TRI_shaper_s*,
+                               TRI_shape_t const*,
+                               char const*,
+                               bool (*)(struct TRI_shaper_s*, TRI_shape_t const*, char const*, uint64_t, void*),
+                               void*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a list of TRI_shape_value_t for debugging
 ////////////////////////////////////////////////////////////////////////////////
 

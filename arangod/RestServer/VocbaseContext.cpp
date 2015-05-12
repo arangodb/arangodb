@@ -29,6 +29,7 @@
 
 #include "VocbaseContext.h"
 
+#include "Basics/MutexLocker.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -41,6 +42,63 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sid lock
+////////////////////////////////////////////////////////////////////////////////
+
+static Mutex SidLock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sid cache
+////////////////////////////////////////////////////////////////////////////////
+
+static unordered_map<string, pair<string, uint64_t>> SidCache;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a sid
+////////////////////////////////////////////////////////////////////////////////
+
+void VocbaseContext::createSid (const string& sid, const string& username) {
+  MUTEX_LOCKER(SidLock);
+
+  uint64_t t = static_cast<uint64_t>(TRI_microtime() * 1000.0);
+  SidCache[sid] = make_pair(username, t);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears a sid
+////////////////////////////////////////////////////////////////////////////////
+
+void VocbaseContext::clearSid (const string& sid) {
+  MUTEX_LOCKER(SidLock);
+
+  SidCache.erase(sid);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the last access time
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t VocbaseContext::accessSid (const string& sid) {
+  MUTEX_LOCKER(SidLock);
+
+  auto it = SidCache.find(sid);
+
+  if (it == SidCache.end()) {
+    return 0;
+  }
+
+  return it->second.second;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class VocbaseContext
@@ -82,7 +140,7 @@ VocbaseContext::~VocbaseContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VocbaseContext::useClusterAuthentication () const {
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     return true;
   }
 
@@ -100,7 +158,7 @@ bool VocbaseContext::useClusterAuthentication () const {
 /// @brief return authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* VocbaseContext::getRealm () const {
+const char* VocbaseContext::getRealm () const {
   if (_vocbase == nullptr) {
     return nullptr;
   }
@@ -148,15 +206,42 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     }
   }
 
-  if (TRI_IsPrefixString(path, "/_open/")) {
+  if (TRI_IsPrefixString(path, "/_open/") || TRI_IsPrefixString(path, "/_admin/aardvark/") || TRI_EqualString(path, "/")) {
     return HttpResponse::OK;
   }
 
+  // .............................................................................
   // authentication required
-  // -----------------------
+  // .............................................................................
 
   bool found;
-  char const* auth = _request->header("authorization", found);
+  char cn[4096];
+
+  cn[0] = '\0';
+  strncat(cn, "arango_sid_", 11);
+  strncat(cn + 11, _vocbase->_name, sizeof(cn) - 12);
+
+  // extract the sid
+  const char* sid = _request->cookieValue(cn, found);
+
+  if (found) {
+    MUTEX_LOCKER(SidLock);
+
+    string name = _vocbase->_name;
+    name += "/";
+    name += sid;
+    
+    auto it = SidCache.find(name);
+
+    if (it != SidCache.end()) {
+      _request->setUser(it->second.first);
+      uint64_t t = static_cast<uint64_t>(TRI_microtime() * 1000.0);
+      it->second.second = t;
+      return HttpResponse::OK;
+    }
+  }
+
+  const char* auth = _request->header("authorization", found);
 
   if (! found || ! TRI_CaseEqualString2(auth, "basic ", 6)) {
     return HttpResponse::UNAUTHORIZED;

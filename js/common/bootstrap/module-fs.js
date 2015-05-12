@@ -328,8 +328,10 @@ else {
 /// @brief safe-join
 ////////////////////////////////////////////////////////////////////////////////
 
+var safeJoin;
+
 if (isWindows) {
-  exports.safeJoin = function (base, relative) {
+  safeJoin = function (base, relative) {
     base = normalize(base + "/");
     var path = normalizeArray(relative.split(/[\\\/]+/), false).join("/");
 
@@ -337,14 +339,22 @@ if (isWindows) {
   };
 }
 else {
-  exports.safeJoin = function (base, relative) {
+  safeJoin = function (base, relative) {
     base = normalize(base + "/");
     var path = normalizeArray(relative.split("/"), false).join("/");
-    base = normalize(base + "/");
 
     return base + path;
   };
 }
+
+exports.safeJoin = function () {
+  var args = Array.prototype.slice.call(arguments);
+  var path = safeJoin(args.shift(), args.shift());
+  while (args.length) {
+    path = safeJoin(path, args.shift());
+  }
+  return path;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list

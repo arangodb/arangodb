@@ -574,8 +574,9 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
     // note: "fields" is not mandatory for all index types
 
     // copy all field names (attributes)
-    for (size_t i = 0; i < value->_value._objects._length; ++i) {
-      TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&value->_value._objects, i));
+    size_t const n = TRI_LengthArrayJson(value);
+    for (size_t i = 0; i < n; ++i) {
+      auto v = static_cast<TRI_json_t const*>(TRI_AtVector(&value->_value._objects, i));
 
       if (TRI_IsStringJson(v)) {
         TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
@@ -583,7 +584,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
     }
 
     // check if copying was successful
-    if (value->_value._objects._length != TRI_LengthVectorPointer(&attributes)) {
+    if (n != TRI_LengthVectorPointer(&attributes)) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
   }
@@ -877,7 +878,7 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
 
         if (TRI_IsArrayJson(flds) && c->numberOfShards() > 1) {
           vector<string> const& shardKeys = c->shardKeys();
-          size_t const n = flds->_value._objects._length;
+          size_t const n = TRI_LengthArrayJson(flds);
 
           if (shardKeys.size() != n) {
             res = TRI_ERROR_CLUSTER_UNSUPPORTED;
@@ -1396,8 +1397,9 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
   TRI_json_t const* json = (*c).getIndexes();
   if (TRI_IsArrayJson(json)) {
     uint32_t j = 0;
+    size_t const n = TRI_LengthArrayJson(json);
 
-    for (size_t i = 0;  i < json->_value._objects._length; ++i) {
+    for (size_t i = 0;  i < n; ++i) {
       TRI_json_t const* v = TRI_LookupArrayJson(json, i);
 
       if (v != nullptr) {

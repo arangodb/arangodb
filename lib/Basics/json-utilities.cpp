@@ -47,8 +47,9 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
   if (result == nullptr) {
     return nullptr;
   }
+  
+  size_t const n = TRI_LengthVector(&rhs->_value._objects);
 
-  size_t const n = rhs->_value._objects._length;
   for (size_t i = 0; i < n; i += 2) {
     // enumerate all the replacement values
     auto key = static_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
@@ -141,15 +142,16 @@ static TRI_json_t* GetMergedKeyList (TRI_json_t const* lhs,
 
   TRI_ASSERT(lhs->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(rhs->_type == TRI_JSON_OBJECT);
+  
+  n = TRI_LengthVector(&lhs->_value._objects) + TRI_LengthVector(&rhs->_value._objects);
 
-  keys = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE,
-                             lhs->_value._objects._length + rhs->_value._objects._length);
+  keys = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, n);
 
   if (keys == nullptr) {
     return nullptr;
   }
 
-  n = lhs->_value._objects._length;
+  n = TRI_LengthVector(&lhs->_value._objects);
 
   for (i = 0 ; i < n; i += 2) {
     auto key = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&lhs->_value._objects, i));
@@ -159,7 +161,7 @@ static TRI_json_t* GetMergedKeyList (TRI_json_t const* lhs,
   }
 
 
-  n = rhs->_value._objects._length;
+  n = TRI_LengthVector(&rhs->_value._objects);
 
   for (i = 0 ; i < n; i += 2) {
     auto key = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
@@ -266,8 +268,8 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
     }
 
     case TRI_JSON_ARRAY: {
-      size_t const nl = lhs->_value._objects._length;
-      size_t const nr = rhs->_value._objects._length;
+      size_t const nl = TRI_LengthVector(&lhs->_value._objects);
+      size_t const nr = TRI_LengthVector(&rhs->_value._objects);
       size_t n;
 
       if (nl > nr) {
@@ -298,7 +300,7 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
       TRI_json_t* keys = GetMergedKeyList(lhs, rhs);
 
       if (keys != nullptr) {
-        size_t const n = keys->_value._objects._length;
+        size_t const n = TRI_LengthVector(&keys->_value._objects);
 
         for (size_t i = 0; i < n; ++i) {
           auto keyElement = static_cast<TRI_json_t const*>(TRI_AtVector(&keys->_value._objects, i));
@@ -345,7 +347,7 @@ bool TRI_CheckInArrayJson (TRI_json_t const* search,
   TRI_ASSERT(list->_type == TRI_JSON_ARRAY);
 
   // iterate over list
-  size_t const n = list->_value._objects._length;
+  size_t const n = TRI_LengthVector(&list->_value._objects);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* listValue = static_cast<TRI_json_t const*>(TRI_AtVector(&list->_value._objects, i));
@@ -383,7 +385,7 @@ TRI_json_t* TRI_BetweenArrayJson (TRI_json_t const* list,
     return nullptr;
   }
 
-  n = list->_value._objects._length;
+  n = TRI_LengthVector(&list->_value._objects);
 
   for (i = 0; i < n; ++i) {
     auto p = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list->_value._objects, i));
@@ -433,7 +435,7 @@ TRI_json_t* TRI_UniquifyArrayJson (TRI_json_t const* list) {
     return nullptr;
   }
 
-  n = list->_value._objects._length;
+  n = TRI_LengthVector(&list->_value._objects);
 
   for (i = 0; i < n; ++i) {
     auto p = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list->_value._objects, i));
@@ -467,8 +469,8 @@ TRI_json_t* TRI_UnionizeListsJson (TRI_json_t const* list1,
   TRI_ASSERT(list2);
   TRI_ASSERT(list2->_type == TRI_JSON_ARRAY);
 
-  n1 = list1->_value._objects._length;
-  n2 = list2->_value._objects._length;
+  n1 = TRI_LengthVector(&list1->_value._objects);
+  n2 = TRI_LengthVector(&list2->_value._objects);
 
   // special cases for empty lists
   if (n1 == 0 && ! unique) {
@@ -580,8 +582,8 @@ TRI_json_t* TRI_IntersectListsJson (TRI_json_t const* list1,
   TRI_ASSERT(list2);
   TRI_ASSERT(list2->_type == TRI_JSON_ARRAY);
 
-  n1 = list1->_value._objects._length;
-  n2 = list2->_value._objects._length;
+  n1 = TRI_LengthVector(&list1->_value._objects);
+  n2 = TRI_LengthVector(&list2->_value._objects);
 
   // create result list
   result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, n1 > n2 ? n1 : n2);
@@ -640,10 +642,12 @@ TRI_json_t* TRI_IntersectListsJson (TRI_json_t const* list1,
 TRI_json_t* TRI_SortArrayJson (TRI_json_t* list) {
   TRI_ASSERT(list != nullptr);
   TRI_ASSERT(list->_type == TRI_JSON_ARRAY);
+    
+  size_t const n = TRI_LengthVector(&list->_value._objects);
 
-  if (list->_value._objects._length > 1) {
+  if (n > 1) {
     // only sort if more than one value in list
-    qsort(TRI_BeginVector(&list->_value._objects), list->_value._objects._length, sizeof(TRI_json_t), &CompareJson);
+    qsort(TRI_BeginVector(&list->_value._objects), n, sizeof(TRI_json_t), &CompareJson);
   }
 
   return list;
@@ -655,7 +659,7 @@ TRI_json_t* TRI_SortArrayJson (TRI_json_t* list) {
 
 bool TRI_HasDuplicateKeyJson (TRI_json_t const* object) {
   if (object && object->_type == TRI_JSON_OBJECT) {
-    const size_t n = object->_value._objects._length;
+    size_t const n = TRI_LengthVector(&object->_value._objects);
     const bool hasMultipleElements = (n > 2);
 
     // if we don't have attributes, we do not need to check for duplicates
@@ -795,7 +799,7 @@ static uint64_t HashJsonRecursive (uint64_t hash,
 
     case TRI_JSON_OBJECT: {
       hash = HashBlock(hash, "array", 5);   // strlen("array")
-      size_t const n = object->_value._objects._length;
+      size_t const n = TRI_LengthVector(&object->_value._objects);
       uint64_t tmphash = hash;
       for (size_t i = 0;  i < n;  i += 2) {
         auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
@@ -809,7 +813,7 @@ static uint64_t HashJsonRecursive (uint64_t hash,
 
     case TRI_JSON_ARRAY: {
       hash = HashBlock(hash, "list", 4);   // strlen("list")
-      size_t const n = object->_value._objects._length;
+      size_t const n = TRI_LengthVector(&object->_value._objects);
       for (size_t i = 0;  i < n;  ++i) {
         auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
         hash = HashJsonRecursive(hash, subjson);
@@ -906,7 +910,7 @@ static uint64_t FastHashJsonRecursive (uint64_t hash,
 
     case TRI_JSON_OBJECT: {
       hash = fasthash64(static_cast<const void*>("object"), 6, hash);
-      size_t const n = object->_value._objects._length;
+      size_t const n = TRI_LengthVector(&object->_value._objects);
       uint64_t tmphash = hash;
       for (size_t i = 0;  i < n;  i += 2) {
         auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
@@ -920,7 +924,7 @@ static uint64_t FastHashJsonRecursive (uint64_t hash,
 
     case TRI_JSON_ARRAY: {
       hash = fasthash64(static_cast<const void*>("array"), 5, hash);
-      size_t const n = object->_value._objects._length;
+      size_t const n = TRI_LengthVector(&object->_value._objects);
       for (size_t i = 0;  i < n;  ++i) {
         auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
         hash = FastHashJsonRecursive(hash, subjson);

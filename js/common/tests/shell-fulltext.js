@@ -433,6 +433,75 @@ function fulltextQuerySuite () {
     }, 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief object attributes
+////////////////////////////////////////////////////////////////////////////////
+
+    testObjectAttributes: function () {
+      var texts = [
+        { de: "das ist müll", en: "this is rubbish" },
+        { de: "das ist abfall", en: "this is trash" },
+        { whatever: "this is a sentence, with whatever meaning", foobar: "readers should ignore this text" },
+        { one: "value1", two: "value2" },
+        { a: "duplicate", b: "duplicate", c: "duplicate" },
+        { value: [ "this is ignored" ] },
+        { value: { en: "rubbish", de: "müll" } },
+        "foobarbaz",
+        "müllmann",
+        "rubbish bin"
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      assertEqual(2, collection.fulltext("text", "rubbish", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "trash", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "müll", idx).toArray().length);
+      assertEqual(2, collection.fulltext("text", "prefix:müll", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "foobarbaz", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "ignore", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "duplicate", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "sentence", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "ignored", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "pardauz", idx).toArray().length);
+    }, 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief array attributes
+////////////////////////////////////////////////////////////////////////////////
+
+    testArrayAttributes: function () {
+      var texts = [
+        [ "das ist müll", "this is rubbish" ],
+        [ "das ist abfall", "this is trash" ],
+        [ ],
+        [ "this is a sentence, with whatever meaning", "readers should ignore this text" ],
+        [ "value1", "value2" ],
+        [ "duplicate", "duplicate", "duplicate" ],
+        [ { value: [ "this is ignored" ] } ],
+        [ { value: { en: "rubbish", de: "müll" } } ],
+        [ "foobarbaz" ],
+        [ "müllmann" ],
+        [ "rubbish bin" ]
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      assertEqual(2, collection.fulltext("text", "rubbish", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "trash", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "müll", idx).toArray().length);
+      assertEqual(2, collection.fulltext("text", "prefix:müll", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "foobarbaz", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "ignore", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "duplicate", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "sentence", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "ignored", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "pardauz", idx).toArray().length);
+    }, 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief logical operators
 ////////////////////////////////////////////////////////////////////////////////
 

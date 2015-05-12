@@ -458,8 +458,10 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone,
 void TRI_CopyPathVector (TRI_vector_t* dst, TRI_vector_t* src) {
   TRI_InitVector(dst, TRI_CORE_MEM_ZONE, sizeof(TRI_shape_pid_t));
 
-  for (size_t j = 0;  j < src->_length;  ++j) {
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(src,j)));
+  size_t const n = TRI_LengthVector(src);
+
+  for (size_t j = 0;  j < n;  ++j) {
+    TRI_shape_pid_t shape = *((TRI_shape_pid_t*) (TRI_AtVector(src, j)));
 
     TRI_PushBackVector(dst, &shape);
   }
@@ -498,7 +500,7 @@ static int RemovePrimary (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t MemoryPrimary (TRI_index_t const* idx) {
-  return idx->_collection->_primaryIndex._nrAlloc * sizeof(void*);
+  return static_cast<size_t>(idx->_collection->_primaryIndex._nrAlloc) * sizeof(void*);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1101,7 +1103,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
       TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*) slOperator;
-      relationOperator->_numFields = relationOperator->_parameters->_value._objects._length;
+      relationOperator->_numFields = TRI_LengthVector(&relationOperator->_parameters->_value._objects);
       relationOperator->_fields = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false));
 
       if (relationOperator->_fields != nullptr) {
@@ -1224,7 +1226,9 @@ static int SkiplistIndexHelper (TRI_skiplist_index_t const* skiplistIndex,
 
   auto subObjects = SkiplistIndex_Subobjects(skiplistElement);
 
-  for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
+  size_t const n = TRI_LengthVector(&skiplistIndex->_paths);
+
+  for (size_t j = 0; j < n; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
 
     // ..........................................................................
@@ -1366,14 +1370,16 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   // ..........................................................................
   // Allocate sufficent memory for the field list
   // ..........................................................................
+  
+  size_t const n = TRI_LengthVector(&skiplistIndex->_paths);
 
-  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * skiplistIndex->_paths._length) , false));
+  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * n) , false));
 
   // ..........................................................................
   // Convert the attributes (field list of the skiplist index) into strings
   // ..........................................................................
 
-  for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
+  for (size_t j = 0; j < n; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
     TRI_shape_path_t const* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
@@ -1392,7 +1398,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
   TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-  for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
+  for (size_t j = 0; j < n; ++j) {
     TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j], strlen(fieldList[j])));
   }
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
@@ -1487,7 +1493,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
   TRI_CopyDataFromVectorPointerVectorString(TRI_CORE_MEM_ZONE, &idx->_fields, fields);
 
   skiplistIndex->_skiplistIndex = SkiplistIndex_new(document,
-                                                    paths->_length,
+                                                    TRI_LengthVector(paths),
                                                     unique);
 
   if (skiplistIndex->_skiplistIndex == nullptr) {
@@ -1542,6 +1548,73 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extraction context
+////////////////////////////////////////////////////////////////////////////////
+
+struct TextExtractorContext {
+  std::vector<std::pair<char const*, size_t>>* _positions;
+  TRI_shaper_t*                                _shaper;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief walk over an array shape and extract the string values
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ArrayTextExtractor (TRI_shaper_t* shaper, 
+                                TRI_shape_t const* shape, 
+                                char const*, 
+                                char const* shapedJson, 
+                                uint64_t length, 
+                                void* data) {
+  char* text;
+  size_t textLength;
+  bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
+
+  if (ok) {
+    // add string value found
+    try {
+      static_cast<TextExtractorContext*>(data)->_positions->emplace_back(text, textLength);
+    }
+    catch (...) {
+    }
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief walk over a list shape and extract the string values
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ListTextExtractor (TRI_shaper_t* shaper, 
+                               TRI_shape_t const* shape, 
+                               char const* shapedJson, 
+                               uint64_t length, 
+                               void* data) {
+  if (shape->_type == TRI_SHAPE_ARRAY) {
+    // a sub-object
+    TRI_IterateShapeDataArray(static_cast<TextExtractorContext*>(data)->_shaper, shape, shapedJson, ArrayTextExtractor, data);
+  }
+  else if (shape->_type == TRI_SHAPE_SHORT_STRING ||
+           shape->_type == TRI_SHAPE_LONG_STRING) {
+
+    char* text;
+    size_t textLength;
+    bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
+
+    if (ok) {
+      // add string value found
+      try {
+        static_cast<TextExtractorContext*>(data)->_positions->emplace_back(text, textLength);
+      }
+      catch (...) {
+      }
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
 ////////////////////////////////////////////////////////////////////////////////
@@ -1553,30 +1626,69 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   TRI_shaped_json_t shaped;
   TRI_shaped_json_t shapedJson;
   TRI_shape_t const* shape;
-  char* text;
-  size_t textLength;
   TRI_vector_string_t* words;
   bool ok;
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   // extract the shape
+  TRI_shaper_t* shaper = fulltextIndex->base._collection->getShaper();
+
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-  ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->getShaper(), &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  ok = TRI_ExtractShapedJsonVocShaper(shaper, &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (! ok || shape == nullptr) {
     return nullptr;
   }
 
   // extract the string value for the indexed attribute
-  ok = TRI_StringValueShapedJson(shape, shapedJson._data.data, &text, &textLength);
+  if (shape->_type == TRI_SHAPE_SHORT_STRING || shape->_type == TRI_SHAPE_LONG_STRING) {
+    char* text;
+    size_t textLength;
+    ok = TRI_StringValueShapedJson(shape, shapedJson._data.data, &text, &textLength);
 
-  if (! ok) {
-    return nullptr;
+    if (! ok) {
+      return nullptr;
+    }
+
+    // parse the document text
+    words = TRI_get_words(text, textLength, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true);
   }
-
-  // parse the document text
-  words = TRI_get_words(text, textLength, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+  else if (shape->_type == TRI_SHAPE_ARRAY) {
+    std::vector<std::pair<char const*, size_t>> values;
+    TextExtractorContext context{ &values, shaper };
+    TRI_IterateShapeDataArray(shaper, shape, shapedJson._data.data, ArrayTextExtractor, &context);
+  
+    words = nullptr; 
+    for (auto const& it : values) {
+      if (! TRI_get_words(words, it.first, it.second, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
+        if (words != nullptr) {
+          TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+        }
+        return nullptr;
+      }
+    }
+  }
+  else if (shape->_type == TRI_SHAPE_LIST ||
+           shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST ||
+           shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
+    std::vector<std::pair<char const*, size_t>> values;
+    TextExtractorContext context{ &values, shaper };
+    TRI_IterateShapeDataList(shaper, shape, shapedJson._data.data, ListTextExtractor, &context);
+  
+    words = nullptr; 
+    for (auto const& it : values) {
+      if (! TRI_get_words(words, it.first, it.second, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
+        if (words != nullptr) {
+          TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+        }
+        return nullptr;
+      }
+    }
+  }
+  else {
+    words = nullptr;
+  }
 
   if (words == nullptr) {
     return nullptr;
@@ -1884,20 +1996,24 @@ bool IndexComparator (TRI_json_t const* lhs,
 
   if (TRI_IsArrayJson(value)) {
     if (type == TRI_IDX_TYPE_HASH_INDEX) {
+      size_t const nv = TRI_LengthArrayJson(value);
+ 
       // compare fields in arbitrary order
       TRI_json_t const* r = TRI_LookupObjectJson(rhs, "fields");
 
       if (! TRI_IsArrayJson(r) ||
-          value->_value._objects._length != r->_value._objects._length) {
+          nv != TRI_LengthArrayJson(r)) {
         return false;
       }
 
-      for (size_t i = 0; i < value->_value._objects._length; ++i) {
+      size_t const nr = TRI_LengthArrayJson(r);
+
+      for (size_t i = 0; i < nv; ++i) {
         TRI_json_t const* v = TRI_LookupArrayJson(value, i);
 
         bool found = false;
 
-        for (size_t j = 0; j < r->_value._objects._length; ++j) {
+        for (size_t j = 0; j < nr; ++j) {
           if (TRI_CheckSameValueJson(v, TRI_LookupArrayJson(r, j))) {
             found = true;
             break;

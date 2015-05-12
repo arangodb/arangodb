@@ -1,14 +1,15 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/last
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/last <<EOF
 { "collection": "products" }
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
   "result" : { 
-    "_id" : "products/1284319395", 
-    "_key" : "1284319395", 
-    "_rev" : "1284319395", 
+    "_id" : "products/1502946357", 
+    "_key" : "1502946357", 
+    "_rev" : "1502946357", 
     "i" : 1, 
     "a" : { 
       "k" : 2, 

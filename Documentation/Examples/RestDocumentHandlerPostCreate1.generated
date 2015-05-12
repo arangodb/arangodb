@@ -1,14 +1,15 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products <<EOF
 { "Hello": "World" }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
-etag: "1511073955"
-location: /_db/_system/_api/document/products/1511073955
+etag: "1674257461"
+location: /_db/_system/_api/document/products/1674257461
 
 { 
   "error" : false, 
-  "_id" : "products/1511073955", 
-  "_rev" : "1511073955", 
-  "_key" : "1511073955" 
+  "_id" : "products/1674257461", 
+  "_rev" : "1674257461", 
+  "_key" : "1674257461" 
 }

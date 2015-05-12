@@ -138,6 +138,7 @@ var ERRORS = require("internal").errors;
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// A plan with some optimizer rules applied:
@@ -158,6 +159,7 @@ var ERRORS = require("internal").errors;
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Using some options:
@@ -185,6 +187,7 @@ var ERRORS = require("internal").errors;
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Returning all plans:
@@ -207,6 +210,7 @@ var ERRORS = require("internal").errors;
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// A query that produces a warning:
@@ -240,6 +244,7 @@ var ERRORS = require("internal").errors;
 ///     assert(response.code === 400);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// The data returned in the *plan* attribute of the result contains one
@@ -262,6 +267,7 @@ var ERRORS = require("internal").errors;
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

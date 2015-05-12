@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
 {"query":"FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a + b == 3 RETURN i","count":true,"options":{"maxPlans":1,"optimizer":{"rules":["-all","+remove-unnecessary-filters"]}}}
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8

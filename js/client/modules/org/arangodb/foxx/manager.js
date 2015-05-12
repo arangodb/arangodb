@@ -148,28 +148,31 @@
 
     /*jshint maxlen: 200 */
     var commands = {
-      "setup"        : "executes the setup script",
-      "install"      : "installs a foxx application identified by the given information to the given mountpoint",
-      "tests"        : "runs the tests of a foxx application mounted at the given mountpoint",
-      "replace"      : ["replaces an installed Foxx application",
+      "available"       : "lists all Foxx applications available in the local repository",
+      "configuration"   : "request the configuration information for the given mountpoint",
+      "configure"       : "sets the configuration for the given mountpoint",
+      "dependencies"    : "request the dependencies information for the given mountpoint",
+      "development"     : "activates development mode for the given mountpoint",
+      "help"            : "shows this help",
+      "info"            : "displays information about a Foxx application",
+      "install"         : "installs a foxx application identified by the given information to the given mountpoint",
+      "installed"       : "alias for the 'list' command",
+      "list"            : "lists all installed Foxx applications",
+      "production"      : "activates production mode for the given mountpoint",
+      "replace"         : ["replaces an installed Foxx application",
                            "WARNING: this action will remove application data if the application implements teardown!" ],
-      "upgrade"      : ["upgrades an installed Foxx application",
-                           "Note: this action will not call setup or teardown" ],
-      "teardown"     : [ "executes the teardown script",
+      "script"          : "runs the given script of a foxx app mounted at the given mountpoint",
+      "search"          : "searches the local foxx-apps repository",
+      "set-dependencies": "sets the dependencies for the given mountpoint",
+      "setup"           : "executes the setup script",
+      "teardown"        : [ "executes the teardown script",
                              "WARNING: this action will remove application data if the application implements teardown!" ],
-      "uninstall"    : ["uninstalls a Foxx application and calls its teardown method",
+      "tests"           : "runs the tests of a foxx application mounted at the given mountpoint",
+      "uninstall"       : ["uninstalls a Foxx application and calls its teardown method",
                          "WARNING: this will remove all data and code of the application!" ],
-      "list"         : "lists all installed Foxx applications",
-      "installed"    : "alias for the 'list' command",
-      "available"    : "lists all Foxx applications available in the local repository",
-      "info"         : "displays information about a Foxx application",
-      "search"       : "searches the local foxx-apps repository",
-      "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
-      "help"         : "shows this help",
-      "development"  : "activates development mode for the given mountpoint",
-      "production"   : "activates production mode for the given mountpoint",
-      "configuration": "request the configuration information for the given mountpoint",
-      "configure"    : "sets the configuration for the given mountpoint",
+      "update"          : "updates the local foxx-apps repository with data from the central foxx-apps repository",
+      "upgrade"         : ["upgrades an installed Foxx application",
+                           "Note: this action will not call setup or teardown" ]
     };
 
     arangodb.print("\nThe following commands are available:\n");
@@ -199,53 +202,27 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up a Foxx application
+/// @brief runs a script on a Foxx application
 ///
 /// Input:
+/// * name: the name of the script
 /// * mount: the mount path starting with a "/"
 ///
 /// Output:
 /// -
 ////////////////////////////////////////////////////////////////////////////////
-  var setup = function(mount) {
+  var script = function(name, mount, options) {
     checkParameter(
-      "setup(<mount>)",
-      [ [ "Mount path", "string" ] ],
-      [ mount ] );
+      "script(<name>, <mount>, [<options>])",
+      [ [ "Script name", "string" ], [ "Mount path", "string" ] ],
+      [ name, mount ] );
     var res;
     var req = {
+      name: name,
       mount: mount,
+      options: options
     };
-    res = arango.POST("/_admin/foxx/setup", JSON.stringify(req));
-    arangosh.checkRequestResult(res);
-    return {
-      name: res.name,
-      version: res.version,
-      mount: res.mount
-    };
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a Foxx application
-///
-/// Input:
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
-////////////////////////////////////////////////////////////////////////////////
-
-  var teardown = function(mount) {
-    checkParameter(
-      "teardown(<mount>)",
-      [ [ "Mount path", "string" ] ],
-      [ mount ] );
-    var res;
-    var req = {
-      mount: mount,
-    };
-
-    res = arango.POST("/_admin/foxx/teardown", JSON.stringify(req));
+    res = arango.POST("/_admin/foxx/script", JSON.stringify(req));
     arangosh.checkRequestResult(res);
     return {
       name: res.name,
@@ -256,7 +233,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Zips and copies a local app to the server.
-///
 ////////////////////////////////////////////////////////////////////////////////
 
   var moveAppToServer = function(appInfo) {
@@ -507,24 +483,63 @@
     return res;
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Configure the dependencies of the app at the mountpoint
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var setDependencies = function(mount, options) {
+    checkParameter(
+      "setDependencies(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    utils.validateMount(mount);
+    var req = {
+      mount: mount,
+      options: options
+    };
+    var res = arango.POST("/_admin/foxx/set-dependencies", JSON.stringify(req));
+    arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the dependencies of the app at the given mountpoint
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var dependencies = function(mount) {
+    checkParameter(
+      "dependencies(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    utils.validateMount(mount);
+    var req = {
+      mount: mount
+    };
+    var res = arango.POST("/_admin/foxx/dependencies", JSON.stringify(req));
+    arangosh.checkRequestResult(res);
+    return res;
+  };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a Foxx application's tests
-///
-/// Input:
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
 ////////////////////////////////////////////////////////////////////////////////
 
-  var runTests = function (mount, options) {
+  var tests = function (mount, options) {
     checkParameter(
-      "runTests(<mount>, [<options>])",
+      "tests(<mount>, [<options>])",
       [ [ "Mount path", "string" ] ],
       [ mount ]
     );
-
-    var res = arango.POST("/_admin/aardvark/foxxes/tests?mount=" + encodeURIComponent(mount), JSON.stringify(options));
+    utils.validateMount(mount);
+    var req = {
+      mount: mount,
+      options: options
+    };
+    var res = arango.POST("/_admin/foxx/tests", JSON.stringify(req));
     arangosh.checkRequestResult(res);
     return res;
   };
@@ -549,14 +564,18 @@
     try {
       switch (type) {
         case "setup":
-          setup(args[1]);
+          script("setup", args[1]);
           break;
         case "teardown":
-          teardown(args[1]);
+          script("teardown", args[1]);
+          break;
+        case "script":
+          options = extractOptions(args);
+          script(args[2], args[1], options);
           break;
         case "tests":
           options = extractOptions(args);
-          res = runTests(args[1], options);
+          res = tests(args[1], options);
           printf(JSON.stringify(res, null, 2) + "\n");
           break;
         case "install":
@@ -651,6 +670,18 @@
           res = configuration(args[1]);
           printf("Configuration options:\n%s\n", JSON.stringify(res, undefined, 2));
           break;
+        case "set-dependencies":
+          options = extractOptions(args);
+          res = setDependencies(args[1], options);
+          printf("Reconfigured dependencies of Application %s version %s on mount point %s\n",
+             res.name,
+             res.version,
+             res.mount);
+          break;
+        case "dependencies":
+          res = dependencies(args[1]);
+          printf("Dependencies:\n%s\n", JSON.stringify(res, undefined, 2));
+          break;
         default:
           arangodb.printf("Unknown command '%s', please try:\n", type);
           cmdUsage();
@@ -674,8 +705,10 @@
 // -----------------------------------------------------------------------------
 
   exports.install = install;
-  exports.setup = setup;
-  exports.teardown = teardown;
+  exports.setup = script.bind(null, "setup");
+  exports.teardown = script.bind(null, "teardown");
+  exports.script = script;
+  exports.tests = tests;
   exports.uninstall = uninstall;
   exports.replace = replace;
   exports.upgrade = upgrade;
@@ -683,11 +716,13 @@
   exports.production = production;
   exports.configure = configure;
   exports.configuration = configuration;
+  exports.setDependencies = setDependencies;
+  exports.dependencies = dependencies;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Clientside only API
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   exports.run = run;
   exports.help = help;
 

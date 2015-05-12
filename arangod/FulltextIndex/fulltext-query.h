@@ -77,6 +77,7 @@ typedef struct TRI_fulltext_query_s {
   char**                          _words;
   TRI_fulltext_query_match_e*     _matches;
   TRI_fulltext_query_operation_e* _operations;
+  size_t                          _maxResults;
 }
 TRI_fulltext_query_t;
 
@@ -88,7 +89,7 @@ TRI_fulltext_query_t;
 /// @brief create a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex (size_t);
+TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex (size_t, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a fulltext query

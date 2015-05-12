@@ -1648,7 +1648,7 @@ static void FindVarAndAttr (ExecutionPlan const* plan,
     }
     return;
   }
-
+  
   attr.clear();
   enumCollVar = nullptr;
   return;
@@ -1674,15 +1674,14 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
     auto rhs = node->getMember(1);
     std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
 
-    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) { 
+    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       FindVarAndAttr(plan, rhs, enumCollVar, attr);
       if (enumCollVar != nullptr) {
         foundSomething = true;
 
-        std::unordered_set<Variable*> varsUsed 
-          = Ast::getReferencedVariables(lhs);
-        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
-            == varsUsed.end()) {
+        std::unordered_set<Variable*>&& varsUsed = Ast::getReferencedVariables(lhs);
+
+        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
           
@@ -1703,10 +1702,8 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
       if (enumCollVar != nullptr) {
         foundSomething = true;
 
-        std::unordered_set<Variable*> varsUsed 
-          = Ast::getReferencedVariables(rhs);
-        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
-            == varsUsed.end()) {
+        std::unordered_set<Variable*> varsUsed = Ast::getReferencedVariables(rhs);
+        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
           rim->insert(enumCollVar->name, 
@@ -1836,20 +1833,21 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
       if (enumCollVar != nullptr) {
         foundSomething = true;
 
-        std::unordered_set<Variable*> varsUsed 
-          = Ast::getReferencedVariables(rhs);
-        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
-            == varsUsed.end()) {
+        std::unordered_set<Variable*>&& varsUsed = Ast::getReferencedVariables(rhs);
+
+        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
           if (rhs->type == NODE_TYPE_ARRAY) {
-            for (size_t i = 0; i < rhs->numMembers(); i++) {
+            size_t const n = rhs->numMembers();
+
+            for (size_t i = 0; i < n; i++) {
               RangeInfo ri(enumCollVar->name, 
                            attr.substr(0, attr.size() - 1), 
-                           RangeInfoBound(rhs->getMember(i), true),
-                           RangeInfoBound(rhs->getMember(i), true), 
-                           true);
-              rimv->differenceRangeInfo(ri);
+                           RangeInfoBound(rhs->getMember(i), true));
+              // the following does not seem to be necessary here, but will slow things down
+              // considerably if the array is very big
+              // rimv->differenceRangeInfo(ri);
               if (ri.isValid()) { 
                 std::unique_ptr<RangeInfoMap> temp(new RangeInfoMap(ri));
                 rimv->emplace_back(temp.get());
@@ -1860,9 +1858,7 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
           else { 
             RangeInfo ri(enumCollVar->name, 
                          attr.substr(0, attr.size() - 1), 
-                         RangeInfoBound(rhs, true),
-                         RangeInfoBound(rhs, true), 
-                         true);
+                         RangeInfoBound(rhs, true));
             rimv->differenceRangeInfo(ri);
             if (ri.isValid()) { 
               std::unique_ptr<RangeInfoMap> temp(new RangeInfoMap(ri));
@@ -1950,9 +1946,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     };
 
     ~FilterToEnumCollFinder () {
-      if (_rangeInfoMapVec != nullptr) {
-        delete _rangeInfoMapVec;
-      }
+      delete _rangeInfoMapVec;
     }
     
     bool modified () const {
@@ -1965,6 +1959,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       switch (en->getType()) {
         case EN::ENUMERATE_LIST:
           break;
+
         case EN::CALCULATION: {
           auto outvar = en->getVariablesSetHere();
           TRI_ASSERT(outvar.size() == 1);
@@ -2011,7 +2006,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::FILTER: {
           std::vector<Variable const*> inVar = en->getVariablesUsedHere();
           TRI_ASSERT(inVar.size() == 1);
-          _varIds.insert(inVar[0]->id);
+          _varIds.emplace(inVar[0]->id);
           break;
         }
         case EN::AGGREGATE:
@@ -2047,21 +2042,20 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           if (_rangeInfoMapVec == nullptr) {
             break;
           }
-          std::unordered_map<std::string, RangeInfo>* map
-              = _rangeInfoMapVec->find(var->name, 0);        
-              // check if we have any ranges with this var
+
+          // check if we have any ranges with this var
+          std::unordered_map<std::string, RangeInfo>* map = _rangeInfoMapVec->find(var->name, 0);        
 
           if (map != nullptr) {
             // Remove all variable bounds that are no longer defined here:
-            std::unordered_set<Variable const*> varsDefined 
-                = node->getVarsValid();
+            std::unordered_set<Variable const*> varsDefined = node->getVarsValid();
             // Take out the variable we define only here, because we are
             // not allowed to use it in a variable bound expression:
-            std::vector<Variable const*> varsSetHere
-                = node->getVariablesSetHere();
+            std::vector<Variable const*> varsSetHere = node->getVariablesSetHere();
             for (auto v : varsSetHere) {
               varsDefined.erase(v);
             }
+
             size_t pos = 0;
             do {
               for (auto& x : *map) {
@@ -2069,13 +2063,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   for (auto it = bounds.begin(); it != bounds.end();
                        /* no hoisting */) {
                     AstNode const* a = it->getExpressionAst(_plan->getAst());
-                    std::unordered_set<Variable*> varsUsed
-                        = Ast::getReferencedVariables(a);
+                    std::unordered_set<Variable*>&& varsUsed = Ast::getReferencedVariables(a);
+
                     bool bad = false;
                     for (auto v : varsUsed) {
-                      if (varsDefined.find(const_cast<Variable const*>(v))
-                          == varsDefined.end()) {
+                      if (varsDefined.find(const_cast<Variable const*>(v)) == varsDefined.end()) {
                         bad = true;
+                        break;
                       }
                     }
                     if (bad) {
@@ -2102,14 +2096,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // results), for example
             // x.a == 1 || y.c == 2 || x.a == 3
             if (_rangeInfoMapVec->isMapped(var->name)) {
-              std::vector<size_t> const validPos = _rangeInfoMapVec->validPositions(var->name);
+              std::vector<size_t>&& validPos = _rangeInfoMapVec->validPositions(var->name);
 
               // are any of the RangeInfoMaps in the vector valid? 
 
               if (! _canThrow) {
                 if (validPos.empty()) { // ranges are not valid . . . 
                   auto parents = node->getParents();
-                  for (auto x : parents) {
+                  for (auto const& x : parents) {
                     auto noRes = new NoResultsNode(_plan, _plan->nextId());
                     _plan->registerNode(noRes);
                     _plan->insertDependency(x, noRes);
@@ -2124,8 +2118,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                   // note: prefixes are only used for skiplist indexes
                   // for all other index types, the prefix value will always be 0
-                  node->getIndexesForIndexRangeNode(
-                      _rangeInfoMapVec->attributes(var->name), idxs, prefixes);
+                  node->getIndexesForIndexRangeNode(_rangeInfoMapVec->attributes(var->name), idxs, prefixes);
                   // make one new plan for every index in <idxs> that replaces the
                   // enumerate collection node with a IndexRangeNode ... 
 
@@ -2153,7 +2146,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                             break;
                           }
 
-                          indexOrCondition.at(k).push_back(range->second);
+                          indexOrCondition.at(k).emplace_back(range->second);
                           handled = true;
                         }
 
@@ -2166,7 +2159,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                               break;
                             }
 
-                            indexOrCondition.at(k).push_back(range->second);
+                            indexOrCondition.at(k).emplace_back(range->second);
                           }
                         }
                       }
@@ -2197,7 +2190,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                               break;
                             }
 
-                            indexOrCondition.at(k).push_back(range->second);
+                            indexOrCondition.at(k).emplace_back(range->second);
                           }
                         }
                       }
@@ -2244,7 +2237,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                             }
                           }
 
-                          indexOrCondition.at(k).push_back(range->second);
+                          indexOrCondition.at(k).emplace_back(range->second);
                         }
                       }
                     }
@@ -2261,7 +2254,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                         }
 
                         // insert the first index attribute
-                        indexOrCondition.at(k).push_back(range->second);
+                        indexOrCondition.at(k).emplace_back(range->second);
                        
                         // iterate over all index attributes from left to right 
                         bool equality = range->second.is1ValueRangeInfo();
@@ -2276,7 +2269,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                             break; // not usable
                           }
 
-                          indexOrCondition.at(k).push_back(range->second);
+                          indexOrCondition.at(k).emplace_back(range->second);
                           equality = equality && range->second.is1ValueRangeInfo();
                         }
 
@@ -2319,7 +2312,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                     }
 
-
                     // check if there are all positions are non-empty
                     bool isEmpty = indexOrCondition.empty();
 
@@ -2345,7 +2337,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                         it = _changesPlaces.emplace(place, _changes.size()-1).first;
                       }
                       std::vector<ExecutionNode*>& vec = _changes[it->second].second;
-                      vec.push_back(newNode.release());
+                      vec.emplace_back(newNode.release());
                       // if all goes well, this node will be used, if an 
                       // exception happens, the destructor will free it
                     }
@@ -2399,6 +2391,7 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   bool modified = false;
   // In the following loop we only collect changes, maybe we introduce some
   // NoResultsNode, possibly in subqueries.
+
   try {
     for (auto n : nodes) {
       auto nn = static_cast<FilterNode*>(n);
@@ -4344,7 +4337,7 @@ struct RemoveRedundantOr {
   // returns false if the existing value is better and true if the input value is
   // better
   bool compareBounds (AstNodeType type, AstNode const* value, int lowhigh) { 
-    int cmp = CompareAstNodes(bestValue, value);
+    int cmp = CompareAstNodes(bestValue, value, true);
 
     if (cmp == 0 && (isInclusiveBound(comparison) != isInclusiveBound(type))) {
       return (isInclusiveBound(type) ? true : false);

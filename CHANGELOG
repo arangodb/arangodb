@@ -1,6 +1,66 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* added optional `limit` parameter for AQL function `FULLTEXT`
+
+* make fulltext index also index text values that are contained in direct sub-objects of the indexed 
+  attribute.
+
+  Previous versions of ArangoDB only indexed the attribute value if it was a string. Sub-attributes
+  of the index attribute were ignored when fulltext indexing.
+
+  Now, if the index attribute value is an object, the object's values will each be included in the
+  fulltext index if they are strings. If the index attribute value is an array, the array's values
+  will each be included in the fulltext index if they are strings.
+
+  For example, with a fulltext index present on the `translations` attribute, the following text
+  values will now be indexed:
+
+     var c = db._create("example");
+     c.ensureFulltextIndex("translations");
+     c.insert({ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } });
+     c.insert({ translations: "Fox is the English translation of the German word Fuchs" });
+     c.insert({ translations: [ "ArangoDB", "document", "database", "Foxx" ] });
+
+     c.fulltext("translations", "лиса").toArray();       // returns only first document
+     c.fulltext("translations", "Fox").toArray();        // returns first and second documents
+     c.fulltext("translations", "prefix:Fox").toArray(); // returns all three documents
+
+* added batch document removal and lookup commands:
+
+      collection.lookupByKeys(keys)
+      collection.removeByKeys(keys)
+
+  These commands can be used to perform multi-document lookup and removal operations efficiently
+  from the ArangoShell. The argument to these operations is an array of document keys.
+
+  Also added HTTP APIs for batch document commands:
+
+  * PUT /_api/simple/lookup-by-keys
+  * PUT /_api/simple/remove-by-keys
+
+* properly prefix document address URLs with the current database name for calls to
+  API method GET `/_api/document?collection=...` (that method will return partial URLs to all 
+  documents in the collection). 
+
+  Previous versions of ArangoDB returned the URLs starting with `/_api/` but without the current 
+  database name, e.g. `/_api/document/mycollection/mykey`. Starting with 2.6, the response URLs
+  will include the database name as well, e.g. `/_db/_system/_api/document/mycollection/mykey`.
+
+* subquery optimizations for AQL queries
+
+  This optimization avoids copying intermediate results into subqueries that are not required
+  by the subquery.
+
+* return value optimization for AQL queries
+  
+  This optimization avoids copying the final query result inside the query's main `ReturnNode`.
+
+* allow `@` and `.` characters in document keys, too
+
+  This change also lead to document keys being URL-encoded when returned in HTTP `location` 
+  response headers.
+
 * added alternative implementation for AQL COLLECT
 
   The alternative method uses a hash table for grouping and does not require its input elements
@@ -220,6 +280,12 @@ v2.6.0 (XXXX-XX-XX)
     * `graph._radius`
     * `graph._diameter`
 
+* First started Arango Databases will create the '_graph' collection without waitForSync, so default behaviour
+  of Create & Delete operations on whole graphs change:
+  * POST /_api/graph would by default return HTTP 201 Created, will now return 202 Accepted
+  * DELETE /_api/graph/`graph-name` would by default return with HTTP 200, will now return 202 Accepted
+  unless waitForSync is specified as parameter, or the '_graph' collections waitForSync attribute was set.
+
 * Improved GRAPH_SHORTEST_PATH computation
 
   This involved a change in the default behaviour.
@@ -323,6 +389,14 @@ v2.5.3 (XXXX-XX-XX)
   pass it to the listen system call even if the value is higher than SOMAXCONN. 
   If the user-provided value is higher than SOMAXCONN, arangod will log a warning 
   on startup.
+
+* Fixed a cluster deadlock bug. Mark a thread that is in a RemoteBlock as
+  blocked to allow for additional dispatcher threads to be started.
+
+* Fix locking in cluster by using another ReadWriteLock class for collections.
+
+* Add a second DispatcherQueue for AQL in the cluster. This fixes a
+  cluster-AQL thread explosion bug.
 
 
 v2.5.2 (2015-04-11)

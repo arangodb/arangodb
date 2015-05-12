@@ -1,25 +1,29 @@
 /*jshint browser: true */
-/*global Backbone, $, arango */
-(function() {
+/*global Backbone, $, _, arango */
+(function () {
   "use strict";
 
-  var sendRequest = function (foxx, callback, type, part, body) {
+  var sendRequest = function (foxx, callback, method, part, body, args) {
     var req = {
       contentType: "application/json",
       processData: false,
-      success: function(data) {
-        callback(data);
+      success: function (data) {
+        if (typeof callback === "function") {
+          callback(null, data);
+        }
       },
-      error: function(err) {
-        callback(err);
+      error: function (err) {
+        if (typeof callback === "function") {
+          callback(err);
+        }
       }
     };
-    req.type = type;
-    if (part && part !== "") {
-      req.url = "/_admin/aardvark/foxxes/" + part + "?mount=" + foxx.encodedMount();
-    } else {
-      req.url = "/_admin/aardvark/foxxes?mount=" + foxx.encodedMount();
-    }
+    req.type = method;
+    args = _.extend({mount: foxx.encodedMount()}, args);
+    var qs = _.reduce(args, function (base, value, key) {
+      return base + encodeURIComponent(key) + '=' + encodeURIComponent(value) + '&';
+    }, '?');
+    req.url = "/_admin/aardvark/foxxes" + (part ? '/' + part : '') + qs.slice(0, qs.length - 1);
     if (body !== undefined) {
       req.data = JSON.stringify(body);
     }
@@ -27,7 +31,7 @@
   };
 
   window.Foxx = Backbone.Model.extend({
-    idAttribute: 'mount',
+    idAttribute: "mount",
 
     defaults: {
       "author": "Unknown Author",
@@ -36,80 +40,111 @@
       "description": "No description",
       "license": "Unknown License",
       "contributors": [],
+      "scripts": {},
+      "config": {},
+      "deps": {},
       "git": "",
       "system": false,
       "development": false
     },
 
-    isNew: function() {
+    isNew: function () {
       return false;
     },
 
-    encodedMount: function() {
+    encodedMount: function () {
       return encodeURIComponent(this.get("mount"));
     },
 
-    destroy: function(callback) {
-      sendRequest(this, callback, "DELETE");
+    destroy: function (opts, callback) {
+      sendRequest(this, callback, "DELETE", undefined, undefined, opts);
     },
 
-    getConfiguration: function(callback) {
-      sendRequest(this, callback, "GET", "config");
+    isBroken: function () {
+      return false;
     },
 
-    setConfiguration: function(data, callback) {
-      sendRequest(this, callback, "PATCH", "config", data);
+    needsAttention: function () {
+      return this.isBroken() || this.needsConfiguration() || this.hasUnconfiguredDependencies();
     },
 
-    toggleDevelopment: function(activate, callback) {
-      $.ajax({
-        type: "PATCH",
-        url: "/_admin/aardvark/foxxes/devel?mount=" + this.encodedMount(),
-        data: JSON.stringify(activate),
-        contentType: "application/json",
-        processData: false,
-        success: function(data) {
-          this.set("development", activate);
-          callback(data);
-        }.bind(this),
-        error: function(err) {
-          callback(err);
-        }
+    needsConfiguration: function () {
+      return _.any(this.get('config'), function (cfg) {
+        return cfg.current === undefined;
       });
     },
 
-    runScript: function(name, callback) {
+    hasUnconfiguredDependencies: function () {
+      return _.any(this.get('deps'), function (dep) {
+        return dep.current === undefined;
+      });
+    },
+
+    getConfiguration: function (callback) {
+      sendRequest(this, function (err, data) {
+        if (!err) {
+          this.set("config", data);
+        }
+        if (typeof callback === "function") {
+          callback(err, data);
+        }
+      }.bind(this), "GET", "config");
+    },
+
+    setConfiguration: function (data, callback) {
+      sendRequest(this, callback, "PATCH", "config", data);
+    },
+
+    getDependencies: function (callback) {
+      sendRequest(this, function (err, data) {
+        if (!err) {
+          this.set("deps", data);
+        }
+        if (typeof callback === "function") {
+          callback(err, data);
+        }
+      }.bind(this), "GET", "deps");
+    },
+
+    setDependencies: function (data, callback) {
+      sendRequest(this, callback, "PATCH", "deps", data);
+    },
+
+    toggleDevelopment: function (activate, callback) {
+      sendRequest(this, function (err, data) {
+        if (!err) {
+          this.set("development", activate);
+        }
+        if (typeof callback === "function") {
+          callback(err, data);
+        }
+      }.bind(this), "PATCH", "devel", activate);
+    },
+
+    runScript: function (name, callback) {
       sendRequest(this, callback, "POST", "scripts/" + name);
     },
 
     runTests: function (options, callback) {
-      $.ajax({
-        type: "POST",
-        url: "/_admin/aardvark/foxxes/tests?mount=" + this.encodedMount(),
-        data: JSON.stringify(options),
-        contentType: "application/json",
-        success: function(data) {
-          callback(null, data);
-        },
-        error: function(xhr) {
-          callback(xhr.responseJSON);
+      sendRequest(this, function (err, data) {
+        if (typeof callback === "function") {
+          callback(err ? err.responseJSON : err, data);
         }
-      });
+      }.bind(this), "POST", "tests", options);
     },
 
-    isSystem: function() {
+    isSystem: function () {
       return this.get("system");
     },
 
-    isDevelopment: function() {
+    isDevelopment: function () {
       return this.get("development");
     },
 
-    download: function() {
+    download: function () {
       window.open(
         "/_db/" + arango.getDatabaseName() + "/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount()
       );
     }
-
   });
 }());

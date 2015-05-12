@@ -123,7 +123,17 @@ An edges index is automatically created for edge collections. It contains connec
 
 !SUBSECTION Fulltext Index
 
-A fulltext index can be used to find words, or prefixes of words inside documents. A fulltext index can be set on one attribute only, and will index all words contained in documents that have a textual value in this attribute. Only words with a (specifyable) minimum length are indexed. Word tokenisation is done using the word boundary analysis provided by libicu, which is taking into account the selected language provided at server start. Words are indexed in their lower-cased form. The index supports complete match queries (full words) and prefix queries.
+A fulltext index can be used to find words, or prefixes of words inside documents. A fulltext index can be defined on one attribute only, and will include all words contained in documents that have a textual value in the index attribute. Since ArangoDB 2.6 the index will also include words from the index attribute if the index attribute is an array of strings, or an object with string value members.
+
+For example, given a fulltext index on the `translations` attribute and the following documents, then searching for `лиса` using the fulltext index would return only the first document. Searching for the index for the exact string `Fox` would return the first two documents, and searching for `prefix:Fox` would return all three documents:
+     
+    { translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } }
+    { translations: "Fox is the English translation of the German word Fuchs" }
+    { translations: [ "ArangoDB", "document", "database", "Foxx" ] }
+
+If the index attribute is neither a string, an object or an array, its contents will not be indexed. When indexing the contents of an array attribute, an array member will only be included in the index if it is a string. When indexing the contents of an object attribute, an object member value will only be included in the index if it is a string. Other datatypes are ignored and not indexed.
+
+Only words with a (specifyable) minimum length are indexed. Word tokenization is done using the word boundary analysis provided by libicu, which is taking into account the selected language provided at server start. Words are indexed in their lower-cased form. The index supports complete match queries (full words) and prefix queries.
 
 !SUBSECTION Geo Index
 

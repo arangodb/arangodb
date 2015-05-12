@@ -37,6 +37,11 @@ var Model = require("org/arangodb/foxx/model").Model,
   EventEmitter = require('events').EventEmitter,
   util = require('util');
 
+var EVENTS = [
+  'beforeSave', 'beforeCreate', 'beforeUpdate', 'beforeRemove',
+  'afterSave', 'afterCreate', 'afterUpdate', 'afterRemove'
+];
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_initializer
 /// `new FoxxRepository(collection, opts)`
@@ -53,15 +58,33 @@ var Model = require("org/arangodb/foxx/model").Model,
 /// 2. Prefix: You can provide the prefix of the application if you need it in
 /// your Repository (for some AQL queries probably)
 ///
-/// @EXAMPLES
+/// If the Model has any static methods named after the lifecycle events, they
+/// will automatically be registered as listeners to the events emitted by this
+/// repository.
 ///
-/// ```javascript
+/// **Examples**
+///
+/// ```js
 /// instance = new Repository(appContext.collection("my_collection"));
 /// // or:
 /// instance = new Repository(appContext.collection("my_collection"), {
-///   model: MyModelPrototype,
-///   prefix: app.collectionPrefix,
+///   model: MyModelPrototype
 /// });
+/// ```
+///
+/// Example with listeners:
+///
+/// ```js
+/// var ValidatedModel = Model.extend({
+///   schema: {...}
+/// }, {
+///   beforeSave: function (modelInstance) {
+///     if (!modelInstance.valid) {
+///       throw new Error('Refusing to save: model is not valid!');
+///     }
+///   }
+/// });
+/// instance = new Repository(collection, {model: ValidatedModel});
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,6 +151,13 @@ function Repository(collection, opts) {
   }
 
   EventEmitter.call(this);
+
+  _.each(this.model, function (listener, eventName) {
+    if (EVENTS.indexOf(eventName) === -1 || typeof listener !== 'function') {
+      return;
+    }
+    this.on(eventName, listener.bind(this.model));
+  }, this);
 }
 
 util.inherits(Repository, EventEmitter);
@@ -193,7 +223,7 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   byId: function (id) {
     var data = this.collection.document(id);
-    return (new this.model(data));
+    return new this.model(data);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +243,7 @@ _.extend(Repository.prototype, {
   byExample: function (example) {
     var rawDocuments = this.collection.byExample(example).toArray();
     return _.map(rawDocuments, function (rawDocument) {
-      return (new this.model(rawDocument));
+      return new this.model(rawDocument);
     }, this);
   },
 
@@ -233,7 +263,7 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   firstExample: function (example) {
     var rawDocument = this.collection.firstExample(example);
-    return (new this.model(rawDocument));
+    return rawDocument ? new this.model(rawDocument) : null;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +302,7 @@ _.extend(Repository.prototype, {
       rawDocuments = rawDocuments.limit(options.limit);
     }
     return _.map(rawDocuments.toArray(), function (rawDocument) {
-      return (new this.model(rawDocument));
+      return new this.model(rawDocument);
     }, this);
   },
 
@@ -294,7 +324,7 @@ _.extend(Repository.prototype, {
     if (!data) {
       return null;
     }
-    return (new this.model(data));
+    return new this.model(data);
   },
 
 // -----------------------------------------------------------------------------
@@ -581,7 +611,7 @@ var indexPrototypes = {
     range: function (attribute, left, right) {
       var rawDocuments = this.collection.range(attribute, left, right).toArray();
       return _.map(rawDocuments, function (rawDocument) {
-        return (new this.model(rawDocument));
+        return new this.model(rawDocument);
       }, this);
     }
   },
@@ -740,7 +770,7 @@ var indexPrototypes = {
         rawDocuments = rawDocuments.limit(options.limit);
       }
       return _.map(rawDocuments.toArray(), function (rawDocument) {
-        return (new this.model(rawDocument));
+        return new this.model(rawDocument);
       }, this);
     }
   }

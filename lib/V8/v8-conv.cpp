@@ -339,7 +339,7 @@ static int FillShapeValueList (v8::Isolate* isolate,
       return res;
     }
 
-    total += p->_size;
+    total += static_cast<size_t>(p->_size);
   }
 
   // check if this list is homoegenous
@@ -429,7 +429,7 @@ static int FillShapeValueList (v8::Isolate* isolate,
     ptr += sizeof(TRI_shape_length_list_t);
 
     for (p = values;  p < e;  ++p) {
-      memcpy(ptr, p->_value, p->_size);
+      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
       ptr += p->_size;
     }
   }
@@ -511,7 +511,7 @@ static int FillShapeValueList (v8::Isolate* isolate,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, p->_size);
+      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
       ptr += p->_size;
     }
 
@@ -559,7 +559,7 @@ static int FillShapeValueList (v8::Isolate* isolate,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, p->_size);
+      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
       ptr += p->_size;
     }
 
@@ -681,7 +681,7 @@ static int FillShapeValueArray (v8::Isolate* isolate,
       return res;
     }
 
-    total += p->_size;
+    total += static_cast<size_t>(p->_size);
 
     // count fixed and variable sized values
     if (p->_fixedSized) {
@@ -789,7 +789,7 @@ static int FillShapeValueArray (v8::Isolate* isolate,
     *aids++ = p->_aid;
     *sids++ = p->_sid;
 
-    memcpy(ptr, p->_value, p->_size);
+    memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
     ptr += p->_size;
 
     dst->_fixedSized &= p->_fixedSized;
@@ -1071,7 +1071,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Isolate* isolate,
     }
 
     const TRI_shape_size_t offset = *offsetsF;
-    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsetsF[1] - offset);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, static_cast<size_t>(offsetsF[1] - offset));
     array->ForceSet(TRI_V8_STRING(name), element);
   }
 
@@ -1103,7 +1103,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Isolate* isolate,
     }
 
     const TRI_shape_size_t offset = *offsetsV;
-    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsetsV[1] - offset);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, static_cast<size_t>(offsetsV[1] - offset));
     array->ForceSet(TRI_V8_STRING(name), element);
   }
 
@@ -1180,7 +1180,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Isolate* isolate,
     }
 
     const TRI_shape_size_t offset = *offsetsF;
-    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsetsF[1] - offset);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, static_cast<size_t>(offsetsF[1] - offset));
     array->ForceSet(TRI_V8_STRING(name), element);
   }
 
@@ -1212,7 +1212,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Isolate* isolate,
     }
 
     const TRI_shape_size_t offset = *offsetsV;
-    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsetsV[1] - offset);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, static_cast<size_t>(offsetsV[1] - offset));
     array->ForceSet(TRI_V8_STRING(name), element);
   }
 
@@ -1271,7 +1271,7 @@ static v8::Handle<v8::Value> JsonShapeDataList (v8::Isolate* isolate,
     }
 
     const TRI_shape_size_t offset = *offsets;
-    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsets[1] - offset);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, static_cast<size_t>(offsets[1] - offset));
     list->Set((uint32_t) i, element);
   }
 
@@ -1316,7 +1316,7 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousList (v8::Isolate* isolate,
 
   for (i = 0;  i < l;  ++i, ++offsets) {
     TRI_shape_size_t offset = *offsets;
-    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsets[1] - offset);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, static_cast<size_t>(offsets[1] - offset));
 
     list->Set((uint32_t) i, element);
   }
@@ -1366,7 +1366,7 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (v8::Isolate* iso
   v8::Handle<v8::Array> list = v8::Array::New(isolate, l);
 
   for (i = 0;  i < l;  ++i, offset += length) {
-    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, length);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, static_cast<size_t>(length));
     list->Set((uint32_t) i, element);
   }
 
@@ -1485,7 +1485,7 @@ static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, TRI_json_t 
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Object> object = v8::Object::New(isolate);
 
-  size_t const n = json->_value._objects._length;
+  size_t const n = TRI_LengthVector(&json->_value._objects);
 
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));
@@ -1507,7 +1507,7 @@ static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, TRI_json_t 
 
 static v8::Handle<v8::Value> ObjectJsonArray (v8::Isolate* isolate, TRI_json_t const* json) {
   v8::EscapableHandleScope scope(isolate);
-  uint32_t const n = static_cast<uint32_t>(json->_value._objects._length);
+  uint32_t const n = static_cast<uint32_t>(TRI_LengthArrayJson(json));
 
   v8::Handle<v8::Array> object = v8::Array::New(isolate, static_cast<int>(n));
 

@@ -95,6 +95,18 @@ const string RestVocbaseBaseHandler::IMPORT_PATH            = "/_api/import";
 const string RestVocbaseBaseHandler::REPLICATION_PATH       = "/_api/replication";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief document batch lookup path
+////////////////////////////////////////////////////////////////////////////////
+
+const string RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH    = "/_api/simple/lookup-by-keys";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document batch remove path
+////////////////////////////////////////////////////////////////////////////////
+
+const string RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH    = "/_api/simple/remove-by-keys";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief upload path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -153,7 +165,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
 
 
   if (ServerState::instance()->isCoordinator() ||
-      ServerState::instance()->isDBserver()) {
+      ServerState::instance()->isDBServer()) {
     // create-collection is not supported in a cluster
     generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED);
     return false;
@@ -179,7 +191,8 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
 void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode responseCode,
                                           string const& collectionName,
                                           TRI_voc_key_t key,
-                                          TRI_voc_rid_t rid) {
+                                          TRI_voc_rid_t rid,
+                                          TRI_col_type_e type) {
   string const&& handle = DocumentHelper::assembleDocumentId(collectionName, key);
   string const&& rev = StringUtils::itoa(rid);
 
@@ -190,15 +203,21 @@ void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode respons
     // 200 OK is sent is case of delete or update.
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
-    // handle does not need to be RFC 2047-encoded
+
+    string const&& escapedHandle = DocumentHelper::assembleDocumentId(collectionName, key, true);
 
     if (_request->compatibility() < 10400L) {
       // pre-1.4 location header (e.g. /_api/document/xyz)
-      _response->setHeader("location", 8, string(DOCUMENT_PATH + "/" + handle));
+      _response->setHeader("location", 8, string(DOCUMENT_PATH + "/" + escapedHandle));
     }
     else {
       // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
-      _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + handle));
+      if (type == TRI_COL_TYPE_EDGE) {
+        _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + EDGE_PATH + "/" + escapedHandle));
+      }
+      else {
+        _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + escapedHandle));
+      }
     }
   }
 

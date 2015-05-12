@@ -1,6 +1,6 @@
 {
     "swaggerVersion": "1.1", 
-    "apiVersion": "2.5.0-beta1", 
+    "apiVersion": "2.6.0-devel", 
     "apis": [
         {
             "path": "api-docs/aqlfunction.{format}", 
@@ -41,6 +41,10 @@
         {
             "path": "api-docs/explain.{format}", 
             "description": "explain API"
+        }, 
+        {
+            "path": "api-docs/export.{format}", 
+            "description": "export API"
         }, 
         {
             "path": "api-docs/graph.{format}", 
@@ -101,6 +105,10 @@
         {
             "path": "api-docs/version.{format}", 
             "description": "version API"
+        }, 
+        {
+            "path": "api-docs/wal.{format}", 
+            "description": "wal API"
         }
     ]
 }

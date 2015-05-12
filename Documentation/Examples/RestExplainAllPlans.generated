@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain <<EOF
 {"query":"FOR p IN products FILTER p.id == 25 RETURN p","options":{"allPlans":true}}
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -53,7 +54,7 @@ content-type: application/json; charset=utf-8
           ], 
           "index" : { 
             "type" : "hash", 
-            "id" : "1176250531", 
+            "id" : "1328882741", 
             "unique" : false, 
             "sparse" : false, 
             "selectivityEstimate" : 1, 
@@ -89,7 +90,7 @@ content-type: application/json; charset=utf-8
       ], 
       "variables" : [ 
         { 
-          "id" : 1, 
+          "id" : 2, 
           "name" : "1" 
         }, 
         { 
@@ -103,7 +104,7 @@ content-type: application/json; charset=utf-8
   ], 
   "warnings" : [ ], 
   "stats" : { 
-    "rulesExecuted" : 21, 
+    "rulesExecuted" : 22, 
     "rulesSkipped" : 0, 
     "plansCreated" : 1 
   }, 

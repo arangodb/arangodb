@@ -5,8 +5,8 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
 [ 
   { 
     "germanCity/Berlin" : 3550, 
-    "germanCity/Cologne" : 2600, 
     "germanCity/Hamburg" : 3000, 
+    "germanCity/Cologne" : 2600, 
     "frenchCity/Paris" : 3200, 
     "frenchCity/Lyon" : 3550 
   } 

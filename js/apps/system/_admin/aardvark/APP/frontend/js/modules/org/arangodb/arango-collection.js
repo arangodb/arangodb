@@ -1370,6 +1370,52 @@ ArangoCollection.prototype.updateByExample = function (example,
   return requestResult.updated;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up documents by keys
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.documents = function (keys) {
+  var data = {
+    collection: this._name,
+    keys: keys || [ ]
+  };
+
+  var requestResult = this._database._connection.PUT(
+    this._prefixurl("/_api/simple/lookup-by-keys"),
+    JSON.stringify(data));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return {
+    documents: requestResult.documents
+  };
+};
+
+// .lookupByKeys is now an alias for .documents
+ArangoCollection.prototype.lookupByKeys = ArangoCollection.prototype.documents;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes documents by keys
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.removeByKeys = function (keys) {
+  var data = {
+    collection: this._name,
+    keys: keys || [ ]
+  };
+
+  var requestResult = this._database._connection.PUT(
+    this._prefixurl("/_api/simple/remove-by-keys"),
+    JSON.stringify(data));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return {
+    removed: requestResult.removed,
+    ignored: requestResult.ignored
+  };
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

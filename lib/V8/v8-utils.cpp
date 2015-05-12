@@ -608,7 +608,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       // endpoints should be an array
       if (TRI_IsArrayJson(eps)) {
         // it is. now iterate over the list and pick the first one
-        for (size_t i = 0; i < eps->_value._objects._length; ++i) {
+        for (size_t i = 0; i < TRI_LengthArrayJson(eps); ++i) {
           auto ep = static_cast<TRI_json_t const*>(TRI_AtVector(&eps->_value._objects, i));
 
           if (TRI_IsStringJson(ep)) {
@@ -899,15 +899,15 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       result->Set(TRI_V8_ASCII_STRING("message"), TRI_V8_STD_STRING(returnMessage));
 
       // process response headers
-      auto responseHeaders = response->getHeaderFields();
+      auto const& responseHeaders = response->getHeaderFields();
 
       v8::Handle<v8::Object> headers = v8::Object::New(isolate);
 
-      for (auto it = responseHeaders.begin(); it != responseHeaders.end(); ++it) {
-        headers->Set(TRI_V8_STD_STRING((*it).first), TRI_V8_STD_STRING((*it).second));
+      for (auto const& it : responseHeaders) {
+        headers->ForceSet(TRI_V8_STD_STRING(it.first), TRI_V8_STD_STRING(it.second));
       }
 
-      result->Set(TRI_V8_ASCII_STRING("headers"), headers);
+      result->ForceSet(TRI_V8_ASCII_STRING("headers"), headers);
 
       if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
@@ -3925,39 +3925,6 @@ static void JS_IsIP (const v8::FunctionCallbackInfo<v8::Value>& args) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds attributes to object
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AugmentObject (v8::Isolate* isolate, v8::Handle<v8::Value> value, TRI_json_t const* json) {
-  v8::HandleScope scope(isolate);
-
-  if (! value->IsObject()) {
-    return;
-  }
-
-  if (json->_type != TRI_JSON_OBJECT) {
-    return;
-  }
-
-  v8::Handle<v8::Object> object = value->ToObject();
-
-  size_t n = json->_value._objects._length;
-
-  for (size_t i = 0;  i < n;  i += 2) {
-    TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
-
-    if (! TRI_IsStringJson(key)) {
-      continue;
-    }
-
-    TRI_json_t* j = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i + 1);
-    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, j);
-
-    object->Set(TRI_V8_STRING(key->_value._string.data), val);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reports an exception

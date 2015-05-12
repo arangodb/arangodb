@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/batch
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/batch <<EOF
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 
@@ -10,6 +10,7 @@ Content-Type: application/x-arango-batchpart
 DELETE /_api/collection/notexisting2 HTTP/1.1
 --SomeBoundaryValue--
 
+EOF
 
 HTTP/1.1 200 OK
 x-arango-errors: 2

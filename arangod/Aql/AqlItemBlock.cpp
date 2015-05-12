@@ -337,6 +337,48 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief slice/clone, this does a deep copy of all entries
+////////////////////////////////////////////////////////////////////////////////
+
+AqlItemBlock* AqlItemBlock::slice (size_t row, 
+                                   std::unordered_set<RegisterId> const& registers) const {
+  std::unordered_map<AqlValue, AqlValue> cache;
+
+  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(1, _nrRegs));
+
+  for (RegisterId col = 0; col < _nrRegs; col++) {
+    if (registers.find(col) == registers.end()) {
+      continue;
+    }
+
+    res->_docColls[col] = _docColls[col];
+
+    AqlValue const& a(_data[row * _nrRegs + col]);
+
+    if (! a.isEmpty()) {
+      auto it = cache.find(a);
+
+      if (it == cache.end()) {
+        AqlValue b = a.clone();
+        try {
+          res->setValue(0, col, b);
+        }
+        catch (...) {
+          b.destroy();
+          throw;
+        }
+        cache.emplace(a, b);
+      }
+      else {
+        res->setValue(0, col, it->second);
+      }
+    }
+  }
+
+  return res.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone chosen rows for a subset, this does a deep copy
 /// of all entries
 ////////////////////////////////////////////////////////////////////////////////

@@ -3,7 +3,9 @@
 The ArangoDB shell (_arangosh_) is a command-line tool that can be used for
 administration of ArangoDB, including running ad-hoc queries.
 
-The _arangosh_ binary is shipped with ArangoDB and can be invoked like so:
+The _arangosh_ binary is shipped with ArangoDB. It offers a javascript shell
+environment providing access to the ArangoDB server.
+Arangosh can be invoked like this:
 
 ```
 unix> arangosh
@@ -54,3 +56,18 @@ For a list of available methods for the *db* object, type
     
     arangosh> db._help(); 
 
+you can paste multiple lines into arangosh, given the first line ends with an opening brace:
+
+    arangosh> for (var i = 0; i < 10; i ++) {
+    ........>          require("internal").print("Hello world " + i + "!\n");
+    ........> }
+    Hello world 0!
+    <snip>
+    Hello world 9!
+
+To load your own javascript code into the current javascript interpreter context, use the load command:
+
+    require("internal").load("/tmp/test.js")     // <- Linux / Macos
+    require("internal").load("c:\\tmp\\test.js") // <- Windows
+
+Exiting arangosh can be done using the key combination ```<CTRL> + D```

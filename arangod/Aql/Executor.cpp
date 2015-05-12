@@ -141,10 +141,10 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   
   // list functions
   { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, false, true) },
-  { "UNION",                       Function("UNION",                       "AQL_UNION", "l,l|+",true, false, true) },
-  { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "AQL_UNION_DISTINCT", "l,l|+", true, false, true) },
+  { "UNION",                       Function("UNION",                       "AQL_UNION", "l,l|+",true, false, true, &Functions::Union) },
+  { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "AQL_UNION_DISTINCT", "l,l|+", true, false, true, &Functions::UnionDistinct) },
   { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, false, true) },
-  { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, false, true) },
+  { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, false, true, &Functions::Intersection) },
   { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, false, true) },
   { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, false, true, &Functions::Length) },
   { "MIN",                         Function("MIN",                         "AQL_MIN", "l", true, false, true, &Functions::Min) },
@@ -195,7 +195,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "IS_IN_POLYGON",               Function("IS_IN_POLYGON",               "AQL_IS_IN_POLYGON", "l,ln|nb", true, false, true) },
 
   // fulltext functions
-  { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s", false, true, false) },
+  { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s|n", false, true, false) },
 
   // graph functions
   { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,ba", false, true, false) },

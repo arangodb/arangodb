@@ -677,7 +677,7 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
 bool ProgramOptions::extractValues (ProgramOptionsDescription const& description, TRI_program_options_t* options, set<string> seen) {
   TRI_ASSERT(ProgramOptionsJson != nullptr);
 
-  for (size_t i = 0;  i < options->_items._length;  ++i) {
+  for (size_t i = 0;  i < TRI_LengthVector(&options->_items);  ++i) {
     TRI_PO_item_t * item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (item->_used) {

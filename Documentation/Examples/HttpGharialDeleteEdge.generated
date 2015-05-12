@@ -1,4 +1,4 @@
-shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/aliceAndBob
+shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social/edge/relation/aliceAndBob
 
 HTTP/1.1 202 Accepted
 content-type: application/json

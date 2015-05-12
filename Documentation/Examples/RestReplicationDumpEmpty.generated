@@ -1,4 +1,4 @@
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
+shell> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
 
 HTTP/1.1 204 No Content
 content-type: application/x-arango-dump; charset=utf-8
