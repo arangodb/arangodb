@@ -511,6 +511,7 @@ function escapeHTML (string) {
       urlPrefix: "",
       name: 'foxx("' + app._mount + '")',
       routes: [{
+        "internal": true,
         "url" : {
           match: "/*",
           methods: actions.ALL_METHODS
@@ -556,6 +557,7 @@ function escapeHTML (string) {
       urlPrefix: "",
       name: 'foxx("' + app._mount + '")',
       routes: [{
+        "internal": true,
         "url" : {
           match: "/*",
           methods: actions.ALL_METHODS

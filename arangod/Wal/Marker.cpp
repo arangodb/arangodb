@@ -277,14 +277,14 @@ void AttributeMarker::dump () const {
 ShapeMarker::ShapeMarker (TRI_voc_tick_t databaseId,
                           TRI_voc_cid_t collectionId,
                           TRI_shape_t const* shape)
-  : Marker(TRI_WAL_MARKER_SHAPE, sizeof(shape_marker_t) + shape->_size) {
+  : Marker(TRI_WAL_MARKER_SHAPE, sizeof(shape_marker_t) + static_cast<size_t>(shape->_size)) {
 
   shape_marker_t* m = reinterpret_cast<shape_marker_t*>(begin());
 
   m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
 
-  memcpy(this->shape(), shape, shape->_size);
+  memcpy(this->shape(), shape, static_cast<size_t>(shape->_size));
 
 #ifdef DEBUG_WAL
   dump();

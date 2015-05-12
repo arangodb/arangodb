@@ -136,7 +136,7 @@ function routingSuiteSingle () {
       var r = actions.firstRouting('GET', "/prefix/hello/world", routing);
 
       assertEqual('c3', r.route.route.content);
-      assertEqual('/prefix/hello/...', r.route.path);
+      assertEqual('/prefix/hello/*', r.route.path);
       assertEqual('/prefix/hello', r.prefix);
       assertEqual(['world'], r.suffix);
 
@@ -152,7 +152,7 @@ function routingSuiteSingle () {
       var r = actions.firstRouting('GET', "/param/12345/world", routing);
 
       assertEqual('c4', r.route.route.content);
-      assertEqual('/param/<parameters>/world', r.route.path);
+      assertEqual('/param/:hello/world', r.route.path);
       assertEqual(undefined, r.prefix);
       assertEqual(undefined, r.suffix);
 
@@ -171,7 +171,7 @@ function routingSuiteSingle () {
       var r = actions.firstRouting('GET', "/opt/12345", routing);
 
       assertEqual('c5', r.route.route.content);
-      assertEqual('/opt/<parameters>', r.route.path);
+      assertEqual('/opt/:hello?', r.route.path);
       assertEqual(undefined, r.prefix);
       assertEqual(undefined, r.suffix);
 
@@ -211,7 +211,7 @@ function routingSuiteSingle () {
 
       r = actions.nextRouting(r);
 
-      assertEqual('/p/h/...', r.route.path);
+      assertEqual('/p/h/*', r.route.path);
       assertEqual('/p/h', r.prefix);
       assertEqual([], r.suffix);
     },
@@ -282,7 +282,6 @@ function routingSuiteBundle () {
           { url: { match: "/*" }, content: "c1" },
           { url: { match: "/hello/*" }, content: "c2" },
           { url: { match: "/hello/world" }, content: "c3" },
-          { url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "c4" },
           { url: { match: "/hello/:name/:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "c5" },
           { url: { match: "/:name/world" }, content: "c6" },
           { url: { match: "/hello" }, content: "c7" }
@@ -300,16 +299,16 @@ function routingSuiteBundle () {
       var r = actions.firstRouting('GET', "/hello/world", routing);
 
       assertEqual('m1', r.route.route.content);
-      assertEqual('/...', r.route.path);
+      assertEqual('/*', r.route.path);
 
       // middleware: unspecific to specific
       r = actions.nextRouting(r);
       assertEqual('m4', r.route.route.content);
-      assertEqual('/<parameters>/world', r.route.path);
+      assertEqual('/:name/world', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('m2', r.route.route.content);
-      assertEqual('/hello/...', r.route.path);
+      assertEqual('/hello/*', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('m3', r.route.route.content);
@@ -321,21 +320,16 @@ function routingSuiteBundle () {
       assertEqual('/hello/world', r.route.path);
 
       r = actions.nextRouting(r);
-      assertEqual('c4', r.route.route.content);
-      assertEqual(1, r.route.urlParameters.name);
-      assertEqual('/hello/<parameters>', r.route.path);
-
-      r = actions.nextRouting(r);
       assertEqual('c2', r.route.route.content);
-      assertEqual('/hello/...', r.route.path);
+      assertEqual('/hello/*', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c6', r.route.route.content);
-      assertEqual('/<parameters>/world', r.route.path);
+      assertEqual('/:name/world', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c1', r.route.route.content);
-      assertEqual('/...', r.route.path);
+      assertEqual('/*', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual(undefined, r.route);
@@ -375,7 +369,6 @@ function routingSuitePrefix () {
           { url: { match: "/*" }, content: "c1" },
           { url: { match: "/hello/*" }, content: "c2" },
           { url: { match: "/hello/world" }, content: "c3" },
-          { url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "c4" },
           { url: { match: "/hello/:name/:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "c5" },
           { url: { match: "/:name/world" }, content: "c6" },
           { url: { match: "/hello" }, content: "c7" }
@@ -392,16 +385,16 @@ function routingSuitePrefix () {
     testSimpleRouting: function () {
       var r = actions.firstRouting('GET', "/test/hello/world", routing);
       assertEqual('m1', r.route.route.content);
-      assertEqual('/test/...', r.route.path);
+      assertEqual('/test/*', r.route.path);
 
       // middleware: unspecific to specific
       r = actions.nextRouting(r);
       assertEqual('m4', r.route.route.content);
-      assertEqual('/test/<parameters>/world', r.route.path);
+      assertEqual('/test/:name/world', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('m2', r.route.route.content);
-      assertEqual('/test/hello/...', r.route.path);
+      assertEqual('/test/hello/*', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('m3', r.route.route.content);
@@ -413,21 +406,16 @@ function routingSuitePrefix () {
       assertEqual('/test/hello/world', r.route.path);
 
       r = actions.nextRouting(r);
-      assertEqual('c4', r.route.route.content);
-      assertEqual(2, r.route.urlParameters.name);
-      assertEqual('/test/hello/<parameters>', r.route.path);
-
-      r = actions.nextRouting(r);
       assertEqual('c2', r.route.route.content);
-      assertEqual('/test/hello/...', r.route.path);
+      assertEqual('/test/hello/*', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c6', r.route.route.content);
-      assertEqual('/test/<parameters>/world', r.route.path);
+      assertEqual('/test/:name/world', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c1', r.route.route.content);
-      assertEqual('/test/...', r.route.path);
+      assertEqual('/test/*', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual(undefined, r.route);

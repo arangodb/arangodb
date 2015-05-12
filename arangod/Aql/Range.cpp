@@ -48,10 +48,10 @@ Range::Range (int64_t low,
 size_t Range::size () const {
   if (_low <= _high) {
     // e.g. 1..1, 1..10 etc.
-    return _high - _low + 1;
+    return static_cast<size_t>(_high - _low + 1);
   }
   // e.g. 10..1
-  return _low - _high + 1;
+  return static_cast<size_t>(_low - _high + 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

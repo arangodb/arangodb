@@ -1,36 +1,38 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1 <<EOF
 { 
   "optional1" : "vertexPatch" 
 }
+EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1195190435
+etag: 1351427125
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1195190435", 
+    "_rev" : "1351427125", 
     "optional1" : "vertexPatch" 
   }, 
   "error" : false, 
   "code" : 202 
 }
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1 <<EOF
 { 
   "optional1" : null 
 }
+EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1195714723
+etag: 1351951413
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1195714723", 
+    "_rev" : "1351951413", 
     "optional1" : null 
   }, 
   "error" : false, 

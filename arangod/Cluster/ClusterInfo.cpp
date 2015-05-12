@@ -1499,7 +1499,8 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
           return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
         }
 
-        for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
+        size_t const n = TRI_LengthArrayJson(indexes);
+        for (size_t i = 0; i < n; ++i) {
           TRI_json_t const* other = TRI_LookupArrayJson(indexes, i);
 
           if (! TRI_CheckSameValueJson(TRI_LookupObjectJson(json, "type"),
@@ -1614,7 +1615,8 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
             break;
           }
 
-          for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
+          size_t const n = TRI_LengthArrayJson(indexes);
+          for (size_t i = 0; i < n; ++i) {
             TRI_json_t const* v = TRI_LookupArrayJson(indexes, i);
 
             // check for errors
@@ -1735,7 +1737,8 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
     bool found = false;
 
     // copy remaining indexes back into collection
-    for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
+    size_t const n = TRI_LengthArrayJson(indexes);
+    for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* v = TRI_LookupArrayJson(indexes, i);
       TRI_json_t const* id = TRI_LookupObjectJson(v, "id");
       TRI_json_t const* type = TRI_LookupObjectJson(v, "type");
@@ -1808,8 +1811,10 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
           TRI_json_t const* indexes = TRI_LookupObjectJson(json, "indexes");
 
           if (TRI_IsArrayJson(indexes)) {
-            for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
+            size_t const n = TRI_LengthArrayJson(indexes);
+            for (size_t i = 0; i < n; ++i) {
               TRI_json_t const* v = TRI_LookupArrayJson(indexes, i);
+
               if (TRI_IsObjectJson(v)) {
                 TRI_json_t const* k = TRI_LookupObjectJson(v, "id");
                 if (TRI_IsStringJson(k) && idString == string(k->_value._string.data)) {

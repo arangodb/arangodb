@@ -1,2 +1,2 @@
 arangosh> db.example;
-[ArangoCollection 453716131, "example" (type document, status loaded)]
+[ArangoCollection 454698037, "example" (type document, status loaded)]

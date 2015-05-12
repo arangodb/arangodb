@@ -51,19 +51,17 @@
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-  var applyDefaultConfig = function(config) {
-    if (config === undefined) {
-      return {};
-    }
+  function applyDefaultConfig(config) {
     var res = {};
-    var attr;
-    for (attr in config) {
-      if (config.hasOwnProperty(attr) && config[attr].hasOwnProperty("default")) {
-        res[attr] = config[attr].default;
-      }
+    if (config !== undefined) {
+      Object.keys(config).forEach(function (attr) {
+        if (config[attr].default !== undefined) {
+          res[attr] = config[attr].default;
+        }
+      });
     }
     return res;
-  };
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -73,7 +71,7 @@
 // --SECTION--                                                        AppContext
 // -----------------------------------------------------------------------------
 
-  var AppContext = function(app) {
+  function AppContext(app) {
     var prefix = fs.safeJoin(app._root, app._path);
 
     this._prefix = prefix;
@@ -90,8 +88,7 @@
     this.isDevelopment = app._isDevelopment;
     this.isProduction = ! app._isDevelopment;
     this.manifest = app._manifest;
-
-  };
+  }
 
   AppContext.prototype.foxxFilename = function (path) {
     return fs.safeJoin(this._prefix, path);
@@ -133,15 +130,15 @@
 /// @brief Checks if the mountpoint is reserved for system apps
 ////////////////////////////////////////////////////////////////////////////////
 
-var isSystemMount = function(mount) {
+function isSystemMount(mount) {
   return (/^\/_/).test(mount);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the root path for application. Knows about system apps
 ////////////////////////////////////////////////////////////////////////////////
 
-var computeRootAppPath = function(mount, isValidation) {
+function computeRootAppPath(mount, isValidation) {
   if (isValidation) {
     return "";
   }
@@ -149,26 +146,21 @@ var computeRootAppPath = function(mount, isValidation) {
     return module.systemAppPath();
   }
   return module.appPath();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoApp constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  var ArangoApp = function (config) {
-    if (config.hasOwnProperty("error")) {
+  function ArangoApp(config) {
+    if (config.error) {
       this._error = config.error;
       this._isBroken = true;
     }
-    if (!config.hasOwnProperty("manifest")) {
-      // Parse Error in manifest.
-      this._manifest = {
-        name: "unknown",
-        version: "error"
-      };
-    } else {
-      this._manifest = config.manifest;
-    }
+    this._manifest = config.manifest || {
+      name: "unknown",
+      version: "error"
+    };
     this._name = this._manifest.name;
     this._version = this._manifest.version;
     this._root = computeRootAppPath(config.mount, config.id === "__internal");
@@ -185,19 +177,10 @@ var computeRootAppPath = function(mount, isValidation) {
     this._options.configuration = applyDefaultConfig(this._manifest.configuration);
     this.configure(cfg);
 
-    var depsLookup = {};
     var deps = config.options.dependencies;
-    this._options.dependencies = deps;
-    this._dependencies = depsLookup;
-    _.each(deps, function (mount, name) {
-      Object.defineProperty(depsLookup, name, {
-        configurable: true,
-        enumerable: true,
-        get: function () {
-          return require("org/arangodb/foxx").requireApp(mount);
-        }
-      });
-    }, this);
+    this._options.dependencies = {};
+    this._dependencies = {};
+    this.updateDeps(deps);
 
     this._context = new AppContext(this);
     this._context.appPackage = module.createAppPackage(this);
@@ -215,7 +198,7 @@ var computeRootAppPath = function(mount, isValidation) {
           "Cannot read thumbnail '%s' : %s", thumbfile, err);
       }
     }
-  };
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -286,34 +269,57 @@ var computeRootAppPath = function(mount, isValidation) {
     this._isDevelopment = activate;
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set app dependencies
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoApp.prototype.updateDeps = function (deps) {
+    var expected = this._manifest.dependencies;
+    var invalid = [];
+
+    _.each(deps, function (mount, name) {
+      if (!expected[name]) {
+        invalid.push("Unexpected dependency " + name);
+      }
+      this._options.dependencies[name] = mount;
+    }, this);
+
+    _.each(this._options.dependencies, function (mount, name) {
+      Object.defineProperty(this._dependencies, name, {
+        configurable: true,
+        enumerable: true,
+        get: function () {
+          return require("org/arangodb/foxx").requireApp(mount);
+        }
+      });
+    }, this);
+
+    return invalid;
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set app configuration
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoApp.prototype.configure = function(config) {
-    if (!this._manifest.hasOwnProperty("configuration")) {
-      return [];
-    }
     var expected = this._manifest.configuration;
-    var attr;
-    var type;
     var invalid = [];
     this._options.configuration = this._options.configuration || {};
-    for (attr in config) {
-      if (config.hasOwnProperty(attr)) {
-        if (!expected.hasOwnProperty(attr)) {
-          invalid.push("Unexpected Attribute " + attr);
+
+    _.each(config, function (value, name) {
+      if (!expected[name]) {
+        invalid.push("Unexpected Option " + name);
+      } else {
+        var type = expected[name].type;
+        var result = utils.parameterTypes[type].validate(value);
+        if (result.error) {
+          invalid.push(result.error.message.replace(/^"value"/, '"' + name + '"'));
         } else {
-          type = expected[attr].type;
-          if (!(utils.typeToRegex[type]).test(config[attr])) {
-            invalid.push("Attribute " + attr + " has wrong type, expected: " + type);
-          } else {
-            this._options.configuration[attr] = config[attr];
-          }
+          this._options.configuration[name] = result.value;
         }
       }
-    }
+    }, this);
+
     return invalid;
   };
 
@@ -321,37 +327,36 @@ var computeRootAppPath = function(mount, isValidation) {
 /// @brief get app configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoApp.prototype.getConfiguration = function(simple) {
-    if (!this._manifest.hasOwnProperty("configuration")) {
-      return {};
-    }
-    // Make sure originial is unmodified
-    var config = JSON.parse(JSON.stringify(this._manifest.configuration));
-    var setting = this._options.configuration || {};
-    var attr;
-    if (simple) {
-      var res = {};
-      for (attr in config) {
-        if (config.hasOwnProperty(attr)) {
-          if (setting.hasOwnProperty(attr)) {
-            res[attr] = setting[attr];
-          } else if (config[attr].hasOwnProperty("default")) {
-            res[attr] = config[attr].default;
-          }
-        }
-      }
-      return res;
-    }
-    for (attr in config) {
-      if (config.hasOwnProperty(attr)) {
-        if (setting.hasOwnProperty(attr)) {
-          config[attr].current = setting[attr];
-        } else if (config[attr].hasOwnProperty("default")) {
-          config[attr].current = config[attr].default;
-        }
-      }
-    }
+  ArangoApp.prototype.getConfiguration = function (simple) {
+    var config = {};
+    var definitions = this._manifest.configuration;
+    var options = this._options.configuration;
+    _.each(definitions, function (dfn, name) {
+      var value = options[name] === undefined ? dfn.default : options[name];
+      config[name] = simple ? value : _.extend(_.clone(dfn), {
+        title: utils.getReadableName(name),
+        current: value
+      });
+    });
     return config;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get app dependencies
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoApp.prototype.getDependencies = function(simple) {
+    var deps = {};
+    var definitions = this._manifest.dependencies;
+    var options = this._options.dependencies;
+    _.each(definitions, function (dfn, name) {
+      deps[name] = simple ? options[name] : {
+        definition: dfn,
+        title: utils.getReadableName(name),
+        current: options[name]
+      };
+    });
+    return deps;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,15 +365,12 @@ var computeRootAppPath = function(mount, isValidation) {
 
   ArangoApp.prototype.needsConfiguration = function() {
     var config = this.getConfiguration();
-    var attr;
-    for (attr in config) {
-      if (config.hasOwnProperty(attr)) {
-        if (!config[attr].hasOwnProperty("current")) {
-          return true;
-        }
-      }
-    }
-    return false;
+    var deps = this.getDependencies();
+    return _.any(config, function (cfg) {
+      return cfg.current === undefined;
+    }) || _.any(deps, function (dep) {
+      return dep.current === undefined;
+    });
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -376,21 +378,17 @@ var computeRootAppPath = function(mount, isValidation) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoApp.prototype.loadAppScript = function (filename, options) {
-    var appContext;
-    if (options !== undefined && options.appContext) {
-      appContext = _.extend(options.appContext, this._context);
-    } else {
-      appContext = _.extend({}, this._context);
-    }
-
     options = options || {};
 
+    var appContext = _.extend({}, options.appContext, this._context);
     var full = fs.join(this._root, this._path, filename);
+
     if (!fs.exists(full)) {
       throwFileNotFound(full);
     }
 
     var fileContent = fs.read(full);
+
     if (options.transform) {
       fileContent = options.transform(fileContent);
     } else if (/\.coffee$/.test(filename)) {
@@ -399,6 +397,7 @@ var computeRootAppPath = function(mount, isValidation) {
     }
 
     var context = {};
+
     if (options.context) {
       Object.keys(options.context).forEach(function (key) {
         context[key] = options.context[key];
@@ -406,6 +405,7 @@ var computeRootAppPath = function(mount, isValidation) {
     }
 
     var localModule = appContext.appPackage.createAppModule(this, filename);
+
     context.__filename = full;
     context.__dirname = module.normalizeModuleName(full + "/..");
     context.console = require("org/arangodb/foxx/console")(this._mount);
@@ -426,9 +426,7 @@ var computeRootAppPath = function(mount, isValidation) {
     }
   };
 
-
   exports.ArangoApp = ArangoApp;
-
 }());
 
 // -----------------------------------------------------------------------------

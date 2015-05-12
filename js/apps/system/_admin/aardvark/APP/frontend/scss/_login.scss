@@ -1,8 +1,16 @@
+.loginFixedWindow {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: #DEE8D0;
+  top: 0;
+  left: 0;
+}
+
 .login-window {
-  background-color: $c-login-window-bg;
-  border: 1px solid $c-login-window-border;
-  border-radius: 2px;
-  height: 300px;
+  background-color: #fff;
+  border-radius: 5px;
+  height: 280px;
   left: 50%;
   margin-left: -220px !important;
   margin-top: -150px;
@@ -11,6 +19,18 @@
   position: absolute;
   top: 50%;
   width: 400px;
+
+  img {
+    margin-left: 12px;
+  }
+
+  .fa {
+    float: right;
+    margin-top: -34px;
+    font-size: 14pt;
+    color: rgba(0,0,0,0.4);
+    margin-right: 5px;
+  }
 }
 
 .login-space {

@@ -196,8 +196,8 @@ static void printUnrecognizedOption (TRI_program_options_t const* options,
  
   std::multimap<int, std::string> distances;
 
-  for (size_t i = 0;  i < options->_items._length;  ++i) {
-    TRI_PO_item_t const* item = static_cast<TRI_PO_item_t const*>(TRI_AtVector(&options->_items, i));
+  for (size_t i = 0;  i < TRI_LengthVector(&options->_items);  ++i) {
+    auto item = static_cast<TRI_PO_item_t const*>(TRI_AtVector(&options->_items, i));
 
     distances.emplace(TRI_Levenshtein(option, item->_desc->_name), item->_desc->_name);
   }
@@ -379,7 +379,7 @@ static void CreateDoubleOption (po_double_t * desc, const void * input, void * o
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&doubleOpt, desc->base._name, 1, 0, (int)(po->_longopts._length));
+  InitOptionStructure(&doubleOpt, desc->base._name, 1, 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -441,12 +441,7 @@ static void CreateFlagOption (po_flag_t * desc, const void * input, void * outpu
 
   po = (TRI_program_options_t*) (output);
 
-  if (desc->_value == 0) {
-    InitOptionStructure(&flagOpt, desc->base._name, 0, 0, (int) po->_longopts._length);
-  }
-  else {
-    InitOptionStructure(&flagOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
-  }
+  InitOptionStructure(&flagOpt, desc->base._name, (desc->_value == 0 ? 0 : 1), 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -492,7 +487,7 @@ void CreateInt16Option (po_int16_t * desc, const void * input, void * output) {
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -533,7 +528,7 @@ void CreateInt32Option (po_int32_t * desc, const void * input, void * output) {
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -574,7 +569,7 @@ static void CreateInt64Option (po_int64_t * desc, const void * input, void * out
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -630,7 +625,7 @@ static void CreateStringOption (TRI_PO_string_t * desc, const void * input, void
 
   po = (TRI_program_options_t *) output;
 
-  InitOptionStructure(&stringOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
+  InitOptionStructure(&stringOpt, desc->base._name, 1, 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -676,7 +671,7 @@ static void CreateUInt16Option (po_uint16_t * desc, const void * input, void * o
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -717,7 +712,7 @@ static void CreateUInt32Option (po_uint32_t * desc, const void * input, void * o
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -758,7 +753,7 @@ static void CreateUInt64Option (po_uint64_t * desc, const void * input, void * o
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -795,7 +790,7 @@ static void CreateVectorStringOption (TRI_PO_vector_string_t * desc, const void 
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&vectorOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
+  InitOptionStructure(&vectorOpt, desc->base._name, 1, 0, (int) TRI_LengthVector(&po->_longopts));
 
   memset(&item, 0, sizeof(item));
 
@@ -901,7 +896,7 @@ static bool HandleOption (TRI_program_options_t * options,
     full = TRI_Concatenate3String(section, ".", option);
   }
 
-  for (size_t i = 0;  i < options->_items._length;  ++i) {
+  for (size_t i = 0;  i < TRI_LengthVector(&options->_items);  ++i) {
     TRI_PO_item_t* item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (TRI_EqualString(full, item->_desc->_name)) {
@@ -1527,7 +1522,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t* options,
   // option with a missing value
   TRI_AppendCharStringBuffer(&buffer, ':');
 
-  for (i = 0;  i < options->_items._length;  ++i) {
+  for (i = 0;  i < TRI_LengthVector(&options->_items);  ++i) {
     item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (item->_desc->_short != '\0') {
@@ -1546,7 +1541,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t* options,
     }
   }
 
-  const char* shortOptions;
+  char const* shortOptions;
   if (TRI_LengthStringBuffer(&buffer) == 0) {
     shortOptions = "";
   }
@@ -1555,7 +1550,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t* options,
   }
 
   optind = 1;
-  maxIdx = (int) options->_items._length;
+  maxIdx = (int) TRI_LengthVector(&options->_items);
 
   while (true) {
     int c = getopt_long(argc, argv, shortOptions, (const struct option*) options->_longopts._buffer, &idx);
@@ -1570,7 +1565,8 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t* options,
     }
 
     if (c < 256) {
-      for (i = 0;  i < options->_items._length;  ++i) {
+      size_t ni = TRI_LengthVector(&options->_items);
+      for (i = 0;  i < ni;  ++i) {
         item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
         if (item->_desc->_short == c) {
@@ -1578,7 +1574,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t* options,
         }
       }
 
-      if (i == options->_items._length) {
+      if (i == ni) {
         if (optind - 1 > 0 && optind - 1 < argc) {
           if ((char) c == ':') {
             // missing argument
@@ -1877,7 +1873,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t* options,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_HasOptionProgramOptions (TRI_program_options_t const* options, const char* name) {
-  for (size_t i = 0;  i < options->_items._length;  ++i) {
+  for (size_t i = 0;  i < TRI_LengthVector(&options->_items);  ++i) {
     TRI_PO_item_t * item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (item->_used && TRI_EqualString(name, item->_desc->_name)) {

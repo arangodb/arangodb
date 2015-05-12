@@ -237,9 +237,9 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   : _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
     _estimatedCost(0.0), 
     _estimatedCostSet(false),
+    _depth(JsonHelper::checkAndGetNumericValue<int>(json.json(), "depth")),
     _varUsageValid(true),
-    _plan(plan),
-    _depth(JsonHelper::checkAndGetNumericValue<int>(json.json(), "depth")) {
+    _plan(plan) {
 
   TRI_ASSERT(_registerPlan.get() == nullptr); 
   _registerPlan.reset(new RegisterPlan());
@@ -893,6 +893,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       totalNrRegs++;
       break;
     }
+
     case ExecutionNode::ENUMERATE_LIST: {
       depth++;
       nrRegsHere.emplace_back(1);
@@ -908,6 +909,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       totalNrRegs++;
       break;
     }
+
     case ExecutionNode::CALCULATION: {
       nrRegsHere[depth]++;
       nrRegs[depth]++;
@@ -1105,7 +1107,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     // ReturnNodes are special, since they return a single column anyway
     std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
     std::vector<Variable const*> const& varsUsedHere = en->getVariablesUsedHere();
-    
+   
     // We need to delete those variables that have been used here but are not
     // used any more later:
     std::unordered_set<RegisterId> regsToClear;

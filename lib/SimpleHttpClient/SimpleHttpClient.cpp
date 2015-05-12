@@ -366,6 +366,10 @@ namespace triagens {
         }
       }
 
+      if (haveErrorMessage() && (_result->getHttpReturnMessage().length() == 0)) {
+        _result->setHttpReturnMessage(_errorMessage);
+      }
+
       return _result;
     }
 

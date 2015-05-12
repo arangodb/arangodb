@@ -34,7 +34,7 @@
 ### @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ################################################################################
 
-import sys, re, json, string, os
+import sys, re, json, string, os, cgi
 
 rc = re.compile
 MS = re.M | re.S
@@ -558,6 +558,7 @@ def examples(cargo, r=Regexen()):
 ### @brief example_arangosh_run
 ################################################################################
 
+
 def example_arangosh_run(cargo, r=Regexen()):
     global DEBUG, C_FILE
 
@@ -570,7 +571,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     operation['examples'] += '<br><br><pre><code class="json">'
 
     for line in examplefile.readlines():
-        operation['examples'] += line
+        operation['examples'] += cgi.escape(line)
 
     operation['examples'] += '</code></pre><br>'
 

@@ -164,6 +164,34 @@ uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
                                    bool docComplete,
                                    int* error);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasher for JSON value
+////////////////////////////////////////////////////////////////////////////////
+
+namespace triagens {
+  namespace basics {
+
+    struct JsonHash {
+      size_t operator() (TRI_json_t const* value) const {
+        return TRI_FastHashJson(value);
+      }
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief equality comparator for JSON values
+////////////////////////////////////////////////////////////////////////////////
+
+    struct JsonEqual {    
+      bool operator() (TRI_json_t const* lhs,
+                       TRI_json_t const* rhs) const {
+        int res = TRI_CompareValuesJson(lhs, rhs, false);
+        return (res == 0);
+      }
+    };
+
+  }
+}
+
 #endif
 
 // -----------------------------------------------------------------------------

@@ -85,6 +85,12 @@ In order to configure the build environment execute
 to setup the makefiles. This will check the various system characteristics and
 installed libraries.
 
+You can specify the host and target. In this case should also add a *--program-suffix*.
+
+    ./configure --host=x86_64-apple-darwin --target=x86_64-apple-darwin --program-suffix=""
+
+Otherwise the config files will have qualified names.
+
 !SUBSECTION Compile
 
 Compile the program by executing

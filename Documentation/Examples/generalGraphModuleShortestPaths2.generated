@@ -5,73 +5,9 @@ arangosh> g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'
 [ 
   [ 
     { 
-      "vertex" : { 
-        "_id" : "frenchCity/Lyon", 
-        "_key" : "Lyon", 
-        "_rev" : "501950627", 
-        "isCapital" : false, 
-        "population" : 80000 
-      }, 
+      "vertex" : "frenchCity/Lyon", 
       "distance" : 700, 
-      "path" : { 
-        "vertices" : [ 
-          { 
-            "_id" : "germanCity/Cologne", 
-            "_key" : "Cologne", 
-            "_rev" : "501360803", 
-            "isCapital" : false, 
-            "population" : 1000000 
-          }, 
-          { 
-            "_id" : "frenchCity/Lyon", 
-            "_key" : "Lyon", 
-            "_rev" : "501950627", 
-            "isCapital" : false, 
-            "population" : 80000 
-          } 
-        ], 
-        "edges" : [ 
-          { 
-            "_id" : "internationalHighway/504309923", 
-            "_key" : "504309923", 
-            "_rev" : "504309923", 
-            "_from" : "germanCity/Cologne", 
-            "_to" : "frenchCity/Lyon", 
-            "distance" : 700 
-          } 
-        ] 
-      }, 
-      "startVertex" : "germanCity/Cologne", 
-      "paths" : [ 
-        { 
-          "vertices" : [ 
-            { 
-              "_id" : "germanCity/Cologne", 
-              "_key" : "Cologne", 
-              "_rev" : "501360803", 
-              "isCapital" : false, 
-              "population" : 1000000 
-            }, 
-            { 
-              "_id" : "frenchCity/Lyon", 
-              "_key" : "Lyon", 
-              "_rev" : "501950627", 
-              "isCapital" : false, 
-              "population" : 80000 
-            } 
-          ], 
-          "edges" : [ 
-            { 
-              "_id" : "internationalHighway/504309923", 
-              "_key" : "504309923", 
-              "_rev" : "504309923", 
-              "_from" : "germanCity/Cologne", 
-              "_to" : "frenchCity/Lyon", 
-              "distance" : 700 
-            } 
-          ] 
-        } 
-      ] 
+      "startVertex" : "germanCity/Cologne" 
     } 
   ] 
 ]

@@ -217,6 +217,8 @@
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
+/// ~ examples.dropGraph("social");
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -347,6 +349,7 @@
 ///   db._drop("male");
 ///   db._drop("female");
 ///   db._drop("relation");
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,6 +391,7 @@
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -493,6 +497,8 @@
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
+/// ~ examples.dropGraph("social");
+/// ~ db._drop("otherVertices");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// You cannot remove vertex collections that are used in edge collections:
@@ -507,6 +513,8 @@
 ///
 ///   logJsonResponse(response);
 ///   db._drop("male");
+///   db._drop("female");
+///   db._drop("relation");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// @endDocuBlock
@@ -572,6 +580,7 @@
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -743,6 +752,7 @@
 ///
 ///   logJsonResponse(response);
 ///   db._drop("relation");
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -805,6 +815,7 @@
 ///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1091,6 +1102,7 @@
 ///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1162,6 +1174,7 @@
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1215,6 +1228,7 @@
 ///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1275,6 +1289,7 @@
 ///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1335,6 +1350,7 @@
 ///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

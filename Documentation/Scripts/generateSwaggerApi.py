@@ -39,36 +39,36 @@
 ### @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ################################################################################
 
-import sys, os, json, string
+import sys, os, os.path, json, string, operator
 
 files = { 
-  "js/actions/api-aqlfunction.js" : "aqlfunction",
-  "arangod/RestHandler/RestBatchHandler.cpp" : "batch",
-  "js/actions/_api/collection/app.js" : "collection",
-  "arangod/RestHandler/RestCursorHandler.cpp" : "cursor",
-  "js/actions/api-database.js" : "database",
-  "arangod/RestHandler/RestDocumentHandler.cpp" : "document",
-  "arangod/RestHandler/RestEdgeHandler.cpp" : "edge",
-  "arangod/RestHandler/RestExportHandler.cpp" : "export",
-  "js/actions/api-edges.js" : "edges",
-  "js/actions/api-endpoint.js" : "endpoint",
-  "js/actions/api-explain.js" : "explain",
-  "js/actions/api-graph.js" : "graph",
-  "arangod/RestHandler/RestImportHandler.cpp" : "import",
-  "js/actions/api-index.js" : "index",
-  "lib/HttpServer/AsyncJobManager.h" : "job",
-  "lib/Admin/RestAdminLogHandler.cpp" : "log",
-  "arangod/RestHandler/RestQueryHandler.cpp" : "query",
-  "arangod/RestHandler/RestReplicationHandler.cpp" : "replication",
-  "js/actions/api-simple.js" : "simple",
-  "js/actions/api-structure.js" : "structure",
-  "js/actions/api-system.js" : "system",
-  "js/actions/api-tasks.js" : "tasks",
-  "js/actions/api-transaction.js" : "transaction",
-  "js/actions/api-traversal.js" : "traversal",
-  "js/actions/_api/user/app.js" : "user",
-  "lib/Admin/RestVersionHandler.cpp" : "version",
-  "js/actions/_admin/wal/app.js" : "wal"
+  "aqlfunction" : [ "js/actions/api-aqlfunction.js" ],
+  "batch" : [ "arangod/RestHandler/RestBatchHandler.cpp" ],
+  "collection" : [ "js/actions/_api/collection/app.js" ],
+  "cursor" : [ "arangod/RestHandler/RestCursorHandler.cpp" ],
+  "database" : [ "js/actions/api-database.js" ],
+  "document" : [ "arangod/RestHandler/RestDocumentHandler.cpp" ],
+  "edge" : [ "arangod/RestHandler/RestEdgeHandler.cpp" ],
+  "edges" : [ "js/actions/api-edges.js" ],
+  "endpoint" : [ "js/actions/api-endpoint.js" ],
+  "explain" : [ "js/actions/api-explain.js" ],
+  "export" : [ "arangod/RestHandler/RestExportHandler.cpp" ],
+  "graph" : [ "js/actions/api-graph.js" ],
+  "import" : [ "arangod/RestHandler/RestImportHandler.cpp" ],
+  "index" : [ "js/actions/api-index.js" ],
+  "job" : [ "lib/HttpServer/AsyncJobManager.h" ],
+  "log" : [ "lib/Admin/RestAdminLogHandler.cpp" ],
+  "query" : [ "arangod/RestHandler/RestQueryHandler.cpp" ],
+  "replication" : [ "arangod/RestHandler/RestReplicationHandler.cpp" ],
+  "simple" : [ "js/actions/api-simple.js", "arangod/RestHandler/RestSimpleHandler.cpp" ],
+  "structure" : [ "js/actions/api-structure.js" ],
+  "system" : [ "js/actions/api-system.js" ],
+  "tasks" : [ "js/actions/api-tasks.js" ],
+  "transaction" : [ "js/actions/api-transaction.js" ],
+  "traversal" : [ "js/actions/api-traversal.js" ],
+  "user" : [ "js/actions/_api/user/app.js" ],
+  "version" : [ "lib/Admin/RestVersionHandler.cpp" ],
+  "wal" : [ "js/actions/_admin/wal/app.js" ]
 }
 
 if len(sys.argv) < 3:
@@ -98,10 +98,20 @@ apis = [ ];
 
 # print "Generating Swagger docs for code in " + scriptDir + ", outdir: " + outDir + "\n"
 
-for filename, name in sorted(files.iteritems(), key=lambda (k, v): (v, k)):
+for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
+  tmpname = scriptDir + "/arango-swagger-" + name
+  if os.path.isfile(tmpname):
+    os.remove(tmpname)
+
+  with open(tmpname, 'w') as tmpfile:
+    for tmp in filenames:
+      with open(tmp) as infile:
+        tmpfile.write(infile.read())   
+
   outfile = outDir + name + ".json"
 
-  os.system("python " + scriptDir + "Documentation/Scripts/generateSwagger.py < " + scriptDir + filename + " > " + outfile)
+  os.system("python " + scriptDir + "Documentation/Scripts/generateSwagger.py < " + tmpname + " > " + outfile)
+  os.remove(tmpname)
   apis.append({ "path" : relDir + name + ".{format}", "description" : name + " API" })
 
 

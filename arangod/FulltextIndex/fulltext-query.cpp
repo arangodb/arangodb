@@ -103,7 +103,8 @@ static char* NormaliseWord (char const* word,
 /// @brief create a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex (size_t numWords) {
+TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex (size_t numWords,
+                                                    size_t maxResults) {
   TRI_fulltext_query_t* query = static_cast<TRI_fulltext_query_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_t), false));
 
   if (query == nullptr) {
@@ -136,6 +137,7 @@ TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex (size_t numWords) {
   }
 
   query->_numWords = numWords;
+  query->_maxResults = maxResults;
 
   return query;
 }

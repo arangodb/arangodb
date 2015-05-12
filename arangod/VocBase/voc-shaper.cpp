@@ -284,7 +284,7 @@ static uint64_t HashElementShape (TRI_associative_synced_t* array,
   TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
   TRI_ASSERT(shape != nullptr);
   char const* s = reinterpret_cast<char const*>(shape);
-  return TRI_FnvHashPointer(s + sizeof(TRI_shape_sid_t), shape->_size - sizeof(TRI_shape_sid_t));
+  return TRI_FnvHashPointer(s + sizeof(TRI_shape_sid_t), static_cast<size_t>(shape->_size - sizeof(TRI_shape_sid_t)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,7 +302,7 @@ static bool EqualElementShape (TRI_associative_synced_t* array,
   return (l->_size == r->_size)
     && memcmp(ll + sizeof(TRI_shape_sid_t),
               rr + sizeof(TRI_shape_sid_t),
-              l->_size - sizeof(TRI_shape_sid_t)) == 0;
+              static_cast<size_t>(l->_size) - sizeof(TRI_shape_sid_t)) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -75,6 +75,51 @@ function ahuacatlFailureSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test UNION for memleaks
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlFunctionUnion : function () {
+      var where = [ "AqlFunctions::OutOfMemory1", "AqlFunctions::OutOfMemory2", "AqlFunctions::OutOfMemory3" ];
+
+      where.forEach(function(w) {
+        internal.debugClearFailAt();
+       
+        internal.debugSetFailAt(w);
+        assertFailingQuery("RETURN NOOPT(UNION([ 1, 2, 3, 4 ], [ 5, 6, 7, 8 ], [ 9, 10, 11 ]))");
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test UNION_DISTINCT for memleaks
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlFunctionUnionDistinct : function () {
+      var where = [ "AqlFunctions::OutOfMemory1", "AqlFunctions::OutOfMemory2", "AqlFunctions::OutOfMemory3" ];
+
+      where.forEach(function(w) {
+        internal.debugClearFailAt();
+       
+        internal.debugSetFailAt(w);
+        assertFailingQuery("RETURN NOOPT(UNION_DISTINCT([ 1, 2, 3, 4 ], [ 5, 6, 7, 8 ], [ 9, 10, 11 ]))");
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test INTERSECTION for memleaks
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlFunctionIntersection : function () {
+      var where = [ "AqlFunctions::OutOfMemory1", "AqlFunctions::OutOfMemory2", "AqlFunctions::OutOfMemory3" ];
+
+      where.forEach(function(w) {
+        internal.debugClearFailAt();
+       
+        internal.debugSetFailAt(w);
+        assertFailingQuery("RETURN NOOPT(INTERSECTION([ 1, 2, 3, 4 ], [ 5, 6, 7, 8 ], [ 9, 10, 11 ]))");
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -90,6 +135,17 @@ function ahuacatlFailureSuite () {
 
     testSortedAggregateBlock2 : function () {
       internal.debugSetFailAt("SortedAggregateBlock::getOrSkipSome");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g RETURN [ key, g ]");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test failure
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortedAggregateBlock3 : function () {
+      internal.debugSetFailAt("SortedAggregateBlock::hasMore");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g RETURN [ key, g ]");

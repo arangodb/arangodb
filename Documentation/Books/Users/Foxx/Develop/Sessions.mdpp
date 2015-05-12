@@ -47,8 +47,10 @@ Example configuration for using signed cookies:
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
   sessionStorageApp: '/_system/sessions',
-  cookieName: 'sid',
-  cookieSecret: 'secret',
+  cookie: {
+    name: 'sid',
+    secret: 'secret'
+  },
   type: 'cookie'
 });
 ```
@@ -59,7 +61,7 @@ Example configuration for using a header:
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
   sessionStorageApp: '/_system/sessions',
-  headerName: 'X-Session-Token',
+  header: 'X-Session-Token',
   type: 'header'
 });
 ```
@@ -70,7 +72,7 @@ Example configuration for using a JWT header:
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
   sessionStorageApp: '/_system/sessions',
-  headerName: 'X-Web-Token',
+  header: 'X-Web-Token',
   jwt: 'keyboardcat',
   type: 'header'
 });
@@ -82,7 +84,7 @@ Example configuration for using a JWT header with signature algorithm "none" (an
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
   sessionStorageApp: '/_system/sessions',
-  headerName: 'X-Web-Token',
+  header: 'X-Web-Token',
   jwt: true,
   type: 'header'
 });
@@ -94,7 +96,7 @@ Example configuration for using a JWT header with signature verification disable
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
   sessionStorageApp: '/_system/sessions',
-  headerName: 'X-Web-Token',
+  header: 'X-Web-Token',
   jwt: {
     verify: false
   },
@@ -108,8 +110,10 @@ Example configuration for using signed JWT cookies:
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
   sessionStorageApp: '/_system/sessions',
-  cookieName: 'token',
-  cookieSecret: 'secret',
+  cookie: {
+    name: 'token',
+    secret: 'secret'
+  },
   jwt: 'keyboardcat',
   type: 'cookie'
 });
@@ -121,7 +125,7 @@ Example configuration for using unsigned cookies:
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
   sessionStorageApp: '/_system/sessions',
-  cookieName: 'sid',
+  cookie: 'sid',
   type: 'cookie'
 });
 ```

@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal <<EOF
 { "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "maxDepth" : 1}
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -11,13 +12,13 @@ content-type: application/json; charset=utf-8
         { 
           "_id" : "persons/alice", 
           "_key" : "alice", 
-          "_rev" : "1331308707", 
+          "_rev" : "1279009845", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "persons/bob", 
           "_key" : "bob", 
-          "_rev" : "1331505315", 
+          "_rev" : "1279206453", 
           "name" : "Bob" 
         } 
       ], 
@@ -28,7 +29,7 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1331308707", 
+              "_rev" : "1279009845", 
               "name" : "Alice" 
             } 
           ] 
@@ -36,9 +37,9 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1332422819", 
-              "_key" : "1332422819", 
-              "_rev" : "1332422819", 
+              "_id" : "knows/1280123957", 
+              "_key" : "1280123957", 
+              "_rev" : "1280123957", 
               "_from" : "persons/alice", 
               "_to" : "persons/bob" 
             } 
@@ -47,13 +48,13 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1331308707", 
+              "_rev" : "1279009845", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1331505315", 
+              "_rev" : "1279206453", 
               "name" : "Bob" 
             } 
           ] 

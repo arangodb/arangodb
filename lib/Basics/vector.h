@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_VECTOR_H
-#define ARANGODB_BASICS_C_VECTOR_H 1
+#ifndef ARANGODB_BASICS_VECTOR_H
+#define ARANGODB_BASICS_VECTOR_H 1
 
 #include "Basics/Common.h"
 
@@ -45,13 +45,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vector_s {
-  TRI_memory_zone_t* _memoryZone;
-  char * _buffer;
-  size_t _elementSize;
-  size_t _length;
-  size_t _capacity;
+  char*                 _buffer;
+  TRI_memory_zone_id_t  _memoryZoneX;  // private. do not access from outside
+  uint32_t              _lengthX;      // private. do not access from outside!
+  uint32_t              _capacityX;    // private. do not access from outside!
+  uint32_t              _elementSizeX; // private. do not access from outside!
 }
 TRI_vector_t;
+
+static_assert(sizeof(TRI_memory_zone_id_t) == 4, "invalid size for TRI_memory_zone_id_t");
+
+static_assert(sizeof(TRI_vector_t) == sizeof(char*) + 4 * sizeof(uint32_t), "invalid size for TRI_vector_t");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -61,7 +65,7 @@ TRI_vector_t;
 /// @brief initialises a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitVector (TRI_vector_t*, TRI_memory_zone_t*, size_t elementSize);
+void TRI_InitVector (TRI_vector_t*, TRI_memory_zone_t*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a vector, with user-definable settings
@@ -69,8 +73,8 @@ void TRI_InitVector (TRI_vector_t*, TRI_memory_zone_t*, size_t elementSize);
 
 int TRI_InitVector2 (TRI_vector_t*,
                      TRI_memory_zone_t*,
-                     size_t elementSize,
-                     size_t initialCapacity);
+                     size_t,
+                     size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a vector, but does not free the pointer
@@ -82,11 +86,19 @@ void TRI_DestroyVector (TRI_vector_t*);
 /// @brief destroys a vector and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeVector (TRI_memory_zone_t* zone, TRI_vector_t*);
+void TRI_FreeVector (TRI_memory_zone_t*, TRI_vector_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns length of vector
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t TRI_LengthVector (TRI_vector_t const* vector) {
+  return static_cast<size_t>(vector->_lengthX);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures a vector has space for extraCapacity more items
@@ -116,10 +128,10 @@ int TRI_CopyDataVector (TRI_vector_t*,
 bool TRI_EmptyVector (TRI_vector_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns length of vector
+/// @brief adjusts the length of the vector
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_LengthVector (TRI_vector_t const*);
+void TRI_SetLengthVector (TRI_vector_t*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the vector
@@ -137,13 +149,13 @@ int TRI_ResizeVector (TRI_vector_t*, size_t);
 /// @brief adds and element at the end
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PushBackVector (TRI_vector_t*, void const* element);
+int TRI_PushBackVector (TRI_vector_t*, void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveVector (TRI_vector_t*, size_t n);
+void TRI_RemoveVector (TRI_vector_t*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an element to the vector after borrowing it via 
@@ -166,7 +178,7 @@ void* TRI_NextVector (TRI_vector_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void* TRI_AddressVector (TRI_vector_t const* vector, size_t pos) {
-  return static_cast<void*>(vector->_buffer + pos * vector->_elementSize);
+  return static_cast<void*>(vector->_buffer + pos * static_cast<size_t>(vector->_elementSizeX));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,13 +191,13 @@ void* TRI_AtVector (TRI_vector_t const*, size_t);
 /// @brief inserts an element at a given position
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t position);
+int TRI_InsertVector (TRI_vector_t*, void const* , size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets an element at a given position
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetVector (TRI_vector_t* vector, size_t, void const* element);
+void TRI_SetVector (TRI_vector_t*, size_t, void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the beginning

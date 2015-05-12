@@ -66,14 +66,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::string assembleDocumentId (std::string const&,
-                                               std::string const& key);
+                                               std::string const& key,
+                                               bool urlEncode = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a char* key
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::string assembleDocumentId (std::string const&,
-                                               const TRI_voc_key_t);
+                                               const TRI_voc_key_t,
+                                               bool urlEncode = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id and document key from an id

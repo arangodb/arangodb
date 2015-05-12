@@ -63,7 +63,7 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
     _runningJobs(),
     _maxSize(maxSize),
     _stopping(0),
-    _monopolizer(0),
+    _monopolizer(nullptr),
     _startedThreads(),
     _stoppedThreads(),
     _nrStarted(0),
@@ -100,7 +100,7 @@ DispatcherQueue::~DispatcherQueue () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::addJob (Job* job) {
-  TRI_ASSERT(job != 0);
+  TRI_ASSERT(job != nullptr);
 
   CONDITION_LOCKER(guard, _accessQueue);
 
@@ -109,13 +109,19 @@ bool DispatcherQueue::addJob (Job* job) {
     return false;
   }
 
-  // if all threads are block, we start new threads
+  // if all threads are blocked, we start new threads
   if (0 == _nrWaiting && _nrRunning + _nrStarted <= _nrBlocked) {
     startQueueThread();
   }
 
   // add the job to the list of ready jobs
-  _readyJobs.push_back(job);
+  try {
+    _readyJobs.emplace_back(job);
+  }
+  catch (...) { 
+    // could not add job
+    return false;
+  }
 
   // wake up the _dispatcher queue threads
   if (0 < _nrWaiting) {
@@ -155,7 +161,7 @@ bool DispatcherQueue::cancelJob (uint64_t jobId) {
 
       if (canceled) {
         try {
-          job->setDispatcherThread(0);
+          job->setDispatcherThread(nullptr);
           job->cleanup();
         }
         catch (...) {
@@ -195,7 +201,7 @@ void DispatcherQueue::specializeThread (DispatcherThread* thread) {
     startQueueThread();
 
     if (_monopolizer == thread) {
-      _monopolizer = 0;
+      _monopolizer = nullptr;
     }
   }
 }
@@ -273,7 +279,7 @@ void DispatcherQueue::beginShutdown () {
 
       if (canceled) {
         try {
-          job->setDispatcherThread(0);
+          job->setDispatcherThread(nullptr);
           job->cleanup();
         }
         catch (...) {

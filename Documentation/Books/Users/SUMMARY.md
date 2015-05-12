@@ -113,6 +113,7 @@
     * [Background Tasks](Foxx/Develop/Queues.md)
     * [Console API](Foxx/Develop/Console.md)
     * [Metainformation](Foxx/Develop/Manifest.md)
+    * [Documentation](Foxx/Develop/ApiDocumentation.md)
   * [Production](Foxx/Production/README.md)
     * [Prod-Mode](Foxx/Production/Productionmode.md)
     * [Debugging](Foxx/Production/Debugging.md)

@@ -529,18 +529,13 @@ function splitUrl (url) {
   var parts;
   var re1;
   var re2;
-  var cut;
   var ors;
 
-  re1 = /^(:[a-zA-Z]+)(\|:[a-zA-Z]+)*$/;
+  re1 = /^(:[a-zA-Z]+)*$/;
   re2 = /^(:[a-zA-Z]+)\?$/;
 
   parts = url.split("/");
   cleaned = [];
-
-  cut = function (x) {
-    return x.substr(1);
-  };
 
   for (i = 0;  i < parts.length;  ++i) {
     var part = parts[i];
@@ -553,7 +548,7 @@ function splitUrl (url) {
         cleaned.push({ prefix: true });
       }
       else if (re1.test(part)) {
-        ors = part.split("|").map(cut);
+        ors = [ part.substr(1) ];
         cleaned.push({ parameters: ors });
       }
       else if (re2.test(part)) {
@@ -970,7 +965,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
 
       result = result.concat(flattenRouting(
         parameter.match,
-        path + "/<parameters>",
+        path + "/:" + parameter.parameter + (parameter.optional ? '?' : ''),
         cur,
         newUrlParameters,
         depth + 1,
@@ -1009,7 +1004,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
   if (routes.hasOwnProperty('prefix')) {
     result = result.concat(flattenRouting(
       routes.prefix,
-      path + "/...",
+      path + "/*",
       rexpr + "(/[^/]+)*/?",
       urlParameters._shallowCopy,
       depth + 1,
@@ -1290,6 +1285,23 @@ function routeRequest (req, res, routes) {
     }
     else {
       req.urlParameters = {};
+    }
+
+    if (req.path) {
+      var path = req.path;
+      req.path = function (params, suffix) {
+        var p = path;
+        params = params || req.urlParameters;
+        Object.keys(params).forEach(function (key) {
+          p = p.replace(new RegExp(':' + key + '\\??', 'g'), params[key]);
+        });
+        p = p.replace(/:[a-zA-Z]+\?$/, '');
+        suffix = suffix || req.suffix;
+        if (Array.isArray(suffix)) {
+          suffix = suffix.join('/');
+        }
+        return p.replace(/\*$/, suffix || '');
+      };
     }
 
     var func = action.route.callback.controller;
@@ -2241,14 +2253,8 @@ function pathHandler (req, res, options, next) {
 /// @brief helper function to stringify a request
 ////////////////////////////////////////////////////////////////////////////////
 
-function stringifyRequestAddress (req) {
-  var out = req.requestType + " " +
-            req.protocol + "://" +
-            req.server.address + ":" +
-            req.server.port +
-            req.url;
-
-  return out;
+function stringifyRequest(req) {
+  return req.requestType + " " + req.absoluteUrl();
 }
 
 // -----------------------------------------------------------------------------
@@ -2275,7 +2281,7 @@ exports.reloadRouting            = reloadRouting;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.addCookie                = addCookie;
-exports.stringifyRequestAddress  = stringifyRequestAddress;
+exports.stringifyRequest         = stringifyRequest;
 
 // standard HTTP responses
 exports.badParameter             = badParameter;

@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example <<EOF
 { "collection": "products", "example" :  { "i" : 1 }  }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
@@ -7,19 +8,15 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1269704867", 
-      "_key" : "1269704867", 
-      "_rev" : "1269704867", 
-      "i" : 1, 
-      "a" : { 
-        "k" : 2, 
-        "j" : 2 
-      } 
+      "_id" : "products/1488135221", 
+      "_key" : "1488135221", 
+      "_rev" : "1488135221", 
+      "i" : 1 
     }, 
     { 
-      "_id" : "products/1268918435", 
-      "_key" : "1268918435", 
-      "_rev" : "1268918435", 
+      "_id" : "products/1487545397", 
+      "_key" : "1487545397", 
+      "_rev" : "1487545397", 
       "i" : 1, 
       "a" : { 
         "k" : 1, 
@@ -27,19 +24,23 @@ content-type: application/json; charset=utf-8
       } 
     }, 
     { 
-      "_id" : "products/1269246115", 
-      "_key" : "1269246115", 
-      "_rev" : "1269246115", 
+      "_id" : "products/1487873077", 
+      "_key" : "1487873077", 
+      "_rev" : "1487873077", 
       "i" : 1, 
       "a" : { 
         "j" : 1 
       } 
     }, 
     { 
-      "_id" : "products/1269508259", 
-      "_key" : "1269508259", 
-      "_rev" : "1269508259", 
-      "i" : 1 
+      "_id" : "products/1488331829", 
+      "_key" : "1488331829", 
+      "_rev" : "1488331829", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 2, 
+        "j" : 2 
+      } 
     } 
   ], 
   "hasMore" : false, 

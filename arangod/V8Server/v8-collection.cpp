@@ -899,7 +899,7 @@ void ReplaceVocbaseCol (bool useCollection,
   // - creating a shape, which might trigger a write into the collection
   trx.lockWrite();
 
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
     const string cidString = StringUtils::itoa(document->_info._planId);
 
@@ -1234,7 +1234,7 @@ static void UpdateVocbaseCol (bool useCollection,
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
     const string cidString = StringUtils::itoa(document->_info._planId);
 
@@ -2388,7 +2388,7 @@ static void JS_RemoveVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///   c = db.example;
 ///   c.rename("better-example");
 ///   c;
-/// ~ db._drop("example");
+/// ~ db._drop("better-example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -4266,7 +4266,7 @@ static void JS_DatafileScanVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>
   v8::Handle<v8::Array> entries = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("entries"), entries);
 
-  for (size_t i = 0;  i < scan._entries._length;  ++i) {
+  for (size_t i = 0;  i < TRI_LengthVector(&scan._entries);  ++i) {
     TRI_df_scan_entry_t* entry = (TRI_df_scan_entry_t*) TRI_AtVector(&scan._entries, i);
 
     v8::Handle<v8::Object> o = v8::Object::New(isolate);

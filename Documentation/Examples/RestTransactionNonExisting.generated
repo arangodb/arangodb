@@ -1,10 +1,11 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction <<EOF
 { 
   "collections" : { 
     "read" : "products" 
   }, 
   "action" : "function () { return true; }" 
 }
+EOF
 
 HTTP/1.1 404 Not Found
 content-type: application/json; charset=utf-8
@@ -12,7 +13,7 @@ content-type: application/json; charset=utf-8
 { 
   "exception" : "[ArangoError 1203: collection not found]", 
   "stacktrace" : [ 
-    "Error: collection not found", 
+    "[ArangoError 1203: collection not found]", 
     "  at Error (native)", 
     "  at post_api_transaction (js/actions/api-transaction.js:268:16)", 
     "  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)", 

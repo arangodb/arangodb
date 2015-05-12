@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/endpoint
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/endpoint <<EOF
 {"endpoint":"tcp://127.0.0.1:8533","databases":[]}
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8

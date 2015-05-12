@@ -3812,7 +3812,7 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
 /// @brief return documents that match a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_FULLTEXT (collection, attribute, query) {
+function AQL_FULLTEXT (collection, attribute, query, limit) {
   'use strict';
 
   var idx = INDEX_FULLTEXT(COLLECTION(collection), attribute);
@@ -3822,10 +3822,13 @@ function AQL_FULLTEXT (collection, attribute, query) {
   }
 
   if (isCoordinator) {
+    if (limit !== undefined && limit !== null && limit > 0) {
+      return COLLECTION(collection).fulltext(attribute, query, idx).limit(limit).toArray();
+    }
     return COLLECTION(collection).fulltext(attribute, query, idx).toArray();
   }
 
-  return COLLECTION(collection).FULLTEXT(idx, query).documents;
+  return COLLECTION(collection).FULLTEXT(idx, query, limit).documents;
 }
 
 // -----------------------------------------------------------------------------
@@ -4818,6 +4821,7 @@ function AQL_PATHS (vertices, edgeCollection, direction, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   db._query("RETURN GRAPH_PATHS('social')").toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Return all inbound paths of the graph "social" with a maximal
@@ -4829,6 +4833,7 @@ function AQL_PATHS (vertices, edgeCollection, direction, options) {
 /// | db._query(
 /// | "RETURN GRAPH_PATHS('social', {direction : 'inbound', minLength : 1, maxLength :  2})"
 ///   ).toArray();
+/// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -5962,6 +5967,7 @@ function IS_EXAMPLE_SET (example) {
 /// | "startVertexCollectionRestriction : 'germanCity'}) RETURN [e.startVertex, e.vertex._id, " +
 /// | "e.distance, LENGTH(e.paths)]"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
@@ -5974,6 +5980,7 @@ function IS_EXAMPLE_SET (example) {
 /// | "'frenchCity/Lyon', " +
 /// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex, e.distance, LENGTH(e.paths)]"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6103,6 +6110,7 @@ function AQL_TRAVERSAL (vertexCollection,
 /// | db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hamburg'," +
 /// | " 'outbound') RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, start a traversal from Hamburg with a max depth of 1
@@ -6114,6 +6122,7 @@ function AQL_TRAVERSAL (vertexCollection,
 /// | db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hamburg'," +
 /// | " 'outbound', {maxDepth : 1}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6231,6 +6240,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 /// | "startVertexCollectionRestriction : 'frenchCity'}) RETURN [e.startVertex, e.vertex, " +
 /// | "e.distance]"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, distance from Hamburg and Cologne to Lyon:
@@ -6243,6 +6253,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 /// | "'frenchCity/Lyon', " +
 /// | "{weight : 'distance', includeData: true}) RETURN [e.startVertex, e.vertex, e.distance]"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6299,6 +6310,7 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 /// | db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg'," +
 /// | " 'outbound', 'connnection') RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, start a traversal from Hamburg with a max depth of 1 so
@@ -6310,6 +6322,7 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 /// | db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg',"+
 /// | " 'outbound', 'connnection', {maxDepth : 1}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6480,6 +6493,7 @@ function AQL_NEIGHBORS (vertexCollection,
 /// | db._query("FOR e IN GRAPH_NEIGHBORS("
 /// | +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all outbound neighbors of Hamburg with a maximal depth of 2 :
@@ -6490,6 +6504,7 @@ function AQL_NEIGHBORS (vertexCollection,
 /// | db._query("FOR e IN GRAPH_NEIGHBORS("
 /// | +"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6618,6 +6633,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 /// | db._query("FOR e IN GRAPH_EDGES("
 /// | +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all outbound edges of Hamburg with a maximal depth of 2 :
@@ -6628,6 +6644,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 /// | db._query("FOR e IN GRAPH_EDGES("
 /// | +"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6683,6 +6700,7 @@ function AQL_GRAPH_EDGES (graphName,
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_VERTICES("
 ///   +"'routeplanner', {}) RETURN e").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all vertices from collection *germanCity*.
@@ -6693,6 +6711,7 @@ function AQL_GRAPH_EDGES (graphName,
 /// | db._query("FOR e IN GRAPH_VERTICES("
 /// | +"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
 ///   " : 'germanCity'}) RETURN e").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6773,6 +6792,7 @@ function TRANSFER_GRAPH_NEIGHBORS_RESULT (result)  {
 /// | db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
 /// | +"'routeplanner', {isCapital : true}, {isCapital : true}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all common outbound neighbors of Hamburg with any other location
@@ -6785,6 +6805,7 @@ function TRANSFER_GRAPH_NEIGHBORS_RESULT (result)  {
 /// | +"'routeplanner', 'germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2}, "+
 /// | "{direction : 'outbound', maxDepth : 2}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6882,6 +6903,7 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 /// | db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
 /// | +"'routeplanner', {}, {}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all cities which share same properties except for population.
@@ -6892,6 +6914,7 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 /// | db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
 /// | +"'routeplanner', {}, {}, {ignoreProperties: 'population'}) RETURN e"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7067,6 +7090,7 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('routeplanner', {})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all locations.
@@ -7077,6 +7101,7 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 ///   +"'routeplanner', {}, {weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all German cities regarding only
@@ -7088,6 +7113,7 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 /// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 /// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'germanCity', " +
 ///   "direction : 'outbound', weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7164,6 +7190,7 @@ function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_ECCENTRICITY('routeplanner')").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the eccentricity of all locations.
@@ -7174,6 +7201,7 @@ function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ECCENTRICITY('routeplanner', {weight : 'distance'})"
 ///   ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7283,6 +7311,7 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS('routeplanner', {})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all locations.
@@ -7293,6 +7322,7 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
 ///   +"'routeplanner', {}, {weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all German cities regarding only
@@ -7304,6 +7334,7 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 /// | db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
 /// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'germanCity', " +
 ///   "direction : 'outbound', weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7427,6 +7458,7 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_CLOSENESS('routeplanner')").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the closeness of all locations.
@@ -7437,6 +7469,7 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_CLOSENESS("
 ///   +"'routeplanner', {weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all cities regarding only
@@ -7448,6 +7481,7 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 /// | db._query("RETURN GRAPH_CLOSENESS("
 /// | + "'routeplanner',{direction : 'outbound', weight : 'distance'})"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7529,6 +7563,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS('routeplanner', {})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute betweenness of all locations.
@@ -7539,6 +7574,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
 ///   +"'routeplanner', {weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness regarding only
@@ -7550,6 +7586,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 /// | db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
 /// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7633,6 +7670,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_BETWEENNESS('routeplanner')").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the betweenness of all locations.
@@ -7642,6 +7680,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_BETWEENNESS('routeplanner', {weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the betweenness regarding only
@@ -7652,6 +7691,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_BETWEENNESS("
 ///   + "'routeplanner', {direction : 'outbound', weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7714,6 +7754,7 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_RADIUS('routeplanner')").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the radius of the graph.
@@ -7723,6 +7764,7 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_RADIUS('routeplanner', {weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the radius of the graph regarding only
@@ -7734,6 +7776,7 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 /// | db._query("RETURN GRAPH_RADIUS("
 /// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7802,6 +7845,7 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_DIAMETER('routeplanner')").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the diameter of the graph.
@@ -7811,6 +7855,7 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_DIAMETER('routeplanner', {weight : 'distance'})").toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the diameter of the graph regarding only
@@ -7822,6 +7867,7 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 /// | db._query("RETURN GRAPH_DIAMETER("
 /// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
 /// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock

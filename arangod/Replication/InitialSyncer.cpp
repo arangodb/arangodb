@@ -421,7 +421,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
     TRI_json_t const* doc = nullptr;
     TRI_voc_rid_t rid     = 0;
 
-    size_t const n = json->_value._objects._length;
+    size_t const n = TRI_LengthVector(&json->_value._objects);
 
     for (size_t i = 0; i < n; i += 2) {
       TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
@@ -808,7 +808,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
     if (res == TRI_ERROR_NO_ERROR) {
       // now create indexes
-      size_t const n = indexes->_value._objects._length;
+      size_t const n = TRI_LengthVector(&indexes->_value._objects);
 
       if (n > 0) {
         string const progress = "creating indexes for " + collectionMsg;
@@ -940,7 +940,7 @@ int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
 int InitialSyncer::iterateCollections (TRI_json_t const* collections,
                                        string& errorMsg,
                                        sync_phase_e phase) {
-  size_t const n = collections->_value._objects._length;
+  size_t const n = TRI_LengthVector(&collections->_value._objects);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* collection = static_cast<TRI_json_t const*>(TRI_AtVector(&collections->_value._objects, i));

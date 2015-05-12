@@ -15,8 +15,9 @@ function makePathGeneric (path) {
   return path.split(fs.pathSeparator);
 }
 
-function resultsToXml(results, baseName) {
+function resultsToXml(results, baseName, cluster) {
   "use strict";
+
   function xmlEscape(s) {
     return s.replace(/[<>&"]/g, function (c) {
       return "&"
@@ -55,6 +56,11 @@ function resultsToXml(results, baseName) {
     return xml;
   }
 
+  var clprefix = '';
+  if (cluster) {
+    clprefix = 'CL_';
+  }
+
   for (var testrun in results) {
     if ((internalMembers.indexOf(testrun) === -1) && (results.hasOwnProperty(testrun))) { 
       for (var test in results[testrun]) {
@@ -72,7 +78,7 @@ function resultsToXml(results, baseName) {
           xml.elem("testsuite", {
             errors: 0,
             failures: failuresFound,
-            name: test,
+            name: clprefix + test,
             tests: results[testrun][test].total,
             time: results[testrun][test].duration
           });
@@ -83,7 +89,7 @@ function resultsToXml(results, baseName) {
               var success = (typeof(result) === 'boolean')? result : false;
           
               xml.elem("testcase", {
-                name: oneTest,
+                name: clprefix + oneTest,
                 time: results[testrun][test][oneTest].duration
               }, success);
           
@@ -100,7 +106,7 @@ function resultsToXml(results, baseName) {
               results[testrun][test].hasOwnProperty('message')) { 
 
             xml.elem("testcase", {
-              name: 'all tests in ' + test,
+              name: 'all tests in ' + clprefix + test,
               time: results[testrun][test].duration
             }, false);
             xml.elem("failure");
@@ -110,8 +116,7 @@ function resultsToXml(results, baseName) {
           }
 
           xml.elem("/testsuite");
-
-          var fn = makePathGeneric(baseName + testrun + '_' + test + ".xml").join('_');
+          var fn = makePathGeneric(baseName + clprefix + testrun + '_' + test + ".xml").join('_');
           fs.write(fn, xml.join(""));
         }
       }
@@ -155,7 +160,7 @@ function main (argv) {
   fs.write("UNITTEST_RESULT_SUMMARY.txt", JSON.stringify(! r.crashed));
 
   try {
-    resultsToXml(r, "UNITTEST_RESULT_");
+    resultsToXml(r, "UNITTEST_RESULT_", options.hasOwnProperty('cluster'));
   }
   catch (x) {
     print("exception while serializing status xml!");

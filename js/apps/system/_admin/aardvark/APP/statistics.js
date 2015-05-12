@@ -427,6 +427,12 @@ function computeStatisticsLong (attrs, clusterId) {
 // --SECTION--                                                     public routes
 // -----------------------------------------------------------------------------
 
+controller.activateSessions({
+  type: "cookie",
+  autoCreateSession: true,
+  cookie: {name: "arango_sid_" + db._name()}
+});
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief short term history
 ////////////////////////////////////////////////////////////////////////////////

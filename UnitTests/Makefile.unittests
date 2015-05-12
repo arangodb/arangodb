@@ -497,6 +497,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-format-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-preprocessor.js \
+               @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-skiplist-index.js \
                @top_srcdir@/js/server/tests/shell-skiplist-rm-performance-timecritical-noncluster.js \
                @top_srcdir@/js/server/tests/shell-skiplist-correctness.js

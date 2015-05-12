@@ -78,6 +78,14 @@ API by chaining the following methods onto your path definition:
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
 
+!SUBSECTION summary
+<!-- js/server/modules/org/arangodb/foxx/request_context.js -->
+@startDocuBlock JSF_foxx_RequestContext_summary
+
+!SUBSECTION notes
+<!-- js/server/modules/org/arangodb/foxx/request_context.js -->
+@startDocuBlock JSF_foxx_RequestContext_notes
+
 !SECTION Documenting and constraining all routes
 
 In addition to documenting a specific route, you can also

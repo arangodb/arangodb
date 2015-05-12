@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
 {"query":"FOR p IN products LIMIT 5 RETURN p","count":true,"batchSize":2}
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
@@ -7,20 +8,20 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1101801635", 
-      "_key" : "1101801635", 
-      "_rev" : "1101801635", 
-      "hello1" : "world1" 
+      "hello3" : "world1", 
+      "_id" : "products/1659053109", 
+      "_rev" : "1659053109", 
+      "_key" : "1659053109" 
     }, 
     { 
-      "_id" : "products/1102129315", 
-      "_key" : "1102129315", 
-      "_rev" : "1102129315", 
-      "hello2" : "world1" 
+      "hello1" : "world1", 
+      "_id" : "products/1658397749", 
+      "_rev" : "1658397749", 
+      "_key" : "1658397749" 
     } 
   ], 
   "hasMore" : true, 
-  "id" : "1103308963", 
+  "id" : "1659905077", 
   "count" : 5, 
   "extra" : { 
     "stats" : { 
@@ -29,10 +30,11 @@ content-type: application/json; charset=utf-8
       "scannedFull" : 5, 
       "scannedIndex" : 0, 
       "filtered" : 0 
-    } 
+    }, 
+    "warnings" : [ ] 
   }, 
   "error" : false, 
   "code" : 201 
 }
-shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/cursor/1103308963
+shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/1659905077
 

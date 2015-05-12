@@ -1149,7 +1149,8 @@ static bool InsertHandle (index_t* const idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_fulltext_result_t* MakeListResult (index_t* const idx,
-                                              TRI_fulltext_list_t* list) {
+                                              TRI_fulltext_list_t* list,
+                                              size_t maxResults) {
   TRI_fulltext_result_t* result;
   TRI_fulltext_list_entry_t* listEntries;
   uint32_t numResults;
@@ -1162,6 +1163,10 @@ static TRI_fulltext_result_t* MakeListResult (index_t* const idx,
   // we have a list of handles
   // now turn the handles into documents and exclude deleted ones on the fly
   numResults = TRI_NumEntriesListFulltextIndex(list);
+  if (static_cast<size_t>(numResults) > maxResults && maxResults > 0) {
+    // cap the number of results
+    numResults = static_cast<uint32_t>(maxResults);
+  }
   result = TRI_CreateResultFulltextIndex(numResults);
   if (result == nullptr) {
     TRI_FreeListFulltextIndex(list);
@@ -1198,6 +1203,7 @@ static TRI_fulltext_result_t* MakeListResult (index_t* const idx,
 /// @brief find all documents from the index that match the key
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 TRI_fulltext_result_t* FindDocuments (index_t* const idx,
                                       const char* const key,
                                       const size_t keyLength,
@@ -1220,8 +1226,9 @@ TRI_fulltext_result_t* FindDocuments (index_t* const idx,
     list = GetDirectNodeHandles(node);
   }
 
-  return MakeListResult(idx, list);
+  return MakeListResult(idx, list, 0);
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  string functions
@@ -1539,21 +1546,25 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const ftx,
 /// @brief find all documents that contain a word (exact match)
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 TRI_fulltext_result_t* TRI_FindExactFulltextIndex (TRI_fts_index_t* const ftx,
                                                    const char* const key,
                                                    const size_t keyLength) {
   return FindDocuments((index_t*) ftx, key, keyLength, false);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 TRI_fulltext_result_t* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* const ftx,
                                                     const char* key,
                                                     const size_t keyLength) {
   return FindDocuments((index_t*) ftx, key, keyLength, true);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a query on the fulltext index
@@ -1575,6 +1586,8 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
     TRI_FreeQueryFulltextIndex(query);
     return TRI_CreateResultFulltextIndex(0);
   }
+
+  auto maxResults = query->_maxResults;
 
   idx = (index_t*) ftx;
 
@@ -1602,7 +1615,8 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
     LOG_DEBUG("searching for word: '%s'", word);
 
     if ((operation == TRI_FULLTEXT_AND || operation == TRI_FULLTEXT_EXCLUDE) &&
-      i > 0 && TRI_NumEntriesListFulltextIndex(result) == 0) {
+        i > 0 && 
+        TRI_NumEntriesListFulltextIndex(result) == 0) {
       // current result set is empty so logical AND or EXCLUDE will not have any result either
       continue;
     }
@@ -1657,7 +1671,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
 
   // now convert the handle list into a result (this will also filter out
   // deleted documents)
-  return MakeListResult(idx, result);
+  return MakeListResult(idx, result, maxResults);
 }
 
 // -----------------------------------------------------------------------------

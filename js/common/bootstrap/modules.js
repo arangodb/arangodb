@@ -936,7 +936,7 @@ function require (path) {
     var i;
     var pkg;
 
-    for (i = 0;  i < modulesPaths.length;  ++i) {
+    for (i = 0;  i < modulesPaths.length; ++i) {
       var path = modulesPaths[i];
 
       pkg = new Package("/", { name: "ArangoDB root" }, undefined, path2FileUri(path), true);
@@ -960,7 +960,7 @@ function require (path) {
       this,
       app._context,
       "/" + (path ? path : ""),
-      path2FileUri(libpath),
+      path2FileUri(path ? fs.join(libpath, path) : libpath),
       false
     );
   };
@@ -1382,6 +1382,7 @@ function require (path) {
     try {
       script = Function.apply(null, keys.concat(content));
     } catch (e) {
+      require('console').error(e.stack);
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_BAD_WRAPPER.code,
         errorMessage: internal.errors.ERROR_MODULE_BAD_WRAPPER.message
@@ -1396,6 +1397,7 @@ function require (path) {
       fn = internal.executeScript("(" + script + ")", undefined, filename);
     } catch (e) {
       // This should never happen, right?
+      require('console').error(e.stack);
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
         errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
@@ -1413,6 +1415,7 @@ function require (path) {
         return args[key];
       }));
     } catch (e) {
+      require('console').error(e.stack);
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
         errorMessage: internal.errors.ERROR_MODULE_FAILURE.message

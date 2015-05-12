@@ -102,6 +102,13 @@ namespace triagens {
         void buildStandardQueue (size_t nrThreads,
                                  size_t maxSize);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the additional AQL dispatcher queue
+////////////////////////////////////////////////////////////////////////////////
+
+        void buildAQLQueue (size_t nrThreads,
+                            size_t maxSize);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------

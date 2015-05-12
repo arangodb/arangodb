@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near <<EOF
 { "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
@@ -7,9 +8,9 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1262364835", 
-      "_key" : "1262364835", 
-      "_rev" : "1262364835", 
+      "_id" : "products/1480991797", 
+      "_key" : "1480991797", 
+      "_rev" : "1480991797", 
       "name" : "Name/-0.002/", 
       "loc" : [ 
         -0.002, 
@@ -18,9 +19,9 @@ content-type: application/json; charset=utf-8
       "distance" : 222.38985328911744 
     }, 
     { 
-      "_id" : "products/1262758051", 
-      "_key" : "1262758051", 
-      "_rev" : "1262758051", 
+      "_id" : "products/1481385013", 
+      "_key" : "1481385013", 
+      "_rev" : "1481385013", 
       "name" : "Name/0.002/", 
       "loc" : [ 
         0.002, 
@@ -29,9 +30,9 @@ content-type: application/json; charset=utf-8
       "distance" : 222.38985328911744 
     }, 
     { 
-      "_id" : "products/1262168227", 
-      "_key" : "1262168227", 
-      "_rev" : "1262168227", 
+      "_id" : "products/1480795189", 
+      "_key" : "1480795189", 
+      "_rev" : "1480795189", 
       "name" : "Name/-0.004/", 
       "loc" : [ 
         -0.004, 

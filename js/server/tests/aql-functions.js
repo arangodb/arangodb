@@ -910,7 +910,6 @@ function ahuacatlFunctionsTestSuite () {
       } } ], actual);
     },
 
-      
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test merge_recursive function
 ////////////////////////////////////////////////////////////////////////////////
@@ -1149,7 +1148,7 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnionDistinct1 : function () {
-      var expected = [ [ 1, 2, 3, ] ];
+      var expected = [ [ 1, 2, 3 ] ];
       var actual = getQueryResults("RETURN UNION_DISTINCT([ 1, 2, 3 ], [ 1, 2, 3 ])");
       assertEqual(expected, actual);
     },
@@ -1226,6 +1225,174 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT(3, [ ])"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT(\"yes\", [ ])"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT({ }, [ ])"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionCxx1 : function () {
+      var expected = [ [ 1, 2, 3, 1, 2, 3 ] ];
+      var actual = getQueryResults("RETURN NOOPT(UNION([ 1, 2, 3 ], [ 1, 2, 3 ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionCxx2 : function () {
+      var expected = [ [ 1, 2, 3, 3, 2, 1 ] ];
+      var actual = getQueryResults("RETURN NOOPT(UNION([ 1, 2, 3 ], [ 3, 2, 1 ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionCxx3 : function () {
+      var expected = [ "Fred", "John", "John", "Amy" ];
+      var actual = getQueryResults("FOR u IN NOOPT(UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])) RETURN u");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION([ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION(null, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION(true, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION(3, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION(\"yes\", [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION({ }, [ ]))"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function indexed access
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionCxxIndexedAccess1 : function () {
+      var expected = [ "Fred" ];
+      var actual = getQueryResults("RETURN NOOPT(UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]))[0]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function indexed access
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionCxxIndexedAccess2 : function () {
+      var expected = [ "John" ];
+      var actual = getQueryResults("RETURN NOOPT(UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]))[1]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function indexed access
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionCxxIndexedAccess3 : function () {
+      var expected = [ "bar" ];
+      var actual = getQueryResults("RETURN NOOPT(UNION([ { title : \"foo\" } ], [ { title : \"bar\" } ]))[1].title");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinctCxx1 : function () {
+      var expected = [ 1, 2, 3 ];
+      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ 1, 2, 3 ], [ 1, 2, 3 ]))");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinctCxx2 : function () {
+      var expected = [ 1, 2, 3 ];
+      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ 1, 2, 3 ], [ 3, 2, 1 ]))");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinctCxx3 : function () {
+      var expected = [ "Amy", "Fred", "John" ];
+      var actual = getQueryResults("FOR u IN NOOPT(UNION_DISTINCT([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])) RETURN u");
+      assertEqual(expected, actual.sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinctCxx4 : function () {
+      var expected = [ 1, 2, 3, 4, 5, 6 ];
+      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ 1, 2, 3 ], [ 3, 2, 1 ], [ 4 ], [ 5, 6, 1 ]))");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinctCxx5 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ ], [ ], [ ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinctCxx6 : function () {
+      var expected = [ false, true ];
+      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ ], [ false ], [ ], [ true ]))");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT(null, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT(true, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT(3, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT(\"yes\", [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT({ }, [ ]))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1405,9 +1572,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testIntersection1 : function () {
-      var expected = [ [ 1, -3 ] ];
+      var expected = [ -3, 1 ];
       var actual = getQueryResults("RETURN INTERSECTION([ 1, -3 ], [ -3, 1 ])");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1445,9 +1612,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testIntersection5 : function () {
-      var expected = [ [ 2, 4 ] ];
+      var expected = [ 2, 4 ];
       var actual = getQueryResults("RETURN INTERSECTION([ 1, 3, 2, 4 ], [ 2, 3, 1, 4 ], [ 4, 5, 6, 2 ])");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1495,9 +1662,109 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testIntersection10 : function () {
-      var expected = [ [ 2, 4, 5 ] ];
+      var expected = [ 2, 4, 5 ];
       var actual = getQueryResults("RETURN INTERSECTION([ 1, 2, 3, 3, 4, 4, 5, 1 ], [ 2, 4, 5 ])");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersection function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx1 : function () {
+      var expected = [ -3, 1 ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, -3 ], [ -3, 1 ]))");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx2 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ ], [ 1 ]))");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx3 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1 ], [  ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx4 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1 ], [ 2, 3, 1 ], [ 4, 5, 6 ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx5 : function () {
+      var expected = [ 2, 4 ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 3, 2, 4 ], [ 2, 3, 1, 4 ], [ 4, 5, 6, 2 ]))");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx6 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ [ 1, 2 ] ], [ 2, 1 ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx7 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ [ 1, 2 ] ], [ 1, 2 ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx8 : function () {
+      var expected = [ [ [ 1, 2 ] ] ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ [ 1, 2 ] ], [ [ 1, 2 ] ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx9 : function () {
+      var expected = [ [ { foo: 'test' } ] ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ { foo: 'bar' }, { foo: 'test' } ], [ { foo: 'test' } ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx10 : function () {
+      var expected = [ 2, 4, 5 ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 2, 3, 3, 4, 4, 5, 1 ], [ 2, 4, 5 ]))");
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////

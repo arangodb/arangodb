@@ -1,5 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/aqlfunction
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/aqlfunction <<EOF
 {"name":"myfunctions::temperature::celsiustofahrenheit","code":"function (celsius) { return celsius * 1.8 + 32; }"}
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8

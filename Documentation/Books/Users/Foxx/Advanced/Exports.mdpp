@@ -64,40 +64,6 @@ var myDoodad = new Doodad();
 doodadRepo.save(myDoodad);
 ```
 
-**Warning**
-
-When using Foxx exports in other apps, the load order of apps determines when which app's exports will become available.
-
-In order to use Foxx exports in another app's controllers it is recommended you use **controller.addInjector** to delay the import until all mounted apps have been loaded:
-
-```js
-var Foxx = require('org/arangodb/foxx');
-var controller = new Foxx.Controller(applicationContext);
-controller.addInjector({
-    doodads: function() {
-        return Foxx.requireApp('/my-doodads').doodads;
-    }
-});
-
-// use the imported model and repository
-controller.post('/doodads', function(request, response, injected) {
-    var myDoodad = new injected.doodads.model();
-    injected.doodads.repo.save(myDoodad);
-    response.json(myDoodad.forClient());
-});
-```
-
-There is currently no workaround to allow using one app's Foxx exports in another app's Foxx exports.
-
-If you want to import Foxx exports of an app in controllers of the same app, you can do so without knowing the mount path in advance by using **applicationContext.mount**:
-
-```js
-var Foxx = require('org/arangodb/foxx');
-var doodads = Foxx.requireApp(applicationContext.mount).doodads;
-```
-
-If you don't need direct access to ArangoDB's functionality or the **applicationContext**, it is a better idea to use a regular NPM module instead.
-
 !SECTION Default exports
 
 If you want more control over the object other apps receive when they load your app using **Foxx.requireApp**, you can specify a single filename instead of an object in your manifest file:
@@ -143,3 +109,42 @@ var Foxx = require('org/arangodb/foxx');
 var helloExport = Foxx.requireApp('/hello');
 var greeting = helloExport(); // "Hello!"
 ```
+
+!SECTION Managing app dependencies
+
+As of ArangoDB 2.6 you can define Foxx app dependencies of your Foxx app in your manifest.
+
+Let's say you want to use the `foxx_exports_example` app from earlier in your app. Just add it to your own manifest like this:
+
+```json
+{
+    "name": "foxx_dependencies_example",
+    "version": "1.0.0",
+    "dependencies": {
+        "exportsExample": "foxx_exports_example:^1.0.0"
+    }
+}
+```
+
+Instead of specifying the exact mount point of the app you depend on, you can now refer to it using the name `exportsExample`:
+
+**Before:**
+
+```js
+var doodads = Foxx.requireApp(applicationContext.configuration.exportsExampleMountPath).doodads;
+```
+
+**After:**
+
+```js
+var doodads = applicationContext.dependencies.exportsExample.doodads;
+```
+
+If an app declares any dependencies,
+you need to fulfill its dependencies before it becomes active.
+In the meantime a fallback application will be mounted that responds to all
+requests with a HTTP 500 status code indicating a server-side error.
+
+The dependencies of a mounted app can be adjusted
+from the admin frontend by clicking the *Dependencies* button in the app details
+or using the **set-dependencies** command of the **foxx-manager** command-line utility.

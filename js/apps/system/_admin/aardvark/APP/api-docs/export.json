@@ -1,0 +1,57 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the result set can be created by the server. <br><br>",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the JSON representation is malformed or the query specification is missing from the request. <br><br>",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 404</em> in case a non-existing collection is accessed in the query. <br><br>",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 405</em> if an unsupported HTTP method is used. <br><br>",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 501</em> if this API is called on a cluster coordinator. <br><br> <br><br>",
+                            "code": "501"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": false,
+                            "name": "options",
+                            "description": "A JSON object with export options. <br><br>"
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": true,
+                            "name": "collection",
+                            "description": "The name of the collection to export. <br><br>"
+                        }
+                    ],
+                    "notes": "A call to this method creates a cursor containing all documents in the  specified collection. In contrast to other data-producing APIs, the internal data structures produced by the export API are more lightweight, so it is the preferred way to retrieve all documents from a collection. <br><br> Documents are returned in a similar manner as in the <em>/_api/cursor</em> REST API.  If all documents of the collection fit into the first batch, then no cursor will be created, and the result object's <em>hasMore</em> attribute will be set to <em>false</em>. If not all documents fit into the first batch, then the result  object's <em>hasMore</em> attribute will be set to <em>true</em>, and the <em>id</em> attribute of the result will contain a cursor id. <br><br> The order in which the documents are returned is not specified. <br><br> By default, only those documents from the collection will be returned that are stored in the collection's datafiles. Documents that are present in the write-ahead log (WAL) at the time the export is run will not be exported. <br><br> To export these documents as well, the caller can issue a WAL flush request before calling the export API or set the <em>flush</em> attribute. Setting the <em>flush</em> option will trigger a WAL flush before the export so documents get copied from  the WAL to the collection datafiles. <br><br> The following attributes can be used inside the JSON request object to control the export behavior: <br><br>  <ul class=\"swagger-list\"><li><em>flush</em>: if set to <em>true</em>, a WAL flush operation will be executed prior to the export. The flush operation will start copying documents from the WAL to the collection's datafiles. There will be an additional wait time of up to <em>flushWait</em> seconds after the flush to allow the WAL collector to change  the adjusted document meta-data to point into the datafiles, too.  The default value is <em>false</em> (i.e. no flush) so most recently inserted or updated documents from the collection might be missing in the export.  <li><em>flushWait</em>: maximum wait time in seconds after a flush operation. The default value is 10. This option only has an effect when <em>flush</em> is set to <em>true</em>.  <li><em>count</em>: boolean flag that indicates whether the number of documents in the result set should be returned in the \"count\" attribute of the result (optional). Calculating the \"count\" attribute might in the future have a performance impact so this option is turned off by default, and \"count\" is only returned  when requested.  <li><em>batchSize</em>: maximum number of result documents to be transferred from the server to the client in one roundtrip (optional). If this attribute is not set, a server-controlled default value will be used.  <li><em>ttl</em>: an optional time-to-live for the cursor (in seconds). The cursor will be removed on the server automatically after the specified amount of time. This is useful to ensure garbage collection of cursors that are not fully fetched by clients. If not set, a server-defined value will be used.  <li><em>restrict</em>: an optional object containing an array of attribute names that will be  included or excluded when returning result documents. If specified, <em>fields</em> must be an object and contain a <em>type</em> attribute which must be set to either <em>include</em> or <em>exclude</em>. It must also contain a <em>fields</em> attribute containing an array of attribute names to include or exclude. Matching of attribute names for inclusion or exclusion will be done on the top level only. Specifying names of nested attributes is not supported at the moment.  Not specifying <em>restrict</em> will by default return all attributes of each document.  </ul> If the result set can be created by the server, the server will respond with <em>HTTP 201</em>. The body of the response will contain a JSON object with the result set. <br><br> The returned JSON object has the following properties: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>false</em> in this case)  <li><em>code</em>: the HTTP status code  <li><em>result</em>: an array of result documents (might be empty if the collection was empty)  <li><em>hasMore</em>: a boolean indicator whether there are more results available for the cursor on the server  <li><em>count</em>: the total number of result documents available (only available if the query was executed with the <em>count</em> attribute set)  <li><em>id</em>: id of temporary cursor created on the server (optional, see above)  </ul> If the JSON representation is malformed or the query specification is missing from the request, the server will respond with <em>HTTP 400</em>. <br><br> The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)  <li><em>code</em>: the HTTP status code  <li><em>errorNum</em>: the server error number  <li><em>errorMessage</em>: a descriptive error message  </ul> Clients should always delete an export cursor result as early as possible because a lingering export cursor will prevent the underlying collection from being compacted or unloaded. By default, unused cursors will be deleted automatically  after a server-defined idle time, and clients can adjust this idle time by setting the <em>ttl</em> value. <br><br> Note: this API is currently not supported on cluster coordinators. <br><br>",
+                    "summary": " Create export cursor",
+                    "httpMethod": "POST",
+                    "examples": "",
+                    "nickname": "CreateExportCursor"
+                }
+            ],
+            "path": "/_api/export"
+        }
+    ]
+}

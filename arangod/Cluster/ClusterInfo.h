@@ -250,8 +250,9 @@ namespace triagens {
 
         int numberOfShards () const {
           TRI_json_t* const node = triagens::basics::JsonHelper::getObjectElement(_json, "shards");
+
           if (TRI_IsObjectJson(node)) {
-            return (int) (node->_value._objects._length / 2);
+            return (int) (TRI_LengthVector(&node->_value._objects) / 2);
           }
           return 0;
         }

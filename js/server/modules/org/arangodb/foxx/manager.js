@@ -39,6 +39,7 @@ var R = require("ramda");
 var db = require("internal").db;
 var fs = require("fs");
 var joi = require("joi");
+var util = require("util");
 var utils = require("org/arangodb/foxx/manager-utils");
 var store = require("org/arangodb/foxx/store");
 var console = require("console");
@@ -90,8 +91,8 @@ var manifestSchema = {
       .keys({
         default: joi.any().optional(),
         type: (
-          joi.string().required()
-          .valid(Object.keys(utils.typeToRegex))
+          joi.only(Object.keys(utils.parameterTypes))
+          .default("string")
         ),
         description: joi.string().optional()
       })
@@ -135,7 +136,7 @@ var manifestSchema = {
   keywords: joi.array().optional(),
   lib: joi.string().optional(),
   license: joi.string().optional(),
-  name: joi.string().required(),
+  name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).required(),
   repository: (
     joi.object().optional()
     .keys({
@@ -163,7 +164,7 @@ var manifestSchema = {
     )
   ),
   thumbnail: joi.string().optional(),
-  version: joi.string().required(),
+  version: joi.string().regex(/^\d+\.\d+(\.\d+)?$/).required(),
   rootElement: joi.boolean().default(false)
 };
 
@@ -292,7 +293,7 @@ var checkMountedSystemApps = function(dbname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var checkManifest = function(filename, manifest) {
-  var valid = true;
+  var validationErrors = [];
 
   Object.keys(manifestSchema).forEach(function (key) {
     var schema = manifestSchema[key];
@@ -302,23 +303,14 @@ var checkManifest = function(filename, manifest) {
       manifest[key] = result.value;
     }
     if (result.error) {
-      valid = false;
+      var message = result.error.message.replace(/^"value"/, util.format('"%s"', key));
       if (value === undefined) {
-        console.error(
-          "Manifest '%s' %s for attribute '%s'",
-          filename,
-          result.error.message,
-          key
-        );
+        message = util.format('Manifest "%s": attribute %s.', filename, message);
       } else {
-        console.error(
-          "Manifest '%s' %s (%s) for attribute '%s'",
-          filename,
-          result.error.message,
-          manifest[key],
-          key
-        );
+        message = util.format('Manifest "%s": attribute %s (was "%s").', filename, message, manifest[key]);
       }
+      validationErrors.push(message);
+      console.error(message);
     }
   });
 
@@ -352,7 +344,7 @@ var checkManifest = function(filename, manifest) {
   Object.keys(manifest).forEach(function (key) {
     if (!manifestSchema[key]) {
       console.warn(
-        "Manifest '%s' contains an unknown attribute '%s'",
+        'Manifest "%s": unknown attribute "%s"',
         filename,
         key
       );
@@ -367,10 +359,10 @@ var checkManifest = function(filename, manifest) {
     manifest.tests = [manifest.tests];
   }
 
-  if (!valid) {
+  if (validationErrors.length) {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-      errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
+      errorMessage: validationErrors.join('\n')
     });
   }
 };
@@ -385,37 +377,25 @@ var checkManifest = function(filename, manifest) {
 var validateManifestFile = function(file) {
   var mf, msg;
   if (!fs.exists(file)) {
-    msg = "Cannot find manifest file '" + file + "'";
+    msg = 'Cannot find manifest file "' + file + '"';
     console.errorLines(msg);
     throwFileNotFound(msg);
   }
   try {
     mf = JSON.parse(fs.read(file));
   } catch (err) {
-    msg = "Cannot parse app manifest '" + file + "': " + String(err);
+    msg = 'Cannot parse app manifest "' + file + '": ' + String(err.stack || err);
+    console.errorLines(msg);
     throw new ArangoError({
       errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
-      errorMessage: errors.ERROR_MALFORMED_MANIFEST_FILE.message
+      errorMessage: msg
     });
   }
   try {
     checkManifest(file, mf);
-    if (!/^[a-zA-Z\-_][a-zA-Z0-9\-_]*$/.test(mf.name)) {
-      throw new ArangoError({
-        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-        errorMessage: "The App name can only contain a to z, A to Z, 0-9, '-' and '_'." 
-      });
-    }
-    if (!/^\d+\.\d+(\.\d+)?$$/.test(mf.version)) {
-      throw new ArangoError({
-        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-        errorMessage: "The version requires the format: <major>.<minor>.<bugfix>, all have to be integer numbers." 
-      });
-
-    }
   } catch (err) {
-    console.error("Manifest file '%s' is invalid: %s", file, err.errorMessage);
-    if (err.hasOwnProperty("stack")) {
+    console.errorLines("Manifest file '%s' is invalid:\n%s", file, err.errorMessage);
+    if (err.stack) {
       console.errorLines(err.stack);
     }
     throw err;
@@ -476,14 +456,14 @@ var computeAppPath = function(mount) {
 /// @brief executes an app script
 ////////////////////////////////////////////////////////////////////////////////
 
-var executeAppScript = function (scriptName, app) {
+var executeAppScript = function (scriptName, app, options) {
   var readableName = utils.getReadableName(scriptName);
   var scripts = app._manifest.scripts;
 
   // Only run setup/teardown scripts if they exist
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
     try {
-      app.loadAppScript(scripts[scriptName]);
+      app.loadAppScript(scripts[scriptName], options && {context: {options: options}});
     } catch (err) {
       console.errorLines(
         "Running script '" + readableName + "' not possible for mount '%s': %s",
@@ -700,7 +680,12 @@ var buildGithubUrl = function (appInfo) {
   if (version === undefined) {
     version = "master";
   }
-  return 'https://github.com/' + repository + '/archive/' + version + '.zip';
+
+  var urlPrefix = require("process").env.FOXX_BASE_URL;
+  if (urlPrefix === undefined) {
+    urlPrefix = 'https://github.com/';
+  }
+  return urlPrefix + repository + '/archive/' + version + '.zip';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -754,15 +739,15 @@ var installAppFromLocal = function(path, targetPath) {
 /// -
 ////////////////////////////////////////////////////////////////////////////////
 
-var runScript = function (scriptName, mount) {
+var runScript = function (scriptName, mount, options) {
   checkParameter(
-    "runScript(<scriptName>, <mount>)",
+    "runScript(<scriptName>, <mount>, [<options>])",
     [ [ "Script name", "string" ], [ "Mount path", "string" ] ],
     [ scriptName, mount ]
   );
 
   var app = lookupApp(mount);
-  executeAppScript(scriptName, app);
+  executeAppScript(scriptName, app, options);
 
   return app.simpleJSON();
 };
@@ -1412,6 +1397,27 @@ var configure = function(mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Set up dependencies of the app at the mountpoint
+////////////////////////////////////////////////////////////////////////////////
+
+var updateDeps = function(mount, options) {
+  checkParameter(
+    "updateDeps(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+  utils.validateMount(mount, true);
+  var app = lookupApp(mount);
+  var invalid = app.updateDeps(options.dependencies || {});
+  if (invalid.length > 0) {
+    // TODO Error handling
+    console.log(invalid);
+  }
+  utils.updateApp(mount, app.toJSON());
+  reloadRouting();
+  return app.simpleJSON();
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the configuration for the app at the given mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1423,6 +1429,20 @@ var configuration = function(mount) {
   utils.validateMount(mount, true);
   var app = lookupApp(mount);
   return app.getConfiguration();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the dependencies for the app at the given mountpoint
+////////////////////////////////////////////////////////////////////////////////
+
+var dependencies = function(mount) {
+  checkParameter(
+    "dependencies(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+  utils.validateMount(mount, true);
+  var app = lookupApp(mount);
+  return app.getDependencies();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1486,7 +1506,9 @@ exports.upgrade = upgrade;
 exports.development = setDevelopment;
 exports.production = setProduction;
 exports.configure = configure;
+exports.updateDeps = updateDeps;
 exports.configuration = configuration;
+exports.dependencies = dependencies;
 exports.requireApp = requireApp;
 exports._resetCache = resetCache;
 

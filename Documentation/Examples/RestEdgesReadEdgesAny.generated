@@ -1,4 +1,4 @@
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1
+shell> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/6", 
       "_key" : "6", 
-      "_rev" : "1157834915", 
+      "_rev" : "1454056501", 
       "_from" : "vertices/2", 
       "_to" : "vertices/1", 
       "$label" : "v2 -> v1" 
@@ -16,7 +16,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/7", 
       "_key" : "7", 
-      "_rev" : "1158359203", 
+      "_rev" : "1454580789", 
       "_from" : "vertices/4", 
       "_to" : "vertices/1", 
       "$label" : "v4 -> v1" 
@@ -24,7 +24,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/5", 
       "_key" : "5", 
-      "_rev" : "1157310627", 
+      "_rev" : "1453532213", 
       "_from" : "vertices/1", 
       "_to" : "vertices/3", 
       "$label" : "v1 -> v3" 

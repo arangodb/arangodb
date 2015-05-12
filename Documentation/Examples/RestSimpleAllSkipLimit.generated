@@ -1,5 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all <<EOF
 { "collection": "products", "skip": 2, "limit" : 2 }
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
@@ -7,16 +8,16 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1246374051", 
-      "_key" : "1246374051", 
-      "_rev" : "1246374051", 
-      "Hello1" : "World1" 
+      "_id" : "products/1465263157", 
+      "_key" : "1465263157", 
+      "_rev" : "1465263157", 
+      "Hello2" : "World2" 
     }, 
     { 
-      "_id" : "products/1246701731", 
-      "_key" : "1246701731", 
-      "_rev" : "1246701731", 
-      "Hello2" : "World2" 
+      "_id" : "products/1465590837", 
+      "_key" : "1465590837", 
+      "_rev" : "1465590837", 
+      "Hello3" : "World3" 
     } 
   ], 
   "hasMore" : false, 

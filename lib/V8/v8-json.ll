@@ -62,6 +62,7 @@ PLUS          [+]
 #define COMMA 10
 #define COLON 11
 #define UNQUOTED_STRING 12
+#define STRING_CONSTANT_ASCII 13
 
 struct jsonData {
   char const* _message;
@@ -99,6 +100,13 @@ struct jsonData {
  /* -----------------------------------------------------------------------------
   * strings
   * ----------------------------------------------------------------------------- */
+
+\"[ !\x23-\x5b\x5d-\x7f]*\" {
+  // performance optimisation for all-ASCII strings without escape characters
+  // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
+  // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
+  return STRING_CONSTANT_ASCII;
+}
 
 \"(\\.|[^\\\"])*\" {
   return STRING_CONSTANT;
@@ -170,12 +178,12 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate, yyscan_t scanner,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
-                                        yyscan_t scanner) {
+                                         yyscan_t scanner) {
   v8::EscapableHandleScope scope(isolate);
 
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
-  v8::Handle<v8::Array> list = v8::Array::New(isolate);
+  v8::Handle<v8::Array> array = v8::Array::New(isolate);
   bool comma = false;
   uint32_t pos = 0;
 
@@ -183,58 +191,6 @@ static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
 
   while (c != END_OF_FILE) {
     if (c == CLOSE_BRACKET) {
-      return scope.Escape<v8::Value>(list);
-    }
-
-    if (comma) {
-      if (c != COMMA) {
-        yyextra._message = "expecting comma";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
-      }
-
-      c = yylex(scanner);
-    }
-    else {
-      comma = true;
-    }
-
-    v8::Handle<v8::Value> sub = ParseValue(isolate, scanner, c);
-
-    if (sub->IsUndefined()) {
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
-    }
-
-    list->Set(v8::Number::New(isolate, pos++), sub);
-
-    c = yylex(scanner);
-  }
-
-  yyextra._message = "expecting a list element, got end-of-file";
-
-  return scope.Escape<v8::Value>(v8::Undefined(isolate));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses an array
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
-                                         yyscan_t scanner) {
-  v8::EscapableHandleScope scope(isolate);
-
-  struct yyguts_t * yyg = (struct yyguts_t*) scanner;
-
-  v8::Handle<v8::Object> array = v8::Object::New(isolate);
-  bool comma = false;
-  char* name;
-  char const* ptr;
-  size_t len;
-  size_t outLength;
-
-  int c = yylex(scanner);
-
-  while (c != END_OF_FILE) {
-    if (c == CLOSE_BRACE) {
       return scope.Escape<v8::Value>(array);
     }
 
@@ -250,18 +206,76 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
       comma = true;
     }
 
-    // attribute name
-    if (c != STRING_CONSTANT) {
-      yyextra._message = "expecting attribute name";
+    v8::Handle<v8::Value> sub = ParseValue(isolate, scanner, c);
+
+    if (sub->IsUndefined()) {
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
     }
 
-    ptr = yytext;
-    len = yyleng;
-    name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, ptr + 1, len - 2, &outLength);
+    array->Set(pos++, sub);
 
-    if (name == nullptr) {
-      yyextra._message = "out-of-memory";
+    c = yylex(scanner);
+  }
+
+  yyextra._message = "expecting an array element, got end-of-file";
+
+  return scope.Escape<v8::Value>(v8::Undefined(isolate));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses an object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
+                                         yyscan_t scanner) {
+  v8::EscapableHandleScope scope(isolate);
+
+  struct yyguts_t * yyg = (struct yyguts_t*) scanner;
+
+  v8::Handle<v8::Object> object = v8::Object::New(isolate);
+  bool comma = false;
+
+  int c = yylex(scanner);
+
+  while (c != END_OF_FILE) {
+    if (c == CLOSE_BRACE) {
+      return scope.Escape<v8::Value>(object);
+    }
+
+    if (comma) {
+      if (c != COMMA) {
+        yyextra._message = "expecting comma";
+        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      }
+
+      c = yylex(scanner);
+    }
+    else {
+      comma = true;
+    }
+
+    // attribute name
+    v8::Handle<v8::String> attributeName;
+
+    if (c == STRING_CONSTANT) {
+      // utf-8 attribute name
+      size_t outLength;
+      char* name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+    
+      if (name == nullptr) {
+        yyextra._message = "out-of-memory";
+        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      }
+
+      attributeName = TRI_V8_PAIR_STRING(name, outLength);
+      TRI_FreeString(yyextra._memoryZone, name);
+    }
+    else if (c == STRING_CONSTANT_ASCII) {
+      // ASCII-only attribute name
+      attributeName = TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2);
+    }
+    else {
+      yyextra._message = "expecting attribute name";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
     }
 
@@ -269,28 +283,24 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
     c = yylex(scanner);
 
     if (c != COLON) {
-      TRI_FreeString(yyextra._memoryZone, name);
       yyextra._message = "expecting colon";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
     }
 
-    // fallowed by an object
+    // followed by an object
     c = yylex(scanner);
     v8::Handle<v8::Value> sub = ParseValue(isolate, scanner, c);
 
     if (sub->IsUndefined()) {
-      TRI_FreeString(yyextra._memoryZone, name);
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
     }
 
-    array->Set(v8::String::NewFromUtf8(isolate, name, v8::String::kNormalString, (int) outLength), sub);
-
-    TRI_FreeString(yyextra._memoryZone, name);
+    object->ForceSet(attributeName, sub);
 
     c = yylex(scanner);
   }
 
-  yyextra._message = "expecting a object attribute name or element, got end-of-file";
+  yyextra._message = "expecting an object attribute name or element, got end-of-file";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
 }
 
@@ -299,42 +309,43 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
-                                          yyscan_t scanner, int c) {
+                                         yyscan_t scanner, 
+                                         int c) {
   v8::EscapableHandleScope scope(isolate);
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
-  char buffer[1024];
-
-  char* ep;
-  char* ptr;
-  double d;
-  size_t outLength;
-
-  v8::Handle<v8::String> str;
-
   switch (c) {
-    case END_OF_FILE:
+    case END_OF_FILE: {
       yyextra._message = "expecting atom, got end-of-file";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
-    case FALSE_CONSTANT:
+    }
+
+    case FALSE_CONSTANT: {
       return scope.Escape<v8::Value>(v8::False(isolate));
+    }
 
-    case TRUE_CONSTANT:
+    case TRUE_CONSTANT: {
       return scope.Escape<v8::Value>(v8::True(isolate));
+    }
 
-    case NULL_CONSTANT:
+    case NULL_CONSTANT: {
       return scope.Escape<v8::Value>(v8::Null(isolate));
+    }
 
-    case NUMBER_CONSTANT:
-      if ((size_t) yyleng >= sizeof(buffer)) {
+    case NUMBER_CONSTANT: {
+      char* ep;
+      double d;
+
+      if ((size_t) yyleng >= 512) {
         yyextra._message = "number too big";
         return scope.Escape<v8::Value>(v8::Undefined(isolate));
       }
 
-      memcpy(buffer, yytext, yyleng);
-      buffer[yyleng] = '\0';
+      // need to reset errno because return value of 0 is not distinguishable from an error on Linux
+      errno = 0;
 
-      d = strtod(buffer, &ep);
+      // yytext is null-terminated. can use it directly without copying it into a temporary buffer
+      d = strtod(yytext, &ep);
 
       if (d == HUGE_VAL && errno == ERANGE) {
         yyextra._message = "number too big";
@@ -346,62 +357,77 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
         return scope.Escape<v8::Value>(v8::Undefined(isolate));
       }
 
-      if (ep != buffer + yyleng) {
+      if (ep != yytext + yyleng) {
         yyextra._message = "cannot parse number";
         return scope.Escape<v8::Value>(v8::Undefined(isolate));
       }
 
       return scope.Escape<v8::Value>(v8::Number::New(isolate, d));
+    }
 
-    case STRING_CONSTANT:
+    case STRING_CONSTANT: {
       if (yyleng <= 2) {
         // string is empty
-        ptr = yytext + 1;
-        outLength = 0;
-      }
-      else {
-        // string is not empty
-        ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
-
-        if (ptr == nullptr || outLength == 0) {
-          yyextra._message = "out-of-memory";
-          return scope.Escape<v8::Value>(v8::Undefined(isolate));
-        }
+        return scope.Escape<v8::Value>(v8::String::Empty(isolate));
       }
 
-      str = v8::String::NewFromUtf8(isolate, ptr, v8::String::kNormalString, (int) outLength);
+      // string is not empty
+      size_t outLength;
+      char* ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
 
-      if (0 < outLength) {
-        TRI_FreeString(yyextra._memoryZone, ptr);
+      if (ptr == nullptr || outLength == 0) {
+        yyextra._message = "out-of-memory";
+        return scope.Escape<v8::Value>(v8::Undefined(isolate));
       }
+
+      v8::Handle<v8::String> str = TRI_V8_PAIR_STRING(ptr, outLength);
+      TRI_FreeString(yyextra._memoryZone, ptr);
 
       return scope.Escape<v8::Value>(str);
+    }
+    
+    case STRING_CONSTANT_ASCII: {
+      if (yyleng <= 2) {
+        // string is empty
+        return scope.Escape<v8::Value>(v8::String::Empty(isolate));
+      }
 
-    case OPEN_BRACE:
+      // string is not empty
+      return scope.Escape<v8::Value>(TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2));
+    }
+
+    case OPEN_BRACE: {
       return scope.Escape<v8::Value>(ParseObject(isolate, scanner));
+    }
 
-    case CLOSE_BRACE:
+    case CLOSE_BRACE: {
       yyextra._message = "expected value, got '}'";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
 
-    case OPEN_BRACKET:
+    case OPEN_BRACKET: {
       return scope.Escape<v8::Value>(ParseArray(isolate, scanner));
+    }
 
-    case CLOSE_BRACKET:
+    case CLOSE_BRACKET: {
       yyextra._message = "expected value, got ']'";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
 
-    case COMMA:
+    case COMMA: {
       yyextra._message = "expected value, got ','";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
 
-    case COLON:
+    case COLON: {
       yyextra._message = "expected value, got ':'";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
 
-    case UNQUOTED_STRING:
+    case UNQUOTED_STRING: {
       yyextra._message = "expected value, got unquoted string";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    }
   }
 
   yyextra._message = "unknown atom";
@@ -421,7 +447,7 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
                                           char** error) {
   v8::EscapableHandleScope scope(isolate);
 
-  v8::Handle<v8::Value> value = v8::Undefined(isolate);
+  v8::Handle<v8::Value> value;
   YY_BUFFER_STATE buf;
   int c;
   struct yyguts_t * yyg;

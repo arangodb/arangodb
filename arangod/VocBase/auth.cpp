@@ -458,7 +458,8 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
 
-  size_t const n = json->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(json);
+
   for (size_t i = 0; i < n; ++i) {
     TRI_vocbase_auth_t* auth = AuthFromJson(TRI_LookupArrayJson(json, i));
 

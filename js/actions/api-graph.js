@@ -339,8 +339,8 @@ function post_graph_graph (req, res) {
 ///
 ///     logJsonResponse(response);
 ///     db._drop("edges1");
-///     db._drop("vertices2");
-///     db._drop("edges1");
+///     db._drop("vertices1");
+///     db._drop("edges2");
 ///     db._drop("vertices2");
 ///     db._graphs.remove("graph1");
 ///     db._graphs.remove("graph2");

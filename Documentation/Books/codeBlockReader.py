@@ -1,7 +1,7 @@
 import os
 import re
 import inspect
-
+import cgi
 
 def file_content(filepath):
   """ Fetches and formats file's content to perform the required operation.
@@ -88,6 +88,7 @@ def example_content(filepath, fh, tag):
         curlState = CURL_STATE_BODY
 
       if curlState == CURL_STATE_CMD or curlState == CURL_STATE_HEADER:
+        line = cgi.escape(line)
         short = short + line
         shortLines = shortLines + 1
       else:

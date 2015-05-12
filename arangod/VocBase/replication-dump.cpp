@@ -158,7 +158,7 @@ static int AppendCollection (TRI_replication_dump_t* dump,
   if (translateCollectionIds) {
     if (cid > 0) {
       std::string name;
-      if (triagens::arango::ServerState::instance()->isDBserver()) {
+      if (triagens::arango::ServerState::instance()->isDBServer()) {
         name = resolver->getCollectionNameCluster(cid);
       }
       else {
@@ -1139,7 +1139,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bufferFull     = false;
   ignoreMarkers  = false;
 
-  n = datafiles._length;
+  n = TRI_LengthVector(&datafiles);
 
   for (i = 0; i < n; ++i) {
     df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);

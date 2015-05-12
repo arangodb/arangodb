@@ -29,10 +29,7 @@
 
 #include "HttpHandlerFactory.h"
 
-#include "Basics/MutexLocker.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "HttpServer/HttpHandler.h"
@@ -179,19 +176,19 @@ HttpHandlerFactory::size_restriction_t HttpHandlerFactory::sizeRestrictions () c
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
-  RequestContext* rc = request->getRequestContext();
+  auto context = request->getRequestContext();
 
-  if (rc == nullptr) {
+  if (context == nullptr) {
     if (! setRequestContext(request)) {
       return HttpResponse::NOT_FOUND;
     }
 
-    rc = request->getRequestContext();
+    context = request->getRequestContext();
   }
 
-  TRI_ASSERT(rc != nullptr);
+  TRI_ASSERT(context != nullptr);
 
-  return rc->authenticate();
+  return context->authenticate();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,6 +205,7 @@ bool HttpHandlerFactory::setRequestContext (HttpRequest* request) {
 
 string HttpHandlerFactory::authenticationRealm (HttpRequest* request) const {
   auto context = request->getRequestContext();
+
   if (context != nullptr) {
     auto realm = context->getRealm();
 
@@ -243,11 +241,10 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     return new MaintenanceHandler(request);
   }
 
-  map<string, create_fptr> const& ii = _constructors;
+  unordered_map<string, create_fptr> const& ii = _constructors;
   string path = request->requestPath();
-  map<string, create_fptr>::const_iterator i = ii.find(path);
+  auto i = ii.find(path);
   void* data = nullptr;
-
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
@@ -321,7 +318,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
   // no match
   if (i == ii.end()) {
-    if (_notFound != 0) {
+    if (_notFound != nullptr) {
       HttpHandler* notFoundHandler = _notFound(request, data);
       notFoundHandler->setServer(this);
 
@@ -329,14 +326,14 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     }
     else {
       LOG_TRACE("no not-found handler, giving up");
-      return 0;
+      return nullptr;
     }
   }
 
 
   // look up data
-  map<string, void*> const& jj = _datas;
-  map<string, void*>::const_iterator j = jj.find(path);
+  unordered_map<string, void*> const& jj = _datas;
+  auto j = jj.find(path);
 
   if (j != jj.end()) {
     data = j->second;

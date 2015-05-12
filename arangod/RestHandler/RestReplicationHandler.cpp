@@ -779,10 +779,10 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
                              (res->result->getHttpReturnCode()));
   _response->setContentType(res->result->getHeaderField("content-type",dummy));
   _response->body().swap(& (res->result->getBody()));
-  map<string, string> resultHeaders = res->result->getHeaderFields();
-  map<string, string>::iterator it;
-  for (it = resultHeaders.begin(); it != resultHeaders.end(); ++it) {
-    _response->setHeader(it->first, it->second);
+
+  auto const& resultHeaders = res->result->getHeaderFields();
+  for (auto const& it : resultHeaders) {
+    _response->setHeader(it.first, it.second);
   }
   delete res;
 }
@@ -1232,7 +1232,7 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_ASSERT(JsonHelper::isArray(collections));
 
   // sort collections by type, then name
-  size_t const n = collections->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(collections);
 
   if (n > 1) {
     // sort by collection type (vertices before edges), then name
@@ -1927,7 +1927,8 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  size_t const n = indexes->_value._objects._length;
+  size_t const n = TRI_LengthArrayJson(indexes);
+  
   if (n == 0) {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
@@ -2030,7 +2031,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  const size_t n = indexes->_value._objects._length;
+  const size_t n = TRI_LengthArrayJson(indexes);
   if (n == 0) {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
@@ -2251,7 +2252,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
       TRI_voc_rid_t rid     = 0;
       TRI_json_t const* doc = nullptr;
 
-      const size_t n = json->_value._objects._length;
+      size_t const n = TRI_LengthVector(&json->_value._objects);
 
       for (size_t i = 0; i < n; i += 2) {
         TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
@@ -2488,7 +2489,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       TRI_json_t const* doc = nullptr;
       TRI_replication_operation_e type = REPLICATION_INVALID;
 
-      const size_t n = json->_value._objects._length;
+      size_t const n = TRI_LengthVector(&json->_value._objects);
 
       for (size_t i = 0; i < n; i += 2) {
         TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
@@ -3077,8 +3078,8 @@ void RestReplicationHandler::handleCommandSync () {
   std::unordered_map<string, bool> restrictCollections;
   TRI_json_t* restriction = JsonHelper::getObjectElement(json, "restrictCollections");
 
-  if (restriction != nullptr && restriction->_type == TRI_JSON_ARRAY) {
-    size_t const n = restriction->_value._objects._length;
+  if (TRI_IsArrayJson(restriction)) {
+    size_t const n = TRI_LengthArrayJson(restriction);
 
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* cname = static_cast<TRI_json_t const*>(TRI_AtVector(&restriction->_value._objects, i));

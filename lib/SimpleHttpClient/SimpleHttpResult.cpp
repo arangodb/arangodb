@@ -110,12 +110,14 @@ namespace triagens {
                                            char const* value,
                                            size_t valueLength) {
       // trim key
-      char const* end = key + keyLength;
+      {
+        char const* end = key + keyLength;
 
-      while (key < end && 
-             (*key == ' ' || *key == '\t')) {
-        ++key;
-        --keyLength;
+        while (key < end && 
+               (*key == ' ' || *key == '\t')) {
+          ++key;
+          --keyLength;
+        }
       }
 
       // lower-case key
@@ -123,12 +125,14 @@ namespace triagens {
       StringUtils::tolowerInPlace(&keyString);
 
       // trim value
-      end = value + valueLength;
+      {
+        char const* end = value + valueLength;
 
-      while (value < end && 
-             (*value == ' ' || *value == '\t')) {
-        ++value;
-        --valueLength;
+        while (value < end && 
+               (*value == ' ' || *value == '\t')) {
+          ++value;
+          --valueLength;
+        }
       }
 
       if (keyString[0] == 'h') {
@@ -154,11 +158,11 @@ namespace triagens {
 
       else if (keyString[0] == 'c') {
 
-        if (keyString.size() == strlen("content-length") &&
+        if (keyLength == strlen("content-length") &&
             keyString == "content-length") {
           setContentLength((size_t) StringUtils::int64(value, valueLength));
         }
-        else if (keyString.size() == strlen("content-encoding") &&
+        else if (keyLength == strlen("content-encoding") &&
                  keyString == "content-encoding") {
           if (valueLength == strlen("deflate") &&
               (value[0] == 'd' || value[0] == 'D') &&
@@ -175,7 +179,7 @@ namespace triagens {
 
       else if (keyString[0] == 't') {
 
-        if (keyString.size() == strlen("transfer-encoding") &&
+        if (keyLength == strlen("transfer-encoding") &&
             keyString == "transfer-encoding") {
           if (valueLength == strlen("chunked") &&
               (value[0] == 'c' || value[0] == 'C') &&
@@ -191,6 +195,7 @@ namespace triagens {
       }
 
       auto result = _headerFields.emplace(keyString, std::string(value, valueLength));
+
       if (! result.second) {
         // header already present
         _headerFields[keyString] = std::string(value, valueLength);
@@ -210,7 +215,7 @@ namespace triagens {
     }
 
     bool SimpleHttpResult::isJson () const {
-      auto find = _headerFields.find("content-type");
+      auto const& find = _headerFields.find("content-type");
 
       if (find == _headerFields.end()) {
         return false;
@@ -218,11 +223,13 @@ namespace triagens {
 
       // header found
       // return partial match before first semicolon
-      if (strncmp(find->second.c_str(), "application/json", strlen("application/json")) != 0) {
+      size_t const length = strlen("application/json");
+
+      if (strncmp(find->second.c_str(), "application/json", length) != 0) {
         return false;
       }
 
-      char const* ptr = find->second.c_str() + strlen("application/json");
+      char const* ptr = find->second.c_str() + length;
       return (*ptr == '\0' || *ptr == ';' || *ptr == ' ');
     }
 

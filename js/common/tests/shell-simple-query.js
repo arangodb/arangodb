@@ -1,5 +1,6 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotNull, assertNull */
+/*global fail, assertEqual, assertNotNull, assertNull, assertTrue, assertMatch,
+  assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -32,6 +33,397 @@ var jsunity = require("jsunity");
 
 var db = require("org/arangodb").db;
 var SimpleQueryArray = require("org/arangodb/simple-query").SimpleQueryArray;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     lookup-by-key
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lookup-by-key API
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryLookupByKeysSuite () {
+  'use strict';
+
+  var cn = "example";
+  var c = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      c = db._create(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(cn);
+      c = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in empty collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyCollection : function () {
+      var result = c.documents([ "foo", "bar", "baz" ]);
+
+      assertEqual({ documents: [ ] }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in empty collection and empty lookup list
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyCollectionAndArray : function () {
+      var result = c.documents([ ]);
+
+      assertEqual({ documents: [ ] }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with empty lookup list
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyArray : function () {
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+      }
+
+      var result = c.documents([ ]);
+
+      assertEqual({ documents: [ ] }, result);
+
+      // try with alias method
+      result = c.lookupByKeys([ ]);
+      assertEqual({ documents: [ ] }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with numeric keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testNumericKeys : function () {
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: String(i) });
+      }
+
+      // should have matches
+      var result = c.documents([ "1", "2", "3", "0" ]);
+      assertEqual(4, result.documents.length);
+      
+      // try with alias method
+      result = c.lookupByKeys([ "1", "2", "3", "0" ]);
+      assertEqual(4, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup using invalid keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidKeys : function () {
+      var result = c.documents([ " ", "*  ", " bfffff/\\&, ", "////.,;::" ]);
+
+      assertEqual({ documents: [ ] }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testLookup : function () {
+      var keys = [ ];
+      for (var i = 0; i < 1000; ++i) {
+        c.insert({ _key: "test" + i, value: i });
+        keys.push("test" + i);
+      }
+
+      var result = c.documents(keys);
+      assertEqual(1000, result.documents.length);
+
+      result.documents.forEach(function(doc) {
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertMatch(/^test\d+$/, doc._key);
+        assertEqual(cn + "/" + doc._key, doc._id);
+        assertEqual(doc._key, "test" + doc.value);
+      });
+      
+      // try with alias method
+      result = c.lookupByKeys(keys);
+      assertEqual(1000, result.documents.length);
+
+      result.documents.forEach(function(doc) {
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertMatch(/^test\d+$/, doc._key);
+        assertEqual(cn + "/" + doc._key, doc._id);
+        assertEqual(doc._key, "test" + doc.value);
+      });
+    },
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testLookupDuplicate : function () {
+      var keys = [ ];
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i, value: i });
+        // add same key twice
+        keys.push("test" + i);
+        keys.push("test" + i);
+      }
+
+      var result = c.documents(keys);
+      assertEqual(100, result.documents.length);
+
+      result.documents.forEach(function(doc) {
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertMatch(/^test\d+$/, doc._key);
+        assertEqual(cn + "/" + doc._key, doc._id);
+        assertEqual(doc._key, "test" + doc.value);
+      });
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     remove-by-key
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove-by-keys API
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryRemoveByKeysSuite () {
+  'use strict';
+
+  var cn = "example";
+  var c = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      c = db._create(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(cn);
+      c = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in empty collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyCollection : function () {
+      var result = c.removeByKeys([ "foo", "bar", "baz" ]);
+
+      assertEqual({ removed: 0, ignored: 3 }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in empty collection and empty lookup list
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyCollectionAndArray : function () {
+      var result = c.removeByKeys([ ]);
+
+      assertEqual({ removed: 0, ignored: 0 }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in collection with empty lookup list
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyArray : function () {
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+      }
+
+      var result = c.removeByKeys([ ]);
+
+      assertEqual({ removed: 0, ignored: 0 }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in collection with existing and nonexisting keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testMixed : function () {
+      var keys = [ ];
+      for (var i = 0; i < 500; ++i) {
+        c.insert({ _key: "test" + i });
+
+        if (i % 2 === 0) {
+          keys.push("test" + i);
+        }
+        else {
+          keys.push("foobar" + i);
+        }
+      }
+
+      var result = c.removeByKeys(keys);
+
+      assertEqual({ removed: 250, ignored: 250 }, result);
+
+      assertEqual(250, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in collection with nonexisting keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonExisting : function () {
+      var keys = [ ];
+      for (var i = 0; i < 100; ++i) {
+        keys.push("test" + i);
+      }
+
+      var result = c.removeByKeys(keys);
+
+      assertEqual({ removed: 0, ignored: 100 }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in collection with numeric keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testNumericKeys : function () {
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: String(i) });
+      }
+
+      // should have matches
+      var result = c.removeByKeys([ "1", "2", "3", "0" ]);
+      assertEqual({ removed: 4, ignored: 0 }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove using invalid keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidKeys : function () {
+      var result = c.removeByKeys([ " ", "*  ", " bfffff/\\&, ", "////.,;::" ]);
+
+      assertEqual({ removed: 0, ignored: 4 }, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemove : function () {
+      var keys = [ ];
+      for (var i = 0; i < 1000; ++i) {
+        c.insert({ _key: "test" + i, value: i });
+        keys.push("test" + i);
+      }
+
+      var result = c.removeByKeys(keys);
+      assertEqual({ removed: 1000, ignored: 0 }, result);
+
+      assertEqual(0, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveTwice : function () {
+      var keys = [ ];
+      for (var i = 0; i < 1000; ++i) {
+        c.insert({ _key: "test" + i, value: i });
+        keys.push("test" + i);
+      }
+
+      var result = c.removeByKeys(keys);
+      assertEqual({ removed: 1000, ignored: 0 }, result);
+      
+      assertEqual(0, c.count());
+      c.insert({ _key: "test3" });
+      c.insert({ _key: "test1000" });
+      
+      result = c.removeByKeys(keys);
+      assertEqual({ removed: 1, ignored: 999 }, result);
+      
+      assertEqual(1, c.count());
+    },
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveDuplicate : function () {
+      var keys = [ ];
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i, value: i });
+        // add same key twice
+        keys.push("test" + i);
+        keys.push("test" + i);
+      }
+
+      var result = c.removeByKeys(keys);
+      assertEqual({ removed: 100, ignored: 100 }, result);
+      
+      assertEqual(0, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove in collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemovePartial : function () {
+      var keys = [ ];
+      for (var i = 0; i < 2000; ++i) {
+        c.insert({ _key: "test" + i, value: i });
+
+        if (i % 2 === 0) {
+          keys.push("test" + i);
+        }
+      }
+
+      // result should have been de-duplicated?
+      var result = c.removeByKeys(keys);
+      assertEqual({ removed: 1000, ignored: 0 }, result);
+      
+      assertEqual(1000, c.count());
+      assertFalse(c.exists("test0"));
+      assertTrue(c.exists("test1"));
+      assertFalse(c.exists("test2"));
+      assertTrue(c.exists("test3"));
+      // ...
+      assertFalse(c.exists("test1998"));
+      assertTrue(c.exists("test1999"));
+    }
+
+  };
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                  basic skips and limits for array
@@ -2247,6 +2639,8 @@ function SimpleQueryAnySuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(SimpleQueryLookupByKeysSuite);
+jsunity.run(SimpleQueryRemoveByKeysSuite);
 jsunity.run(SimpleQueryArraySkipLimitSuite);
 jsunity.run(SimpleQueryAllSkipLimitSuite);
 jsunity.run(SimpleQueryByExampleSuite);

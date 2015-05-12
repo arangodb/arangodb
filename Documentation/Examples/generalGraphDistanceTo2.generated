@@ -3,7 +3,7 @@ arangosh> var g = examples.loadGraph("routeplanner");
 arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
 ........> + "'routeplanner', [{_id: 'germanCity/Cologne'},{_id: 'germanCity/Hamburg'}], " +
 ........> "'frenchCity/Lyon', " +
-........> "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance]"
+........> "{weight : 'distance', includeData: true}) RETURN [e.startVertex, e.vertex, e.distance]"
 ........> ).toArray();
 [ 
   [ 

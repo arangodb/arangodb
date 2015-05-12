@@ -1,11 +1,12 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products <<EOF
 {"type":"cap","size":10}
+EOF
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1241196707", 
+  "id" : "products/1246045237", 
   "type" : "cap", 
   "unique" : false, 
   "size" : 10, 

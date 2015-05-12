@@ -646,6 +646,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
   // Now start the execution:
   try {
     QueryResult res = prepare(registry);
+
     if (res.code != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -653,18 +654,21 @@ QueryResult Query::execute (QueryRegistry* registry) {
     triagens::basics::Json jsonResult(triagens::basics::Json::Array, 16);
     triagens::basics::Json stats;
 
+    // this is the RegisterId our results can be found in
+    auto const resultRegister = _engine->resultRegister();
+    
     AqlItemBlock* value = nullptr;
 
     try {
       while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
-        auto doc = value->getDocumentCollection(0);
+        auto doc = value->getDocumentCollection(resultRegister);
 
         size_t const n = value->size();
         // reserve space for n additional results at once
         jsonResult.reserve(n);
 
         for (size_t i = 0; i < n; ++i) {
-          auto val = value->getValueReference(i, 0);
+          auto val = value->getValueReference(i, resultRegister);
 
           if (! val.isEmpty()) {
             jsonResult.add(val.toJson(_trx, doc)); 
@@ -732,19 +736,22 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
 
     uint32_t j = 0;
     QueryResultV8 result(TRI_ERROR_NO_ERROR);
-    result.result  = v8::Array::New(isolate);
+    result.result = v8::Array::New(isolate);
     triagens::basics::Json stats;
+    
+    // this is the RegisterId our results can be found in
+    auto const resultRegister = _engine->resultRegister();
 
     AqlItemBlock* value = nullptr;
 
     try {
       while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
-        auto doc = value->getDocumentCollection(0);
+        auto doc = value->getDocumentCollection(resultRegister);
 
         size_t const n = value->size();
         
         for (size_t i = 0; i < n; ++i) {
-          AqlValue val = value->getValueReference(i, 0);
+          auto val = value->getValueReference(i, resultRegister);
 
           if (! val.isEmpty()) {
             result.result->Set(j++, val.toV8(isolate, _trx, doc)); 

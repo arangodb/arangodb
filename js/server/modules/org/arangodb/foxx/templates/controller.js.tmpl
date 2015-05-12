@@ -1,79 +1,96 @@
 'use strict';
-var Foxx = require('org/arangodb/foxx'),
-  ArangoError = require('org/arangodb').ArangoError,
-  <%= repository %> = require('<%= repositoryPath %>'),
-  <%= model %> = require('<%= modelPath %>'),
-  joi = require('joi'),
-  _ = require('underscore'),
-  controller,
-  <%= model %>Description = {
-    type: joi.string().required().description(
-      'The id of the <%= model %>-Item'
-    ),
-    allowMultiple: false
-  },
-  <%= repositoryInstance %>;
+var _ = require('underscore');
+var joi = require('joi');
+var Foxx = require('org/arangodb/foxx');
+var ArangoError = require('org/arangodb').ArangoError;
+var <%= repository %> = require('<%= repositoryPath %>');
+var <%= model %> = require('<%= modelPath %>');
 
-controller = new Foxx.Controller(applicationContext);
+var <%= modelInstance %>IdSchema = joi.string().required()
+.description('The id of the <%= modelInstance %>')
+.meta({allowMultiple: false});
 
-<%= repositoryInstance %> = new <%= repository %>(applicationContext.collection('<%= collectionName %>'), {
-  model: <%= model %>
-});
+var controller = new Foxx.Controller(applicationContext);
 
-/** Lists of all <%= model %>
+var <%= repositoryInstance %> = new <%= repository %>(
+  applicationContext.collection('<%= collectionName %>'),
+  {model: <%= model %>}
+);
+
+/** Lists of all <%= collectionName %>.
  *
  * This function simply returns the list of all <%= model %>.
  */
-controller.get('/<%= basePath %>', function (req, res) {
+controller.get('/', function (req, res) {
   res.json(_.map(<%= repositoryInstance %>.all(), function (model) {
     return model.forClient();
   }));
 });
 
-/** Creates a new <%= model %>
+/** Creates a new <%= modelInstance %>
  *
- * Creates a new <%= model %>-Item. The information has to be in the
+ * Creates a new <%= modelInstance %>. The information has to be in the
  * requestBody.
  */
-controller.post('/<%= basePath %>', function (req, res) {
-  var <%= modelInstance %> = req.params('<%= modelInstance %>');
+controller.post('/', function (req, res) {
+  var <%= modelInstance %> = req.parameters.<%= modelInstance %>;
   res.json(<%= repositoryInstance %>.save(<%= modelInstance %>).forClient());
-}).bodyParam('<%= modelInstance %>', {
-  description: 'The <%= model %> you want to create',
+})
+.bodyParam('<%= modelInstance %>', {
+  description: 'The <%= modelInstance %> you want to create',
   type: <%= model %>
 });
 
-/** Reads a <%= model %>
+/** Reads a <%= modelInstance %>
  *
- * Reads a <%= model %>-Item.
+ * Reads a <%= modelInstance %>.
  */
-controller.get('/<%= basePath %>/:id', function (req, res) {
-  var id = req.params('id');
+controller.get('/:id', function (req, res) {
+  var id = req.urlParameters.id;
   res.json(<%= repositoryInstance %>.byId(id).forClient());
-}).pathParam('id', <%=model %>Description);
+})
+.pathParam('id', <%= modelInstance %>IdSchema);
 
-/** Updates a <%= model %>
+/** Replaces a <%= modelInstance %>
  *
- * Changes a <%= model %>-Item. The information has to be in the
+ * Changes a <%= modelInstance %>. The information has to be in the
  * requestBody.
  */
-controller.put('/<%= basePath %>/:id', function (req, res) {
-  var id = req.params('id'),
-  <%= modelInstance %> = req.params('<%= modelInstance %>');
+controller.put('/:id', function (req, res) {
+  var id = req.urlParameters.id;
+  var <%= modelInstance %> = req.parameters.<%= modelInstance %>;
   res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>));
-}).pathParam('id', <%=model %>Description)
+})
+.pathParam('id', <%= modelInstance %>IdSchema)
 .bodyParam('<%= modelInstance %>', {
-  description: 'The <%= model %> you want your old one to be replaced with',
+  description: 'The <%= modelInstance %> you want your old one to be replaced with',
   type: <%= model %>
 });
 
-/** Removes a <%= model %>
+/** Updates a <%= modelInstance %>
  *
- * Removes a <%= model %>-Item.
+ * Changes a <%= modelInstance %>. The information has to be in the
+ * requestBody.
  */
-controller.del('/<%= basePath %>/:id', function (req, res) {
-  var id = req.params('id');
+controller.patch('/:id', function (req, res) {
+  var id = req.urlParameters.id;
+  var patchData = req.parameters.patch;
+  res.json(<%= repositoryInstance %>.updateById(id, patchData));
+})
+.pathParam('id', <%= modelInstance %>IdSchema)
+.bodyParam('patch', {
+  description: 'The patch data you want your <%= modelInstance %> to be updated with',
+  type: joi.object().required()
+});
+
+/** Removes a <%= modelInstance %>
+ *
+ * Removes a <%= modelInstance %>.
+ */
+controller.delete('/:id', function (req, res) {
+  var id = req.urlParameters.id;
   <%= repositoryInstance %>.removeById(id);
-  res.json({ success: true });
-}).pathParam('id', <%=model %>Description
-).errorResponse(ArangoError, 404, 'The document could not be found');
+  res.json({success: true});
+})
+.pathParam('id', <%= modelInstance %>IdSchema)
+.errorResponse(ArangoError, 404, 'The <%= modelInstance %> could not be found');

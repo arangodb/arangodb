@@ -367,7 +367,7 @@ namespace triagens {
             _nrResizes++;
 #endif
 
-            _table = new ELEMENT[_nrAlloc];
+            _table = new ELEMENT[static_cast<unsigned int>(_nrAlloc)];
 
             for (uint64_t j = 0; j < _nrAlloc; j++) {
               _desc.clearElement(_table[j]);
@@ -567,7 +567,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void initialise (uint64_t size) {
-          _table = new ELEMENT[size];
+          _table = new ELEMENT[static_cast<unsigned int>(size)];
 
           for (uint64_t i = 0; i < size; i++) {
             _desc.clearElement(_table[i]);

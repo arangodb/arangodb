@@ -276,11 +276,11 @@ static void JS_ProcessJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args)
         continue;
       }
 
-      char* error = 0;
+      char* error = nullptr;
       v8::Handle<v8::Value> object = TRI_FromJsonString(isolate, line.c_str(), &error);
 
       if (object->IsUndefined()) {
-        if (error != 0) {
+        if (error != nullptr) {
           string msg = error;
           TRI_FreeString(TRI_CORE_MEM_ZONE, error);
           TRI_V8_THROW_SYNTAX_ERROR(msg.c_str());
@@ -290,7 +290,7 @@ static void JS_ProcessJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args)
         }
       }
 
-      if (error != 0) {
+      if (error != nullptr) {
         TRI_FreeString(TRI_CORE_MEM_ZONE, error);
       }
 

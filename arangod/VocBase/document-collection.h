@@ -33,6 +33,9 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/ReadWriteLockCPP11.h"
+#include "Basics/fasthash.h"
+
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
 #include "VocBase/headers.h"
@@ -65,42 +68,42 @@ class KeyGenerator;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_ReadLockReadWriteLock(&(a)->_lock)
+  a->_lock.readLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock the documents and indexes
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_TryReadLockReadWriteLock(&(a)->_lock)
+  a->_lock.tryReadLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocks the documents and indexes
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+  a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write locks the documents and indexes
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_WriteLockReadWriteLock(&(a)->_lock)
+  a->_lock.writeLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to write lock the documents and indexes
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_TryWriteLockReadWriteLock(&(a)->_lock)
+  a->_lock.tryWriteLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocks the documents and indexes
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+  a->_lock.unlock()
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -328,7 +331,9 @@ struct TRI_document_collection_t : public TRI_collection_t {
   // and _headers attributes in derived types
   // ...........................................................................
 
-  TRI_read_write_lock_t        _lock;
+  // TRI_read_write_lock_t        _lock;
+  triagens::basics::ReadWriteLockCPP11 _lock;
+
 
 private:
   TRI_shaper_t*                _shaper;
@@ -464,35 +469,35 @@ size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::TransactionBase
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(a) \
-  TRI_TryReadLockReadWriteLock(&(a)->_lock)
+  a->_lock.tryReadLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks the journal files and the parameter file
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(a) \
-  TRI_ReadLockReadWriteLock(&(a)->_lock)
+  a->_lock.readLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocks the journal files and the parameter file
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(a) \
-  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+  a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write locks the journal files and the parameter file
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(a) \
-  TRI_WriteLockReadWriteLock(&(a)->_lock)
+  a->_lock.writeLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocks the journal files and the parameter file
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(a) \
-  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+  a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the journal entries
@@ -958,6 +963,38 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           size_t,
                           TRI_shape_pid_t*,
                           TRI_shaped_json_t**);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+struct ShapedJsonHash {
+  size_t operator() (TRI_shaped_json_t const& shap) const {
+    uint64_t hash = 0x12345678;
+    hash = fasthash64(&shap._sid, sizeof(shap._sid), hash);
+    return static_cast<size_t>(fasthash64(shap._data.data, shap._data.length, hash));
+  }
+};
+
+struct ShapedJsonEq {
+  bool operator() (TRI_shaped_json_t const& left,
+                   TRI_shaped_json_t const& right) const {
+    if (left._sid != right._sid) {
+      return false;
+    }
+    if (left._data.length != right._data.length) {
+      return false;
+    }
+    return (memcmp(left._data.data, right._data.data, left._data.length) == 0);
+  }
+};
+
+typedef std::unordered_map<TRI_shaped_json_t, size_t, 
+                           ShapedJsonHash, ShapedJsonEq> CountingAggregation;
+
+CountingAggregation* TRI_AggregateBySingleAttribute (
+                          TRI_transaction_collection_t* trxCollection,
+                          TRI_shape_pid_t pid );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a documet given by a master pointer

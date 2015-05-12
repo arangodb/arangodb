@@ -187,6 +187,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Create a document in a collection named *products* with a collection-level
@@ -205,6 +206,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Create a document in a collection with a collection-level *waitForSync*
@@ -223,6 +225,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Create a document in a new, named collection
@@ -239,6 +242,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown collection name:
@@ -490,6 +494,7 @@ bool RestDocumentHandler::readDocument () {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Use a document handle and an etag:
@@ -506,6 +511,7 @@ bool RestDocumentHandler::readDocument () {
 ///     var response = logCurlRequest('GET', url, "", headers);
 ///
 ///     assert(response.code === 304);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
@@ -568,7 +574,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
   string collectionName = collection;
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     collectionName = trx.resolver()->getCollectionName(cid);
   }
   TRI_doc_mptr_copy_t mptr;
@@ -662,6 +668,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
   // OK or an error:
   _response = createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+  
   if (! generateBody) {
     // a head request...
     _response->headResponse((size_t) StringUtils::uint64(resultHeaders["content-length"]));
@@ -725,6 +732,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Returns all document keys
@@ -744,6 +752,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Collection does not exist.
@@ -764,8 +773,8 @@ bool RestDocumentHandler::getDocumentCoordinator (
 
 bool RestDocumentHandler::readAllDocuments () {
   bool found;
-  string collection = _request->value("collection", found);
-  string returnType = _request->value("type", found);
+  std::string collection = _request->value("collection", found);
+  std::string returnType = _request->value("type", found);
 
   if (returnType.empty()) {
     returnType = "path";
@@ -778,19 +787,20 @@ bool RestDocumentHandler::readAllDocuments () {
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
 
-  vector<string> ids;
+  std::vector<std::string> ids;
 
   // .............................................................................
   // inside read transaction
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
     return false;
   }
 
-  const TRI_voc_cid_t cid = trx.cid();
+  TRI_voc_cid_t const cid = trx.cid();
 
   res = trx.read(ids);
 
@@ -807,46 +817,39 @@ bool RestDocumentHandler::readAllDocuments () {
     return false;
   }
 
-  // generate result
-  string result("{ \"documents\" : [\n");
-
-  bool first = true;
-  string prefix;
+  std::string prefix;
 
   if (returnType == "key") {
-    prefix = '"';
+    prefix = "";
   }
   else if (returnType == "id") {
-    prefix = '"' + trx.resolver()->getCollectionName(cid) + "\\/";
+    prefix = trx.resolver()->getCollectionName(cid) + "/";
   }
   else {
     // default return type: paths to documents
     if (type == TRI_COL_TYPE_EDGE) {
-      prefix = '"' + EDGE_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
+      prefix = "/_db/" + _request->databaseName() + EDGE_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
     }
     else {
-      prefix = '"' + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
+      prefix = "/_db/" + _request->databaseName() + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
     }
   }
 
-  for (auto id : ids) {
-    // collection names do not need to be JSON-escaped
-    // keys do not need to be JSON-escaped
-    result += prefix + id + '"';
+  // generate result
+  triagens::basics::Json documents(triagens::basics::Json::Array);
+  documents.reserve(ids.size());
 
-    if (first) {
-      prefix = ",\n" + prefix;
-      first = false;
-    }
+  for (auto const& id : ids) {
+    std::string v(prefix);
+    v.append(id);
+    documents.add(triagens::basics::Json(v));
   }
 
-  result += "\n] }";
+  triagens::basics::Json result(triagens::basics::Json::Object);
+  result("documents", documents);
 
   // and generate a response
-  _response = createResponse(HttpResponse::OK);
-  _response->setContentType("application/json; charset=utf-8");
-
-  _response->body().appendText(result);
+  generateResult(result.json());
 
   return true;
 }
@@ -941,6 +944,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (string const& collname,
 ///     var response = logCurlRequest('HEAD', url);
 ///
 ///     assert(response.code === 200);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 /// @endDocuBlock
@@ -1100,6 +1104,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
@@ -1118,6 +1123,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 404);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Produce a revision conflict:
@@ -1137,6 +1143,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 412);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Last write wins:
@@ -1155,6 +1162,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Alternative to header field:
@@ -1173,6 +1181,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 412);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock  
 ////////////////////////////////////////////////////////////////////////////////
@@ -1315,6 +1324,7 @@ bool RestDocumentHandler::replaceDocument () {
 ///     var response5 = logCurlRequest("GET", url);
 ///     assert(response5.code === 200);
 ///     logJsonResponse(response5);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Merging attributes of an object using `mergeObjects`:
@@ -1345,6 +1355,7 @@ bool RestDocumentHandler::replaceDocument () {
 ///     var response4 = logCurlRequest("GET", url);
 ///     assert(response4.code === 200);
 ///     logJsonResponse(response4);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1429,7 +1440,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
   string collectionName = collection;
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     collectionName = trx.resolver()->getCollectionName(cid);
   }
 
@@ -1507,7 +1518,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-    if (ServerState::instance()->isDBserver()) {
+    if (ServerState::instance()->isDBServer()) {
       // compare attributes in shardKeys
       if (shardKeysChanged(_request->databaseName(), cidString, old, json, true)) {
         TRI_FreeJson(shaper->_memoryZone, old);
@@ -1539,7 +1550,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   else {
     // replacing an existing document, using a lock
 
-    if (ServerState::instance()->isDBserver()) {
+    if (ServerState::instance()->isDBServer()) {
       // compare attributes in shardKeys
       // read the existing document
       TRI_doc_mptr_copy_t oldDocument;
@@ -1650,19 +1661,19 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock REST_DOCUMENT_DELETE
-/// @brief deletes a document
+/// @brief removes a document
 ///
-/// @RESTHEADER{DELETE /_api/document/{document-handle}, Deletes document}
+/// @RESTHEADER{DELETE /_api/document/{document-handle}, Removes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// Deletes the document identified by *document-handle*.
+/// Removes the document identified by *document-handle*.
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally delete a document based on a target revision id by
+/// You can conditionally remove a document based on a target revision id by
 /// using the *rev* URL parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
@@ -1671,18 +1682,18 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// documents (see replacing documents for more details).
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been synced to disk.
+/// Wait until deletion operation has been synced to disk.
 ///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally delete a document based on a target revision id by
+/// You can conditionally remove a document based on a target revision id by
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the deleted document, *_key* contains the key which 
+/// *document-handle* of the removed document, *_key* contains the key which 
 /// uniquely identifies a document in a given collection, and the attribute *_rev*
 /// contains the new document revision.
 ///
@@ -1695,11 +1706,11 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the document was deleted successfully and *waitForSync* was
+/// is returned if the document was removed successfully and *waitForSync* was
 /// *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was deleted successfully and *waitForSync* was
+/// is returned if the document was removed successfully and *waitForSync* was
 /// *false*.
 ///
 /// @RESTRETURNCODE{404}
@@ -1729,6 +1740,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
@@ -1747,6 +1759,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///     assert(response.code === 404);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Revision conflict:
@@ -1766,6 +1779,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///     assert(response.code === 412);
 ///
 ///     logJsonResponse(response);
+///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1826,7 +1840,7 @@ bool RestDocumentHandler::deleteDocument () {
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
   string collectionName = collection;
-  if (ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBServer()) {
     collectionName = trx.resolver()->getCollectionName(cid);
   }
 

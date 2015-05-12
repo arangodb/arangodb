@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation <<EOF
 { 
   "collection" : "relation", 
   "from" : [ 
@@ -12,10 +12,11 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/
     "animal" 
   ] 
 }
+EOF
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 1458514083
+etag: 1590961205
 
 { 
   "error" : false, 
@@ -39,6 +40,6 @@ etag: 1458514083
     ], 
     "orphanCollections" : [ ], 
     "_id" : "_graphs/social", 
-    "_rev" : "1458514083" 
+    "_rev" : "1590961205" 
   } 
 }

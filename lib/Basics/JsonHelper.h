@@ -812,6 +812,37 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief append a TRI_json_t value to the end of a Json array, an exception
+/// is thrown if *this is not a Json array. The pointer sub is integrated
+/// into the array and will be freed if and only if the main thing is
+/// freed.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& add (TRI_json_t* sub) {
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
+          }
+          TRI_PushBack3ArrayJson(_zone, _json, sub);
+          return *this;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append a Json value to the end of a Json array, an exception
+/// is thrown if *this is not a Json array. The data pointed to by the source 
+/// json pointer is copied into the result, and the original data is nullified
+/// (so it can be destroyed safely later by its original possessor).
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& transfer (TRI_json_t* json) {
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
+          }
+          TRI_PushBack2ArrayJson(_json, json);
+          TRI_InitNullJson(json);
+          return *this;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reserve space for n additional items in an array
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -834,21 +865,6 @@ namespace triagens {
           return add(sub);
         }
  
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append a TRI_json_t value to the end of a Json array, an exception
-/// is thrown if *this is not a Json array. The pointer sub is integrated
-/// into the array and will be freed if and only if the main thing is
-/// freed.
-////////////////////////////////////////////////////////////////////////////////
-
-        Json& add (TRI_json_t* sub) {
-          if (! TRI_IsArrayJson(_json)) {
-            throw JsonException("Json is no array");
-          }
-          TRI_PushBack3ArrayJson(_zone, _json, sub);
-          return *this;
-        }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this is a syntactic shortcut for the add method using operator()
 ////////////////////////////////////////////////////////////////////////////////
@@ -968,7 +984,7 @@ namespace triagens {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
           }
-          return _json->_value._objects._length;
+          return TRI_LengthVector(&_json->_value._objects);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -979,7 +995,7 @@ namespace triagens {
           if (! TRI_IsObjectJson(_json)) {
             throw JsonException("Json is no object");
           }
-          return _json->_value._objects._length / 2;
+          return TRI_LengthVector(&_json->_value._objects) / 2;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

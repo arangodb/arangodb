@@ -248,7 +248,9 @@ bool TraditionalKeyGenerator::validateKey (char const* key) {
         (c >= '0' && c <= '9') ||
          c == '_' ||
          c == ':' ||
-         c == '-') {
+         c == '-' || 
+         c == '@' ||
+         c == '.') {
       ++p;
       continue;
     }
@@ -297,7 +299,7 @@ void TraditionalKeyGenerator::track (TRI_voc_key_t) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TraditionalKeyGenerator::toJson (TRI_memory_zone_t* zone) const {
-  TRI_json_t* json = TRI_CreateObjectJson(zone);
+  TRI_json_t* json = TRI_CreateObjectJson(zone, 2);
 
   if (json != nullptr) {
     TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str(), name().size()));
@@ -448,7 +450,7 @@ void AutoIncrementKeyGenerator::track (TRI_voc_key_t key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* AutoIncrementKeyGenerator::toJson (TRI_memory_zone_t* zone) const {
-  TRI_json_t* json = TRI_CreateObjectJson(zone);
+  TRI_json_t* json = TRI_CreateObjectJson(zone, 4);
 
   if (json != nullptr) {
     TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str(), name().size()));

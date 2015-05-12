@@ -45,6 +45,14 @@ actions.defineHttp({
   prefix : true,
 
   callback : function (req, res) {
+    req.absoluteUrl = function (url) {
+      var protocol = req.headers["x-forwarded-proto"] || req.protocol;
+      var address = req.headers["x-forwarded-host"] || req.headers.host;
+      if (!address) {
+        address = (req.server.address === '0.0.0.0' ? 'localhost' : req.server.address) + ':' + req.server.port;
+      }
+      return protocol + "://" + address + '/_db/' + encodeURIComponent(req.database) + (url || req.url);
+    };
     try {
       actions.routeRequest(req, res);
     }

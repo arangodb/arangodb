@@ -81,6 +81,12 @@ function ahuacatlFulltextTestSuite () {
       actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') SORT d.id RETURN d.id");
       assertEqual([ 1, 2, 3 ], actual);
       
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish', 2) RETURN d.id");
+      assertEqual(2, actual.length);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish', 1) RETURN d.id");
+      assertEqual(1, actual.length);
+      
       actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'text') SORT d.id RETURN d.id");
       assertEqual([ 1 ], actual);
       
@@ -132,6 +138,12 @@ function ahuacatlFulltextTestSuite () {
       
       actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'prefix:quergestreift,|koedern,|prefix:römer,-melken') SORT d.id RETURN d.id");
       assertEqual([ 2, 4, 7 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 1) RETURN d.id");
+      assertEqual(1, actual.length);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 2) RETURN d.id");
+      assertEqual(2, actual.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
