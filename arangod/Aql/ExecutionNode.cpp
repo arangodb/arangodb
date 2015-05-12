@@ -376,7 +376,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
     auto allVars = plan->getAst()->variables();
     // Create new structures on the new AST...
     other->_varsUsedLater.reserve(_varsUsedLater.size());
-    for (auto orgVar: _varsUsedLater) {
+    for (auto const& orgVar: _varsUsedLater) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
       other->_varsUsedLater.insert(var);
@@ -384,7 +384,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
 
     other->_varsValid.reserve(_varsValid.size());
 
-    for (auto orgVar: _varsValid) {
+    for (auto const& orgVar: _varsValid) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
       other->_varsValid.insert(var);
@@ -603,7 +603,7 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   }
   
   // Now the children in their natural order:
-  for (auto it : _dependencies) {
+  for (auto const& it : _dependencies) {
     if (it->walk(worker)) {
       return true;
     }
@@ -698,7 +698,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
  
     if (_registerPlan) {
       triagens::basics::Json jsonVarInfoList(triagens::basics::Json::Array, _registerPlan->varInfo.size());
-      for (auto oneVarInfo: _registerPlan->varInfo) {
+      for (auto const& oneVarInfo: _registerPlan->varInfo) {
         triagens::basics::Json jsonOneVarInfoArray(triagens::basics::Json::Object, 2);
         jsonOneVarInfoArray
           ("VariableId", triagens::basics::Json(static_cast<double>(oneVarInfo.first)))
@@ -710,13 +710,13 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
       json("varInfoList", jsonVarInfoList);
 
       triagens::basics::Json jsonNRRegsList(triagens::basics::Json::Array, _registerPlan->nrRegs.size());
-      for (auto oneRegisterID: _registerPlan->nrRegs) {
+      for (auto const& oneRegisterID: _registerPlan->nrRegs) {
         jsonNRRegsList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
       }
       json("nrRegs", jsonNRRegsList);
     
       triagens::basics::Json jsonNRRegsHereList(triagens::basics::Json::Array, _registerPlan->nrRegsHere.size());
-      for (auto oneRegisterID: _registerPlan->nrRegsHere) {
+      for (auto const& oneRegisterID: _registerPlan->nrRegsHere) {
         jsonNRRegsHereList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
       }
       json("nrRegsHere", jsonNRRegsHereList);
@@ -730,20 +730,20 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
     }
 
     triagens::basics::Json jsonRegsToClearList(triagens::basics::Json::Array, _regsToClear.size());
-    for (auto oneRegisterID : _regsToClear) {
+    for (auto const& oneRegisterID : _regsToClear) {
       jsonRegsToClearList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
     }
     json("regsToClear", jsonRegsToClearList);
 
     triagens::basics::Json jsonVarsUsedLaterList(triagens::basics::Json::Array, _varsUsedLater.size());
-    for (auto oneVarUsedLater: _varsUsedLater) {
+    for (auto const& oneVarUsedLater: _varsUsedLater) {
       jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
     }
 
     json("varsUsedLater", jsonVarsUsedLaterList);
 
     triagens::basics::Json jsonvarsValidList(triagens::basics::Json::Array, _varsValid.size());
-    for (auto oneVarUsedLater: _varsValid) {
+    for (auto const& oneVarUsedLater: _varsValid) {
       jsonvarsValidList.add(oneVarUsedLater->toJson());
     }
 
@@ -777,17 +777,17 @@ struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
     }
     std::cout << ep->getTypeString() << " ";
     std::cout << "regsUsedHere: ";
-    for (auto v : ep->getVariablesUsedHere()) {
+    for (auto const& v : ep->getVariablesUsedHere()) {
       std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
                 << " ";
     }
     std::cout << "regsSetHere: ";
-    for (auto v : ep->getVariablesSetHere()) {
+    for (auto const& v : ep->getVariablesSetHere()) {
       std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
                 << " ";
     }
     std::cout << "regsToClear: ";
-    for (auto r : ep->getRegsToClear()) {
+    for (auto const& r : ep->getRegsToClear()) {
       std::cout << r << " ";
     }
     std::cout << std::endl;
@@ -942,7 +942,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs.emplace_back(registerId);
 
       auto ep = static_cast<AggregateNode const*>(en);
-      for (auto p : ep->_aggregateVariables) {
+      for (auto const& p : ep->_aggregateVariables) {
         // p is std::pair<Variable const*,Variable const*>
         // and the first is the to be assigned output variable
         // for which we need to create a register in the current
@@ -1112,7 +1112,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     // used any more later:
     std::unordered_set<RegisterId> regsToClear;
 
-    for (auto v : varsUsedHere) {
+    for (auto const& v : varsUsedHere) {
       auto it = varsUsedLater.find(v);
 
       if (it == varsUsedLater.end()) {
@@ -1249,7 +1249,7 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
 
   auto&& indexes = _collection->getIndexes();
 
-  for (auto idx : indexes) {
+  for (auto const& idx : indexes) {
     TRI_ASSERT(idx != nullptr);
 
     auto const idxType = idx->type;
@@ -1319,7 +1319,7 @@ std::vector<EnumerateCollectionNode::IndexMatch>
   std::vector<IndexMatch> out;
   auto&& indexes = _collection->getIndexes();
 
-  for (auto idx : indexes) {
+  for (auto const& idx : indexes) {
     if (idx->sparse) {
       // sparse indexes cannot be used for replacing an EnumerateCollection node
       continue;
@@ -1476,9 +1476,9 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   // put together the range info . . .
   triagens::basics::Json ranges(triagens::basics::Json::Array, _ranges.size());
 
-  for (auto x : _ranges) {
+  for (auto const& x : _ranges) {
     triagens::basics::Json range(triagens::basics::Json::Array, x.size());
-    for(auto y : x) {
+    for(auto const& y : x) {
       range.add(y.toJson());
     }
     ranges.add(range);
@@ -1504,7 +1504,7 @@ ExecutionNode* IndexRangeNode::clone (ExecutionPlan* plan,
   for (size_t i = 0; i < _ranges.size(); i++){
     ranges.emplace_back(std::vector<RangeInfo>());
     
-    for (auto x: _ranges.at(i)){
+    for (auto const& x: _ranges.at(i)) {
       ranges.at(i).emplace_back(x);
     }
   }
@@ -1737,9 +1737,8 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
     for (RangeInfo const& y : x) {
       auto inserter = [&] (RangeInfoBound const& b) -> void {
         AstNode const* a = b.getExpressionAst(_plan->getAst());
-        std::unordered_set<Variable*> vars
-            = Ast::getReferencedVariables(a);
-        for (auto vv : vars) {
+        std::unordered_set<Variable*> vars = Ast::getReferencedVariables(a);
+        for (auto const& vv : vars) {
           s.insert(vv);
         }
       };
@@ -1756,7 +1755,7 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
   // Copy set elements into vector:
   v.reserve(s.size());
 
-  for (auto vv : s) {
+  for (auto const& vv : s) {
     v.emplace_back(vv);
   }
   return v;
@@ -1982,7 +1981,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
   bool before (ExecutionNode* en) override final {
     // Add variables used here to _usedLater:
     auto&& usedHere = en->getVariablesUsedHere();
-    for (auto v : usedHere) {
+    for (auto const& v : usedHere) {
       _usedLater.insert(v);
     }
     return false;
@@ -1991,7 +1990,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
   void after (ExecutionNode* en) override final {
     // Add variables set here to _valid:
     auto&& setHere = en->getVariablesSetHere();
-    for (auto v : setHere) {
+    for (auto const& v : setHere) {
       _valid.insert(v);
     }
   }
@@ -2180,7 +2179,7 @@ public:
 
   bool before (ExecutionNode* en) override final {
     auto vars = en->getVariablesSetHere();
-    for (auto v : vars) {
+    for (auto const& v : vars) {
       for (size_t n = 0; n < _elms.size(); n++) {
         if (_elms[n].first->id == v->id) {
           _myVars[n] = std::make_pair(en, _elms[n].second);
@@ -2398,7 +2397,7 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
     // need to re-create all variables
     aggregateVariables.clear();
 
-    for (auto it : _aggregateVariables) {
+    for (auto& it : _aggregateVariables) {
       auto out = plan->getAst()->variables()->createVariable(it.first);
       auto in  = plan->getAst()->variables()->createVariable(it.second);
       aggregateVariables.emplace_back(std::make_pair(out, in));
@@ -2448,7 +2447,7 @@ struct UserVarFinder : public WalkerWorker<ExecutionNode> {
     // Now depth is set correct for this node.
     if (depth >= mindepth) {
       auto vars = en->getVariablesSetHere();
-      for (auto v : vars) {
+      for (auto const& v : vars) {
         if (v->isUserDefined()) {
           userVars.emplace_back(v);
         }
@@ -2459,12 +2458,12 @@ struct UserVarFinder : public WalkerWorker<ExecutionNode> {
 
 std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
   std::unordered_set<Variable const*> v;
-  for (auto p : _aggregateVariables) {
-    v.insert(p.second);
+  for (auto const& p : _aggregateVariables) {
+    v.emplace(p.second);
   }
 
   if (_expressionVariable != nullptr) {
-    v.insert(_expressionVariable);
+    v.emplace(_expressionVariable);
   }
 
   if (_outVariable != nullptr && ! _count) {
@@ -2482,12 +2481,12 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
         finder.reset();
         myselfAsNonConst->walk(&finder);
       }
-      for (auto x : finder.userVars) {
+      for (auto& x : finder.userVars) {
         v.insert(x);
       }
     }
     else {
-      for (auto x : _keepVariables) {
+      for (auto& x : _keepVariables) {
         v.insert(x);
       }
     }
@@ -2495,7 +2494,7 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
 
   std::vector<Variable const*> vv;
   vv.reserve(v.size());
-  for (auto x : v) {
+  for (auto const& x : v) {
     vv.emplace_back(x);
   }
   return vv;

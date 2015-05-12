@@ -870,7 +870,16 @@ std::pair<std::string, std::string> Expression::getAttributeAccess () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::stringify (triagens::basics::StringBuffer* buffer) const {
-  _node->stringify(buffer, true);
+  _node->stringify(buffer, true, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify an expression
+/// note that currently stringification is only supported for certain node types
+////////////////////////////////////////////////////////////////////////////////
+
+void Expression::stringifyIfNotTooLong (triagens::basics::StringBuffer* buffer) const {
+  _node->stringify(buffer, true, true);
 }
 
 // -----------------------------------------------------------------------------

@@ -73,7 +73,8 @@ namespace triagens {
       VALUE_NONDETERMINISTIC        = 1024,    // node produces non-deterministic result (e.g. function call nodes)
       VALUE_RUNONDBSERVER           = 2048,    // node can run on the DB server in a cluster setup
 
-      FLAG_KEEP_VARIABLENAME        = 4096     // node is a reference to a variable name, not the variable value (used in KEEP nodes)
+      FLAG_KEEP_VARIABLENAME        = 4096,    // node is a reference to a variable name, not the variable value (used in KEEP nodes)
+      FLAG_BIND_PARAMETER           = 8192     // node was created from a JSON bind parameter
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -690,10 +691,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void stringify (triagens::basics::StringBuffer*,
+                        bool,
                         bool) const;
         
         std::string toString () const;
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

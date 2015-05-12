@@ -1098,6 +1098,22 @@ void Ast::injectBindParameters (BindParameters& parameters) {
       }
       else {
         node = nodeFromJson(value);
+
+        if (node != nullptr) {
+          // already mark node as constant here
+          node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+          // mark node as simple
+          node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+          // mark node as executable on db-server
+          node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+          // mark node as non-throwing
+          node->setFlag(DETERMINED_THROWS);
+          // mark node as deterministic
+          node->setFlag(DETERMINED_NONDETERMINISTIC);
+          
+          // finally note that the node was created from a bind parameter
+          node->setFlag(FLAG_BIND_PARAMETER);
+        }
       }
     }
 
@@ -1178,7 +1194,7 @@ void Ast::validateAndOptimize () {
     int64_t stopOptimizationRequests = 0;
   };
 
-  auto preVisitor = [&](AstNode const* node, void* data) -> void {
+  auto preVisitor = [&](AstNode const* node, void* data) -> bool {
     if (node->type == NODE_TYPE_FILTER) {
       static_cast<TraversalContext*>(data)->isInFilter = true;
     }
@@ -1191,6 +1207,11 @@ void Ast::validateAndOptimize () {
         ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
       }
     }
+    else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
+      return false;
+    }
+
+    return true;
   };
 
   auto postVisitor = [&](AstNode const* node, void* data) -> void {
@@ -2213,6 +2234,8 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
   if (json->_type == TRI_JSON_STRING) {
     char const* value = _query->registerString(json->_value._string.data, json->_value._string.length - 1, false);
     return createNodeValueString(value);
+    // TODO: can we get away here without copying the string?
+    // return createNodeValueString(json->_value._string.data);
   }
 
   if (json->_type == TRI_JSON_ARRAY) {
@@ -2254,7 +2277,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::traverseAndModify (AstNode* node, 
-                                 std::function<void(AstNode const*, void*)> preVisitor,
+                                 std::function<bool(AstNode const*, void*)> preVisitor,
                                  std::function<AstNode*(AstNode*, void*)> visitor,
                                  std::function<void(AstNode const*, void*)> postVisitor,
                                  void* data) {
@@ -2262,7 +2285,10 @@ AstNode* Ast::traverseAndModify (AstNode* node,
     return nullptr;
   }
  
-  preVisitor(node, data);
+  if (! preVisitor(node, data)) {
+    return node;
+  }
+
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {

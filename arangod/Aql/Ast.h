@@ -689,7 +689,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static AstNode* traverseAndModify (AstNode*,
-                                           std::function<void(AstNode const*, void*)>,
+                                           std::function<bool(AstNode const*, void*)>,
                                            std::function<AstNode*(AstNode*, void*)>,
                                            std::function<void(AstNode const*, void*)>,
                                            void*);
