@@ -1,6 +1,11 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* removed startup option `--log.severity`
+
+* added startup option `--log.performance`: specifying this option at startup will log
+  performance-related info messages, mainly timings via the regular logging mechanisms
+
 * added optional `limit` parameter for AQL function `FULLTEXT`
 
 * make fulltext index also index text values that are contained in direct sub-objects of the indexed 
