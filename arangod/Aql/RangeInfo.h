@@ -907,11 +907,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
         triagens::basics::Json toJson() const {
-          triagens::basics::Json list(triagens::basics::Json::Array);
-          for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
-            list(_rangeInfoMapVec[i]->toJson());
+          size_t const n = _rangeInfoMapVec.size();
+          triagens::basics::Json result(triagens::basics::Json::Array, n);
+
+          for (size_t i = 0; i < n; i++) {
+            result(_rangeInfoMapVec[i]->toJson());
           }
-          return list;
+          return result;
         }
       
 ////////////////////////////////////////////////////////////////////////////////
@@ -937,6 +939,12 @@ namespace triagens {
         bool empty () const {
           return _rangeInfoMapVec.empty();
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reserve space in vector
+////////////////////////////////////////////////////////////////////////////////
+
+        void reserve (size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief emplace_back: emplace_back RangeInfoMap in vector

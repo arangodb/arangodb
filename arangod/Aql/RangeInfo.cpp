@@ -295,9 +295,8 @@ RangeInfoMap::RangeInfoMap (std::string const& var,
 }
 
 RangeInfoMap::RangeInfoMap (RangeInfo const& ri) : 
-  _ranges() {
+  _ranges({ { ri._var, std::unordered_map<std::string, RangeInfo>{ { ri._attr, ri } } } }) {
 
-  _ranges.emplace(ri._var, std::unordered_map<std::string, RangeInfo>{ { ri._attr, ri } });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -471,6 +470,14 @@ RangeInfoMapVec::~RangeInfoMapVec () {
     delete x;
   }
   _rangeInfoMapVec.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reserve space in vector
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoMapVec::reserve (size_t n) {
+  _rangeInfoMapVec.reserve(n);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
