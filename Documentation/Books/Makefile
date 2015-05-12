@@ -20,6 +20,12 @@ clean: clean-md-files clean-books
 
 build-books: build-books-keep-md
 	make clean-md-files
+	echo "generate backwards compatibility symlinks:"
+	cd books/Users; pwd; \
+	find . -name "README.mdpp" |\
+	sed -e 's:README\.mdpp$$::' |\
+	awk '{print "ln -s index.html " $$1 "README.html"}' |\
+	bash
 
 build-books-keep-md: md-files
 	@test -d books || mkdir books
