@@ -367,6 +367,9 @@
       [ appInfo, mount ] );
 
     utils.validateMount(mount);
+    if (utils.pathRegex.test(appInfo)) {
+      appInfo = moveAppToServer(appInfo);
+    }
     var res;
     var req = {
       appInfo: appInfo,
@@ -396,6 +399,9 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     utils.validateMount(mount);
+    if (utils.pathRegex.test(appInfo)) {
+      appInfo = moveAppToServer(appInfo);
+    }
     var res;
     var req = {
       appInfo: appInfo,
