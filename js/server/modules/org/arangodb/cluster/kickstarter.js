@@ -551,19 +551,18 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     // we cannot do much with the result...
   }
 
-  var shutdownWait = 8;
+  var shutdownWait = 20;
   if (cmd.valgrind !== '') {
     shutdownWait *= 10000;
   }
-  console.info("Waiting " + shutdownWait + " seconds for servers to shutdown gracefully...");
+  console.info("Waiting up to " + shutdownWait + " seconds for servers to shutdown gracefully...");
   var j = 0; 
   var runpids = run.pids.length;
   while ((j < shutdownWait) && (runpids > 0)) {
     wait(1);
     j++;
     for (i = 0; i < run.pids.length; i++) {
-
-      if (serverStates[JSON.stringify(run.pids[i].pid)] === undefined) {
+      if (serverStates[JSON.stringify(run.pids[i])] === undefined) {
         var s = statusExternal(run.pids[i]);
 
         if ((s.status === "NOT-FOUND")  ||
