@@ -56,7 +56,6 @@ v8-contexts = 5
 
 [log]
 level = info
-severity = human
 file = @LOCALSTATEDIR@/log/arangodb/arangod.log
 
 [cluster]

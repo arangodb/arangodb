@@ -145,61 +145,31 @@ void TRI_SetFileToLog (char const* file);
 /// @brief checks if usage logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsUsageLogging (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if human logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsHumanLogging (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if exception logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsExceptionLogging (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if technical logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsTechnicalLogging (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if functional logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsFunctionalLogging (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if development logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsDevelopmentLogging (void);
+bool TRI_IsUsageLogging ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if fatal logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsFatalLogging (void);
+bool TRI_IsFatalLogging ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if error logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsErrorLogging (void);
+bool TRI_IsErrorLogging ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if warning logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsWarningLogging (void);
+bool TRI_IsWarningLogging ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if info logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsInfoLogging (void);
+bool TRI_IsInfoLogging ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if debug logging is enabled
@@ -212,6 +182,12 @@ bool TRI_IsDebugLogging (char const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsTraceLogging (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if performance logging is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsPerformanceLogging ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a new message
@@ -267,7 +243,7 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 #define LOG_FATAL_AND_EXIT(...)                                         \
   do {                                                                  \
     LOG_ARG_CHECK(__VA_ARGS__);                                         \
-    if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                 \
+    if (TRI_IsFatalLogging()) {                                         \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
               TRI_LOG_LEVEL_FATAL,                                      \
               TRI_LOG_SEVERITY_HUMAN,                                   \
@@ -304,7 +280,7 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 #define LOG_ERROR(...)                                                  \
   do {                                                                  \
     LOG_ARG_CHECK(__VA_ARGS__);                                         \
-    if (TRI_IsHumanLogging() && TRI_IsErrorLogging()) {                 \
+    if (TRI_IsErrorLogging()) {                                         \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
               TRI_LOG_LEVEL_ERROR,                                      \
               TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__);                     \
@@ -328,7 +304,7 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 #define LOG_WARNING(...)                                                \
   do {                                                                  \
     LOG_ARG_CHECK(__VA_ARGS__)                                          \
-      if (TRI_IsHumanLogging() && TRI_IsWarningLogging()) {             \
+      if (TRI_IsWarningLogging()) {                                     \
         TRI_Log(__FUNCTION__, __FILE__, __LINE__,                       \
                 TRI_LOG_LEVEL_WARNING,                                  \
                 TRI_LOG_SEVERITY_HUMAN,                                 \
@@ -353,7 +329,7 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 #define LOG_INFO(...)                                                   \
   do {                                                                  \
     LOG_ARG_CHECK(__VA_ARGS__);                                         \
-    if (TRI_IsHumanLogging() && TRI_IsInfoLogging()) {                  \
+    if (TRI_IsInfoLogging()) {                                          \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
               TRI_LOG_LEVEL_INFO,                                       \
               TRI_LOG_SEVERITY_HUMAN,                                   \
@@ -378,7 +354,7 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 #define LOG_DEBUG(...)                                                  \
   do {                                                                  \
     LOG_ARG_CHECK(__VA_ARGS__);                                         \
-    if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__)) {         \
+    if (TRI_IsDebugLogging(__FILE__)) {                                 \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
               TRI_LOG_LEVEL_DEBUG,                                      \
               TRI_LOG_SEVERITY_HUMAN,                                   \
@@ -401,7 +377,7 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 #define LOG_TRACE(...)                                                  \
   do {                                                                  \
     LOG_ARG_CHECK(__VA_ARGS__);                                         \
-    if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__)) {         \
+    if (TRI_IsTraceLogging(__FILE__)) {                                 \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
               TRI_LOG_LEVEL_TRACE,                                      \
               TRI_LOG_SEVERITY_HUMAN,                                   \
@@ -439,6 +415,32 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 #define LOG_USAGE(...) while (0)
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs performance messages
+////////////////////////////////////////////////////////////////////////////////
+
+#undef LOG_PERFORMANCE
+
+#ifdef TRI_ENABLE_LOGGER
+
+#define LOG_PERFORMANCE(...)                                            \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    if (TRI_IsPerformanceLogging()) {                                   \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_INFO,                                       \
+              TRI_LOG_SEVERITY_HUMAN,                                   \
+              __VA_ARGS__);                                             \
+    }                                                                   \
+  } while (0)
+
+#else
+
+#define LOG_INFO(...) while (0)
+
+#endif
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      LOG APPENDER

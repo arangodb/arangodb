@@ -29,10 +29,6 @@ Use *""* to disable.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logRequests
 
-!SUBSECTION Severity
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-@startDocuBlock logSeverity
-
 !SECTION Human Readable Logging
 
 !SUBSECTION Level
@@ -62,6 +58,10 @@ Use *""* to disable.
 !SUBSECTION Content Filter
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logContentFilter
+
+!SUBSECTION Performance
+<!-- lib/ApplicationServer/ApplicationServer.h -->
+@startDocuBlock logPerformance
 
 !SECTION Machine Readable Logging
 
