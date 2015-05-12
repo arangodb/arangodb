@@ -33,8 +33,19 @@
 
 <div class="book-summary">
   <div class="book-search">
-    <input type="text" placeholder="{{ __("SEARCH_PLACEHOLDER") }}" class="form-control" />
-  </div>
+<script>
+    (function() {
+      var cx = '002866056653122356950:ju52xx-w-w8';
+      var gcse = document.createElement('script');
+      gcse.type = 'text/javascript';
+      gcse.async = true;
+      gcse.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') +
+        '//cse.google.com/cse.js?cx=' + cx;
+      var s = document.getElementsByTagName('script')[0];
+      s.parentNode.insertBefore(gcse, s);
+    })();
+</script>
+<gcse:search></gcse:search></div>
   <ul class="summary">
     {% set _divider = false %}
     {% if options.links.sidebar %}
