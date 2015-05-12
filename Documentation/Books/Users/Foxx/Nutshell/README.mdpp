@@ -52,7 +52,7 @@ Now you should see your new application in the list of installed applications.
 Clicking on it will lead you to the details page.
 This page provides the meta information about the application entered in the generating dialog.
 You can modify this information in the applications manifest file.
-Additionally, the interactive [swagger-documentation]("http://www.swagger.io/") could be used to test the app.
+Additionally, the interactive [swagger-documentation](http://www.swagger.io/) could be used to test the app.
 Whenever we modify something in the app during this tutorial it should be visible in this documentation.
 So you can directly test if your modification has worked or not.
 
