@@ -1744,6 +1744,17 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
+/// Create a graph using an edge collection `edges` and a single vertex collection `vertices` 
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphSingle}
+/// ~ db._drop("edges");
+/// ~ db._drop("vertices");
+///   var graph_module = require("org/arangodb/general-graph");
+///   var edgeDefinitions = [ { collection: "edges", "from": [ "vertices" ], "to" : [ "vertices" ] } ];
+///   graph = graph_module._create("myGraph", edgeDefinitions);
+/// ~ graph_module._drop("myGraph", true);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// Create a graph with edge definitions and orphan collections:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}

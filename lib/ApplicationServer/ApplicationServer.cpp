@@ -107,7 +107,6 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logApplicationName("arangod"),
     _logFacility(""),
     _logLevel("info"),
-    _logSeverity("human"),
     _logFile("+"),
     _logTty("+"),
     _logRequestsFile(""),
@@ -181,6 +180,8 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
   TRI_ShutdownLogging(false);
   TRI_InitialiseLogging(threaded);
 
+  std::string severity("human");
+
   if (_options.has("log.thread")) {
     _logThreadId = true;
   }
@@ -193,16 +194,20 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
     _logLocalTime = true;
   }
 
+  if (_options.has("log.performance")) {
+    severity += ",performance";
+  }
+
   if (! _logRequestsFile.empty()) {
     // add this so the user does not need to think about it
-    _logSeverity += ",usage";
+    severity += ",usage";
   }
 
   TRI_SetUseLocalTimeLogging(_logLocalTime);
   TRI_SetLineNumberLogging(_logLineNumber);
 
   TRI_SetLogLevelLogging(_logLevel.c_str());
-  TRI_SetLogSeverityLogging(_logSeverity.c_str());
+  TRI_SetLogSeverityLogging(severity.c_str());
   TRI_SetPrefixLogging(_logPrefix.c_str());
   TRI_SetThreadIdentifierLogging(_logThreadId);
 
@@ -795,8 +800,8 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
     ("log.source-filter", &_logSourceFilter, "only debug and trace messages emitted by specific C source file")
     ("log.content-filter", &_logContentFilter, "only log message containing the specified string (case-sensitive)")
     ("log.line-number", "always log file and line number")
+    ("log.performance", "log performance indicators")
     ("log.prefix", &_logPrefix, "prefix log")
-    ("log.severity", &_logSeverity, "log severities")
     ("log.thread", "log the thread identifier for severity 'human'")
     ("log.use-local-time", "use local dates and times in log messages")
     ("log.tty", &_logTty, "additional log file if started on tty")
@@ -806,6 +811,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
     ("log", &_logLevel, "log level for severity 'human'")
     ("log.syslog", &DeprecatedParameter, "use syslog facility (deprecated)")
     ("log.hostname", &DeprecatedParameter, "host name for syslog")
+    ("log.severity", &DeprecatedParameter, "log severities")
 #ifdef TRI_HAVE_SETUID
     ("uid", &_uid, "switch to user-id after reading config files")
 #endif

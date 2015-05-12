@@ -600,28 +600,6 @@ namespace triagens {
         std::string _logLevel;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log severity
-/// @startDocuBlock logSeverity
-/// `--log.severity severity`
-///
-/// This parameter provides a set of standard log severities which can be
-/// used. The currently accepted *severities* are:
-///
-/// - exception
-/// - technical
-/// - functional
-/// - development
-/// - human
-/// - all (human and non-human)
-/// - non-human (exception, technical, functional, and development)
-///
-/// The default is all.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _logSeverity;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief log file
 /// @startDocuBlock logFile
 /// @endDocuBlock
@@ -752,6 +730,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _logContentFilter;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performance logging
+/// @startDocuBlock logPerformance
+/// `--log.performance`
+///
+/// If this option is set, performance-related info messages will be logged via
+/// the regular logging mechanism. These will consist of mostly timing and 
+/// debugging information for performance-critical operations.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief random number generator to use
