@@ -19,7 +19,7 @@ exports.repository = TodosRepository;
 
 You can define custom query methods using Foxx.createQuery and Foxx.Repository.extend.
 
-For more details see the chapter on [Foxx Queries](../Foxx/FoxxQueries.md).
+For more details see the chapter on [Foxx Queries](../Develop/Queries.md).
 
 **Examples**
 
@@ -105,7 +105,7 @@ Repository can take care of ensuring the existence of collection indexes for you
 If you define indexes for a repository, instances of the repository will have
 access to additional index-specific methods like **range** or **fulltext** (see below).
 
-The syntax for defining indexes is the same used in [*collection.ensureIndex*](../IndexHandling/README.md).
+The syntax for defining indexes is the same used in [*collection.ensureIndex*](../../IndexHandling/README.md).
 
 @EXAMPLES
 

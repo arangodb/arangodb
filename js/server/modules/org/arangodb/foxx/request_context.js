@@ -392,7 +392,7 @@ extend(RequestContext.prototype, {
 /// well-formed request bodies will be rejected if they don't pass schema validation.
 ///
 /// The behavior of *bodyParam* changes depending on the *rootElement* option
-/// set in the [manifest](../Foxx/FoxxManifest.md). If it is set to true, it is
+/// set in the [manifest](../Develop/Manifest.md). If it is set to true, it is
 /// expected that the body is an
 /// object with a key of the same name as the *paramName* argument.
 /// The value of this object is either a single object or in the case of a multi
