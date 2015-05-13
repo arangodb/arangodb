@@ -31,6 +31,7 @@
 #include "primary-index.h"
 
 #include "Basics/hashes.h"
+#include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
@@ -68,6 +69,12 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
 
   void** oldTable = idx->_table;
 
+  double start;
+  if (TRI_IsPerformanceLogging()) {
+    LOG_PERFORMANCE("primary index resize start");
+    start = TRI_microtime();
+  }
+
   idx->_table = static_cast<void**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) (targetSize * sizeof(void*)), true));
 
   if (idx->_table == nullptr) {
@@ -104,6 +111,10 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
   idx->_nrAlloc = targetSize;
 
+  if (TRI_IsPerformanceLogging()) {
+    start = TRI_microtime() - start;
+    LOG_PERFORMANCE("primary index resize done in %f", start);
+  }
   return true;
 }
 
