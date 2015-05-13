@@ -57,6 +57,7 @@ function gatherBlockTestSuite () {
       var j, k;
       db._drop(cn1);
       db._drop(cn2);
+      db._drop(cn3);
       c1 = db._create(cn1, {numberOfShards:3});
       c2 = db._create(cn2);
       for (j = 0; j < 400; j++) {
