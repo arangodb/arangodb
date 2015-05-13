@@ -180,7 +180,7 @@ The **request** object inherits several attributes from the underlying Actions:
 * *server*: a JSON object with sub-attributes *address* (containing server
   host name or IP address) and *port* (server port).
 
-* *path*: request URI path, with potential [database name](../Glossary/index.html#database_name) stripped off.
+* *path*: request URI path, with potential [database name](../../Glossary/index.html#database_name) stripped off.
 
 * *url*: request URI path + query string, with potential database name
   stripped off
