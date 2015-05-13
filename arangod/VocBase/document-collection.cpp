@@ -2989,6 +2989,12 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   // create a fake transaction for loading the collection
   TransactionBase trx(true);
 
+  double start, start2, end;
+  if (TRI_IsPerformanceLogging()) {
+    LOG_PERFORMANCE("starting loading collection '%s'", document->_info._name);
+    start = TRI_microtime();
+  }
+
   // iterate over all markers of the collection
   int res = IterateMarkersCollection(collection);
 
@@ -3009,8 +3015,21 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
   TRI_InitVocShaper(document->getShaper());  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
+  if (TRI_IsPerformanceLogging()) {
+    start2 = TRI_microtime();
+    LOG_PERFORMANCE("starting secondary-indexing collection '%s'", document->_info._name);
+  }
+
   if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
     TRI_FillIndexesDocumentCollection(col, document);
+  }
+
+  if (TRI_IsPerformanceLogging()) {
+    end = TRI_microtime();
+    LOG_PERFORMANCE("finished loading collection '%s' %f %f",
+             document->_info._name,
+             end - start,
+             end - start2);
   }
 
   return document;

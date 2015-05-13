@@ -31,7 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "hash-array-multi.h"
-
+#include "Basics/logging.h"
 #include "Basics/fasthash.h"
 #include "HashIndex/hash-index.h"
 #include "VocBase/document-collection.h"
@@ -260,6 +260,12 @@ static int ResizeHashArray (TRI_hash_array_multi_t* array,
     return TRI_ERROR_NO_ERROR;
   }
 
+  double start;
+  if (TRI_IsPerformanceLogging()) {
+    LOG_PERFORMANCE("resizing hash index");
+    start = TRI_microtime();
+  }
+
   TRI_hash_index_element_multi_t* oldTable    = array->_table;
   TRI_hash_index_element_multi_t* oldTablePtr = array->_tablePtr;
   uint64_t oldAlloc = array->_nrAlloc;
@@ -300,6 +306,11 @@ static int ResizeHashArray (TRI_hash_array_multi_t* array,
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTablePtr);
+
+  if (TRI_IsPerformanceLogging()) {
+    start = TRI_microtime() - start;
+    LOG_PERFORMANCE("resizing hash index done in %f", start);
+  }
 
   return TRI_ERROR_NO_ERROR;
 }

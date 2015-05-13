@@ -30,6 +30,7 @@
 
 #include "associative-multi.h"
 #include "Basics/prime-numbers.h"
+#include "Basics/logging.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              ASSOCIATIVE POINTERS
@@ -731,6 +732,12 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
+  double start;
+  if (TRI_IsPerformanceLogging()) {
+    LOG_PERFORMANCE("resizing edge index");
+    start = TRI_microtime();
+  }
+
   array->_nrAlloc = TRI_NearPrime((uint64_t) size);
   array->_table_alloc = static_cast<TRI_multi_pointer_entry_t*>(TRI_Allocate(array->_memoryZone,
                  array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64, true));
@@ -757,6 +764,11 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   }
 
   TRI_Free(array->_memoryZone, oldTable_alloc);
+
+  if (TRI_IsPerformanceLogging()) {
+    start = TRI_microtime() - start;
+    LOG_PERFORMANCE("resizing edge index done in %f", start);
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
