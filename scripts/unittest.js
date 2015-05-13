@@ -160,7 +160,7 @@ function main (argv) {
   fs.write("UNITTEST_RESULT_SUMMARY.txt", JSON.stringify(! r.crashed));
 
   try {
-    resultsToXml(r, "UNITTEST_RESULT_", options.hasOwnProperty('cluster'));
+    resultsToXml(r, "UNITTEST_RESULT_", (options.hasOwnProperty('cluster') && options.cluster));
   }
   catch (x) {
     print("exception while serializing status xml!");
