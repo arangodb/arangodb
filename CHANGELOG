@@ -1,9 +1,17 @@
+v2.5.4 (2015-XX-XX)
+-------------------
+
+* added startup option `--log.performance`: specifying this option at startup will log
+  performance-related info messages, mainly timings via the regular logging mechanisms
+
+
 v2.5.3 (2015-04-29)
 -------------------
-* Fix JS-Move to work across filesystem borders; Fixes foxx app installation problems;
+
+* Fix fs.move to work across filesystem borders; Fixes Foxx app installation problems;
   issue #1292. 
 
-* Fix foxx app install when installed on a different drive on windows
+* Fix Foxx app install when installed on a different drive on Windows
 
 * issue #1322: strange AQL result
 
