@@ -63,6 +63,10 @@ Use *""* to disable.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logContentFilter
 
+!SUBSECTION Performance
+<!-- lib/ApplicationServer/ApplicationServer.h -->
+@startDocuBlock logPerformance
+
 !SECTION Machine Readable Logging
 
 !SUBSECTION Application
