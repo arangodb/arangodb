@@ -457,7 +457,7 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
       TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
               TRI_LOG_LEVEL_INFO,                                       \
               TRI_LOG_SEVERITY_HUMAN,                                   \
-              "[timer] " __VA_ARGS__, timerValue);                      \
+              "[timer] %0.2f s - " __VA_ARGS__, timerValue);            \
     }                                                                   \
   } while (0)
 
