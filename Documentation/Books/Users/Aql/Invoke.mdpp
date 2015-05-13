@@ -181,14 +181,16 @@ The meaning of the statistics attributes is as follows:
 
 !SECTION Explaining queries
 
-If it is unclear how a given query will perform, clients can retrieve a query's execution from
-the AQL query optimizer. This can be achieved by calling the [HTTP REST API](../HttpAqlQuery/README.md) 
-for this. Getting the execution plan from the optimizer is called `explain`.
+If it is unclear how a given query will perform, clients can retrieve a query's execution plan 
+from the AQL query optimizer without actually executing the query. Getting the query execution 
+plan from the optimizer is called *explaining*.
 
-A query can also be explained from the ArangoShell using `ArangoStatement`s `explain` method. 
-`explain` will throw an error if the given query is syntactically invalid. Otherwise, it will
+An explain will throw an error if the given query is syntactically invalid. Otherwise, it will
 return the execution plan and some information about what optimizations could be applied to
 the query. The query will not be executed.
+
+Explaining a query can be achieved by calling the [HTTP REST API](../HttpAqlQuery/README.md).
+A query can also be explained from the ArangoShell using `ArangoStatement`s `explain` method. 
 
 By default, the query optimizer will return what it considers to be the *optimal plan*. The
 optimal plan will be returned in the `plan` attribute of the result. If `explain` is
@@ -349,6 +351,19 @@ The following example disables all optimizer rules but `remove-redundant-calcula
 ```
 arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+remove-redundant-calculations" ] } });
 ```
+
+
+The contents of an execution plan are meant to be machine-readable. To get a human-readable
+version of a query's execution plan, the following commnands can be used:
+
+```js
+arangosh> var query = "FOR doc IN collection FILTER doc.value > 42 RETURN doc";
+arangosh> require("org/arangodb/aql/explainer").explain(query);
+```
+
+The above command prints the query's execution plan in the ArangoShell directly, focusing
+on the most important information.
+
 
 !SECTION Parsing queries
     
