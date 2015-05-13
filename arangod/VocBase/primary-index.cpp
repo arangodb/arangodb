@@ -68,11 +68,14 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
   }
 
   void** oldTable = idx->_table;
+  
+  // only log performance infos for indexes with more than this number of entries
+  static uint64_t const NotificationSizeThreshold = 131072; 
 
-  double start;
-  if (TRI_IsPerformanceLogging()) {
-    LOG_PERFORMANCE("primary index resize start");
-    start = TRI_microtime();
+  double start = TRI_microtime();
+  if (targetSize > NotificationSizeThreshold) {
+    LOG_ACTION("primary-index-resize, target size: %llu", 
+               (unsigned long long) targetSize);
   }
 
   idx->_table = static_cast<void**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) (targetSize * sizeof(void*)), true));
@@ -111,10 +114,10 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
   idx->_nrAlloc = targetSize;
 
-  if (TRI_IsPerformanceLogging()) {
-    start = TRI_microtime() - start;
-    LOG_PERFORMANCE("primary index resize done in %f", start);
-  }
+  LOG_TIMER((TRI_microtime() - start),
+            "primary-index-resize, target size: %llu", 
+            (unsigned long long) targetSize);
+
   return true;
 }
 

@@ -88,11 +88,12 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef uint64_t TRI_multi_pointer_index_t;
+typedef uint32_t TRI_multi_pointer_index_t;
 #define TRI_MULTI_POINTER_INVALID_INDEX (((TRI_multi_pointer_index_t)0)-1)
 
 typedef struct TRI_multi_pointer_entry_s {
-  void* ptr;   // a pointer to the data stored in this slot
+  uint64_t                  hash;  // pre-computed hash value for element
+  void*                     ptr;   // a pointer to the data stored in this slot
   TRI_multi_pointer_index_t next;  // index of the data following in the linked
                                    // list of all items with the same key
   TRI_multi_pointer_index_t prev;  // index of the data preceding in the linked
@@ -101,14 +102,12 @@ typedef struct TRI_multi_pointer_entry_s {
 TRI_multi_pointer_entry_t;
 
 typedef struct TRI_multi_pointer_s {
-  uint64_t (*hashKey) (struct TRI_multi_pointer_s*, void const* key);
-  uint64_t (*hashElement) (struct TRI_multi_pointer_s*, void const* element,
-                           bool byKey);
+  uint64_t (*hashKey) (void const* key);
+  uint64_t (*hashElement) (void const* element, bool byKey);
 
-  bool (*isEqualKeyElement) (struct TRI_multi_pointer_s*, void const* key,
-                             void const* element);
-  bool (*isEqualElementElement) (struct TRI_multi_pointer_s*,
-                                 void const* el1, void const* el2, bool byKey);
+  bool (*isEqualKeyElement) (void const* key, void const* element);
+  bool (*isEqualElementElement) (void const* el1, void const* el2);
+  bool (*isEqualElementElementByKey) (void const* el1, void const* el2);
 
   uint64_t _nrAlloc;     // the size of the table
   uint64_t _nrUsed;      // the number of used entries
@@ -145,15 +144,11 @@ TRI_multi_pointer_t;
 
 int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
                           TRI_memory_zone_t*,
-                          uint64_t (*hashKey) (TRI_multi_pointer_t*,
-                                               void const*),
-                          uint64_t (*hashElement) (TRI_multi_pointer_t*,
-                                                   void const*, bool),
-                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*,
-                                                     void const*, void const*),
-                          bool (*isEqualElementElement) (TRI_multi_pointer_t*,
-                                                         void const*,
-                                                         void const*, bool));
+                          uint64_t (*hashKey) (void const*),
+                          uint64_t (*hashElement) (void const*, bool),
+                          bool (*isEqualKeyElement) (void const*, void const*),
+                          bool (*isEqualElementElement) (void const*, void const*),
+                          bool (*isEqualElementElementByKey) (void const*, void const*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer

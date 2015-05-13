@@ -2855,6 +2855,18 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   // distribute the work to index threads plus this thread
   size_t const n = document->_allIndexes._length;
 
+  double start = TRI_microtime();
+
+  // only log performance infos for indexes with more than this number of entries
+  static size_t const NotificationSizeThreshold = 131072; 
+
+  if ((n > 1) && (document->_primaryIndex._nrUsed > NotificationSizeThreshold)) {
+    LOG_ACTION("fill-indexes-document-collection, name: '%s/%s', n: %d", 
+               document->_vocbase->_name,
+               document->_info._name,
+               (int) (n - 1));
+  }
+
   TRI_ASSERT(n >= 1);
     
   std::atomic<int> result(TRI_ERROR_NO_ERROR);
@@ -2917,6 +2929,12 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
 
     // barrier waits here until all threads have joined
   }
+    
+  LOG_TIMER((TRI_microtime() - start),
+            "fill-indexes-document-collection, name: '%s/%s', n: %d", 
+            document->_vocbase->_name,
+            document->_info._name, 
+            (int) (n - 1)); 
 
   return result.load();
 }
@@ -2943,6 +2961,11 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   TRI_ASSERT(document != nullptr);
+  
+  double start = TRI_microtime();
+  LOG_ACTION("open-document-collection, name: '%s/%s'", 
+             vocbase->_name,
+             col->_name);
 
   TRI_collection_t* collection = TRI_OpenCollection(vocbase, document, path, ignoreErrors);
 
@@ -2989,48 +3012,48 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   // create a fake transaction for loading the collection
   TransactionBase trx(true);
 
-  double start, start2, end;
-  if (TRI_IsPerformanceLogging()) {
-    LOG_PERFORMANCE("starting loading collection '%s'", document->_info._name);
-    start = TRI_microtime();
-  }
+  // build the primary index
+  {
+    double start = TRI_microtime();
 
-  // iterate over all markers of the collection
-  int res = IterateMarkersCollection(collection);
+    LOG_ACTION("build-primary-index, name: '%s/%s'", 
+               vocbase->_name,
+               document->_info._name);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (document->_failedTransactions != nullptr) {
-      delete document->_failedTransactions;
+    // iterate over all markers of the collection
+    int res = IterateMarkersCollection(collection);
+  
+    LOG_TIMER((TRI_microtime() - start),
+              "build-primary-index, name: '%s/%s'", 
+              vocbase->_name,
+              document->_info._name);
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (document->_failedTransactions != nullptr) {
+        delete document->_failedTransactions;
+      }
+      TRI_CloseCollection(collection);
+      TRI_FreeCollection(collection);
+
+      LOG_ERROR("cannot iterate data of document collection");
+      TRI_set_errno(res);
+
+      return nullptr;
     }
-    TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection);
-
-    LOG_ERROR("cannot iterate data of document collection");
-    TRI_set_errno(res);
-
-    return nullptr;
   }
 
   TRI_ASSERT(document->getShaper() != nullptr);  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
   TRI_InitVocShaper(document->getShaper());  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
-  if (TRI_IsPerformanceLogging()) {
-    start2 = TRI_microtime();
-    LOG_PERFORMANCE("starting secondary-indexing collection '%s'", document->_info._name);
-  }
-
   if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
     TRI_FillIndexesDocumentCollection(col, document);
   }
 
-  if (TRI_IsPerformanceLogging()) {
-    end = TRI_microtime();
-    LOG_PERFORMANCE("finished loading collection '%s' %f %f",
-             document->_info._name,
-             end - start,
-             end - start2);
-  }
+  LOG_TIMER((TRI_microtime() - start),
+            "open-document-collection, name: '%s/%s'", 
+            vocbase->_name,
+            document->_info._name);
 
   return document;
 }
