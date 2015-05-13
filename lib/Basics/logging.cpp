@@ -268,6 +268,12 @@ static sig_atomic_t IsDebug = 0;
 static sig_atomic_t IsTrace = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief log performance messages
+////////////////////////////////////////////////////////////////////////////////
+
+static sig_atomic_t IsPerformance = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief use local time for dates & times in log output
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1078,6 +1084,7 @@ void TRI_SetLogSeverityLogging (char const* severities) {
   IsDevelopment = 0;
   IsUsage = 0;
   IsHuman = 0;
+  IsPerformance = 0;
 
   n = split._length;
 
@@ -1098,6 +1105,9 @@ void TRI_SetLogSeverityLogging (char const* severities) {
     }
     else if (TRI_CaseEqualString(type, "usage")) {
       IsUsage = 1;
+    }
+    else if (TRI_CaseEqualString(type, "performance")) {
+      IsPerformance = 1;
     }
     else if (TRI_CaseEqualString(type, "human")) {
       IsHuman = 1;
@@ -1300,6 +1310,14 @@ bool TRI_IsTraceLogging (char const* file) {
   else {
     return IsTrace != 0;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if performance logging is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsPerformanceLogging () {
+  return IsInfo != 0 && IsPerformance != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

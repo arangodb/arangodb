@@ -2869,6 +2869,11 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   TRI_ASSERT(document != nullptr);
+  
+  double start = TRI_microtime();
+  LOG_ACTION("open-document-collection, name: '%s/%s'", 
+             vocbase->_name,
+             col->_name);
 
   TRI_collection_t* collection = TRI_OpenCollection(vocbase, document, path, ignoreErrors);
 
@@ -2915,20 +2920,34 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   // create a fake transaction for loading the collection
   TransactionBase trx(true);
 
-  // iterate over all markers of the collection
-  int res = IterateMarkersCollection(collection);
+  // build the primary index
+  {
+    double start = TRI_microtime();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (document->_failedTransactions != nullptr) {
-      delete document->_failedTransactions;
+    LOG_ACTION("build-primary-index, name: '%s/%s'", 
+               vocbase->_name,
+               document->_info._name);
+  
+    // iterate over all markers of the collection
+    int res = IterateMarkersCollection(collection);
+    
+    LOG_TIMER((TRI_microtime() - start),
+              "build-primary-index, name: '%s/%s'", 
+              vocbase->_name,
+              document->_info._name);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (document->_failedTransactions != nullptr) {
+        delete document->_failedTransactions;
+      }
+      TRI_CloseCollection(collection);
+      TRI_FreeCollection(collection);
+
+      LOG_ERROR("cannot iterate data of document collection");
+      TRI_set_errno(res);
+
+      return nullptr;
     }
-    TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection);
-
-    LOG_ERROR("cannot iterate data of document collection");
-    TRI_set_errno(res);
-
-    return nullptr;
   }
 
   TRI_ASSERT(document->getShaper() != nullptr);  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
@@ -2938,6 +2957,11 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
     TRI_FillIndexesDocumentCollection(document);
   }
+  
+  LOG_TIMER((TRI_microtime() - start),
+            "open-document-collection, name: '%s/%s'", 
+            vocbase->_name,
+            document->_info._name);
 
   return document;
 }
@@ -3020,6 +3044,18 @@ static int FillIndex (TRI_document_collection_t* document,
 
   void** ptr = document->_primaryIndex._table;
   void** end = ptr + document->_primaryIndex._nrAlloc;
+  
+  double start = TRI_microtime();
+
+  // only log performance infos for indexes with more than this number of entries
+  static uint64_t const NotificationSizeThreshold = 131072; 
+
+  if (document->_primaryIndex._nrUsed > NotificationSizeThreshold) {
+    LOG_ACTION("fill-index, name: '%s/%s', type: %s", 
+               document->_vocbase->_name,
+               document->_info._name,
+               TRI_TypeNameIndex(idx->_type));
+  }
 
   if (idx->sizeHint != nullptr) {
     // give the index a size hint
@@ -3057,6 +3093,12 @@ static int FillIndex (TRI_document_collection_t* document,
 
     }
   }
+  
+  LOG_TIMER((TRI_microtime() - start),
+            "fill-index, name: '%s/%s', type: %s", 
+            document->_vocbase->_name,
+            document->_info._name,
+            TRI_TypeNameIndex(idx->_type));
 
   return TRI_ERROR_NO_ERROR;
 }

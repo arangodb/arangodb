@@ -29,8 +29,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "primary-index.h"
-
 #include "Basics/hashes.h"
+#include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
@@ -63,6 +63,15 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
   }
 
   void** oldTable = idx->_table;
+  
+  // only log performance infos for indexes with more than this number of entries
+  static uint64_t const NotificationSizeThreshold = 131072; 
+
+  double start = TRI_microtime();
+  if (targetSize > NotificationSizeThreshold) {
+    LOG_ACTION("primary-index-resize, target size: %llu", 
+               (unsigned long long) targetSize);
+  }
 
   idx->_table = static_cast<void**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) (targetSize * sizeof(void*)), true));
 
@@ -99,6 +108,10 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
   idx->_nrAlloc = targetSize;
+  
+  LOG_TIMER((TRI_microtime() - start),
+            "primary-index-resize, target size: %llu", 
+            (unsigned long long) targetSize);
 
   return true;
 }

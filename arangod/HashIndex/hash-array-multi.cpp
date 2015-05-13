@@ -31,8 +31,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "hash-array-multi.h"
-
 #include "Basics/fasthash.h"
+#include "Basics/logging.h"
 #include "HashIndex/hash-index.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
@@ -259,6 +259,15 @@ static int ResizeHashArray (TRI_hash_array_multi_t* array,
   if (array->_nrAlloc >= targetSize && ! allowShrink) {
     return TRI_ERROR_NO_ERROR;
   }
+  
+  // only log performance infos for indexes with more than this number of entries
+  static uint64_t const NotificationSizeThreshold = 131072; 
+
+  double start = TRI_microtime();
+  if (targetSize > NotificationSizeThreshold) {
+    LOG_ACTION("resize-hash-array-multi, target size %llu", 
+               (unsigned long long) targetSize);
+  }
 
   TRI_hash_index_element_multi_t* oldTable    = array->_table;
   TRI_hash_index_element_multi_t* oldTablePtr = array->_tablePtr;
@@ -300,6 +309,10 @@ static int ResizeHashArray (TRI_hash_array_multi_t* array,
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTablePtr);
+  
+  LOG_TIMER((TRI_microtime() - start),
+            "resize-hash-array-multi, target size: %llu", 
+            (unsigned long long) targetSize);
 
   return TRI_ERROR_NO_ERROR;
 }

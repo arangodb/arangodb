@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "associative-multi.h"
+#include "Basics/logging.h"
 #include "Basics/prime-numbers.h"
 
 // -----------------------------------------------------------------------------
@@ -730,6 +731,15 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   oldTable_alloc = array->_table_alloc;
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
+  
+  // only log performance infos for indexes with more than this number of entries
+  static size_t const NotificationSizeThreshold = 131072; 
+  
+  double start = TRI_microtime();
+  if (size > NotificationSizeThreshold) {
+    LOG_ACTION("resize-edge-index, target size: %llu", 
+               (unsigned long long) size);
+  }
 
   array->_nrAlloc = TRI_NearPrime((uint64_t) size);
   array->_table_alloc = static_cast<TRI_multi_pointer_entry_t*>(TRI_Allocate(array->_memoryZone,
@@ -757,6 +767,10 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   }
 
   TRI_Free(array->_memoryZone, oldTable_alloc);
+  
+  LOG_TIMER((TRI_microtime() - start),
+            "resize-edge-index, targe size: %llu",
+            (unsigned long long) size);
 
   return TRI_ERROR_NO_ERROR;
 }

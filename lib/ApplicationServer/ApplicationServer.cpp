@@ -192,6 +192,9 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
   if (_options.has("log.use-local-time")) {
     _logLocalTime = true;
   }
+  if (_options.has("log.performance")) {
+    _logSeverity += ",performance";
+  }
 
   if (! _logRequestsFile.empty()) {
     // add this so the user does not need to think about it
@@ -797,6 +800,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
     ("log.source-filter", &_logSourceFilter, "only debug and trace messages emitted by specific C source file")
     ("log.content-filter", &_logContentFilter, "only log message containing the specified string (case-sensitive)")
     ("log.line-number", "always log file and line number")
+    ("log.performance", "log performance indicators")
     ("log.prefix", &_logPrefix, "prefix log")
     ("log.severity", &_logSeverity, "log severities")
     ("log.thread", "log the thread identifier for severity 'human'")

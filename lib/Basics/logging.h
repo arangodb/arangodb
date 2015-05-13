@@ -243,6 +243,12 @@ bool TRI_IsDebugLogging (char const*);
 bool TRI_IsTraceLogging (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if performance logging is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsPerformanceLogging ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a new message
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -460,6 +466,58 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 #define LOG_USAGE(...) while (0)
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs performance messages
+////////////////////////////////////////////////////////////////////////////////
+
+#undef LOG_ACTION
+
+#ifdef TRI_ENABLE_LOGGER
+
+#define LOG_ACTION(...)                                                 \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    if (TRI_IsPerformanceLogging()) {                                   \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_INFO,                                       \
+              TRI_LOG_SEVERITY_HUMAN,                                   \
+              "[action] " __VA_ARGS__);                                 \
+    }                                                                   \
+  } while (0)
+
+#else
+
+#define LOG_PERFORMANCE(...) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs timings
+////////////////////////////////////////////////////////////////////////////////
+
+#undef LOG_TIMER
+
+#ifdef TRI_ENABLE_LOGGER
+
+#define LOG_TIMER(value, ...)                                           \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    double timerValue = value;                                          \
+    if (timerValue > 1.0 && TRI_IsPerformanceLogging()) {               \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_INFO,                                       \
+              TRI_LOG_SEVERITY_HUMAN,                                   \
+              "[timer] %0.2f s - " __VA_ARGS__, timerValue);            \
+    }                                                                   \
+  } while (0)
+
+#else
+
+#define LOG_TIMER(...) while (0)
+
+#endif
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      LOG APPENDER
