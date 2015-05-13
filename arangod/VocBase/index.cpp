@@ -736,11 +736,11 @@ static bool IsEqualKeyEdgeTo (void const* left,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for elements are equal (_from case)
+/// @brief checks for elements are equal (_from and _to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdgeFrom (void const* left,
-                                    void const* right) {
+static bool IsEqualElementEdge (void const* left,
+                                void const* right) {
   return left == right;
 }
 
@@ -750,11 +750,11 @@ static bool IsEqualElementEdgeFrom (void const* left,
 
 static bool IsEqualElementEdgeFromByKey (void const* left,
                                          void const* right) {
+  char const* lKey = nullptr;
+  char const* rKey = nullptr;
+  TRI_voc_cid_t lCid = 0;
+  TRI_voc_cid_t rCid = 0;
   TRI_df_marker_t const* marker;
-  char const* lKey;
-  TRI_voc_cid_t lCid;
-  char const* rKey;
-  TRI_voc_cid_t rCid;
 
   // left element
   TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
@@ -769,9 +769,6 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
     triagens::wal::edge_marker_t const* lEdge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     lKey = (char const*) lEdge + lEdge->_offsetFromKey;
     lCid = lEdge->_fromCid;
-  }
-  else {
-    return false;
   }
 
   // right element
@@ -788,7 +785,8 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
     rKey = (char const*) rEdge + rEdge->_offsetFromKey;
     rCid = rEdge->_fromCid;
   }
-  else {
+
+  if (lKey == nullptr || rKey == nullptr) {
     return false;
   }
 
@@ -801,22 +799,13 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
 /// @brief checks for elements are equal (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdgeTo (void const* left,
-                                  void const* right) {
-  return left == right;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for elements are equal (_to case)
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualElementEdgeToByKey (void const* left,
                                        void const* right) {
+  char const* lKey = nullptr;
+  char const* rKey = nullptr;
+  TRI_voc_cid_t lCid = 0;
+  TRI_voc_cid_t rCid = 0;
   TRI_df_marker_t const* marker;
-  char const* lKey;
-  TRI_voc_cid_t lCid;
-  char const* rKey;
-  TRI_voc_cid_t rCid;
 
   // left element
   TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
@@ -831,9 +820,6 @@ static bool IsEqualElementEdgeToByKey (void const* left,
     triagens::wal::edge_marker_t const* lEdge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     lKey = (char const*) lEdge + lEdge->_offsetToKey;
     lCid = lEdge->_toCid;
-  }
-  else {
-    return false;
   }
 
   // right element
@@ -850,7 +836,8 @@ static bool IsEqualElementEdgeToByKey (void const* left,
     rKey = (char const*) rEdge + rEdge->_offsetToKey;
     rCid = rEdge->_toCid;
   }
-  else {
+
+  if (lKey == nullptr || rKey == nullptr) {
     return false;
   }
 
@@ -944,8 +931,6 @@ static TRI_json_t* JsonEdge (TRI_index_t const* idx) {
 static int SizeHintEdge (TRI_index_t* idx,
                          size_t size) {
 
-  int err;
-
   TRI_multi_pointer_t* edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_from);
 
   // we assume this is called when setting up the index and the index
@@ -954,7 +939,7 @@ static int SizeHintEdge (TRI_index_t* idx,
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  err = TRI_ResizeMultiPointer(edgesIndex, size + 2049);
+  int err = TRI_ResizeMultiPointer(edgesIndex, size + 2049);
 
   if (err != TRI_ERROR_NO_ERROR) {
     return err;
@@ -997,7 +982,7 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
                              HashElementKey,
                              HashElementEdgeFrom,
                              IsEqualKeyEdgeFrom,
-                             IsEqualElementEdgeFrom,
+                             IsEqualElementEdge,
                              IsEqualElementEdgeFromByKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1010,7 +995,7 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
                              HashElementKey,
                              HashElementEdgeTo,
                              IsEqualKeyEdgeTo,
-                             IsEqualElementEdgeTo,
+                             IsEqualElementEdge,
                              IsEqualElementEdgeToByKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
