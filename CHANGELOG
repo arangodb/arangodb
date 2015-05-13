@@ -3,9 +3,6 @@ v2.6.0 (XXXX-XX-XX)
 
 * removed startup option `--log.severity`
 
-* added startup option `--log.performance`: specifying this option at startup will log
-  performance-related info messages, mainly timings via the regular logging mechanisms
-
 * added optional `limit` parameter for AQL function `FULLTEXT`
 
 * make fulltext index also index text values that are contained in direct sub-objects of the indexed 
@@ -373,8 +370,20 @@ v2.6.0 (XXXX-XX-XX)
 * added Foxx model lifecycle events to repositories. See #1257.
 
 
-v2.5.3 (XXXX-XX-XX)
+v2.5.4 (2015-XX-XX)
 -------------------
+
+* added startup option `--log.performance`: specifying this option at startup will log
+  performance-related info messages, mainly timings via the regular logging mechanisms
+
+
+v2.5.3 (2015-04-29)
+-------------------
+
+* Fix fs.move to work across filesystem borders; Fixes Foxx app installation problems;
+  issue #1292. 
+
+* Fix Foxx app install when installed on a different drive on Windows
 
 * issue #1322: strange AQL result
 
