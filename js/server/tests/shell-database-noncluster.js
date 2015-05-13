@@ -39,12 +39,18 @@ var internal = require("internal");
 /// @brief test suite: dropping databases while holding references
 ////////////////////////////////////////////////////////////////////////////////
 
+var logLevel;
 function DatabaseSuite () {
   'use strict';
   return {
 
     setUp : function () {
+      logLevel = require("internal").logLevel();
       internal.db._useDatabase("_system");
+    },
+
+    tearDown : function () {
+      require("internal").logLevel(logLevel);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,6 +166,7 @@ function DatabaseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDropDatabaseDirectory : function () {
+      require("internal").logLevel("DEBUG");
       assertEqual("_system", internal.db._name());
 
       try {
