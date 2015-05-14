@@ -88,7 +88,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef uint64_t TRI_multi_pointer_index_t;
+typedef uint32_t TRI_multi_pointer_index_t;
 #define TRI_MULTI_POINTER_INVALID_INDEX (((TRI_multi_pointer_index_t)0)-1)
 
 typedef struct TRI_multi_pointer_entry_s {
