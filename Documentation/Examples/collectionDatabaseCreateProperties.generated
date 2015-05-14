@@ -1,5 +1,5 @@
 arangosh> c = db._create("users", { waitForSync : true, journalSize : 1024 * 1204 });
-[ArangoCollection 644202146, "users" (type document, status loaded)]
+[ArangoCollection 649061819, "users" (type document, status loaded)]
 arangosh> c.properties();
 { 
   "doCompact" : true, 

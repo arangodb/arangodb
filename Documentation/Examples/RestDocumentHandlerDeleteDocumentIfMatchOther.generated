@@ -1,15 +1,15 @@
-shell> curl -X DELETE --header 'If-Match: "1507245730"' --dump - http://localhost:8529/_api/document/products/1506918050
+shell> curl -X DELETE --header 'If-Match: "1511843259"' --dump - http://localhost:8529/_api/document/products/1511515579
 
 HTTP/1.1 412 Precondition Failed
 content-type: application/json; charset=utf-8
-etag: "1506918050"
+etag: "1511515579"
 
 { 
   "error" : true, 
   "code" : 412, 
   "errorNum" : 1200, 
   "errorMessage" : "precondition failed", 
-  "_id" : "products/1506918050", 
-  "_rev" : "1506918050", 
-  "_key" : "1506918050" 
+  "_id" : "products/1511515579", 
+  "_rev" : "1511515579", 
+  "_key" : "1511515579" 
 }

@@ -10,13 +10,13 @@ arangosh> db._query(
         { 
           "_id" : "female/diana", 
           "_key" : "diana", 
-          "_rev" : "699711138", 
+          "_rev" : "701359547", 
           "name" : "Diana" 
         }, 
         { 
           "_id" : "male/charly", 
           "_key" : "charly", 
-          "_rev" : "699514530", 
+          "_rev" : "701162939", 
           "name" : "Charly" 
         } 
       ], 
@@ -24,7 +24,7 @@ arangosh> db._query(
         { 
           "_id" : "relation/charlyAndDiana", 
           "_key" : "charlyAndDiana", 
-          "_rev" : "700497570", 
+          "_rev" : "702145979", 
           "_from" : "male/charly", 
           "_to" : "female/diana", 
           "type" : "married" 
@@ -33,13 +33,13 @@ arangosh> db._query(
       "source" : { 
         "_id" : "female/diana", 
         "_key" : "diana", 
-        "_rev" : "699711138", 
+        "_rev" : "701359547", 
         "name" : "Diana" 
       }, 
       "destination" : { 
         "_id" : "male/charly", 
         "_key" : "charly", 
-        "_rev" : "699514530", 
+        "_rev" : "701162939", 
         "name" : "Charly" 
       } 
     }, 
@@ -48,19 +48,19 @@ arangosh> db._query(
         { 
           "_id" : "female/diana", 
           "_key" : "diana", 
-          "_rev" : "699711138", 
+          "_rev" : "701359547", 
           "name" : "Diana" 
         }, 
         { 
           "_id" : "male/charly", 
           "_key" : "charly", 
-          "_rev" : "699514530", 
+          "_rev" : "701162939", 
           "name" : "Charly" 
         }, 
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "698990242", 
+          "_rev" : "700638651", 
           "name" : "Alice" 
         } 
       ], 
@@ -68,7 +68,7 @@ arangosh> db._query(
         { 
           "_id" : "relation/charlyAndDiana", 
           "_key" : "charlyAndDiana", 
-          "_rev" : "700497570", 
+          "_rev" : "702145979", 
           "_from" : "male/charly", 
           "_to" : "female/diana", 
           "type" : "married" 
@@ -76,7 +76,7 @@ arangosh> db._query(
         { 
           "_id" : "relation/aliceAndCharly", 
           "_key" : "aliceAndCharly", 
-          "_rev" : "700300962", 
+          "_rev" : "701949371", 
           "_from" : "female/alice", 
           "_to" : "male/charly", 
           "type" : "friend" 
@@ -85,13 +85,13 @@ arangosh> db._query(
       "source" : { 
         "_id" : "female/diana", 
         "_key" : "diana", 
-        "_rev" : "699711138", 
+        "_rev" : "701359547", 
         "name" : "Diana" 
       }, 
       "destination" : { 
         "_id" : "female/alice", 
         "_key" : "alice", 
-        "_rev" : "698990242", 
+        "_rev" : "700638651", 
         "name" : "Alice" 
       } 
     }, 
@@ -100,13 +100,13 @@ arangosh> db._query(
         { 
           "_id" : "female/diana", 
           "_key" : "diana", 
-          "_rev" : "699711138", 
+          "_rev" : "701359547", 
           "name" : "Diana" 
         }, 
         { 
           "_id" : "male/bob", 
           "_key" : "bob", 
-          "_rev" : "699317922", 
+          "_rev" : "700966331", 
           "name" : "Bob" 
         } 
       ], 
@@ -114,7 +114,7 @@ arangosh> db._query(
         { 
           "_id" : "relation/bobAndDiana", 
           "_key" : "bobAndDiana", 
-          "_rev" : "700694178", 
+          "_rev" : "702342587", 
           "_from" : "male/bob", 
           "_to" : "female/diana", 
           "type" : "friend" 
@@ -123,13 +123,13 @@ arangosh> db._query(
       "source" : { 
         "_id" : "female/diana", 
         "_key" : "diana", 
-        "_rev" : "699711138", 
+        "_rev" : "701359547", 
         "name" : "Diana" 
       }, 
       "destination" : { 
         "_id" : "male/bob", 
         "_key" : "bob", 
-        "_rev" : "699317922", 
+        "_rev" : "700966331", 
         "name" : "Bob" 
       } 
     }, 
@@ -138,19 +138,19 @@ arangosh> db._query(
         { 
           "_id" : "female/diana", 
           "_key" : "diana", 
-          "_rev" : "699711138", 
+          "_rev" : "701359547", 
           "name" : "Diana" 
         }, 
         { 
           "_id" : "male/bob", 
           "_key" : "bob", 
-          "_rev" : "699317922", 
+          "_rev" : "700966331", 
           "name" : "Bob" 
         }, 
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "698990242", 
+          "_rev" : "700638651", 
           "name" : "Alice" 
         } 
       ], 
@@ -158,7 +158,7 @@ arangosh> db._query(
         { 
           "_id" : "relation/bobAndDiana", 
           "_key" : "bobAndDiana", 
-          "_rev" : "700694178", 
+          "_rev" : "702342587", 
           "_from" : "male/bob", 
           "_to" : "female/diana", 
           "type" : "friend" 
@@ -166,7 +166,7 @@ arangosh> db._query(
         { 
           "_id" : "relation/aliceAndBob", 
           "_key" : "aliceAndBob", 
-          "_rev" : "700038818", 
+          "_rev" : "701687227", 
           "_from" : "female/alice", 
           "_to" : "male/bob", 
           "type" : "married" 
@@ -175,13 +175,13 @@ arangosh> db._query(
       "source" : { 
         "_id" : "female/diana", 
         "_key" : "diana", 
-        "_rev" : "699711138", 
+        "_rev" : "701359547", 
         "name" : "Diana" 
       }, 
       "destination" : { 
         "_id" : "female/alice", 
         "_key" : "alice", 
-        "_rev" : "698990242", 
+        "_rev" : "700638651", 
         "name" : "Alice" 
       } 
     }, 
@@ -190,13 +190,13 @@ arangosh> db._query(
         { 
           "_id" : "male/bob", 
           "_key" : "bob", 
-          "_rev" : "699317922", 
+          "_rev" : "700966331", 
           "name" : "Bob" 
         }, 
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "698990242", 
+          "_rev" : "700638651", 
           "name" : "Alice" 
         } 
       ], 
@@ -204,7 +204,7 @@ arangosh> db._query(
         { 
           "_id" : "relation/aliceAndBob", 
           "_key" : "aliceAndBob", 
-          "_rev" : "700038818", 
+          "_rev" : "701687227", 
           "_from" : "female/alice", 
           "_to" : "male/bob", 
           "type" : "married" 
@@ -213,13 +213,13 @@ arangosh> db._query(
       "source" : { 
         "_id" : "male/bob", 
         "_key" : "bob", 
-        "_rev" : "699317922", 
+        "_rev" : "700966331", 
         "name" : "Bob" 
       }, 
       "destination" : { 
         "_id" : "female/alice", 
         "_key" : "alice", 
-        "_rev" : "698990242", 
+        "_rev" : "700638651", 
         "name" : "Alice" 
       } 
     }, 
@@ -228,13 +228,13 @@ arangosh> db._query(
         { 
           "_id" : "male/charly", 
           "_key" : "charly", 
-          "_rev" : "699514530", 
+          "_rev" : "701162939", 
           "name" : "Charly" 
         }, 
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "698990242", 
+          "_rev" : "700638651", 
           "name" : "Alice" 
         } 
       ], 
@@ -242,7 +242,7 @@ arangosh> db._query(
         { 
           "_id" : "relation/aliceAndCharly", 
           "_key" : "aliceAndCharly", 
-          "_rev" : "700300962", 
+          "_rev" : "701949371", 
           "_from" : "female/alice", 
           "_to" : "male/charly", 
           "type" : "friend" 
@@ -251,13 +251,13 @@ arangosh> db._query(
       "source" : { 
         "_id" : "male/charly", 
         "_key" : "charly", 
-        "_rev" : "699514530", 
+        "_rev" : "701162939", 
         "name" : "Charly" 
       }, 
       "destination" : { 
         "_id" : "female/alice", 
         "_key" : "alice", 
-        "_rev" : "698990242", 
+        "_rev" : "700638651", 
         "name" : "Alice" 
       } 
     } 

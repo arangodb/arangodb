@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-8
   "name" : "statistics-average-collector", 
   "type" : "periodic", 
   "period" : 900, 
-  "created" : 1430332808.035773, 
+  "created" : 1431606657.224341, 
   "command" : "require('org/arangodb/statistics').historianAverage();", 
   "database" : "_system", 
   "error" : false, 

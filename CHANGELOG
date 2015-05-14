@@ -1,8 +1,12 @@
-v2.5.4 (2015-XX-XX)
+v2.5.4 (2015-05-14)
 -------------------
 
 * added startup option `--log.performance`: specifying this option at startup will log
   performance-related info messages, mainly timings via the regular logging mechanisms
+
+* cluster fixes
+
+* fixe for recursive copy under windows
 
 
 v2.5.3 (2015-04-29)

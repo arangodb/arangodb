@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/figures
 
 { 
-  "id" : "1393344162", 
+  "id" : "1396434363", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
@@ -19,8 +19,8 @@ location: /_db/_system/_api/collection/products/figures
   "count" : 1, 
   "figures" : { 
     "alive" : { 
-      "count" : 0, 
-      "size" : 0 
+      "count" : 1, 
+      "size" : 88 
     }, 
     "dead" : { 
       "count" : 0, 
@@ -44,19 +44,19 @@ location: /_db/_system/_api/collection/products/figures
       "fileSize" : 0 
     }, 
     "shapes" : { 
-      "count" : 0, 
-      "size" : 0 
+      "count" : 1, 
+      "size" : 104 
     }, 
     "attributes" : { 
-      "count" : 0, 
-      "size" : 0 
+      "count" : 1, 
+      "size" : 48 
     }, 
     "indexes" : { 
       "count" : 1, 
       "size" : 2008 
     }, 
-    "lastTick" : "1393737378", 
-    "uncollectedLogfileEntries" : 1 
+    "lastTick" : "1396827579", 
+    "uncollectedLogfileEntries" : 0 
   }, 
   "status" : 3, 
   "type" : 2, 

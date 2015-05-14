@@ -3,9 +3,9 @@ arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._absoluteCloseness({});
 [ 
   { 
-    "germanCity/Hamburg" : 4, 
-    "germanCity/Cologne" : 4, 
     "germanCity/Berlin" : 4, 
+    "germanCity/Cologne" : 4, 
+    "germanCity/Hamburg" : 4, 
     "frenchCity/Paris" : 4, 
     "frenchCity/Lyon" : 4 
   } 
