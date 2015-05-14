@@ -1719,10 +1719,11 @@ static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate,
 /// @brief Extract collection names from v8 array.
 ////////////////////////////////////////////////////////////////////////////////
 
-static unordered_set<string> v8ArrayToStrings (const v8::Handle<v8::Value>& parameter) {
+static void v8ArrayToStrings (const v8::Handle<v8::Value>& parameter,
+                              unordered_set<string>& result
+                             ) {
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
   uint32_t const n = array->Length();
-  unordered_set<string> result;
   for (uint32_t i = 0; i < n; ++i) {
     if (!array->Get(i)->IsString()) {
       // TODO Error Handling
@@ -1730,8 +1731,76 @@ static unordered_set<string> v8ArrayToStrings (const v8::Handle<v8::Value>& para
       result.insert(TRI_ObjectToString(array->Get(i)));
     }
   }
-  return result;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Define edge weight by the number of hops.
+///        Respectively 1 for any edge.
+////////////////////////////////////////////////////////////////////////////////
+
+class HopWeightCalculator {
+  public: 
+    HopWeightCalculator() {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Callable weight calculator for edge
+////////////////////////////////////////////////////////////////////////////////
+
+    double operator() (TRI_doc_mptr_copy_t& edge) {
+      return 1;
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Define edge weight by ony special attribute.
+///        Respectively 1 for any edge.
+////////////////////////////////////////////////////////////////////////////////
+
+class AttributeWeightCalculator {
+
+  TRI_shape_pid_t _shape_pid;
+  double _defaultWeight;
+  TRI_shaper_t* _shaper;
+
+  public: 
+    AttributeWeightCalculator(
+      string keyWeight,
+      double defaultWeight,
+      TRI_shaper_t* shaper
+    ) : _defaultWeight(defaultWeight),
+        _shaper(shaper)
+    {
+      _shape_pid = _shaper->lookupAttributePathByName(_shaper, keyWeight.c_str());
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Callable weight calculator for edge
+////////////////////////////////////////////////////////////////////////////////
+
+    double operator() (TRI_doc_mptr_copy_t& edge) {
+      if (_shape_pid == 0) {
+        return _defaultWeight;
+      }
+      TRI_shape_sid_t sid;
+      TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, edge.getDataPtr());
+      TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(_shaper, sid, _shape_pid);
+      TRI_shaped_json_t shapedJson;
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, edge.getDataPtr());
+      TRI_shaped_json_t resultJson;
+      TRI_ExecuteShapeAccessor(accessor, &shapedJson, &resultJson);
+      if (resultJson._sid != TRI_SHAPE_NUMBER) {
+        return _defaultWeight;
+      }
+      TRI_json_t* json = TRI_JsonShapedJson(_shaper, &resultJson);
+      if (json == nullptr) {
+        return _defaultWeight;
+      }
+      double realResult = json->_value._number;
+      TRI_FreeJson(_shaper->_memoryZone, json);
+      return realResult ;
+    }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Executes a shortest Path Traversal
@@ -1750,10 +1819,11 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   vocbase = GetContextVocBase(isolate);
 
   // get the edge collection
-  if (! args[0]->IsString()) {
+  if (! args[0]->IsArray()) {
     TRI_V8_THROW_TYPE_ERROR("expecting array for <edgecollections[]>");
   }
-  string const edgeCollectionName = TRI_ObjectToString(args[0]);
+  unordered_set<string> edgeCollectionNames;
+  v8ArrayToStrings(args[0], edgeCollectionNames);
 
   vocbase = GetContextVocBase(isolate);
 
@@ -1814,8 +1884,6 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     if (options->Has(keyMultiThreaded)) {
       opts.multiThreaded = TRI_ObjectToBoolean(options->Get(keyMultiThreaded));
     }
-
-
   } 
 
   vector<TRI_voc_cid_t> readCollections;
@@ -1827,7 +1895,9 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   int res = 0;
   CollectionNameResolver const* resolver = resolverGuard.getResolver();
 
-  readCollections.push_back(resolver->getCollectionId(edgeCollectionName));
+  for (auto it : edgeCollectionNames) {
+    readCollections.push_back(resolver->getCollectionId(it));
+  }
 
   // Start the transaction and
   // Order Barriers
@@ -1841,16 +1911,34 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
 
   // Compute the path
   unique_ptr<ArangoDBPathFinder::Path> path;
-  TRI_voc_cid_t edgeCid = resolver->getCollectionId(edgeCollectionName);
-
-  TRI_ASSERT(barriers.find(edgeCid) != barriers.end());
+  vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  if (opts.useWeight) {
+    for(auto it : readCollections) {
+      auto colObj = barriers.find(it)->second.col->_collection->_collection;
+      edgeCollectionInfos.push_back(new EdgeCollectionInfo(
+        it,
+        colObj,
+        AttributeWeightCalculator(
+          opts.weightAttribute, opts.defaultWeight, colObj->getShaper()
+        )
+      ));
+    }
+  } else {
+    for(auto it : readCollections) {
+      auto colObj = barriers.find(it)->second.col->_collection->_collection;
+      edgeCollectionInfos.push_back(new EdgeCollectionInfo(
+        it,
+        colObj,
+        HopWeightCalculator()
+      ));
+    }
+  }
   try {
     path = TRI_RunShortestPathSearch(
-      edgeCollectionName,
+      edgeCollectionInfos,
       startVertex,
       targetVertex,
       resolver,
-      barriers.find(edgeCid)->second.col->_collection->_collection,
       opts
     );
   } catch (int e) {
@@ -1864,7 +1952,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     v8::EscapableHandleScope scope(isolate);
     trx->finish(res);
     delete trx;
-    TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Object::New(isolate)));
+    TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Null(isolate)));
   }
   trx->finish(res);
   delete trx;
@@ -1997,7 +2085,6 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     }
   }
 
-  // TODO: Replace with cids instead of names
   vector<TRI_voc_cid_t> readCollections;
   vector<TRI_voc_cid_t> writeCollections;
 

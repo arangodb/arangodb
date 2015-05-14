@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Traverser.h"
+#include "VocBase/edge-collection.h"
 
 namespace triagens {
   namespace basics {
@@ -102,18 +103,69 @@ typedef triagens::basics::PathFinder<VertexId, EdgeId, double>
         ArangoDBPathFinder;
 
 
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback to weight an edge
+////////////////////////////////////////////////////////////////////////////////
 
+typedef std::function<double(TRI_doc_mptr_copy_t& edge)> WeightCalculatorFunction;
+
+class EdgeCollectionInfo {
+  private:
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge collection
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_document_collection_t* _edgeCollection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge collection
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_voc_cid_t _edgeCollectionCid;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weighter functions
+////////////////////////////////////////////////////////////////////////////////
+
+    WeightCalculatorFunction _weighter;
+
+  public:
+
+    EdgeCollectionInfo(
+      TRI_voc_cid_t& edgeCollectionCid,
+      TRI_document_collection_t* edgeCollection,
+      WeightCalculatorFunction weighter
+    )  : _edgeCollection(edgeCollection),
+       _edgeCollectionCid(edgeCollectionCid),
+       _weighter(weighter) {
+    }
+
+    EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
+      return EdgeId(_edgeCollectionCid, TRI_EXTRACT_MARKER_KEY(&ptr));
+    }
+
+    std::vector<TRI_doc_mptr_copy_t> getEdges (TRI_edge_direction_e& direction,
+        VertexId& vertexId) {
+      return TRI_LookupEdgesDocumentCollection(_edgeCollection,
+                   direction, vertexId.cid, const_cast<char*>(vertexId.key));
+    }
+
+    double weightEdge(TRI_doc_mptr_copy_t& ptr) {
+      return _weighter(ptr);
+    }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Wrapper for the shortest path computation
 ////////////////////////////////////////////////////////////////////////////////
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
-  std::string const& edgeCollectionName,
-  std::string const& startVertex,
-  std::string const& targetVertex,
-  triagens::arango::CollectionNameResolver const* resolver,
-  TRI_document_collection_t* ecol,
-  triagens::basics::traverser::ShortestPathOptions& opts
+    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    std::string const& startVertex,
+    std::string const& targetVertex,
+    triagens::arango::CollectionNameResolver const* resolver,
+    triagens::basics::traverser::ShortestPathOptions& opts
 );
 
 ////////////////////////////////////////////////////////////////////////////////
