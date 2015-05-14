@@ -77,124 +77,6 @@ namespace std {
     };
 
 }
-    
-////////////////////////////////////////////////////////////////////////////////
-/// @brief callback to weight an edge
-////////////////////////////////////////////////////////////////////////////////
-
-typedef function<double(TRI_doc_mptr_copy_t& edge)> WeightCalculatorFunction;
-
-class EdgeCollectionInfo {
-  private:
-    
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Edge direction for this collection
-////////////////////////////////////////////////////////////////////////////////
-
-    TRI_edge_direction_e _direction;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge collection
-////////////////////////////////////////////////////////////////////////////////
-
-    TRI_document_collection_t* _edgeCollection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge collection
-////////////////////////////////////////////////////////////////////////////////
-
-    TRI_voc_cid_t _edgeCollectionCid;
-
-  public:
-
-    EdgeCollectionInfo(
-      TRI_edge_direction_e direction,
-      TRI_voc_cid_t& edgeCollectionCid,
-      TRI_document_collection_t* edgeCollection
-    )  : _direction(direction), 
-       _edgeCollection(edgeCollection),
-       _edgeCollectionCid(edgeCollectionCid) {
-    }
-
-    EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
-      return EdgeId(_edgeCollectionCid, TRI_EXTRACT_MARKER_KEY(&ptr));
-    }
-
-    vector<TRI_doc_mptr_copy_t> getEdges (VertexId& vertexId) {
-      return TRI_LookupEdgesDocumentCollection(_edgeCollection,
-                   _direction, vertexId.cid, const_cast<char*>(vertexId.key));
-    }
-
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Define edge weight by the number of hops.
-///        Respectively 1 for any edge.
-////////////////////////////////////////////////////////////////////////////////
-
-class HopWeightCalculator {
-  public: 
-    HopWeightCalculator() {};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Callable weight calculator for edge
-////////////////////////////////////////////////////////////////////////////////
-
-    double operator() (TRI_doc_mptr_copy_t& edge) {
-      return 1;
-    }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Define edge weight by ony special attribute.
-///        Respectively 1 for any edge.
-////////////////////////////////////////////////////////////////////////////////
-
-class AttributeWeightCalculator {
-
-  TRI_shape_pid_t _shape_pid;
-  double _defaultWeight;
-  TRI_shaper_t* _shaper;
-
-  public: 
-    AttributeWeightCalculator(
-      string keyWeight,
-      double defaultWeight,
-      TRI_shaper_t* shaper
-    ) : _defaultWeight(defaultWeight),
-        _shaper(shaper)
-    {
-      _shape_pid = _shaper->lookupAttributePathByName(_shaper, keyWeight.c_str());
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Callable weight calculator for edge
-////////////////////////////////////////////////////////////////////////////////
-
-    double operator() (TRI_doc_mptr_copy_t& edge) {
-      if (_shape_pid == 0) {
-        return _defaultWeight;
-      }
-      TRI_shape_sid_t sid;
-      TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, edge.getDataPtr());
-      TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(_shaper, sid, _shape_pid);
-      TRI_shaped_json_t shapedJson;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, edge.getDataPtr());
-      TRI_shaped_json_t resultJson;
-      TRI_ExecuteShapeAccessor(accessor, &shapedJson, &resultJson);
-      if (resultJson._sid != TRI_SHAPE_NUMBER) {
-        return _defaultWeight;
-      }
-      TRI_json_t* json = TRI_JsonShapedJson(_shaper, &resultJson);
-      if (json == nullptr) {
-        return _defaultWeight;
-      }
-      double realResult = json->_value._number;
-      TRI_FreeJson(_shaper->_memoryZone, json);
-      return realResult ;
-    }
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _from Id out of mptr, we return an RValue reference
 /// to explicitly allow move semantics.
@@ -223,33 +105,24 @@ static VertexId extractToId(TRI_doc_mptr_copy_t& ptr) {
 class MultiCollectionEdgeExpander {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Edge direction for this expander
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_edge_direction_e _direction;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief all info required for edge collection
 ////////////////////////////////////////////////////////////////////////////////
 
     vector<EdgeCollectionInfo*> _edgeCollections;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the weight calculation function
-////////////////////////////////////////////////////////////////////////////////
-
-    WeightCalculatorFunction weighter;
-
   public: 
 
-    MultiCollectionEdgeExpander(TRI_edge_direction_e direction,
-                       vector<TRI_document_collection_t*> edgeCollections,
-                       vector<TRI_voc_cid_t> edgeCollectionCids,
-                       WeightCalculatorFunction weighter)
-      : weighter(weighter)
-    {
-      for(size_t i = 0; i != edgeCollectionCids.size(); ++i) {
-        _edgeCollections.push_back(new EdgeCollectionInfo(
-          direction,
-          edgeCollectionCids[i],
-          edgeCollections[i]
-        ));
+    MultiCollectionEdgeExpander(TRI_edge_direction_e const& direction,
+                       vector<EdgeCollectionInfo*> const& edgeCollections)
+      : _direction(direction),
+        _edgeCollections(edgeCollections) {
       }
-    };
 
     void operator() (VertexId& source,
                      vector<ArangoDBPathFinder::Step*>& result) {
@@ -258,13 +131,13 @@ class MultiCollectionEdgeExpander {
 
       equal_to<VertexId> eq;
       for (auto edgeCollection : _edgeCollections) { 
-        auto edges = edgeCollection->getEdges(source); 
+        auto edges = edgeCollection->getEdges(_direction, source); 
 
         unordered_map<VertexId, size_t> candidates;
         for (size_t j = 0;  j < edges.size(); ++j) {
           VertexId from = extractFromId(edges[j]);
           VertexId to = extractToId(edges[j]);
-          double currentWeight = weighter(edges[j]);
+          double currentWeight = edgeCollection->weightEdge(edges[j]);
           auto inserter = [&](VertexId& s, VertexId& t) {
             auto cand = candidates.find(t);
             if (cand == candidates.end()) {
@@ -294,45 +167,37 @@ class MultiCollectionEdgeExpander {
 class SimpleEdgeExpander {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief The direction used for edges in this expander
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_edge_direction_e _direction;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief all info required for edge collection
 ////////////////////////////////////////////////////////////////////////////////
 
     EdgeCollectionInfo* _edgeCollection;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the collection name resolver
-////////////////////////////////////////////////////////////////////////////////
-
-    CollectionNameResolver* resolver;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the weight calculation function
-////////////////////////////////////////////////////////////////////////////////
-
-    WeightCalculatorFunction weighter;
-
   public: 
 
-    SimpleEdgeExpander(TRI_edge_direction_e direction,
-                       TRI_document_collection_t* edgeCollection,
-                       TRI_voc_cid_t edgeCollectionCid,
-                       WeightCalculatorFunction weighter)
-      : weighter(weighter) {
-      _edgeCollection = new EdgeCollectionInfo(direction, edgeCollectionCid, edgeCollection);
+    SimpleEdgeExpander(TRI_edge_direction_e& direction,
+                       EdgeCollectionInfo* edgeCollection)
+      : _direction(direction),
+        _edgeCollection(edgeCollection) {
     };
 
     void operator() (VertexId& source,
                      vector<ArangoDBPathFinder::Step*>& result) {
       TransactionBase fake(true); // Fake a transaction to please checks. 
                                   // This is due to multi-threading
-      auto edges = _edgeCollection->getEdges(source); 
+      auto edges = _edgeCollection->getEdges(_direction, source); 
 
       equal_to<VertexId> eq;
       unordered_map<VertexId, size_t> candidates;
       for (size_t j = 0;  j < edges.size(); ++j) {
         VertexId from = extractFromId(edges[j]);
         VertexId to = extractToId(edges[j]);
-        double currentWeight = weighter(edges[j]);
+        double currentWeight = _edgeCollection->weightEdge(edges[j]);
         auto inserter = [&](VertexId& s, VertexId& t) {
           auto cand = candidates.find(t);
           if (cand == candidates.end()) {
@@ -363,11 +228,10 @@ class SimpleEdgeExpander {
 ////////////////////////////////////////////////////////////////////////////////
 
 unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
-    string const& edgeCollectionName,
+    vector<EdgeCollectionInfo*>& collectionInfos,
     string const& startVertex,
     string const& targetVertex,
     CollectionNameResolver const* resolver,
-    TRI_document_collection_t* ecol,
     ShortestPathOptions& opts) {
 
   TRI_edge_direction_e forward;
@@ -383,20 +247,8 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
     backward = TRI_EDGE_ANY;
   }
 
-  unique_ptr<SimpleEdgeExpander> forwardExpander;
-  unique_ptr<SimpleEdgeExpander> backwardExpander;
-  WeightCalculatorFunction weighter;
-  if (opts.useWeight) {
-    weighter = AttributeWeightCalculator(
-      opts.weightAttribute, opts.defaultWeight, ecol->getShaper()
-    );
-  } else {
-    weighter = HopWeightCalculator();
-  }
-  forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, 
-                                       resolver->getCollectionId(edgeCollectionName), weighter));
-  backwardExpander.reset(new SimpleEdgeExpander(backward, ecol,
-                                       resolver->getCollectionId(edgeCollectionName), weighter));
+  MultiCollectionEdgeExpander forwardExpander(forward, collectionInfos);
+  MultiCollectionEdgeExpander backwardExpander(backward, collectionInfos);
 
   // Transform string ids to VertexIds
   // Needs refactoring!
@@ -426,8 +278,8 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
   }
   VertexId tv(coli->_cid, str + split + 1);
 
-  ArangoDBPathFinder pathFinder(*forwardExpander, 
-                              *backwardExpander,
+  ArangoDBPathFinder pathFinder(forwardExpander, 
+                              backwardExpander,
                               opts.bidirectional);
   unique_ptr<ArangoDBPathFinder::Path> path;
   if (opts.multiThreaded) {
