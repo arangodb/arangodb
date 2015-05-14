@@ -2627,7 +2627,8 @@ static void JS_RemoveDirectory (const v8::FunctionCallbackInfo<v8::Value>& args)
   }
 
   if (! TRI_IsDirectory(*name)) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("<path> must be a valid directory name");
+    std::string err = std::string("<path> must be a valid directory name (have '") + *name + "')";
+    TRI_V8_THROW_EXCEPTION_PARAMETER(err);
   }
 
   int res = TRI_RemoveEmptyDirectory(*name);
@@ -2665,7 +2666,8 @@ static void JS_RemoveRecursiveDirectory (const v8::FunctionCallbackInfo<v8::Valu
   }
 
   if (! TRI_IsDirectory(*name)) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("<path> must be a valid directory name");
+    std::string err = std::string("<path> must be a valid directory name (have '") + *name + "')";
+    TRI_V8_THROW_EXCEPTION_PARAMETER(err);
   }
 
   bool force = false;
