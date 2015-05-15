@@ -138,7 +138,7 @@ void Profile::enter (ExecutionState state) {
 
 TRI_json_t* Profile::toJson (TRI_memory_zone_t*) {
   triagens::basics::Json result(triagens::basics::Json::Object);
-  for (auto& it : results) {
+  for (auto const& it : results) {
     result.set(StateNames[static_cast<int>(it.first)].c_str(), triagens::basics::Json(it.second));
   }
   return result.steal();
