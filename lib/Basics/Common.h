@@ -197,6 +197,14 @@ static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief a trivial hash function for uint64_t to uint32_t
+////////////////////////////////////////////////////////////////////////////////
+
+static inline uint32_t TRI_64to32 (uint64_t x) {
+  return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fake spinlocks
 /// spin locks seem to have issues when used under Valgrind
 /// we thus mimic spinlocks using ordinary mutexes when in maintainer mode

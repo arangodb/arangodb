@@ -13,7 +13,6 @@ lib_libarango_a_CPPFLAGS = \
 
 lib_libarango_a_SOURCES = \
 	lib/Basics/application-exit.cpp \
-	lib/Basics/associative-multi.cpp \
 	lib/Basics/associative.cpp \
 	lib/Basics/Barrier.cpp \
 	lib/Basics/ConditionLocker.cpp \

@@ -54,7 +54,7 @@
 
 struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
-struct TRI_index_s;
+struct TRI_index_t;
 struct TRI_json_t;
 
 class KeyGenerator;
@@ -723,7 +723,7 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t*);
 
 int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
                                          struct TRI_json_t const*,
-                                         struct TRI_index_s**);
+                                         TRI_index_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rolls back a document operation
@@ -835,7 +835,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t*,
                                                            char const*,
                                                            bool);
 
@@ -845,7 +845,7 @@ struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collecti
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t*,
                                                            char const*,
                                                            char const*);
 
@@ -853,7 +853,7 @@ struct TRI_index_s* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collecti
 /// @brief ensures that a geo index exists, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t*,
                                                            TRI_idx_iid_t,
                                                            char const*,
                                                            bool,
@@ -863,7 +863,7 @@ struct TRI_index_s* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collecti
 /// @brief ensures that a geo index exists, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t*,
                                                            TRI_idx_iid_t,
                                                            char const*,
                                                            char const*,
@@ -885,7 +885,7 @@ struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collecti
 /// @note The @FA{paths} must be sorted.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t*,
                                                            TRI_vector_pointer_t const*,
                                                            int,
                                                            bool);
@@ -894,7 +894,7 @@ struct TRI_index_s* TRI_LookupHashIndexDocumentCollection (TRI_document_collecti
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t*,
                                                            TRI_idx_iid_t,
                                                            TRI_vector_pointer_t const*,
                                                            bool,
@@ -915,7 +915,7 @@ struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collecti
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t*,
                                                                TRI_vector_pointer_t const*,
                                                                int,
                                                                bool);
@@ -924,7 +924,7 @@ struct TRI_index_s* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_coll
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t*,
                                                                TRI_idx_iid_t,
                                                                TRI_vector_pointer_t const*,
                                                                bool,
@@ -945,7 +945,7 @@ struct TRI_index_s* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_coll
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t*,
                                                                char const*,
                                                                bool,
                                                                int);
@@ -954,7 +954,7 @@ struct TRI_index_s* TRI_LookupFulltextIndexDocumentCollection (TRI_document_coll
 /// @brief ensures that a fulltext index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t*,
+TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t*,
                                                                TRI_idx_iid_t,
                                                                char const*,
                                                                bool,

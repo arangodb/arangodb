@@ -46,7 +46,6 @@ add_library(
     ${LIB_ARANGO_MSVC}
     ${LIB_ARANGO_POSIX}
     Basics/application-exit.cpp
-    Basics/associative-multi.cpp
     Basics/associative.cpp
     Basics/Barrier.cpp
     Basics/ConditionLocker.cpp
