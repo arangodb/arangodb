@@ -755,12 +755,11 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
 
 void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array,
                                              void const* element) {
-  uint64_t hash;
-  uint64_t i;
-
   // compute the hash
-  hash = array->hashElement(array, element);
-  i = hash % array->_nrAlloc;
+  uint64_t const hash = array->hashElement(array, element);
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i, k;
+  i = k = hash % n;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -768,11 +767,10 @@ void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array,
 #endif
 
   // search the table
-  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-#ifdef TRI_INTERNAL_STATS
-    array->_nrProbesF++;
-#endif
+  for (; i < n && array->_table[i] != nullptr && ! array->isEqualElementElement(array, element, array->_table[i]); ++i);
+
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i] != nullptr && ! array->isEqualElementElement(array, element, array->_table[i]); ++i);
   }
 
   // return whatever we found
@@ -1231,19 +1229,22 @@ void TRI_FreeAssociativeSynced (TRI_memory_zone_t* zone, TRI_associative_synced_
 
 void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
                                               void const* key) {
-  uint64_t hash;
-  uint64_t i;
   void const* result;
 
   // compute the hash
-  hash = array->hashKey(array, key);
+  uint64_t const hash = array->hashKey(array, key);
 
   // search the table
   TRI_ReadLockReadWriteLock(&array->_lock);
-  i = hash % array->_nrAlloc;
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i, k;
 
-  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
+  i = k = hash % n;
+
+  for (; i < n && array->_table[i] != nullptr && ! array->isEqualKeyElement(array, key, array->_table[i]); ++i);
+
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i] != nullptr && ! array->isEqualKeyElement(array, key, array->_table[i]); ++i);
   }
 
   result = array->_table[i];
@@ -1260,19 +1261,22 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
 
 void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* array,
                                                   void const* element) {
-  uint64_t hash;
-  uint64_t i;
   void const* result;
 
   // compute the hash
-  hash = array->hashElement(array, element);
+  uint64_t const hash = array->hashElement(array, element);
 
   // search the table
   TRI_ReadLockReadWriteLock(&array->_lock);
-  i = hash % array->_nrAlloc;
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i, k;
 
-  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
+  i = k = hash % n;
+
+  for (; i < n && array->_table[i] != nullptr && ! array->isEqualElementElement(array, element, array->_table[i]); ++i);
+
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i] != nullptr && ! array->isEqualElementElement(array, element, array->_table[i]); ++i);
   }
 
   result = array->_table[i];
