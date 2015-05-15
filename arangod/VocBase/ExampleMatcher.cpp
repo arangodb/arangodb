@@ -29,8 +29,79 @@
 
 #include "ExampleMatcher.h"
 #include "voc-shaper.h"
+#include "V8/v8-utils.h"
+#include "V8/v8-conv.h"
 
+using namespace std;
 using namespace triagens::arango;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleans up the example object
+////////////////////////////////////////////////////////////////////////////////
+
+void ExampleMatcher::cleanup () {
+  auto zone = _shaper->_memoryZone;
+  // clean shaped json objects
+  for (auto it : _values) {
+    TRI_FreeShapedJson(zone, it);
+  }
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor using a v8::Object example
+////////////////////////////////////////////////////////////////////////////////
+
+ExampleMatcher::ExampleMatcher (
+  v8::Isolate* isolate,
+  v8::Handle<v8::Object> const example,
+  TRI_shaper_t* shaper,
+  std::string& errorMessage
+) : _shaper(shaper) {
+  v8::Handle<v8::Array> names = example->GetOwnPropertyNames();
+  size_t n = names->Length();
+
+  _pids.reserve(n);
+  _values.reserve(n);
+
+  try { 
+    for (size_t i = 0;  i < n;  ++i) {
+      v8::Handle<v8::Value> key = names->Get((uint32_t) i);
+      v8::Handle<v8::Value> val = example->Get(key);
+      TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
+      if (*keyStr != nullptr) {
+
+        auto pid = _shaper->lookupAttributePathByName(_shaper, *keyStr);
+
+        if (pid == 0) {
+          // no attribute path found. this means the result will be empty
+          ExampleMatcher::cleanup();
+          throw TRI_RESULT_ELEMENT_NOT_FOUND;
+        }
+        _pids.push_back(pid);
+
+        auto value = TRI_ShapedJsonV8Object(isolate, val, shaper, false);
+
+        if (value == nullptr) {
+          ExampleMatcher::cleanup();
+          throw TRI_RESULT_ELEMENT_NOT_FOUND;
+        }
+        _values.push_back(value);
+      }
+      else {
+        ExampleMatcher::cleanup();
+        errorMessage = "cannot convert attribute path to UTF8";
+        throw TRI_ERROR_BAD_PARAMETER;
+      }
+    }
+  } catch (bad_alloc& e) {
+    ExampleMatcher::cleanup();
+    throw e;
+  }
+
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the given mptr matches the example in this class

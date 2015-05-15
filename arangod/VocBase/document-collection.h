@@ -54,6 +54,11 @@ struct TRI_document_edge_s;
 struct TRI_index_s;
 struct TRI_json_t;
 
+namespace triagens {
+  namespace arango {
+    class ExampleMatcher;
+  }
+}
 class KeyGenerator;
 
 // -----------------------------------------------------------------------------
@@ -991,9 +996,8 @@ struct TRI_index_s* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_coll
 
 std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           struct TRI_transaction_collection_s*,
-                          size_t,
-                          TRI_shape_pid_t*,
-                          TRI_shaped_json_t**);
+                          triagens::arango::ExampleMatcher& matcher
+                        );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a documet given by a master pointer

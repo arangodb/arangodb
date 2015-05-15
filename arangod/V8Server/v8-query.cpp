@@ -45,6 +45,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/ExampleMatcher.h"
 #include "VocBase/vocbase.h"
 #include "v8-wrapshapedjson.h"
 
@@ -172,100 +173,6 @@ static void CalculateSkipLimitSlice (size_t length,
       }
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleans up the example object
-////////////////////////////////////////////////////////////////////////////////
-
-static void CleanupExampleObject (TRI_memory_zone_t* zone,
-                                  size_t n,
-                                  TRI_shape_pid_t* pids,
-                                  TRI_shaped_json_t** values) {
-
-  // clean shaped json objects
-  for (size_t j = 0;  j < n;  ++j) {
-    if (values[j] != 0) {
-      TRI_FreeShapedJson(zone, values[j]);
-    }
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, values);
-
-  if (pids != 0) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up the example object
-////////////////////////////////////////////////////////////////////////////////
-
-static int SetupExampleObject (v8::Handle<v8::Object> const example,
-                               TRI_shaper_t* shaper,
-                               size_t& n,
-                               TRI_shape_pid_t*& pids,
-                               TRI_shaped_json_t**& values,
-                               std::string& errorMessage,
-                               const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-
-  // get own properties of example
-  v8::Handle<v8::Array> names = example->GetOwnPropertyNames();
-  n = names->Length();
-
-  // setup storage
-  pids = (TRI_shape_pid_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shape_pid_t), false);
-
-  if (pids == nullptr) {
-    // out of memory
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                                              n * sizeof(TRI_shaped_json_t*), false);
-
-  if (values == nullptr) {
-    // out of memory
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
-    pids = nullptr;
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // convert
-  for (size_t i = 0;  i < n;  ++i) {
-    v8::Handle<v8::Value> key = names->Get((uint32_t) i);
-    v8::Handle<v8::Value> val = example->Get(key);
-
-    // property initialise the memory
-    values[i] = nullptr;
-
-    TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
-
-    if (*keyStr != nullptr) {
-      pids[i] = shaper->lookupAttributePathByName(shaper, *keyStr);
-
-      if (pids[i] == 0) {
-        // no attribute path found. this means the result will be empty
-        CleanupExampleObject(shaper->_memoryZone, i, pids, values);
-        return TRI_RESULT_ELEMENT_NOT_FOUND;
-      }
-
-      values[i] = TRI_ShapedJsonV8Object(isolate, val, shaper, false);
-
-      if (values[i] == nullptr) {
-        CleanupExampleObject(shaper->_memoryZone, i, pids, values);
-        return TRI_RESULT_ELEMENT_NOT_FOUND;
-      }
-    }
-    else {
-      CleanupExampleObject(shaper->_memoryZone, i, pids, values);
-      errorMessage = "cannot convert attribute path to UTF8";
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1432,23 +1339,20 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
   ExtractSkipAndLimit(args, 1, skip, limit);
 
   // extract sub-documents
-  TRI_shape_pid_t* pids;
-  TRI_shaped_json_t** values = 0;
-  size_t n;
 
   if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   std::string errorMessage;
-  res = SetupExampleObject(example, shaper, n, pids, values, errorMessage, args);
-
-  if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
-    // empty result
-    TRI_V8_RETURN(EmptyResult(isolate));
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  std::unique_ptr<ExampleMatcher> matcher;
+  try {
+    matcher.reset(new ExampleMatcher(isolate, example, shaper, errorMessage));
+  } catch (int e) {
+    if (e == TRI_RESULT_ELEMENT_NOT_FOUND) {
+      // empty result
+      TRI_V8_RETURN(EmptyResult(isolate));
+    }
     if (errorMessage.empty()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1470,7 +1374,7 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   // find documents by example
   try {
-    filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
+    filtered = TRI_SelectByExample(trx.trxCollection(), *matcher.get());
   }
   catch (std::exception&) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1512,7 +1416,6 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
   result->Set(TRI_V8_ASCII_STRING("total"), v8::Integer::New(isolate, (int32_t) total));
   result->Set(TRI_V8_ASCII_STRING("count"), v8::Integer::New(isolate, (int32_t) count));
 
-  CleanupExampleObject(shaper->_memoryZone, n, pids, values);
 
   if (error) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
