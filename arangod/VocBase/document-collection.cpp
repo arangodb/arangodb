@@ -45,8 +45,8 @@
 #include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
-#include "VocBase/ExampleMatcher.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/ExampleMatcher.h"
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/primary-index.h"
@@ -4809,13 +4809,10 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
 std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           TRI_transaction_collection_t* trxCollection,
-                          size_t length,
-                          TRI_shape_pid_t* pids,
-                          TRI_shaped_json_t** values) {
+                          ExampleMatcher& matcher) {
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx in trxCollection
 
   // use filtered to hold copies of the master pointer
   std::vector<TRI_doc_mptr_copy_t> filtered;
@@ -4823,16 +4820,6 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
   // do a full scan
   TRI_doc_mptr_t** ptr = (TRI_doc_mptr_t**) (document->_primaryIndex._table);
   TRI_doc_mptr_t** end = (TRI_doc_mptr_t**) ptr + document->_primaryIndex._nrAlloc;
-
-  std::vector<TRI_shape_pid_t> pids_v;
-  std::vector<TRI_shaped_json_t*> values_v;
-
-  for (size_t n = 0; n < length; ++n) {
-    pids_v.push_back(pids[n]);
-    values_v.push_back(values[n]);
-  }
-
-  triagens::arango::ExampleMatcher matcher(shaper, pids_v, values_v);
 
   for (;  ptr < end;  ++ptr) {
     if (matcher.matches(*ptr)) {

@@ -30,8 +30,15 @@
 #ifndef ARANGODB_EXAMPLE_MATCHER_H
 #define ARANGODB_EXAMPLE_MATCHER_H 1
 
+#include "v8.h"
 #include "ShapedJson/json-shaper.h"
-#include "document-collection.h"
+#include "VocBase/document-collection.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+struct TRI_doc_mptr_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Matching Method
@@ -39,8 +46,6 @@
 
 namespace triagens {
   namespace arango {
-
-
     class ExampleMatcher {
 
       TRI_shaper_t* _shaper;
@@ -50,15 +55,21 @@ namespace triagens {
       public:
 
         ExampleMatcher(
+          v8::Isolate* isolate,
+          v8::Handle<v8::Object> const example,
           TRI_shaper_t* shaper,
-          std::vector<TRI_shape_pid_t>& pids,
-          std::vector<TRI_shaped_json_t*>& values
-        ) : _shaper(shaper),
-          _pids(pids), _values(values) {};
+          std::string& errorMessage
+        );
 
-        ~ExampleMatcher() {};
+        ~ExampleMatcher() {
+          cleanup();
+        };
 
         bool matches (TRI_doc_mptr_t const* mptr);
+
+      private:
+
+        void cleanup ();
     };
   }
 }
