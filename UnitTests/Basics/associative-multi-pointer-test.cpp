@@ -27,8 +27,9 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "Basics/associative-multi.h"
+#include "Basics/AssocMulti.h"
 #include "Basics/hashes.h"
+#include "Basics/fasthash.h"
 #include "Basics/tri-strings.h"
 #include "Basics/conversions.h"
 
@@ -41,11 +42,10 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 #define INIT_MULTI \
-  TRI_multi_pointer_t a1; \
-  TRI_InitMultiPointer(&a1, TRI_CORE_MEM_ZONE, HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElementByKey);
+  triagens::basics::AssocMulti<void, void, uint32_t> a1( \
+      HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElementByKey);
 
-#define DESTROY_MULTI \
-  TRI_DestroyMultiPointer(&a1);
+#define DESTROY_MULTI ;
   
 #define ELEMENT(name, v, k) \
   data_container_t name; \
@@ -62,17 +62,17 @@ struct data_container_t {
 static uint64_t HashKey (void const* e) {
   int const* key = (int const*) e;
 
-  return TRI_FnvHashPointer(key,sizeof(int));
+  return fasthash64(key, sizeof(int), 0x12345678);
 }
 
 static uint64_t HashElement (void const* e, bool byKey) {
   data_container_t const* element = (data_container_t const*) e;
 
   if (byKey) {
-    return TRI_FnvHashPointer(&element->key,sizeof(element->key));
+    return fasthash64(&element->key, sizeof(element->key), 0x12345678);
   }
   else {
-    return TRI_FnvHashPointer(&element->value,sizeof(element->value));
+    return fasthash64(&element->value, sizeof(element->value), 0x12345678);
   }
 }
 
@@ -107,11 +107,11 @@ static bool IsEqualElementElementByKey (void const* l, void const* r) {
 
 struct CMultiPointerSetup {
   CMultiPointerSetup () {
-    BOOST_TEST_MESSAGE("setup TRI_associative_pointer_t");
+    BOOST_TEST_MESSAGE("setup AssocMulti_t");
   }
 
   ~CMultiPointerSetup () {
-    BOOST_TEST_MESSAGE("tear-down TRI_associative_pointer_t");
+    BOOST_TEST_MESSAGE("tear-down AssocMulti_t");
   }
 };
 
@@ -132,7 +132,7 @@ BOOST_FIXTURE_TEST_SUITE(CMultiPointerTest, CMultiPointerSetup)
 BOOST_AUTO_TEST_CASE (tst_init) {
   INIT_MULTI
 
-  BOOST_CHECK_EQUAL((uint64_t) 0, a1._nrUsed);
+  BOOST_CHECK_EQUAL((uint32_t) 0, a1.size());
 
   DESTROY_MULTI
 }
@@ -147,13 +147,13 @@ BOOST_AUTO_TEST_CASE (tst_insert_few) {
   void* r = 0;
 
   ELEMENT(e1, 1, 123);
-  BOOST_CHECK_EQUAL(r, TRI_InsertElementMultiPointer(&a1, &e1, true, false));
-  BOOST_CHECK_EQUAL((uint64_t) 1, a1._nrUsed);
-  BOOST_CHECK_EQUAL(&e1, TRI_LookupByElementMultiPointer(&a1, &e1));
+  BOOST_CHECK_EQUAL(r, a1.insert(&e1, true, false));
+  BOOST_CHECK_EQUAL((uint32_t) 1, a1.size());
+  BOOST_CHECK_EQUAL(&e1, a1.lookup(&e1));
 
-  BOOST_CHECK_EQUAL(&e1, TRI_RemoveElementMultiPointer(&a1, &e1));
-  BOOST_CHECK_EQUAL((uint64_t) 0, a1._nrUsed);
-  BOOST_CHECK_EQUAL(r, TRI_LookupByElementMultiPointer(&a1, &e1));
+  BOOST_CHECK_EQUAL(&e1, a1.remove(&e1));
+  BOOST_CHECK_EQUAL((uint32_t) 0, a1.size());
+  BOOST_CHECK_EQUAL(r, a1.lookup(&e1));
 
   DESTROY_MULTI
 }
@@ -178,56 +178,52 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
     p = new data_container_t(i % MODULUS, i);
     v.push_back(p);
-    BOOST_CHECK_EQUAL(n, TRI_InsertElementMultiPointer(&a1, p, true, false));
+    BOOST_CHECK_EQUAL(n, a1.insert(p, true, false));
   }
   one_more = new data_container_t(NUMBER_OF_ELEMENTS % MODULUS, 
                                   NUMBER_OF_ELEMENTS);
 
   // Now check it is there (by element):
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
-    p = static_cast<data_container_t*>
-                   (TRI_LookupByElementMultiPointer(&a1, v[i]));
-    BOOST_CHECK_EQUAL(p,v[i]);
+    p = static_cast<data_container_t*>(a1.lookup(v[i]));
+    BOOST_CHECK_EQUAL(p, v[i]);
   }
   // This should not be there:
-  p = static_cast<data_container_t*>
-                   (TRI_LookupByElementMultiPointer(&a1, one_more));
+  p = static_cast<data_container_t*>(a1.lookup(one_more));
   BOOST_CHECK_EQUAL(n, p);
   
   // Now check by key:
-  TRI_vector_pointer_t res;
+  std::vector<void*>* res = nullptr;
 
   for (i = 0;i < MODULUS;i++) {
     int* space = static_cast<int*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
                                     sizeof(int) * NUMBER_OF_ELEMENTS / MODULUS,
                                     true));
-    res = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, &a1, &i);
-    BOOST_CHECK_EQUAL(TRI_LengthVectorPointer(&res),
+    res = a1.lookupByKey(&i);
+    BOOST_CHECK_EQUAL(res->size(),
                       NUMBER_OF_ELEMENTS/MODULUS);
     // Now check its contents:
-    for (j = 0;j < TRI_LengthVectorPointer(&res);j++) {
-      data_container_t* q = static_cast<data_container_t*>
-                                       (TRI_AtVectorPointer(&res, j));
+    for (j = 0; j < res->size(); j++) {
+      data_container_t* q = static_cast<data_container_t*> (res->at(j));
       BOOST_CHECK_EQUAL(q->value % MODULUS, i);
       BOOST_CHECK_EQUAL(space[(q->value - i) / MODULUS],0);
       space[(q->value - i) / MODULUS] = 1;
     }
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, space);
-    TRI_DestroyVectorPointer(&res);
+    delete res;
   }
 
   // Delete some data:
   for (i = 0;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(v[i], TRI_RemoveElementMultiPointer(&a1, v[i]));
+    BOOST_CHECK_EQUAL(v[i], a1.remove(v[i]));
   }
   for (i = 0;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(n, TRI_RemoveElementMultiPointer(&a1, v[i]));
+    BOOST_CHECK_EQUAL(n, a1.remove(v[i]));
   }
 
   // Now check which are there (by element):
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
-    p = static_cast<data_container_t*>
-                   (TRI_LookupByElementMultiPointer(&a1, v[i]));
+    p = static_cast<data_container_t*> (a1.lookup(v[i]));
     if (i % 3 == 0) {
       BOOST_CHECK_EQUAL(p,n);
     }
@@ -236,22 +232,20 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
     }
   }
   // This should not be there:
-  p = static_cast<data_container_t*>
-                   (TRI_LookupByElementMultiPointer(&a1, one_more));
+  p = static_cast<data_container_t*> (a1.lookup(one_more));
   BOOST_CHECK_EQUAL(n, p);
   
   // Delete some more:
   for (i = 1;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(v[i], TRI_RemoveElementMultiPointer(&a1, v[i]));
+    BOOST_CHECK_EQUAL(v[i], a1.remove(v[i]));
   }
   for (i = 1;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(n, TRI_RemoveElementMultiPointer(&a1, v[i]));
+    BOOST_CHECK_EQUAL(n, a1.remove(v[i]));
   }
 
   // Now check which are there (by element):
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
-    p = static_cast<data_container_t*>
-                   (TRI_LookupByElementMultiPointer(&a1, v[i]));
+    p = static_cast<data_container_t*> (a1.lookup(v[i]));
     if (i % 3 == 2) {
       BOOST_CHECK_EQUAL(p,v[i]);
     }
@@ -260,27 +254,24 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
     }
   }
   // This should not be there:
-  p = static_cast<data_container_t*>
-                   (TRI_LookupByElementMultiPointer(&a1, one_more));
+  p = static_cast<data_container_t*> (a1.lookup(one_more));
   BOOST_CHECK_EQUAL(n, p);
   
   // Delete the rest:
   for (i = 2;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(v[i], TRI_RemoveElementMultiPointer(&a1, v[i]));
+    BOOST_CHECK_EQUAL(v[i], a1.remove(v[i]));
   }
   for (i = 2;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(n, TRI_RemoveElementMultiPointer(&a1, v[i]));
+    BOOST_CHECK_EQUAL(n, a1.remove(v[i]));
   }
 
   // Now check which are there (by element):
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
-    p = static_cast<data_container_t*>
-                   (TRI_LookupByElementMultiPointer(&a1, v[i]));
+    p = static_cast<data_container_t*> (a1.lookup(v[i]));
     BOOST_CHECK_EQUAL(p,n);
   }
   // This should not be there:
-  p = static_cast<data_container_t*>
-                   (TRI_LookupByElementMultiPointer(&a1, one_more));
+  p = static_cast<data_container_t*> (a1.lookup(one_more));
   BOOST_CHECK_EQUAL(n, p);
   // Pull down data again:
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {

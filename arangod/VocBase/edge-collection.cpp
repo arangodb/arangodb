@@ -30,7 +30,6 @@
 
 #include "edge-collection.h"
 
-#include "Basics/associative-multi.h"
 #include "Basics/logging.h"
 
 #include "VocBase/document-collection.h"
@@ -111,23 +110,19 @@ static bool FindEdges (TRI_edge_direction_e direction,
                        std::vector<TRI_doc_mptr_copy_t>& result,
                        TRI_edge_header_t* entry,
                        int matchType) {
-  TRI_vector_pointer_t found;
+  std::vector<void*>* found;
 
   if (direction == TRI_EDGE_OUT) {
-    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE,
-                                        &idx->_edges_from,
-                                        entry);
+    found = idx->_edges_from->lookupByKey(static_cast<void*>(entry));
   }
   else if (direction == TRI_EDGE_IN) {
-    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE,
-                                        &idx->_edges_to,
-                                        entry);
+    found = idx->_edges_to->lookupByKey(static_cast<void*>(entry));
   }
   else {
     TRI_ASSERT(false);   // TRI_EDGE_ANY not supported here
   }
 
-  size_t const n = found._length;
+  size_t const n = found->size();
 
   if (n > 0) {
     if (result.capacity() == 0) {
@@ -138,7 +133,7 @@ static bool FindEdges (TRI_edge_direction_e direction,
 
     // add all results found
     for (size_t i = 0;  i < n;  ++i) {
-      TRI_doc_mptr_t* edge = (TRI_doc_mptr_t*) found._buffer[i];
+      TRI_doc_mptr_t* edge = static_cast<TRI_doc_mptr_t*>(found->at(i));
 
       // the following queries will use the following sequences of matchTypes:
       // inEdges(): 1,  outEdges(): 1,  edges(): 1, 3
@@ -164,7 +159,7 @@ static bool FindEdges (TRI_edge_direction_e direction,
     }
   }
 
-  TRI_DestroyVectorPointer(&found);
+  delete found;
 
   return true;
 }
@@ -232,24 +227,49 @@ void TRI_LookupEdgeIndex (TRI_index_t* idx,
     result.emplace_back(*(doc));
   };
 
-  TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
+  auto edgesIndex = static_cast<TRI_edge_index_t*>(idx);
   
-  if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
-    TRI_LookupByKeyMultiPointer(&edgesIndex->_edges_from,
-                                &edgeIndexIterator->_edge,
-                                callback,
-                                next,
-                                batchSize);
-  }
-  else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
-    TRI_LookupByKeyMultiPointer(&edgesIndex->_edges_to,
-                                &edgeIndexIterator->_edge,
-                                callback,
-                                next,
-                                batchSize);
+  std::vector<void*>* found;
+  if (next == nullptr) {
+    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
+      found = edgesIndex->_edges_from->lookupByKey(&(edgeIndexIterator->_edge),
+                                                   batchSize);
+    }
+    else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
+      found = edgesIndex->_edges_to->lookupByKey(&(edgeIndexIterator->_edge),
+                                                 batchSize);
+    }
+    else {
+      TRI_ASSERT(false);
+    }
+    if (found != nullptr && found->size() != 0) {
+      next = found->back();
+    }
   }
   else {
-    TRI_ASSERT(false);
+    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
+      found = edgesIndex->_edges_from->lookupByKeyContinue(next, batchSize);
+    }
+    else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
+      found = edgesIndex->_edges_to->lookupByKeyContinue(next, batchSize);
+    }
+    else {
+      TRI_ASSERT(false);
+    }
+    if (found != nullptr && found->size() != 0) {
+      next = found->back();
+    }
+    else {
+      next = nullptr;
+    }
+  }
+
+  if (found != nullptr) {
+    for (auto& v : *found) {
+      callback(v);
+    }
+
+    delete found;
   }
 }
 

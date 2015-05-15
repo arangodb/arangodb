@@ -34,8 +34,8 @@
 
 #include "VocBase/vocbase.h"
 
-#include "Basics/associative-multi.h"
 #include "Basics/json.h"
+#include "Basics/AssocMulti.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/GeoIndex.h"
 #include "IndexOperators/index-operator.h"
@@ -92,7 +92,7 @@ TRI_index_geo_variant_e;
 /// @brief index base class
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_index_s {
+struct TRI_index_t {
   TRI_idx_iid_t   _iid;
   TRI_idx_type_e  _type;
   struct TRI_document_collection_t* _collection;
@@ -102,33 +102,32 @@ typedef struct TRI_index_s {
   bool _sparse;
   bool _hasSelectivityEstimate;
 
-  double (*selectivityEstimate) (struct TRI_index_s const*);
-  size_t (*memory) (struct TRI_index_s const*);
-  TRI_json_t* (*json) (struct TRI_index_s const*);
-  void (*removeIndex) (struct TRI_index_s*, struct TRI_document_collection_t*);
+  double (*selectivityEstimate) (TRI_index_t const*);
+  size_t (*memory) (TRI_index_t const*);
+  TRI_json_t* (*json) (TRI_index_t const*);
+  void (*removeIndex) (TRI_index_t*, struct TRI_document_collection_t*);
 
   // .........................................................................................
   // the following functions are called for document/collection administration
   // .........................................................................................
 
-  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_t const*, bool);
-  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_t const*, bool);
+  int (*insert) (TRI_index_t*, struct TRI_doc_mptr_t const*, bool);
+  int (*remove) (TRI_index_t*, struct TRI_doc_mptr_t const*, bool);
 
   // NULL by default. will only be called if non-NULL
-  int (*postInsert) (struct TRI_transaction_collection_s*, struct TRI_index_s*, struct TRI_doc_mptr_t const*);
+  int (*postInsert) (struct TRI_transaction_collection_s*, TRI_index_t*, struct TRI_doc_mptr_t const*);
 
   // a garbage collection function for the index
-  int (*cleanup) (struct TRI_index_s*);
+  int (*cleanup) (TRI_index_t*);
 
   // give index a hint about the expected size
-  int (*sizeHint) (struct TRI_index_s*, size_t);
+  int (*sizeHint) (TRI_index_t*, size_t);
 
   // .........................................................................................
   // the following functions are called by the query machinery which attempting to determine an
   // appropriate index and when using the index to obtain a result set.
   // .........................................................................................
-}
-TRI_index_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index
@@ -153,13 +152,12 @@ TRI_geo_index_t;
 /// @brief edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_edge_index_s {
-  TRI_index_t base;
+typedef triagens::basics::AssocMulti<void, void, uint32_t> TRI_EdgeIndexHash_t;
 
-  TRI_multi_pointer_t _edges_from;
-  TRI_multi_pointer_t _edges_to;
-}
-TRI_edge_index_t;
+struct TRI_edge_index_t : TRI_index_t {
+  TRI_EdgeIndexHash_t* _edges_from;
+  TRI_EdgeIndexHash_t* _edges_to;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skiplist index

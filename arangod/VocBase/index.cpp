@@ -854,14 +854,14 @@ static int InsertEdge (TRI_index_t* idx,
                        TRI_doc_mptr_t const* mptr,
                        bool isRollback) {
 
-  TRI_multi_pointer_t* edgesIndex;
+  TRI_EdgeIndexHash_t* edgesIndex;
 
   // OUT
-  edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_from);
-  TRI_InsertElementMultiPointer(edgesIndex, CONST_CAST(mptr), true, isRollback);
+  edgesIndex = ((TRI_edge_index_t*) idx)->_edges_from;
+  edgesIndex->insert(CONST_CAST(mptr), true, isRollback);
   // IN
-  edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_to);
-  TRI_InsertElementMultiPointer(edgesIndex, CONST_CAST(mptr), true, isRollback);
+  edgesIndex = ((TRI_edge_index_t*) idx)->_edges_to;
+  edgesIndex->insert(CONST_CAST(mptr), true, isRollback);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -874,14 +874,14 @@ static int RemoveEdge (TRI_index_t* idx,
                        TRI_doc_mptr_t const* mptr,
                        bool isRollback) {
 
-  TRI_multi_pointer_t* edgesIndex;
+  TRI_EdgeIndexHash_t* edgesIndex;
 
   // OUT
-  edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_from);
-  TRI_RemoveElementMultiPointer(edgesIndex, mptr);
+  edgesIndex = ((TRI_edge_index_t*) idx)->_edges_from;
+  edgesIndex->remove(mptr);
   // IN
-  edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_to);
-  TRI_RemoveElementMultiPointer(edgesIndex, mptr);
+  edgesIndex = ((TRI_edge_index_t*) idx)->_edges_to;
+  edgesIndex->remove(mptr);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -891,8 +891,8 @@ static int RemoveEdge (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t MemoryEdge (TRI_index_t const* idx) {
-  return TRI_MemoryUsageMultiPointer(&(((TRI_edge_index_t*) idx)->_edges_from)) +
-         TRI_MemoryUsageMultiPointer(&(((TRI_edge_index_t*) idx)->_edges_to));
+  return   ((TRI_edge_index_t*) idx)->_edges_from->memoryUsage()
+         + ((TRI_edge_index_t*) idx)->_edges_to->memoryUsage();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -901,8 +901,8 @@ static size_t MemoryEdge (TRI_index_t const* idx) {
 
 static double SelectivityEstimateEdge (TRI_index_t const* idx) {
   // return average selectivity of the two index parts
-  return (TRI_SelectivityEstimateMultiPointer(&(((TRI_edge_index_t*) idx)->_edges_from)) +
-          TRI_SelectivityEstimateMultiPointer(&(((TRI_edge_index_t*) idx)->_edges_to))) * 0.5;
+  return (  ((TRI_edge_index_t*) idx)->_edges_from->selectivity()
+          + ((TRI_edge_index_t*) idx)->_edges_to->selectivity() ) * 0.5;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -931,29 +931,29 @@ static TRI_json_t* JsonEdge (TRI_index_t const* idx) {
 static int SizeHintEdge (TRI_index_t* idx,
                          size_t size) {
 
-  TRI_multi_pointer_t* edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_from);
+  TRI_EdgeIndexHash_t* edgesIndex = ((TRI_edge_index_t*) idx)->_edges_from;
 
   // we assume this is called when setting up the index and the index
   // is still empty
-  TRI_ASSERT(edgesIndex->_nrUsed == 0);
+  TRI_ASSERT(edgesIndex->size() == 0);
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  int err = TRI_ResizeMultiPointer(edgesIndex, size + 2049);
+  int err = edgesIndex->resize(size + 2049);
 
   if (err != TRI_ERROR_NO_ERROR) {
     return err;
   }
 
-  edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_to);
+  edgesIndex = ((TRI_edge_index_t*) idx)->_edges_to;
 
   // we assume this is called when setting up the index and the index
   // is still empty
-  TRI_ASSERT(edgesIndex->_nrUsed == 0);
+  TRI_ASSERT(edgesIndex->size() == 0);
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  return TRI_ResizeMultiPointer(edgesIndex, size + 2049);
+  return edgesIndex->resize(size + 2049);
 }
 
 // -----------------------------------------------------------------------------
@@ -968,44 +968,44 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
                                   TRI_idx_iid_t iid) {
   TRI_index_t* idx;
   char* id;
-  int res;
-
+  
   // create index
-  TRI_edge_index_t* edgeIndex = static_cast<TRI_edge_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_edge_index_t), false));
-
-  if (edgeIndex == nullptr) {
+  TRI_edge_index_t* edgeIndex;
+  try {
+    edgeIndex = new TRI_edge_index_t();
+  }
+  catch (...) {
     return nullptr;
   }
 
-  res = TRI_InitMultiPointer(&edgeIndex->_edges_from,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             HashElementKey,
-                             HashElementEdgeFrom,
-                             IsEqualKeyEdgeFrom,
-                             IsEqualElementEdge,
-                             IsEqualElementEdgeFromByKey);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_CORE_MEM_ZONE, edgeIndex);
-
+  try {
+    edgeIndex->_edges_from = new TRI_EdgeIndexHash_t(
+                                   HashElementKey,
+                                   HashElementEdgeFrom,
+                                   IsEqualKeyEdgeFrom,
+                                   IsEqualElementEdge,
+                                   IsEqualElementEdgeFromByKey);
+  }
+  catch (...) {
+    delete edgeIndex;
     return nullptr;
   }
-  res = TRI_InitMultiPointer(&edgeIndex->_edges_to,
-                             TRI_UNKNOWN_MEM_ZONE,
+
+  try {
+    edgeIndex->_edges_to = new TRI_EdgeIndexHash_t(
                              HashElementKey,
                              HashElementEdgeTo,
                              IsEqualKeyEdgeTo,
                              IsEqualElementEdge,
                              IsEqualElementEdgeToByKey);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyMultiPointer(&edgeIndex->_edges_from);
-    TRI_Free(TRI_CORE_MEM_ZONE, edgeIndex);
-
+  }
+  catch (...) {
+    delete edgeIndex->_edges_from;
+    delete edgeIndex;
     return nullptr;
   }
 
-  idx = &edgeIndex->base;
+  idx = static_cast<TRI_index_t*>(edgeIndex);
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM);
@@ -1019,8 +1019,7 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
   idx->json                    = JsonEdge;
   idx->insert                  = InsertEdge;
   idx->remove                  = RemoveEdge;
-
-  idx->sizeHint = SizeHintEdge;
+  idx->sizeHint                = SizeHintEdge;
 
   return idx;
 }
@@ -1034,8 +1033,8 @@ void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
 
   LOG_TRACE("destroying edge index");
 
-  TRI_DestroyMultiPointer(&edgesIndex->_edges_to);
-  TRI_DestroyMultiPointer(&edgesIndex->_edges_from);
+  delete edgesIndex->_edges_to;
+  delete edgesIndex->_edges_from;
 
   TRI_DestroyVectorString(&idx->_fields);
 }
@@ -1045,8 +1044,9 @@ void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeEdgeIndex (TRI_index_t* idx) {
+  TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
   TRI_DestroyEdgeIndex(idx);
-  TRI_Free(TRI_CORE_MEM_ZONE, idx);
+  delete edgesIndex;
 }
 
 // -----------------------------------------------------------------------------

@@ -35,7 +35,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 
-struct TRI_index_s;
+struct TRI_index_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   EDGE COLLECTION
@@ -117,7 +117,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
 /// by next
 ////////////////////////////////////////////////////////////////////////////////
       
-void TRI_LookupEdgeIndex (struct TRI_index_s*,
+void TRI_LookupEdgeIndex (TRI_index_t*,
                           TRI_edge_index_iterator_t const*,
                           std::vector<TRI_doc_mptr_copy_t>&,
                           void*&,
