@@ -1844,14 +1844,15 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   traverser::ShortestPathOptions opts;
 
   bool includeData = false;
-
+  v8::Handle<v8::Object> edgeExample;
   if (args.Length() == 4) {
     if (! args[3]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
     }
     v8::Handle<v8::Object> options = args[3]->ToObject();
-    v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
 
+    // Parse direction
+    v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
     if (options->Has(keyDirection) ) {
       opts.direction = TRI_ObjectToString(options->Get(keyDirection));
       if (   opts.direction != "outbound"
@@ -1862,6 +1863,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       }
     }
 
+    // Parse Distance
     v8::Local<v8::String> keyWeight= TRI_V8_ASCII_STRING("distance");
     v8::Local<v8::String> keyDefaultWeight= TRI_V8_ASCII_STRING("defaultDistance");
     if (options->Has(keyWeight) && options->Has(keyDefaultWeight) ) {
@@ -1870,19 +1872,29 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       opts.defaultWeight = TRI_ObjectToDouble(options->Get(keyDefaultWeight));
     }
 
+    // Parse includeData
     v8::Local<v8::String> keyIncludeData = TRI_V8_ASCII_STRING("includeData");
     if (options->Has(keyIncludeData)) {
       includeData = TRI_ObjectToBoolean(options->Get(keyIncludeData));
     }
 
+    // Parse bidirectional
     v8::Local<v8::String> keyBidirectional = TRI_V8_ASCII_STRING("bidirectional");
     if (options->Has(keyBidirectional)) {
       opts.bidirectional = TRI_ObjectToBoolean(options->Get(keyBidirectional));
     }
 
+    // Parse multiThreaded
     v8::Local<v8::String> keyMultiThreaded = TRI_V8_ASCII_STRING("multiThreaded");
     if (options->Has(keyMultiThreaded)) {
       opts.multiThreaded = TRI_ObjectToBoolean(options->Get(keyMultiThreaded));
+    }
+
+    v8::Local<v8::String> keyFollowEdges = TRI_V8_ASCII_STRING("followEdges");
+    if (options->Has(keyFollowEdges)) {
+      opts.useEdgeFilter = true;
+      // TODO: User defined AQL function !!
+      edgeExample = v8::Handle<v8::Object>::Cast(options->Get(keyFollowEdges));
     }
   } 
 
@@ -1931,6 +1943,12 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
         colObj,
         HopWeightCalculator()
       ));
+    }
+  }
+  if (opts.useEdgeFilter) {
+    string errorMessage;
+    for (auto it: edgeCollectionInfos) {
+      opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(), errorMessage);
     }
   }
   try {

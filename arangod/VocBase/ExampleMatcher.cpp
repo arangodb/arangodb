@@ -107,7 +107,7 @@ ExampleMatcher::ExampleMatcher (
 /// @brief Checks if the given mptr matches the example in this class
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExampleMatcher::matches (TRI_doc_mptr_t const* mptr) {
+bool ExampleMatcher::matches (TRI_doc_mptr_t const* mptr) const {
   if (mptr == nullptr) {
     return false;
   }

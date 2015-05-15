@@ -116,13 +116,22 @@ class MultiCollectionEdgeExpander {
 
     vector<EdgeCollectionInfo*> _edgeCollections;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function to check if the edge passes the filter
+////////////////////////////////////////////////////////////////////////////////
+
+    function<bool (EdgeId, TRI_doc_mptr_copy_t*)> _isAllowed;
+
   public: 
 
     MultiCollectionEdgeExpander(TRI_edge_direction_e const& direction,
-                       vector<EdgeCollectionInfo*> const& edgeCollections)
+                       vector<EdgeCollectionInfo*> const& edgeCollections,
+                       function<bool (EdgeId, TRI_doc_mptr_copy_t*)> isAllowed)
       : _direction(direction),
-        _edgeCollections(edgeCollections) {
+        _edgeCollections(edgeCollections),
+        _isAllowed(isAllowed) {
       }
+
 
     void operator() (VertexId& source,
                      vector<ArangoDBPathFinder::Step*>& result) {
@@ -135,6 +144,10 @@ class MultiCollectionEdgeExpander {
 
         unordered_map<VertexId, size_t> candidates;
         for (size_t j = 0;  j < edges.size(); ++j) {
+          EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
+          if (!_isAllowed(edgeId, &edges[j])) {
+            continue;
+          }
           VertexId from = extractFromId(edges[j]);
           VertexId to = extractToId(edges[j]);
           double currentWeight = edgeCollection->weightEdge(edges[j]);
@@ -143,7 +156,7 @@ class MultiCollectionEdgeExpander {
             if (cand == candidates.end()) {
               // Add weight
               result.push_back(new ArangoDBPathFinder::Step(t, s, currentWeight,
-                               edgeCollection->extractEdgeId(edges[j])));
+                               edgeId));
               candidates.emplace(t, result.size() - 1);
             } else {
               // Compare weight
@@ -223,6 +236,69 @@ class SimpleEdgeExpander {
     } 
 };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                     ShortestPathOptions FUNCTIONS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if an edge matches to given examples
+////////////////////////////////////////////////////////////////////////////////
+
+bool ShortestPathOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
+  if (!useEdgeFilter) {
+    // Nothing to do
+    return true;
+  }
+  auto it = _edgeFilter.find(e.cid);
+  if (it == _edgeFilter.end()) {
+    // This collection does not have any object of this shape.
+    // Short circuit.
+    return false;
+  }
+  return it->second->matches(edge);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a new edge matcher object
+////////////////////////////////////////////////////////////////////////////////
+
+void ShortestPathOptions::addEdgeFilter( 
+          v8::Isolate* isolate,
+          v8::Handle<v8::Object> const& example,
+          TRI_shaper_t* shaper,
+          TRI_voc_cid_t const& cid,
+          string& errorMessage) {
+  auto it = _edgeFilter.find(cid);
+  if (it == _edgeFilter.end()) {
+    _edgeFilter.emplace(cid, new ExampleMatcher(isolate, example, shaper, errorMessage));
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          private Helper Functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper to transform a vertex _id string to VertexId struct.
+////////////////////////////////////////////////////////////////////////////////
+
+static VertexId idStringToVertexId (
+    CollectionNameResolver const* resolver,
+    string const& vertex
+  ) {
+  size_t split;
+  char const* str = vertex.c_str();
+  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+    throw TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
+  }
+  string collectionName = vertex.substr(0, split);
+  auto coli = resolver->getCollectionStruct(collectionName);
+  if (coli == nullptr) {
+    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  return VertexId(coli->_cid, const_cast<char*>(str + split + 1));
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Wrapper for the shortest path computation
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,36 +323,12 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
     backward = TRI_EDGE_ANY;
   }
 
-  MultiCollectionEdgeExpander forwardExpander(forward, collectionInfos);
-  MultiCollectionEdgeExpander backwardExpander(backward, collectionInfos);
+  auto filterClosure = [opts](EdgeId e, TRI_doc_mptr_copy_t* edge) -> bool {return opts.matchesEdge(e, edge);};
+  MultiCollectionEdgeExpander forwardExpander (forward, collectionInfos, filterClosure);
+  MultiCollectionEdgeExpander backwardExpander (backward, collectionInfos, filterClosure);
 
-  // Transform string ids to VertexIds
-  // Needs refactoring!
-  size_t split;
-  char const* str = startVertex.c_str();
-  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    return nullptr;
-  }
-  string collectionName = startVertex.substr(0, split);
-
-  auto coli = resolver->getCollectionStruct(collectionName);
-  if (coli == nullptr) {
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  VertexId sv(coli->_cid, const_cast<char*>(str + split + 1));
-
-  str = targetVertex.c_str();
-  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    return nullptr;
-  }
-  collectionName = targetVertex.substr(0, split);
-
-  coli = resolver->getCollectionStruct(collectionName);
-  if (coli == nullptr) {
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-  VertexId tv(coli->_cid, str + split + 1);
+  VertexId sv = idStringToVertexId(resolver, startVertex);
+  VertexId tv = idStringToVertexId(resolver, targetVertex);
 
   ArangoDBPathFinder pathFinder(forwardExpander, 
                               backwardExpander,
