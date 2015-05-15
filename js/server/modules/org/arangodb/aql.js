@@ -5611,6 +5611,9 @@ function AQL_SHORTEST_PATH (vertexCollection,
     // Default has to include the data for backwards compatibility
     opts.includeData = true;
   }
+  if (params.hasOwnProperty("followEdges")) {
+    opts.followEdges = params.followEdges;
+  }
   var newRes = CPP_SHORTEST_PATH([edgeCollection],
     TO_ID(startVertex, vertexCollection),
     TO_ID(endVertex, vertexCollection),

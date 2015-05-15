@@ -33,42 +33,7 @@
 #include "Basics/Common.h"
 #include "Traverser.h"
 #include "VocBase/edge-collection.h"
-
-namespace triagens {
-  namespace basics {
-    namespace traverser {
-      struct ShortestPathOptions {
-        std::string direction;
-        bool useWeight;
-        std::string weightAttribute;
-        double defaultWeight;
-        bool bidirectional;
-        bool multiThreaded;
-
-        ShortestPathOptions() :
-          direction("outbound"),
-          useWeight(false),
-          weightAttribute(""),
-          defaultWeight(1),
-          bidirectional(true),
-          multiThreaded(true) {
-        }
-
-      };
-      struct NeighborsOptions {
-        std::string direction;
-        bool distinct;
-
-        NeighborsOptions() :
-          direction("outbound"),
-          distinct(false) {
-        }
-
-      };
- 
-    }
-  }
-}
+#include "VocBase/ExampleMatcher.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Template for a vertex id. Is simply a pair of cid and key
@@ -103,6 +68,63 @@ typedef triagens::basics::PathFinder<VertexId, EdgeId, double>
         ArangoDBPathFinder;
 
 
+
+namespace triagens {
+  namespace basics {
+    namespace traverser {
+      struct ShortestPathOptions {
+
+        private: 
+          std::unordered_map<TRI_voc_cid_t, triagens::arango::ExampleMatcher*> _vertexFilter;
+          std::unordered_map<TRI_voc_cid_t, triagens::arango::ExampleMatcher*> _edgeFilter;
+
+        public:
+          std::string direction;
+          bool useWeight;
+          std::string weightAttribute;
+          double defaultWeight;
+          bool bidirectional;
+          bool multiThreaded;
+          bool useVertexFilter;
+          bool useEdgeFilter;
+
+          ShortestPathOptions() :
+            direction("outbound"),
+            useWeight(false),
+            weightAttribute(""),
+            defaultWeight(1),
+            bidirectional(true),
+            multiThreaded(true),
+            useVertexFilter(false),
+            useEdgeFilter(false) {
+          }
+
+          void addEdgeFilter(
+            v8::Isolate* isolate,
+            v8::Handle<v8::Object> const& example,
+            TRI_shaper_t* shaper,
+            TRI_voc_cid_t const& cid,
+            std::string& errorMessage
+          );
+          bool matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
+
+      };
+      struct NeighborsOptions {
+        std::string direction;
+        bool distinct;
+
+        NeighborsOptions() :
+          direction("outbound"),
+          distinct(false) {
+        }
+
+      };
+ 
+    }
+  }
+}
+
+
     
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to weight an edge
@@ -117,13 +139,13 @@ class EdgeCollectionInfo {
 /// @brief edge collection
 ////////////////////////////////////////////////////////////////////////////////
 
-    TRI_document_collection_t* _edgeCollection;
+    TRI_voc_cid_t _edgeCollectionCid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge collection
 ////////////////////////////////////////////////////////////////////////////////
 
-    TRI_voc_cid_t _edgeCollectionCid;
+    TRI_document_collection_t* _edgeCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weighter functions
@@ -137,8 +159,8 @@ class EdgeCollectionInfo {
       TRI_voc_cid_t& edgeCollectionCid,
       TRI_document_collection_t* edgeCollection,
       WeightCalculatorFunction weighter
-    )  : _edgeCollection(edgeCollection),
-       _edgeCollectionCid(edgeCollectionCid),
+     ) : _edgeCollectionCid(edgeCollectionCid),
+       _edgeCollection(edgeCollection),
        _weighter(weighter) {
     }
 
@@ -150,6 +172,14 @@ class EdgeCollectionInfo {
         VertexId& vertexId) {
       return TRI_LookupEdgesDocumentCollection(_edgeCollection,
                    direction, vertexId.cid, const_cast<char*>(vertexId.key));
+    }
+
+    TRI_voc_cid_t getCid() {
+      return _edgeCollectionCid;
+    }
+
+    TRI_shaper_t* getShaper() {
+      return _edgeCollection->getShaper();
     }
 
     double weightEdge(TRI_doc_mptr_copy_t& ptr) {

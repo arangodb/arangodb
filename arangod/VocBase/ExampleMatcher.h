@@ -65,7 +65,7 @@ namespace triagens {
           cleanup();
         };
 
-        bool matches (TRI_doc_mptr_t const* mptr);
+        bool matches (TRI_doc_mptr_t const* mptr) const;
 
       private:
 
