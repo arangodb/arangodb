@@ -30,6 +30,7 @@
 
 #include "voc-shaper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/fasthash.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -67,9 +68,10 @@ typedef struct voc_shaper_s {
 
   TRI_document_collection_t*      _collection;
 
-  triagens::basics::ReadWriteLock _accessorLock;
   triagens::basics::Mutex         _shapeLock;
   triagens::basics::Mutex         _attributeLock;
+  
+  triagens::basics::ReadWriteLock _accessorLock[8];
 }
 voc_shaper_t;
 
@@ -899,11 +901,12 @@ TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
                                                      TRI_shape_pid_t pid) {
   TRI_shape_access_t search = { sid, pid, 0, nullptr };
 
+  size_t const lockId = static_cast<size_t>(fasthash64(&sid, sizeof(TRI_shape_sid_t), fasthash64(&pid, sizeof(TRI_shape_pid_t), 0x87654321)) % 8);
   voc_shaper_t* shaper = (voc_shaper_t*) s;
 
   TRI_shape_access_t const* found;
   {
-    READ_LOCKER(shaper->_accessorLock);
+    READ_LOCKER(shaper->_accessorLock[lockId]);
 
     found = static_cast<TRI_shape_access_t const*>(TRI_LookupByElementAssociativePointer(&shaper->_accessors, &search));
 
@@ -922,7 +925,8 @@ TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
 
   // acquire the write-lock and try to insert our own accessor
   {
-    WRITE_LOCKER(shaper->_accessorLock);
+
+    WRITE_LOCKER(shaper->_accessorLock[lockId]);
 
     found = static_cast<TRI_shape_access_t const*>(TRI_InsertElementAssociativePointer(&shaper->_accessors, const_cast<void*>(static_cast<void const*>(accessor)), false));
   }
