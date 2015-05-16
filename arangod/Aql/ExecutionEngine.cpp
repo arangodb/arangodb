@@ -198,8 +198,8 @@ ExecutionEngine::~ExecutionEngine () {
     // shutdown can throw - ignore it in the destructor
   }
 
-  for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
-    delete (*it);
+  for (auto& it : _blocks) {
+    delete it;
   }
 }
 

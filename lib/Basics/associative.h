@@ -411,14 +411,18 @@ T TRI_ProcessByKeyAssociativeSynced (TRI_associative_synced_t* array,
                                      void const* key,
                                      std::function<T(void const*)> callback) {
   // compute the hash
-  uint64_t hash = array->hashKey(array, key);
+  uint64_t const hash = array->hashKey(array, key);
 
   // search the table
   TRI_ReadLockReadWriteLock(&array->_lock);
-  uint64_t i = hash % array->_nrAlloc;
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i, k;
+  i = k = hash % n;
 
-  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
+  for (; i < n && array->_table[i] != nullptr && ! array->isEqualKeyElement(array, key, array->_table[i]); ++i);
+
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i] != nullptr && ! array->isEqualKeyElement(array, key, array->_table[i]); ++i);
   }
 
   T result = callback(array->_table[i]);

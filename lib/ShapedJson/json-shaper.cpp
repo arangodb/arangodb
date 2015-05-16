@@ -198,7 +198,7 @@ static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array,
   char const* e = static_cast<char const*>(element);
   TRI_shape_path_t const* ee = static_cast<TRI_shape_path_t const*>(element);
 
-  return TRI_EqualString(k,e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t));
+  return TRI_EqualString(k, e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

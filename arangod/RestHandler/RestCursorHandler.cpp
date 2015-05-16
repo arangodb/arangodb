@@ -265,7 +265,8 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// - *batchSize*: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is
-///   not set, a server-controlled default value will be used.
+///   not set, a server-controlled default value will be used. A *batchSize* value of
+///   *0* is disallowed.
 ///
 /// - *ttl*: an optional time-to-live for the cursor (in seconds). The cursor will be
 ///   removed on the server automatically after the specified amount of time. This
