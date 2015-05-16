@@ -259,8 +259,8 @@ namespace triagens {
           check(true, true);
 #endif
 
-          // if we were adding and the table is more than half full, extend it
-          if (_nrAlloc < 2 * _nrUsed) {
+          // if we were adding and the table is more than 2/3 full, extend it
+          if (2 * _nrAlloc < 3 * _nrUsed) {
             resizeInternal(2 * _nrAlloc + 1);
           }
 
@@ -713,7 +713,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int resize (IndexType size) throw() {
-          if (2*size+1 < _nrUsed) {
+          if (2 * (2*size+1) < 3 * _nrUsed) {
             return TRI_ERROR_BAD_PARAMETER;
           }
 
