@@ -37,6 +37,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/prime-numbers.h"
+#include "Basics/logging.h"
 
 namespace triagens {
   namespace basics {
@@ -771,6 +772,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void resizeInternal (IndexType size) {
+          
+          LOG_ACTION("edge-index-resize, target size: %llu", 
+                     (unsigned long long) size);
+          double start = TRI_microtime();
+
           Entry* oldTable = _table;
           IndexType oldAlloc = _nrAlloc;
 
@@ -816,6 +822,9 @@ namespace triagens {
           }
 
           delete [] oldTable;
+          
+          LOG_TIMER((TRI_microtime() - start), "resize-edge-index: done ");
+
         }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
