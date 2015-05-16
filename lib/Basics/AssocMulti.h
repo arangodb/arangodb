@@ -361,8 +361,132 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insertFirst, special version of insert, when it is known that the
+/// element is the first in the hash with its key, and the hash of the key
+/// is already known. This is for example the case when resizing.
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        void insertFirst (Element* element, uint64_t hashByKey) {
+
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+          check(true, true);
+#endif
+
+#ifdef TRI_INTERNAL_STATS
+          // update statistics
+          _nrAdds++;
+#endif
+
+          IndexType hashIndex = hashToIndex(hashByKey);
+          IndexType i = hashIndex % _nrAlloc;
+
+          // If this slot is free, just use it:
+          if (nullptr == _table[i].ptr) {
+            _table[i] = { hashByKey, element, INVALID_INDEX, INVALID_INDEX };
+            _nrUsed++;
+            // no collision generated here!
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+            check(true, true);
+#endif
+          }
+
+          // Now find the first slot with an entry with the same key
+          // that is the start of a linked list, or a free slot:
+          while (_table[i].ptr != nullptr) {
+            i = incr(i);
+#ifdef TRI_INTERNAL_STATS
+          // update statistics
+            _ProbesA++;
+#endif
+          }
+
+          // We are the first with this key:
+          _table[i] = { hashByKey, element, INVALID_INDEX, INVALID_INDEX };
+          _nrUsed++;
+          // no collision generated here either!
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+          check(true, true);
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insertFurther, special version of insert, when it is known
+/// that the element is not the first in the hash with its key, and
+/// the hash of the key and the element is already known. This is for
+/// example the case when resizing.
+////////////////////////////////////////////////////////////////////////////////
+
+        void insertFurther (Element* element, 
+                            uint64_t hashByKey, uint64_t hashByElm) {
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+          check(true, true);
+#endif
+
+#ifdef TRI_INTERNAL_STATS
+          // update statistics
+          _nrAdds++;
+#endif
+
+          // We need the beginning of the doubly linked list:
+          IndexType hashIndex = hashToIndex(hashByKey);
+          IndexType i = hashIndex % _nrAlloc;
+
+          TRI_ASSERT(nullptr != _table[i].ptr);
+
+          // Find the first slot with an entry with the same key
+          // that is the start of a linked list, or a free slot:
+          while (_table[i].ptr != nullptr &&
+                 (_table[i].prev != INVALID_INDEX ||
+                  _table[i].hashCache != hashByKey ||
+                  ! _isEqualElementElementByKey(element, _table[i].ptr))
+                ) {
+            i = incr(i);
+#ifdef TRI_INTERNAL_STATS
+          // update statistics
+            _ProbesA++;
+#endif
+
+          }
+
+          // If this is free, we are the first with this key, a contradiction:
+          TRI_ASSERT(nullptr != _table[i].ptr);
+
+          // Now, entry i points to the beginning of the linked
+          // list of which we want to make element a member.
+
+          // Now find a new home for element in this linked list:
+          hashIndex = hashToIndex(hashByElm);
+          IndexType j = hashIndex % _nrAlloc;
+
+          while (_table[j].ptr != nullptr) {
+            j = incr(j);
+#ifdef TRI_INTERNAL_STATS
+            _nrProbes++;
+#endif
+          }
+
+          // add the element to the hash and linked list (in pos 2):
+          _table[j] = { hashByElm, element, _table[i].next, i };
+          _table[i].next = j;
+          // Finally, we need to find the successor to patch it up:
+          if (_table[j].next != INVALID_INDEX) {
+            _table[_table[j].next].prev = j;
+          }
+          _nrUsed++;
+          _nrCollisions++;
+
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+          check(true, true);
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
+
+      public:
 
         Element* lookup (Element const* element) const {
           IndexType i;
@@ -675,7 +799,8 @@ namespace triagens {
             if (oldTable[j].ptr != nullptr && 
                 oldTable[j].prev == INVALID_INDEX) {
               // This is a "first" one in its doubly linked list:
-              insert(oldTable[j].ptr, true, false);  // FIXME: insertFirst
+              insertFirst(oldTable[j].ptr, oldTable[j].hashCache);
+              uint64_t hashByKey = oldTable[j].hashCache;
               // Now walk to the end of the list:
               IndexType k = j;
               while (oldTable[k].next != INVALID_INDEX) {
@@ -683,7 +808,8 @@ namespace triagens {
               }
               // Now insert all of them backwards, not repeating k:
               while (k != j) {
-                insert(oldTable[k].ptr, true, false);  // FIXME: insertFurther
+                insertFurther(oldTable[k].ptr, hashByKey, 
+                              oldTable[k].hashCache);
                 k = oldTable[k].prev;
               }
             }
