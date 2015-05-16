@@ -9,28 +9,28 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/H
       { 
         "_id" : "germanCity/Hamburg", 
         "_key" : "Hamburg", 
-        "_rev" : "1179198517", 
+        "_rev" : "1187688737", 
         "isCapital" : false, 
         "population" : 1000000, 
         "connnection" : [ 
           { 
             "_id" : "germanCity/Cologne", 
             "_key" : "Cologne", 
-            "_rev" : "1179001909", 
+            "_rev" : "1187492129", 
             "isCapital" : false, 
             "population" : 1000000 
           }, 
           { 
             "_id" : "frenchCity/Paris", 
             "_key" : "Paris", 
-            "_rev" : "1179788341", 
+            "_rev" : "1188278561", 
             "isCapital" : true, 
             "population" : 4000000 
           }, 
           { 
             "_id" : "frenchCity/Lyon", 
             "_key" : "Lyon", 
-            "_rev" : "1179591733", 
+            "_rev" : "1188081953", 
             "isCapital" : false, 
             "population" : 80000 
           } 

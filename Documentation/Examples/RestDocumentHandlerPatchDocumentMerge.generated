@@ -1,8 +1,8 @@
-shell> curl --dump - http://localhost:8529/_api/document/products/1687954485
+shell> curl --dump - http://localhost:8529/_api/document/products/1669968161
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1687954485"
+etag: "1669968161"
 
 { 
   "inhabitants" : { 
@@ -10,11 +10,11 @@ etag: "1687954485"
     "india" : 1263590000, 
     "usa" : 319220000 
   }, 
-  "_id" : "products/1687954485", 
-  "_rev" : "1687954485", 
-  "_key" : "1687954485" 
+  "_id" : "products/1669968161", 
+  "_rev" : "1669968161", 
+  "_key" : "1669968161" 
 }
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1687954485?mergeObjects=true <<EOF
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1669968161?mergeObjects=true <<EOF
 { 
   "inhabitants" : { 
     "indonesia" : 252164800, 
@@ -23,11 +23,11 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/docume
 }
 EOF
 
-shell> curl --dump - http://localhost:8529/_api/document/products/1687954485
+shell> curl --dump - http://localhost:8529/_api/document/products/1669968161
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1688478773"
+etag: "1670492449"
 
 { 
   "inhabitants" : { 
@@ -37,11 +37,11 @@ etag: "1688478773"
     "indonesia" : 252164800, 
     "brazil" : 203553000 
   }, 
-  "_id" : "products/1687954485", 
-  "_rev" : "1688478773", 
-  "_key" : "1687954485" 
+  "_id" : "products/1669968161", 
+  "_rev" : "1670492449", 
+  "_key" : "1669968161" 
 }
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1687954485?mergeObjects=false <<EOF
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1669968161?mergeObjects=false <<EOF
 { 
   "inhabitants" : { 
     "pakistan" : 188346000 
@@ -51,26 +51,26 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1688937525"
-location: /_db/_system/_api/document/products/1687954485
+etag: "1670951201"
+location: /_db/_system/_api/document/products/1669968161
 
 { 
   "error" : false, 
-  "_id" : "products/1687954485", 
-  "_rev" : "1688937525", 
-  "_key" : "1687954485" 
+  "_id" : "products/1669968161", 
+  "_rev" : "1670951201", 
+  "_key" : "1669968161" 
 }
-shell> curl --dump - http://localhost:8529/_api/document/products/1687954485
+shell> curl --dump - http://localhost:8529/_api/document/products/1669968161
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1688937525"
+etag: "1670951201"
 
 { 
   "inhabitants" : { 
     "pakistan" : 188346000 
   }, 
-  "_id" : "products/1687954485", 
-  "_rev" : "1688937525", 
-  "_key" : "1687954485" 
+  "_id" : "products/1669968161", 
+  "_rev" : "1670951201", 
+  "_key" : "1669968161" 
 }

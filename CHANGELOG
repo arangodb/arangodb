@@ -1,4 +1,4 @@
-v2.6.0 (XXXX-XX-XX)
+v2.6.0-alpha1 (2015-05-16)
 -------------------
 
 * removed startup option `--log.severity`

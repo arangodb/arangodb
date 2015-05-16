@@ -5,27 +5,27 @@ content-type: application/json; charset=utf-8
 
 { 
   "state" : { 
-    "running" : false, 
+    "running" : true, 
     "lastAppliedContinuousTick" : null, 
     "lastProcessedContinuousTick" : null, 
     "lastAvailableContinuousTick" : null, 
     "progress" : { 
-      "time" : "2015-05-05T07:28:51Z", 
-      "message" : "applier shut down", 
-      "failedConnects" : 0 
+      "time" : "2015-05-16T20:55:52Z", 
+      "message" : "fetching master state information", 
+      "failedConnects" : 1 
     }, 
-    "totalRequests" : 3, 
-    "totalFailedConnects" : 0, 
+    "totalRequests" : 2, 
+    "totalFailedConnects" : 2, 
     "totalEvents" : 0, 
     "totalOperationsExcluded" : 0, 
     "lastError" : { 
       "errorNum" : 0 
     }, 
-    "time" : "2015-05-05T07:28:51Z" 
+    "time" : "2015-05-16T20:55:52Z" 
   }, 
   "server" : { 
-    "version" : "2.6.0-devel", 
-    "serverId" : "39957130875700" 
+    "version" : "2.6.0-alpha1", 
+    "serverId" : "111425594195163" 
   }, 
   "endpoint" : "tcp://127.0.0.1:8529", 
   "database" : "_system" 
