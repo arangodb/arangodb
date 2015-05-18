@@ -287,6 +287,7 @@
         concat_in_order: {
           files: [
             'frontend/js/{,*/}*.js',
+            'frontend/js/graphViewer/**/*.js',
             'clusterFrontend/js/{,*/}*.js'
           ],
           tasks: [

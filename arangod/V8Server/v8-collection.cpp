@@ -2123,9 +2123,9 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
         }
 
         if (po->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
-          uint32_t tmp = TRI_ObjectToUInt64(
+          uint32_t tmp = static_cast<uint32_t>(TRI_ObjectToUInt64(
                                  po->Get(TRI_V8_ASCII_STRING("indexBuckets")),
-                                 false);
+                                 false));
           if (tmp < 1 || tmp > 1024) {
             if (info._keyOptions != nullptr) {
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);

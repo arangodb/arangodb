@@ -153,17 +153,22 @@ function printWarnings (warnings) {
 }
 
 /* print indexes used */
-function printIndexes (indexes) {
+function printIndexes (indexes, shouldPrint) {
   'use strict';
-  print(section("Indexes used:"));
-  if (indexes.length === 0) {
-    print(" " + value("none"));
+  var returnIndexes = [];
+
+  if (shouldPrint) {
+    print(section("Indexes used:"));
+
+    if (indexes.length === 0) {
+      print(" " + value("none"));
+    }
   }
-  else {
+  if (indexes.length > 0) {
     var maxIdLen = String("Id").length;
     var maxCollectionLen = String("Collection").length;
-    var maxUniqueLen = String("Unique").length; 
-    var maxSparseLen = String("Sparse").length; 
+    var maxUniqueLen = String("Unique").length;
+    var maxSparseLen = String("Sparse").length;
     var maxTypeLen = String("Type").length;
     var maxSelectivityLen = String("Selectivity Est.").length;
     var maxFieldsLen = String("Fields").length;
@@ -178,31 +183,36 @@ function printIndexes (indexes) {
       }
       l = index.fields.map(passthru).join(", ").length;
       if (l > maxFieldsLen) {
-        maxFieldsLen = l; 
+        maxFieldsLen = l;
       }
       l = index.collection.length;
       if (l > maxCollectionLen) {
-        maxCollectionLen = l; 
+        maxCollectionLen = l;
+      }
+      if (!shouldPrint) {
+        returnIndexes.push(index);
       }
     });
-    var line = " " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + 
-               header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " + 
+    var line = " " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
+               header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " +
                header("Collection") + pad(1 + maxCollectionLen - "Collection".length) + "   " +
-               header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " + 
-               header("Sparse") + pad(1 + maxSparseLen - "Sparse".length) + "   " + 
-               header("Selectivity Est.") + "   " + 
+               header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " +
+               header("Sparse") + pad(1 + maxSparseLen - "Sparse".length) + "   " +
+               header("Selectivity Est.") + "   " +
                header("Fields") + pad(1 + maxFieldsLen - "Fields".length) + "   " +
                header("Ranges");
-    print(line);
- 
+    if (shouldPrint) {
+      print(line);
+    }
+
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? "true" : "false");
       var sparsity = (indexes[i].hasOwnProperty("sparse") ? (indexes[i].sparse ? "true" : "false") : "n/a");
       var fields = indexes[i].fields.map(attribute).join(", ");
       var fieldsLen = indexes[i].fields.map(passthru).join(", ").length;
       var ranges = "[ " + indexes[i].ranges + " ]";
-      var selectivity = (indexes[i].hasOwnProperty("selectivityEstimate") ? 
-        (indexes[i].selectivityEstimate * 100).toFixed(2) + " %" : 
+      var selectivity = (indexes[i].hasOwnProperty("selectivityEstimate") ?
+        (indexes[i].selectivityEstimate * 100).toFixed(2) + " %" :
         "n/a"
       );
       line = " " + 
@@ -214,14 +224,24 @@ function printIndexes (indexes) {
         pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + "   " +
         fields + pad(1 + maxFieldsLen - fieldsLen) + "   " + 
         ranges;
-      print(line);
+      if (shouldPrint) {
+        print(line);
+      }
+      else {
+        returnIndexes.push(line);
+      }
     }
   }
-  print(); 
+  if (shouldPrint) {
+    print();
+  }
+  else {
+    return returnIndexes;
+  }
 }
 
 /* analzye and print execution plan */
-function processQuery (query, explain) {
+function processQuery (query, explain, shouldPrint) {
   'use strict';
   var nodes = { }, 
     parents = { }, 
@@ -543,28 +563,45 @@ function processQuery (query, explain) {
 
     if (node.type === "CalculationNode") {
       line += variablesUsed() + constNess();
-    } 
-    print(line);
+    }
+    if (shouldPrint) {
+      print(line);
+    }
+    else {
+      node.comment = indent(level, node.type === "SingletonNode") + label(node);
+      postHandle(node);
+      return node;
+    }
     postHandle(node);
   };
-  
-  printQuery(query);
-  
-  print(section("Execution plan:"));
+
+  if (shouldPrint) {
+    printQuery(query);
+    print(section("Execution plan:"));
+  }
 
   var line = " " + 
     pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
     header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   " +   
     pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " +
     header("Comment");
-  print(line);
 
+  if (shouldPrint) {
+    print(line);
+  }
+
+  var returnNodes = [];
 
   var walk = [ rootNode ];
   while (walk.length > 0) {
     var id = walk.pop();
     var node = nodes[id];
-    printNode(node);
+    if (shouldPrint) {
+      printNode(node);
+    }
+    else {
+      returnNodes.push(printNode(node));
+    }
     if (parents.hasOwnProperty(id)) {
       walk = walk.concat(parents[id]);
     }
@@ -573,16 +610,28 @@ function processQuery (query, explain) {
     }
   }
 
-  print();
-  
-  printIndexes(indexes);
-  printRules(plan.rules);
-  printModificationFlags(modificationFlags);
-  printWarnings(explain.warnings);
+  if (shouldPrint) {
+    print();
+
+    printIndexes(indexes, true);
+    printRules(plan.rules, true);
+    printModificationFlags(modificationFlags, true);
+    printWarnings(explain.warnings, true);
+  }
+  else {
+    return {
+      query: query,
+      index: indexes,
+      printRules: plan.rules,
+      nodes: returnNodes,
+      printModificationFlags: modificationFlags,
+      printWarnings: explain.warnings
+    };
+  }
 }
 
 /* the exposed function */
-function explain (data, options) { 
+function explain (data, options) {
   'use strict';
   if (typeof data === "string") {
     data = { query: data };
@@ -598,9 +647,29 @@ function explain (data, options) {
   var result = stmt.explain(options);
 
   print();
-  processQuery(data.query, result);
+  processQuery(data.query, result, true);
   print();
 }
 
+function getExplain (data, options) {
+  'use strict';
+  if (typeof data === "string") {
+    data = { query: data };
+  }
+  if (! (data instanceof Object)) {
+    throw "ArangoStatement needs initial data";
+  }
+
+  options = options || { };
+  setColors(options.colors === undefined ? true : options.colors);
+
+  var stmt = db._createStatement(data);
+  var result = stmt.explain(options);
+
+  var res2 = processQuery(data.query, result, false);
+  return res2;
+}
+
 exports.explain = explain;
+exports.getExplain = getExplain;
 
