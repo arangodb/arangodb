@@ -202,7 +202,11 @@ namespace triagens {
               _buckets.emplace_back();
               Bucket& b = _buckets.back();
               b._nrAlloc = initialSize;
+              b._table = nullptr;
+
+              // may fail...
               b._table = new Entry[b._nrAlloc];
+
               for (IndexType i = 0; i < b._nrAlloc; i++) {
                 invalidateEntry(b, i);
               }
@@ -210,6 +214,7 @@ namespace triagens {
           }
           catch (...) {
             for (auto& b : _buckets) {
+              delete [] b._table;
               b._table = nullptr;
               b._nrAlloc = 0;
             }
@@ -241,11 +246,11 @@ namespace triagens {
 
         size_t memoryUsage () const {
           size_t res = 0;
-          size_t count = 0;
+          // size_t count = 0;
           for (auto& b : _buckets) {
             res += static_cast<size_t> (b._nrAlloc) * sizeof(Entry);
-            std::cout << "Bucket: " << count++ << " _nrAlloc=" << b._nrAlloc
-                      << " _nrUsed=" << b._nrUsed << std::endl;
+            // std::cout << "Bucket: " << count++ << " _nrAlloc=" << b._nrAlloc
+            //          << " _nrUsed=" << b._nrUsed << std::endl;
           }
           return res;
         }
