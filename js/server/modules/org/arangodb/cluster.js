@@ -506,7 +506,8 @@ function createLocalCollections (plannedCollections) {
 
                       // collection exists, now compare collection properties
                       var properties = { };
-                      var cmp = [ "journalSize", "waitForSync", "doCompact" ];
+                      var cmp = [ "journalSize", "waitForSync", "doCompact",
+                                  "indexBuckets" ];
                       for (i = 0; i < cmp.length; ++i) {
                         var p = cmp[i];
                         if (localCollections[shard][p] !== payload[p]) {
