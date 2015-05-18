@@ -197,8 +197,6 @@ namespace triagens {
           numberBuckets = nr;
           _bucketsMask = nr - 1;
 
-          std::cout << "FUXX: numberBuckets=" << numberBuckets
-                    << " _bucketsMask=" << _bucketsMask << std::endl;
           try {
             for (size_t j = 0; j < numberBuckets; j++) {
               _buckets.emplace_back();

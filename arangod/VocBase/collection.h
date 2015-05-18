@@ -175,6 +175,7 @@ typedef struct TRI_col_info_s {
   TRI_voc_rid_t      _revision;        // last revision id written
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
   int64_t            _initialCount;    // initial count, used when loading a collection
+  uint32_t           _indexBuckets;    // number of buckets used in hash tables for indexes
 
   char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
   struct TRI_json_t* _keyOptions;      // options for key creation
@@ -198,15 +199,15 @@ struct TRI_collection_t {
   TRI_vocbase_t*       _vocbase;
   TRI_voc_tick_t       _tickMax;
 
-  TRI_col_state_e      _state;       // state of the collection
-  int                  _lastError;   // last (critical) error
+  TRI_col_state_e      _state;        // state of the collection
+  int                  _lastError;    // last (critical) error
 
-  char*                _directory;   // directory of the collection
+  char*                _directory;    // directory of the collection
 
-  TRI_vector_pointer_t _datafiles;   // all datafiles
-  TRI_vector_pointer_t _journals;    // all journals
-  TRI_vector_pointer_t _compactors;  // all compactor files
-  TRI_vector_string_t  _indexFiles;  // all index filenames
+  TRI_vector_pointer_t _datafiles;    // all datafiles
+  TRI_vector_pointer_t _journals;     // all journals
+  TRI_vector_pointer_t _compactors;   // all compactor files
+  TRI_vector_string_t  _indexFiles;   // all index filenames
 
   TRI_collection_t () {
   }
