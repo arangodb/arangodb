@@ -2147,6 +2147,8 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
     result->Set(IsVolatileKey,  v8::Boolean::New(isolate, info._isVolatile));
     result->Set(JournalSizeKey, v8::Number::New (isolate, info._maximalSize));
     result->Set(WaitForSyncKey, v8::Boolean::New(isolate, info._waitForSync));
+    result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
+                v8::Number::New(isolate, info._indexBuckets));
 
     shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
     v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate);
@@ -2188,6 +2190,7 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
       TRI_voc_size_t maximalSize = base->_info._maximalSize;
       bool doCompact     = base->_info._doCompact;
       bool waitForSync   = base->_info._waitForSync;
+      uint32_t indexBuckets = base->_info._indexBuckets;
 
       TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
@@ -2228,12 +2231,22 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
         TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
       }
 
+      if (po->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
+        indexBuckets = TRI_ObjectToUInt64(
+                         po->Get(TRI_V8_ASCII_STRING("indexBuckets")), true);
+        if (indexBuckets == 0 || indexBuckets > 1024) {
+          ReleaseCollection(collection);
+          TRI_V8_THROW_EXCEPTION_PARAMETER("indexBuckets must be a two-power between 1 and 1024");
+        }
+      }
+
       // update collection
       TRI_col_info_t newParameters;
 
       newParameters._doCompact   = doCompact;
       newParameters._maximalSize = maximalSize;
       newParameters._waitForSync = waitForSync;
+      newParameters._indexBuckets = indexBuckets;
 
       // try to write new parameter to file
       bool doSync = base->_vocbase->_settings.forceSyncProperties;
@@ -2284,6 +2297,8 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
   result->Set(IsSystemKey,    v8::Boolean::New(isolate, base->_info._isSystem));
   result->Set(IsVolatileKey,  v8::Boolean::New(isolate, base->_info._isVolatile));
   result->Set(JournalSizeKey, v8::Number::New( isolate, base->_info._maximalSize));
+  result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
+              v8::Number::New(isolate, document->_info._indexBuckets));
 
   TRI_json_t* keyOptions = document->_keyGenerator->toJson(TRI_UNKNOWN_MEM_ZONE);
 

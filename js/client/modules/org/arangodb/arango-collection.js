@@ -333,7 +333,8 @@ ArangoCollection.prototype.properties = function (properties) {
     "waitForSync": true,
     "shardKeys": false,
     "numberOfShards": false,
-    "keyOptions": false
+    "keyOptions": false,
+    "indexBuckets": true
   };
   var a;
 

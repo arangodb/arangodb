@@ -805,7 +805,8 @@ static void FillParametersFromJson (TRI_col_info_t* parameters,
   // init with defaults
   memset(parameters, 0, sizeof(TRI_col_info_t));
   parameters->_initialCount = -1;
-        
+  parameters->_indexBuckets = 1;
+
   // convert json
   size_t const n = TRI_LengthVector(&json->_value._objects);
 
@@ -835,6 +836,9 @@ static void FillParametersFromJson (TRI_col_info_t* parameters,
       }
       else if (TRI_EqualString(key->_value._string.data, "count")) {
         parameters->_initialCount = static_cast<int64_t>(value->_value._number);
+      }
+      else if (TRI_EqualString(key->_value._string.data, "indexBuckets")) {
+        parameters->_indexBuckets = static_cast<uint32_t>(value->_value._number);
       }
     }
     else if (TRI_IsStringJson(value)) {
@@ -901,8 +905,9 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
     parameters->_maximalSize = static_cast<TRI_voc_size_t>(PageSize);
   }
   parameters->_initialCount  = -1;
- 
-  // fill name with 0 bytes  
+  parameters->_indexBuckets  = 1;
+
+  // fill name with 0 bytes
   memset(parameters->_name, 0, sizeof(parameters->_name));
   TRI_CopyString(parameters->_name, name, sizeof(parameters->_name) - 1);
 
@@ -932,7 +937,7 @@ void TRI_FromJsonCollectionInfo (TRI_col_info_t* dst,
 /// @brief copy a collection info block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyCollectionInfo (TRI_col_info_t* dst, 
+void TRI_CopyCollectionInfo (TRI_col_info_t* dst,
                              TRI_col_info_t const* src) {
   TRI_ASSERT(dst != nullptr);
   memset(dst, 0, sizeof(TRI_col_info_t));
@@ -944,7 +949,8 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst,
   dst->_revision      = src->_revision;
   dst->_maximalSize   = src->_maximalSize;
   dst->_initialCount  = src->_initialCount;
-  
+  dst->_indexBuckets  = src->_indexBuckets;
+
   TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name) - 1);
 
   if (src->_keyOptions) {
@@ -1100,7 +1106,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   char* tmpfile = TRI_Concatenate2File(tmpname, ".tmp");
   res = TRI_WriteFile(tmpfile, "", 0);
   TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
-  
+
   TRI_IF_FAILURE("CreateCollection::tempFile") {
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -1121,7 +1127,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
     return nullptr;
   }
-  
+
   TRI_IF_FAILURE("CreateCollection::renameDirectory") {
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -1143,7 +1149,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
     return nullptr;
   }
-    
+
   TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
 
   // now we have the collection directory in place with the correct name and a .tmp file in it
@@ -1330,6 +1336,8 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "count",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_initialCount));
   }
 
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "indexBuckets", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_indexBuckets));
+
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_maximalSize));
@@ -1462,6 +1470,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     collection->_info._doCompact   = parameters->_doCompact;
     collection->_info._maximalSize = parameters->_maximalSize;
     collection->_info._waitForSync = parameters->_waitForSync;
+    collection->_info._indexBuckets = parameters->_indexBuckets;
 
     // the following collection properties are intentionally not updated as updating
     // them would be very complicated:
@@ -1902,7 +1911,7 @@ bool TRI_IterateTicksCollection (const char* const path,
 
   TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
   LOG_TRACE("iterating ticks of journal '%s'", path);
-  
+
   bool result;
 
   if (structure._journals._length == 0) {

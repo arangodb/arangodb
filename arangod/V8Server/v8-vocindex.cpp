@@ -1077,6 +1077,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._isVolatile));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._waitForSync));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameters._maximalSize));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameters._indexBuckets));
 
   TRI_json_t* keyOptions = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
   if (keyOptions != nullptr) {
@@ -1704,6 +1705,15 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
       cid = TRI_ObjectToUInt64(p->Get(IdKey), true);
     }
 
+    if (p->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
+      parameters._indexBuckets
+        = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("indexBuckets")), true);
+      if (parameters._indexBuckets < 1 ||
+          parameters._indexBuckets > 1024) {
+        TRI_FreeCollectionInfoOptions(&parameters);
+        TRI_V8_THROW_EXCEPTION_PARAMETER("indexBuckets must be a two-power between 1 and 1024");
+      }
+    }
   }
   else {
     TRI_InitCollectionInfo(vocbase, &parameters, name.c_str(), collectionType, effectiveSize, nullptr);

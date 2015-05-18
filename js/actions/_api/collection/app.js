@@ -69,6 +69,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
     result.journalSize   = properties.journalSize;
     result.keyOptions    = properties.keyOptions;
     result.waitForSync   = properties.waitForSync;
+    result.indexBuckets  = properties.indexBuckets;
 
     if (cluster.isCoordinator()) {
       result.shardKeys = properties.shardKeys;
@@ -134,6 +135,10 @@ function parseBodyForCreateCollection (req, res) {
 
   if (body.hasOwnProperty("journalSize")) {
     r.parameter.journalSize = body.journalSize;
+  }
+
+  if (body.hasOwnProperty("indexBuckets")) {
+    r.parameter.indexBuckets = body.indexBuckets;
   }
 
   if (body.hasOwnProperty("keyOptions")) {

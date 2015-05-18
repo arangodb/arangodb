@@ -984,7 +984,8 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
                                    HashElementEdgeFrom,
                                    IsEqualKeyEdgeFrom,
                                    IsEqualElementEdge,
-                                   IsEqualElementEdgeFromByKey);
+                                   IsEqualElementEdgeFromByKey,
+                                   document->_info._indexBuckets);
   }
   catch (...) {
     delete edgeIndex;
@@ -997,7 +998,8 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
                              HashElementEdgeTo,
                              IsEqualKeyEdgeTo,
                              IsEqualElementEdge,
-                             IsEqualElementEdgeToByKey);
+                             IsEqualElementEdgeToByKey,
+                             document->_info._indexBuckets);
   }
   catch (...) {
     delete edgeIndex->_edges_from;
