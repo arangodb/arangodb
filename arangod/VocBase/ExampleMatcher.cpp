@@ -31,9 +31,11 @@
 #include "voc-shaper.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-conv.h"
+#include "Basics/JsonHelper.h"
 
 using namespace std;
 using namespace triagens::arango;
+using namespace triagens::basics;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,12 +50,10 @@ void ExampleMatcher::cleanup () {
   }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor using a v8::Object example
 ////////////////////////////////////////////////////////////////////////////////
-
+ 
 ExampleMatcher::ExampleMatcher (
   v8::Isolate* isolate,
   v8::Handle<v8::Object> const example,
@@ -72,7 +72,6 @@ ExampleMatcher::ExampleMatcher (
       v8::Handle<v8::Value> val = example->Get(key);
       TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
       if (*keyStr != nullptr) {
-
         auto pid = _shaper->lookupAttributePathByName(_shaper, *keyStr);
 
         if (pid == 0) {
@@ -102,6 +101,61 @@ ExampleMatcher::ExampleMatcher (
   }
 
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor using a TRI_json_t object
+////////////////////////////////////////////////////////////////////////////////
+
+ExampleMatcher::ExampleMatcher (
+  TRI_json_t* const example,
+  TRI_shaper_t* shaper
+) : _shaper(shaper) {
+  // Just make sure we are talking about objects
+  TRI_ASSERT(TRI_IsObjectJson(example));
+
+  TRI_vector_t objects = example->_value._objects;
+
+  // Trolololol std::vector in C... ;(
+  size_t n = TRI_LengthVector(&objects); 
+
+  _pids.reserve(n);
+  _values.reserve(n);
+
+  try { 
+    for (size_t i = 0; i < n; i += 2) {
+      TRI_json_t* keyobj = static_cast<TRI_json_t*>(TRI_AtVector(&objects, i));
+      TRI_ASSERT(TRI_IsStringJson(keyobj));
+      auto pid = _shaper->lookupAttributePathByName(_shaper, keyobj->_value._string.data);
+
+      if (pid == 0) {
+        // no attribute path found. this means the result will be empty
+        ExampleMatcher::cleanup();
+        throw TRI_RESULT_ELEMENT_NOT_FOUND;
+      }
+
+      _pids.push_back(pid);
+      TRI_json_t* jsonvalue = static_cast<TRI_json_t*>(TRI_AtVector(&objects, i+1));
+      if (TRI_IsStringJson(jsonvalue)) {
+        cout << JsonHelper::toString(jsonvalue) << endl;
+      }
+      auto value = TRI_ShapedJsonJson(_shaper, jsonvalue, false);
+
+
+      if (value == nullptr) {
+        ExampleMatcher::cleanup();
+        throw TRI_RESULT_ELEMENT_NOT_FOUND;
+      }
+      _values.push_back(value);
+    }
+  } catch (bad_alloc& e) {
+    ExampleMatcher::cleanup();
+    throw e;
+  }
+};
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the given mptr matches the example in this class
