@@ -23,7 +23,7 @@
       'click #customs-switch': "switchTab",
 //      'click #explain-switch': "switchTab",
       'click #submitQueryButton': 'submitQuery',
-//      'click #explainQueryButton': 'explainQuery',
+      'click #explainQueryButton': 'explainQuery',
       'click #commentText': 'commentText',
       'click #uncommentText': 'uncommentText',
       'click #undoText': 'undoText',
@@ -788,8 +788,49 @@
       },
       */
 
-      /*
+      renderExplain: function(data) {
+        $("#explainDialog").dialog({width: '70%', height: 400});
+        $("#explainDialog").dialog('option', 'width', '70%');
+      },
+
       fillExplain: function(callback) {
+
+        var self = this;
+        window.progressView.show(
+          "Explain is operating..."
+        );
+        this.execPending = false;
+        $.ajax({
+          type: "POST",
+          url: "/_admin/aardvark/query/explain/",
+          data: this.readQueryData(),
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+
+            self.renderExplain(data);
+
+            window.progressView.hide();
+            if (typeof callback === "function") {
+              callback();
+            }
+          },
+          error: function (data) {
+            try {
+              var temp = JSON.parse(data.responseText);
+              arangoHelper.arangoError("Explain error", temp.errorNum);
+            }
+            catch (e) {
+              arangoHelper.arangoError("Explain error", "ERROR");
+            }
+            window.progressView.hide();
+            if (typeof callback === "function") {
+              callback();
+            }
+          }
+        });
+
+      /*
         var self = this;
         $("svg#explainOutput").html();
         $.ajax({
@@ -811,8 +852,8 @@
             console.log("Error:", res.errorMessage);
           }
         });
-      },
       */
+      },
 
       fillResult: function(callback) {
         var self = this;
@@ -878,14 +919,16 @@
         this.deselect(inputEditor);
       },
 
-      /*
       explainQuery: function() {
+
+        this.fillExplain();
+      /*
         this.fillExplain(this.switchTab.bind(this, "explain-switch"));
         this.execPending = true;
         var inputEditor = ace.edit("aqlEditor");
         this.deselect(inputEditor);
-      },
       */
+      },
 
       // This function changes the focus onto the tab that has been clicked
       // it can be given an event-object or the id of the tab to switch to
