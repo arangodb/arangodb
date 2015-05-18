@@ -723,9 +723,9 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
   
   if (type == NODE_TYPE_ARRAY) {
     size_t const n = numMembers();
-    TRI_json_t* list = TRI_CreateArrayJson(zone, n);
+    TRI_json_t* array = TRI_CreateArrayJson(zone, n);
 
-    if (list == nullptr) {
+    if (array == nullptr) {
       return nullptr;
     }
 
@@ -736,16 +736,16 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
         TRI_json_t* j = member->toJsonValue(zone);
 
         if (j != nullptr) {
-          TRI_PushBack3ArrayJson(zone, list, j);
+          TRI_PushBack3ArrayJson(zone, array, j);
         }
       }
     }
-    return list;
+    return array;
   }
   
   if (type == NODE_TYPE_OBJECT) {
     size_t const n = numMembers();
-    TRI_json_t* array = TRI_CreateObjectJson(zone, n);
+    TRI_json_t* object = TRI_CreateObjectJson(zone, n);
 
     for (size_t i = 0; i < n; ++i) {
       auto member = getMember(i);
@@ -754,12 +754,12 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
         TRI_json_t* j = member->getMember(0)->toJsonValue(zone);
 
         if (j != nullptr) {
-          TRI_Insert3ObjectJson(zone, array, member->getStringValue(), j);
+          TRI_Insert3ObjectJson(zone, object, member->getStringValue(), j);
         }
       }
     }
 
-    return array;
+    return object;
   }
 
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -767,14 +767,17 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
 
     if (j != nullptr) {
       if (TRI_IsObjectJson(j)) {
-        TRI_json_t* v = TRI_LookupObjectJson(j, getStringValue());
+        TRI_json_t const* v = TRI_LookupObjectJson(j, getStringValue());
+
         if (v != nullptr) {
           TRI_json_t* copy = TRI_CopyJson(zone, v);
           TRI_FreeJson(zone, j);
           return copy;
         }
       }
+
       TRI_FreeJson(zone, j);
+
       return TRI_CreateNullJson(zone);
     }
   }

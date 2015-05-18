@@ -73,6 +73,7 @@ add_executable(
     Aql/Range.cpp
     Aql/RestAqlHandler.cpp
     Aql/Scopes.cpp
+    Aql/ShortStringStorage.cpp
     Aql/tokens.cpp
     Aql/V8Expression.cpp
     Aql/Variable.cpp

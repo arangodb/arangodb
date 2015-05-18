@@ -682,7 +682,8 @@ namespace triagens {
 /// @brief create an AST node from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* nodeFromJson (TRI_json_t const*);
+        AstNode* nodeFromJson (TRI_json_t const*,
+                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse the AST, using pre- and post-order visitors

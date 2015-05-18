@@ -1097,7 +1097,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         }
       }
       else {
-        node = nodeFromJson(value);
+        node = nodeFromJson(value, false);
 
         if (node != nullptr) {
           // already mark node as constant here
@@ -1558,7 +1558,7 @@ AstNode* Ast::executeConstExpression (AstNode const* node) {
 
   AstNode* value = nullptr;
   try {
-    value = nodeFromJson(result);
+    value = nodeFromJson(result, true);
   }
   catch (...) {
   }
@@ -2218,9 +2218,14 @@ AstNode* Ast::optimizeFor (AstNode* node) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST node from JSON
+/// if copyStringValues is `true`, then string values will be copied and will
+/// be freed with the query afterwards. when set to `false`, string values
+/// will not be copied and not freed by the query. the caller needs to make
+/// sure then that string values are valid through the query lifetime.
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
+AstNode* Ast::nodeFromJson (TRI_json_t const* json,
+                            bool copyStringValues) {
   TRI_ASSERT(json != nullptr);
 
   if (json->_type == TRI_JSON_BOOLEAN) {
@@ -2232,10 +2237,13 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
   }
 
   if (json->_type == TRI_JSON_STRING) {
-    char const* value = _query->registerString(json->_value._string.data, json->_value._string.length - 1, false);
-    return createNodeValueString(value);
-    // TODO: can we get away here without copying the string?
-    // return createNodeValueString(json->_value._string.data);
+    if (copyStringValues) {
+      // we must copy string values!
+      char const* value = _query->registerString(json->_value._string.data, json->_value._string.length - 1, false);
+      return createNodeValueString(value);
+    }
+    // we can get away without copying string values
+    return createNodeValueString(json->_value._string.data);
   }
 
   if (json->_type == TRI_JSON_ARRAY) {
@@ -2243,7 +2251,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
     size_t const n = TRI_LengthArrayJson(json);
 
     for (size_t i = 0; i < n; ++i) {
-      node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i)))); 
+      node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i)), copyStringValues)); 
     }
 
     return node;
@@ -2261,9 +2269,17 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type found in object node");
       }
 
-      char const* attributeName = _query->registerString(key->_value._string.data, key->_value._string.length - 1, false);
+      char const* attributeName;
+      if (copyStringValues) {
+        // create a copy of the string value
+        attributeName = _query->registerString(key->_value._string.data, key->_value._string.length - 1, false);
+      }
+      else {
+        // use string value by reference
+        attributeName = key->_value._string.data;
+      }
       
-      node->addMember(createNodeObjectElement(attributeName, nodeFromJson(value)));
+      node->addMember(createNodeObjectElement(attributeName, nodeFromJson(value, copyStringValues)));
     }
 
     return node;

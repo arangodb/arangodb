@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, bind parameters
+/// @brief Aql, short string storage
 ///
 /// @file
 ///
@@ -27,86 +27,98 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/BindParameters.h"
-#include "Basics/json.h"
+#include "ShortStringStorage.h"
 #include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               static initializers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum length of a "short" string
+////////////////////////////////////////////////////////////////////////////////
+        
+size_t const ShortStringStorage::MaxStringLength = 127;
+      
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the parameters
+/// @brief create a short string storage instance
 ////////////////////////////////////////////////////////////////////////////////
 
-BindParameters::BindParameters (TRI_json_t* json)
-  : _json(json),
-    _parameters(),
-    _processed(false) {
+ShortStringStorage::ShortStringStorage (size_t blockSize) 
+  : _blocks(),
+    _blockSize(blockSize),
+    _current(nullptr),
+    _end(nullptr) {
+
+  TRI_ASSERT(blockSize >= 64);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the parameters
+/// @brief destroy a short string storage instance
 ////////////////////////////////////////////////////////////////////////////////
 
-BindParameters::~BindParameters () {
-  if (_json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
-  }
+ShortStringStorage::~ShortStringStorage () {
+  for (auto& it : _blocks) {
+    delete[] it;
+  }      
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a short string
+////////////////////////////////////////////////////////////////////////////////
+
+char* ShortStringStorage::registerString (char const* p,
+                                          size_t length) {
+  TRI_ASSERT_EXPENSIVE(length <= MaxStringLength);
+
+  if (_current == nullptr || (_current + length + 1 > _end)) {
+    allocateBlock();
+  }
+
+  TRI_ASSERT_EXPENSIVE(! _blocks.empty());
+  TRI_ASSERT_EXPENSIVE(_current != nullptr);
+  TRI_ASSERT_EXPENSIVE(_end != nullptr);
+  TRI_ASSERT_EXPENSIVE(_current + length + 1 <= _end);
+
+  char* position = _current;
+  memcpy(static_cast<void*>(position), p, length);
+  _current[length] = '\0';
+  _current += length + 1;
+
+  return position;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process the parameters
+/// @brief allocate a new block of memory
 ////////////////////////////////////////////////////////////////////////////////
 
-void BindParameters::process () {
-  if (_processed || _json == nullptr) {
-    return;
+void ShortStringStorage::allocateBlock () {
+  char* buffer = new char[_blockSize];
+
+  try {
+    _blocks.emplace_back(buffer);
+    _current = buffer;
+    _end     = _current + _blockSize;
   }
-
-  if (! TRI_IsObjectJson(_json)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID);
+  catch (...) {
+    delete[] buffer;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  
-  size_t const n = TRI_LengthVector(&_json->_value._objects);
-
-  for (size_t i = 0; i < n; i += 2) {
-    auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&_json->_value._objects, i));
-
-    if (! TRI_IsStringJson(key)) {
-      // no string, should not happen
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE);
-    }
-
-    std::string const k(key->_value._string.data, key->_value._string.length - 1);
-
-    auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&_json->_value._objects, i + 1));
-
-    if (value == nullptr) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, k.c_str()); 
-    }
-
-    if (k[0] == '@' && ! TRI_IsStringJson(value)) {
-      // collection bind parameter
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, k.c_str()); 
-    }
-
-    _parameters.emplace(std::make_pair(k, std::make_pair(value, false)));
-  }
-  
-  _processed = true;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
