@@ -45,6 +45,8 @@
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
+#define NUM_ACCESSORS 8
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
@@ -61,8 +63,6 @@ typedef struct voc_shaper_s {
   TRI_associative_synced_t        _shapeDictionary;
   TRI_associative_synced_t        _shapeIds;
 
-  TRI_associative_pointer_t       _accessors;
-
   std::atomic<TRI_shape_aid_t>    _nextAid;
   std::atomic<TRI_shape_sid_t>    _nextSid;
 
@@ -71,7 +71,8 @@ typedef struct voc_shaper_s {
   triagens::basics::Mutex         _shapeLock;
   triagens::basics::Mutex         _attributeLock;
   
-  triagens::basics::ReadWriteLock _accessorLock[8];
+  triagens::basics::ReadWriteLock _accessorLock[NUM_ACCESSORS];
+  TRI_associative_pointer_t       _accessors[NUM_ACCESSORS];
 }
 voc_shaper_t;
 
@@ -542,24 +543,31 @@ static int InitStep1VocShaper (voc_shaper_t* shaper) {
     return res;
   }
 
-  res = TRI_InitAssociativePointer(&shaper->_accessors,
-                                   TRI_UNKNOWN_MEM_ZONE,
-                                   0,
-                                   HashElementAccessor,
-                                   0,
-                                   EqualElementAccessor);
+  for (size_t i = 0; i < NUM_ACCESSORS; ++i) {
+    res = TRI_InitAssociativePointer(&shaper->_accessors[i],
+                                     TRI_UNKNOWN_MEM_ZONE,
+                                     0,
+                                     HashElementAccessor,
+                                     0,
+                                     EqualElementAccessor);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
-    TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
-    TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
-    TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
+    if (res != TRI_ERROR_NO_ERROR) {
+      for (size_t j = 0; j < i; ++j) {
+        TRI_DestroyAssociativePointer(&shaper->_accessors[j]);
+      }
+      TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
+      TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
+      TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
+      TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
 
-    return res;
+      return res;
+    }
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyAssociativePointer(&shaper->_accessors);
+    for (size_t i = 0; i < NUM_ACCESSORS; ++i) {
+      TRI_DestroyAssociativePointer(&shaper->_accessors[i]);
+    }
     TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
     TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
     TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
@@ -638,14 +646,16 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
   TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
 
-  for (size_t i = 0; i < shaper->_accessors._nrAlloc; ++i) {
-    TRI_shape_access_t* accessor = (TRI_shape_access_t*) shaper->_accessors._table[i];
+  for (size_t i = 0; i < NUM_ACCESSORS; ++i) {
+    for (size_t j = 0; j < shaper->_accessors[i]._nrAlloc; ++j) {
+      auto accessor = static_cast<TRI_shape_access_t*>(shaper->_accessors[i]._table[j]);
 
-    if (accessor != nullptr) {
-      TRI_FreeShapeAccessor(accessor);
+      if (accessor != nullptr) { 
+        TRI_FreeShapeAccessor(accessor);
+      }
     }
+    TRI_DestroyAssociativePointer(&shaper->_accessors[i]);
   }
-  TRI_DestroyAssociativePointer(&shaper->_accessors);
   TRI_DestroyShaper(s);
 }
 
@@ -901,14 +911,15 @@ TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
                                                      TRI_shape_pid_t pid) {
   TRI_shape_access_t search = { sid, pid, 0, nullptr };
 
-  size_t const lockId = static_cast<size_t>(fasthash64(&sid, sizeof(TRI_shape_sid_t), fasthash64(&pid, sizeof(TRI_shape_pid_t), 0x87654321)) % 8);
+  size_t const i = static_cast<size_t>(fasthash64(&sid, sizeof(TRI_shape_sid_t), fasthash64(&pid, sizeof(TRI_shape_pid_t), 0x87654321)) % NUM_ACCESSORS);
+
   voc_shaper_t* shaper = (voc_shaper_t*) s;
 
-  TRI_shape_access_t const* found;
+  TRI_shape_access_t const* found = nullptr;
   {
-    READ_LOCKER(shaper->_accessorLock[lockId]);
+    READ_LOCKER(shaper->_accessorLock[i]);
 
-    found = static_cast<TRI_shape_access_t const*>(TRI_LookupByElementAssociativePointer(&shaper->_accessors, &search));
+    found = static_cast<TRI_shape_access_t const*>(TRI_LookupByElementAssociativePointer(&shaper->_accessors[i], &search));
 
     if (found != nullptr) {
       return found;
@@ -924,11 +935,11 @@ TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
   }
 
   // acquire the write-lock and try to insert our own accessor
+
   {
+    WRITE_LOCKER(shaper->_accessorLock[i]);
 
-    WRITE_LOCKER(shaper->_accessorLock[lockId]);
-
-    found = static_cast<TRI_shape_access_t const*>(TRI_InsertElementAssociativePointer(&shaper->_accessors, const_cast<void*>(static_cast<void const*>(accessor)), false));
+    found = static_cast<TRI_shape_access_t const*>(TRI_InsertElementAssociativePointer(&shaper->_accessors[i], const_cast<void*>(static_cast<void const*>(accessor)), false));
   }
 
   if (found != nullptr) {
@@ -936,6 +947,7 @@ TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
     // but before we acquired the write-lock
     // this is ok, and we can return the concurrently built accessor now
     TRI_FreeShapeAccessor(accessor);
+
     return found;
   }
 
