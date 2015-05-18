@@ -61,6 +61,11 @@ namespace triagens {
           std::string& errorMessage
         );
 
+        ExampleMatcher(
+          TRI_json_t* example,
+          TRI_shaper_t* shaper
+        );
+
         ~ExampleMatcher() {
           cleanup();
         };
