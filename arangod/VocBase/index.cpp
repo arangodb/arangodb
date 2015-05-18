@@ -939,7 +939,7 @@ static int SizeHintEdge (TRI_index_t* idx,
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  int err = edgesIndex->resize(size + 2049);
+  int err = edgesIndex->resize(static_cast<uint32_t>(size + 2049));
 
   if (err != TRI_ERROR_NO_ERROR) {
     return err;
@@ -953,7 +953,7 @@ static int SizeHintEdge (TRI_index_t* idx,
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  return edgesIndex->resize(size + 2049);
+  return edgesIndex->resize(static_cast<uint32_t>(size + 2049));
 }
 
 // -----------------------------------------------------------------------------

@@ -2232,8 +2232,8 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
       }
 
       if (po->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
-        indexBuckets = TRI_ObjectToUInt64(
-                         po->Get(TRI_V8_ASCII_STRING("indexBuckets")), true);
+        indexBuckets = static_cast<uint32_t>(TRI_ObjectToUInt64(
+                         po->Get(TRI_V8_ASCII_STRING("indexBuckets")), true));
         if (indexBuckets == 0 || indexBuckets > 1024) {
           ReleaseCollection(collection);
           TRI_V8_THROW_EXCEPTION_PARAMETER("indexBuckets must be a two-power between 1 and 1024");

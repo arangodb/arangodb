@@ -764,14 +764,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int resize (IndexType size) throw() {
-          size /= _buckets.size();
+          size /= static_cast<IndexType>(_buckets.size());
           for (auto& b : _buckets) {
-            if (2 * (2*size+1) < 3 * b._nrUsed) {
+            if (2 * (2 * size + 1) < 3 * b._nrUsed) {
               return TRI_ERROR_BAD_PARAMETER;
             }
 
             try {
-              resizeInternal(b, 2*size+1);
+              resizeInternal(b, 2 * size + 1);
             }
             catch (...) {
               return TRI_ERROR_OUT_OF_MEMORY;
@@ -842,7 +842,7 @@ namespace triagens {
           Entry* oldTable = b._table;
           IndexType oldAlloc = b._nrAlloc;
 
-          b._nrAlloc = TRI_NearPrime(size);
+          b._nrAlloc = static_cast<IndexType>(TRI_NearPrime(size));
           try {
             b._table = new Entry[b._nrAlloc];
             IndexType i;
@@ -1145,7 +1145,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline IndexType hashToIndex (uint64_t const h) const {
-          return sizeof(IndexType) == 8 ? h : TRI_64to32(h);
+          return static_cast<IndexType>(sizeof(IndexType) == 8 ? h : TRI_64to32(h));
         }
     };
 
