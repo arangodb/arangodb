@@ -142,6 +142,30 @@ controller.post("disableVersionCheck", function(req, res) {
   res.json("ok");
 });
 
+/** Explains a query
+ *
+ * Explains a query in a more user-friendly way than the query
+ * _api/explain
+ *
+ */
+controller.post("/query/explain", function(req, res) {
+
+  var query = req.body().query;
+
+  if (query.length > 0) {
+    var explain = require("org/arangodb/aql/explainer").getExplain(query, {colors: false});
+  }
+
+  res.json(explain);
+
+  //TODO: delete next line
+  require("org/arangodb/aql/explainer").explain(query);
+
+
+}).summary("Explains a query")
+  .notes("This function gives useful query information");
+
+
 /** Download stored queries
  *
  * Download and export all queries from the given username.
