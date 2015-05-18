@@ -76,7 +76,7 @@ function percentChange2 (current, prev, section, src1, src2) {
   var p = prev[section][src1] - prev[section][src2];
 
   if (p !== 0) {
-    return (current[section][src1] -current[section][src2] - p) / p;
+    return (current[section][src1] - current[section][src2] - p) / p;
   }
 
   return 0;

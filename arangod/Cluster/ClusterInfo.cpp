@@ -730,6 +730,7 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& colle
   info._isSystem     = collection.isSystem();
   info._isVolatile   = collection.isVolatile();
   info._waitForSync  = collection.waitForSync();
+  info._indexBuckets = collection.indexBuckets();
 
   return info;
 }
@@ -1347,10 +1348,12 @@ int ClusterInfo::setCollectionPropertiesCoordinator (string const& databaseName,
   TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact");
   TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize");
   TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync");
+  TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "indexBuckets");
 
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_doCompact));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_indexBuckets));
 
   res.clear();
   res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, copy, 0.0);
