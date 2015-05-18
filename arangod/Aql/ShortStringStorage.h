@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, bind parameters
+/// @brief Aql, short string storage
 ///
 /// @file
 ///
@@ -27,71 +27,65 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_BIND_PARAMETERS_H
-#define ARANGODB_AQL_QUERY_BIND_PARAMETERS_H 1
+#ifndef ARANGODB_AQL_SHORT_STRING_STORAGE_H
+#define ARANGODB_AQL_SHORT_STRING_STORAGE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 
 namespace triagens {
   namespace aql {
 
-    typedef std::unordered_map<std::string, std::pair<TRI_json_t const*, bool>> BindParametersType;
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class BindParameters
+// --SECTION--                                          class ShortStringStorage
 // -----------------------------------------------------------------------------
 
-    class BindParameters {
+    class ShortStringStorage {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
+ 
+      public:
+
+        ShortStringStorage (ShortStringStorage const&) = delete;
+        ShortStringStorage& operator= (ShortStringStorage const&) = delete;
+     
+        explicit ShortStringStorage (size_t);
+        
+        ~ShortStringStorage ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a short string
+////////////////////////////////////////////////////////////////////////////////
+ 
+        char* registerString (char const*, 
+                              size_t);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allocate a new block of memory
+////////////////////////////////////////////////////////////////////////////////
+
+        void allocateBlock ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
 
       public:
 
-        BindParameters (BindParameters const&) = delete;
-        BindParameters& operator= (BindParameters const&) = delete;
-        BindParameters () = delete;
-      
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the parameters
+/// @brief maximum length of strings in short string storage
 ////////////////////////////////////////////////////////////////////////////////
 
-        BindParameters (TRI_json_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the parameters
-////////////////////////////////////////////////////////////////////////////////
-
-        ~BindParameters ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all parameters
-////////////////////////////////////////////////////////////////////////////////
-
-        BindParametersType const& operator() () {
-          process();
-          return _parameters;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the parameters
-////////////////////////////////////////////////////////////////////////////////
-
-        void process ();
+        static size_t const MaxStringLength;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -100,23 +94,28 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the parameter json
+/// @brief already allocated string blocks
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t*  _json;
+        std::vector<char*> _blocks;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pointer to collection parameters
+/// @brief size of each block
 ////////////////////////////////////////////////////////////////////////////////
 
-        BindParametersType _parameters;
+        size_t const _blockSize;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief internal state
+/// @brief offset into current block
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _processed;
+        char* _current;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end of current block
+////////////////////////////////////////////////////////////////////////////////
+
+        char* _end;
     };
 
   }

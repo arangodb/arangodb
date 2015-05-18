@@ -35,6 +35,7 @@
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/QueryResultV8.h"
+#include "Aql/ShortStringStorage.h"
 #include "Aql/types.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -467,9 +468,27 @@ namespace triagens {
 
         TRI_json_t* warningsToJson (TRI_memory_zone_t*) const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the global query tracking value
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool DisableQueryTracking () {
+          return DoDisableQueryTracking;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn off tracking globally
+////////////////////////////////////////////////////////////////////////////////
+        
+        static void DisableQueryTracking (bool value) {
+          DoDisableQueryTracking = value;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a numeric value from the options
@@ -520,22 +539,6 @@ namespace triagens {
 
         triagens::arango::TransactionContext* createTransactionContext ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the global query tracking value
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool DisableQueryTracking () {
-          return DoDisableQueryTracking;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn off tracking globally
-////////////////////////////////////////////////////////////////////////////////
-        
-        static void DisableQueryTracking (bool value) {
-          DoDisableQueryTracking = value;
-        }
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -553,7 +556,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::arango::ApplicationV8*  _applicationV8;
-
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all nodes created in the AST - will be used for freeing them later
 ////////////////////////////////////////////////////////////////////////////////
@@ -615,10 +618,16 @@ namespace triagens {
         Collections                       _collections;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief all strings created in the query - used for easy memory deallocation
+/// @brief strings created in the query - used for easy memory deallocation
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<char const*>          _strings;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief short string storage. uses less memory allocations for short strings
+////////////////////////////////////////////////////////////////////////////////
+
+        ShortStringStorage                _shortStringStorage;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _ast, we need an ast to manage the memory for AstNodes, even

@@ -1034,34 +1034,40 @@ static void JS_ExplainAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string const&& queryString = TRI_ObjectToString(args[0]);
 
   // bind parameters
-  TRI_json_t* parameters = nullptr;
+  std::unique_ptr<TRI_json_t> parameters;
   
   if (args.Length() > 1) {
     if (! args[1]->IsUndefined() && ! args[1]->IsNull() && ! args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindvalues>");
     }
     if (args[1]->IsObject()) {
-      parameters = TRI_ObjectToJson(isolate, args[1]);
+      parameters.reset(TRI_ObjectToJson(isolate, args[1]));
     }
   }
 
-  TRI_json_t* options = nullptr;
+  std::unique_ptr<TRI_json_t> options;
 
   if (args.Length() > 2) {
     // handle options
     if (! args[2]->IsObject()) {
-      if (parameters != nullptr) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-      }
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    options = TRI_ObjectToJson(isolate, args[2]);
+    options.reset(TRI_ObjectToJson(isolate, args[2]));
   }
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
+  triagens::aql::Query query(
+    v8g->_applicationV8, 
+    true, 
+    vocbase, 
+    queryString.c_str(), 
+    queryString.size(), 
+    parameters.release(), 
+    options.release(), 
+    triagens::aql::PART_MAIN
+  );
   
   auto queryResult = query.explain();
   
@@ -1120,7 +1126,7 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
     TRI_V8_THROW_TYPE_ERROR("expecting object for <queryjson>");
   }
 
-  TRI_json_t* queryjson = TRI_ObjectToJson(isolate, args[0]);
+  std::unique_ptr<TRI_json_t> queryjson(TRI_ObjectToJson(isolate, args[0]));
   std::unique_ptr<TRI_json_t> options;
 
   if (args.Length() > 1) {
@@ -1137,7 +1143,7 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
     v8g->_applicationV8, 
     true, 
     vocbase, 
-    Json(TRI_UNKNOWN_MEM_ZONE, queryjson), 
+    Json(TRI_UNKNOWN_MEM_ZONE, queryjson.release()), 
     options.get(), 
     triagens::aql::PART_MAIN
   );

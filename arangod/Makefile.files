@@ -46,6 +46,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Range.cpp \
 	arangod/Aql/RestAqlHandler.cpp \
 	arangod/Aql/Scopes.cpp \
+	arangod/Aql/ShortStringStorage.cpp \
 	arangod/Aql/tokens.cpp \
 	arangod/Aql/V8Expression.cpp \
 	arangod/Aql/Variable.cpp \

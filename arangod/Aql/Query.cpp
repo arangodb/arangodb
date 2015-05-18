@@ -35,6 +35,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryList.h"
+#include "Aql/ShortStringStorage.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
@@ -53,6 +54,12 @@ using Json = triagens::basics::Json;
 // -----------------------------------------------------------------------------
 // --SECTION--                                               static const values
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief empty string singleton
+////////////////////////////////////////////////////////////////////////////////
+    
+static char const* EmptyString = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief names of query phases / states
@@ -182,6 +189,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _options(options),
     _collections(vocbase),
     _strings(),
+    _shortStringStorage(1024),
     _ast(nullptr),
     _profile(nullptr),
     _state(INVALID_STATE),
@@ -229,6 +237,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _options(options),
     _collections(vocbase),
     _strings(),
+    _shortStringStorage(1024),
     _ast(nullptr),
     _profile(nullptr),
     _state(INVALID_STATE),
@@ -262,20 +271,16 @@ Query::~Query () {
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " DTOR\r\n";
   cleanupPlanAndEngine(TRI_ERROR_INTERNAL); // abort the transaction
 
-  if (_profile != nullptr) {
-    delete _profile;
-    _profile = nullptr;
-  }
+  delete _profile;
+  _profile = nullptr;
 
   if (_options != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _options);
     _options = nullptr;
   }
 
-  if (_executor != nullptr) {
-    delete _executor;
-    _executor = nullptr;
-  }
+  delete _executor;
+  _executor = nullptr;
 
   if (_context != nullptr) {
     TRI_ASSERT(! _contextOwnedByExterior);
@@ -292,18 +297,16 @@ Query::~Query () {
     _context = nullptr;
   }
 
-  if (_ast != nullptr) {
-    delete _ast;
-    _ast = nullptr;
-  }
+  delete _ast;
+  _ast = nullptr;
 
   // free strings
-  for (auto it = _strings.begin(); it != _strings.end(); ++it) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, const_cast<char*>(*it));
+  for (auto& it : _strings) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, const_cast<char*>(it));
   }
   // free nodes
-  for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
-    delete (*it);
+  for (auto& it : _nodes) {
+    delete it;
   }
 }
 
@@ -315,30 +318,23 @@ Query::~Query () {
 
 Query* Query::clone (QueryPart part,
                      bool withPlan) {
-  TRI_json_t* options = nullptr;
+  std::unique_ptr<TRI_json_t> options;
 
   if (_options != nullptr) {
-    options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _options);
+    options.reset(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _options));
   }
 
   std::unique_ptr<Query> clone;
 
-  try {
-    clone.reset(new Query(_applicationV8, 
-                          false,
-                          _vocbase,
-                          _queryString,
-                          _queryLength,
-                          nullptr,
-                          options,
-                          part));
-  }
-  catch (...) {
-    if (options != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, options);
-    }
-    throw;
-  }
+  clone.reset(new Query(_applicationV8, 
+                        false,
+                        _vocbase,
+                        _queryString,
+                        _queryLength,
+                        nullptr,
+                        options.get(),
+                        part));
+  options.release();
 
   if (_plan != nullptr) {
     if (withPlan) {
@@ -940,9 +936,8 @@ char* Query::registerString (char const* p,
   }
 
   if (length == 0) {
-    static char const* empty = "";
-    // optimisation for the empty string
-    return const_cast<char*>(empty);
+    // optimization for the empty string
+    return const_cast<char*>(EmptyString);
   }
 
   char* copy = nullptr;
@@ -951,6 +946,10 @@ char* Query::registerString (char const* p,
     copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
   }
   else {
+    if (length < ShortStringStorage::MaxStringLength) {
+      return _shortStringStorage.registerString(p, length); 
+    }
+
     copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, p, length);
   }
 
