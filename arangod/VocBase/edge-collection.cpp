@@ -110,7 +110,7 @@ static bool FindEdges (TRI_edge_direction_e direction,
                        std::vector<TRI_doc_mptr_copy_t>& result,
                        TRI_edge_header_t* entry,
                        int matchType) {
-  std::vector<void*>* found;
+  std::vector<void*>* found = nullptr;
 
   if (direction == TRI_EDGE_OUT) {
     found = idx->_edges_from->lookupByKey(static_cast<void*>(entry));
@@ -229,7 +229,7 @@ void TRI_LookupEdgeIndex (TRI_index_t* idx,
 
   auto edgesIndex = static_cast<TRI_edge_index_t*>(idx);
   
-  std::vector<void*>* found;
+  std::vector<void*>* found = nullptr;
   if (next == nullptr) {
     if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
       found = edgesIndex->_edges_from->lookupByKey(&(edgeIndexIterator->_edge),
