@@ -1707,7 +1707,7 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     if (p->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
       parameters._indexBuckets
-        = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("indexBuckets")), true);
+        = static_cast<uint32_t>(TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("indexBuckets")), true));
       if (parameters._indexBuckets < 1 ||
           parameters._indexBuckets > 1024) {
         TRI_FreeCollectionInfoOptions(&parameters);
