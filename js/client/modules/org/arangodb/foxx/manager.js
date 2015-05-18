@@ -284,7 +284,7 @@
       [ appInfo, mount ] );
 
     utils.validateMount(mount);
-    if (utils.pathRegex.test(appInfo)) {
+    if (utils.pathRegex.test(appInfo)  || fs.exists(appInfo)) {
       appInfo = moveAppToServer(appInfo);
     }
     var res;
@@ -343,7 +343,7 @@
       [ appInfo, mount ] );
 
     utils.validateMount(mount);
-    if (utils.pathRegex.test(appInfo)) {
+    if (utils.pathRegex.test(appInfo) || fs.exists(appInfo)) {
       appInfo = moveAppToServer(appInfo);
     }
     var res;
@@ -375,7 +375,7 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     utils.validateMount(mount);
-    if (utils.pathRegex.test(appInfo)) {
+    if (utils.pathRegex.test(appInfo) || fs.exists(appInfo)) {
       appInfo = moveAppToServer(appInfo);
     }
     var res;
