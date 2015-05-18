@@ -2121,6 +2121,19 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
           }
           TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
         }
+
+        if (po->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
+          uint32_t tmp = TRI_ObjectToUInt64(
+                                 po->Get(TRI_V8_ASCII_STRING("indexBuckets")),
+                                 false);
+          if (tmp < 1 || tmp > 1024) {
+            if (info._keyOptions != nullptr) {
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
+            }
+            TRI_V8_THROW_EXCEPTION_PARAMETER("indexBucket must be a two-power between 1 and 1024");
+          }
+          info._indexBuckets = tmp;
+        }
       }
 
       int res = ClusterInfo::instance()->setCollectionPropertiesCoordinator(databaseName, StringUtils::itoa(collection->_cid), &info);
