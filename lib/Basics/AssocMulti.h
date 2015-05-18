@@ -441,6 +441,7 @@ namespace triagens {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
             check(true, true);
 #endif
+            return;
           }
 
           // Now find the first slot with an entry with the same key
@@ -903,10 +904,10 @@ namespace triagens {
         bool check (bool checkCount, bool checkPositions) const {
           std::cout << "Performing AssocMulti check " << checkCount
                     << checkPositions << std::endl;
+          bool ok = true;
           for (auto& b : _buckets) {
             IndexType i, ii, j, k;
 
-            bool ok = true;
             IndexType count = 0;
 
             for (i = 0;i < b._nrAlloc;i++) {
