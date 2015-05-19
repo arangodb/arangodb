@@ -59,6 +59,7 @@ var optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
+  '   - `skipMemoryIntense`: tests using lots of resources will be skippet.',
   '   - `skipSsl`: ommit the ssl_server rspec tests.',
   '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
   '   - `skipConfig`: ommit the noisy configuration tests',
@@ -117,6 +118,7 @@ var optionsDefaults = { "cluster": false,
                         "skipBoost": false,
                         "skipGeo": false,
                         "skipTimeCritical": false,
+                        "skipMemoryIntense": false,
                         "skipAql": false,
                         "skipRanges": false,
                         "skipLogAnalysis": false,
@@ -214,6 +216,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if (testname.indexOf("replication") !== -1) {
     whichFilter.filter = 'replication';
+    return false;
+  }
+
+  if ((testname.indexOf("-memoryintense") !== -1) && (options.skipMemoryIntense === true)) {
+    whichFilter.filter = 'memoryintense';
     return false;
   }
 
