@@ -109,6 +109,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/V8PeriodicTask.cpp \
 	arangod/V8Server/V8QueueJob.cpp \
 	arangod/V8Server/V8TimerTask.cpp \
+	arangod/V8Server/V8Traverser.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-collection.cpp \
 	arangod/V8Server/v8-collection-util.cpp \
@@ -128,6 +129,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/compactor.cpp \
 	arangod/VocBase/datafile.cpp \
 	arangod/VocBase/document-collection.cpp \
+	arangod/VocBase/ExampleMatcher.cpp \
 	arangod/VocBase/edge-collection.cpp \
 	arangod/VocBase/headers.cpp \
 	arangod/VocBase/index.cpp \

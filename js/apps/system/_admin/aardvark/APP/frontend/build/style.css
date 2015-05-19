@@ -1779,7 +1779,7 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile div.iconSet span, div .bigtile div.iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
+ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile div.iconSet span, div .bigtile div.iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus, div.demo-dropdown-menu {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -4317,8 +4317,8 @@ div.resizecontainer {
     width: 2428px; } }
 
 div.centralRow {
-  margin-top: 65px;
-  margin-bottom: 65px; }
+  margin-top: 40px;
+  margin-bottom: 40px; }
 
 div.centralContent {
   background-color: rgba(0, 0, 0, 0.0675);
@@ -6540,3 +6540,40 @@ table .sorting {
   text-align: left;
   vertical-align: middle;
   width: 506px; }
+
+div.demo-dropdown-menu {
+  -moz-border-radius: 0 0 5px 5px;
+  -webkit-border-radius: 0 0 5px 5px;
+  border-radius: 0 0 5px 5px;
+  background-color: #686766;
+  margin-bottom: 5px;
+  margin-left: 5px;
+  position: absolute;
+  top: 32px;
+  width: 222px;
+  z-index: 100; }
+
+#flightQuerySelect.query-select {
+  height: 25px;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.1em; }
+
+#demo-mapdiv {
+  position: relative; }
+
+#demo-mapdiv-info {
+  position: absolute;
+  right: 20px;
+  width: 225px;
+  height: 150px;
+  bottom: 20px;
+  border: 1.5px solid #222;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.75);
+  padding: 6px 6px 3px 6px;
+  font-size: 11px;
+  line-height: 1.3em; }
+
+.amcharts-balloon-div {
+  line-height: 1.1em; }

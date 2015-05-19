@@ -26,13 +26,18 @@
       "userManagement": "userManagement",
       "userProfile": "userProfile",
       "logs": "logs",
-      "demo": "demo"
+      "demo": "demo",
+      "demo/:collection": "demo"
     },
 
-    demo: function () {
-
+    demo: function (collection) {
+      if (!collection) {
+        collection = "flights";
+      }
       if (!this.demoView) {
-        this.demoView = new window.DemoView({});
+        this.demoView = new window.DemoView({
+          collectionName: collection
+        });
       }
 
       this.demoView.render();

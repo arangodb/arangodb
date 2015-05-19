@@ -57,6 +57,11 @@ struct TRI_document_edge_s;
 struct TRI_index_t;
 struct TRI_json_t;
 
+namespace triagens {
+  namespace arango {
+    class ExampleMatcher;
+  }
+}
 class KeyGenerator;
 
 // -----------------------------------------------------------------------------
@@ -554,6 +559,15 @@ static inline char const* TRI_EXTRACT_MARKER_FROM_KEY (TRI_df_marker_t const* ma
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the _from key from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline char const* TRI_EXTRACT_MARKER_FROM_KEY (TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+  return TRI_EXTRACT_MARKER_FROM_KEY(marker);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the pointer to the _to key from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -571,6 +585,15 @@ static inline char const* TRI_EXTRACT_MARKER_TO_KEY (TRI_df_marker_t const* mark
 #endif
 
   return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the _to key from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline char const* TRI_EXTRACT_MARKER_TO_KEY (TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+  return TRI_EXTRACT_MARKER_TO_KEY(marker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -594,6 +617,15 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID (TRI_df_marker_t const* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the _from cid from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID (TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+  return TRI_EXTRACT_MARKER_FROM_CID(marker);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the _to cid from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -611,6 +643,15 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID (TRI_df_marker_t const* ma
 #endif
 
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the _to cid from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID (TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+  return TRI_EXTRACT_MARKER_TO_CID(marker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -971,9 +1012,8 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
 std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           struct TRI_transaction_collection_s*,
-                          size_t,
-                          TRI_shape_pid_t*,
-                          TRI_shaped_json_t**);
+                          triagens::arango::ExampleMatcher& matcher
+                        );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a select-by-example query

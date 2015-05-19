@@ -1,5 +1,6 @@
 /*jshint strict: false, unused: false, bitwise: false */
 /*global COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
+/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions
@@ -5570,15 +5571,91 @@ function AQL_SHORTEST_PATH (vertexCollection,
                             direction,
                             params) {
   'use strict';
+  var opts = {
+    direction: direction
+  };
+  params = params || {};
+  var vertexCollections = [vertexCollection];
+  var edgeCollections = [edgeCollection];
+  // JS Fallback cases. CPP implementation not working here
+  if (params.hasOwnProperty("distance") ||
+      params.hasOwnProperty("filterVertices") ||
+      params.hasOwnProperty("followEdges") ||
+    require("org/arangodb/cluster").isCoordinator()
+  ) {
+    params = SHORTEST_PATH_PARAMS(params);
+    var a = TRAVERSAL_FUNC("SHORTEST_PATH",
+                           TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
+                           TO_ID(startVertex, vertexCollection),
+                           TO_ID(endVertex, vertexCollection),
+                           direction,
+                           params);
+                         return a;
+  }
+  // Fall through to new CPP version.
+  if (params.hasOwnProperty("distance") && params.hasOwnProperty("defaultDistance")) {
+    opts.distance = params.distance;
+    opts.defaultDistance = params.defaultDistance;
+  }
+  if (params.hasOwnProperty("includeData")) {
+    opts.includeData = params.includeData;
+  } else {
+    // Default has to include the data for backwards compatibility
+    opts.includeData = true;
+  }
+  if (params.hasOwnProperty("followEdges")) {
+    opts.followEdges = params.followEdges;
+  }
+  if (params.hasOwnProperty("filterVertices")) {
+    opts.filterVertices = params.filterVertices;
+  }
+  var i, c;
+  if (params.hasOwnProperty("vertexCollections") && Array.isArray(params.vertexCollections)) {
+    for (i = 0; i < params.vertexCollections.length; ++i) {
+      c = params.vertexCollections[i];
+      if (typeof c === "string") {
+        vertexCollections.push(c);
+      }
+    }
+  }
+  if (params.hasOwnProperty("edgeCollections") && Array.isArray(params.edgeCollections)) {
+    for (i = 0; i < params.edgeCollections.length; ++i) {
+      c = params.edgeCollections[i];
+      if (typeof c === "string") {
+        edgeCollections.push(c);
+      }
+    }
+  }
 
-  params = SHORTEST_PATH_PARAMS(params);
+  var newRes = CPP_SHORTEST_PATH(vertexCollections, edgeCollections,
+    TO_ID(startVertex, vertexCollection),
+    TO_ID(endVertex, vertexCollection),
+    opts
+  );
+  // newRes has the format: { vertices: [Doc], edges: [Doc], distance: Number}
+  // legacyResult has the format: [ {vertex: Doc} ]
+  var legacyResult = [];
+  if (newRes === null) {
+    return legacyResult;
+  }
 
-  return TRAVERSAL_FUNC("SHORTEST_PATH",
-                        TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
-                        TO_ID(startVertex, vertexCollection),
-                        TO_ID(endVertex, vertexCollection),
-                        direction,
-                        params);
+  if (params.paths) {
+    // Prints all sub paths in form of {vertex: target, vertices: [verticesOnPath], edges: [edgesOnPath]}
+    for (i = 0; i < newRes.vertices.length; ++i) {
+      legacyResult.push({
+        vertex: newRes.vertices[i],
+        path: {
+          vertices: newRes.vertices.slice(0, i + 1),
+          edges: newRes.edges.slice(0, i)
+        }
+      });
+    }
+  } else {
+    for (i = 0; i < newRes.vertices.length; ++i) {
+      legacyResult.push({vertex: newRes.vertices[i]});
+    }
+  }
+  return legacyResult;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6442,6 +6519,12 @@ function AQL_NEIGHBORS (vertexCollection,
   'use strict';
 
   vertex = TO_ID(vertex, vertexCollection);
+  /*
+  if (examples === undefined) {
+    return [CPP_NEIGHBORS(vertexCollection, edgeCollection, vertex, {direction: direction})];
+  }
+  */
+  
   var edges = AQL_EDGES(edgeCollection, vertex, direction);
   return FILTERED_EDGES(edges, vertex, direction, examples);
 }
