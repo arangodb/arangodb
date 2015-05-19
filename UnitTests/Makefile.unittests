@@ -480,7 +480,7 @@ SHELL_COMMON = \
 
 SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-readonly-noncluster-disabled.js\
-               @top_srcdir@/js/server/tests/shell-wal-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-wal-noncluster-memoryintense.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster-timecritical.js \
                @top_srcdir@/js/server/tests/shell-shaped-noncluster.js \
