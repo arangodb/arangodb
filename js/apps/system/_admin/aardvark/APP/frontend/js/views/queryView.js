@@ -792,6 +792,7 @@
 
         var self = this;
         var outputEditor = ace.edit("queryOutput");
+        $('.queryExecutionTime').text('');
         window.progressView.show(
           "Explain is operating..."
         );
@@ -852,14 +853,46 @@
       */
       },
 
+      timer: {
+
+        begin: 0,
+        end: 0,
+
+        start: function() {
+          this.begin = new Date().getTime();
+        },
+
+        stop: function() {
+          this.end = new Date().getTime();
+        },
+
+        reset: function() {
+          this.begin = 0;
+          this.end = 0;
+        },
+
+        getTimeAndReset: function() {
+          this.stop();
+          var result =  this.end - this.begin;
+          this.reset();
+
+          return result;
+        }
+      },
+
       fillResult: function(callback) {
         var self = this;
         var outputEditor = ace.edit("queryOutput");
         // clear result
         outputEditor.setValue('');
+
         window.progressView.show(
           "Query is operating..."
         );
+
+        $('.queryExecutionTime').text('');
+        self.timer.start();
+
         this.execPending = false;
         $.ajax({
           type: "POST",
@@ -868,6 +901,10 @@
           contentType: "application/json",
           processData: false,
           success: function (data) {
+
+            var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
+            $('.queryExecutionTime').text(time);
+
             var warnings = "";
             if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
               warnings += "Warnings:" + "\r\n\r\n";
