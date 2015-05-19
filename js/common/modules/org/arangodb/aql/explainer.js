@@ -602,13 +602,14 @@ function processQuery (query, explain) {
 
   stringBuilder.appendLine();
   printIndexes(indexes);
+  stringBuilder.appendLine();
   printRules(plan.rules);
   printModificationFlags(modificationFlags);
   printWarnings(explain.warnings);
 }
 
 /* the exposed function */
-function explain (data, options) {
+function explain (data, options, shouldPrint) {
   'use strict';
   if (typeof data === "string") {
     data = { query: data };
@@ -625,9 +626,13 @@ function explain (data, options) {
 
   stringBuilder.clearOutput();
   processQuery(data.query, result, true);
-  print(stringBuilder.getOutput());
 
-  return stringBuilder.getOutput();
+  if (shouldPrint === undefined || shouldPrint) {
+    print(stringBuilder.getOutput());
+  }
+  else {
+    return stringBuilder.getOutput();
+  }
 }
 
 exports.explain = explain;
