@@ -238,27 +238,9 @@ Sessions.prototype.getSessionStorage = function () {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     custom errors
-// -----------------------------------------------------------------------------
-
-// http://stackoverflow.com/questions/783818/how-do-i-create-a-custom-error-in-javascript
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function UnauthorizedError(message) {
-  this.message = message;
-  this.statusCode = 401;
-}
-
-UnauthorizedError.prototype = new Error();
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-exports.UnauthorizedError = UnauthorizedError;
 exports.sessionTypes = sessionTypes;
 exports.Sessions = Sessions;
 exports.decorateController = decorateController;

@@ -1,4 +1,5 @@
 /*global applicationContext */
+"use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A Foxx.Controller to show all Foxx Applications
@@ -27,17 +28,18 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 (function() {
-  "use strict";
 
-  var db = require("internal").db;
+  var internal = require("internal");
+  var db = require("org/arangodb").db;
   var FoxxController = require("org/arangodb/foxx").Controller;
+  var UnauthorizedError = require("http-errors").Unauthorized;
   var controller = new FoxxController(applicationContext);
   var ArangoError = require("org/arangodb").ArangoError;
   var FoxxManager = require("org/arangodb/foxx/manager");
   var fmUtils = require("org/arangodb/foxx/manager-utils");
   var actions = require("org/arangodb/actions");
   var joi = require("joi");
-  var docu = require("lib/swagger").Swagger;
+  var docu = require("./lib/swagger").Swagger;
   var underscore = require("underscore");
   var mountPoint = {
     type: joi.string().required().description(
@@ -54,8 +56,16 @@
 
   controller.activateSessions({
     type: "cookie",
-    autoCreateSession: true,
+    autoCreateSession: false,
     cookie: {name: "arango_sid_" + db._name()}
+  });
+
+  controller.allRoutes
+  .errorResponse(UnauthorizedError, 401, "unauthorized")
+  .onlyIf(function (req, res) {
+    if (!internal.options()["server.disable-authentication"] && (!req.session || !req.session.get('uid'))) {
+      throw new UnauthorizedError();
+    }
   });
 
   controller.extend({

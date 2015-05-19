@@ -6,10 +6,34 @@ var db = require("org/arangodb").db,
   systemColors = internal.COLORS, 
   print = internal.print,
   colors = { };
+
  
 if (typeof internal.printBrowser === "function") {
   print = internal.printBrowser;
 }
+
+var stringBuilder = {
+
+  output: "",
+
+  appendLine: function(line) {
+    if (!line) {
+      this.output += "\n";
+    }
+    else {
+      this.output += line + "\n";
+    }
+  },
+
+  getOutput: function() {
+    return this.output;
+  },
+
+  clearOutput: function() {
+    this.output = "";
+  }
+
+};
 
 /* set colors for output */
 function setColors (useSystemColors) {
@@ -95,9 +119,9 @@ function wrap (str, width) {
 /* print query string */  
 function printQuery (query) {
   'use strict';
-  print(section("Query string:"));
-  print(" " + value(wrap(query, 100).replace(/\n/g, "\n ", query)));
-  print(); 
+  stringBuilder.appendLine(section("Query string:"));
+  stringBuilder.appendLine(" " + value(wrap(query, 100).replace(/\n/g, "\n ", query)));
+  stringBuilder.appendLine(); 
 }
 
 /* print write query modification flags */
@@ -106,35 +130,35 @@ function printModificationFlags (flags) {
   if (flags === undefined) {
     return;
   }
-  print(section("Write query options:"));
+  stringBuilder.appendLine(section("Write query options:"));
   var keys = Object.keys(flags), maxLen = "Option".length;
   keys.forEach(function(k) {
     if (k.length > maxLen) {
       maxLen = k.length;
     }
   });
-  print(" " + header("Option") + pad(1 + maxLen - "Option".length) + "   " + header("Value"));
+  stringBuilder.appendLine(" " + header("Option") + pad(1 + maxLen - "Option".length) + "   " + header("Value"));
   keys.forEach(function(k) {
-    print(" " + keyword(k) + pad(1 + maxLen - k.length) + "   " + value(JSON.stringify(flags[k]))); 
+    stringBuilder.appendLine(" " + keyword(k) + pad(1 + maxLen - k.length) + "   " + value(JSON.stringify(flags[k]))); 
   });
-  print();
+  stringBuilder.appendLine();
 }
 
 /* print optimizer rules */
 function printRules (rules) {
   'use strict';
-  print(section("Optimization rules applied:"));
+  stringBuilder.appendLine(section("Optimization rules applied:"));
   if (rules.length === 0) {
-    print(" " + value("none"));
+    stringBuilder.appendLine(" " + value("none"));
   }
   else {
     var maxIdLen = String("Id").length;
-    print(" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("RuleName"));
+    stringBuilder.appendLine(" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("RuleName"));
     for (var i = 0; i < rules.length; ++i) {
-      print(" " + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + "   " + keyword(rules[i]));
+      stringBuilder.appendLine(" " + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + "   " + keyword(rules[i]));
     }
   }
-  print(); 
+  stringBuilder.appendLine(); 
 }
 
 /* print warnings */
@@ -144,27 +168,25 @@ function printWarnings (warnings) {
     return;
   }
 
-  print(section("Warnings:"));
+  stringBuilder.appendLine(section("Warnings:"));
   var maxIdLen = String("Code").length;
-  print(" " + pad(1 + maxIdLen - String("Code").length) + header("Code") + "   " + header("Message"));
+  stringBuilder.appendLine(" " + pad(1 + maxIdLen - String("Code").length) + header("Code") + "   " + header("Message"));
   for (var i = 0; i < warnings.length; ++i) {
-    print(" " + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + "   " + keyword(warnings[i].message));
+    stringBuilder.appendLine(" " + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + "   " + keyword(warnings[i].message));
   }
-  print(); 
+  stringBuilder.appendLine(); 
 }
 
 /* print indexes used */
-function printIndexes (indexes, shouldPrint) {
+function printIndexes (indexes) {
   'use strict';
-  var returnIndexes = [];
 
-  if (shouldPrint) {
-    print(section("Indexes used:"));
+  stringBuilder.appendLine(section("Indexes used:"));
 
-    if (indexes.length === 0) {
-      print(" " + value("none"));
-    }
+  if (indexes.length === 0) {
+    stringBuilder.appendLine(" " + value("none"));
   }
+
   if (indexes.length > 0) {
     var maxIdLen = String("Id").length;
     var maxCollectionLen = String("Collection").length;
@@ -190,9 +212,6 @@ function printIndexes (indexes, shouldPrint) {
       if (l > maxCollectionLen) {
         maxCollectionLen = l;
       }
-      if (!shouldPrint) {
-        returnIndexes.push(index);
-      }
     });
     var line = " " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
                header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " +
@@ -202,9 +221,8 @@ function printIndexes (indexes, shouldPrint) {
                header("Selectivity Est.") + "   " +
                header("Fields") + pad(1 + maxFieldsLen - "Fields".length) + "   " +
                header("Ranges");
-    if (shouldPrint) {
-      print(line);
-    }
+
+    stringBuilder.appendLine(line);
 
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? "true" : "false");
@@ -225,24 +243,14 @@ function printIndexes (indexes, shouldPrint) {
         pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + "   " +
         fields + pad(1 + maxFieldsLen - fieldsLen) + "   " + 
         ranges;
-      if (shouldPrint) {
-        print(line);
-      }
-      else {
-        returnIndexes.push(line);
-      }
+
+      stringBuilder.appendLine(line);
     }
-  }
-  if (shouldPrint) {
-    print();
-  }
-  else {
-    return returnIndexes;
   }
 }
 
 /* analzye and print execution plan */
-function processQuery (query, explain, shouldPrint) {
+function processQuery (query, explain) {
   'use strict';
   var nodes = { }, 
     parents = { }, 
@@ -565,21 +573,12 @@ function processQuery (query, explain, shouldPrint) {
     if (node.type === "CalculationNode") {
       line += variablesUsed() + constNess();
     }
-    if (shouldPrint) {
-      print(line);
-    }
-    else {
-      node.comment = indent(level, node.type === "SingletonNode") + label(node);
-      postHandle(node);
-      return node;
-    }
+    stringBuilder.appendLine(line);
     postHandle(node);
   };
 
-  if (shouldPrint) {
-    printQuery(query);
-    print(section("Execution plan:"));
-  }
+  printQuery(query);
+  stringBuilder.appendLine(section("Execution plan:"));
 
   var line = " " + 
     pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
@@ -587,22 +586,13 @@ function processQuery (query, explain, shouldPrint) {
     pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " +
     header("Comment");
 
-  if (shouldPrint) {
-    print(line);
-  }
-
-  var returnNodes = [];
+  stringBuilder.appendLine(line);
 
   var walk = [ rootNode ];
   while (walk.length > 0) {
     var id = walk.pop();
     var node = nodes[id];
-    if (shouldPrint) {
-      printNode(node);
-    }
-    else {
-      returnNodes.push(printNode(node));
-    }
+    printNode(node);
     if (parents.hasOwnProperty(id)) {
       walk = walk.concat(parents[id]);
     }
@@ -611,24 +601,11 @@ function processQuery (query, explain, shouldPrint) {
     }
   }
 
-  if (shouldPrint) {
-    print();
-
-    printIndexes(indexes, true);
-    printRules(plan.rules, true);
-    printModificationFlags(modificationFlags, true);
-    printWarnings(explain.warnings, true);
-  }
-  else {
-    return {
-      query: query,
-      index: indexes,
-      printRules: plan.rules,
-      nodes: returnNodes,
-      printModificationFlags: modificationFlags,
-      printWarnings: explain.warnings
-    };
-  }
+  stringBuilder.appendLine();
+  printIndexes(indexes);
+  printRules(plan.rules);
+  printModificationFlags(modificationFlags);
+  printWarnings(explain.warnings);
 }
 
 /* the exposed function */
@@ -647,31 +624,13 @@ function explain (data, options) {
   var stmt = db._createStatement(data);
   var result = stmt.explain(options);
 
-  print();
+  stringBuilder.clearOutput();
   processQuery(data.query, result, true);
-  print();
-}
+  print(stringBuilder.getOutput());
 
-function getExplain (data, options) {
-  'use strict';
-  if (typeof data === "string") {
-    data = { query: data };
-  }
-  if (! (data instanceof Object)) {
-    throw "ArangoStatement needs initial data";
-  }
-
-  options = options || { };
-  setColors(options.colors === undefined ? true : options.colors);
-
-  var stmt = db._createStatement(data);
-  var result = stmt.explain(options);
-
-  var res2 = processQuery(data.query, result, false);
-  return res2;
+  return stringBuilder.getOutput();
 }
 
 exports.explain = explain;
-exports.getExplain = getExplain;
 
 });

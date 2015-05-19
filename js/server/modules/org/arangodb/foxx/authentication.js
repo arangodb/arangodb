@@ -33,8 +33,7 @@ var db = require("org/arangodb").db,
   is = require("org/arangodb/is"),
   _ = require("underscore"),
   errors = require("internal").errors,
-  defaultsFor = {},
-  UnauthorizedError = require("./sessions").UnauthorizedError;
+  defaultsFor = {};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
