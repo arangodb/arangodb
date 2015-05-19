@@ -1,6 +1,10 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* front-end: display of query execution time
+
+* front-end: demo page added. only working if demo data is available.
+
 * front-end: renamed query submit to execute
 
 * front-end: added query explain feature
