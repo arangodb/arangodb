@@ -30,47 +30,32 @@
 
 "use strict";
 
-var Foxx = require("org/arangodb/foxx"),
-  controller = new Foxx.Controller(applicationContext),
-  ArangoError = require("org/arangodb").ArangoError,
-  underscore = require("underscore"),
-  cluster = require("org/arangodb/cluster"),
-  joi = require("joi"),
-  util = require("util"),
-  internal = require("internal"),
-  notifications = require("org/arangodb/configuration").notifications,
-  db = require("internal").db,
-  foxxInstallKey = joi.string().required().description(
-    "The _key attribute, where the information of this Foxx-Install is stored."
-  );
+var Foxx = require("org/arangodb/foxx");
+var publicController = new Foxx.Controller(applicationContext);
+var controller = new Foxx.Controller(applicationContext);
+var underscore = require("underscore");
+var cluster = require("org/arangodb/cluster");
+var joi = require("joi");
+var util = require("util");
+var internal = require("internal");
+var notifications = require("org/arangodb/configuration").notifications;
+var db = require("org/arangodb").db;
+var foxxInstallKey = joi.string().required().description(
+  "The _key attribute, where the information of this Foxx-Install is stored."
+);
 
-function UnauthorizedError() {
-  ArangoError.apply(this, arguments);
-};
-util.inherits(UnauthorizedError, ArangoError);
-
-var foxxes = new (require("lib/foxxes").Foxxes)();
+var foxxes = new (require("./lib/foxxes").Foxxes)();
 var FoxxManager = require("org/arangodb/foxx/manager");
+var UnauthorizedError = require("http-errors").Unauthorized;
 
-controller.activateSessions({
+publicController.activateSessions({
   type: "cookie",
-  autoCreateSession: true,
+  autoCreateSession: false,
   cookie: {name: "arango_sid_" + db._name()}
 });
 
-controller.get("/index.html", function(req, res) {
-  var prefix = '/_db/' + encodeURIComponent(req.database) + applicationContext.mount;
-
-  res.status(301);
-  if (cluster.dispatcherDisabled()) {
-    res.set("Location", prefix + "/standalone.html");
-  } else {
-    res.set("Location", prefix + "/cluster.html");
-  }
-});
-
-controller.get("/whoAmI", function(req, res) {
-  var uid = req.session.get("uid");
+publicController.get("/whoAmI", function(req, res) {
+  var uid = req.session && req.session.get("uid");
   var user = null;
   if (uid) {
     var users = Foxx.requireApp("_system/users").userStorage;
@@ -88,11 +73,16 @@ controller.get("/whoAmI", function(req, res) {
   res.json({user: user});
 });
 
-controller.destroySession("/logout", function (req, res) {
+publicController.destroySession("/logout", function (req, res) {
   res.json({success: true});
 });
 
-controller.post("/login", function (req, res) {
+publicController.post("/login", function (req, res) {
+  if (req.session) {
+    req.session.set({uid: null, userDate: null});
+  } else {
+    req.session = publicController.sessions.getSessionStorage().create();
+  }
   var users = Foxx.requireApp("_system/users").userStorage;
   var credentials = req.parameters.credentials;
   var user = users.resolve(credentials.get("username"));
@@ -111,11 +101,36 @@ controller.post("/login", function (req, res) {
     password: joi.string().required()
   }),
   description: "Login credentials."
-}).errorResponse(UnauthorizedError, 401, "unauthorized");
+});
 
-controller.get("/unauthorized", function() {
+publicController.get("/unauthorized", function() {
   throw new UnauthorizedError();
-}).errorResponse(UnauthorizedError, 401, "unauthorized");
+});
+
+controller.activateSessions({
+  type: "cookie",
+  autoCreateSession: false,
+  cookie: {name: "arango_sid_" + db._name()}
+});
+
+controller.allRoutes
+.errorResponse(UnauthorizedError, 401, "unauthorized")
+.onlyIf(function (req, res) {
+  if (!internal.options()["server.disable-authentication"] && (!req.session || !req.session.get('uid'))) {
+    throw new UnauthorizedError();
+  }
+});
+
+controller.get("/index.html", function(req, res) {
+  var prefix = '/_db/' + encodeURIComponent(req.database) + applicationContext.mount;
+
+  res.status(301);
+  if (cluster.dispatcherDisabled()) {
+    res.set("Location", prefix + "/standalone.html");
+  } else {
+    res.set("Location", prefix + "/cluster.html");
+  }
+});
 
 /** Is version check allowed
  *

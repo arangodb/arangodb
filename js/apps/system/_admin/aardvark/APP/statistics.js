@@ -32,6 +32,8 @@ var cluster = require("org/arangodb/cluster");
 var actions = require("org/arangodb/actions");
 
 var FoxxController = require("org/arangodb/foxx").Controller;
+var UnauthorizedError = require("http-errors").Unauthorized;
+var internal = require("internal");
 var controller = new FoxxController(applicationContext);
 var db = require("org/arangodb").db;
 
@@ -429,8 +431,16 @@ function computeStatisticsLong (attrs, clusterId) {
 
 controller.activateSessions({
   type: "cookie",
-  autoCreateSession: true,
+  autoCreateSession: false,
   cookie: {name: "arango_sid_" + db._name()}
+});
+
+controller.allRoutes
+.errorResponse(UnauthorizedError, 401, "unauthorized")
+.onlyIf(function (req, res) {
+  if (!internal.options()["server.disable-authentication"] && (!req.session || !req.session.get('uid'))) {
+    throw new UnauthorizedError();
+  }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
