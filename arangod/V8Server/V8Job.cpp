@@ -51,13 +51,15 @@ using namespace triagens::arango;
 V8Job::V8Job (TRI_vocbase_t* vocbase,
               ApplicationV8* v8Dealer,
               std::string const& command,
-              TRI_json_t const* parameters)
+              TRI_json_t const* parameters,
+              bool allowUseDatabase)
   : Job("V8 Job"),
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
     _command(command),
     _parameters(nullptr),
-    _canceled(0) {
+    _canceled(0),
+    _allowUseDatabase(allowUseDatabase) {
 
   if (parameters != nullptr) {
     // create our own copy of the parameters
@@ -97,7 +99,7 @@ Job::status_t V8Job::work () {
     return status_t(JOB_DONE);
   }
 
-  ApplicationV8::V8Context* context = _v8Dealer->enterContext("STANDARD", _vocbase, false);
+  ApplicationV8::V8Context* context = _v8Dealer->enterContext("STANDARD", _vocbase, _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {

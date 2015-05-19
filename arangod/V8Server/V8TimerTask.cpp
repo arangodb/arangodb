@@ -55,7 +55,8 @@ V8TimerTask::V8TimerTask (string const& id,
                           Dispatcher* dispatcher,
                           double offset,
                           string const& command,
-                          TRI_json_t* parameters)
+                          TRI_json_t* parameters,
+                          bool _allowUseDatabase)
   : Task(id, name),
     TimerTask(id, (offset <= 0.0 ? 0.00001 : offset)), // offset must be (at least slightly) greater than zero, otherwise
                                                        // the timertask will not execute the task at all
@@ -115,7 +116,8 @@ bool V8TimerTask::handleTimeout () {
     _vocbase,
     _v8Dealer,
     "(function (params) { " + _command + " } )(params);",
-    _parameters);
+    _parameters,
+    _allowUseDatabase);
 
   if (_dispatcher->addJob(job) != TRI_ERROR_NO_ERROR) {
     // just in case the dispatcher cannot accept the job (e.g. when shutting down)

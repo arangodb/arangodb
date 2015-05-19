@@ -56,7 +56,8 @@ V8PeriodicTask::V8PeriodicTask (string const& id,
                                 double offset,
                                 double period,
                                 string const& command,
-                                TRI_json_t* parameters)
+                                TRI_json_t* parameters,
+                                bool allowUseDatabase)
   : Task(id, name),
     PeriodicTask(id, offset, period),
     _vocbase(vocbase),
@@ -64,7 +65,8 @@ V8PeriodicTask::V8PeriodicTask (string const& id,
     _dispatcher(dispatcher),
     _command(command),
     _parameters(parameters),
-    _created(TRI_microtime()) {
+    _created(TRI_microtime()),
+    _allowUseDatabase(allowUseDatabase) {
 
   TRI_ASSERT(vocbase != nullptr);
 
@@ -115,7 +117,8 @@ bool V8PeriodicTask::handlePeriod () {
     _vocbase,
     _v8Dealer,
     "(function (params) { " + _command + " } )(params);",
-    _parameters);
+    _parameters,
+    _allowUseDatabase);
 
   if (_dispatcher->addJob(job) != TRI_ERROR_NO_ERROR) {
     // just in case the dispatcher cannot accept the job (e.g. when shutting down)

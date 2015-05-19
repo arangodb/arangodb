@@ -361,24 +361,28 @@ class KeySpace {
       WRITE_LOCKER(_lock);
  
       auto found = static_cast<KeySpaceElement*>(TRI_InsertKeyAssociativePointer(&_hash, element->key, element, false));
-   
-      if (compare->IsUndefined()) {
-        if (found == nullptr) {
-          // no object saved yet
-          TRI_InsertKeyAssociativePointer(&_hash, element->key, element, false);
-          match = true;
-        }
-        else {
-          match = false;
-        }
+  
+      if (found == nullptr) {
+        // no object saved yet
+        match = true;
+
         return TRI_ERROR_NO_ERROR;
       }
+      
+      if (compare->IsUndefined()) {
+        // other object saved, but we compare it with nothing => no match
+        delete element;
+        match = false;
 
+        return TRI_ERROR_NO_ERROR;
+      }
+         
       TRI_json_t* other = TRI_ObjectToJson(isolate, compare);
 
       if (other == nullptr) {
         delete element;
-        // TODO: fix error message
+        match = false;
+
         return TRI_ERROR_OUT_OF_MEMORY;
       }
         
