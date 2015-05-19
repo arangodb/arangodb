@@ -1,5 +1,6 @@
 /*jshint strict: false, unused: false, bitwise: false */
 /*global COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
+/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions
@@ -5603,7 +5604,22 @@ function AQL_SHORTEST_PATH (vertexCollection,
   params = params || {};
   var vertexCollections = [vertexCollection];
   var edgeCollections = [edgeCollection];
-
+  // JS Fallback cases. CPP implementation not working here
+  if (params.hasOwnProperty("distance") ||
+      params.hasOwnProperty("filterVertices") ||
+      params.hasOwnProperty("followEdges") ||
+    require("org/arangodb/cluster").isCoordinator()
+  ) {
+    params = SHORTEST_PATH_PARAMS(params);
+    var a = TRAVERSAL_FUNC("SHORTEST_PATH",
+                           TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
+                           TO_ID(startVertex, vertexCollection),
+                           TO_ID(endVertex, vertexCollection),
+                           direction,
+                           params);
+                         return a;
+  }
+  // Fall through to new CPP version.
   if (params.hasOwnProperty("distance") && params.hasOwnProperty("defaultDistance")) {
     opts.distance = params.distance;
     opts.defaultDistance = params.defaultDistance;
@@ -5620,17 +5636,18 @@ function AQL_SHORTEST_PATH (vertexCollection,
   if (params.hasOwnProperty("filterVertices")) {
     opts.filterVertices = params.filterVertices;
   }
+  var i, c;
   if (params.hasOwnProperty("vertexCollections") && Array.isArray(params.vertexCollections)) {
-    for (var i = 0; i < params.vertexCollections.length; ++i) {
-      var c = params.vertexCollections[i];
+    for (i = 0; i < params.vertexCollections.length; ++i) {
+      c = params.vertexCollections[i];
       if (typeof c === "string") {
         vertexCollections.push(c);
       }
     }
   }
   if (params.hasOwnProperty("edgeCollections") && Array.isArray(params.edgeCollections)) {
-    for (var i = 0; i < params.edgeCollections.length; ++i) {
-      var c = params.edgeCollections[i];
+    for (i = 0; i < params.edgeCollections.length; ++i) {
+      c = params.edgeCollections[i];
       if (typeof c === "string") {
         edgeCollections.push(c);
       }
@@ -5651,7 +5668,7 @@ function AQL_SHORTEST_PATH (vertexCollection,
 
   if (params.paths) {
     // Prints all sub paths in form of {vertex: target, vertices: [verticesOnPath], edges: [edgesOnPath]}
-    for (var i = 0; i < newRes.vertices.length; ++i) {
+    for (i = 0; i < newRes.vertices.length; ++i) {
       legacyResult.push({
         vertex: newRes.vertices[i],
         path: {
@@ -5661,7 +5678,7 @@ function AQL_SHORTEST_PATH (vertexCollection,
       });
     }
   } else {
-    for (var i = 0; i < newRes.vertices.length; ++i) {
+    for (i = 0; i < newRes.vertices.length; ++i) {
       legacyResult.push({vertex: newRes.vertices[i]});
     }
   }

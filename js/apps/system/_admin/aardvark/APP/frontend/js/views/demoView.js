@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, arangoHelper, $, _, window, templateEngine, AmCharts, lunr*/
+/*global Backbone, arangoHelper, $, _, window, templateEngine, AmCharts, lunr, alert*/
 
 (function () {
   "use strict";
@@ -290,8 +290,8 @@
         var i = 0;
 
         self.resetDataHighlighting();
-        var least = list[0].count^3;
-        var best = list[list.length - 1].count^3;
+        var least = Math.pow(list[0].count, 3);
+        var best = Math.pow(list[list.length - 1].count, 3);
         var m = 2.625 /(best - least);
         var distribute = function(x) {
           return m * x - m * least;
@@ -299,7 +299,7 @@
 
         for (i = 0; i < list.length; ++i) {
           var to = list[i].Dest;
-          var count = list[i].count^3;
+          var count = Math.pow(list[i].count, 3);
           self.setAirportColor(to, self.airportHighlightColor);
 
           var toSize = distribute(count);
@@ -355,15 +355,15 @@
 
         self.resetDataHighlighting();
 
-        var least = list[0].count^3;
-        var best = list[list.length - 1].count^3;
+        var least = Math.pow(list[0].count, 3);
+        var best = Math.pow(list[list.length - 1].count, 3);
         var m = 2.625 /(best - least);
         var distribute = function(x) {
           return m * x - m * least;
         };
 
         for (i = 0; i < list.length; ++i) {
-          var count = list[i].count^3;
+          var count = Math.pow(list[i].count, 3);
           var toSize = distribute(count);
           toSize += 0.625;
           self.addFlightLine(
@@ -391,7 +391,8 @@
 
         for (i = (list.length - 1); i >= Math.max(list.length - 5, 0); --i) {
           airportData = self.airportCollection.findWhere({_key: list[i].Dest});
-          tempHTML += airportData.get("Name").substr(0, 25) + " - " + airportData.get("_key") + ": <b>" + list[i].count + "</b>";
+          tempHTML += airportData.get("Name").substr(0, 25) + " - " + airportData.get("_key")
+                   + ": <b>" + list[i].count + "</b>";
           if (i > (list.length - 5)) {
             tempHTML += "<br>";
           }
