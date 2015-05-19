@@ -1,6 +1,6 @@
 !CHAPTER Foxx Job Queues
 
-If you have never build a Foxx App, then you can make your own [first Foxx App](https://docs.arangodb.com/cookbook/FoxxFirstSteps.html) in our [cookbook](https://docs.arangodb.com/cookbook).
+If you have never built a Foxx App, then you can make your own [first Foxx App](https://docs.arangodb.com/cookbook/FoxxFirstSteps.html) using our [cookbook](https://docs.arangodb.com/cookbook).
 
 Foxx allows defining job queues that let you perform slow or expensive actions asynchronously. These queues can be used to send e-mails, call external APIs or perform other actions that you do not want to perform directly or want to retry on failure.
 
@@ -32,7 +32,9 @@ Creates a queue with the given name and maximum number of workers.
 
 Returns the **Queue** instance for the given **name**. If the queue does not exist, a new queue with the given **name** will be created. If a queue with the given **name** already exists and **maxWorkers** is set, the queue's maximum number of workers will be updated.
 
-**Parameter**
+The queue will be created in the context of the current database. Jobs from this queue will only be executed automatically if the server is started with option `--server.foxx-queues-system-only` set to `false`.
+
+**Parameters**
 
 * **name**: the name of the queue to create
 * **maxWorkers** (optional): the maximum number of workers. Default: **1**
@@ -58,7 +60,9 @@ Fetches a queue with the given name.
 
 Returns the **Queue** instance for the given **name**. If the queue does not exist an exception is thrown instead.
 
-**Parameter**
+The queue will be looked for in the context of the current database. 
+
+**Parameters**
 
 * **name**: the name of the queue to fetch
 
@@ -87,12 +91,14 @@ Deletes the queue with the given name from the database.
 `Foxx.queues.delete(name)`
 
 Returns **true** if the queue was deleted successfully. If the queue did not exist, it returns **false** instead.
+The queue will be looked for and deleted in the context of the current database. 
 
 When a queue is deleted, jobs on that queue will no longer be executed.
 
 Deleting a queue will not delete any jobs on that queue.
 
-**Parameter**
+
+**Parameters**
 
 * **name**: the name of the queue to delete
 
@@ -108,11 +114,14 @@ Foxx.queues.delete("my-queue"); // false
 
 Registers a job type with the queue manager.
 
+The job type will be registered for all queues in the context of the current database. Queues of other databases are not affected by registering a job type.
+
+
 `Foxx.queues.registerJobType(name, opts)`
 
 If **opts** is a function it will be treated as the **execute** function.
 
-**Parameter**
+**Parameters**
 
 * **name**: the name of the job type to register
 * **opts**: an object with the following properties:
@@ -135,11 +144,13 @@ Foxx.queues.registerJobType("log", function (data) {
 
 Adds a job of the given type to the given queue.
 
+The job will be added to the specified queue in the context of the current database.
+
 `Queue::push(name, data, [opts])`
 
 Returns the job id.
 
-**Parameter**
+**Parameters**
 
 * **name**: the name of the job's job type
 * **data**: the job data of the job; must be serializable to JSON
@@ -179,11 +190,13 @@ queue.push("log", "Hello World!", {
 
 Creates a proxy object representing a job with the given job id.
 
+The job will be looked for in the specified queue in the context of the current database.
+
 `Queue::get(jobId)`
 
 Returns the **Job** instance for the given **jobId**. Properties of the job object will be fetched whenever they are referenced and can not be modified.
 
-**Parameter**
+**Parameters**
 
 * **jobId**: the id of the job to create a proxy object for.
 
@@ -197,6 +210,7 @@ assertEqual(job.id, jobId);
 !SECTION Deleting a job from the queue
 
 Deletes a job with the given job id.
+The job will be looked for and deleted in the specified queue in the context of the current database.
 
 `Queue::delete(jobId)`
 
@@ -222,8 +236,9 @@ assertEqual(queue.complete("log").length, 1);
 `Queue::pending([type])`
 
 Returns an array of job ids of jobs in the given queue with the status **"pending"**, optionally filtered by the given job type.
+The jobs will be looked for in the specified queue in the context of the current database.
 
-**Parameter**
+**Parameters**
 
 * **type** (optional): the name of the job type to filter the results
 
@@ -232,8 +247,9 @@ Returns an array of job ids of jobs in the given queue with the status **"pendin
 `Queue::progress([type])`
 
 Returns an array of job ids of jobs in the given queue with the status **"progress"**, optionally filtered by the given job type.
+The jobs will be looked for in the specified queue in the context of the current database.
 
-**Parameter**
+**Parameters**
 
 * **type** (optional): the name of the job type to filter the results
 
@@ -242,8 +258,9 @@ Returns an array of job ids of jobs in the given queue with the status **"progre
 `Queue::complete([type])`
 
 Returns an array of job ids of jobs in the given queue with the status **"complete"**, optionally filtered by the given job type.
+The jobs will be looked for in the specified queue in the context of the current database.
 
-**Parameter**
+**Parameters**
 
 * **type** (optional): the name of the job type to filter the results.
 
@@ -252,8 +269,9 @@ Returns an array of job ids of jobs in the given queue with the status **"comple
 `Queue::failed([type])`
 
 Returns an array of job ids of jobs in the given queue with the status **"failed"**, optionally filtered by the given job type.
+The jobs will be looked for in the specified queue in the context of the current database.
 
-**Parameter**
+**Parameters**
 
 * **type** (optional): the name of the job type to filter the results.
 
@@ -262,8 +280,9 @@ Returns an array of job ids of jobs in the given queue with the status **"failed
 `Queue::all([type])`
 
 Returns an array of job ids of all jobs in the given queue, optionally filtered by the given job type.
+The jobs will be looked for in the specified queue in the context of the current database.
 
-**Parameter**
+**Parameters**
 
 * **type** (optional): the name of the job type to filter the results.
 

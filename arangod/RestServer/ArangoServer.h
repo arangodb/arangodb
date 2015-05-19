@@ -513,6 +513,40 @@ namespace triagens {
         bool _disableQueryTracking;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief restrict the Foxx queues to run in the _system database only
+/// @startDocuBlock foxxQueuesSystemOnly
+/// `--server.foxx-queues-system-only flag`
+///
+/// If *true*, the Foxx queues will be handled and jobs in them executed only
+/// for queues and jobs in the _system database. Queues and jobs of all other
+/// databases will be ignored then.
+///
+/// The default is *true*. It should only be changed if Foxx queues are used
+/// with other databases than *_system*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+    
+        bool _foxxQueuesSystemOnly;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief poll interval for Foxx queues
+/// @startDocuBlock foxxQueuesPollInterval
+/// `--server.foxx-queues-poll-interval value`
+///
+/// The poll interval for the Foxx queues manager. The value is specified in
+/// seconds. Lower values will mean more immediate and more frequent Foxx queue 
+/// job execution, but will make the queue thread wake up and query the
+/// queues more often. When set to a low value, the queue thread might cause
+/// CPU load.
+///
+/// The default is *1* second. If Foxx queues are not used, then this value
+/// may be increased to make the queues thread wake up less.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        double _foxxQueuesPollInterval;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
 ///
 /// @CMDOPT{\--javascript.unit-tests @CA{test-file}}
