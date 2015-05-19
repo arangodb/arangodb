@@ -193,7 +193,8 @@ function PrintEntries (entries, amount) {
 function DeepCheckDatafile (collection, type, datafile, scan) {
   var entries = scan.entries;
 
-  var lastGood = 0;
+  var diagnosis = "";
+  var lastGood, firstBad;
   var lastGoodPos = 0;
   var stillGood = true;
 
@@ -208,11 +209,28 @@ function DeepCheckDatafile (collection, type, datafile, scan) {
     }
     else {
       stillGood = false;
+      diagnosis = entry.diagnosis || "";
+      firstBad = entry;
+      break;
     }
   }
 
   if (! stillGood) {
-    printf("  Last good position: %d\n", lastGood.position + lastGood.realSize);
+    printf("  Last good marker:   start: %d (hex %s), length: %d (hex %s)\n", 
+           lastGood.position, 
+           lastGood.position.toString(16), 
+           lastGood.realSize,
+           lastGood.realSize.toString(16));
+
+    printf("  First bad marker:   start: %d (hex %s), length: %d (hex %s)\n", 
+           firstBad.position, 
+           firstBad.position.toString(16), 
+           firstBad.realSize,
+           firstBad.realSize.toString(16));
+
+    if (diagnosis) {
+      printf("  Diagnosis:          %s\n", diagnosis);
+    }
     printf("\n");
 
     QueryWipeDatafile(collection, type, datafile, scan, lastGoodPos);

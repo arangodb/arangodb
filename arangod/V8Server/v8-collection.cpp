@@ -4294,8 +4294,9 @@ static void JS_DatafileScanVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>
   v8::Handle<v8::Array> entries = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("entries"), entries);
 
-  for (size_t i = 0;  i < TRI_LengthVector(&scan._entries);  ++i) {
-    TRI_df_scan_entry_t* entry = (TRI_df_scan_entry_t*) TRI_AtVector(&scan._entries, i);
+  size_t const n = TRI_LengthVector(&scan._entries);
+  for (size_t i = 0;  i < n;  ++i) {
+    auto entry = static_cast<TRI_df_scan_entry_t const*>(TRI_AddressVector(&scan._entries, i));
 
     v8::Handle<v8::Object> o = v8::Object::New(isolate);
 
@@ -4305,6 +4306,10 @@ static void JS_DatafileScanVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>
     o->Set(TRI_V8_ASCII_STRING("tick"),     V8TickId(isolate, entry->_tick));
     o->Set(TRI_V8_ASCII_STRING("type"),     v8::Number::New(isolate, (int) entry->_type));
     o->Set(TRI_V8_ASCII_STRING("status"),   v8::Number::New(isolate, (int) entry->_status));
+
+    if (entry->_diagnosis != nullptr) {
+      o->Set(TRI_V8_ASCII_STRING("diagnosis"), TRI_V8_ASCII_STRING(entry->_diagnosis));
+    }
 
     entries->Set((uint32_t) i, o);
   }
