@@ -134,15 +134,17 @@ a.headerButton {
   margin-top: 2px;
   position: relative;
 
-  .fa, [class^="icon_"], [class*=" icon_"] {
+  .fa,
+  [class^="icon_"],
+  [class*=" icon_"] {
     display: block;
+    height: 23px;
+    line-height: 23px;
     position: static; // TODO fix cascading
     right: 0; // TODO fix cascading
+    text-align: center;
     top: 0; // TODO fix cascading
     width: 27px;
-    text-align: center;
-    line-height: 23px;
-    height: 23px;
   }
 
   .icon_arangodb_arrowleft,

@@ -26,23 +26,23 @@ $iconsize: 50px;
   text-align: center;
 
   .warning-icons {
-    position: absolute;
-    left: 0;
-    top: 0;
     background-color: $c-negative;
-    color: white;
+    color: #fff;
     font-size: 11px;
     height: 17px;
+    left: 0;
     line-height: 13px;
     padding-left: 9px;
     padding-right: 4px;
+    position: absolute;
+    top: 0;
 
     &:before {
+      border-right: 17px solid transparent;
+      border-top: 17px solid $c-negative;
       content: '';
       position: absolute;
       right: -17px;
-      border-top: 17px solid $c-negative;
-      border-right: 17px solid transparent;
     }
 
     .fa {

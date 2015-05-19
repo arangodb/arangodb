@@ -2152,13 +2152,13 @@ a.headerButton {
   position: relative; }
   a.headerButton .fa, a.headerButton [class^="icon_"], a.headerButton [class*=" icon_"] {
     display: block;
+    height: 23px;
+    line-height: 23px;
     position: static;
     right: 0;
-    top: 0;
-    width: 27px;
     text-align: center;
-    line-height: 23px;
-    height: 23px; }
+    top: 0;
+    width: 27px; }
   a.headerButton .icon_arangodb_arrowleft, a.headerButton .icon_arangodb_arrowright {
     font-weight: bold; }
   a.headerButton.activated {
@@ -2390,22 +2390,22 @@ div .tile, div .bigtile {
   position: relative;
   text-align: center; }
   div .tile .warning-icons, div .bigtile .warning-icons {
-    position: absolute;
-    left: 0;
-    top: 0;
     background-color: #da4f49;
-    color: white;
+    color: #fff;
     font-size: 11px;
     height: 17px;
+    left: 0;
     line-height: 13px;
     padding-left: 9px;
-    padding-right: 4px; }
+    padding-right: 4px;
+    position: absolute;
+    top: 0; }
     div .tile .warning-icons:before, div .bigtile .warning-icons:before {
+      border-right: 17px solid transparent;
+      border-top: 17px solid #da4f49;
       content: '';
       position: absolute;
-      right: -17px;
-      border-top: 17px solid #da4f49;
-      border-right: 17px solid transparent; }
+      right: -17px; }
     div .tile .warning-icons .fa + .fa, div .bigtile .warning-icons .fa + .fa {
       margin-left: 1px; }
     div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
