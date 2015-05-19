@@ -30,6 +30,8 @@
   "use strict";
 
   var FoxxController = require("org/arangodb/foxx").Controller,
+      UnauthorizedError = require("http-errors").Unauthorized,
+      internal = require("internal"),
       Configuration = require("models/configuration").Model,
       controller = new FoxxController(applicationContext),
       db = require("internal").db,
@@ -37,8 +39,16 @@
 
   controller.activateSessions({
     type: "cookie",
-    autoCreateSession: true,
+    autoCreateSession: false,
     cookie: {name: "arango_sid_" + db._name()}
+  });
+
+  controller.allRoutes
+  .errorResponse(UnauthorizedError, 401, "unauthorized")
+  .onlyIf(function (req, res) {
+    if (!internal.options()["server.disable-authentication"] && (!req.session || !req.session.get('uid'))) {
+      throw new UnauthorizedError();
+    }
   });
 
   controller.get("/devMode", function(req, res) {
