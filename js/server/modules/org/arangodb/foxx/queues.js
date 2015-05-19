@@ -42,7 +42,7 @@ function failImmutable(name) {
 }
 
 var queueMap = { };
-var jobMap = Object.create(null);
+var jobMap = { };
 
 var queues = {
   _jobTypes: { },
@@ -270,10 +270,15 @@ _.extend(Queue.prototype, {
     if (!id.match(/^_jobs\//)) {
       id = '_jobs/' + id;
     }
-    if (!jobMap[id]) {
-      jobMap[id] = new Job(id);
+    // jobs are database-specific
+    var dbName = db._name();
+    if (! jobMap.hasOwnProperty(dbName)) {
+      jobMap[dbName] = { };
     }
-    return jobMap[id];
+    if (! jobMap[dbName][id]) {
+      jobMap[dbName][id] = new Job(id);
+    }
+    return jobMap[dbName][id];
   },
   delete: function (id) {
     return db._executeTransaction({
