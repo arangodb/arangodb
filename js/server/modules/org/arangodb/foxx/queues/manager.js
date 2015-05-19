@@ -1,5 +1,7 @@
 'use strict';
 
+/*global KEY_SET, KEY_GET, KEYSPACE_CREATE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx queues manager
 ///
@@ -30,9 +32,10 @@
 var QUEUE_MANAGER_PERIOD = 1000, // in ms
   _ = require('underscore'),
   tasks = require('org/arangodb/tasks'),
-  db = require('org/arangodb').db;
-
-exports.manage = function () {
+  db = require('org/arangodb').db,
+  SkipAttempts = 10;
+  
+var runInDatabase = function () {
   db._executeTransaction({
     collections: {
       read: ['_queues', '_jobs'],
@@ -77,12 +80,73 @@ exports.manage = function () {
   });
 };
 
+exports.manage = function () {
+  var dbName = db._name();
+
+  var databases = db._listDatabases();
+
+  // loop over all databases
+  for (var i = 0;  i < databases.length;  ++i) {
+    var current = databases[i];
+
+    if (current !== '_system') {
+      // TODO: FIXME and remove this restriction
+      continue;
+    }
+
+    try {
+      // switch into dedicated database
+      db._useDatabase(current);
+    
+      KEYSPACE_CREATE("queue-control", 1, true);
+
+      var skip = KEY_GET("queue-control", "skip") || 0;
+      skip--;
+
+      if (skip <= 0) {
+        // fetch _queues and _jobs collections
+        var queues = db._collection("_queues");
+
+        if (queues === null || queues.count() === 0) {
+          skip = SkipAttempts;
+        }
+      }
+
+      if (skip <= 0) {
+        var jobs = db._collection("_jobs");
+
+        if (jobs === null || jobs.count() === 0) {
+          skip = SkipAttempts;
+        }
+      }
+
+      // both collections exist and there exist documents in them
+
+      if (skip <= 0) {
+        runInDatabase();
+      }
+
+      if (skip < 0) {
+        skip = 1;
+      }
+
+      KEY_SET("queue-control", "skip", skip);
+    }
+    catch (err) {
+    }
+  }
+
+  // switch back into previous database
+  db._useDatabase(dbName);
+};
+
 exports.run = function () {
   db._jobs.updateByExample({status: 'progress'}, {status: 'pending'});
   return tasks.register({
     command: function () {
       require('org/arangodb/foxx/queues/manager').manage();
     },
-    period: QUEUE_MANAGER_PERIOD / 1000
+    period: QUEUE_MANAGER_PERIOD / 1000,
+    isSystem: true
   });
 };

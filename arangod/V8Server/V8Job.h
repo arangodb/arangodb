@@ -61,7 +61,8 @@ namespace triagens {
         V8Job (struct TRI_vocbase_s*,
                ApplicationV8*,
                std::string const&,
-               TRI_json_t const*);
+               TRI_json_t const*,
+               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a V8 job
@@ -146,6 +147,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         volatile sig_atomic_t _canceled;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the job is allowed to switch the database
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _allowUseDatabase;
     };
   }
 }

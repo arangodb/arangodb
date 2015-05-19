@@ -1,5 +1,7 @@
 'use strict';
 
+/*global KEY_SET */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx queues
 ///
@@ -55,6 +57,14 @@ var queues = {
     }
     return queueMap[queueKey];
   },
+  _clearCache: function () {
+    try {
+      KEY_SET("queue-control", "skip", 0);
+    }
+    catch (err) {
+      // ignore error if key does not exist
+    }
+  },
   create: function (key, maxWorkers) {
     try {
       db._queues.save({_key: key, maxWorkers: maxWorkers || 1});
@@ -67,6 +77,7 @@ var queues = {
         db._queues.update(key, {maxWorkers: maxWorkers});
       }
     }
+    this._clearCache();
     var queueKey = db._name() + ":" + key;
     if (!queueMap[queueKey]) {
       queueMap[queueKey] = new Queue(key);
@@ -87,6 +98,9 @@ var queues = {
         }
       }
     });
+    if (result) {
+      this._clearCache();
+    }
     return result;
   },
   registerJobType: function (type, opts) {
@@ -174,6 +188,7 @@ _.extend(Job.prototype, {
     db._jobs.update(this.id, {
       status: 'pending'
     });
+    queues._clearCache();
   }
 });
 
@@ -215,6 +230,7 @@ _.extend(Queue.prototype, {
     } else {
       throw new Error('Unknown job type: ' + name);
     }
+    queues._clearCache();
     now = Date.now();
     return db._jobs.save({
       status: 'pending',
@@ -252,6 +268,7 @@ _.extend(Queue.prototype, {
       action: function () {
         try {
           db._jobs.remove(id);
+          queues._clearCache();
           return true;
         } catch (err) {
           return false;

@@ -143,6 +143,12 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   else {
     name = "user-defined task";
   }
+  
+  bool isSystem = false;
+
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("isSystem"))) {
+    isSystem = TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("isSystem")));
+  }
 
   // offset in seconds into period or from now on if no period
   double offset = 0.0;
@@ -177,10 +183,10 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   // extract the parameters
-  TRI_json_t* parameters = nullptr;
+  std::unique_ptr<TRI_json_t> parameters;
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("params"))) {
-    parameters = TRI_ObjectToJson(isolate, obj->Get(TRI_V8_ASCII_STRING("params")));
+    parameters.reset(TRI_ObjectToJson(isolate, obj->Get(TRI_V8_ASCII_STRING("params"))));
   }
 
   TRI_GET_GLOBALS();
@@ -199,7 +205,8 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
         offset,
         period,
         command,
-        parameters);
+        parameters.get(),
+        isSystem);
   }
   else {
     // create a run-once timer task
@@ -212,11 +219,15 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
         GlobalDispatcher,
         offset,
         command,
-        parameters);
+        parameters.get(),
+        isSystem);
   }
+
+  // task not owns the parameters
+  parameters.release();
   
   // get the JSON representation of the task
-  TRI_json_t* json = task->toJson();
+  std::unique_ptr<TRI_json_t> json(task->toJson());
 
   if (json == nullptr) {
     if (period > 0.0) {
@@ -231,12 +242,11 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  TRI_ASSERT(json != nullptr);
+  TRI_ASSERT(json.get() != nullptr);
 
   int res = GlobalScheduler->registerTask(task);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     if (period > 0.0) {
       V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
       delete t;
@@ -249,8 +259,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
 
   TRI_V8_RETURN(result);
 }
@@ -302,24 +311,23 @@ static void JS_GetTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
-  TRI_json_t* json;
+  std::unique_ptr<TRI_json_t> json;
 
   if (args.Length() == 1) {
     // get a single task
     string const id = GetTaskId(isolate, args[0]);
-    json = GlobalScheduler->getUserTask(id);
+    json.reset(GlobalScheduler->getUserTask(id));
   }
   else {
     // get all tasks
-    json = GlobalScheduler->getUserTasks();
+    json.reset(GlobalScheduler->getUserTasks());
   }
 
   if (json == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_TASK_NOT_FOUND);
   }
 
-  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
 
   TRI_V8_RETURN(result);
 }

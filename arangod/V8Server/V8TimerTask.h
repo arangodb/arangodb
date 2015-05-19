@@ -70,7 +70,8 @@ namespace triagens {
                      rest::Dispatcher*,
                      double,
                      std::string const&,
-                     struct TRI_json_t*);
+                     struct TRI_json_t*,
+                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -151,6 +152,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         double _created;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the task is allowed to switch the database
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _allowUseDatabase;
 
     };
   }
