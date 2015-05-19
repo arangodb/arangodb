@@ -46,6 +46,7 @@
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/ExampleMatcher.h"
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/primary-index.h"
@@ -4840,59 +4841,6 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for match of an example
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsExampleMatch (TRI_transaction_collection_t*,
-                            TRI_shaper_t* shaper,
-                            TRI_doc_mptr_t const* doc,
-                            size_t len,
-                            TRI_shape_pid_t* pids,
-                            TRI_shaped_json_t** values) {
-  // The first argument is only there to make the compiler check that
-  // a transaction is ongoing. We need this to verify the protection
-  // of master pointer and data pointer access.
-  TRI_shaped_json_t document;
-  TRI_shaped_json_t result;
-  TRI_shape_t const* shape;
-
-  TRI_EXTRACT_SHAPED_JSON_MARKER(document, doc->getDataPtr());  // PROTECTED by trx coming from above
-
-  for (size_t i = 0;  i < len;  ++i) {
-    TRI_shaped_json_t* example = values[i];
-
-    bool ok = TRI_ExtractShapedJsonVocShaper(shaper,
-                                             &document,
-                                             example->_sid,
-                                             pids[i],
-                                             &result,
-                                             &shape);
-
-    if (! ok || shape == nullptr) {
-      return false;
-    }
-
-    if (result._data.length != example->_data.length) {
-      // suppress excessive log spam
-      // LOG_TRACE("expecting length %lu, got length %lu for path %lu",
-      //           (unsigned long) result._data.length,
-      //           (unsigned long) example->_data.length,
-      //           (unsigned long) pids[i]);
-
-      return false;
-    }
-
-    if (memcmp(result._data.data, example->_data.data, example->_data.length) != 0) {
-      // suppress excessive log spam
-      // LOG_TRACE("data mismatch at path %lu", (unsigned long) pids[i]);
-      return false;
-    }
-  }
-
-  return true;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -4903,13 +4851,10 @@ static bool IsExampleMatch (TRI_transaction_collection_t*,
 
 std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           TRI_transaction_collection_t* trxCollection,
-                          size_t length,
-                          TRI_shape_pid_t* pids,
-                          TRI_shaped_json_t** values) {
+                          ExampleMatcher& matcher) {
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx in trxCollection
 
   // use filtered to hold copies of the master pointer
   std::vector<TRI_doc_mptr_copy_t> filtered;
@@ -4919,8 +4864,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
   TRI_doc_mptr_t** end = (TRI_doc_mptr_t**) ptr + document->_primaryIndex._nrAlloc;
 
   for (;  ptr < end;  ++ptr) {
-    if (*ptr != nullptr &&
-        IsExampleMatch(trxCollection, shaper, *ptr, length, pids, values)) {
+    if (matcher.matches(*ptr)) {
       filtered.push_back(**ptr);
     }
   }

@@ -33,6 +33,7 @@
 #include "v8-vocindex.h"
 #include "v8-collection.h"
 #include "v8-voccursor.h"
+#include "V8Traverser.h"
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
@@ -52,6 +53,7 @@
 #include "Wal/LogfileManager.h"
 
 #include "VocBase/auth.h"
+#include "VocBase/key-generator.h"
 #include "v8.h"
 #include "V8/JSLoader.h"
 
@@ -102,6 +104,20 @@ int32_t const WRP_VOCBASE_TYPE = 1;
 ////////////////////////////////////////////////////////////////////////////////
 
 int32_t const WRP_VOCBASE_COL_TYPE = 2;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private constants
+// -----------------------------------------------------------------------------
+
+struct CollectionBarrierInfo {
+  TRI_barrier_t* barrier;
+  TRI_transaction_collection_t* col;
+
+  CollectionBarrierInfo(
+    TRI_barrier_t* barrier,
+    TRI_transaction_collection_t* col
+  ) : barrier(barrier), col(col) {}
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
@@ -1483,6 +1499,740 @@ static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to v8String
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Local<v8::String> vertexIdToString (
+    v8::Isolate* isolate,
+    CollectionNameResolver const* resolver,
+    VertexId const& id
+  ) {
+  return TRI_V8_STD_STRING((resolver->getCollectionName(id.cid) + "/" + string(id.key)));
+}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms EdgeId to v8String
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Local<v8::String> edgeIdToString (
+    v8::Isolate* isolate,
+    CollectionNameResolver const* resolver,
+    EdgeId const& id
+  ) {
+  return TRI_V8_STD_STRING((resolver->getCollectionName(id.cid) + "/" + string(id.key)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to v8 json
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> vertexIdToData( 
+                                      v8::Isolate* isolate,
+                                      CollectionNameResolver const* resolver,
+                                      ExplicitTransaction* trx,
+                                      unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
+                                      VertexId const& vertexId
+                                    ) {
+  auto i = barriers.find(vertexId.cid);
+  if (i == barriers.end()) {
+    v8::EscapableHandleScope scope(isolate);
+    return scope.Escape<v8::Value>(v8::Null(isolate));
+  }
+  TRI_doc_mptr_copy_t document;
+
+  int res = trx->readSingle(i->second.col, &document, vertexId.key);
+  if (res != TRI_ERROR_NO_ERROR) {
+    v8::EscapableHandleScope scope(isolate);
+    return scope.Escape<v8::Value>(v8::Null(isolate));
+  }
+  return TRI_WrapShapedJson(isolate, resolver, i->second.barrier,
+      vertexId.cid, i->second.col->_collection->_collection, document.getDataPtr());
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms EdgeId to v8 json
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> edgeIdToData( 
+                                      v8::Isolate* isolate,
+                                      CollectionNameResolver const* resolver,
+                                      ExplicitTransaction* trx,
+                                      unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
+                                      EdgeId const& edgeId
+                                    ) {
+  // EdgeId is a typedef of VertexId.
+  return vertexIdToData(isolate, resolver, trx, barriers, edgeId);
+}
+ 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Extracts all touched collections from ArangoDBPathFinder::Path
+////////////////////////////////////////////////////////////////////////////////
+
+static void extractCidsFromPath(TRI_vocbase_t* vocbase,
+                                ArangoDBPathFinder::Path& p,
+                                vector<TRI_voc_cid_t>& result) {
+  unordered_set<TRI_voc_cid_t> found;
+  uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
+  uint32_t const en = static_cast<uint32_t>(p.edges.size());
+  for (uint32_t j = 0;  j < vn;  ++j) {
+    TRI_voc_cid_t cid = p.vertices[j].cid;
+    auto it = found.find(cid);
+    if (it == found.end()) {
+      // Not yet found. Insert it if it exists
+      if (TRI_LookupCollectionByIdVocBase(vocbase, cid) != nullptr) {
+        result.push_back(cid);
+        found.insert(cid);
+      }
+    }
+  }
+  for (uint32_t j = 0;  j < en;  ++j) {
+    TRI_voc_cid_t cid = p.edges[j].cid;
+    auto it = found.find(cid);
+    if (it == found.end()) {
+      // Not yet found. Insert it if it exists
+      if (TRI_LookupCollectionByIdVocBase(vocbase, cid) != nullptr) {
+        result.push_back(cid);
+        found.insert(cid);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Request a barrier for the given collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void addBarrier(
+    ExplicitTransaction* trx,
+    TRI_voc_cid_t const& cid,
+    unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers
+  ) {
+  TRI_transaction_collection_t* dcol 
+    = trx->trxCollection(cid);
+  TRI_barrier_t* barrier = trx->orderBarrier(dcol);
+  if (barrier == nullptr) {
+    throw TRI_ERROR_OUT_OF_MEMORY;
+  }
+  barriers.emplace(cid, CollectionBarrierInfo(barrier, dcol));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Start a new transaction for the given collections and request
+///        all necessary barriers.
+///        The caller is responsible to finish and delete the transaction.
+///        If this function throws the transaction is non-existent.
+////////////////////////////////////////////////////////////////////////////////
+
+static ExplicitTransaction* beginTransaction(
+    TRI_vocbase_t* vocbase,
+    vector<TRI_voc_cid_t>& readCollections,
+    vector<TRI_voc_cid_t>& writeCollections,
+    CollectionNameResolver const* resolver,
+    unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers
+  ) {
+
+  // IHHF isCoordinator
+  double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
+  bool embed = true;
+  bool waitForSync = false;
+
+  // Start Transaction to collect all parts of the path
+  ExplicitTransaction* trx = new ExplicitTransaction(
+    vocbase,
+    readCollections,
+    writeCollections,
+    lockTimeout,
+    waitForSync,
+    embed
+  );
+  
+  int res = trx->begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    trx->finish(res);
+    delete trx;
+    throw res;
+  }
+
+  try {
+    // Get all barriers at once
+    for (auto it :  readCollections) {
+      addBarrier(trx, it, barriers);
+    }
+    for (auto it :  writeCollections) {
+      addBarrier(trx, it, barriers);
+    }
+  } catch (int e) {
+    // Could not get a barrier.
+    // Abort the collection and free the pointers
+    trx->abort();
+    delete trx;
+    throw e;
+  }
+  return trx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms an ArangoDBPathFinder::Path to v8 json values
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, 
+                                         TRI_vocbase_t* vocbase,
+                                         CollectionNameResolver const* resolver,
+                                         ArangoDBPathFinder::Path& p,
+                                         unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
+                                         bool& includeData) {
+  v8::EscapableHandleScope scope(isolate);
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
+  v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
+
+  uint32_t const en = static_cast<uint32_t>(p.edges.size());
+  v8::Handle<v8::Array> edges = v8::Array::New(isolate, static_cast<int>(en));
+
+  if (includeData) {
+    vector<TRI_voc_cid_t> readCollections;
+    extractCidsFromPath(vocbase, p, readCollections);
+    vector<TRI_voc_cid_t> writeCollections;
+    unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
+    ExplicitTransaction* trx = beginTransaction(vocbase, readCollections,
+                                                writeCollections, resolver, barriers);
+    for (uint32_t j = 0;  j < vn;  ++j) {
+      vertices->Set(j, vertexIdToData(isolate, resolver, trx, barriers, p.vertices[j]));
+    }
+    for (uint32_t j = 0;  j < en;  ++j) {
+      edges->Set(j, edgeIdToData(isolate, resolver, trx, barriers, p.edges[j]));
+    }
+    trx->finish(0);
+    delete trx;
+  } else {
+    for (uint32_t j = 0;  j < vn;  ++j) {
+      vertices->Set(j, vertexIdToString(isolate, resolver, p.vertices[j]));
+    }
+    for (uint32_t j = 0;  j < en;  ++j) {
+      edges->Set(j, edgeIdToString(isolate, resolver, p.edges[j]));
+    }
+  }
+  result->Set(TRI_V8_STRING("vertices"), vertices);
+  result->Set(TRI_V8_STRING("edges"), edges);
+  result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, p.weight));
+
+  return scope.Escape<v8::Value>(result);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Extract collection names from v8 array.
+////////////////////////////////////////////////////////////////////////////////
+
+static void v8ArrayToStrings (const v8::Handle<v8::Value>& parameter,
+                              unordered_set<string>& result
+                             ) {
+  v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
+  uint32_t const n = array->Length();
+  for (uint32_t i = 0; i < n; ++i) {
+    if (!array->Get(i)->IsString()) {
+      // TODO Error Handling
+    } else {
+      result.insert(TRI_ObjectToString(array->Get(i)));
+    }
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Define edge weight by the number of hops.
+///        Respectively 1 for any edge.
+////////////////////////////////////////////////////////////////////////////////
+
+class HopWeightCalculator {
+  public: 
+    HopWeightCalculator() {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Callable weight calculator for edge
+////////////////////////////////////////////////////////////////////////////////
+
+    double operator() (TRI_doc_mptr_copy_t& edge) {
+      return 1;
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Define edge weight by ony special attribute.
+///        Respectively 1 for any edge.
+////////////////////////////////////////////////////////////////////////////////
+
+class AttributeWeightCalculator {
+
+  TRI_shape_pid_t _shape_pid;
+  double _defaultWeight;
+  TRI_shaper_t* _shaper;
+
+  public: 
+    AttributeWeightCalculator(
+      string keyWeight,
+      double defaultWeight,
+      TRI_shaper_t* shaper
+    ) : _defaultWeight(defaultWeight),
+        _shaper(shaper)
+    {
+      _shape_pid = _shaper->lookupAttributePathByName(_shaper, keyWeight.c_str());
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Callable weight calculator for edge
+////////////////////////////////////////////////////////////////////////////////
+
+    double operator() (TRI_doc_mptr_copy_t& edge) {
+      if (_shape_pid == 0) {
+        return _defaultWeight;
+      }
+      TRI_shape_sid_t sid;
+      TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, edge.getDataPtr());
+      TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(_shaper, sid, _shape_pid);
+      TRI_shaped_json_t shapedJson;
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, edge.getDataPtr());
+      TRI_shaped_json_t resultJson;
+      TRI_ExecuteShapeAccessor(accessor, &shapedJson, &resultJson);
+      if (resultJson._sid != TRI_SHAPE_NUMBER) {
+        return _defaultWeight;
+      }
+      TRI_json_t* json = TRI_JsonShapedJson(_shaper, &resultJson);
+      if (json == nullptr) {
+        return _defaultWeight;
+      }
+      double realResult = json->_value._number;
+      TRI_FreeJson(_shaper->_memoryZone, json);
+      return realResult ;
+    }
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper to transform a vertex _id string to VertexId struct.
+////////////////////////////////////////////////////////////////////////////////
+
+static VertexId idStringToVertexId (
+    CollectionNameResolver const* resolver,
+    string const& vertex
+  ) {
+  size_t split;
+  char const* str = vertex.c_str();
+  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+    throw TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
+  }
+  string collectionName = vertex.substr(0, split);
+  auto coli = resolver->getCollectionStruct(collectionName);
+  if (coli == nullptr) {
+    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  return VertexId(coli->_cid, const_cast<char*>(str + split + 1));
+};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Executes a shortest Path Traversal
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() < 4 || args.Length() > 5) {
+    TRI_V8_THROW_EXCEPTION_USAGE("CPP_SHORTEST_PATH(<vertexcollcetions[]>, <edgecollections[]>, <start>, <end>, <options>)");
+  }
+
+  // get the vertex collections
+  if (! args[0]->IsArray()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting array for <vertexcollections[]>");
+  }
+  unordered_set<string> vertexCollectionNames;
+  v8ArrayToStrings(args[0], vertexCollectionNames);
+
+  // get the vertex collections
+  if (! args[1]->IsArray()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting array for <edgecollections[]>");
+  }
+  unordered_set<string> edgeCollectionNames;
+  v8ArrayToStrings(args[1], edgeCollectionNames);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (! args[2]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting id for <startVertex>");
+  }
+  string const startVertex = TRI_ObjectToString(args[2]);
+ 
+  if (! args[3]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting id for <targetVertex>");
+  }
+  string const targetVertex = TRI_ObjectToString(args[3]);
+
+  traverser::ShortestPathOptions opts;
+
+  bool includeData = false;
+  v8::Handle<v8::Object> edgeExample;
+  v8::Handle<v8::Object> vertexExample;
+  if (args.Length() == 5) {
+    if (! args[4]->IsObject()) {
+      TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
+    }
+    v8::Handle<v8::Object> options = args[4]->ToObject();
+
+    // Parse direction
+    v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
+    if (options->Has(keyDirection) ) {
+      opts.direction = TRI_ObjectToString(options->Get(keyDirection));
+      if (   opts.direction != "outbound"
+          && opts.direction != "inbound"
+          && opts.direction != "any"
+         ) {
+        TRI_V8_THROW_TYPE_ERROR("expecting direction to be 'outbound', 'inbound' or 'any'");
+      }
+    }
+
+    // Parse Distance
+    v8::Local<v8::String> keyWeight= TRI_V8_ASCII_STRING("distance");
+    v8::Local<v8::String> keyDefaultWeight= TRI_V8_ASCII_STRING("defaultDistance");
+    if (options->Has(keyWeight) && options->Has(keyDefaultWeight) ) {
+      opts.useWeight = true;
+      opts.weightAttribute = TRI_ObjectToString(options->Get(keyWeight));
+      opts.defaultWeight = TRI_ObjectToDouble(options->Get(keyDefaultWeight));
+    }
+
+    // Parse includeData
+    v8::Local<v8::String> keyIncludeData = TRI_V8_ASCII_STRING("includeData");
+    if (options->Has(keyIncludeData)) {
+      includeData = TRI_ObjectToBoolean(options->Get(keyIncludeData));
+    }
+
+    // Parse bidirectional
+    v8::Local<v8::String> keyBidirectional = TRI_V8_ASCII_STRING("bidirectional");
+    if (options->Has(keyBidirectional)) {
+      opts.bidirectional = TRI_ObjectToBoolean(options->Get(keyBidirectional));
+    }
+
+    // Parse multiThreaded
+    v8::Local<v8::String> keyMultiThreaded = TRI_V8_ASCII_STRING("multiThreaded");
+    if (options->Has(keyMultiThreaded)) {
+      opts.multiThreaded = TRI_ObjectToBoolean(options->Get(keyMultiThreaded));
+    }
+
+    // Parse followEdges
+    v8::Local<v8::String> keyFollowEdges = TRI_V8_ASCII_STRING("followEdges");
+    if (options->Has(keyFollowEdges)) {
+      opts.useEdgeFilter = true;
+      // TODO: User defined AQL function !!
+      edgeExample = v8::Handle<v8::Object>::Cast(options->Get(keyFollowEdges));
+    }
+
+    // Parse vertexFilter
+    v8::Local<v8::String> keyFilterVertices = TRI_V8_ASCII_STRING("filterVertices");
+    if (options->Has(keyFilterVertices)) {
+      opts.useVertexFilter = true;
+      // TODO: User defined AQL function !!
+      vertexExample = v8::Handle<v8::Object>::Cast(options->Get(keyFilterVertices));
+    }
+  } 
+
+  vector<TRI_voc_cid_t> readCollections;
+  vector<TRI_voc_cid_t> writeCollections;
+
+  V8ResolverGuard resolverGuard(vocbase);
+
+  ExplicitTransaction* trx = nullptr;
+  int res = 0;
+  CollectionNameResolver const* resolver = resolverGuard.getResolver();
+
+  for (auto it : edgeCollectionNames) {
+    readCollections.push_back(resolver->getCollectionId(it));
+  }
+  for (auto it : vertexCollectionNames) {
+    readCollections.push_back(resolver->getCollectionId(it));
+  }
+
+  // Start the transaction and
+  // Order Barriers
+  unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
+  try {
+    trx = beginTransaction(vocbase, readCollections, writeCollections, resolver, barriers);
+  } catch (int e) {
+    // Nothing to clean up. Throw the error to V8
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  // Compute the path
+  unique_ptr<ArangoDBPathFinder::Path> path;
+  vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  if (opts.useWeight) {
+    for(auto it : edgeCollectionNames) {
+      auto cid = resolver->getCollectionId(it);
+      auto colObj = barriers.find(cid)->second.col->_collection->_collection;
+      edgeCollectionInfos.push_back(new EdgeCollectionInfo(
+        cid,
+        colObj,
+        AttributeWeightCalculator(
+          opts.weightAttribute, opts.defaultWeight, colObj->getShaper()
+        )
+      ));
+    }
+  } else {
+    for(auto it : edgeCollectionNames) {
+      auto cid = resolver->getCollectionId(it);
+      auto colObj = barriers.find(cid)->second.col->_collection->_collection;
+      edgeCollectionInfos.push_back(new EdgeCollectionInfo(
+        cid,
+        colObj,
+        HopWeightCalculator()
+      ));
+    }
+  }
+  vector<VertexCollectionInfo*> vertexCollectionInfos;
+  for(auto it : vertexCollectionNames) {
+    auto cid = resolver->getCollectionId(it);
+    auto colObj = barriers.find(cid)->second.col;
+    vertexCollectionInfos.push_back(new VertexCollectionInfo(
+      cid,
+      colObj
+    ));
+  }
+
+  if (opts.useEdgeFilter) {
+    string errorMessage;
+    for (auto it: edgeCollectionInfos) {
+      try {
+        opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(), errorMessage);
+      } catch (int e) {
+        // ELEMENT not found is expected, if there is no shape of this type in this collection
+        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          // TODO Max fragen was mit Fehlern passieren muss
+        }
+      }
+    }
+  }
+  if (opts.useVertexFilter) {
+    string errorMessage;
+    for (auto it: vertexCollectionInfos) {
+      try {
+        opts.addVertexFilter(isolate, vertexExample, trx, it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
+      } catch (int e) {
+        // ELEMENT not found is expected, if there is no shape of this type in this collection
+        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          // TODO Max fragen was mit Fehlern passieren muss
+        }
+      }
+    }
+  }
+
+  opts.start = idStringToVertexId(resolver, startVertex);
+  opts.end = idStringToVertexId(resolver, targetVertex);
+
+  try {
+    path = TRI_RunShortestPathSearch(
+      edgeCollectionInfos,
+      opts
+    );
+  } catch (int e) {
+    trx->finish(e);
+    delete trx;
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  // Lift the result to v8
+  if (path.get() == nullptr) {
+    v8::EscapableHandleScope scope(isolate);
+    trx->finish(res);
+    delete trx;
+    TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Null(isolate)));
+  }
+  trx->finish(res);
+  delete trx;
+  // Potential inconsistency here. Graph is outside a transaction in this very second.
+  // Adding additional locks on vertex collections at this point to the transaction
+  // would cause dead-locks.
+  // Will be fixed automatically with new MVCC version.
+  auto result = pathIdsToV8(isolate, vocbase, resolver, *path, barriers, includeData);
+  TRI_V8_RETURN(result);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms an vector<VertexId> to v8 json values
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> vertexIdsToV8(v8::Isolate* isolate, 
+                                         ExplicitTransaction* trx,
+                                         CollectionNameResolver const* resolver,
+                                         vector<VertexId>& ids,
+                                         unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
+                                         bool includeData = false,
+                                         bool includeDuplicates = true) {
+  v8::EscapableHandleScope scope(isolate);
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  if (includeDuplicates) {
+    uint32_t const vn = static_cast<uint32_t>(ids.size());
+    v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
+
+    if (includeData) {
+      for (uint32_t j = 0;  j < vn;  ++j) {
+        vertices->Set(j, vertexIdToData(isolate, resolver, trx, barriers, ids[j]));
+      }
+    } else {
+      for (uint32_t j = 0;  j < vn;  ++j) {
+        vertices->Set(j, vertexIdToString(isolate, resolver, ids[j]));
+      }
+    }
+    result->Set(TRI_V8_STRING("vertices"), vertices);
+    return scope.Escape<v8::Value>(result);
+  } else {
+    // set<VertexId> uniqueIds(ids.begin(), ids.end());
+    // TODO
+    auto uniqueIds = ids;
+    uint32_t const vn = static_cast<uint32_t>(uniqueIds.size());
+    v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
+    auto iterator = uniqueIds.begin();
+    if (includeData) {
+      for (uint32_t j = 0;  j < vn;  ++j) {
+        vertices->Set(j, vertexIdToData(isolate, resolver, trx, barriers, *iterator));
+        ++iterator;
+      }
+    } else {
+      for (uint32_t j = 0;  j < vn;  ++j) {
+        vertices->Set(j, vertexIdToString(isolate, resolver, *iterator));
+        ++iterator;
+      }
+    }
+    result->Set(TRI_V8_STRING("vertices"), vertices);
+    return scope.Escape<v8::Value>(result);
+ 
+  }
+};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Executes a shortest Path Traversal
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() < 3 || args.Length() > 4) {
+    TRI_V8_THROW_EXCEPTION_USAGE("CPP_NEIGHBORS(<vertexcollection>, <edgecollection>, <start>, <options>)");
+  }
+
+  TRI_vocbase_t* vocbase;
+
+  vocbase = GetContextVocBase(isolate);
+
+  // get the vertex collection
+  if (! args[0]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <vertexcollection>");
+  }
+  string vertexCollectionName = TRI_ObjectToString(args[0]);
+
+  // get the edge collection
+  if (! args[1]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <edgecollection>");
+  }
+  string const edgeCollectionName = TRI_ObjectToString(args[1]);
+
+  vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (! args[2]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <startVertex>");
+  }
+  string const startVertex = TRI_ObjectToString(args[2]);
+ 
+
+  // TODO Option parsing
+  traverser::NeighborsOptions opts;
+
+  if (args.Length() == 4) {
+    if (! args[3]->IsObject()) {
+      TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
+    }
+    v8::Handle<v8::Object> options = args[3]->ToObject();
+    v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
+    v8::Local<v8::String> keyDistinct= TRI_V8_ASCII_STRING("distinct");
+
+    if (options->Has(keyDirection) ) {
+      opts.direction = TRI_ObjectToString(options->Get(keyDirection));
+      if (   opts.direction != "outbound"
+          && opts.direction != "inbound"
+          && opts.direction != "any"
+         ) {
+        TRI_V8_THROW_TYPE_ERROR("expecting direction to be 'outbound', 'inbound' or 'any'");
+      }
+    }
+    if (options->Has(keyDistinct) ) {
+      opts.distinct  = TRI_ObjectToBoolean(options->Get(keyDistinct));
+    }
+  }
+
+  vector<TRI_voc_cid_t> readCollections;
+  vector<TRI_voc_cid_t> writeCollections;
+
+  V8ResolverGuard resolverGuard(vocbase);
+  CollectionNameResolver const* resolver = resolverGuard.getResolver();
+
+  readCollections.push_back(resolver->getCollectionId(vertexCollectionName));
+  readCollections.push_back(resolver->getCollectionId(edgeCollectionName));
+
+
+  ExplicitTransaction* trx = nullptr;
+  int res = 0;
+
+  unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
+  // Start the transaction
+  try {
+    trx = beginTransaction(vocbase, readCollections, writeCollections,
+                           resolver, barriers);
+  } catch (int e) {
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  TRI_voc_cid_t edgeCid = resolver->getCollectionId(edgeCollectionName);
+  TRI_ASSERT(barriers.find(edgeCid) != barriers.end());
+  vector<VertexId> neighbors;
+  try {
+    neighbors = TRI_RunNeighborsSearch(
+      isolate,
+      vocbase,
+      vertexCollectionName,
+      edgeCollectionName,
+      startVertex,
+      resolver,
+      barriers.find(edgeCid)->second.col->_collection->_collection,
+      opts
+    );
+  } catch (int e) {
+    trx->finish(e);
+    delete trx;
+    TRI_V8_THROW_EXCEPTION(e);
+  }
+
+  auto result = vertexIdsToV8(isolate, trx, resolver, neighbors, barriers, true);
+
+  trx->finish(res);
+  delete trx;
+  TRI_V8_RETURN(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sleeps and checks for query abortion in between
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2803,6 +3553,11 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_KILL"), JS_QueriesKillAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_SLEEP"), JS_QuerySleepAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_IS_KILLED"), JS_QueryIsKilledAql, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_SHORTEST_PATH"), JS_QueryShortestPath, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_NEIGHBORS"), JS_QueryNeighbors, true);
+
+
 
   TRI_InitV8replication(isolate, context, server, vocbase, loader, threadNumber, v8g);
 

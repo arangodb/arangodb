@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, arangoHelper, $, _, window, templateEngine, AmCharts, lunr*/
+/*global Backbone, arangoHelper, $, _, window, templateEngine, AmCharts, lunr, alert*/
 
 (function () {
   "use strict";
@@ -35,22 +35,25 @@
     */
 
     lineColors: [
-      'rgb(255,255,229)',
-      'rgb(255,247,188)',
-      'rgb(254,227,145)',
-      'rgb(254,196,79)',
-      'rgb(254,153,41)',
-      'rgb(236,112,20)',
-      'rgb(204,76,2)',
-      'rgb(153,52,4)',
-      'rgb(102,37,6)'
+      'rgb(255,255,229)'
+      /*
+       -      'rgb(255,255,229)',
+       -      'rgb(255,247,188)',
+       -      'rgb(254,227,145)',
+       -      'rgb(254,196,79)',
+       -      'rgb(254,153,41)',
+       -      'rgb(236,112,20)',
+       -      'rgb(204,76,2)',
+       -      'rgb(153,52,4)',
+       -      'rgb(102,37,6)'
+       */
     ],
 
     airportColor: "#222222",
     airportHighlightColor: "#FF4E4E",
     airportHoverColor: "#ff8f35",
 
-    airportScale: 0.5,
+    airportScale: 0.7,
     airportHighligthScale: 0.95,
 
     imageData: [],
@@ -73,19 +76,32 @@
       },
       {
         name: "All Flights from CWA"
+      },
+      {
+        name: "Flight distribution"
       }
     ],
 
     el: '#content',
 
-    initialize: function () {
-      this.airportCollection = new window.Airports();
-      window.HASS = this; // <--- BITTE ?!? ;) <-- zu viel Kontakt mit Jan
+    initialize: function (options) {
+      var collectionName = options.collectionName;
+      this.airportCollection = new window.Airports({
+        collectionName: collectionName
+      });
     },
 
     events: {
       "change #flightQuerySelect" : "runSelectedQuery",
       "keyup #demoSearchInput"   : "searchInput"
+      // "click #searchResults ul li": "selectAirport"
+    },
+
+    selectAirport: function (e) {
+      this.showAirportBalloon(e.currentTarget.id);
+      $("#searchResults").slideUp(function() {
+        $("#searchResults ul").html("");
+      });
     },
 
     template: templateEngine.createTemplate("demoView.ejs"),
@@ -152,7 +168,7 @@
       var self = this, airports = this.index.search($(e.currentTarget).val());
 
       self.resetDataHighlighting();
-      self.removeFlightLines(false);
+      self.removeFlightLines(true);
 
       _.each(airports, function(airport) {
         self.setAirportColor(airport.ref, self.airportHighlightColor, false);
@@ -164,16 +180,32 @@
         //self.zoomToAirport(airports[0].ref);
         self.showAirportBalloon(airports[0].ref); // <-- only works with single map object, not multiple :(
       }
-
-      //if (airports.length <= 10) {
-      //}
-
+      /*
+      if (airports.length < 6 && airports.length > 1) {
+        self.insertAirportSelection(airports);
+      } else {
+        $("#searchResults").slideUp();
+      }
+      */
       self.map.validateData();
+    },
 
-
+    insertAirportSelection: function (list) {
+      return;
+      /*
+      $("#searchResults ul").html("");
+      var i = 0;
+      for (i = 0; i < list.length; ++i) {
+        $("#searchResults ul").append("<li id='" + list[i].ref + "'>" + list[i].ref + "</li>");
+      }
+      $("#searchResults").slideDown();
+      */
     },
 
     runSelectedQuery: function() {
+      this.resetDataHighlighting();
+      this.removeFlightLines(true);
+
       var currentQueryPos = $( "#flightQuerySelect option:selected" ).attr('position');
       if (currentQueryPos === "0") {
         this.loadAirportData("SFO");
@@ -189,6 +221,10 @@
       }
       if (currentQueryPos === "4") {
         this.loadAirportData("CWA");
+      }
+      if (currentQueryPos === "5") {
+        delete this.startPoint;
+        this.loadFlightDistData();
       }
     },
 
@@ -215,7 +251,7 @@
     },
 
     getMinMax: function(array) {
-    var min = 0, max = 0;
+      var min = 0, max = 0;
 
       _.each(array, function(object) {
         if (min === 0) {
@@ -239,7 +275,70 @@
 
     },
 
+    loadFlightDistData: function() {
+      var self = this;
+      var timer = new Date();
+
+      this.airportCollection.getFlightDistribution(function(list) {
+
+        var timeTaken = new Date() - timer;
+
+        self.removeFlightLines(false);
+
+        var allFlights = 0;
+
+        var i = 0;
+
+        self.resetDataHighlighting();
+        var least = Math.pow(list[0].count, 3);
+        var best = Math.pow(list[list.length - 1].count, 3);
+        var m = 2.625 /(best - least);
+        var distribute = function(x) {
+          return m * x - m * least;
+        };
+
+        for (i = 0; i < list.length; ++i) {
+          var to = list[i].Dest;
+          var count = Math.pow(list[i].count, 3);
+          self.setAirportColor(to, self.airportHighlightColor);
+
+          var toSize = distribute(count);
+          toSize += 0.625;
+
+          self.setAirportSize(to, toSize);
+          if (i > list.length - 6) {
+            // Top 10 Color
+            self.setAirportColor(to,'rgb(153,52,4)');
+          }
+        }
+
+        if ($("#demo-mapdiv-info").length === 0) {
+          $("#demo-mapdiv").append("<div id='demo-mapdiv-info'></div>");
+        }
+
+        var tempHTML = "";
+        tempHTML = "<b>Aggregation</b> - Flight distribution<br>" + 
+          "Query needed: <b>" + (timeTaken/1000).toFixed(3) + " sec" + "</b><br>" +
+          "Number destinations: <b>" + list.length + "</b><br>" + 
+          "Number flights: <b>" + allFlights + "</b><br>" +
+          "Top 5:<br>";
+
+        for (i = (list.length - 1); i > Math.max(list.length - 6, 0); --i) {
+          var airportData = self.airportCollection.findWhere({_key: list[i].Dest});
+          tempHTML += airportData.get("Name") + " - " + airportData.get("_key") + ": <b>" + list[i].count + "</b>";
+          if (i > (list.length - 5)) {
+            tempHTML += "<br>";
+          }
+        }
+
+        $("#demo-mapdiv-info").html(tempHTML);
+
+        self.map.validateData();
+      });
+    },
+
     loadAirportData: function(airport) {
+      $("#flightQuerySelect :nth-child(1)").prop("selected", true);
       var self = this;
       var timer = new Date();
 
@@ -256,13 +355,25 @@
 
         self.resetDataHighlighting();
 
+        var least = Math.pow(list[0].count, 3);
+        var best = Math.pow(list[list.length - 1].count, 3);
+        var m = 2.625 /(best - least);
+        var distribute = function(x) {
+          return m * x - m * least;
+        };
+
         for (i = 0; i < list.length; ++i) {
+          var count = Math.pow(list[i].count, 3);
+          var toSize = distribute(count);
+          toSize += 0.625;
           self.addFlightLine(
             airport,
             list[i].Dest,
             list[i].count,
             self.calculateFlightColor(list.length, i),
-            self.calculateFlightWidth(list.length, i)
+            self.calculateFlightWidth(list.length, i),
+            toSize,
+            (i > list.length - 6)
           );
           allFlights += list[i].count;
         }
@@ -272,15 +383,16 @@
         }
 
         var tempHTML = "";
-        tempHTML = "<b>" + airportData.get("Name") + "</b> - " + airport + "<br>" + 
-          "Query needed: <b>" + (timeTaken/1000) + "sec" + "</b><br>" +
+        tempHTML = "<b>" + airportData.get("Name").substr(0,25) + "</b> - " + airport + "<br>" + 
+          "Query needed: <b>" + (timeTaken/1000).toFixed(3) + " sec" + "</b><br>" +
           "Number destinations: <b>" + list.length + "</b><br>" + 
           "Number flights: <b>" + allFlights + "</b><br>" +
           "Top 5:<br>";
 
-        for (i = (list.length - 1); i > Math.max(list.length - 6, 0); --i) {
+        for (i = (list.length - 1); i >= Math.max(list.length - 5, 0); --i) {
           airportData = self.airportCollection.findWhere({_key: list[i].Dest});
-          tempHTML += airportData.get("Name") + " - " + airportData.get("_key") + ": <b>" + list[i].count + "</b>";
+          tempHTML += airportData.get("Name").substr(0, 25) + " - " + airportData.get("_key")
+                   + ": <b>" + list[i].count + "</b>";
           if (i > (list.length - 5)) {
             tempHTML += "<br>";
           }
@@ -296,12 +408,11 @@
       //var intervallWidth = length/2;
       // return Math.floor(pos/intervallWidth) + 2;
       //TODO: no custom width for lines wanted?
-      return 1.5;
+      return 2;
     },
 
     calculateFlightColor: function(length, pos) {
-      var intervallColor = length/this.lineColors.length;
-      return this.lineColors[Math.floor(pos/intervallColor)];
+      return this.lineColors[0];
     },
 
     zoomToAirport: function (id) {
@@ -309,6 +420,7 @@
     },
 
     showAirportBalloon: function (id) {
+      this.map.allowMultipleDescriptionWindows = true;
       var mapObject = this.map.getObjectById(id);
       this.map.rollOverMapObject(mapObject);
     },
@@ -354,6 +466,7 @@
           airport.color = self.airportColor;
           airport.scale = self.airportScale;
       });
+      $("#demo-mapdiv-info").html("");
     },
 
     prepareData: function (data) {
@@ -368,7 +481,7 @@
           svgPath: self.MAPtarget,
           color: self.airportColor,
           scale: self.airportScale,
-          selectedScale: 2.5,
+          selectedScale: 1,
           title: airport.City + " [" + airport._key + "]<br>" + airport.Name,
           rollOverColor: self.airportHoverColor,
           selectable: true
@@ -389,19 +502,59 @@
     },
 
     createFlightEntry: function(from, to, weight, lineColor, lineWidth) {
-      return {
-        longitudes: [
-          this.keyToLongLat[from].lon,
-          this.keyToLongLat[to].lon,
-        ],
-        latitudes: [
-          this.keyToLongLat[from].lat,
-          this.keyToLongLat[to].lat
-        ],
-        title: from + " - " + to + "<br>" + weight,
-        color: lineColor,
-        thickness: lineWidth
-      };
+      if (this.keyToLongLat.hasOwnProperty(from)
+        && this.keyToLongLat.hasOwnProperty(to)) {
+        return {
+          longitudes: [
+            this.keyToLongLat[from].lon,
+            this.keyToLongLat[to].lon,
+          ],
+            latitudes: [
+              this.keyToLongLat[from].lat,
+              this.keyToLongLat[to].lat
+            ],
+            title: from + " - " + to + "<br>" + weight,
+            color: lineColor,
+            thickness: lineWidth
+          };
+      }
+      return undefined;
+    },
+
+    loadShortestPath: function(from, to) {
+      var self = this;
+      var timer = new Date();
+      this.airportCollection.getShortestFlight(from, to, function(list) {
+        var timeTaken = new Date() - timer;
+        if (!list.vertices) {
+          alert("Sorry there is no flight");
+        }
+        var vertices = list.vertices;
+        for (var i = 0; i < vertices.length - 1; ++i) {
+          var from = vertices[i].split("/")[1];
+          var to = vertices[i+1].split("/")[1];
+          self.addFlightLine(from, to, 1,
+            self.calculateFlightColor(vertices.length, i),
+            self.calculateFlightWidth(vertices.length, i),
+            2,
+            true,
+            false
+          );
+        }
+        var tempHTML = "";
+        tempHTML = "<b>Path</b> - Shortest Flight<br>" + 
+          "Query needed: <b>" + (timeTaken/1000).toFixed(3) + " sec" + "</b><br>" +
+          "Number switches: <b>" + (vertices.length - 2) + "</b><br>" + 
+          "Number flights: <b>" + list.edges.length + "</b><br>" +
+          "Airports:<br>";
+        for (i = 0; i < vertices.length; ++i) {
+          var airportData = self.airportCollection.findWhere({_key: vertices[i].split("/")[1]});
+          tempHTML += airportData.get("Name") + " - " + airportData.get("_key") + "<br>";
+        }
+
+        $("#demo-mapdiv-info").html(tempHTML);
+        self.map.validateData();
+      });
     },
 
     renderMap: function() {
@@ -422,9 +575,17 @@
           images: self.imageData,
           getAreasFromMap: true
         },
-        clickMapObject: function(mapObject) {
-          //console.log(mapObject);
-          self.loadAirportData(mapObject.id);
+        clickMapObject: function(mapObject, event) {
+          if (mapObject.id !== undefined && mapObject.id.length === 3) {
+            if (event.shiftKey && self.hasOwnProperty("startPoint")) {
+              self.resetDataHighlighting();
+              self.removeFlightLines(true);
+              self.loadShortestPath(self.startPoint, mapObject.id);
+            } else {
+              self.startPoint = mapObject.id;
+              self.loadAirportData(mapObject.id);
+            }
+          }
         },
         balloon: {
           adjustBorderColor: true,
@@ -468,21 +629,19 @@
       });
     },
 
-    addFlightLine: function(from, to, count, lineColor, lineWidth, shouldRender) {
-      //console.log("Adding", from, to, count, lineColor, lineWidth);
-
-      this.lines.push(this.createFlightEntry(from, to, count, lineColor, lineWidth));
+    addFlightLine: function(from, to, count, lineColor, lineWidth, toSize, highlight, shouldRender) {
+      var f = this.createFlightEntry(from, to, count, lineColor, lineWidth);
+      if (f !== undefined) {
+        this.lines.push(f);
+      }
 
       this.setAirportColor(from, "#FFFFFF");
       this.setAirportColor(to, this.airportHighlightColor);
       this.setAirportSize(from, 1.5);
-
-      var toSize = count * 0.001;
-      if (toSize <= 0.25) {
-        toSize = 0.25;
-      }
-
       this.setAirportSize(to, toSize);
+      if (highlight) {
+        this.setAirportColor(to, 'rgb(153,52,4)');
+      }
     }
 
   });

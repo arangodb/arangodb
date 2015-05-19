@@ -176,7 +176,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
                                         TRI_document_collection_t* document,
                                         TRI_edge_direction_e direction,
                                         TRI_voc_cid_t cid,
-                                        TRI_voc_key_t key) {
+                                        TRI_voc_key_t const key) {
   // search criteria
   TRI_edge_header_t entry;
   entry._cid = cid;
