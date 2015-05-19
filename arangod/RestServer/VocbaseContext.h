@@ -66,19 +66,23 @@ namespace triagens {
 /// @brief defines a sid
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void createSid (const std::string& sid, const std::string& username);
+        static void createSid (std::string const& database,
+                               std::string const& sid, 
+                               std::string const& username);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears a sid
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void clearSid (const std::string& sid);
+        static void clearSid (std::string const& database,
+                              std::string const& sid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the last access time
 ////////////////////////////////////////////////////////////////////////////////
 
-        static uint64_t accessSid (const std::string& sid);
+        static uint64_t accessSid (std::string const& database,
+                                   std::string const& sid);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

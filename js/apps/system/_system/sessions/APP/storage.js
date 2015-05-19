@@ -6,7 +6,6 @@ var _ = require('underscore'),
   internal = require('internal'),
   arangodb = require('org/arangodb'),
   db = arangodb.db,
-  qb = require('aqb'),
   Foxx = require('org/arangodb/foxx'),
   errors = require('./errors'),
   cfg = applicationContext.configuration,
@@ -29,30 +28,11 @@ if (isSystem) {
     db._collection('_sessions'),
     {model: Session}
   );
-  populateSystemSids();
 } else {
   sessions = new Foxx.Repository(
     applicationContext.collection('sessions'),
     {model: Session}
   );
-}
-
-function populateSystemSids() {
-  try {
-    var cursor = internal.db._query(
-      qb
-      .for('s').in('_sessions')
-      .for('u').in('_users')
-      .filter(qb.eq('s.uid', 'u._id'))
-      .return({sid: 's._key', user: 'u.user'})
-    );
-    while (cursor.hasNext()) {
-      var doc = cursor.next();
-      internal.createSid(doc.sid, doc.user);
-    }
-  } catch (e) {
-    require('console').error(e.stack);
-  }
 }
 
 function generateSessionId() {

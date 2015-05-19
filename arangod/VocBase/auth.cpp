@@ -524,6 +524,24 @@ char* TRI_CheckCacheAuthInfo (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the authentication - note: only checks whether the user exists
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExistsAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
+                                       char const* username) {
+  TRI_ASSERT(vocbase != nullptr);
+
+  // look up username
+  TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
+  TRI_vocbase_auth_t* auth = static_cast<TRI_vocbase_auth_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
+ 
+  bool result = (auth != nullptr && auth->_active);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 

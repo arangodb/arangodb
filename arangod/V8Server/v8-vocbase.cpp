@@ -1979,7 +1979,7 @@ static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::HandleScope scope(isolate);
 
   const uint32_t argc = args.Length();
-  if (argc != 0 && argc != 3) {
+  if (argc > 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._listDatabases()");
   }
 
@@ -2013,9 +2013,9 @@ static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
   else {
     // return all databases for a specific user
-    string username = TRI_ObjectToString(args[0]);
-    string password = TRI_ObjectToString(args[1]);
-    res = TRI_GetUserDatabasesServer((TRI_server_t*) v8g->_server, username.c_str(), password.c_str(), &names);
+    std::string&& username = TRI_ObjectToString(args[0]);
+
+    res = TRI_GetUserDatabasesServer((TRI_server_t*) v8g->_server, username.c_str(), &names);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {

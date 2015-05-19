@@ -161,28 +161,9 @@ function get_api_database (req, res) {
   }
   else {
     if (req.suffix[0] === 'user') {
-
-      // return all databases for current user
-      var username = '', password = '', auth = '';
-
-      if (req.headers.hasOwnProperty('authorization')) {
-        auth = req.headers.authorization;
-        var header = req.headers.authorization.replace(/^Basic\s+/i, '');
-        var decoded = require("internal").base64Decode(header);
-        var pos = decoded.indexOf(':');
-
-        if (pos >= 0) {
-          username = decoded.substr(0, pos);
-          password = decoded.substr(pos + 1, decoded.length - pos - 1);
-        }
-
-        result = arangodb.db._listDatabases(username, password, auth);
-      }
-      else {
-        // we are using a more "secure" authorization mechanism, there is 
-        // no way we can extract the password.
-        result = arangodb.db._listDatabases();
-      }
+      // fetch all databases for the current user
+      // note: req.user may be null if authentication is turned off
+      result = arangodb.db._listDatabases(req.user);
     }
     else if (req.suffix[0] === 'current') {
       if (cluster.isCoordinator()) {
