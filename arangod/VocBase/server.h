@@ -295,7 +295,6 @@ bool TRI_ExistsDatabaseByIdServer (TRI_server_t*,
 
 int TRI_GetUserDatabasesServer (TRI_server_t*,
                                 char const*,
-                                char const*,
                                 TRI_vector_string_t*);
 
 ////////////////////////////////////////////////////////////////////////////////

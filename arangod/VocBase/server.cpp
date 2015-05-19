@@ -360,19 +360,25 @@ static inline void UpdateTick (TRI_voc_tick_t tick) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a user can see a database
+/// note: "seeing" here does not necessarily mean the user can access the db.
+/// it only means there is a user account (with whatever password) present
+/// in the database
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CanUseDatabase (TRI_vocbase_t* vocbase,
-                            char const* username,
-                            char const* password) {
-  bool mustChange;
-
+                            char const* username) {
   if (! vocbase->_settings.requireAuthentication) {
     // authentication is turned off
     return true;
   }
 
-  return TRI_CheckAuthenticationAuthInfo(vocbase, nullptr, username, password, &mustChange);
+  if (strlen(username) == 0) {
+    // will happen if username is "" (when converting it from a null value)
+    // this will happen if authentication is turned off
+    return true;
+  }
+
+  return TRI_ExistsAuthenticationAuthInfo(vocbase, username);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2747,7 +2753,6 @@ bool TRI_ExistsDatabaseByIdServer (TRI_server_t* server,
 
 int TRI_GetUserDatabasesServer (TRI_server_t* server,
                                 char const* username,
-                                char const* password,
                                 TRI_vector_string_t* names) {
 
   int res = TRI_ERROR_NO_ERROR;
@@ -2757,19 +2762,17 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
     size_t const n = server->_databases._nrAlloc;
 
     for (size_t i = 0; i < n; ++i) {
-      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+      auto vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
 
       if (vocbase != nullptr) {
-        char* copy;
-
         TRI_ASSERT(vocbase->_name != nullptr);
 
-        if (! CanUseDatabase(vocbase, username, password)) {
+        if (! CanUseDatabase(vocbase, username)) {
           // user cannot see database
           continue;
         }
 
-        copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
+        char* copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
 
         if (copy == nullptr) {
           res = TRI_ERROR_OUT_OF_MEMORY;

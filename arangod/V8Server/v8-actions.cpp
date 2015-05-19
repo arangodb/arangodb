@@ -91,6 +91,7 @@ static ApplicationV8* GlobalV8Dealer = nullptr;
 ////////////////////////////////////////////////////////////////////////////////
 
 class v8_action_t : public TRI_action_t {
+
   public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1418,13 +1419,13 @@ static void JS_CreateSid (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_Utf8ValueNFC sidStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
   TRI_Utf8ValueNFC username(TRI_UNKNOWN_MEM_ZONE, args[1]);
 
-  if (v8g->_vocbase != nullptr) {
-    string sid = v8g->_vocbase->_name;
-    sid += "/";
-    sid += *sidStr;
-
-    VocbaseContext::createSid(sid, *username);
+  if (v8g->_vocbase == nullptr ||
+      *sidStr == nullptr ||
+      *username == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY(); 
   }
+
+  VocbaseContext::createSid(v8g->_vocbase->_name, *sidStr, *username);
 
   TRI_V8_RETURN_UNDEFINED();
 }
@@ -1444,14 +1445,13 @@ static void JS_ClearSid (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_GET_GLOBALS();
 
   TRI_Utf8ValueNFC sidStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
-
-  if (v8g->_vocbase != nullptr) {
-    string sid = v8g->_vocbase->_name;
-    sid += "/";
-    sid += *sidStr;
-
-    VocbaseContext::clearSid(sid);
+  
+  if (v8g->_vocbase == nullptr ||
+      *sidStr == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY(); 
   }
+
+  VocbaseContext::clearSid(v8g->_vocbase->_name, *sidStr);
 
   TRI_V8_RETURN_UNDEFINED();
 }
@@ -1472,15 +1472,12 @@ static void JS_AccessSid (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   TRI_Utf8ValueNFC sidStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
 
-  uint64_t t = 0;
-
-  if (v8g->_vocbase != nullptr) {
-    string sid = v8g->_vocbase->_name;
-    sid += "/";
-    sid += *sidStr;
-
-    t = VocbaseContext::accessSid(sid);
+  if (v8g->_vocbase == nullptr ||
+      *sidStr == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY(); 
   }
+
+  uint64_t t = VocbaseContext::accessSid(v8g->_vocbase->_name, *sidStr);
 
   TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(t)));
 }

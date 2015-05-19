@@ -51,13 +51,13 @@ using namespace triagens::rest;
 /// @brief sid lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static Mutex SidLock;
+static triagens::basics::Mutex SidLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid cache
 ////////////////////////////////////////////////////////////////////////////////
 
-static unordered_map<string, pair<string, uint64_t>> SidCache;
+static std::unordered_map<std::string, std::unordered_map<std::string, std::pair<std::string, uint64_t>>> SidCache;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -67,37 +67,64 @@ static unordered_map<string, pair<string, uint64_t>> SidCache;
 /// @brief defines a sid
 ////////////////////////////////////////////////////////////////////////////////
 
-void VocbaseContext::createSid (const string& sid, const string& username) {
+void VocbaseContext::createSid (std::string const& database,
+                                std::string const& sid, 
+                                std::string const& username) {
   MUTEX_LOCKER(SidLock);
 
+  // find entries for database first
+  auto it = SidCache.find(database);
+
+  if (it == SidCache.end()) {
+    it = SidCache.emplace(database, std::unordered_map<std::string, std::pair<std::string, uint64_t>>()).first;
+  }
+
+  // now insert a database-specific sid
   uint64_t t = static_cast<uint64_t>(TRI_microtime() * 1000.0);
-  SidCache[sid] = make_pair(username, t);
+  (*it).second.emplace(sid, std::make_pair(username, t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears a sid
 ////////////////////////////////////////////////////////////////////////////////
 
-void VocbaseContext::clearSid (const string& sid) {
+void VocbaseContext::clearSid (std::string const& database,
+                               std::string const& sid) {
   MUTEX_LOCKER(SidLock);
+  
+  auto it = SidCache.find(database);
 
-  SidCache.erase(sid);
+  if (it == SidCache.end()) {
+    // database not found. no need to go on
+    return;
+  }
+
+  (*it).second.erase(sid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the last access time
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t VocbaseContext::accessSid (const string& sid) {
+uint64_t VocbaseContext::accessSid (std::string const& database,
+                                    std::string const& sid) {
   MUTEX_LOCKER(SidLock);
 
-  auto it = SidCache.find(sid);
+  auto it = SidCache.find(database);
 
   if (it == SidCache.end()) {
+    // database not found. no need to go on
     return 0;
   }
 
-  return it->second.second;
+  auto const& sids = (*it).second;
+  auto it2 = sids.find(sid);
+
+  if (it2 == sids.end()) {
+    return 0;
+  }
+
+  return (*it2).second.second;
 }
 
 // -----------------------------------------------------------------------------
@@ -195,7 +222,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.
 
-    if (path != 0) {
+    if (path != nullptr) {
       // check if path starts with /_
       if (*path != '/') {
         return HttpResponse::OK;
@@ -222,26 +249,27 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   strncat(cn + 11, _vocbase->_name, sizeof(cn) - 12);
 
   // extract the sid
-  const char* sid = _request->cookieValue(cn, found);
+  char const* sid = _request->cookieValue(cn, found);
 
   if (found) {
     MUTEX_LOCKER(SidLock);
 
-    string name = _vocbase->_name;
-    name += "/";
-    name += sid;
+    auto it = SidCache.find(_vocbase->_name);
     
-    auto it = SidCache.find(name);
-
     if (it != SidCache.end()) {
-      _request->setUser(it->second.first);
-      uint64_t t = static_cast<uint64_t>(TRI_microtime() * 1000.0);
-      it->second.second = t;
-      return HttpResponse::OK;
+      auto& sids = (*it).second;
+      auto it2 = sids.find(sid);
+
+      if (it2 != sids.end()) {
+        _request->setUser((*it2).second.first);
+        // update date of last access
+        (*it2).second.second = static_cast<uint64_t>(TRI_microtime() * 1000.0);
+        return HttpResponse::OK;
+      }
     }
   }
 
-  const char* auth = _request->header("authorization", found);
+  char const* auth = _request->header("authorization", found);
 
   if (! found || ! TRI_CaseEqualString2(auth, "basic ", 6)) {
     return HttpResponse::UNAUTHORIZED;

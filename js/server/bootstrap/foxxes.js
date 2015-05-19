@@ -49,9 +49,33 @@
         db._useDatabase("_system");
         var databases = db._listDatabases();
 
+        // loop over all databases
         for (var i = 0;  i < databases.length;  ++i) {
           db._useDatabase(databases[i]);
-          require("org/arangodb/foxx/manager").initializeFoxx();
+          // and initialize Foxx applications
+          try {
+            require("org/arangodb/foxx/manager").initializeFoxx();
+          }
+          catch (e) {
+            require('console').error(e.stack);
+          }
+
+          // initialize sessions, too
+          try {
+            var query = "FOR s IN _sessions " + 
+                        "FOR u IN _users " +
+                        "FILTER s.uid == u._id " +
+                        "RETURN { sid: s._key, user: u.user }";
+
+            var cursor = db._query(query);
+            while (cursor.hasNext()) {
+              var doc = cursor.next();
+              internal.createSid(doc.sid, doc.user);
+            }
+          } 
+          catch (e) {
+            require('console').error(e.stack);
+          }
         }
       }
       catch (e) {
