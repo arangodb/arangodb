@@ -153,14 +153,10 @@ controller.post("/query/explain", function(req, res) {
   var query = req.body().query;
 
   if (query.length > 0) {
-    var explain = require("org/arangodb/aql/explainer").getExplain(query, {colors: false});
+    var explain = require("org/arangodb/aql/explainer").explain(query, {colors: false});
   }
 
-  res.json(explain);
-
-  //TODO: delete next line
-  require("org/arangodb/aql/explainer").explain(query);
-
+  res.json({msg: explain});
 
 }).summary("Explains a query")
   .notes("This function gives useful query information");
