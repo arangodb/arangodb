@@ -34,6 +34,7 @@
 #include "Traverser.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
+#include "Utils/ExplicitTransaction.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Template for a vertex id. Is simply a pair of cid and key
@@ -49,6 +50,13 @@ struct VertexId {
   VertexId( TRI_voc_cid_t cid, char const* key) 
     : cid(cid), key(key) {
   }
+  
+  bool operator== (const VertexId& other) const {
+    if (cid == other.cid) {
+      return strcmp(key, other.key) == 0;
+    }
+    return false;
+  }
 
   // Find unnecessary copies
   //   VertexId(const VertexId&) = delete;
@@ -59,6 +67,23 @@ struct VertexId {
 // EdgeId and VertexId are similar here. both have a key and a cid
 typedef VertexId EdgeId; 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Template for information required by vertex filter.
+///        Contains transaction, barrier and the Matcher Class.
+////////////////////////////////////////////////////////////////////////////////
+
+struct VertexFilterInfo {
+  triagens::arango::ExplicitTransaction* trx;
+  TRI_transaction_collection_t* col;
+  triagens::arango::ExampleMatcher* matcher;
+
+  VertexFilterInfo(
+    triagens::arango::ExplicitTransaction* trx,
+    TRI_transaction_collection_t* col,
+    triagens::arango::ExampleMatcher* matcher
+  ) : trx(trx), col(col), matcher(matcher) {
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef the template instanciation of the PathFinder
@@ -75,8 +100,8 @@ namespace triagens {
       struct ShortestPathOptions {
 
         private: 
-          std::unordered_map<TRI_voc_cid_t, triagens::arango::ExampleMatcher*> _vertexFilter;
           std::unordered_map<TRI_voc_cid_t, triagens::arango::ExampleMatcher*> _edgeFilter;
+          std::unordered_map<TRI_voc_cid_t, VertexFilterInfo> _vertexFilter;
 
         public:
           std::string direction;
@@ -87,6 +112,8 @@ namespace triagens {
           bool multiThreaded;
           bool useVertexFilter;
           bool useEdgeFilter;
+          VertexId start;
+          VertexId end;
 
           ShortestPathOptions() :
             direction("outbound"),
@@ -106,7 +133,22 @@ namespace triagens {
             TRI_voc_cid_t const& cid,
             std::string& errorMessage
           );
+
+          void addVertexFilter(
+            v8::Isolate* isolate,
+            v8::Handle<v8::Object> const& example,
+            triagens::arango::ExplicitTransaction* trx,
+            TRI_transaction_collection_t* col,
+            TRI_shaper_t* shaper,
+            TRI_voc_cid_t const& cid,
+            std::string& errorMessage
+          );
+
+          void addFinalVertex(VertexId& v);
+
           bool matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
+
+          bool matchesVertex(VertexId& v) const;
 
       };
       struct NeighborsOptions {
@@ -125,12 +167,17 @@ namespace triagens {
 }
 
 
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to weight an edge
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef std::function<double(TRI_doc_mptr_copy_t& edge)> WeightCalculatorFunction;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Information required internally of the traverser.
+///        Used to easily pass around collections.
+///        Also offer abstraction to extract edges.
+////////////////////////////////////////////////////////////////////////////////
 
 class EdgeCollectionInfo {
   private:
@@ -188,13 +235,55 @@ class EdgeCollectionInfo {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Information required internally of the traverser.
+///        Used to easily pass around collections.
+////////////////////////////////////////////////////////////////////////////////
+
+class VertexCollectionInfo {
+  private:
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vertex collection
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_voc_cid_t _vertexCollectionCid;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vertex collection
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_transaction_collection_t* _vertexCollection;
+
+  public:
+
+    VertexCollectionInfo(
+      TRI_voc_cid_t& vertexCollectionCid,
+      TRI_transaction_collection_t* vertexCollection
+     ) : _vertexCollectionCid(vertexCollectionCid),
+       _vertexCollection(vertexCollection) {
+    }
+
+    TRI_voc_cid_t getCid() {
+      return _vertexCollectionCid;
+    }
+
+    TRI_transaction_collection_t* getCollection() {
+      return _vertexCollection;
+    }
+
+    TRI_shaper_t* getShaper() {
+      return _vertexCollection->_collection->_collection->getShaper();
+    }
+};
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Wrapper for the shortest path computation
 ////////////////////////////////////////////////////////////////////////////////
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
     std::vector<EdgeCollectionInfo*>& collectionInfos,
-    std::string const& startVertex,
-    std::string const& targetVertex,
-    triagens::arango::CollectionNameResolver const* resolver,
     triagens::basics::traverser::ShortestPathOptions& opts
 );
 
