@@ -48,6 +48,12 @@
         this.userBarView.render();
       }
       this.statisticBarView.render($("#statisticBar"));
+
+      // if demo content not available, do not show demo menu tab
+      if (!window.App.arangoCollectionsStore.findWhere({"name": "arangodbflightsdemo"})) {
+        $('.demo-menu').css("display","none");
+      }
+
       return this;
     },
 
