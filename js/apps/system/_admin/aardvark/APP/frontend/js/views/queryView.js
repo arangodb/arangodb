@@ -788,14 +788,10 @@
       },
       */
 
-      renderExplain: function(data) {
-        $("#explainDialog").dialog({width: '70%', height: 400});
-        $("#explainDialog").dialog('option', 'width', '70%');
-      },
-
       fillExplain: function(callback) {
 
         var self = this;
+        var outputEditor = ace.edit("queryOutput");
         window.progressView.show(
           "Explain is operating..."
         );
@@ -807,10 +803,11 @@
           contentType: "application/json",
           processData: false,
           success: function (data) {
-
-            self.renderExplain(data);
-
+            outputEditor.setValue(data.msg);
+            self.switchTab("result-switch");
             window.progressView.hide();
+            self.deselect(outputEditor);
+            $('#downloadQueryResult').hide();
             if (typeof callback === "function") {
               callback();
             }
