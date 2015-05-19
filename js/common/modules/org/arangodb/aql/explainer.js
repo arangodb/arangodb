@@ -587,8 +587,6 @@ function processQuery (query, explain) {
 
   stringBuilder.appendLine(line);
 
-  var returnNodes = [];
-
   var walk = [ rootNode ];
   while (walk.length > 0) {
     var id = walk.pop();
