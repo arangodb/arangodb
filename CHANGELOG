@@ -1,6 +1,10 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* front-end: renamed query submit to execute
+
+* front-end: added query explain feature
+
 * removed startup option `--log.severity`
 
 * added optional `limit` parameter for AQL function `FULLTEXT`
