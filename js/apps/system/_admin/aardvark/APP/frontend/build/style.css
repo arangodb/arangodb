@@ -5222,12 +5222,12 @@ pre.gv-object-view {
   padding-left: 0; }
 
 .loginFixedWindow {
-  position: fixed;
-  width: 100%;
+  background: #dee8d0;
   height: 100%;
-  background: #DEE8D0;
+  left: 0;
+  position: fixed;
   top: 0;
-  left: 0; }
+  width: 100%; }
 
 .login-window {
   background-color: #fff;
@@ -5244,11 +5244,11 @@ pre.gv-object-view {
   .login-window img {
     margin-left: 12px; }
   .login-window .fa {
-    float: right;
-    margin-top: -34px;
-    font-size: 14pt;
     color: rgba(0, 0, 0, 0.4);
-    margin-right: 5px; }
+    float: right;
+    font-size: 14pt;
+    margin-right: 5px;
+    margin-top: -34px; }
 
 .login-space {
   height: 50px; }

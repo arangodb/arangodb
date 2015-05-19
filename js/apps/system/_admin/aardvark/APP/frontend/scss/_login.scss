@@ -1,10 +1,10 @@
 .loginFixedWindow {
-  position: fixed;
-  width: 100%;
+  background: #dee8d0;
   height: 100%;
-  background: #DEE8D0;
-  top: 0;
   left: 0;
+  position: fixed;
+  top: 0;
+  width: 100%;
 }
 
 .login-window {
@@ -25,11 +25,11 @@
   }
 
   .fa {
+    color: rgba(0, 0, 0, .4);
     float: right;
-    margin-top: -34px;
     font-size: 14pt;
-    color: rgba(0,0,0,0.4);
     margin-right: 5px;
+    margin-top: -34px;
   }
 }
 
