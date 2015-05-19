@@ -722,7 +722,7 @@ Handler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, HttpHan
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs a handler for a task
+/// @brief shuts down a handler for a task
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::shutdownHandlerByTask (Task* task) {
