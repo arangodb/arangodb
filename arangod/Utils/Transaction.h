@@ -420,21 +420,34 @@ namespace triagens {
           uint32_t count = 0;
           *total = (uint32_t) document->_primaryIndex._nrUsed;
 
-          // fetch documents, taking limit into account
-          for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
-            if (*ptr) {
-              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+          try {
+            if (batchSize > 2048) {
+              docs.reserve(2048);
+            }
+            else if (batchSize > 0) {
+              docs.reserve(batchSize);
+            }
 
-              if (skip > 0) {
-                --skip;
-              }
-              else {
-                docs.emplace_back(*d);
-                if (++count >= limit) {
-                  break;
+            // fetch documents, taking limit into account
+            for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
+              if (*ptr) {
+                TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+
+                if (skip > 0) {
+                  --skip;
+                }
+                else {
+                  docs.emplace_back(*d);
+                  if (++count >= limit) {
+                    break;
+                  }
                 }
               }
             }
+          }
+          catch (...) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+            return TRI_ERROR_OUT_OF_MEMORY;
           }
 
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
