@@ -437,7 +437,7 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #else
 
-#define LOG_PERFORMANCE(...) while (0)
+#define LOG_ACTION(...) while (0)
 
 #endif
 
