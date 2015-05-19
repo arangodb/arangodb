@@ -5601,6 +5601,9 @@ function AQL_SHORTEST_PATH (vertexCollection,
     direction: direction
   };
   params = params || {};
+  var vertexCollections = [vertexCollection];
+  var edgeCollections = [edgeCollection];
+
   if (params.hasOwnProperty("distance") && params.hasOwnProperty("defaultDistance")) {
     opts.distance = params.distance;
     opts.defaultDistance = params.defaultDistance;
@@ -5614,7 +5617,27 @@ function AQL_SHORTEST_PATH (vertexCollection,
   if (params.hasOwnProperty("followEdges")) {
     opts.followEdges = params.followEdges;
   }
-  var newRes = CPP_SHORTEST_PATH([edgeCollection],
+  if (params.hasOwnProperty("filterVertices")) {
+    opts.filterVertices = params.filterVertices;
+  }
+  if (params.hasOwnProperty("vertexCollections") && Array.isArray(params.vertexCollections)) {
+    for (var i = 0; i < params.vertexCollections.length; ++i) {
+      var c = params.vertexCollections[i];
+      if (typeof c === "string") {
+        vertexCollections.push(c);
+      }
+    }
+  }
+  if (params.hasOwnProperty("edgeCollections") && Array.isArray(params.edgeCollections)) {
+    for (var i = 0; i < params.edgeCollections.length; ++i) {
+      var c = params.edgeCollections[i];
+      if (typeof c === "string") {
+        edgeCollections.push(c);
+      }
+    }
+  }
+
+  var newRes = CPP_SHORTEST_PATH(vertexCollections, edgeCollections,
     TO_ID(startVertex, vertexCollection),
     TO_ID(endVertex, vertexCollection),
     opts

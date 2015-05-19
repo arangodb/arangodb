@@ -53,6 +53,7 @@
 #include "Wal/LogfileManager.h"
 
 #include "VocBase/auth.h"
+#include "VocBase/key-generator.h"
 #include "v8.h"
 #include "V8/JSLoader.h"
 
@@ -1600,12 +1601,12 @@ static void addBarrier(
     TRI_voc_cid_t const& cid,
     unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers
   ) {
-  TRI_barrier_t* barrier = trx->orderBarrier(trx->trxCollection(cid));
+  TRI_transaction_collection_t* dcol 
+    = trx->trxCollection(cid);
+  TRI_barrier_t* barrier = trx->orderBarrier(dcol);
   if (barrier == nullptr) {
     throw TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_transaction_collection_t* dcol 
-    = trx->trxCollection(cid);
   barriers.emplace(cid, CollectionBarrierInfo(barrier, dcol));
 }
 
@@ -1802,6 +1803,30 @@ class AttributeWeightCalculator {
     }
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper to transform a vertex _id string to VertexId struct.
+////////////////////////////////////////////////////////////////////////////////
+
+static VertexId idStringToVertexId (
+    CollectionNameResolver const* resolver,
+    string const& vertex
+  ) {
+  size_t split;
+  char const* str = vertex.c_str();
+  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+    throw TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
+  }
+  string collectionName = vertex.substr(0, split);
+  auto coli = resolver->getCollectionStruct(collectionName);
+  if (coli == nullptr) {
+    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  return VertexId(coli->_cid, const_cast<char*>(str + split + 1));
+};
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Executes a shortest Path Traversal
 ////////////////////////////////////////////////////////////////////////////////
@@ -1810,46 +1835,50 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  if (args.Length() < 3 || args.Length() > 4) {
-    TRI_V8_THROW_EXCEPTION_USAGE("CPP_SHORTEST_PATH(<edgecollections[]>, <start>, <end>, <options>)");
+  if (args.Length() < 4 || args.Length() > 5) {
+    TRI_V8_THROW_EXCEPTION_USAGE("CPP_SHORTEST_PATH(<vertexcollcetions[]>, <edgecollections[]>, <start>, <end>, <options>)");
   }
 
-  TRI_vocbase_t* vocbase;
-
-  vocbase = GetContextVocBase(isolate);
-
-  // get the edge collection
+  // get the vertex collections
   if (! args[0]->IsArray()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting array for <vertexcollections[]>");
+  }
+  unordered_set<string> vertexCollectionNames;
+  v8ArrayToStrings(args[0], vertexCollectionNames);
+
+  // get the vertex collections
+  if (! args[1]->IsArray()) {
     TRI_V8_THROW_TYPE_ERROR("expecting array for <edgecollections[]>");
   }
   unordered_set<string> edgeCollectionNames;
-  v8ArrayToStrings(args[0], edgeCollectionNames);
+  v8ArrayToStrings(args[1], edgeCollectionNames);
 
-  vocbase = GetContextVocBase(isolate);
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (! args[1]->IsString()) {
+  if (! args[2]->IsString()) {
     TRI_V8_THROW_TYPE_ERROR("expecting id for <startVertex>");
   }
-  string const startVertex = TRI_ObjectToString(args[1]);
+  string const startVertex = TRI_ObjectToString(args[2]);
  
-  if (! args[2]->IsString()) {
+  if (! args[3]->IsString()) {
     TRI_V8_THROW_TYPE_ERROR("expecting id for <targetVertex>");
   }
-  string const targetVertex = TRI_ObjectToString(args[2]);
+  string const targetVertex = TRI_ObjectToString(args[3]);
 
   traverser::ShortestPathOptions opts;
 
   bool includeData = false;
   v8::Handle<v8::Object> edgeExample;
-  if (args.Length() == 4) {
-    if (! args[3]->IsObject()) {
+  v8::Handle<v8::Object> vertexExample;
+  if (args.Length() == 5) {
+    if (! args[4]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
     }
-    v8::Handle<v8::Object> options = args[3]->ToObject();
+    v8::Handle<v8::Object> options = args[4]->ToObject();
 
     // Parse direction
     v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
@@ -1890,11 +1919,20 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       opts.multiThreaded = TRI_ObjectToBoolean(options->Get(keyMultiThreaded));
     }
 
+    // Parse followEdges
     v8::Local<v8::String> keyFollowEdges = TRI_V8_ASCII_STRING("followEdges");
     if (options->Has(keyFollowEdges)) {
       opts.useEdgeFilter = true;
       // TODO: User defined AQL function !!
       edgeExample = v8::Handle<v8::Object>::Cast(options->Get(keyFollowEdges));
+    }
+
+    // Parse vertexFilter
+    v8::Local<v8::String> keyFilterVertices = TRI_V8_ASCII_STRING("filterVertices");
+    if (options->Has(keyFilterVertices)) {
+      opts.useVertexFilter = true;
+      // TODO: User defined AQL function !!
+      vertexExample = v8::Handle<v8::Object>::Cast(options->Get(keyFilterVertices));
     }
   } 
 
@@ -1908,6 +1946,9 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   CollectionNameResolver const* resolver = resolverGuard.getResolver();
 
   for (auto it : edgeCollectionNames) {
+    readCollections.push_back(resolver->getCollectionId(it));
+  }
+  for (auto it : vertexCollectionNames) {
     readCollections.push_back(resolver->getCollectionId(it));
   }
 
@@ -1925,10 +1966,11 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   unique_ptr<ArangoDBPathFinder::Path> path;
   vector<EdgeCollectionInfo*> edgeCollectionInfos;
   if (opts.useWeight) {
-    for(auto it : readCollections) {
-      auto colObj = barriers.find(it)->second.col->_collection->_collection;
+    for(auto it : edgeCollectionNames) {
+      auto cid = resolver->getCollectionId(it);
+      auto colObj = barriers.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.push_back(new EdgeCollectionInfo(
-        it,
+        cid,
         colObj,
         AttributeWeightCalculator(
           opts.weightAttribute, opts.defaultWeight, colObj->getShaper()
@@ -1936,27 +1978,59 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       ));
     }
   } else {
-    for(auto it : readCollections) {
-      auto colObj = barriers.find(it)->second.col->_collection->_collection;
+    for(auto it : edgeCollectionNames) {
+      auto cid = resolver->getCollectionId(it);
+      auto colObj = barriers.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.push_back(new EdgeCollectionInfo(
-        it,
+        cid,
         colObj,
         HopWeightCalculator()
       ));
     }
   }
+  vector<VertexCollectionInfo*> vertexCollectionInfos;
+  for(auto it : vertexCollectionNames) {
+    auto cid = resolver->getCollectionId(it);
+    auto colObj = barriers.find(cid)->second.col;
+    vertexCollectionInfos.push_back(new VertexCollectionInfo(
+      cid,
+      colObj
+    ));
+  }
+
   if (opts.useEdgeFilter) {
     string errorMessage;
     for (auto it: edgeCollectionInfos) {
-      opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(), errorMessage);
+      try {
+        opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(), errorMessage);
+      } catch (int e) {
+        // ELEMENT not found is expected, if there is no shape of this type in this collection
+        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          // TODO Max fragen was mit Fehlern passieren muss
+        }
+      }
     }
   }
+  if (opts.useVertexFilter) {
+    string errorMessage;
+    for (auto it: vertexCollectionInfos) {
+      try {
+        opts.addVertexFilter(isolate, vertexExample, trx, it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
+      } catch (int e) {
+        // ELEMENT not found is expected, if there is no shape of this type in this collection
+        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          // TODO Max fragen was mit Fehlern passieren muss
+        }
+      }
+    }
+  }
+
+  opts.start = idStringToVertexId(resolver, startVertex);
+  opts.end = idStringToVertexId(resolver, targetVertex);
+
   try {
     path = TRI_RunShortestPathSearch(
       edgeCollectionInfos,
-      startVertex,
-      targetVertex,
-      resolver,
       opts
     );
   } catch (int e) {
