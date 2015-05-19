@@ -78,6 +78,15 @@ option to turn it off might relieve heavy-loaded instances.
 Note: this option is only available when ArangoDB has not been compiled with
 the option *--disable-figures*.
 
+
+!SUBSECTION Foxx queues scope
+@startDocuBlock foxxQueuesSystemOnly
+
+
+!SUBSECTION Foxx queues poll interval
+@startDocuBlock foxxQueuesPollInterval 
+
+
 !SUBSECTION Directory
 @startDocuBlock DatabaseDirectory
 
@@ -102,15 +111,15 @@ the option *--disable-figures*.
 @startDocuBlock indexThreads
 
 
-!SUBSECTION V8 Contexts
+!SUBSECTION V8 contexts
 @startDocuBlock v8Contexts
 
 
-!SUBSECTION Frequency
+!SUBSECTION Garbage collection frequency (time-based)
 @startDocuBlock jsGcFrequency
 
 
-!SUBSECTION Startup gc-interval
+!SUBSECTION Garbage collection interval (request-based)
 @startDocuBlock jsStartupGcInterval
 
 

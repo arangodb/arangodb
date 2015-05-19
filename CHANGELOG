@@ -331,6 +331,26 @@ v2.6.0 (XXXX-XX-XX)
 * increased default value of `--server.connect-timeout` from 3 to 5 seconds for client tools
   (arangosh, arangoimp, arangodump, arangorestore)
 
+* added startup option `--server.foxx-queues-poll-interval`
+
+  This startup option controls the frequency with which the Foxx queues manager is checking
+  the queue (or queues) for jobs to be executed.
+
+  The default value is `1` second. Lowering this value will result in the queue manager waking
+  up and checking the queues more frequently, which may increase CPU usage of the server. 
+  When not using Foxx queues, this value can be raised to save some CPU time.
+
+* added startup option `--server.foxx-queues-system-only`
+
+  This startup option controls whether the Foxx queue manager will check queue and job entries
+  in the `_system` database only. Restricting the Foxx queue manager to the `_system` database 
+  will lead to the queue manager having to check only the queues collection of a single database,
+  whereas making it check the queues of all databases might result in more work to be done and 
+  more CPU time to be used by the queue manager.
+
+  The default value is `true`, so that the queue manager will only check the queues in the 
+  `_system` database.
+
 * make Foxx queues really database-specific.
 
   Foxx queues were and are stored in a database-specific collection `_queues`. However, a global
