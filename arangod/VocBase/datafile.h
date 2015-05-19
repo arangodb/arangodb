@@ -235,14 +235,15 @@ TRI_df_scan_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_scan_entry_s {
-  TRI_voc_size_t _position;
-  TRI_voc_size_t _size;
-  TRI_voc_size_t _realSize;
-  TRI_voc_tick_t _tick;
+  TRI_voc_size_t       _position;
+  TRI_voc_size_t       _size;
+  TRI_voc_size_t       _realSize;
+  TRI_voc_tick_t       _tick;
 
   TRI_df_marker_type_t _type;
 
-  uint32_t _status;
+  uint32_t             _status;
+  char*                _diagnosis;
 }
 TRI_df_scan_entry_t;
 
