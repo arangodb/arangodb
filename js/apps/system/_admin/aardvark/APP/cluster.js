@@ -32,6 +32,8 @@
 
   // Initialise a new FoxxController called controller under the urlPrefix: "cluster".
   var FoxxController = require("org/arangodb/foxx").Controller,
+    UnauthorizedError = require("http-errors").Unauthorized,
+    internal = require("internal"),
     controller = new FoxxController(applicationContext),
     cluster = require("org/arangodb/cluster"),
     load = require("internal").download,
@@ -40,8 +42,16 @@
 
   controller.activateSessions({
     type: "cookie",
-    autoCreateSession: true,
+    autoCreateSession: false,
     cookie: {name: "arango_sid_" + db._name()}
+  });
+
+  controller.allRoutes
+  .errorResponse(UnauthorizedError, 401, "unauthorized")
+  .onlyIf(function (req, res) {
+    if (!internal.options()["server.disable-authentication"] && (!req.session || !req.session.get('uid'))) {
+      throw new UnauthorizedError();
+    }
   });
 
   /** Plan and start a new cluster
