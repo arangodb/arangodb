@@ -8,5 +8,6 @@ arangosh> db.example.properties();
   "keyOptions" : { 
     "type" : "traditional", 
     "allowUserKeys" : true 
-  } 
+  }, 
+  "indexBuckets" : 1 
 }

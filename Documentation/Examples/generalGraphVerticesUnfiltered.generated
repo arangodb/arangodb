@@ -5,25 +5,25 @@ arangosh> graph._vertices().toArray();
   { 
     "_id" : "female/diana", 
     "_key" : "diana", 
-    "_rev" : "1218389045", 
+    "_rev" : "1225907220", 
     "name" : "Diana" 
   }, 
   { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "1217668149", 
+    "_rev" : "1225186324", 
     "name" : "Alice" 
   }, 
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "1217995829", 
+    "_rev" : "1225514004", 
     "name" : "Bob" 
   }, 
   { 
     "_id" : "male/charly", 
     "_key" : "charly", 
-    "_rev" : "1218192437", 
+    "_rev" : "1225710612", 
     "name" : "Charly" 
   } 
 ]

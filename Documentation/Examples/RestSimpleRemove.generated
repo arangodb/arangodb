@@ -1,0 +1,13 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/remove-by-keys <<EOF
+{"keys":["test0","test1","test2","test3","test4","test5","test6","test7","test8","test9"],"collection":"test"}
+EOF
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "removed" : 10, 
+  "ignored" : 0, 
+  "error" : false, 
+  "code" : 200 
+}

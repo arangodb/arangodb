@@ -1,11 +1,11 @@
-shell> curl --dump - http://localhost:8529/_api/collection/1518871605/properties
+shell> curl --dump - http://localhost:8529/_api/collection/1524816916/properties
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/properties
 
 { 
-  "id" : "1518871605", 
+  "id" : "1524816916", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
@@ -16,6 +16,7 @@ location: /_db/_system/_api/collection/products/properties
     "allowUserKeys" : true 
   }, 
   "waitForSync" : true, 
+  "indexBuckets" : 1, 
   "status" : 3, 
   "type" : 2, 
   "error" : false, 

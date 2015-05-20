@@ -1,0 +1,45 @@
+arangosh> db.five.save({ name : "one" });
+{ 
+  "_id" : "five/22535188", 
+  "_rev" : "22535188", 
+  "_key" : "22535188" 
+}
+arangosh> db.five.save({ name : "two" });
+{ 
+  "_id" : "five/22731796", 
+  "_rev" : "22731796", 
+  "_key" : "22731796" 
+}
+arangosh> db.five.save({ name : "three" });
+{ 
+  "_id" : "five/22928404", 
+  "_rev" : "22928404", 
+  "_key" : "22928404" 
+}
+arangosh> db.five.save({ name : "four" });
+{ 
+  "_id" : "five/23125012", 
+  "_rev" : "23125012", 
+  "_key" : "23125012" 
+}
+arangosh> db.five.save({ name : "five" });
+{ 
+  "_id" : "five/23321620", 
+  "_rev" : "23321620", 
+  "_key" : "23321620" 
+}
+arangosh> db.five.all().limit(2).toArray();
+[ 
+  { 
+    "_id" : "five/22535188", 
+    "_key" : "22535188", 
+    "_rev" : "22535188", 
+    "name" : "one" 
+  }, 
+  { 
+    "_id" : "five/23321620", 
+    "_key" : "23321620", 
+    "_rev" : "23321620", 
+    "name" : "five" 
+  } 
+]

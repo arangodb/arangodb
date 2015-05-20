@@ -1,0 +1,11 @@
+arangosh> keys = [ ];
+[ ]
+arangosh> for (var i = 0; i < 10; ++i) {
+........>   db.example.insert({ _key: "test" + i, value: i });
+........>   keys.push("test" + i);
+........> }
+arangosh> db.example.removeByKeys(keys);
+{ 
+  "removed" : 10, 
+  "ignored" : 0 
+}

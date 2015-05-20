@@ -7,21 +7,21 @@ arangosh> db._query("FOR e IN GRAPH_VERTICES("
   { 
     "_id" : "germanCity/Berlin", 
     "_key" : "Berlin", 
-    "_rev" : "1208034357", 
+    "_rev" : "1211948052", 
     "isCapital" : true, 
     "population" : 3000000 
   }, 
   { 
     "_id" : "germanCity/Hamburg", 
     "_key" : "Hamburg", 
-    "_rev" : "1208427573", 
+    "_rev" : "1212341268", 
     "isCapital" : false, 
     "population" : 1000000 
   }, 
   { 
     "_id" : "germanCity/Cologne", 
     "_key" : "Cologne", 
-    "_rev" : "1208230965", 
+    "_rev" : "1212144660", 
     "isCapital" : false, 
     "population" : 1000000 
   } 

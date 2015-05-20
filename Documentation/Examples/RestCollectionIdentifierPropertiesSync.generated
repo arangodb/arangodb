@@ -8,7 +8,7 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "1546200117", 
+  "id" : "1548278804", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
@@ -19,6 +19,7 @@ content-type: application/json; charset=utf-8
     "allowUserKeys" : true 
   }, 
   "waitForSync" : true, 
+  "indexBuckets" : 1, 
   "status" : 3, 
   "type" : 2, 
   "error" : false, 
