@@ -113,7 +113,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       return this.activeUser;
     }
     var result;
-    $.ajax("whoAmI", {async:false}).done(
+    $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
       function(data) {
         result = data.user;
       }
