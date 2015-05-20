@@ -227,8 +227,10 @@ void Collection::fillIndexes () const {
   if (! indexes.empty()) {
     return;
   }
+  
+  auto const role = triagens::arango::ServerState::instance()->getRole();
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (triagens::arango::ServerState::instance()->isCoordinator(role)) {
     fillIndexesCoordinator();
     return;
   }
@@ -236,7 +238,7 @@ void Collection::fillIndexes () const {
   // must have a collection  
   TRI_ASSERT(collection != nullptr);
 
-  if (triagens::arango::ServerState::instance()->isDBServer() && 
+  if (triagens::arango::ServerState::instance()->isDBServer(role) && 
       documentCollection()->_info._planId > 0) {
     fillIndexesDBServer();
     return;

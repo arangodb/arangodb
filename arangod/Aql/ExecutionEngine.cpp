@@ -901,8 +901,9 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
                                                        Query* query,
                                                        ExecutionPlan* plan,
                                                        bool planRegisters) {
-  bool const isCoordinator = triagens::arango::ServerState::instance()->isCoordinator();
-  bool const isDBServer    = triagens::arango::ServerState::instance()->isDBServer();
+  auto role = triagens::arango::ServerState::instance()->getRole();
+  bool const isCoordinator = triagens::arango::ServerState::instance()->isCoordinator(role);
+  bool const isDBServer    = triagens::arango::ServerState::instance()->isDBServer(role);
 
   ExecutionEngine* engine = nullptr;
 

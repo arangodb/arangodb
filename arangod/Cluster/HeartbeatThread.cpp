@@ -491,15 +491,18 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       ++it;
     }
 
+    // get the list of databases that we know about locally
     TRI_voc_tick_t* localIds = TRI_GetIdsCoordinatorDatabaseServer(_server);
 
     if (localIds != nullptr) {
       TRI_voc_tick_t* p = localIds;
 
+      // now check which of the local databases are also in the plan
       while (*p != 0) {
         std::vector<TRI_voc_tick_t>::const_iterator r = std::find(ids.begin(), ids.end(), *p);
 
         if (r == ids.end()) {
+          // local database not found in the plan...
           TRI_DropByIdCoordinatorDatabaseServer(_server, *p, false);
         }
 
