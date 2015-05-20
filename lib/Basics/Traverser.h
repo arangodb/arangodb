@@ -276,13 +276,13 @@ namespace triagens {
           auto it = _lookup.find(keyp);
           TRI_ASSERT(it != _lookup.end());
           TRI_ASSERT(it->second - _popped == q);
-          it->second = static_cast<ssize_t>(p) + _popped;
+          it->second = static_cast<ssize_t>(p) + static_cast<ssize_t>(_popped);
 
           Key const& keyq(_heap[q]->getKey());
           it = _lookup.find(keyq);
           TRI_ASSERT(it != _lookup.end());
           TRI_ASSERT(it->second - _popped == p);
-          it->second = static_cast<ssize_t>(q) + _popped;
+          it->second = static_cast<ssize_t>(q) + static_cast<ssize_t>(_popped);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
