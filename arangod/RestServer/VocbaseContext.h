@@ -87,8 +87,8 @@ namespace triagens {
 /// @brief gets the last access time
 ////////////////////////////////////////////////////////////////////////////////
 
-        static uint64_t accessSid (std::string const& database,
-                                   std::string const& sid);
+        static double accessSid (std::string const& database,
+                                 std::string const& sid);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -141,6 +141,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         rest::HttpResponse::HttpResponseCode authenticate ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time-to-live for aardvark server sessions
+////////////////////////////////////////////////////////////////////////////////
+
+        static double ServerSessionTtl;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
