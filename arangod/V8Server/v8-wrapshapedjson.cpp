@@ -74,7 +74,7 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesJs (v8::Isolate* isolate
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   // buffer that we'll use for generating _id, _key, _rev, _from and _to values
-  // using a single buffer will avoid several memory allocation
+  // using a single buffer will avoid several memory allocations
   char buffer[TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2];
 
   // _id
@@ -164,7 +164,7 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesShaped (v8::Isolate* iso
   TRI_ASSERT(marker != nullptr);
 
   // buffer that we'll use for generating _id, _key, _rev, _from and _to values
-  // using a single buffer will avoid several memory allocation
+  // using a single buffer will avoid several memory allocations
   char buffer[TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2];
 
   // _id
@@ -393,7 +393,7 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
   aids = (TRI_shape_aid_t const*) qtr;
 
   TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(marker)->_type;
-  bool isEdge = (type == TRI_DOC_MARKER_KEY_EDGE || type == TRI_WAL_MARKER_EDGE);
+  bool const isEdge = (type == TRI_DOC_MARKER_KEY_EDGE || type == TRI_WAL_MARKER_EDGE);
   
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int) n + 3 + (isEdge ? 2 : 0));
   uint32_t count = 0;
@@ -414,7 +414,6 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
   }
 
   for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
-    /// TODO: avoid strlen here!
     char const* att = shaper->lookupAttributeId(shaper, *aids);
 
     if (att != nullptr) {
@@ -432,10 +431,11 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
 
 static void CopyAttributes (v8::Isolate* isolate,
                             v8::Handle<v8::Object> self, 
-                            void* marker) {
+                            void* marker,
+                            char const* excludeAttribute = nullptr) {
   TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
   TRI_document_collection_t* collection = barrier->_container->_collection;
-
+  
   // check for array shape
   TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
 
@@ -447,8 +447,10 @@ static void CopyAttributes (v8::Isolate* isolate,
   if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
     return;
   }
-    
+   
   // copy _key and _rev
+  // note: _id, _from and _to do not need to be copied because they are
+  // already present in initial ShapedJson objects as real attributes
 
   // _key
   TRI_GET_GLOBALS();
@@ -457,15 +459,21 @@ static void CopyAttributes (v8::Isolate* isolate,
   TRI_ASSERT(docKey != nullptr);
   size_t keyLength = strlen(docKey);// TODO: avoid strlen
   memcpy(buffer, docKey, keyLength);
-  TRI_GET_GLOBAL_STRING(_KeyKey);
-  self->ForceSet(_KeyKey, TRI_V8_PAIR_STRING(buffer, (int) keyLength));
+  if (excludeAttribute == nullptr ||
+      strcmp(excludeAttribute, TRI_VOC_ATTRIBUTE_KEY) != 0) {
+    TRI_GET_GLOBAL_STRING(_KeyKey);
+    self->ForceSet(_KeyKey, TRI_V8_PAIR_STRING(buffer, (int) keyLength));
+  }
 
-   // _rev  
+  // _rev  
   TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(static_cast<TRI_df_marker_t const*>(marker));
   TRI_ASSERT(rid > 0);
-  TRI_GET_GLOBAL_STRING(_RevKey);
   size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
-  self->ForceSet(_RevKey, TRI_V8_PAIR_STRING((char const*) buffer, (int) len));
+  if (excludeAttribute == nullptr ||
+      strcmp(excludeAttribute, TRI_VOC_ATTRIBUTE_REV) != 0) {
+    TRI_GET_GLOBAL_STRING(_RevKey);
+    self->ForceSet(_RevKey, TRI_V8_PAIR_STRING((char const*) buffer, (int) len));
+  }
 
   // finally insert the dynamic attributes from the shaped json
   TRI_array_shape_t const* s;
@@ -490,10 +498,10 @@ static void CopyAttributes (v8::Isolate* isolate,
   TRI_shaped_json_t json;
 
   for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
-    /// TODO: avoid strlen
     char const* att = shaper->lookupAttributeId(shaper, *aids);
-    
-    if (att != nullptr) {
+
+    if (att != nullptr && 
+        (excludeAttribute == nullptr || strcmp(att, excludeAttribute) != 0)) {
       TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, att);
       
       if (pid != 0) {
@@ -636,7 +644,7 @@ static void MapSetNamedShapedJson (v8::Local<v8::String> name,
   }
 
   // copy all attributes from the shaped json into the object
-  CopyAttributes(isolate, self, marker);
+  CopyAttributes(isolate, self, marker, nullptr);
 
   // remove pointer to marker, so the object becomes stand-alone
   self->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nullptr));
@@ -669,18 +677,18 @@ static void MapDeleteNamedShapedJson (v8::Local<v8::String> name,
   void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
   if (marker == nullptr) {
-    self->ForceDelete(name);
-    TRI_V8_RETURN_TRUE();
+    TRI_V8_RETURN(v8::Handle<v8::Boolean>());
   }
   
   // copy all attributes from the shaped json into the object
-  CopyAttributes(isolate, self, marker);
+  // but the to-be-deleted attribute
+  std::string&& nameString = TRI_ObjectToString(name);
+  CopyAttributes(isolate, self, marker, nameString.c_str());
   
   // remove pointer to marker, so the object becomes stand-alone
   self->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nullptr));
 
-  self->ForceDelete(name);
-  TRI_V8_RETURN_TRUE();
+  TRI_V8_RETURN(v8::Handle<v8::Boolean>());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
