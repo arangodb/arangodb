@@ -107,7 +107,7 @@ static uint64_t Complexity = 1;
 /// @brief concurrency
 ////////////////////////////////////////////////////////////////////////////////
 
-static int Concurrency = 1;
+static int ThreadConcurrency = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a startup delay
@@ -192,7 +192,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("async", &Async, "send asychronous requests")
-    ("concurrency", &Concurrency, "number of parallel connections")
+    ("concurrency", &ThreadConcurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
     ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching)")
     ("keep-alive", &KeepAlive, "use HTTP keep-alive")
@@ -333,7 +333,7 @@ int main (int argc, char* argv[]) {
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
 
-  const double stepSize = (double) Operations / (double) Concurrency;
+  const double stepSize = (double) Operations / (double) ThreadConcurrency;
   int64_t realStep = (int64_t) stepSize;
   if (stepSize - (double) ((int64_t) stepSize) > 0.0) {
     realStep++;
@@ -345,7 +345,7 @@ int main (int argc, char* argv[]) {
   realStep += 10000;
 
   // start client threads
-  for (int i = 0; i < Concurrency; ++i) {
+  for (int i = 0; i < ThreadConcurrency; ++i) {
     Endpoint* endpoint = Endpoint::clientFactory(BaseClient.endpointString());
     endpoints.push_back(endpoint);
 
@@ -372,7 +372,7 @@ int main (int argc, char* argv[]) {
   }
 
   // give all threads a chance to start so they will not miss the broadcast
-  while (GetStartCounter() < Concurrency) {
+  while (GetStartCounter() < ThreadConcurrency) {
     usleep(5000);
   }
 
@@ -416,7 +416,7 @@ int main (int argc, char* argv[]) {
   double time = TRI_microtime() - start;
   double requestTime = 0.0;
 
-  for (int i = 0; i < Concurrency; ++i) {
+  for (int i = 0; i < ThreadConcurrency; ++i) {
     requestTime += threads[i]->getTime();
   }
 
@@ -428,7 +428,7 @@ int main (int argc, char* argv[]) {
           ", keep alive: " << (KeepAlive ? "yes" : "no") <<
           ", async: " << (Async ? "yes" : "no")  <<
           ", batch size: " << BatchSize <<
-          ", concurrency level (threads): " << Concurrency <<
+          ", concurrency level (threads): " << ThreadConcurrency <<
           endl;
 
   cout << "Test case: " << TestCase <<
@@ -438,9 +438,9 @@ int main (int argc, char* argv[]) {
           endl;
 
   cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
-  cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
+  cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) ThreadConcurrency) << " s" << endl;
   cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
-  cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl;
+  cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) ThreadConcurrency) << " s" << endl;
   cout << "Operations per second rate: " << fixed << ((double) Operations / time) << endl;
   cout << "Elapsed time since start: " << fixed << time << " s" << endl << endl;
 
@@ -453,7 +453,7 @@ int main (int argc, char* argv[]) {
 
   testCase->tearDown();
 
-  for (int i = 0; i < Concurrency; ++i) {
+  for (int i = 0; i < ThreadConcurrency; ++i) {
     threads[i]->join();
     delete threads[i];
     delete endpoints[i];
