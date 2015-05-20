@@ -72,7 +72,7 @@ namespace std {
           if (lhs.cid != rhs.cid) {
             return lhs.cid < rhs.cid;
           }
-          return strcmp(lhs.key, rhs.key);
+          return strcmp(lhs.key, rhs.key) < 0;
         }
     };
 
