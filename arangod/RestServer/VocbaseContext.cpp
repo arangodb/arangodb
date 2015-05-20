@@ -74,7 +74,7 @@ static std::unordered_map<std::string, DatabaseSessionsType> SidCache;
 /// @brief time-to-live for aardvark server sessions
 ////////////////////////////////////////////////////////////////////////////////
 
-double VocbaseContext::ServerSessionTtl = 90.0;
+double VocbaseContext::ServerSessionTtl = 60.0 * 60.0 * 2; // 2 hours session timeout
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
