@@ -136,6 +136,7 @@ add_executable(
     V8Server/V8PeriodicTask.cpp
     V8Server/V8QueueJob.cpp
     V8Server/V8TimerTask.cpp
+    V8Server/V8Traverser.cpp
     V8Server/v8-actions.cpp
     V8Server/v8-collection.cpp
     V8Server/v8-collection-util.cpp
@@ -155,6 +156,7 @@ add_executable(
     VocBase/compactor.cpp
     VocBase/datafile.cpp
     VocBase/document-collection.cpp
+    VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp
     VocBase/headers.cpp
     VocBase/index.cpp
