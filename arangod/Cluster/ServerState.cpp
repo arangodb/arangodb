@@ -102,7 +102,7 @@ ServerState* ServerState::instance () {
 /// @brief get the string representation of a role
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string ServerState::roleToString (RoleEnum role) {
+std::string ServerState::roleToString (ServerState::RoleEnum role) {
   switch (role) {
     case ROLE_UNDEFINED:
       return "UNDEFINED";
@@ -238,13 +238,31 @@ bool ServerState::isCoordinator () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the server is a DB server (primary or secondory)
+/// @brief check whether the server is a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::isCoordinator (ServerState::RoleEnum role) {
+  return (role == ServerState::ROLE_COORDINATOR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the server is a DB server (primary or secondary)
 /// running in cluster mode.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::isDBServer () {
   auto role = loadRole();
 
+  return (role == ServerState::ROLE_PRIMARY ||
+          role == ServerState::ROLE_SECONDARY);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the server is a DB server (primary or secondary)
+/// running in cluster mode.
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::isDBServer (ServerState::RoleEnum role) {
   return (role == ServerState::ROLE_PRIMARY ||
           role == ServerState::ROLE_SECONDARY);
 }
@@ -316,7 +334,7 @@ ServerState::RoleEnum ServerState::getRole () {
 /// @brief set the server role
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setRole (RoleEnum role) {
+void ServerState::setRole (ServerState::RoleEnum role) {
   storeRole(role);
 }
 

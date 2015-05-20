@@ -986,7 +986,9 @@ int ArangoServer::startupServer () {
   // for a cluster coordinator, the users are loaded at a later stage;
   // the kickstarter will trigger a bootstrap process
   //
-  if (role != ServerState::ROLE_COORDINATOR && role != ServerState::ROLE_PRIMARY && role != ServerState::ROLE_SECONDARY) {
+  if (role != ServerState::ROLE_COORDINATOR && 
+      role != ServerState::ROLE_PRIMARY && 
+      role != ServerState::ROLE_SECONDARY) {
 
     // if the authentication info could not be loaded, but authentication is turned on,
     // then we refuse to start
