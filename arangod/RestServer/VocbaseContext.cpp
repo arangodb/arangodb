@@ -57,7 +57,17 @@ static triagens::basics::Mutex SidLock;
 /// @brief sid cache
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::unordered_map<std::string, std::unordered_map<std::string, std::pair<std::string, uint64_t>>> SidCache;
+static std::unordered_map<std::string, std::unordered_map<std::string, std::pair<std::string, double>>> SidCache;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               static initializers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time-to-live for aardvark server sessions
+////////////////////////////////////////////////////////////////////////////////
+
+double VocbaseContext::ServerSessionTtl = 90.0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -76,12 +86,12 @@ void VocbaseContext::createSid (std::string const& database,
   auto it = SidCache.find(database);
 
   if (it == SidCache.end()) {
-    it = SidCache.emplace(database, std::unordered_map<std::string, std::pair<std::string, uint64_t>>()).first;
+    it = SidCache.emplace(database, std::unordered_map<std::string, std::pair<std::string, double>>()).first;
   }
 
   // now insert a database-specific sid
-  uint64_t t = static_cast<uint64_t>(TRI_microtime() * 1000.0);
-  (*it).second.emplace(sid, std::make_pair(username, t));
+  double const now = TRI_microtime() * 1000.0;
+  (*it).second.emplace(sid, std::make_pair(username, now));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,22 +126,22 @@ void VocbaseContext::clearSid (std::string const& database,
 /// @brief gets the last access time
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t VocbaseContext::accessSid (std::string const& database,
-                                    std::string const& sid) {
+double VocbaseContext::accessSid (std::string const& database,
+                                  std::string const& sid) {
   MUTEX_LOCKER(SidLock);
 
   auto it = SidCache.find(database);
 
   if (it == SidCache.end()) {
     // database not found. no need to go on
-    return 0;
+    return 0.0;
   }
 
   auto const& sids = (*it).second;
   auto it2 = sids.find(sid);
 
   if (it2 == sids.end()) {
-    return 0;
+    return 0.0;
   }
 
   return (*it2).second.second;
@@ -275,8 +285,18 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
       if (it2 != sids.end()) {
         _request->setUser((*it2).second.first);
-        // update date of last access
-        (*it2).second.second = static_cast<uint64_t>(TRI_microtime() * 1000.0);
+        double const now = TRI_microtime() * 1000.0;
+        // fetch last access date of session
+        double const lastAccess = (*it2).second.second;
+
+        // check if session has expired
+        if (lastAccess + (ServerSessionTtl * 1000.0) < now) {
+          // session has expired
+          sids.erase(sid);
+          return HttpResponse::UNAUTHORIZED;
+        }
+
+        (*it2).second.second = now;
         return HttpResponse::OK;
       }
     }

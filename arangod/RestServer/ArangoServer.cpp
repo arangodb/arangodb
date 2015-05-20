@@ -598,6 +598,7 @@ void ArangoServer::buildApplicationServer () {
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
     ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
     ("server.foxx-queues-system-only", &_foxxQueuesSystemOnly, "run Foxx queues in _system database only")
+    ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")
   ;
 
   bool disableStatistics = false;
