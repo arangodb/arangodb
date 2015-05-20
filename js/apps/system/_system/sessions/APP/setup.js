@@ -1,4 +1,3 @@
-/*global applicationContext */
 'use strict';
 var db = require('org/arangodb').db;
 var collectionName = '_sessions';
