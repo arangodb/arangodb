@@ -26,6 +26,10 @@
 
   "lib": ".",
 
+  "scripts": {
+    "setup": "setup.js"
+  },
+
   "tests": "test/**",
 
   "configuration": {
