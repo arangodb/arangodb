@@ -1,13 +1,16 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
-* front-end: display of query execution time
+* added server startup option `--server.session-timeout` for controlling the timeout of user sessions
+  in the web interface
 
-* front-end: demo page added. only working if demo data is available.
+* front-end: display query execution time in AQL editor
 
-* front-end: renamed query submit to execute
+* front-end: renamed AQL query *submit* button to *execute*
 
-* front-end: added query explain feature
+* front-end: added query explain feature in AQL editor
+
+* front-end: demo page added. only working if demo data is available, hidden otherwise
 
 * removed startup option `--log.severity`
 
