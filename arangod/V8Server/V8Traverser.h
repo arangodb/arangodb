@@ -31,7 +31,7 @@
 #define ARANGODB_V8_TRAVERSER_H 1
 
 #include "Basics/Common.h"
-#include "Traverser.h"
+#include "Basics/Traverser.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
 #include "Utils/ExplicitTransaction.h"
