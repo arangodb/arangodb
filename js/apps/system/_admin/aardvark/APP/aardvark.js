@@ -107,6 +107,17 @@ publicController.get("/unauthorized", function() {
   throw new UnauthorizedError();
 });
 
+publicController.get("/index.html", function(req, res) {
+  var prefix = '/_db/' + encodeURIComponent(req.database) + applicationContext.mount;
+
+  res.status(301);
+  if (cluster.dispatcherDisabled()) {
+    res.set("Location", prefix + "/standalone.html");
+  } else {
+    res.set("Location", prefix + "/cluster.html");
+  }
+});
+
 controller.activateSessions({
   type: "cookie",
   autoCreateSession: false,
@@ -118,17 +129,6 @@ controller.allRoutes
 .onlyIf(function (req, res) {
   if (!internal.options()["server.disable-authentication"] && (!req.session || !req.session.get('uid'))) {
     throw new UnauthorizedError();
-  }
-});
-
-controller.get("/index.html", function(req, res) {
-  var prefix = '/_db/' + encodeURIComponent(req.database) + applicationContext.mount;
-
-  res.status(301);
-  if (cluster.dispatcherDisabled()) {
-    res.set("Location", prefix + "/standalone.html");
-  } else {
-    res.set("Location", prefix + "/cluster.html");
   }
 });
 
