@@ -65,6 +65,11 @@ function getSession(sid) {
     action: function () {
       try {
         session = sessions.byId(sid);
+
+        var accessTime = internal.accessSid(sid);
+        session.set('lastAccess', accessTime);
+
+        session.enforceTimeout();
       } catch (err) {
         if (
           err instanceof arangodb.ArangoError
@@ -75,12 +80,6 @@ function getSession(sid) {
           throw err;
         }
       }
-
-      var accessTime = internal.accessSid(sid);
-      if (session.get('lastAccess') < accessTime) {
-        session.set('lastAccess', accessTime);
-      }
-      session.enforceTimeout();
 
       var now = Number(new Date());
       sessions.collection.update(session.forDB(), {
