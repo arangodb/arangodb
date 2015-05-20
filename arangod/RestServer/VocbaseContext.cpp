@@ -57,7 +57,14 @@ static triagens::basics::Mutex SidLock;
 /// @brief sid cache
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::unordered_map<std::string, std::unordered_map<std::string, std::pair<std::string, double>>> SidCache;
+#ifdef _WIN32
+// turn off warnings about too long type name for debug symbols blabla in MSVC only...
+#pragma warning(disable : 4503)
+#endif
+
+typedef std::unordered_map<std::string, std::pair<std::string, double>> DatabaseSessionsType;
+
+static std::unordered_map<std::string, DatabaseSessionsType> SidCache;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               static initializers
@@ -86,7 +93,7 @@ void VocbaseContext::createSid (std::string const& database,
   auto it = SidCache.find(database);
 
   if (it == SidCache.end()) {
-    it = SidCache.emplace(database, std::unordered_map<std::string, std::pair<std::string, double>>()).first;
+    it = SidCache.emplace(database, DatabaseSessionsType()).first;
   }
 
   // now insert a database-specific sid
