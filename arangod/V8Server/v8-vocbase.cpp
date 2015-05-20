@@ -68,6 +68,7 @@
 #include "unicode/dtfmtsym.h"
 
 #include "RestServer/ConsoleThread.h"
+#include "RestServer/VocbaseContext.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -3088,9 +3089,11 @@ static void DropDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>& 
   TRI_voc_tick_t const id = vocbase->_id;
   TRI_ReleaseVocBase(vocbase);
 
-
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
+
+  // clear local sid cache for database
+  triagens::arango::VocbaseContext::clearSid(name);
 
   int res = ci->dropDatabaseCoordinator(name, errorMsg, 120.0);
 
@@ -3164,6 +3167,9 @@ static void JS_DropDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+  
+  // clear local sid cache for the database
+  triagens::arango::VocbaseContext::clearSid(name);
 
   TRI_V8ReloadRouting(isolate);
 
