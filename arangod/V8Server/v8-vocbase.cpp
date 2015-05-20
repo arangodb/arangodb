@@ -602,7 +602,7 @@ static void JS_EnableNativeBacktraces (const v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_RETURN_UNDEFINED();
 }
 
-extern V8LineEditor* theConsole;
+extern triagens::V8LineEditor* theConsole;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a debugging console
@@ -620,7 +620,8 @@ static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
                                  debug, args[0]);
   }
 
-  V8LineEditor* console = triagens::arango::serverConsole.load();
+  triagens::V8LineEditor* console = triagens::arango::serverConsole.load();
+
   if (console != nullptr) {
     MUTEX_LOCKER(triagens::arango::serverConsoleMutex);
     if (serverConsole.load() != nullptr) {   

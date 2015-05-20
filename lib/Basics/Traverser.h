@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TRAVERSAL_H
-#define ARANGODB_TRAVERSAL_H 1
+#ifndef ARANGODB_BASICS_TRAVERSER_H
+#define ARANGODB_BASICS_TRAVERSER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"

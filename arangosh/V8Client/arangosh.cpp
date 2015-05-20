@@ -187,7 +187,7 @@ static uint64_t GcInterval = 10;
 /// @brief console object
 ////////////////////////////////////////////////////////////////////////////////
 
-static V8LineEditor* Console = nullptr;
+static triagens::V8LineEditor* Console = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief voice mode
@@ -1525,7 +1525,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
-  Console = new V8LineEditor(context, ".arangosh.history");
+  Console = new triagens::V8LineEditor(context, ".arangosh.history");
   Console->open(BaseClient.autoComplete());
 
   // install signal handler for CTRL-C
