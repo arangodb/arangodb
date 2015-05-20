@@ -85,6 +85,16 @@ void VocbaseContext::createSid (std::string const& database,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clears all sid entries for a database
+////////////////////////////////////////////////////////////////////////////////
+
+void VocbaseContext::clearSid (std::string const& database) {
+  MUTEX_LOCKER(SidLock);
+  
+  SidCache.erase(database); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clears a sid
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -167,15 +177,18 @@ VocbaseContext::~VocbaseContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VocbaseContext::useClusterAuthentication () const {
-  if (ServerState::instance()->isDBServer()) {
+  auto role = ServerState::instance()->getRole();
+
+  if (ServerState::instance()->isDBServer(role)) {
     return true;
   }
 
-  string s(_request->requestPath());
+  if (ServerState::instance()->isCoordinator(role)) {
+    std::string s(_request->requestPath());
 
-  if (ServerState::instance()->isCoordinator() &&
-      (s == "/_api/shard-comm" || s == "/_admin/shutdown")) {
-    return true;
+    if (s == "/_api/shard-comm" || s == "/_admin/shutdown") {
+      return true;
+    }
   }
 
   return false;
@@ -217,7 +230,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   }
 #endif
 
-  const char* path = _request->requestPath();
+  char const* path = _request->requestPath();
 
   if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.
@@ -267,6 +280,8 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
         return HttpResponse::OK;
       }
     }
+
+    // no cookie found. fall-through to regular HTTP authentication
   }
 
   char const* auth = _request->header("authorization", found);
