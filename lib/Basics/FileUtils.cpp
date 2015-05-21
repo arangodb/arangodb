@@ -81,9 +81,9 @@ namespace triagens {
       ifstream * createInput (string const& filename) {
         ifstream * s = new ifstream(filename.c_str());
 
-        if (!*s) {
+        if (! *s) {
           delete s;
-          return 0;
+          return nullptr;
         }
 
         return s;
@@ -92,11 +92,11 @@ namespace triagens {
 
 
       ofstream * createOutput (string const& filename) {
-        ofstream * s = new ofstream(filename.c_str());
+        ofstream* s = new ofstream(filename.c_str());
 
-        if (!*s) {
+        if (! *s) {
           delete s;
-          return 0;
+          return nullptr;
         }
 
         return s;
@@ -306,18 +306,15 @@ namespace triagens {
         return (result != 0) ? false : true;
       }
 
-      bool copyRecursive (std::string const& source, std::string const & target, std::string &error)
-      {
+      bool copyRecursive (std::string const& source, std::string const& target, std::string& error) {
         if (isDirectory(source)) {
           return copyDirectoryRecursive (source, target, error);
         }
-        else {
-          return TRI_CopyFile(source, target, error);
-        }
+
+        return TRI_CopyFile(source, target, error);
       }
 
-      bool copyDirectoryRecursive (std::string const& source, std::string const & target, std::string &error)
-      {
+      bool copyDirectoryRecursive (std::string const& source, std::string const& target, std::string& error) {
         bool rc = true;
 #ifdef TRI_HAVE_WIN32_LIST_FILES
 
@@ -334,31 +331,32 @@ namespace triagens {
 
         do {
 #else
-        struct dirent *oneItem;
-	struct dirent *d = (struct dirent *)malloc(offsetof(struct dirent, d_name) + PATH_MAX + 1);
-	if (d == NULL) {
+        struct dirent* d = (struct dirent*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (offsetof(struct dirent, d_name) + PATH_MAX + 1), false); 
+
+        if (d == nullptr) {
           error = "directory " + source + " OOM";
           return false;
-	}
+        }
 
-	DIR *filedir = opendir(source.c_str());
+        DIR* filedir = opendir(source.c_str());
 
         if (filedir == nullptr) {
-          free(d);
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, d);
           error = "directory " + source + "not found";
           return false;
         }
 
-	while ((readdir_r(filedir, d, &oneItem) == 0) &&
-	       (oneItem != NULL)) {
-
+        struct dirent* oneItem;
+        while ((readdir_r(filedir, d, &oneItem) == 0) &&
+               (oneItem != nullptr)) {
 #endif
           // Now iterate over the items.
           // check its not the pointer to the upper directory:
-          if (!strcmp(TRI_DIR_FN(oneItem), ".") ||
-              !strcmp(TRI_DIR_FN(oneItem), "..")) {
+          if (! strcmp(TRI_DIR_FN(oneItem), ".") ||
+              ! strcmp(TRI_DIR_FN(oneItem), "..")) {
             continue;
           }
+
           std::string dst = target + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
           std::string src = source + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
             
@@ -369,32 +367,32 @@ namespace triagens {
             if (rc != TRI_ERROR_NO_ERROR) {
               break;
             }
-            if (!copyDirectoryRecursive(src, dst, error)) {
+            if (! copyDirectoryRecursive(src, dst, error)) {
               break;
             }
-            if (!TRI_CopyAttributes(src, dst, error)) {
+            if (! TRI_CopyAttributes(src, dst, error)) {
               break;
             }
           }
           else if (TRI_DIR_IS_SYMLINK(oneItem)) {
-            if (!TRI_CopySymlink(src, dst, error)){
+            if (! TRI_CopySymlink(src, dst, error)) {
               break;
             }
           }
           else {
-            if (!TRI_CopyFile(src, dst, error)) {
+            if (! TRI_CopyFile(src, dst, error)) {
               break;
             }
           }
 #ifdef TRI_HAVE_WIN32_LIST_FILES
         } 
-        while(_findnext(handle, &oneItem) != -1);
+        while (_findnext(handle, &oneItem) != -1);
 
         _findclose(handle);
 
 #else
         }
-        free(d);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, d);
         closedir(filedir);
 
 #endif
@@ -403,7 +401,7 @@ namespace triagens {
 
 
       vector<string> listFiles (string const& directory) {
-        vector < string > result;
+        vector<string> result;
 
 #ifdef TRI_HAVE_WIN32_LIST_FILES
 
@@ -422,21 +420,21 @@ namespace triagens {
             result.push_back(fd.name);
           }
         } 
-        while(_findnext(handle, &fd) != -1);
+        while (_findnext(handle, &fd) != -1);
 
         _findclose(handle);
 
 #else
 
-        DIR * d = opendir(directory.c_str());
+        DIR* d = opendir(directory.c_str());
 
-        if (d == 0) {
+        if (d == nullptr) {
           return result;
         }
 
-        dirent * de = readdir(d);
+        dirent* de = readdir(d);
 
-        while (de != 0) {
+        while (de != nullptr) {
           if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
             result.push_back(de->d_name);
           }
@@ -542,7 +540,7 @@ namespace triagens {
         size_t len = 1000;
         char* current = new char[len];
 
-        while (TRI_GETCWD(current, (int) len) == NULL) {
+        while (TRI_GETCWD(current, (int) len) == nullptr) {
           if (errno == ERANGE) {
             len += 1000;
             delete[] current;

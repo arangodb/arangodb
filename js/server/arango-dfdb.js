@@ -50,7 +50,7 @@ function UnloadCollection (collection) {
 
     var next = Math.round(internal.time());
 
-    if (next != last) {
+    if (next !== last) {
       printf("Trying to unload collection '%s'\n", collection.name());
       last = next;
     }
@@ -72,6 +72,15 @@ function RemoveDatafile (collection, type, datafile) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief try to repair a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+function TryRepairDatafile (collection, datafile) {
+  UnloadCollection(collection);
+  return collection.tryRepairDatafile(datafile);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wipe entries
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -89,7 +98,7 @@ function WipeDatafile (collection, type, datafile, lastGoodPos) {
 function QueryWipeDatafile (collection, type, datafile, scan, lastGoodPos) {
   var entries = scan.entries;
 
-  if (entries.length == 0) {
+  if (entries.length === 0) {
     if (type === "journal" || type === "compactor") {
       printf("WARNING: The journal is empty. Even the header is missing. Going\n");
       printf("         to remove the file.\n");
@@ -107,16 +116,18 @@ function QueryWipeDatafile (collection, type, datafile, scan, lastGoodPos) {
   }
 
   var ask = true;
+  var tryRepair = false;
+
   if (type === "journal") {
     if (entries.length === lastGoodPos + 3 && entries[lastGoodPos + 2].status === 2) {
       printf("WARNING: The journal was not closed properly, the last entry is corrupted.\n");
-      printf("         This might happen ArangoDB was killed and the last entry was not\n");
+      printf("         This might happen if ArangoDB was killed and the last entry was not\n");
       printf("         fully written to disk. Going to remove the last entry.\n");
       ask = false;
     }
     else {
       printf("WARNING: The journal was not closed properly, the last entries are corrupted.\n");
-      printf("         This might happen ArangoDB was killed and the last entries were not\n");
+      printf("         This might happen if ArangoDB was killed and the last entries were not\n");
       printf("         fully written to disk.\n");
     }
   }
@@ -124,21 +135,39 @@ function QueryWipeDatafile (collection, type, datafile, scan, lastGoodPos) {
     printf("WARNING: The datafile contains corrupt entries. This should never happen.\n");
     printf("         Datafiles are append-only. Make sure your hard disk does not contain\n");
     printf("         any hardware errors.\n");
+
+    tryRepair = true;
   }
 
   printf("\n");
+  
+  var entry = entries[lastGoodPos];
 
   if (ask) {
+    var line;
+
+    if (tryRepair) {
+      printf("Try to repair the error(s) (Y/N)? ");
+      line = console.getline();
+
+      if (line === "yes" || line === "YES" || line === "y" || line === "Y") {
+        if (TryRepairDatafile(collection, datafile)) {
+          printf("Repair succeeded.\n");
+          return;
+        }
+
+        printf("Repair failed.\n");
+      }
+    }
+
     printf("Wipe the last entries (Y/N)? ");
-    var line = console.getline();
+    line = console.getline();
 
     if (line !== "yes" && line !== "YES" && line !== "y" && line !== "Y") {
       printf("ABORTING\n");
       return;
     }
   }
-
-  var entry = entries[lastGoodPos];
 
   WipeDatafile(collection, type, datafile, entry.position + entry.realSize);
 }
