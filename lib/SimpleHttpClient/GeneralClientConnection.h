@@ -158,7 +158,7 @@ namespace triagens {
 /// @brief send data to the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleWrite (const double, void*, size_t, size_t*);
+        bool handleWrite (double, void const*, size_t, size_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read data from endpoint
@@ -203,7 +203,7 @@ namespace triagens {
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool writeClientConnection (void*, size_t, size_t*) = 0;
+        virtual bool writeClientConnection (void const*, size_t, size_t*) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read data from the connection
