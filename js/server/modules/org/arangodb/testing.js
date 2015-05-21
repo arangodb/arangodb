@@ -1875,10 +1875,11 @@ function unitTestPrettyPrintResults(r) {
         var oneOutput = "";
 
         oneOutput = "Testrun: " + testrun + "\n";
+        var successTests = "";
         for (test in  r[testrun]) {
           if (r[testrun].hasOwnProperty(test) && (internalMembers.indexOf(test) === -1)) {
             if (r[testrun][test].status) {
-              oneOutput += "     [Success] " + test + "\n";
+              successTests += test + ', ';
             }
             else {
               testSuiteFail++;
@@ -1908,6 +1909,9 @@ function unitTestPrettyPrintResults(r) {
               }
             }
           }
+        }
+        if (successTests !== "") {
+          oneOutput = "     [Success] " + successTests + '\n' + oneOutput;
         }
         if (isSuccess) {
           success += oneOutput;
