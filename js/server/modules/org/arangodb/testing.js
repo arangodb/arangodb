@@ -475,13 +475,6 @@ function readImportantLogLines(logPath) {
   return importantLines;
 }
 
-function copy (src, dst) {
-  var fs = require("fs");
-  var buffer = fs.readBuffer(src);
-
-  fs.write(dst, buffer);
-}
-
 function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
   var command;
   command  = '(';
@@ -523,13 +516,13 @@ function checkInstanceAlive(instanceInfo, options) {
           storeArangodPath + " " + options.coreDirectory + 
           "/core*" + instanceInfo.pid.pid + "*'";
         if (require("internal").platform.substr(0,3) === 'win') {
-          copy("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
-          copy("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
+          fs.copyFile("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
+          fs.copyFile("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
           // Windows: wait for procdump to do its job...
           statusExternal(instanceInfo.monitor, true);
         }
         else {
-          copy("bin/arangod", storeArangodPath);
+          fs.copyFile("bin/arangod", storeArangodPath);
           analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pid.pid);
         }
       }
@@ -557,13 +550,13 @@ function checkInstanceAlive(instanceInfo, options) {
               " /var/tmp/core*" + checkpid.pid + "*'";
 
             if (require("internal").platform.substr(0,3) === 'win') {
-              copy("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
-              copy("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
+              fs.copyFile("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
+              fs.copyFile("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
               // Windows: wait for procdump to do its job...
               statusExternal(instanceInfo.monitor, true);
             }
             else {
-              copy("bin/arangod", storeArangodPath);
+              fs.copyFile("bin/arangod", storeArangodPath);
               analyzeCoreDump(instanceInfo, options, storeArangodPath, checkpid.pid);
             }
             
