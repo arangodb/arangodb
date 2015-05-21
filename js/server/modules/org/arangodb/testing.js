@@ -1885,7 +1885,7 @@ function unitTestPrettyPrintResults(r) {
         var isSuccess = true;
         var oneOutput = "";
 
-        oneOutput = "Testrun: " + testrun + "\n";
+        oneOutput = "* Testrun: " + testrun + "\n";
         var successTests = {};
         for (test in  r[testrun]) {
           if (r[testrun].hasOwnProperty(test) && (internalMembers.indexOf(test) === -1)) {
