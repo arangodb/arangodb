@@ -1879,6 +1879,7 @@ var internalMembers = ["code", "error", "status", "duration", "failed", "total",
 function unitTestPrettyPrintResults(r) {
   var testrun;
   var test;
+  var key;
   var oneTest;
   var testFail = 0;
   var testSuiteFail = 0;
@@ -1892,11 +1893,23 @@ function unitTestPrettyPrintResults(r) {
         var oneOutput = "";
 
         oneOutput = "Testrun: " + testrun + "\n";
-        var successTests = "";
+        var successTests = {};
         for (test in  r[testrun]) {
           if (r[testrun].hasOwnProperty(test) && (internalMembers.indexOf(test) === -1)) {
             if (r[testrun][test].status) {
-              successTests += test + ', ';
+              var where = test.lastIndexOf(fs.pathSeparator);
+              var which;
+              if (where < 0 ) {
+                which = 'Unittests';
+              }
+              else {
+                which = test.substring(0, where);
+                test = test.substring(where + 1, test.length);
+              }
+              if (!successTests.hasOwnProperty(which)) {
+                successTests[which]=[];
+              }
+              successTests[which].push(test);
             }
             else {
               testSuiteFail++;
@@ -1928,7 +1941,11 @@ function unitTestPrettyPrintResults(r) {
           }
         }
         if (successTests !== "") {
-          oneOutput = "     [Success] " + successTests + '\n' + oneOutput;
+          for (key in successTests) {
+            if (successTests.hasOwnProperty(key)) {
+              oneOutput = "     [Success] " + key + " / [" + successTests[key].join(', ') + ']\n' + oneOutput;
+            }
+          }
         }
         if (isSuccess) {
           success += oneOutput;
@@ -2018,7 +2035,7 @@ function UnitTest (which, options) {
   else {
     var r;
     results[which] = r = testFuncs[which](options);
-    print("Testresult:", yaml.safeDump(r));
+    // print("Testresult:", yaml.safeDump(r));
     ok = true;
     for (i in r) {
       if (r.hasOwnProperty(i) &&
