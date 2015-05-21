@@ -35,6 +35,7 @@ build-book:
 	@test -d books/$(NAME) || mkdir books/$(NAME)
 	python codeBlockReader.py
 	python bot.py
+	cd $(NAME) && gitbook install
 	cd $(NAME) && gitbook build ./ ./../books/$(NAME)
 	cp Users/arangodbLogo.png books/Users/
 	cp Users/cookbookLogo.png books/Users/

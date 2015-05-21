@@ -224,6 +224,7 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesShaped (v8::Isolate* iso
     TRI_GET_GLOBAL_STRING(_ToKey);
     result->ForceSet(_ToKey, TRI_V8_PAIR_STRING(buffer, (int) (len + keyLength + 1)));
   }
+
   return scope.Escape<v8::Object>(result);
 }
 
@@ -291,6 +292,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
     TRI_shape_t const* shape = shaper->lookupShapeId(shaper, json._sid);
 
     if (shape == nullptr) {
+      LOG_WARNING("cannot find shape #%u", (unsigned int) json._sid);
       return scope.Escape<v8::Value>(v8::Object::New(isolate));
     }
 
@@ -370,27 +372,28 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
+  TRI_shape_aid_t const* aids;
+  TRI_shape_size_t n;
   TRI_shape_t const* shape = shaper->lookupShapeId(shaper, sid);
 
   if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
-    TRI_V8_RETURN(v8::Array::New(isolate));
+    n = 0;
+    aids = nullptr;
+    LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
   }
+  else {
+    // shape is an array
+    TRI_array_shape_t const* s = (TRI_array_shape_t const*) shape;
 
-  TRI_array_shape_t const* s;
-  TRI_shape_aid_t const* aids;
-  char const* qtr;
+    // number of entries
+    n = s->_fixedEntries + s->_variableEntries;
 
-  // shape is an array
-  s = (TRI_array_shape_t const*) shape;
-
-  // number of entries
-  TRI_shape_size_t const n = s->_fixedEntries + s->_variableEntries;
-
-  // calculate position of attribute ids
-  qtr = (char const*) shape;
-  qtr += sizeof(TRI_array_shape_t);
-  qtr += n * sizeof(TRI_shape_sid_t);
-  aids = (TRI_shape_aid_t const*) qtr;
+    // calculate position of attribute ids
+    char const* qtr = (char const*) shape;
+    qtr += sizeof(TRI_array_shape_t);
+    qtr += n * sizeof(TRI_shape_sid_t);
+    aids = (TRI_shape_aid_t const*) qtr;
+  }
 
   TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(marker)->_type;
   bool isEdge = (type == TRI_DOC_MARKER_KEY_EDGE || type == TRI_WAL_MARKER_EDGE);
@@ -414,7 +417,6 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
   }
 
   for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
-    /// TODO: avoid strlen here!
     char const* att = shaper->lookupAttributeId(shaper, *aids);
 
     if (att != nullptr) {
@@ -436,18 +438,6 @@ static void CopyAttributes (v8::Isolate* isolate,
   TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
   TRI_document_collection_t* collection = barrier->_container->_collection;
 
-  // check for array shape
-  TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
-
-  TRI_shape_sid_t sid;
-  TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
-
-  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, sid);
-
-  if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
-    return;
-  }
-    
   // copy _key and _rev
 
   // _key
@@ -468,6 +458,20 @@ static void CopyAttributes (v8::Isolate* isolate,
   self->ForceSet(_RevKey, TRI_V8_PAIR_STRING((char const*) buffer, (int) len));
 
   // finally insert the dynamic attributes from the shaped json
+
+  // check for array shape
+  TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
+
+  TRI_shape_sid_t sid;
+  TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
+
+  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, sid);
+
+  if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
+    LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+    return;
+  }
+    
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
   char const* qtr;

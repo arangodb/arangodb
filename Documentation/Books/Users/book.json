@@ -3,7 +3,7 @@
   "title": "ArangoDB Documentation",
   "language": "en",
   "theme": "./localtheme",
-  "plugins":["-mathjax"],
+  "plugins":["toggle-chapters"],
   "pdf": {
     "fontSize": 12,
     "toc": true,
