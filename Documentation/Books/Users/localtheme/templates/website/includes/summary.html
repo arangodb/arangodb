@@ -33,19 +33,8 @@
 
 <div class="book-summary">
   <div class="book-search">
-<script>
-    (function() {
-      var cx = '002866056653122356950:ju52xx-w-w8';
-      var gcse = document.createElement('script');
-      gcse.type = 'text/javascript';
-      gcse.async = true;
-      gcse.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') +
-        '//cse.google.com/cse.js?cx=' + cx;
-      var s = document.getElementsByTagName('script')[0];
-      s.parentNode.insertBefore(gcse, s);
-    })();
-</script>
-<gcse:search></gcse:search></div>
+    <input type="text" placeholder="{{ __("SEARCH_PLACEHOLDER") }}" class="form-control" />
+  </div>
   <ul class="summary">
     {% set _divider = false %}
     {% if options.links.sidebar %}
@@ -79,27 +68,3 @@
     {% endif %}
   </ul>
 </div>
-<script src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
-<script type="text/javascript">
-  $(function(){
-    jQuery(".summary>li").each(function(){
-      var flag = true;
-      var x = window.location.href.split("/");
-      x = x[x.length - 2] + '/' + x[x.length - 1];
-      jQuery('a',this).each(function(){
-        var str = jQuery(this).attr('href');
-        if(str.search(x) != -1){
-          flag = false;
-        }
-      });
-      if(flag){
-        jQuery('ul',this).hide();
-      }
-      else {
-        jQuery(this).show();
-        jQuery("ul", this).show();
-        $(this).get(0).scrollIntoView();
-      }
-    });
-  });
-</script>
