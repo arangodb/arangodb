@@ -157,7 +157,7 @@ namespace triagens {
 
             bool res = _connection->handleWrite(
               remainingTime, 
-              (void*) (_writeBuffer.c_str() + _written),
+              static_cast<void const*>(_writeBuffer.c_str() + _written),
               _writeBuffer.length() - _written,
               &bytesWritten);
 
@@ -507,7 +507,7 @@ namespace triagens {
       TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
       size_t remain = _readBuffer.length() - _readBufferOffset;
       char const* ptr = _readBuffer.c_str() + _readBufferOffset;
-      char const* pos = (char*) memchr(ptr, '\n', remain);
+      char const* pos = static_cast<char const*>(memchr(ptr, '\n', remain));
 
       // We enforce the following invariants:
       //   ptr = _readBuffer.c_str() + _readBufferOffset
@@ -603,7 +603,7 @@ namespace triagens {
           TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
           TRI_ASSERT(ptr == _readBuffer.c_str() + _readBufferOffset);
           TRI_ASSERT(remain == _readBuffer.length() - _readBufferOffset);
-          pos = (char*) memchr(ptr, '\n', remain);
+          pos = static_cast<char const*>(memchr(ptr, '\n', remain));
 
           if (pos == nullptr) {
             _readBufferOffset++;
@@ -665,7 +665,7 @@ namespace triagens {
     void SimpleHttpClient::processChunkedHeader () {
       size_t remain = _readBuffer.length() - _readBufferOffset;
       char const* ptr = _readBuffer.c_str() + _readBufferOffset;
-      char* pos = (char*) memchr(ptr, '\n', remain);
+      char const* pos = static_cast<char const*>(memchr(ptr, '\n', remain));
 
       // not yet finished, newline is missing
       if (pos == nullptr) {

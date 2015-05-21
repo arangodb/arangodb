@@ -140,7 +140,7 @@ void GeneralClientConnection::disconnect () {
 /// what is described here.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, size_t length, size_t* bytesWritten) {
+bool GeneralClientConnection::handleWrite (double timeout, void const* buffer, size_t length, size_t* bytesWritten) {
   *bytesWritten = 0;
 
   if (prepare(timeout, true)) {
