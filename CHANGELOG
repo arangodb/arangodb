@@ -4,19 +4,24 @@ v2.6.0 (XXXX-XX-XX)
 * added server startup option `--server.session-timeout` for controlling the timeout of user sessions
   in the web interface
 
-* front-end: display query execution time in AQL editor
+* add sessions and cookie authentication for ArangoDB's web interface
 
-* front-end: renamed AQL query *submit* button to *execute*
+  ArangoDB's built-in web interface now uses sessions. Session information ids are stored in cookies,
+  so clients using the web interface must accept cookies in order to use it
 
-* front-end: added query explain feature in AQL editor
+* web interface: display query execution time in AQL editor
 
-* front-end: demo page added. only working if demo data is available, hidden otherwise
+* web interface: renamed AQL query *submit* button to *execute*
+
+* web interface: added query explain feature in AQL editor
+
+* web interface: demo page added. only working if demo data is available, hidden otherwise
 
 * removed startup option `--log.severity`
 
 * added optional `limit` parameter for AQL function `FULLTEXT`
 
-* make fulltext index also index text values that are contained in direct sub-objects of the indexed 
+* make fulltext index also index text values contained in direct sub-objects of the indexed 
   attribute.
 
   Previous versions of ArangoDB only indexed the attribute value if it was a string. Sub-attributes
@@ -52,7 +57,7 @@ v2.6.0 (XXXX-XX-XX)
   * PUT /_api/simple/lookup-by-keys
   * PUT /_api/simple/remove-by-keys
 
-* properly prefix document address URLs with the current database name for calls to
+* properly prefix document address URLs with the current database name for calls to the REST
   API method GET `/_api/document?collection=...` (that method will return partial URLs to all 
   documents in the collection). 
 
@@ -60,18 +65,46 @@ v2.6.0 (XXXX-XX-XX)
   database name, e.g. `/_api/document/mycollection/mykey`. Starting with 2.6, the response URLs
   will include the database name as well, e.g. `/_db/_system/_api/document/mycollection/mykey`.
 
+* added dedicated collection export HTTP REST API
+
+  ArangoDB now provides a dedicated collection export API, which can take snapshots of entire
+  collections more efficiently than the general-purpose cursor API. The export API is useful
+  to transfer the contents of an entire collection to a client application. It provides optional
+  filtering on specific attributes.
+  
+  The export API is available at endpoint `POST /_api/export?collection=...`. The API has the
+  same return value structure as the already established cursor API (`POST /_api/cursor`). 
+
+  An introduction to the export API is given in this blog post:
+  http://jsteemann.github.io/blog/2015/04/04/more-efficient-data-exports/
+
 * subquery optimizations for AQL queries
 
   This optimization avoids copying intermediate results into subqueries that are not required
   by the subquery.
 
+  A brief description can be found here:
+  http://jsteemann.github.io/blog/2015/05/04/subquery-optimizations/
+
 * return value optimization for AQL queries
   
   This optimization avoids copying the final query result inside the query's main `ReturnNode`.
 
+  A brief description can be found here:
+  http://jsteemann.github.io/blog/2015/05/04/return-value-optimization-for-aql/
+
+* speed up AQL queries containing big `IN` lists for index lookups
+
+  `IN` lists used for index lookups had performance issues in previous versions of ArangoDB.
+  These issues have been addressed in 2.6 so using bigger `IN` lists for filtering is much
+  faster.
+
+  A brief description can be found here:
+  http://jsteemann.github.io/blog/2015/05/07/in-list-improvements/
+
 * allow `@` and `.` characters in document keys, too
 
-  This change also lead to document keys being URL-encoded when returned in HTTP `location` 
+  This change also leads to document keys being URL-encoded when returned in HTTP `location` 
   response headers.
 
 * added alternative implementation for AQL COLLECT
@@ -103,7 +136,10 @@ v2.6.0 (XXXX-XX-XX)
   suffixing a `COLLECT` statement with `OPTIONS { "method" : "sorted" }`. This will override the
   optimizer guesswork and only produce the *sorted* variant of `COLLECT`.
 
-* re-factored cursor HTTP REST API for cursors 
+  A blog post on the new `COLLECT` implementation can be found here:
+  http://jsteemann.github.io/blog/2015/04/22/collecting-with-a-hash-table/
+
+* refactored HTTP REST API for cursors 
 
   The HTTP REST API for cursors (`/_api/cursor`) has been refactored to improve its performance
   and use less memory.
@@ -170,7 +206,6 @@ v2.6.0 (XXXX-XX-XX)
 
   A more detailed description of `UPSERT` can be found here:
   http://jsteemann.github.io/blog/2015/03/27/preview-of-the-upsert-command/
-
 
 * adjusted default configuration value for `--server.backlog-size` from 10 to 64.
 
@@ -272,50 +307,61 @@ v2.6.0 (XXXX-XX-XX)
         15 
       ]
 
-* Breaking Changes:
+* Disallow batchSize value 0 in HTTP `POST /_api/cursor`:
 
-  * AQL command: `GRAPH_SHORTEST_PATH` now only returns IDs and does not extract data any more. 
-    It yields an additional option `includeData` which is an object, taking exactly two keys:
-    * `edges` set to true will extract all data stored alongside the edges of each path.
-    * `vertices` set to true will extract all data stored alongside the vertices of each path.
-    The default value of these parameters has been set to `false`
+  The HTTP REST API `POST /_api/cursor` does not accept a `batchSize` parameter value of 
+  `0` any longer. A batch size of 0 newer made much sense, but previous versions of ArangoDB
+  did not check for this value. Now creating a cursor using a `batchSize` value 0 will
+  result in an HTTP 400 error response
 
-  * JS Module: general-graph:
-    All graph measurements returning exactly one value returned an array containing exactly this one value.
-    Now they will return the value directly.
-    Modified functions are:
-    * `graph._absoluteEccentricity`
-    * `graph._eccentricity`
-    * `graph._absoluteCloseness`
-    * `graph._closeness`
-    * `graph._absoluteBetweenness`
-    * `graph._betweenness`
-    * `graph._radius`
-    * `graph._diameter`
+* INCOMPATIBLE CHANGE:
 
-* First started Arango Databases will create the '_graph' collection without waitForSync, so default behaviour
-  of Create & Delete operations on whole graphs change:
-  * POST /_api/graph would by default return HTTP 201 Created, will now return 202 Accepted
-  * DELETE /_api/graph/`graph-name` would by default return with HTTP 200, will now return 202 Accepted
-  unless waitForSync is specified as parameter, or the '_graph' collections waitForSync attribute was set.
+  The AQL function `GRAPH_SHORTEST_PATH` now provides an additional option `includeData`.
+  This option allows controlling whether the function should return the complete vertices
+  and edges or just their IDs. Returning only the IDs instead of full vertices and edges
+  can lead to improved performance .
 
-* Improved GRAPH_SHORTEST_PATH computation
-
-  This involved a change in the default behaviour.
-  The default setting will now only print the distance and the ids of nodes.
-  We have added an optional boolean parameter `includeData` if this is set to `true`
-  all documents and edges in the result will be fully expanded.
-  We have also added an optional parameter `includePath` of type object.
-  It has two optional subattributes `vertices` and `edges` both of type boolean.
+  If provided, `includeData` is set to `true`, all vertices and edges in the result will 
+  be fully expanded. There is also an optional parameter `includePath` of type object.
+  It has two optional sub-attributes `vertices` and `edges`, both of type boolean.
   Both can be set individually and the result will include all vertices on the path if
-  `includePath.vertices == true` and all edge if `includePath.edges == true` respectivly.
-  So if you want to get the exactly old result back you have to set
-  ```
-  GRAPH_SHORTEST_PATH(<graph>, <source>, <target>, {includeData: true, includePath: {edges: true, vertices: true}})
-  ```
+  `includePath.vertices == true` and all edges if `includePath.edges == true` respectively.
+  
+  The default value of `includeData` is `false`, and paths are now excluded by default.
+  This makes the default function results incompatible with previous versions of ArangoDB. 
 
-  The default behaviour is now independent of the size of documents as the extraction part could be optimized.
-  Also the internal algorithm to find all pathes from one source to several targets has been massively improved.
+  To get the old result style in ArangoDB 2.6, please set the options as follows in calls
+  to `GRAPH_SHORTEST_PATH`:
+  
+      GRAPH_SHORTEST_PATH(<graph>, <source>, <target>, { includeData: true, includePath: { edges: true, vertices: true } })
+
+* INCOMPATIBLE CHANGE:
+
+  All graph measurements functions in JavaScript module `general-graph` that calculated a 
+  single figure previously returned an array containing just the figure. Now these functions 
+  will return the figure directly and not put it inside an array.
+
+  The affected functions are:
+
+  * `graph._absoluteEccentricity`
+  * `graph._eccentricity`
+  * `graph._absoluteCloseness`
+  * `graph._closeness`
+  * `graph._absoluteBetweenness`
+  * `graph._betweenness`
+  * `graph._radius`
+  * `graph._diameter`
+
+* Create the `_graphs` collection in new databases with `waitForSync` attribute set to `false`
+
+  The previous `waitForSync` value was `true`, so default the behavior when creating and dropping
+  graphs via the HTTP REST API changes as follows if the new settings are in effect:
+
+  * `POST /_api/graph` by default returns `HTTP 202` instead of `HTTP 201`
+  * `DELETE /_api/graph/graph-name` by default returns `HTTP 202` instead of `HTTP 201`
+
+  If the `_graphs` collection still has its `waitForSync` value set to `true`, then the HTTP status
+  code will not change.
 
 * added support for HTTP push aka chunked encoding
 
@@ -380,9 +426,9 @@ v2.6.0 (XXXX-XX-XX)
 
 * speed up building up primary index when loading collections
 
-* added `count` attribute to `parameters.json` file. This attribute indicates the number of
-  live documents in the collection on unload. It is read when the collection is (re)loaded to
-  determine the initial size for the collection's primary index
+* added `count` attribute to `parameters.json` files of collections. This attribute indicates 
+  the number of live documents in the collection on unload. It is read when the collection is 
+  (re)loaded to determine the initial size for the collection's primary index
 
 * removed remainders of MRuby integration, removed arangoirb
 
@@ -390,7 +436,7 @@ v2.6.0 (XXXX-XX-XX)
 
 * simplified `exports` property in Foxx manifests. You can now specify a filename directly if you only want to export variables from a single file in your Foxx app.
 
-* added support for Node.js-style exports in Foxx exports. Your Foxx exports file can now export arbitrary values using the `module.exports` property instead of adding properties to the `exports` object.
+* added support for node.js-style exports in Foxx exports. Your Foxx exports file can now export arbitrary values using the `module.exports` property instead of adding properties to the `exports` object.
 
 * added `scripts` property to Foxx manifests. You should now specify the `setup` and `teardown` files as properties of the `scripts` object in your manifests.
 

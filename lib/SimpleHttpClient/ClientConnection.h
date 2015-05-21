@@ -112,7 +112,7 @@ namespace triagens {
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool writeClientConnection (void*, size_t, size_t*) override;
+        bool writeClientConnection (void const*, size_t, size_t*) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read data from the connection
