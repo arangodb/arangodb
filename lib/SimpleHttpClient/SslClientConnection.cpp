@@ -276,8 +276,8 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
     FD_ZERO(&fdset);
     FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
 
-    fd_set* readFds = NULL;
-    fd_set* writeFds = NULL;
+    fd_set* readFds = nullptr;
+    fd_set* writeFds = nullptr;
 
     if (isWrite) {
       writeFds = &fdset;
@@ -287,7 +287,7 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
     }
 
     int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
-    res = select(sockn, readFds, writeFds, NULL, &tv);
+    res = select(sockn, readFds, writeFds, nullptr, &tv);
   } 
   while (res == -1 && errno == EINTR);
 
@@ -302,7 +302,7 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::writeClientConnection (void* buffer, size_t length, size_t* bytesWritten) {
+bool SslClientConnection::writeClientConnection (void const* buffer, size_t length, size_t* bytesWritten) {
 #ifdef _WIN32
   char windowsErrorBuf[256];
 #endif
