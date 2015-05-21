@@ -130,8 +130,8 @@ var optionsDefaults = { "cluster": false,
                         "portOffset": 0,
                         "valgrindargs": [],
                         "valgrindXmlFileBase" : "",
-                        "extraargs": []
-
+                        "extraargs": [],
+                        "coreDirectory": "/var/tmp"
 
 };
 var allTests =
@@ -482,6 +482,21 @@ function copy (src, dst) {
   fs.write(dst, buffer);
 }
 
+function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
+  var command;
+  command  = '(';
+  command += "printf 'bt full\\n thread apply all bt\\n';";
+  command += "sleep 10;";
+  command += "echo quit;";
+  command += "sleep 2";
+  command += ") | gdb " + storeArangodPath + " " + options.coreDirectory + "/*core*" + pid + '*';
+  var args = ['-c', command];
+  print(JSON.stringify(args));
+  executeExternalAndWait("/bin/bash", args);
+
+}
+
+
 function checkInstanceAlive(instanceInfo, options) {
   var storeArangodPath;
   if (options.cluster === false) {
@@ -505,8 +520,8 @@ function checkInstanceAlive(instanceInfo, options) {
         print("Core dump written; copying arangod to " + 
               instanceInfo.tmpDataDir + " for later analysis.");
         res.gdbHint = "Run debugger with 'gdb " + 
-          storeArangodPath + 
-          " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
+          storeArangodPath + " " + options.coreDirectory + 
+          "/core*" + instanceInfo.pid.pid + "*'";
         if (require("internal").platform.substr(0,3) === 'win') {
           copy("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
           copy("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
@@ -515,6 +530,7 @@ function checkInstanceAlive(instanceInfo, options) {
         }
         else {
           copy("bin/arangod", storeArangodPath);
+          analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pid.pid);
         }
       }
       instanceInfo.exitStatus = res;
@@ -548,6 +564,7 @@ function checkInstanceAlive(instanceInfo, options) {
             }
             else {
               copy("bin/arangod", storeArangodPath);
+              analyzeCoreDump(instanceInfo, options, storeArangodPath, checkpid.pid);
             }
             
             instanceInfo.exitStatus = ress;
