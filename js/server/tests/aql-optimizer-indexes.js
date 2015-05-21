@@ -810,6 +810,98 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
+    testIndexOrNoIndexComplexConditionEq : function () {
+      c.ensureSkiplist("value2");
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: [ i.value ] } IN " + c.name());
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || [ i.value ] == i.value2 RETURN i.value2";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(2000, results.json.length);
+      assertEqual(0, results.stats.scannedIndex);
+      assertTrue(results.stats.scannedFull > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexOrNoIndexComplexConditionIn : function () {
+      c.ensureSkiplist("value2");
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: [ i.value ] } IN " + c.name());
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value IN i.value2 RETURN i.value2";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(2000, results.json.length);
+      assertEqual(0, results.stats.scannedIndex);
+      assertTrue(results.stats.scannedFull > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexOrNoIndexComplexConditionLt : function () {
+      c.ensureSkiplist("value2");
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value - 1 } IN " + c.name());
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 < i.value RETURN i.value2";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(2000, results.json.length);
+      assertEqual(0, results.stats.scannedIndex);
+      assertTrue(results.stats.scannedFull > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexOrNoIndexComplexConditionGt : function () {
+      c.ensureSkiplist("value2");
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value + 1 } IN " + c.name());
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 > i.value RETURN i.value2";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(2000, results.json.length);
+      assertEqual(0, results.stats.scannedIndex);
+      assertTrue(results.stats.scannedFull > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
     testIndexOrHashMultipleRanges : function () {
       c.ensureHashIndex("value2", "value3");
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
