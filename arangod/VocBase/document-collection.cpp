@@ -3153,42 +3153,53 @@ static int FillIndex (TRI_document_collection_t* document,
   void** ptr = document->_primaryIndex._table;
   void** end = ptr + document->_primaryIndex._nrAlloc;
 
-  if (idx->sizeHint != nullptr) {
-    // give the index a size hint
-    idx->sizeHint(idx, (size_t) document->_primaryIndex._nrUsed);
-  }
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  static const int LoopSize = 10000;
-  int counter = 0;
-  int loops = 0;
-#endif
-
-  for (;  ptr < end;  ++ptr) {
-    TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(*ptr);
-
-    if (mptr != nullptr) {
-      int res = idx->insert(idx, mptr, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-      if (++counter == LoopSize) {
-        counter = 0;
-        ++loops;
-
-        LOG_TRACE("indexed %llu documents of collection %llu",
-                  (unsigned long long) (LoopSize * loops),
-                  (unsigned long long) document->_info._cid);
-      }
-#endif
-
+  try {
+    if (idx->sizeHint != nullptr) {
+      // give the index a size hint
+      idx->sizeHint(idx, (size_t) document->_primaryIndex._nrUsed);
     }
-  }
 
-  return TRI_ERROR_NO_ERROR;
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    static const int LoopSize = 10000;
+    int counter = 0;
+    int loops = 0;
+#endif
+
+    for (;  ptr < end;  ++ptr) {
+      auto mptr = static_cast<TRI_doc_mptr_t const*>(*ptr);
+
+      if (mptr != nullptr) {
+        int res = idx->insert(idx, mptr, false);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        if (++counter == LoopSize) {
+          counter = 0;
+          ++loops;
+
+          LOG_TRACE("indexed %llu documents of collection %llu",
+                    (unsigned long long) (LoopSize * loops),
+                    (unsigned long long) document->_info._cid);
+        }
+#endif
+
+      }
+    }
+
+    return TRI_ERROR_NO_ERROR;
+  }
+  catch (triagens::basics::Exception const& ex) {
+    return ex.code();
+  }
+  catch (std::bad_alloc& ex) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3712,6 +3723,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeCapConstraint(idx);
+    TRI_set_errno(res);
 
     return nullptr;
   }
@@ -3721,6 +3733,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeCapConstraint(idx);
+    TRI_set_errno(res);
 
     return nullptr;
   }
@@ -3950,6 +3963,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeGeoIndex(idx);
+    TRI_set_errno(res);
 
     return nullptr;
   }
@@ -3959,6 +3973,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeGeoIndex(idx);
+    TRI_set_errno(res);
 
     return nullptr;
   }
@@ -4321,6 +4336,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeHashIndex(idx);
+    TRI_set_errno(res);
 
     return nullptr;
   }
@@ -4496,8 +4512,8 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeSkiplistIndex(idx);
-
     TRI_set_errno(res);
+
     return nullptr;
   }
 
@@ -4506,6 +4522,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeSkiplistIndex(idx);
+    TRI_set_errno(res);
 
     return nullptr;
   }
@@ -4691,6 +4708,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeFulltextIndex(idx);
+    TRI_set_errno(res);
 
     return nullptr;
   }
@@ -4700,6 +4718,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeFulltextIndex(idx);
+    TRI_set_errno(res);
 
     return nullptr;
   }
