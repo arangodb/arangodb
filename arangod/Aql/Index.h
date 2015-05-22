@@ -34,8 +34,9 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
-#include "HashIndex/hash-index.h"
-#include "VocBase/index.h"
+#include "Indexes/HashIndex.h"
+#include "Indexes/Index.h"
+#include "Indexes/SkiplistIndex2.h"
 
 namespace triagens {
   namespace aql {
@@ -53,28 +54,34 @@ namespace triagens {
       Index (Index const&) = delete;
       Index& operator= (Index const&) = delete;
       
-      Index (TRI_index_t* idx)
-        : id(idx->_iid),
-          type(idx->_type),
-          unique(idx->_unique),
-          sparse(idx->_sparse),
-          fields(),
+      Index (triagens::arango::Index* idx)
+        : id(idx->id()),
+          type(idx->type()),
+          unique(false),
+          sparse(false),
+          fields(idx->fields()),
           internals(idx) {
 
-        size_t const n = idx->_fields._length;
-        fields.reserve(n);
-
-        for (size_t i = 0; i < n; ++i) {
-          char const* field = idx->_fields._buffer[i];
-          fields.emplace_back(std::string(field));
-        }
-        
         TRI_ASSERT(internals != nullptr);
+
+        if (type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          unique = true;
+        }
+        else if (type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
+          auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
+          sparse = hashIndex->sparse();
+          unique = hashIndex->unique();
+        }
+        else if (type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+          auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex2*>(idx);
+          sparse = skiplistIndex->sparse();
+          unique = skiplistIndex->unique();
+        }
       }
       
       Index (TRI_json_t const* json)
         : id(triagens::basics::StringUtils::uint64(triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
-          type(TRI_TypeIndex(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
+          type(triagens::arango::Index::type(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
           unique(triagens::basics::JsonHelper::checkAndGetBooleanValue(json, "unique")),
           sparse(triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
           fields(),
@@ -104,7 +111,7 @@ namespace triagens {
       triagens::basics::Json toJson () const {
         triagens::basics::Json json(triagens::basics::Json::Object);
 
-        json("type", triagens::basics::Json(TRI_TypeNameIndex(type)))
+        json("type", triagens::basics::Json(triagens::arango::Index::typeName(type)))
             ("id", triagens::basics::Json(triagens::basics::StringUtils::itoa(id))) 
             ("unique", triagens::basics::Json(unique))
             ("sparse", triagens::basics::Json(sparse));
@@ -114,7 +121,7 @@ namespace triagens {
         }
 
         triagens::basics::Json f(triagens::basics::Json::Array);
-        for (auto& field : fields) {
+        for (auto const& field : fields) {
           f.add(triagens::basics::Json(field));
         }
 
@@ -127,29 +134,29 @@ namespace triagens {
           return false;
         }
 
-        return getInternals()->_hasSelectivityEstimate;
+        return getInternals()->hasSelectivityEstimate();
       }
 
       double selectivityEstimate () const {
-        TRI_index_t* internals = getInternals();
+        auto internals = getInternals();
 
-        TRI_ASSERT(internals->_hasSelectivityEstimate);
+        TRI_ASSERT(internals->hasSelectivityEstimate());
 
-        return internals->selectivityEstimate(internals);
+        return internals->selectivityEstimate();
       }
       
       inline bool hasInternals () const {
         return (internals != nullptr);
       }
 
-      TRI_index_t* getInternals () const {
+      triagens::arango::Index* getInternals () const {
         if (internals == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "accessing undefined index internals");
         }
         return internals; 
       }
       
-      void setInternals (TRI_index_t* idx) {
+      void setInternals (triagens::arango::Index* idx) {
         TRI_ASSERT(internals == nullptr);
         internals = idx;
       }
@@ -160,15 +167,15 @@ namespace triagens {
 
       public:
 
-        TRI_idx_iid_t const        id;
-        TRI_idx_type_e const       type;
-        bool const                 unique;
-        bool const                 sparse;
-        std::vector<std::string>   fields;
+        TRI_idx_iid_t const                  id;
+        triagens::arango::Index::IndexType   type;
+        bool                                 unique;
+        bool                                 sparse;
+        std::vector<std::string>             fields;
 
       private:
 
-        TRI_index_t*               internals;
+        triagens::arango::Index*             internals;
 
     };
 

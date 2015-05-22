@@ -36,10 +36,15 @@
 #include "Basics/tri-strings.h"
 #include "Basics/ThreadPool.h"
 #include "Basics/Exceptions.h"
-#include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
+#include "Indexes/CapConstraint.h"
+#include "Indexes/FulltextIndex.h"
+#include "Indexes/GeoIndex2.h"
+#include "Indexes/HashIndex.h"
+#include "Indexes/PrimaryIndex.h"
+#include "Indexes/SkiplistIndex.h"
 #include "RestServer/ArangoServer.h"
 #include "ShapedJson/shape-accessor.h"
 #include "Utils/transactions.h"
@@ -49,7 +54,6 @@
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
-#include "VocBase/primary-index.h"
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
@@ -112,8 +116,11 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 
 TRI_document_collection_t::TRI_document_collection_t () 
   : _useSecondaryIndexes(true),
+    _capConstraint(nullptr),
+    _headersPtr(nullptr),
     _keyGenerator(nullptr),
-    _uncollectedLogfileEntries(0) {
+    _uncollectedLogfileEntries(0),
+    _cleanupIndexes(0) {
 
   _tickMax = 0;
 }
@@ -131,12 +138,15 @@ TRI_document_collection_t::~TRI_document_collection_t () {
 /// note: this may throw. it's the caller's responsibility to catch and clean up
 ////////////////////////////////////////////////////////////////////////////////
   
-void TRI_document_collection_t::addIndex (TRI_index_t* idx) {
+void TRI_document_collection_t::addIndex (triagens::arango::Index* idx) {
   _indexes.emplace_back(idx);
     
-  if (idx->_type == TRI_IDX_TYPE_CAP_CONSTRAINT) {
+  if (idx->_type() == triagens::arango::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
     // register cap constraint
-    _capConstraint = (TRI_cap_constraint_t*) idx;
+    _capConstraint = static_cast<triagens::arango::CapConstraint*>(idx);
+  }
+  else if (idx->_type() == TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    ++_cleanupIndexes;
   }
 }
 
@@ -144,14 +154,14 @@ void TRI_document_collection_t::addIndex (TRI_index_t* idx) {
 /// @brief get an index by id
 ////////////////////////////////////////////////////////////////////////////////
   
-TRI_index_t* TRI_document_collection_t::removeIndex (TRI_idx_iid_t iid) {
+triagens::arango::Index* TRI_document_collection_t::removeIndex (TRI_idx_iid_t iid) {
   size_t const n = _indexes.size();
 
   for (size_t i = 0; i < n; ++i) {
     auto idx = _indexes[i];
 
-    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX ||
-        idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+    if (idx->_type() == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+        idx->_type() == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
       continue;
     }
 
@@ -159,9 +169,12 @@ TRI_index_t* TRI_document_collection_t::removeIndex (TRI_idx_iid_t iid) {
       // found!
       _indexes.erase(_indexes.begin() + i);
 
-      if (idx->_type == TRI_IDX_TYPE_CAP_CONSTRAINT) {
+      if (idx->_type() == triagens::arango::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
         // unregister cap constraint
         _capConstraint = nullptr;
+      }
+      else if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        --_cleanupIndexes;
       }
 
       return idx;
@@ -176,17 +189,40 @@ TRI_index_t* TRI_document_collection_t::removeIndex (TRI_idx_iid_t iid) {
 /// @brief get all indexes of the collection
 ////////////////////////////////////////////////////////////////////////////////
   
-std::vector<TRI_index_t*> TRI_document_collection_t::allIndexes () const {
+std::vector<triagens::arango::Index*> TRI_document_collection_t::allIndexes () const {
   return _indexes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the primary index
+////////////////////////////////////////////////////////////////////////////////
+  
+triagens::arango::PrimaryIndex* TRI_document_collection_t::primaryIndex () {
+  TRI_ASSERT(! _indexes.empty());
+  return static_cast<triagens::arango::PrimaryIndex*>(_indexes[0]);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the cap constraint index, if it exists
+////////////////////////////////////////////////////////////////////////////////
+  
+triagens::arango::CapConstraint* TRI_document_collection_t::capConstraint () {
+  for (auto const& idx : _indexes) {
+    if (idx->type() == Index::IDX_TYPE_CAP_CONSTRAINT) {
+      return idx;
+    }
+  }
+
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an index by id
 ////////////////////////////////////////////////////////////////////////////////
   
-TRI_index_t* TRI_document_collection_t::lookupIndex (TRI_idx_iid_t iid) const {
+triagens::arango::Index* TRI_document_collection_t::lookupIndex (TRI_idx_iid_t iid) const {
   for (auto const& it : _indexes) {
-    if (it->_iid == iid) {
+    if (it->id() == iid) {
       return it;
     }
   }
@@ -217,32 +253,32 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation&, bool&);
 // -----------------------------------------------------------------------------
 
 static int FillIndex (TRI_document_collection_t*,
-                      TRI_index_t*);
+                      triagens::arango::Index*);
 
 static int CapConstraintFromJson (TRI_document_collection_t*,
                                   TRI_json_t const*,
                                   TRI_idx_iid_t,
-                                  TRI_index_t**);
+                                  triagens::arango::CapConstraint**);
 
 static int GeoIndexFromJson (TRI_document_collection_t*,
                              TRI_json_t const*,
                              TRI_idx_iid_t,
-                             TRI_index_t**);
+                             triagens::arango::GeoIndex2**);
 
 static int HashIndexFromJson (TRI_document_collection_t*,
                               TRI_json_t const*,
                               TRI_idx_iid_t,
-                              TRI_index_t**);
+                              triagens::arango::HashIndex**);
 
 static int SkiplistIndexFromJson (TRI_document_collection_t*,
                                   TRI_json_t const*,
                                   TRI_idx_iid_t,
-                                  TRI_index_t**);
+                                  triagens::arango::SkiplistIndex2**);
 
 static int FulltextIndexFromJson (TRI_document_collection_t*,
                                   TRI_json_t const*,
                                   TRI_idx_iid_t,
-                                  TRI_index_t**);
+                                  triagens::arango::FulltextIndex**);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
@@ -575,66 +611,6 @@ static void UpdateHeader (TRI_voc_fid_t fid,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the index cleanup flag for the collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void SetIndexCleanupFlag (TRI_document_collection_t* document,
-                                 bool value) {
-  document->_cleanupIndexes = value;
-
-  LOG_DEBUG("setting cleanup indexes flag for collection '%s' to %d",
-             document->_info._name,
-             (int) value);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an index to the collection
-///
-/// The caller must hold the index lock for the collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int AddIndex (TRI_document_collection_t* document,
-                     TRI_index_t* idx) {
-  TRI_ASSERT(idx != nullptr);
-
-  LOG_DEBUG("adding index of type %s for collection '%s'",
-            TRI_TypeNameIndex(idx->_type),
-            document->_info._name);
-
-  try {
-    document->addIndex(idx);
-  }
-  catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  if (idx->cleanup != nullptr) {
-    SetIndexCleanupFlag(document, true);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gather aggregate information about the collection's indexes
-///
-/// The caller must hold the index lock for the collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void RebuildIndexInfo (TRI_document_collection_t* document) {
-  bool result = false;
-
-  for (auto const& idx : document->allIndexes()) {
-    if (idx->cleanup != nullptr) {
-      result = true;
-      break;
-    }
-  }
-
-  SetIndexCleanupFlag(document, result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief garbage-collect a collection's indexes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -643,12 +619,13 @@ static int CleanupIndexes (TRI_document_collection_t* document) {
 
   // cleaning indexes is expensive, so only do it if the flag is set for the
   // collection
-  if (document->_cleanupIndexes) {
+  if (document->_cleanupIndexes > 0) {
     TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
     for (auto& idx : document->allIndexes()) {
-      if (idx->cleanup != nullptr) {
+      if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         res = idx->cleanup(idx);
+
         if (res != TRI_ERROR_NO_ERROR) {
           break;
         }
@@ -2052,7 +2029,6 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
   TRI_ASSERT(document != nullptr);
 
   document->setShaper(shaper);
-  document->_capConstraint      = nullptr;
   document->_numberDocuments    = 0;
   document->_lastCompaction     = 0.0;
 
@@ -2134,7 +2110,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
                                     TRI_shaper_t* shaper) {
   TRI_ASSERT(document != nullptr);
 
-  document->_cleanupIndexes   = false;
+  document->_cleanupIndexes     = false;
   document->_failedTransactions = nullptr;
 
   document->_uncollectedLogfileEntries.store(0);
@@ -2157,19 +2133,13 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   }
 
   // create primary index
-  TRI_index_t* primaryIndex = TRI_CreatePrimaryIndex(document);
+  std::unique_ptr<triagens::arango::Index> primaryIndex(new triagens::arango::PrimaryIndex(document));
 
-  if (primaryIndex == nullptr) {
-    DestroyBaseDocumentCollection(document);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return false;
+  try {
+    document->addIndex(primaryIndex.get());
+    primaryIndex.release();
   }
-
-  res = AddIndex(document, primaryIndex);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeIndex(primaryIndex);
+  catch (...) {
     DestroyBaseDocumentCollection(document);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
@@ -2182,21 +2152,14 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
     if (document->_info._planId > 0) {
       iid = document->_info._planId;
     }
-    TRI_index_t* edgesIndex = TRI_CreateEdgeIndex(document, iid);
 
-    if (edgesIndex == nullptr) {
-      TRI_FreeIndex(primaryIndex);
-      DestroyBaseDocumentCollection(document);
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    try {
+      std::unique_ptr<triagens::arango::Index> edgeIndex(new triagens::arango::EdgeIndex(iid, document));
 
-      return false;
+      document->addIndex(edgeIndex.get());
+      edgeIndex.release();
     }
-
-    res = AddIndex(document, edgesIndex);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_FreeIndex(edgesIndex);
-      TRI_FreeIndex(primaryIndex);
+    catch (...) {
       DestroyBaseDocumentCollection(document);
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
@@ -2676,7 +2639,7 @@ size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
 
 int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
                                          TRI_json_t const* json,
-                                         TRI_index_t** idx) {
+                                         triagens::arango::Index** idx) {
   TRI_ASSERT(TRI_IsObjectJson(json));
 
   if (idx != nullptr) {
@@ -2897,7 +2860,7 @@ bool TRI_CloseDatafileDocumentCollection (TRI_document_collection_t* document,
 class IndexFiller {
   public:
     IndexFiller (TRI_document_collection_t* document,
-                 TRI_index_t* idx,
+                 triagens::arango::Index* idx,
                  std::function<void(int)> callback) 
       : _document(document),
         _idx(idx),
@@ -2920,7 +2883,7 @@ class IndexFiller {
   private:
 
     TRI_document_collection_t* _document;
-    TRI_index_t*               _idx;
+    triagens::arango::Index*   _idx;
     std::function<void(int)>   _callback;
 };
 
@@ -3238,7 +3201,7 @@ static TRI_json_t* ExtractFields (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FillIndex (TRI_document_collection_t* document,
-                      TRI_index_t* idx) {
+                      triagens::arango::Index* idx) {
 
   if (! document->useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
@@ -3248,10 +3211,8 @@ static int FillIndex (TRI_document_collection_t* document,
   void** end = ptr + document->_primaryIndex._nrAlloc;
 
   try {
-    if (idx->sizeHint != nullptr) {
-      // give the index a size hint
-      idx->sizeHint(idx, (size_t) document->_primaryIndex._nrUsed);
-    }
+    // give the index a size hint
+    idx->sizeHint(static_cast<size_t>(document->_primaryIndex._nrUsed));
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     static const int LoopSize = 10000;
@@ -3263,7 +3224,7 @@ static int FillIndex (TRI_document_collection_t* document,
       auto mptr = static_cast<TRI_doc_mptr_t const*>(*ptr);
 
       if (mptr != nullptr) {
-        int res = idx->insert(idx, mptr, false);
+        int res = idx->insert(mptr, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
@@ -3300,28 +3261,15 @@ static int FillIndex (TRI_document_collection_t* document,
 /// @brief finds a path based, unique or non-unique index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t* collection,
-                                                       TRI_vector_t const* paths,
-                                                       TRI_idx_type_e type,
-                                                       int sparsity,
-                                                       bool unique,
-                                                       bool allowAnyAttributeOrder) {
-  TRI_vector_t* indexPaths = nullptr;
+static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_collection_t* collection,
+                                                                   std::vector<std::string> const& paths,
+                                                                   triagens::arango::Index::IndexType type,
+                                                                   int sparsity,
+                                                                   bool unique,
+                                                                   bool allowAnyAttributeOrder) {
 
-  // ...........................................................................
-  // go through every index and see if we have a match
-  // ...........................................................................
-
-  for (auto& idx : collection->allIndexes()) {
-    int indexSparsity = idx->_sparse ? 1 : 0;
-
-    // .........................................................................
-    // check if the type, uniqueness and sparsity of the indexes match
-    // .........................................................................
-
-    if (idx->_type != type || 
-        idx->_unique != unique ||
-        (sparsity != -1 && sparsity != indexSparsity)) {
+  for (auto const& idx : collection->allIndexes()) {
+    if (idx->type() != type) {
       continue;
     }
 
@@ -3329,29 +3277,30 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
     // Now perform checks which are specific to the type of index
     // .........................................................................
 
-    switch (type) {
-      case TRI_IDX_TYPE_HASH_INDEX: {
-        TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
-        indexPaths = &(hashIndex->_paths);
+    switch (idx->type()) {
+      case triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX: {
+        auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
+
+        if (unique != hashIndex->unique() ||
+            (sparsity != 1 && sparsity != (hashIndex->sparse() ? 1 : 0 ))) {
+          continue;
+        }
         break;
       }
 
-      case TRI_IDX_TYPE_SKIPLIST_INDEX: {
-        TRI_skiplist_index_t* slIndex = (TRI_skiplist_index_t*) idx;
-        indexPaths = &(slIndex->_paths);
+      case triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
+        auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex2*>(idx);
+        
+        if (unique != skiplistIndex->unique() ||
+            (sparsity != 1 && sparsity != (skiplistIndex->sparse() ? 1 : 0 ))) {
+          continue;
+        }
         break;
       }
 
       default: {
-        TRI_ASSERT(false);
-        break;
+        continue;
       }
-
-    }
-
-    if (indexPaths == nullptr) {
-      // this may actually happen if compiled with -DNDEBUG
-      return nullptr;
     }
 
     // .........................................................................
@@ -3359,7 +3308,10 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
     // of the number of attributes
     // .........................................................................
 
-    if (TRI_LengthVector(paths) != TRI_LengthVector(indexPaths)) {
+    auto const& idxFields = idx->fields();
+    size_t const n = idxFields.size();
+
+    if (n != paths.size()) {
       continue;
     }
 
@@ -3371,17 +3323,11 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
 
     if (allowAnyAttributeOrder) {
       // any permutation of attributes is allowed
-      size_t const n = TRI_LengthVector(paths);
-
-      for (size_t k = 0;  k < n;  ++k) {
-        TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
-
+      for (size_t i = 0; i < n; ++i) {
         found = false;
 
-        for (size_t l = 0;  l < n;  ++l) {
-          TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, l));
-
-          if (indexShape == givenShape) {
+        for (size_t j = 0; j < n; ++j) {
+          if (idxFields[i] == paths[i]) {
             found = true;
             break;
           }
@@ -3393,14 +3339,9 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       }
     }
     else {
-      // attributes need to bepresent in a given order
-      size_t const n = TRI_LengthVector(paths);
-
-      for (size_t k = 0;  k < n;  ++k) {
-        TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
-        TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, k));
-
-        if (indexShape != givenShape) {
+      // attributes need to be present in a given order
+      for (size_t i = 0; i < n; ++i) {
+        if (idxFields[i] != paths[i]) {
           found = false;
           break;
         }
@@ -3423,13 +3364,13 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
 static int PathBasedIndexFromJson (TRI_document_collection_t* document,
                                    TRI_json_t const* definition,
                                    TRI_idx_iid_t iid,
-                                   TRI_index_t* (*creator)(TRI_document_collection_t*,
+                                   triagens::arango::Index* (*creator)(TRI_document_collection_t*,
                                                            TRI_vector_pointer_t const*,
                                                            TRI_idx_iid_t,
                                                            bool,
                                                            bool,
                                                            bool*),
-                                   TRI_index_t** dst) {
+                                   triagens::arango::Index** dst) {
   TRI_json_t* bv;
   TRI_vector_pointer_t attributes;
   size_t fieldCount;
@@ -3496,7 +3437,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   }
 
   // create the index
-  TRI_index_t* idx = creator(document, &attributes, iid, sparse, unique, nullptr);
+  auto idx = creator(document, &attributes, iid, sparse, unique, nullptr);
 
   if (dst != nullptr) {
     *dst = idx;
@@ -3560,15 +3501,10 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveIndex (TRI_document_collection_t* document,
-                   TRI_index_t* idx,
+                   triagens::arango::Index* idx,
                    bool writeMarker) {
   // convert into JSON
-  TRI_json_t* json = idx->json(idx);
-
-  if (json == nullptr) {
-    LOG_TRACE("cannot save index definition: index cannot be jsonified");
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
-  }
+  auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE);
 
   // construct filename
   char* number   = TRI_StringUInt64(idx->_iid);
@@ -3581,13 +3517,12 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   TRI_vocbase_t* vocbase = document->_vocbase;
 
   // and save
-  bool ok = TRI_SaveJson(filename, json, document->_vocbase->_settings.forceSyncProperties);
+  bool ok = TRI_SaveJson(filename, json.json(), document->_vocbase->_settings.forceSyncProperties);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (! ok) {
     LOG_ERROR("cannot save index definition: %s", TRI_last_error());
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return TRI_errno();
   }
@@ -3599,14 +3534,13 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::CreateIndexMarker marker(vocbase->_id, document->_info._cid, idx->_iid, triagens::basics::JsonHelper::toString(json));
+    triagens::wal::CreateIndexMarker marker(vocbase->_id, document->_info._cid, idx->_iid, triagens::basics::JsonHelper::toString(json.json()));
     triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
 
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return TRI_ERROR_NO_ERROR;
   }
   catch (triagens::basics::Exception const& ex) {
@@ -3615,8 +3549,6 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
-
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   // TODO: what to do here?
   return res;
@@ -3670,12 +3602,8 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
   
-  TRI_index_t* found = document->removeIndex(iid);
+  triagens::arango::Index* found = document->removeIndex(iid);
   
-  if (found != nullptr) {
-    RebuildIndexInfo(document);
-  }
-
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
@@ -3685,9 +3613,10 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
   // .............................................................................
 
   if (found != nullptr) {
-    bool result = RemoveIndexFile(document, found->_iid);
+    bool result = RemoveIndexFile(document, found->id());
 
-    TRI_FreeIndex(found);
+    delete found;
+    found = nullptr;
 
     if (writeMarker) {
       int res = TRI_ERROR_NO_ERROR;
@@ -3823,50 +3752,46 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 /// @brief adds a cap constraint to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collection_t* document,
-                                                           size_t count,
-                                                           int64_t size,
-                                                           TRI_idx_iid_t iid,
-                                                           bool* created) {
+static triagens::arango::Index* CreateCapConstraintDocumentCollection (TRI_document_collection_t* document,
+                                                                       size_t count,
+                                                                       int64_t size,
+                                                                       TRI_idx_iid_t iid,
+                                                                       bool* created) {
   if (created != nullptr) {
     *created = false;
   }
 
   // check if we already know a cap constraint
-  if (document->_capConstraint != nullptr) {
-    if (document->_capConstraint->_count == count &&
-        document->_capConstraint->_size == size) {
-      return &document->_capConstraint->base;
+  auto existing = document->capConstraint();
+
+  if (existing != nullptr) {
+    if (static_cast<size_t>(existing->count()) == count &&
+        existing->_size() == size) {
+      return existing;
     }
-    else {
-      TRI_set_errno(TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED);
-      return nullptr;
-    }
-  }
-
-  // create a new index
-  TRI_index_t* idx = TRI_CreateCapConstraint(document, iid, count, size);
-
-  if (idx == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
+      
+    TRI_set_errno(TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED);
     return nullptr;
   }
 
+  // create a new index
+  std::unique_ptr<triagens::arango::Index> capConstraint(new triagens::arango::CapConstraint(iid, document, count, size));
+
   // initialises the index with all existing documents
-  int res = FillIndex(document, idx);
+  int res = FillIndex(document, capConstraint.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeCapConstraint(idx);
     TRI_set_errno(res);
 
     return nullptr;
   }
 
   // and store index
-  res = AddIndex(document, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  try {
+    document->addIndex(capConstraint.get());
+    capConstraint.release();
+  }
+  catch (...) {
     TRI_FreeCapConstraint(idx);
     TRI_set_errno(res);
 
@@ -3887,7 +3812,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 static int CapConstraintFromJson (TRI_document_collection_t* document,
                                   TRI_json_t const* definition,
                                   TRI_idx_iid_t iid,
-                                  TRI_index_t** dst) {
+                                  triagens::arango::CapConstraint** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
@@ -3921,7 +3846,8 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  TRI_index_t* idx = CreateCapConstraintDocumentCollection(document, count, size, iid, nullptr);
+  auto idx = CreateCapConstraintDocumentCollection(document, count, size, iid, nullptr);
+
   if (dst != nullptr) {
     *dst = idx;
   }
@@ -3937,24 +3863,19 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
 /// @brief looks up a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupCapConstraintDocumentCollection (TRI_document_collection_t* document) {
-  // check if we already know a cap constraint
-  if (document->_capConstraint != nullptr) {
-    return &document->_capConstraint->base;
-  }
-
-  return nullptr;
+triagens::arango::CapConstraint* TRI_LookupCapConstraintDocumentCollection (TRI_document_collection_t* document) {
+  return document->capConstraint();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* document,
-                                                        TRI_idx_iid_t iid,
-                                                        size_t count,
-                                                        int64_t size,
-                                                        bool* created) {
+triagens::arango::CapConstraint* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* document,
+                                                                            TRI_idx_iid_t iid,
+                                                                            size_t count,
+                                                                            int64_t size,
+                                                                            bool* created) {
   // .............................................................................
   // inside write-lock
   // .............................................................................
@@ -3963,13 +3884,14 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  TRI_index_t* idx = CreateCapConstraintDocumentCollection(document, count, size, iid, created);
+  auto idx = CreateCapConstraintDocumentCollection(document, count, size, iid, created);
 
   if (idx != nullptr) {
     if (created) {
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
+        // TODO: doesn't this leak idx?
         idx = nullptr;
       }
     }
@@ -3998,26 +3920,19 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 /// @brief adds a geo index to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t* document,
-                                                      char const* location,
-                                                      char const* latitude,
-                                                      char const* longitude,
-                                                      bool geoJson,
-                                                      TRI_idx_iid_t iid,
-                                                      bool* created) {
-  TRI_index_t* idx;
-  TRI_shape_pid_t lat;
-  TRI_shape_pid_t loc;
-  TRI_shape_pid_t lon;
-  TRI_shaper_t* shaper;
-  int res;
+static triagens::arango::GeoIndex2* CreateGeoIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                      char const* location,
+                                                                      char const* latitude,
+                                                                      char const* longitude,
+                                                                      bool geoJson,
+                                                                      TRI_idx_iid_t iid,
+                                                                      bool* created) {
+  TRI_shape_pid_t lat = 0;
+  TRI_shape_pid_t lon = 0;
+  TRI_shape_pid_t loc = 0;
+  triagens::arango::GeoIndex2* idx = nullptr;
 
-  lat = 0;
-  lon = 0;
-  loc = 0;
-  idx = nullptr;
-
-  shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (location != nullptr) {
     loc = shaper->findOrCreateAttributePathByName(shaper, location);
@@ -4069,16 +3984,18 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
     return idx;
   }
 
+  std::unique_ptr<triagens::arango::GeoIndex2> geoIndex;
+
   // create a new index
   if (location != nullptr) {
-    idx = TRI_CreateGeo1Index(document, iid, location, loc, geoJson);
+    geoIndex.reset(new triagens::arango::GeoIndex2(iid, document, std::vector<std::string>{ location }, std::vector<TRI_shape_pid_t>{ loc }, geoJson));
 
     LOG_TRACE("created geo-index for location '%s': %ld",
               location,
               (unsigned long) loc);
   }
   else if (longitude != nullptr && latitude != nullptr) {
-    idx = TRI_CreateGeo2Index(document, iid, latitude, lat, longitude, lon);
+    geoIndex.reset(new triagens::arango::GeoIndex2(iid, document, std::vector<std::string>{ latitude, longitude }, std::vector<TRI_shape_pid_t>{ lat, lon }));
 
     LOG_TRACE("created geo-index for location '%s': %ld, %ld",
               location,
@@ -4086,26 +4003,26 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
               (unsigned long) lon);
   }
 
-  if (idx == nullptr) {
+  if (geoIndex == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
 
   // initialises the index with all existing documents
-  res = FillIndex(document, idx);
+  int res = FillIndex(document, geoIndex.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeGeoIndex(idx);
     TRI_set_errno(res);
 
     return nullptr;
   }
 
   // and store index
-  res = AddIndex(document, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeGeoIndex(idx);
+  try {
+    document->addIndex(geoIndex.get());
+    idx = geoIndex.release();
+  }
+  catch (...) {
     TRI_set_errno(res);
 
     return nullptr;
@@ -4125,38 +4042,34 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 static int GeoIndexFromJson (TRI_document_collection_t* document,
                              TRI_json_t const* definition,
                              TRI_idx_iid_t iid,
-                             TRI_index_t** dst) {
-  TRI_index_t* idx;
-  TRI_json_t* type;
-  TRI_json_t* bv;
-  TRI_json_t* fld;
-  char const* typeStr;
-  size_t fieldCount;
-
+                             triagens::arango::GeoIndex2** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
 
-  type = TRI_LookupObjectJson(definition, "type");
+  TRI_json_t const* type = TRI_LookupObjectJson(definition, "type");
 
   if (! TRI_IsStringJson(type)) {
     return TRI_ERROR_INTERNAL;
   }
 
-  typeStr = type->_value._string.data;
+  char const* typeStr = type->_value._string.data;
 
   // extract fields
-  fld = ExtractFields(definition, &fieldCount, iid);
+  size_t fieldCount;
+  TRI_json_t* fld = ExtractFields(definition, &fieldCount, iid);
 
   if (fld == nullptr) {
     return TRI_errno();
   }
+  
+  triagens::arango::GeoIndex2* idx = nullptr;
 
   // list style
   if (TRI_EqualString(typeStr, "geo1")) {
     // extract geo json
     bool geoJson = false;
-    bv = TRI_LookupObjectJson(definition, "geoJson");
+    TRI_json_t const* bv = TRI_LookupObjectJson(definition, "geoJson");
 
     if (TRI_IsBooleanJson(bv)) {
       geoJson = bv->_value._boolean;
@@ -4167,12 +4080,12 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
       TRI_json_t* loc = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 0));
 
       idx = CreateGeoIndexDocumentCollection(document,
-                                        loc->_value._string.data,
-                                        nullptr,
-                                        nullptr,
-                                        geoJson,
-                                        iid,
-                                        nullptr);
+                                             loc->_value._string.data,
+                                             nullptr,
+                                             nullptr,
+                                             geoJson,
+                                             iid,
+                                             nullptr);
 
       if (dst != nullptr) {
         *dst = idx;
@@ -4231,9 +4144,9 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 /// @brief finds a geo index, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* document,
-                                                    char const* location,
-                                                    bool geoJson) {
+triagens::arango::GeoIndex2* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* document,
+                                                                    char const* location,
+                                                                    bool geoJson) {
   TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   TRI_shape_pid_t loc = shaper->lookupAttributePathByName(shaper, location);
@@ -4243,16 +4156,15 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
   }
 
   for (auto const& idx : document->allIndexes()) {
-    if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX) {
-      TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
+    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX) {
+      auto geoIndex = static_cast<triagens::arango::GeoIndex2*>(idx);
 
-      if (geo->_location != 0 && geo->_location == loc &&
-          geo->_geoJson == geoJson) {
-        return idx;
+      if (geoIndex->isSame(loc, geoJson)) {
+        return geoIndex;
       }
     }
   }
-
+  
   return nullptr;
 }
 
@@ -4260,9 +4172,9 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
 /// @brief finds a geo index, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* document,
-                                                    char const* latitude,
-                                                    char const* longitude) {
+triagens::arango::GeoIndex2* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* document,
+                                                                    char const* latitude,
+                                                                    char const* longitude) {
   TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   TRI_shape_pid_t lat = shaper->lookupAttributePathByName(shaper, latitude);
@@ -4273,14 +4185,11 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
   }
 
   for (auto const& idx : document->allIndexes()) {
-    if (idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
-      TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
+    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      auto geoIndex = static_cast<triagens::arango::GeoIndex2*>(idx);
 
-      if (geo->_latitude != 0 &&
-          geo->_longitude != 0 &&
-          geo->_latitude == lat &&
-          geo->_longitude == lon) {
-        return idx;
+      if (geoIndex->isSame(lat, lon)) {
+        return geoIndex;
       }
     }
   }
@@ -4292,11 +4201,11 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
 /// @brief ensures that a geo index exists, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* document,
-                                                    TRI_idx_iid_t iid,
-                                                    char const* location,
-                                                    bool geoJson,
-                                                    bool* created) {
+triagens::arango::GeoIndex2* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* document,
+                                                                    TRI_idx_iid_t iid,
+                                                                    char const* location,
+                                                                    bool geoJson,
+                                                                    bool* created) {
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4305,7 +4214,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  TRI_index_t* idx = CreateGeoIndexDocumentCollection(document, location, nullptr, nullptr, geoJson, iid, created);
+  auto idx = CreateGeoIndexDocumentCollection(document, location, nullptr, nullptr, geoJson, iid, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4332,11 +4241,11 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 /// @brief ensures that a geo index exists, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* document,
-                                                    TRI_idx_iid_t iid,
-                                                    char const* latitude,
-                                                    char const* longitude,
-                                                    bool* created) {
+triagens::arango::GeoIndex2* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* document,
+                                                                    TRI_idx_iid_t iid,
+                                                                    char const* latitude,
+                                                                    char const* longitude,
+                                                                    bool* created) {
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4345,7 +4254,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  TRI_index_t* idx = CreateGeoIndexDocumentCollection(document, nullptr, latitude, longitude, false, iid, created);
+  auto idx = CreateGeoIndexDocumentCollection(document, nullptr, latitude, longitude, false, iid, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4380,14 +4289,14 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 /// @brief adds a hash index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t* document,
-                                                       TRI_vector_pointer_t const* attributes,
-                                                       TRI_idx_iid_t iid,
-                                                       bool sparse,
-                                                       bool unique,
-                                                       bool* created) {
-  TRI_vector_pointer_t fields;
-  TRI_vector_t paths;
+static triagens::arango::HashIndex* CreateHashIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                       TRI_vector_pointer_t const* attributes,
+                                                                       TRI_idx_iid_t iid,
+                                                                       bool sparse,
+                                                                       bool unique,
+                                                                       bool* created) {
+  TRI_vector_pointer_t fields; // TODO: create regular vector
+  TRI_vector_t paths;          // TODO: create regular vector
 
   // determine the sorted shape ids for the attributes
   int res = PidNamesByAttributeNames(attributes,
@@ -4412,11 +4321,9 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   // ...........................................................................
 
   int sparsity = sparse ? 1 : 0;
-  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, sparsity, unique, false);
+  auto idx = LookupPathIndexDocumentCollection(document, paths, triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX, sparsity, unique, false);
 
   if (idx != nullptr) {
-    TRI_DestroyVector(&paths);
-    TRI_DestroyVectorPointer(&fields);
     LOG_TRACE("hash-index already created");
 
     if (created != nullptr) {
@@ -4428,39 +4335,23 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 
   // create the hash index. we'll provide it with the current number of documents
   // in the collection so the index can do a sensible memory preallocation
-  idx = TRI_CreateHashIndex(document,
-                            iid,
-                            &fields,
-                            &paths,
-                            sparse,
-                            unique);
-
-  if (idx == nullptr) {
-    TRI_DestroyVector(&paths);
-    TRI_DestroyVectorPointer(&fields);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
-
-  // release memory allocated to vector
-  TRI_DestroyVector(&paths);
-  TRI_DestroyVectorPointer(&fields);
+  std::unique_ptr<triagens::arango::HashIndex> hashIndex(new triagens::arango::HashIndex(iid, document, fields, paths, sparse, unique));
 
   // initialises the index with all existing documents
-  res = FillIndex(document, idx);
+  res = FillIndex(document, hashIndex.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeHashIndex(idx);
     TRI_set_errno(res);
 
     return nullptr;
   }
 
   // store index and return
-  res = AddIndex(document, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeHashIndex(idx);
+  try {
+    document->addIndex(hashIndex.get());
+    idx = hashIndex.release();
+  }
+  catch (...) {
     TRI_set_errno(res);
 
     return nullptr;
@@ -4480,7 +4371,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 static int HashIndexFromJson (TRI_document_collection_t* document,
                               TRI_json_t const* definition,
                               TRI_idx_iid_t iid,
-                              TRI_index_t** dst) {
+                              triagens::arango::HashIndex** dst) {
   return PathBasedIndexFromJson(document, definition, iid, CreateHashIndexDocumentCollection, dst);
 }
 
@@ -4493,12 +4384,12 @@ static int HashIndexFromJson (TRI_document_collection_t* document,
 /// the index lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* document,
-                                                    TRI_vector_pointer_t const* attributes,
-                                                    int sparsity,
-                                                    bool unique) {
-  TRI_vector_pointer_t fields;
-  TRI_vector_t paths;
+triagens::arango::HashIndex* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                    TRI_vector_pointer_t const* attributes,
+                                                                    int sparsity,
+                                                                    bool unique) {
+  TRI_vector_pointer_t fields; // TODO: create regular vector
+  TRI_vector_t paths;          // TODO: create regular vector
 
   // determine the sorted shape ids for the attributes
   int res = PidNamesByAttributeNames(attributes,
@@ -4512,25 +4403,19 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
     return nullptr;
   }
 
-  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, sparsity, unique, true);
-
-  // release memory allocated to vector
-  TRI_DestroyVector(&paths);
-  TRI_DestroyVectorPointer(&fields);
-
-  return idx;
+  return LookupPathIndexDocumentCollection(document, &paths, triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX, sparsity, unique, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* document,
-                                                    TRI_idx_iid_t iid,
-                                                    TRI_vector_pointer_t const* attributes,
-                                                    bool sparse,
-                                                    bool unique,
-                                                    bool* created) {
+triagens::arango::HashIndex* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                    TRI_idx_iid_t iid,
+                                                                    TRI_vector_pointer_t const* attributes,
+                                                                    bool sparse,
+                                                                    bool unique,
+                                                                    bool* created) {
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4540,7 +4425,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   // given the list of attributes (as strings)
-  TRI_index_t* idx = CreateHashIndexDocumentCollection(document, attributes, iid, sparse, unique, created);
+  auto idx = CreateHashIndexDocumentCollection(document, attributes, iid, sparse, unique, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4575,14 +4460,14 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
 /// @brief adds a skiplist index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
-                                                           TRI_vector_pointer_t const* attributes,
-                                                           TRI_idx_iid_t iid,
-                                                           bool sparse,
-                                                           bool unique,
-                                                           bool* created) {
-  TRI_vector_pointer_t fields;
-  TRI_vector_t paths;
+static triagens::arango::SkiplistIndex2* CreateSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                                TRI_vector_pointer_t const* attributes,
+                                                                                TRI_idx_iid_t iid,
+                                                                                bool sparse,
+                                                                                bool unique,
+                                                                                bool* created) {
+  TRI_vector_pointer_t fields;  // TODO: use regular vector
+  TRI_vector_t paths;           // TODO: use regular vector
   
   int res = PidNamesByAttributeNames(attributes,
                                      document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -4606,11 +4491,9 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   // ...........................................................................
 
   int sparsity = sparse ? 1 : 0;
-  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity, unique, false);
+  auto idx = LookupPathIndexDocumentCollection(document, &paths, triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity, unique, false);
 
   if (idx != nullptr) {
-    TRI_DestroyVector(&paths);
-    TRI_DestroyVectorPointer(&fields);
     LOG_TRACE("skiplist-index already created");
 
     if (created != nullptr) {
@@ -4621,32 +4504,23 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   }
 
   // Create the skiplist index
-  idx = TRI_CreateSkiplistIndex(document, iid, &fields, &paths, sparse, unique);
-
-  if (idx == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
-
-  // release memory allocated to vector
-  TRI_DestroyVector(&paths);
-  TRI_DestroyVectorPointer(&fields);
+  std::unique_ptr<triagens::arango::SkiplistIndex2*> skiplistIndex(new triagens::arango::SkiplistIndex2(iid, document, &fields, &paths, sparse, unique));
 
   // initialises the index with all existing documents
-  res = FillIndex(document, idx);
+  res = FillIndex(document, skiplistIndex.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeSkiplistIndex(idx);
     TRI_set_errno(res);
 
     return nullptr;
   }
 
   // store index and return
-  res = AddIndex(document, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeSkiplistIndex(idx);
+  try {
+    document->addIndex(skiplistIndex.get());
+    idx = skiplistIndex.release();
+  }
+  catch (...) {
     TRI_set_errno(res);
 
     return nullptr;
@@ -4666,7 +4540,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
 static int SkiplistIndexFromJson (TRI_document_collection_t* document,
                                   TRI_json_t const* definition,
                                   TRI_idx_iid_t iid,
-                                  TRI_index_t** dst) {
+                                  triagens::arango::SkiplistIndex2** dst) {
   return PathBasedIndexFromJson(document, definition, iid, CreateSkiplistIndexDocumentCollection, dst);
 }
 
@@ -4679,12 +4553,12 @@ static int SkiplistIndexFromJson (TRI_document_collection_t* document,
 /// the index lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
-                                                        TRI_vector_pointer_t const* attributes,
-                                                        int sparsity,
-                                                        bool unique) {
-  TRI_vector_pointer_t fields;
-  TRI_vector_t paths;
+triagens::arango::SkiplistIndex2* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                             TRI_vector_pointer_t const* attributes,
+                                                                             int sparsity,
+                                                                             bool unique) {
+  TRI_vector_pointer_t fields;  // TODO: use regular vector
+  TRI_vector_t paths;           // TODO: use regular vector
 
   // determine the unsorted shape ids for the attributes
   int res = PidNamesByAttributeNames(attributes,
@@ -4698,25 +4572,19 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
     return nullptr;
   }
 
-  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity, unique, true);
-
-  // release memory allocated to vector
-  TRI_DestroyVector(&paths);
-  TRI_DestroyVectorPointer(&fields);
-
-  return idx;
+  return LookupPathIndexDocumentCollection(document, &paths, triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity, unique, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
-                                                        TRI_idx_iid_t iid,
-                                                        TRI_vector_pointer_t const* attributes,
-                                                        bool sparse,
-                                                        bool unique,
-                                                        bool* created) {
+triagens::arango::SkiplistIndex2* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                             TRI_idx_iid_t iid,
+                                                                             TRI_vector_pointer_t const* attributes,
+                                                                             bool sparse,
+                                                                             bool unique,
+                                                                             bool* created) {
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4725,7 +4593,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  TRI_index_t* idx = CreateSkiplistIndexDocumentCollection(document, attributes, iid, sparse, unique, created);
+  auto idx = CreateSkiplistIndexDocumentCollection(document, attributes, iid, sparse, unique, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4756,34 +4624,17 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
-                                                           char const* attributeName,
-                                                           bool indexSubstrings,
-                                                           int minWordLength) {
+static triagens::arango::FulltextIndex* LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                               char const* attributeName,
+                                                                               int minWordLength) {
   TRI_ASSERT(attributeName != nullptr);
 
   for (auto const& idx : document->allIndexes()) {
-    if (idx->_type == TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      TRI_fulltext_index_t* fulltext = (TRI_fulltext_index_t*) idx;
-      char* fieldName;
-
-      // 2013-01-17: deactivated substring indexing
-      // if (fulltext->_indexSubstrings != indexSubstrings) {
-      //   continue;
-      // }
-
-      if (fulltext->_minWordLength != minWordLength) {
-        continue;
-      }
-
-      if (fulltext->base._fields._length != 1) {
-        continue;
-      }
-
-      fieldName = (char*) fulltext->base._fields._buffer[0];
-
-      if (fieldName != nullptr && TRI_EqualString(fieldName, attributeName)) {
-        return idx;
+    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      auto fulltextIndex = static_cast<triagens::arango::FulltextIndex*>(idx);
+      
+      if (fulltext->isSame(attributeName, minWordLength)) {
+        return fulltextIndex;
       }
     }
   }
@@ -4795,19 +4646,18 @@ static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collecti
 /// @brief adds a fulltext index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collection_t* document,
-                                                           const char* attributeName,
-                                                           const bool indexSubstrings,
-                                                           int minWordLength,
-                                                           TRI_idx_iid_t iid,
-                                                           bool* created) {
+static triagens::arango::FulltextIndex* CreateFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                               char const* attributeName,
+                                                                               int minWordLength,
+                                                                               TRI_idx_iid_t iid,
+                                                                               bool* created) {
   // ...........................................................................
   // Attempt to find an existing index with the same attribute
   // If a suitable index is found, return that one otherwise we need to create
   // a new one.
   // ...........................................................................
 
-  TRI_index_t* idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
+  auto idx = LookupFulltextIndexDocumentCollection(document, attributeName, minWordLength);
 
   if (idx != nullptr) {
     LOG_TRACE("fulltext-index already created");
@@ -4819,28 +4669,23 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   }
 
   // Create the fulltext index
-  idx = TRI_CreateFulltextIndex(document, iid, attributeName, indexSubstrings, minWordLength);
-
-  if (idx == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
+  std::unique_ptr<triagens::arango::FulltextIndex> fulltextIndex(new triagens::arango::FulltextIndex(iid, document, attributeName, minWordLength));
 
   // initialises the index with all existing documents
-  int res = FillIndex(document, idx);
+  int res = FillIndex(document, fulltextIndex.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeFulltextIndex(idx);
     TRI_set_errno(res);
 
     return nullptr;
   }
 
   // store index and return
-  res = AddIndex(document, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeFulltextIndex(idx);
+  try {
+    document->addIndex(fulltextIndex.get());
+    idx = fulltextIndex.release();
+  }
+  catch (...) {
     TRI_set_errno(res);
 
     return nullptr;
@@ -4860,7 +4705,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
 static int FulltextIndexFromJson (TRI_document_collection_t* document,
                                   TRI_json_t const* definition,
                                   TRI_idx_iid_t iid,
-                                  TRI_index_t** dst) {
+                                  triagens::arango::FulltextIndex** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
@@ -4899,11 +4744,11 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   }
 
   // create the index
-  TRI_index_t* idx = LookupFulltextIndexDocumentCollection(document, attributeName, false, minWordLengthValue);
+  auto idx = LookupFulltextIndexDocumentCollection(document, attributeName, minWordLengthValue);
 
   if (idx == nullptr) {
     bool created;
-    idx = CreateFulltextIndexDocumentCollection(document, attributeName, false, minWordLengthValue, iid, &created);
+    idx = CreateFulltextIndexDocumentCollection(document, attributeName, minWordLengthValue, iid, &created);
   }
 
   if (dst != nullptr) {
@@ -4927,23 +4772,21 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 /// the index lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
-                                                        char const* attributeName,
-                                                        bool indexSubstrings,
-                                                        int minWordLength) {
-  return LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
+triagens::arango::FulltextIndex* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                            char const* attributeName,
+                                                                            int minWordLength) {
+  return LookupFulltextIndexDocumentCollection(document, attributeName, minWordLength);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t* document,
-                                                        TRI_idx_iid_t iid,
-                                                        char const* attributeName,
-                                                        bool indexSubstrings,
-                                                        int minWordLength,
-                                                        bool* created) {
+triagens::arango::FulltextIndex* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                                            TRI_idx_iid_t iid,
+                                                                            char const* attributeName,
+                                                                            int minWordLength,
+                                                                            bool* created) {
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4952,7 +4795,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  TRI_index_t* idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, iid, created);
+  auto idx = CreateFulltextIndexDocumentCollection(document, attributeName, minWordLength, iid, created);
 
   if (idx != nullptr) {
     if (created) {
