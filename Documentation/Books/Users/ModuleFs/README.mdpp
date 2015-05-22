@@ -2,13 +2,38 @@
 
 !SUBSECTION File System Module
 
-The implementation follows the CommonJS specification 
+The implementation tries to follow the CommonJS specification where possible.
 [Filesystem/A/0](http://wiki.commonjs.org/wiki/Filesystem/A/0).
 
 
 <!-- lib/V8/v8-utils.cpp  -->
 
 @startDocuBlock JS_Exists
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_IsFile
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_IsDirectory
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_Size
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_MTime
+
+
+`fs.pathSeparator`
+
+If you want to combine two paths you can use fs.pathSeparator instead of */* or *\\*.
+
+`fs.join(path, filename)`
+
+The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
 
 
 <!-- lib/V8/v8-utils.cpp  -->
@@ -20,20 +45,13 @@ The implementation follows the CommonJS specification
 
 @startDocuBlock JS_GetTempPath
 
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_MakeAbsolute
 
 <!-- lib/V8/v8-utils.cpp  -->
 
-@startDocuBlock JS_IsDirectory
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_IsFile
-
-
-`fs.join(path, filename)`
-
-The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
+@startDocuBlock JS_Chmod
 
 
 <!-- lib/V8/v8-utils.cpp  -->
@@ -51,11 +69,21 @@ The function returns the combination of the path and filename, e.g. fs.join(Hell
 @startDocuBlock JS_MakeDirectory
 
 
+<!-- lib/V8/v8-utils.cpp  -->
 
-`fs.pathSeparator`
+@startDocuBlock JS_MakeDirectoryRecursive
 
-If you want to combine two paths you can use fs.pathSeparator instead of */* or *\\*.
+<!-- lib/V8/v8-utils.cpp  -->
 
+@startDocuBlock JS_Remove
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_RemoveDirectory
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_RemoveDirectoryRecursive
 
 <!-- lib/V8/v8-utils.cpp  -->
 
@@ -70,6 +98,7 @@ If you want to combine two paths you can use fs.pathSeparator instead of */* or 
 <!-- lib/V8/v8-utils.cpp  -->
 
 @startDocuBlock JS_ReadBuffer
+
 
 
 `fs.readFileSync(filename, encoding)`
@@ -89,21 +118,6 @@ object.
 
 <!-- lib/V8/v8-utils.cpp  -->
 
-@startDocuBlock JS_Remove
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_RemoveDirectory
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_Size
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
 @startDocuBlock JS_Save
 
 
@@ -113,3 +127,23 @@ object.
 
 This is an alias for `fs.write(filename, content)`.
 
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_CopyDirectoryRecursive
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_CopyFile
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_MoveFile
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_Unzip
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_Zip

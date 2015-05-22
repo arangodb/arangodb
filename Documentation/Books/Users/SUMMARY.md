@@ -212,6 +212,7 @@
 * [Javascript Modules](ModuleJavaScript/README.md)
   * ["console"](ModuleConsole/README.md)
   * ["fs"](ModuleFs/README.md)
+  * ["process"](ModuleProcess/README.md)
   * ["graph"](ModuleGraph/README.md)
     * [Graph Constructors](ModuleGraph/GraphConstructor.md)
     * [Vertex Methods](ModuleGraph/VertexMethods.md)

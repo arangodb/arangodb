@@ -1675,14 +1675,14 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
 
     if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       FindVarAndAttr(plan, rhs, enumCollVar, attr);
-      if (enumCollVar != nullptr) {
-        foundSomething = true;
 
+      if (enumCollVar != nullptr) {
         std::unordered_set<Variable*>&& varsUsed = Ast::getReferencedVariables(lhs);
 
         if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
+          foundSomething = true;
           
           rim->insert(enumCollVar->name, 
                       attr.substr(0, attr.size() - 1), 
@@ -1698,13 +1698,15 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
 
     if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       FindVarAndAttr(plan, lhs, enumCollVar, attr);
-      if (enumCollVar != nullptr) {
-        foundSomething = true;
 
-        std::unordered_set<Variable*> varsUsed = Ast::getReferencedVariables(rhs);
+      if (enumCollVar != nullptr) {
+        std::unordered_set<Variable*>&& varsUsed = Ast::getReferencedVariables(rhs);
+
         if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
+          foundSomething = true;
+
           rim->insert(enumCollVar->name, 
                       attr.substr(0, attr.size() - 1), 
                       RangeInfoBound(rhs, true), 
@@ -1830,13 +1832,13 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
       FindVarAndAttr(plan, lhs, enumCollVar, attr);
 
       if (enumCollVar != nullptr) {
-        foundSomething = true;
-
         std::unordered_set<Variable*>&& varsUsed = Ast::getReferencedVariables(rhs);
 
         if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
+          foundSomething = true;
+
           if (rhs->type == NODE_TYPE_ARRAY) {
             size_t const n = rhs->numMembers();
             rimv->reserve(n);
@@ -1890,7 +1892,7 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
 
     auto lhs = BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, lhsMustNotUseRange, node->type);
     auto rhs = BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, rhsMustNotUseRange, node->type);
-    
+   
     if (lhsMustNotUseRange || rhsMustNotUseRange) {
       mustNotUseRanges = true;
     }
@@ -2007,7 +2009,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::SUBQUERY:        
           break;
         case EN::FILTER: {
-          std::vector<Variable const*> inVar = en->getVariablesUsedHere();
+          std::vector<Variable const*>&& inVar = en->getVariablesUsedHere();
           TRI_ASSERT(inVar.size() == 1);
           _varIds.emplace(inVar[0]->id);
           break;
@@ -2042,6 +2044,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::ENUMERATE_COLLECTION: {
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
+
           if (_rangeInfoMapVec == nullptr) {
             break;
           }
@@ -2054,7 +2057,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::unordered_set<Variable const*> varsDefined = node->getVarsValid();
             // Take out the variable we define only here, because we are
             // not allowed to use it in a variable bound expression:
-            std::vector<Variable const*> varsSetHere = node->getVariablesSetHere();
+            std::vector<Variable const*>&& varsSetHere = node->getVariablesSetHere();
             for (auto const& v : varsSetHere) {
               varsDefined.erase(v);
             }
@@ -2089,7 +2092,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               }
               map = _rangeInfoMapVec->find(var->name, ++pos);  
             } 
-            while (map !=nullptr);
+            while (map != nullptr);
 
             // Now remove empty conditions: 
             _rangeInfoMapVec->eraseEmptyOrUndefined(var->name);
@@ -2203,10 +2206,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       // each valid orCondition should match every field of the given index
                       for (size_t k = 0; k < validPos.size() && ! indexOrCondition.empty(); k++) {
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
-
+                      
                         for (size_t j = 0; j < idx->fields.size(); j++) {
                           auto range = map->find(idx->fields[j]);
-
+                      
                           if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
                             indexOrCondition.clear();   // not usable
                             break;

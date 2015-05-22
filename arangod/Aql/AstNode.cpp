@@ -50,13 +50,13 @@ using Json = triagens::basics::Json;
 /// @brief quick translation array from an AST node value type to a JSON type
 ////////////////////////////////////////////////////////////////////////////////
       
-std::array<TRI_json_type_e, 5> const JsonTypes{
+std::array<TRI_json_type_e, 5> const JsonTypes{ {
   TRI_JSON_NULL,     //    VALUE_TYPE_NULL   = 0,
   TRI_JSON_BOOLEAN,  //    VALUE_TYPE_BOOL   = 1,
   TRI_JSON_NUMBER,   //    VALUE_TYPE_INT    = 2,
   TRI_JSON_NUMBER,   //    VALUE_TYPE_DOUBLE = 3,
   TRI_JSON_STRING    //    VALUE_TYPE_STRING = 4
-};
+} };
     
 static_assert(AstNodeValueType::VALUE_TYPE_NULL   == 0, "incorrect ast node value types");
 static_assert(AstNodeValueType::VALUE_TYPE_BOOL   == 1, "incorrect ast node value types");
