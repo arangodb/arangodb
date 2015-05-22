@@ -856,11 +856,34 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIndexOrNoIndexComplexConditionLt : function () {
+    testIndexOrNoIndexComplexConditionLt1 : function () {
       c.ensureSkiplist("value2");
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value - 1 } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 < i.value RETURN i.value2";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(2000, results.json.length);
+      assertEqual(0, results.stats.scannedIndex);
+      assertTrue(results.stats.scannedFull > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexOrNoIndexComplexConditionLt2 : function () {
+      c.ensureSkiplist("value2");
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value - 1 } IN " + c.name());
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 < PASSTHRU(i.value) RETURN i.value2";
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
