@@ -236,7 +236,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   var moveAppToServer = function(appInfo) {
-    if (!fs.exists(appInfo)) {
+    if (! fs.exists(appInfo)) {
       throwFileNotFound("Cannot find file: " + appInfo + ".");
     }
     var filePath;
@@ -343,7 +343,7 @@
       [ appInfo, mount ] );
 
     utils.validateMount(mount);
-    if (exists(appInfo)) {
+    if (fs.exists(appInfo)) {
       appInfo = moveAppToServer(appInfo);
     }
     var res;
