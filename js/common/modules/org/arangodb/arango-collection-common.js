@@ -753,42 +753,6 @@ ArangoCollection.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
   return new SimpleQueryWithinRectangle(this, lat1, lon1, lat2, lon2);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a fulltext query for a collection
-/// @startDocuBlock collectionFulltext
-/// `collection.fulltext(attribute, query)`
-///
-/// This will find the documents from the collection's fulltext index that match the search
-/// query.
-///
-/// In order to use the *fulltext* operator, a fulltext index must be defined for the
-/// collection, for the specified attribute. If multiple fulltext indexes are defined
-/// for the collection and attribute, the most capable one will be selected.
-///
-/// @EXAMPLES
-///
-/// To find all documents which contain the terms *text* and *word*:
-///
-/// ```
-/// arango> db.emails.fulltext("text", "word").toArray();
-/// [
-///   {
-///     "_id" : "emails/1721603",
-///     "_key" : "1721603",
-///     "_rev" : "1721603",
-///     "text" : "this document contains a word"
-///   },
-///   {
-///     "_id" : "emails/1783231",
-///     "_key" : "1783231",
-///     "_rev" : "1783231",
-///     "text" : "this document also contains a word"
-///   }
-/// ]
-/// ```
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
   return new SimpleQueryFulltext(this, attribute, query, iid);
 };
