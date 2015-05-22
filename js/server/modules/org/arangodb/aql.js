@@ -6490,15 +6490,17 @@ function AQL_NEIGHBORS (vertexCollection,
                         edgeCollection,
                         vertex,
                         direction,
-                        examples) {
+                        examples,
+                        options) {
   'use strict';
 
   vertex = TO_ID(vertex, vertexCollection);
-  /*
+  options = options || {};
+  options.direction = direction;
+  options.examples = examples;
   if (examples === undefined) {
-    return [CPP_NEIGHBORS(vertexCollection, edgeCollection, vertex, {direction: direction})];
+    return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, options);
   }
-  */
   
   var edges = AQL_EDGES(edgeCollection, vertex, direction);
   return FILTERED_EDGES(edges, vertex, direction, examples);

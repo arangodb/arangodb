@@ -44,10 +44,10 @@ struct VertexId {
   TRI_voc_cid_t cid;
   char const*   key;
 
-  VertexId() : cid(0), key(nullptr) {
+  VertexId () : cid(0), key(nullptr) {
   }
 
-  VertexId( TRI_voc_cid_t cid, char const* key) 
+  VertexId (TRI_voc_cid_t cid, char const* key) 
     : cid(cid), key(key) {
   }
   
@@ -77,7 +77,7 @@ struct VertexFilterInfo {
   TRI_transaction_collection_t* col;
   triagens::arango::ExampleMatcher* matcher;
 
-  VertexFilterInfo(
+  VertexFilterInfo (
     triagens::arango::ExplicitTransaction* trx,
     TRI_transaction_collection_t* col,
     triagens::arango::ExampleMatcher* matcher
@@ -126,7 +126,7 @@ namespace triagens {
             useEdgeFilter(false) {
           }
 
-          void addEdgeFilter(
+          void addEdgeFilter (
             v8::Isolate* isolate,
             v8::Handle<v8::Object> const& example,
             TRI_shaper_t* shaper,
@@ -134,7 +134,7 @@ namespace triagens {
             std::string& errorMessage
           );
 
-          void addVertexFilter(
+          void addVertexFilter (
             v8::Isolate* isolate,
             v8::Handle<v8::Object> const& example,
             triagens::arango::ExplicitTransaction* trx,
@@ -144,20 +144,21 @@ namespace triagens {
             std::string& errorMessage
           );
 
-          void addFinalVertex(VertexId& v);
+          void addFinalVertex (VertexId& v);
 
-          bool matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
+          bool matchesEdge (EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
 
-          bool matchesVertex(VertexId& v) const;
-
+          bool matchesVertex (VertexId& v) const;
       };
-      struct NeighborsOptions {
-        std::string direction;
-        bool distinct;
 
-        NeighborsOptions() :
-          direction("outbound"),
-          distinct(false) {
+      struct NeighborsOptions {
+        TRI_edge_direction_e direction;
+        bool distinct;
+        VertexId start;
+
+        NeighborsOptions () :
+          direction(TRI_EDGE_OUT),
+          distinct(true) {
         }
 
       };
@@ -292,13 +293,7 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<VertexId> TRI_RunNeighborsSearch (
-  v8::Isolate* isolate,
-  TRI_vocbase_t* vocbase,
-  std::string const& vertexCollectionName,
-  std::string const& edgeCollectionName,
-  std::string const& startVertex,
-  triagens::arango::CollectionNameResolver const* resolver,
-  TRI_document_collection_t* ecol,
+  std::vector<EdgeCollectionInfo*>& collectionInfos,
   triagens::basics::traverser::NeighborsOptions& opts
 );
 

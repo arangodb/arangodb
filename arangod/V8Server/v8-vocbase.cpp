@@ -1669,7 +1669,7 @@ static ExplicitTransaction* beginTransaction(
     // Abort the collection and free the pointers
     trx->abort();
     delete trx;
-    throw e;
+    throw;
   }
   return trx;
 }
@@ -1854,7 +1854,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   unordered_set<string> vertexCollectionNames;
   v8ArrayToStrings(args[0], vertexCollectionNames);
 
-  // get the vertex collections
+  // get the edge collections
   if (! args[1]->IsArray()) {
     TRI_V8_THROW_TYPE_ERROR("expecting array for <edgecollections[]>");
   }
@@ -2033,8 +2033,15 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     }
   }
 
-  opts.start = idStringToVertexId(resolver, startVertex);
-  opts.end = idStringToVertexId(resolver, targetVertex);
+  try {
+    opts.start = idStringToVertexId(resolver, startVertex);
+    opts.end = idStringToVertexId(resolver, targetVertex);
+  } catch (int e) {
+    // Id string might have illegal collection name
+    trx->finish(e);
+    delete trx;
+    TRI_V8_THROW_EXCEPTION(e);
+  }
 
   try {
     path = TRI_RunShortestPathSearch(
@@ -2074,54 +2081,27 @@ static v8::Handle<v8::Value> vertexIdsToV8(v8::Isolate* isolate,
                                          CollectionNameResolver const* resolver,
                                          vector<VertexId>& ids,
                                          unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
-                                         bool includeData = false,
-                                         bool includeDuplicates = true) {
+                                         bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  uint32_t const vn = static_cast<uint32_t>(ids.size());
+  v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
 
-  if (includeDuplicates) {
-    uint32_t const vn = static_cast<uint32_t>(ids.size());
-    v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
-
-    if (includeData) {
-      for (uint32_t j = 0;  j < vn;  ++j) {
-        vertices->Set(j, vertexIdToData(isolate, resolver, trx, barriers, ids[j]));
-      }
-    } else {
-      for (uint32_t j = 0;  j < vn;  ++j) {
-        vertices->Set(j, vertexIdToString(isolate, resolver, ids[j]));
-      }
+  if (includeData) {
+    for (uint32_t j = 0;  j < vn;  ++j) {
+      vertices->Set(j, vertexIdToData(isolate, resolver, trx, barriers, ids[j]));
     }
-    result->Set(TRI_V8_STRING("vertices"), vertices);
-    return scope.Escape<v8::Value>(result);
   } else {
-    // set<VertexId> uniqueIds(ids.begin(), ids.end());
-    // TODO
-    auto uniqueIds = ids;
-    uint32_t const vn = static_cast<uint32_t>(uniqueIds.size());
-    v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
-    auto iterator = uniqueIds.begin();
-    if (includeData) {
-      for (uint32_t j = 0;  j < vn;  ++j) {
-        vertices->Set(j, vertexIdToData(isolate, resolver, trx, barriers, *iterator));
-        ++iterator;
-      }
-    } else {
-      for (uint32_t j = 0;  j < vn;  ++j) {
-        vertices->Set(j, vertexIdToString(isolate, resolver, *iterator));
-        ++iterator;
-      }
+    for (uint32_t j = 0;  j < vn;  ++j) {
+      vertices->Set(j, vertexIdToString(isolate, resolver, ids[j]));
     }
-    result->Set(TRI_V8_STRING("vertices"), vertices);
-    return scope.Escape<v8::Value>(result);
- 
   }
+  return scope.Escape<v8::Value>(vertices);
 };
 
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Executes a shortest Path Traversal
+/// @brief Executes a Neighbors computation
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2129,74 +2109,88 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 3 || args.Length() > 4) {
-    TRI_V8_THROW_EXCEPTION_USAGE("CPP_NEIGHBORS(<vertexcollection>, <edgecollection>, <start>, <options>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("CPP_NEIGHBORS(<vertexcollections[]>, <edgecollections[]>, <start>, <options>)");
   }
 
-  TRI_vocbase_t* vocbase;
-
-  vocbase = GetContextVocBase(isolate);
-
-  // get the vertex collection
-  if (! args[0]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("expecting string for <vertexcollection>");
+  // get the vertex collections
+  if (! args[0]->IsArray()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting array for <vertexcollections[]>");
   }
-  string vertexCollectionName = TRI_ObjectToString(args[0]);
+  unordered_set<string> vertexCollectionNames;
+  v8ArrayToStrings(args[0], vertexCollectionNames);
 
-  // get the edge collection
-  if (! args[1]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("expecting string for <edgecollection>");
+  // get the edge collections
+  if (! args[1]->IsArray()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting array for <edgecollections[]>");
   }
-  string const edgeCollectionName = TRI_ObjectToString(args[1]);
+  unordered_set<string> edgeCollectionNames;
+  v8ArrayToStrings(args[1], edgeCollectionNames);
 
-  vocbase = GetContextVocBase(isolate);
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (! args[2]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("expecting string for <startVertex>");
+    TRI_V8_THROW_TYPE_ERROR("expecting id for <startVertex>");
   }
   string const startVertex = TRI_ObjectToString(args[2]);
- 
 
-  // TODO Option parsing
   traverser::NeighborsOptions opts;
+  bool includeData = false;
+  v8::Handle<v8::Object> vertexExample;
 
   if (args.Length() == 4) {
     if (! args[3]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
     }
     v8::Handle<v8::Object> options = args[3]->ToObject();
-    v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
-    v8::Local<v8::String> keyDistinct= TRI_V8_ASCII_STRING("distinct");
 
+    // Parse direction
+    v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
     if (options->Has(keyDirection) ) {
-      opts.direction = TRI_ObjectToString(options->Get(keyDirection));
-      if (   opts.direction != "outbound"
-          && opts.direction != "inbound"
-          && opts.direction != "any"
-         ) {
+      string dir = TRI_ObjectToString(options->Get(keyDirection));
+      if (dir == "outbound") {
+        opts.direction = TRI_EDGE_OUT;
+      } else if (dir == "inbound") {
+        opts.direction = TRI_EDGE_IN;
+      } else if (dir == "any") {
+        opts.direction = TRI_EDGE_ANY;
+      } else {
         TRI_V8_THROW_TYPE_ERROR("expecting direction to be 'outbound', 'inbound' or 'any'");
       }
     }
+
+    // Parse use distinct
+    v8::Local<v8::String> keyDistinct= TRI_V8_ASCII_STRING("distinct");
     if (options->Has(keyDistinct) ) {
       opts.distinct  = TRI_ObjectToBoolean(options->Get(keyDistinct));
     }
+
+    // Parse includeData
+    v8::Local<v8::String> keyIncludeData = TRI_V8_ASCII_STRING("includeData");
+    if (options->Has(keyIncludeData)) {
+      includeData = TRI_ObjectToBoolean(options->Get(keyIncludeData));
+    }
+
   }
 
   vector<TRI_voc_cid_t> readCollections;
   vector<TRI_voc_cid_t> writeCollections;
 
   V8ResolverGuard resolverGuard(vocbase);
-  CollectionNameResolver const* resolver = resolverGuard.getResolver();
-
-  readCollections.push_back(resolver->getCollectionId(vertexCollectionName));
-  readCollections.push_back(resolver->getCollectionId(edgeCollectionName));
-
 
   ExplicitTransaction* trx = nullptr;
   int res = 0;
+  CollectionNameResolver const* resolver = resolverGuard.getResolver();
+
+  for (auto it : edgeCollectionNames) {
+    readCollections.push_back(resolver->getCollectionId(it));
+  }
+  for (auto it : vertexCollectionNames) {
+    readCollections.push_back(resolver->getCollectionId(it));
+  }
 
   unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
   // Start the transaction
@@ -2204,21 +2198,43 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     trx = beginTransaction(vocbase, readCollections, writeCollections,
                            resolver, barriers);
   } catch (int e) {
+    // Nothing to clean up. Throw the error to V8
     TRI_V8_THROW_EXCEPTION(e);
   }
 
-  TRI_voc_cid_t edgeCid = resolver->getCollectionId(edgeCollectionName);
-  TRI_ASSERT(barriers.find(edgeCid) != barriers.end());
+  vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  for(auto it : edgeCollectionNames) {
+    auto cid = resolver->getCollectionId(it);
+    auto colObj = barriers.find(cid)->second.col->_collection->_collection;
+    edgeCollectionInfos.push_back(new EdgeCollectionInfo(
+      cid,
+      colObj,
+      HopWeightCalculator()
+    ));
+  }
+
+  vector<VertexCollectionInfo*> vertexCollectionInfos;
+  for(auto it : vertexCollectionNames) {
+    auto cid = resolver->getCollectionId(it);
+    auto colObj = barriers.find(cid)->second.col;
+    vertexCollectionInfos.push_back(new VertexCollectionInfo(
+      cid,
+      colObj
+    ));
+  }
+
+  try {
+    opts.start = idStringToVertexId(resolver, startVertex);
+  } catch (int e) {
+    // Id string might have illegal collection name
+    trx->finish(e);
+    delete trx;
+    TRI_V8_THROW_EXCEPTION(e);
+  }
   vector<VertexId> neighbors;
   try {
     neighbors = TRI_RunNeighborsSearch(
-      isolate,
-      vocbase,
-      vertexCollectionName,
-      edgeCollectionName,
-      startVertex,
-      resolver,
-      barriers.find(edgeCid)->second.col->_collection->_collection,
+      edgeCollectionInfos,
       opts
     );
   } catch (int e) {
@@ -2227,7 +2243,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     TRI_V8_THROW_EXCEPTION(e);
   }
 
-  auto result = vertexIdsToV8(isolate, trx, resolver, neighbors, barriers, true);
+  auto result = vertexIdsToV8(isolate, trx, resolver, neighbors, barriers, includeData);
 
   trx->finish(res);
   delete trx;

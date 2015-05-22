@@ -150,26 +150,38 @@ function ahuacatlQueryEdgesTestSuite () {
 
     testNeighborsAny : function () {
       var actual;
+      var v1 = "UnitTestsAhuacatlVertex/v1";
+      var v2 = "UnitTestsAhuacatlVertex/v2";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v5 = "UnitTestsAhuacatlVertex/v5";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var v8 = "UnitTestsAhuacatlVertex/v8";
+      var theFox = "UnitTestsAhuacatlVertex/thefox";
+      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
+      var queryEnd = "', 'any') SORT n RETURN n";
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v1', 'any') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v2", "v1->v2" ], [ "v3", "v1->v3" ] ]);
+      actual = getQueryResults(queryStart + v1 + queryEnd);
+      assertEqual(actual, [ v2, v3 ]);
 
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v2', 'any') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v1", "v1->v2" ], [ "v3", "v2->v3" ], [ "v4", "v4->v2" ] ]);
+      actual = getQueryResults(queryStart + v2 + queryEnd);
+      assertEqual(actual, [ v1, v3, v4 ]);
+
+      // v6 and v7 are neighbors twice
+      actual = getQueryResults(queryStart + v3 + queryEnd);
+      assertEqual(actual, [ v1, v2, v4, v6, v7 ]);
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'any') SORT n.vertex._key, n.edge.what RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v1", "v1->v3"], [ "v2", "v2->v3" ], [ "v4", "v3->v4" ], [ "v6", "v3->v6" ], [ "v6", "v6->v3"], [ "v7", "v3->v7" ], [ "v7", "v7->v3" ] ]);
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v8', 'any') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + v8 + queryEnd);
       assertEqual(actual, [ ]);
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v5', 'any') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + v5 + queryEnd);
       assertEqual(actual, [ ]);
 
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/thefox', 'any') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + theFox + queryEnd);
       assertEqual(actual, [ ]);
       
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "FOR e IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'thefox/thefox', 'any') SORT n.vertex._key RETURN n.vertex._key");
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,26 +190,37 @@ function ahuacatlQueryEdgesTestSuite () {
 
     testNeighborsIn : function () {
       var actual;
+      var v1 = "UnitTestsAhuacatlVertex/v1";
+      var v2 = "UnitTestsAhuacatlVertex/v2";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v5 = "UnitTestsAhuacatlVertex/v5";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var v8 = "UnitTestsAhuacatlVertex/v8";
+      var theFox = "UnitTestsAhuacatlVertex/thefox";
+      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
+      var queryEnd = "', 'inbound') SORT n RETURN n";
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v1', 'inbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
+      actual = getQueryResults(queryStart + v1 + queryEnd);
       assertEqual(actual, [ ]);
 
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v2', 'inbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v1", "v1->v2" ], [ "v4", "v4->v2" ] ]);
+      actual = getQueryResults(queryStart + v2 + queryEnd);
+      assertEqual(actual, [v1, v4]);
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'inbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v1", "v1->v3"], [ "v2", "v2->v3" ], [ "v6", "v6->v3"], [ "v7", "v7->v3" ] ]);
+      actual = getQueryResults(queryStart + v3 + queryEnd);
+      assertEqual(actual, [v1, v2, v6, v7]);
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v8', 'inbound') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + v8 + queryEnd);
       assertEqual(actual, [ ]);
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v5', 'inbound') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + v5 + queryEnd);
       assertEqual(actual, [ ]);
 
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/thefox', 'inbound') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + theFox + queryEnd);
       assertEqual(actual, [ ]);
       
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "FOR e IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'thefox/thefox', 'inbound') SORT n.vertex._key RETURN n.vertex._key");
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,26 +257,37 @@ function ahuacatlQueryEdgesTestSuite () {
 
     testNeighborsOut : function () {
       var actual;
+      var v1 = "UnitTestsAhuacatlVertex/v1";
+      var v2 = "UnitTestsAhuacatlVertex/v2";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v5 = "UnitTestsAhuacatlVertex/v5";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var v8 = "UnitTestsAhuacatlVertex/v8";
+      var theFox = "UnitTestsAhuacatlVertex/thefox";
+      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
+      var queryEnd = "', 'outbound') SORT n RETURN n";
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v1', 'outbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v2", "v1->v2" ], [ "v3", "v1->v3" ] ]);
+      actual = getQueryResults(queryStart + v1 + queryEnd);
+      assertEqual(actual, [ v2, v3 ]);
 
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v2', 'outbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v3", "v2->v3" ] ]);
+      actual = getQueryResults(queryStart + v2 + queryEnd);
+      assertEqual(actual, [ v3 ]);
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ "v4", "v6", "v7" ]);
+      actual = getQueryResults(queryStart + v3 + queryEnd);
+      assertEqual(actual, [ v4, v6, v7 ]);
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v8', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ ]);
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v5', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + v8 + queryEnd);
       assertEqual(actual, [ ]);
 
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/thefox', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + v5 + queryEnd);
       assertEqual(actual, [ ]);
       
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "FOR e IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'thefox/thefox', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + theFox + queryEnd);
+      assertEqual(actual, [ ]);
+
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
     }
 
   };
