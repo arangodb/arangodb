@@ -1,7 +1,7 @@
 !CHAPTER Collection Methods
 
 !SUBSECTION Drop
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionDrop
 
 !SUBSECTION Truncate
@@ -9,15 +9,15 @@
 @startDocuBlock collectionTruncate
 
 !SUBSECTION Properties
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionProperties
 
 !SUBSECTION Figures
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionFigures
 
 !SUBSECTION Load
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionLoad
 
 !SUBSECTION Reserve
@@ -30,21 +30,21 @@ The reserve hint can be sent before a mass insertion into the collection is star
 Not all indexes implement the reserve function at the moment. The indexes that don't implement it will simply ignore the request. returns the revision id of a collection
 
 !SUBSECTION Revision
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionRevision
 
 !SUBSECTION Checksum
-<!-- arangod/V8-Server/v8-query.cpp -->
+<!-- arangod/V8Server/v8-query.cpp -->
 @startDocuBlock collectionChecksum
 
 !SUBSECTION Unload
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionUnload
 
 !SUBSECTION Rename
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionRename
 
 !SUBSECTION Rotate
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionRotate
