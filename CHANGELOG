@@ -480,6 +480,11 @@ v2.6.0 (XXXX-XX-XX)
 
 * added Foxx model lifecycle events to repositories. See #1257.
 
+* speed up resizing of edge index.
+
+* allow to split an edge index into buckets which are resized individually.
+  This is controlled by the `indexBuckets` attribute in the `properties`
+  of the collection.
 
 v2.5.4 (2015-05-14)
 -------------------
