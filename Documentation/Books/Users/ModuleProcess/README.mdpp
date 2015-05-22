@@ -6,7 +6,10 @@ mimic parts of nodejs process module
 
 env maps the systems environment to an associative array.
 
+<!--
+these are copied from node, but don't serve any specific purpose over here
 !SUBSECTION domain
+
 
 !SUBSECTION _events
 
@@ -17,3 +20,4 @@ env maps the systems environment to an associative array.
 !SUBSECTION CMD
 
 !SUBSECTION nextTick
+-->
