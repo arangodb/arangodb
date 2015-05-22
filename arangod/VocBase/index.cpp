@@ -969,6 +969,12 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
   TRI_index_t* idx;
   char* id;
   
+  uint32_t indexBuckets = 1;
+  if (document != nullptr) {
+    // document is a nullptr in the coordinator case
+    indexBuckets = document->_info._indexBuckets;
+  }
+  
   // create index
   TRI_edge_index_t* edgeIndex;
   try {
@@ -985,7 +991,7 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
                                    IsEqualKeyEdgeFrom,
                                    IsEqualElementEdge,
                                    IsEqualElementEdgeFromByKey,
-                                   document->_info._indexBuckets);
+                                   indexBuckets);
   }
   catch (...) {
     delete edgeIndex;
@@ -999,7 +1005,7 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
                              IsEqualKeyEdgeTo,
                              IsEqualElementEdge,
                              IsEqualElementEdgeToByKey,
-                             document->_info._indexBuckets);
+                             indexBuckets);
   }
   catch (...) {
     delete edgeIndex->_edges_from;
