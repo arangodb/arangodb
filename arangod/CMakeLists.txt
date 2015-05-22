@@ -101,6 +101,14 @@ add_executable(
     HashIndex/hash-array.cpp
     HashIndex/hash-array-multi.cpp
     HashIndex/hash-index.cpp
+    Indexes/CapConstraint.cpp
+    Indexes/EdgeIndex.cpp
+    Indexes/FulltextIndex.cpp
+    Indexes/GeoIndex2.cpp
+    Indexes/HashIndex.cpp
+    Indexes/Index.cpp
+    Indexes/PrimaryIndex.cpp
+    Indexes/SkiplistIndex2.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp

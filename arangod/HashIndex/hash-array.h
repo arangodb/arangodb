@@ -108,14 +108,14 @@ int TRI_ResizeHashArray (TRI_hash_array_t*,
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_hash_index_element_s* TRI_LookupByKeyHashArray (TRI_hash_array_t*,
+struct TRI_hash_index_element_s* TRI_LookupByKeyHashArray (TRI_hash_array_t const*,
                                                            struct TRI_index_search_value_s* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an element given a key, returns NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t*,
+struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t const*,
                                                          struct TRI_index_search_value_s* key);
 
 ////////////////////////////////////////////////////////////////////////////////

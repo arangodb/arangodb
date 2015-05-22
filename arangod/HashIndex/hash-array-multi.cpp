@@ -774,7 +774,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
 /// @brief returns a selectivity estimate for the index
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_SelectivityHashArrayMulti (TRI_hash_array_multi_t* array) {
+double TRI_SelectivityHashArrayMulti (TRI_hash_array_multi_t const* array) {
   size_t numTotal = static_cast<size_t>(array->_nrUsed + array->_nrOverflowUsed);
 
   if (numTotal == 0) {

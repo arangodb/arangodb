@@ -488,6 +488,56 @@ static int CreateHeader (TRI_document_collection_t* document,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an index file
+////////////////////////////////////////////////////////////////////////////////
+
+static bool RemoveIndexFile (TRI_document_collection_t* collection, 
+                             TRI_idx_iid_t id) {
+  // construct filename
+  char* number = TRI_StringUInt64(id);
+
+  if (number == nullptr) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    LOG_ERROR("out of memory when creating index number");
+    return false;
+  }
+
+  char* name = TRI_Concatenate3String("index-", number, ".json");
+
+  if (name == nullptr) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+    LOG_ERROR("out of memory when creating index name");
+    return false;
+  }
+
+  char* filename = TRI_Concatenate2File(collection->_directory, name);
+
+  if (filename == nullptr) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, name);
+    LOG_ERROR("out of memory when creating index filename");
+    return false;
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, name);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+
+  int res = TRI_UnlinkFile(filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot remove index definition: %s", TRI_last_error());
+    return false;
+  }
+
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     DOCUMENT CRUD
 // -----------------------------------------------------------------------------
@@ -3506,6 +3556,73 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief saves an index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SaveIndex (TRI_document_collection_t* document,
+                   TRI_index_t* idx,
+                   bool writeMarker) {
+  // convert into JSON
+  TRI_json_t* json = idx->json(idx);
+
+  if (json == nullptr) {
+    LOG_TRACE("cannot save index definition: index cannot be jsonified");
+    return TRI_set_errno(TRI_ERROR_INTERNAL);
+  }
+
+  // construct filename
+  char* number   = TRI_StringUInt64(idx->_iid);
+  char* name     = TRI_Concatenate3String("index-", number, ".json");
+  char* filename = TRI_Concatenate2File(document->_directory, name);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, name);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+
+  TRI_vocbase_t* vocbase = document->_vocbase;
+
+  // and save
+  bool ok = TRI_SaveJson(filename, json, document->_vocbase->_settings.forceSyncProperties);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  if (! ok) {
+    LOG_ERROR("cannot save index definition: %s", TRI_last_error());
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+    return TRI_errno();
+  }
+
+  if (! writeMarker) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    triagens::wal::CreateIndexMarker marker(vocbase->_id, document->_info._cid, idx->_iid, triagens::basics::JsonHelper::toString(json));
+    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    return TRI_ERROR_NO_ERROR;
+  }
+  catch (triagens::basics::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  // TODO: what to do here?
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a description of all indexes
 ///
 /// the caller must have read-locked the underlying collection!
@@ -3568,7 +3685,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
   // .............................................................................
 
   if (found != nullptr) {
-    bool result = TRI_RemoveIndexFile(document, found);
+    bool result = RemoveIndexFile(document, found->_iid);
 
     TRI_FreeIndex(found);
 

@@ -1561,7 +1561,7 @@ TRI_index_t* TRI_LookupIndexByHandle (v8::Isolate* isolate,
     }
   }
 
-  TRI_index_t* idx = TRI_LookupIndex(collection->_collection, iid);
+  TRI_index_t* idx = collection->_collection->lookupIndex(iid);
 
   if (idx == nullptr) {
     if (! ignoreNotFound) {

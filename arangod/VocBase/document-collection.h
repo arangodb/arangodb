@@ -826,6 +826,14 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t*,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief saves an index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SaveIndex (TRI_document_collection_t*,
+                   TRI_index_t*,
+                   bool writeMarker);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a description of all indexes
 ///
 /// the caller must have read-locked the underyling collection!
