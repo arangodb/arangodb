@@ -87,7 +87,7 @@ void TRI_InitIndex (TRI_index_t* idx,
   }
 
   idx->_type              = type;
-  idx->_collection        = document;
+  idx->_collection        = document; // this is a nullptr on the coordinator!
   idx->_unique            = unique;
   idx->_sparse            = sparse;
   idx->_hasSelectivityEstimate = false;
@@ -95,7 +95,6 @@ void TRI_InitIndex (TRI_index_t* idx,
   // init common functions
   idx->selectivityEstimate    = nullptr;
   idx->memory                 = nullptr;
-  idx->removeIndex            = nullptr;
   idx->cleanup                = nullptr;
   idx->sizeHint               = nullptr;
   idx->postInsert             = nullptr;
@@ -405,11 +404,7 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
 
 TRI_index_t* TRI_LookupIndex (TRI_document_collection_t* document,
                               TRI_idx_iid_t iid) {
-  size_t const n = document->_allIndexes._length;
-
-  for (size_t i = 0;  i < n;  ++i) {
-    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
-
+  for (auto const& idx : document->allIndexes()) {
     if (idx->_iid == iid) {
       return idx;
     }

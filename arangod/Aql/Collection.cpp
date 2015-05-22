@@ -303,9 +303,11 @@ void Collection::fillIndexesDBServer () const {
   // register indexes
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* v = TRI_LookupArrayJson(json, i);
+
     if (TRI_IsObjectJson(v)) {
       // lookup index id
       TRI_json_t const* id = TRI_LookupObjectJson(v, "id");
+
       if (! TRI_IsStringJson(id)) {
         continue;
       }
@@ -314,9 +316,12 @@ void Collection::fillIndexesDBServer () const {
       uint64_t iid = triagens::basics::StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
       TRI_index_t* data = nullptr;
 
+      auto const& allIndexes = document->allIndexes();
+      size_t const n = indexes.size();
+
       // now check if we can find the local index and map it
-      for (size_t j = 0; j < document->_allIndexes._length; ++j) {
-        auto localIndex = static_cast<TRI_index_t*>(document->_allIndexes._buffer[j]);
+      for (size_t j = 0; j < n; ++j) {
+        auto localIndex = allIndexes[j];
 
         if (localIndex != nullptr) {
           if (localIndex->_iid == iid) {
@@ -353,11 +358,13 @@ void Collection::fillIndexesDBServer () const {
 void Collection::fillIndexesLocal () const {
   // local collection
   auto document = documentCollection();
-  size_t const n = document->_allIndexes._length;
+
+  auto const& allIndexes = document->allIndexes();
+  size_t const n = allIndexes.size();
   indexes.reserve(n);
 
   for (size_t i = 0; i < n; ++i) {
-    indexes.emplace_back(new Index(static_cast<TRI_index_t*>(document->_allIndexes._buffer[i])));
+    indexes.emplace_back(new Index(allIndexes[i]));
   }
 }
 
