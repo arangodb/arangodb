@@ -113,3 +113,12 @@ object.
 
 This is an alias for `fs.write(filename, content)`.
 
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_CopyDirectoryRecursive
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_CopyFile
+
