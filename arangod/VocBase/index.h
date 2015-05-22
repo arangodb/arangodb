@@ -262,28 +262,6 @@ bool TRI_ValidateIndexIdIndex (char const*,
 void TRI_FreeIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an index file
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_RemoveIndexFile (struct TRI_document_collection_t*,
-                          TRI_index_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief saves an index
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_SaveIndex (struct TRI_document_collection_t*,
-                   TRI_index_t*,
-                   bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an index identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_LookupIndex (struct TRI_document_collection_t*,
-                              TRI_idx_iid_t);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a basic index description as JSON
 /// this only contains the common index fields and needs to be extended by the
 /// specialised index
@@ -380,9 +358,6 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx);
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-struct TRI_doc_mptr_t** TRI_LookupFulltextIndex (TRI_index_t*,
-                                                 const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a fulltext index
