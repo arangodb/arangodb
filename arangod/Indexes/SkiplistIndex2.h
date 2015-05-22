@@ -96,6 +96,14 @@ namespace triagens {
 
         TRI_skiplist_iterator_t* lookup (TRI_index_operator_t*,
                                          bool);
+        
+        bool sparse () const {
+          return _sparse;
+        }
+        
+        bool unique () const {
+          return _unique;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

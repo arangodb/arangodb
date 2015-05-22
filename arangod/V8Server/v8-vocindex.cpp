@@ -759,14 +759,12 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
         idx = TRI_EnsureFulltextIndexDocumentCollection(document,
                                                         iid,
                                                         (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                        false,
                                                         minWordLength,
                                                         &created);
       }
       else {
         idx = TRI_LookupFulltextIndexDocumentCollection(document,
                                                         (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                        false,
                                                         minWordLength);
       }
       break;

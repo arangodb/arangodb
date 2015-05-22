@@ -104,6 +104,14 @@ namespace triagens {
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
 
+        bool isSame (TRI_shape_pid_t location, bool geoJson) const {
+          return (_location != 0 && _location == location && _geoJson == geoJson);
+        }
+        
+        bool isSame (TRI_shape_pid_t latitude, TRI_shape_pid_t longitude) const {
+          return (_latitude != 0 && _longitude != 0 && _latitude == latitude && _longitude == longitude);
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

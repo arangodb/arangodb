@@ -67,7 +67,7 @@ Collection::Collection (std::string const& name,
 ////////////////////////////////////////////////////////////////////////////////
       
 Collection::~Collection () {
-  for (auto idx : indexes) {
+  for (auto& idx : indexes) {
     delete idx;
   }
 }
@@ -314,7 +314,7 @@ void Collection::fillIndexesDBServer () const {
 
       // use numeric index id
       uint64_t iid = triagens::basics::StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
-      TRI_index_t* data = nullptr;
+      triagens::arango::Index* data = nullptr;
 
       auto const& allIndexes = document->allIndexes();
       size_t const n = indexes.size();
@@ -324,18 +324,18 @@ void Collection::fillIndexesDBServer () const {
         auto localIndex = allIndexes[j];
 
         if (localIndex != nullptr) {
-          if (localIndex->_iid == iid) {
+          if (localIndex->id() == iid) {
             // found
             data = localIndex;
             break;
           }
-          else if (localIndex->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
-                   localIndex->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+          else if (localIndex->type() == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX || 
+                   localIndex->type() == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
           }
         }
       }
 
-      auto idx = new Index(v);
+      auto idx = new triagens::aql::Index(v);
       // assign the found local index
       idx->setInternals(data);
 

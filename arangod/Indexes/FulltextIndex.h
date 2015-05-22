@@ -87,6 +87,10 @@ namespace triagens {
         
         int cleanup () override final;
 
+        bool isSame (char const* field, int minWordLength) const {
+          return (_minWordLength == minWordLength && _fields[0].compare(field) == 0);
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

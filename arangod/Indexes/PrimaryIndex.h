@@ -52,9 +52,21 @@ namespace triagens {
 
         PrimaryIndex () = delete;
 
-        PrimaryIndex (struct TRI_document_collection_t*);
+        explicit PrimaryIndex (struct TRI_document_collection_t*);
 
         ~PrimaryIndex ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+        
+      public:
+
+        struct PrimaryIndexType {
+          uint64_t  _nrAlloc;     // the size of the table
+          uint64_t  _nrUsed;      // the number of used entries
+          void**    _table;       // the table itself
+        };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -92,7 +104,11 @@ namespace triagens {
 
         static uint64_t calculateHash (char const*); 
         
-        static uint64_t calculateHash (char const*, size_t); 
+        static uint64_t calculateHash (char const*, size_t);
+        
+        PrimaryIndexType* internals () {
+          return &_primaryIndex;
+        } 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -113,15 +129,14 @@ namespace triagens {
         struct TRI_document_collection_t* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array of pointers
+/// @brief the actual index
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct {
-          uint64_t  _nrAlloc;     // the size of the table
-          uint64_t  _nrUsed;      // the number of used entries
-          void**    _table;       // the table itself
-        }
-        _primaryIndex;
+        PrimaryIndexType _primaryIndex;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief associative array of pointers
+////////////////////////////////////////////////////////////////////////////////
 
         static uint64_t const InitialSize;
     };

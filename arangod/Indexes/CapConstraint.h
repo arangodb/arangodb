@@ -64,6 +64,22 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of documents in the collection
+////////////////////////////////////////////////////////////////////////////////
+  
+        int64_t count () const {
+          return _count;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum size of documents in the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t size () const {
+          return _size;
+        }
         
         IndexType type () const override final {
           return Index::TRI_IDX_TYPE_CAP_CONSTRAINT;
