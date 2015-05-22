@@ -585,6 +585,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     // check if copying was successful
     if (n != TRI_LengthVectorPointer(&attributes)) {
+      TRI_DestroyVectorPointer(&attributes);
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
   }
@@ -607,6 +608,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   if (! TRI_IsSystemNameCollection(collectionName.c_str()) 
       && create
       && TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
+    TRI_DestroyVectorPointer(&attributes);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
 

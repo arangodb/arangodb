@@ -191,13 +191,13 @@ triagens::basics::Json RangeInfo::toJson () const {
       ("highConst", _highConst.toJson());
 
   triagens::basics::Json lowList(triagens::basics::Json::Array, _lows.size());
-  for (auto l : _lows) {
+  for (auto const& l : _lows) {
     lowList(l.toJson());
   }
   item("lows", lowList);
 
   triagens::basics::Json highList(triagens::basics::Json::Array, _highs.size());
-  for (auto h : _highs) {
+  for (auto const& h : _highs) {
     highList(h.toJson());
   }
   item("highs", highList);
@@ -239,7 +239,7 @@ void RangeInfo::fuse (RangeInfo const& that) {
 
   // First sort out the constant low bounds:
   _lowConst.andCombineLowerBounds(that._lowConst);
-
+ 
   // Simply append the variable ones:
   for (auto const& l : that._lows) {
     _lows.emplace_back(l);
@@ -346,6 +346,7 @@ void RangeInfoMap::erase (RangeInfo* ri) {
 
   if (it != nullptr) {
     auto it2 = it->find(ri->_attr);
+
     if (it2 != (*it).end()) {
       it->erase(it2);
     }
@@ -404,7 +405,7 @@ bool RangeInfoMap::isValid (std::string const& var) const {
   auto map = find(var);
 
   if (map != nullptr) {
-    for (auto x : *map) {
+    for (auto const& x : *map) {
       if (! x.second.isValid()) {
         return false;
       }
@@ -466,7 +467,7 @@ RangeInfoMapVec::RangeInfoMapVec (RangeInfoMap* rim)
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec::~RangeInfoMapVec () {
-  for (auto x: _rangeInfoMapVec) {
+  for (auto& x: _rangeInfoMapVec) {
     delete x;
   }
   _rangeInfoMapVec.clear();
@@ -494,7 +495,7 @@ void RangeInfoMapVec::emplace_back (RangeInfoMap* rim) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RangeInfoMapVec::eraseEmptyOrUndefined (std::string const& var) {
-  for (RangeInfoMap* x: _rangeInfoMapVec) {
+  for (auto& x: _rangeInfoMapVec) {
     x->eraseEmptyOrUndefined(var);
   }
 }
@@ -566,11 +567,12 @@ std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& 
 ////////////////////////////////////////////////////////////////////////////////
 
 void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
-  for (auto rim: _rangeInfoMapVec) {
+  for (auto const& rim: _rangeInfoMapVec) {
     RangeInfo* oldRi = rim->find(newRi._var, newRi._attr);
 
     if (oldRi != nullptr) {
       differenceRangeInfos(*oldRi, newRi);
+
       if (! newRi.isValid() || 
           (newRi._lowConst.bound().isEmpty() && newRi._highConst.bound().isEmpty())) {
         break;
@@ -614,8 +616,8 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
     for (size_t i = 0; i < rhs->size(); i++) {
       std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
 
-      for (auto x: (*rhs)[i]->_ranges) {
-        for (auto y: x.second) {
+      for (auto const& x: (*rhs)[i]->_ranges) {
+        for (auto const& y: x.second) {
           RangeInfo ri = y.second.clone();
           rim->insert(ri);
         }

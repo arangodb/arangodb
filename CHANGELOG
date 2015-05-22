@@ -32,6 +32,8 @@ v2.6.0 (XXXX-XX-XX)
 
 * removed startup option `--log.severity`
 
+* add backtrace to fatal log events
+
 * added optional `limit` parameter for AQL function `FULLTEXT`
 
 * make fulltext index also index text values contained in direct sub-objects of the indexed 
@@ -327,6 +329,8 @@ v2.6.0 (XXXX-XX-XX)
   did not check for this value. Now creating a cursor using a `batchSize` value 0 will
   result in an HTTP 400 error response
 
+* REST Server: fix memory leaks when failing to add jobs
+
 * INCOMPATIBLE CHANGE:
 
   The AQL function `GRAPH_SHORTEST_PATH` now provides an additional option `includeData`.
@@ -376,6 +380,9 @@ v2.6.0 (XXXX-XX-XX)
   If the `_graphs` collection still has its `waitForSync` value set to `true`, then the HTTP status
   code will not change.
 
+* Upgrade ICU to version 54; this increases performance on many places.
+  based on https://code.google.com/p/chromium/issues/detail?id=428145
+
 * added support for HTTP push aka chunked encoding
 
 * issue #1051: add info whether server is running in service or user mode?
@@ -386,6 +393,8 @@ v2.6.0 (XXXX-XX-XX)
 
   - `standalone`: server was started manually (e.g. on command-line)
   - `service`: service is running as Windows service, in daemon mode or under the supervisor
+
+* improve system error messages in windows port
 
 * increased default value of `--server.request-timeout` from 300 to 1200 seconds for client tools
   (arangosh, arangoimp, arangodump, arangorestore)
@@ -427,6 +436,18 @@ v2.6.0 (XXXX-XX-XX)
       var Foxx = require("org/arangodb/foxx");
       Foxx.queues.create(db._name() + ":" + queueName);
 
+* Javascript APIs:
+  * fs.copyFile to copy single files
+  * fs.copyRecursive to copy diretory trees
+  * fs.chmod to set the file permissions (non-windows onnly)
+  * process.env to access the process environment
+
+* Cluster: kickstarter shutdown routines will more precisely follow the shutdown of its nodes.
+
+* Cluster: don't delete agency connection objects that are currently in use.
+
+* Cluster: improve passing along of http errors
+
 * fixed issue #1247: debian init script problems
 
 * multi-threaded index creation on collection load
@@ -460,11 +481,15 @@ v2.6.0 (XXXX-XX-XX)
 * added Foxx model lifecycle events to repositories. See #1257.
 
 
-v2.5.4 (2015-XX-XX)
+v2.5.4 (2015-05-14)
 -------------------
 
 * added startup option `--log.performance`: specifying this option at startup will log
   performance-related info messages, mainly timings via the regular logging mechanisms
+
+* cluster fixes
+
+* fix for recursive copy under windows
 
 
 v2.5.3 (2015-04-29)
@@ -482,7 +507,7 @@ v2.5.3 (2015-04-29)
 * issue #1315: queries to a collection fail with an empty response if the 
   collection contains specific JSON data
 
-* issue #1300: Make arangodump not fail if directory exists but is empty
+* issue #1300: Make arangodump not fail if target directory exists but is empty
 
 * allow specifying higher values than SOMAXCONN for `--server.backlog-size`
 
@@ -648,7 +673,7 @@ v2.5.0-beta3 (2015-02-27)
 * fix possible undefinedness of const strings in windows
 
 
-v2.5.0-beta1 (2015-02-23)
+v2.5.0-beta2 (2015-02-23)
 -------------------------
 
 * fixed issue #1256: agency binary not found #1256 
@@ -952,7 +977,7 @@ v2.4.7 (XXXX-XX-XX)
 * fixed issue #1282: Geo WITHIN_RECTANGLE for nested lat/lng 
 
 
-v2.4.6 (2015-03-XX)
+v2.4.6 (2015-03-18)
 -------------------
 
 * added option `--database.ignore-logfile-errors`

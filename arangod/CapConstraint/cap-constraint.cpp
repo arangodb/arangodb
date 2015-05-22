@@ -150,13 +150,11 @@ static size_t MemoryCapConstraint (TRI_index_t const* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonCapConstraint (TRI_index_t const* idx) {
-  TRI_json_t* json;
-
   // recast as a cap constraint
   TRI_cap_constraint_t const* cap = (TRI_cap_constraint_t const*) idx;
 
   // create json object and fill it
-  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+  TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
   if (json == nullptr) {
     return nullptr;
@@ -166,15 +164,6 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t const* idx) {
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "byteSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) cap->_size));
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a cap constraint from collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveIndexCapConstraint (TRI_index_t* idx,
-                                      TRI_document_collection_t* document) {
-  document->_capConstraint = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,9 +177,7 @@ static int InsertCapConstraint (TRI_index_t* idx,
 
   if (cap->_size > 0) {
     // there is a size restriction
-    TRI_df_marker_t* marker;
-
-    marker = (TRI_df_marker_t*) doc->getDataPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
+    auto marker = static_cast<TRI_df_marker_t const*>(doc->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     // check if the document would be too big
     if ((int64_t) marker->_size > (int64_t) cap->_size) {
@@ -250,7 +237,6 @@ TRI_index_t* TRI_CreateCapConstraint (TRI_document_collection_t* document,
 
   idx->memory      = MemoryCapConstraint;
   idx->json        = JsonCapConstraint;
-  idx->removeIndex = RemoveIndexCapConstraint;
   idx->insert      = InsertCapConstraint;
   idx->postInsert  = PostInsertCapConstraint;
   idx->remove      = RemoveCapConstraint;

@@ -50,10 +50,7 @@
 static TRI_edge_index_t* FindEdgesIndex (
                          TRI_document_collection_t* const document) {
   if (document->_info._type == TRI_COL_TYPE_EDGE) {
-    size_t const n = document->_allIndexes._length;
-
-    for (size_t i = 0; i < n; ++i) {
-      TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_AtVectorPointer(&document->_allIndexes, i));
+    for (auto& idx : document->allIndexes()) {
 
       if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
         TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;

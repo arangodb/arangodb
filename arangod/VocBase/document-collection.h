@@ -343,7 +343,7 @@ TRI_doc_collection_info_t;
 
 struct TRI_document_collection_t : public TRI_collection_t {
   // ...........................................................................
-  // this lock protects the _primaryIndex plus the _allIndexes
+  // this lock protects the _primaryIndex plus _indexes
   // and _headers attributes in derived types
   // ...........................................................................
 
@@ -379,6 +379,11 @@ public:
     _shaper = s;
   }
 
+  void addIndex (TRI_index_t*);
+  TRI_index_t* removeIndex (TRI_idx_iid_t);
+  std::vector<TRI_index_t*> allIndexes () const;
+  TRI_index_t* lookupIndex (TRI_idx_iid_t) const;
+
   mutable TRI_barrier_list_t   _barrierList;
   TRI_associative_pointer_t    _datafileInfo;
 
@@ -387,7 +392,7 @@ public:
   KeyGenerator*                _keyGenerator;
   struct TRI_cap_constraint_s* _capConstraint;
 
-  TRI_vector_pointer_t         _allIndexes;
+  std::vector<TRI_index_t*>    _indexes;
   std::set<TRI_voc_tid_t>*     _failedTransactions;
 
   std::atomic<int64_t>         _uncollectedLogfileEntries;
@@ -466,8 +471,6 @@ size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::TransactionBase
                                               void*,
                                               bool (*callback)(TRI_doc_mptr_t const*,
                                               TRI_document_collection_t*, void*));
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               DOCUMENT COLLECTION
