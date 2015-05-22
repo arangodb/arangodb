@@ -5599,9 +5599,6 @@ function AQL_SHORTEST_PATH (vertexCollection,
   }
   if (params.hasOwnProperty("includeData")) {
     opts.includeData = params.includeData;
-  } else {
-    // Default has to include the data for backwards compatibility
-    opts.includeData = true;
   }
   if (params.hasOwnProperty("followEdges")) {
     opts.followEdges = params.followEdges;
@@ -5627,35 +5624,13 @@ function AQL_SHORTEST_PATH (vertexCollection,
     }
   }
 
-  var newRes = CPP_SHORTEST_PATH(vertexCollections, edgeCollections,
+  // newRes has the format: { vertices: [Doc], edges: [Doc], distance: Number}
+  // oldResult had the format: [ {vertex: Doc} ]
+  return CPP_SHORTEST_PATH(vertexCollections, edgeCollections,
     TO_ID(startVertex, vertexCollection),
     TO_ID(endVertex, vertexCollection),
     opts
   );
-  // newRes has the format: { vertices: [Doc], edges: [Doc], distance: Number}
-  // legacyResult has the format: [ {vertex: Doc} ]
-  var legacyResult = [];
-  if (newRes === null) {
-    return legacyResult;
-  }
-
-  if (params.paths) {
-    // Prints all sub paths in form of {vertex: target, vertices: [verticesOnPath], edges: [edgesOnPath]}
-    for (i = 0; i < newRes.vertices.length; ++i) {
-      legacyResult.push({
-        vertex: newRes.vertices[i],
-        path: {
-          vertices: newRes.vertices.slice(0, i + 1),
-          edges: newRes.edges.slice(0, i)
-        }
-      });
-    }
-  } else {
-    for (i = 0; i < newRes.vertices.length; ++i) {
-      legacyResult.push({vertex: newRes.vertices[i]});
-    }
-  }
-  return legacyResult;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
