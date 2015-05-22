@@ -381,86 +381,51 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
 }
 
 vector<VertexId> TRI_RunNeighborsSearch (
-  v8::Isolate* isolate,
-  TRI_vocbase_t* vocbase,
-  std::string const& vertexCollectionName,
-  std::string const& edgeCollectionName,
-  std::string const& startVertex,
-  CollectionNameResolver const* resolver,
-  TRI_document_collection_t* ecol,
+  vector<EdgeCollectionInfo*>& collectionInfos,
   NeighborsOptions& opts
 ) {
-  // Transform string ids to VertexIds
-  // Needs refactoring!
-  size_t split;
-  char const* str = startVertex.c_str();
   vector<VertexId> result;
 
-  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    // TODO Error Handling
-    return result;
-  }
-  string collectionName = startVertex.substr(0, split);
-
-  auto coli = resolver->getCollectionStruct(collectionName);
-  if (coli == nullptr) {
-    // collection not found
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
   if (opts.distinct) {
     unordered_set<VertexId> distinct;
-    if (opts.direction == "any") {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        distinct.insert(extractFromId(edges[j]));
+    if (opts.direction == TRI_EDGE_IN || opts.direction == TRI_EDGE_ANY) {
+      TRI_edge_direction_e dir = TRI_EDGE_IN;
+      for (auto col : collectionInfos) {
+        auto edges = col->getEdges(dir, opts.start);
+        for (size_t j = 0;  j < edges.size(); ++j) {
+          distinct.insert(extractFromId(edges[j]));
+        }
       }
-      edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        distinct.insert(extractToId(edges[j]));
-      }
-    } else if (opts.direction == "inbound") {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        distinct.insert(extractFromId(edges[j]));
-      }
-    } else {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        distinct.insert(extractToId(edges[j]));
+    }
+    if (opts.direction == TRI_EDGE_OUT || opts.direction == TRI_EDGE_ANY) {
+      TRI_edge_direction_e dir = TRI_EDGE_OUT;
+      for (auto col : collectionInfos) {
+        auto edges = col->getEdges(dir, opts.start);
+        for (size_t j = 0;  j < edges.size(); ++j) {
+          distinct.insert(extractToId(edges[j]));
+        }
       }
     }
     copy(distinct.begin(), distinct.end(), back_inserter(result));
   } else {
-    if (opts.direction == "any") {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        result.push_back(extractFromId(edges[j]));
+    if (opts.direction == TRI_EDGE_IN || opts.direction == TRI_EDGE_ANY) {
+      TRI_edge_direction_e dir = TRI_EDGE_IN;
+      for (auto col : collectionInfos) {
+        auto edges = col->getEdges(dir, opts.start);
+        for (size_t j = 0;  j < edges.size(); ++j) {
+          result.push_back(extractFromId(edges[j]));
+        }
       }
-      edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        result.push_back(extractToId(edges[j]));
-      }
-    } else if (opts.direction == "inbound") {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        result.push_back(extractFromId(edges[j]));
-      }
-    } else {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        result.push_back(extractToId(edges[j]));
+    }
+    if (opts.direction == TRI_EDGE_OUT || opts.direction == TRI_EDGE_ANY) {
+      TRI_edge_direction_e dir = TRI_EDGE_OUT;
+      for (auto col : collectionInfos) {
+        auto edges = col->getEdges(dir, opts.start);
+        for (size_t j = 0;  j < edges.size(); ++j) {
+          result.push_back(extractToId(edges[j]));
+        }
       }
     }
   }
-
-
   return result;
 };
