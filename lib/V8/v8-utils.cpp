@@ -2169,10 +2169,11 @@ static void JS_MoveFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @startDocuBlock JS_CopyDirectoryRecursive
 /// `fs.copyRecursive(source, destination)`
 ///
-/// Copies *source* to destination. Failure to copy the file, or
-/// specifying a directory for destination when source is a file will throw an
-/// exception. Likewise, specifying a directory as source and destination will
-/// fail.
+/// Copies *source* to *destination*. 
+/// Exceptions will be thrown on:
+///  - Failure to copy the file
+///  - specifying a directory for destination when source is a file
+///  - specifying a directory as source and destination
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2238,7 +2239,8 @@ static void JS_CopyRecursive (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// `fs.copyFile(source, destination)`
 ///
 /// Copies *source* to destination. If Destination is a directory, a file 
-/// of the same name will be created, else it will be the name of the new file.
+/// of the same name will be created in that directory, else the copy will get the
+/// specified filename.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
