@@ -901,10 +901,12 @@ static void JS_KeyspaceCreate (const v8::FunctionCallbackInfo<v8::Value>& args) 
         // TODO: change error code
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "hash already exists");
       }
+      TRI_V8_RETURN_FALSE();
     }
    
     try { 
-      h->data.emplace(std::make_pair(name, ptr.release()));
+      h->data.emplace(std::make_pair(name, ptr.get()));
+      ptr.release();
     }
     catch (...) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -921,7 +923,6 @@ static void JS_KeyspaceCreate (const v8::FunctionCallbackInfo<v8::Value>& args) 
 static void JS_KeyspaceDrop (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() != 1 || ! args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_DROP(<name>)");
