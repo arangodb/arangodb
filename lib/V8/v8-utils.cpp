@@ -1157,12 +1157,11 @@ static void JS_Exists (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a file of any type or directory exists
-/// @startDocuBlock JS_Exists
+/// @brief sets file permissions of specified files (non windows only)
+/// @startDocuBlock JS_Chmod
 /// `fs.exists(path)`
 ///
-/// Returns true if a file (of any type) or a directory exists at a given
-/// path. If the file is a broken symbolic link, returns false.
+/// Returns true on success.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1172,7 +1171,7 @@ static void JS_ChMod (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   // extract arguments
   if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("chmod(<path><mode>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("chmod(<path>, <mode>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
@@ -2236,7 +2235,7 @@ static void JS_CopyRecursive (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a file into a target file
 /// @startDocuBlock JS_CopyFile
-/// `fs.copyRecursive(source, destination)`
+/// `fs.copyFile(source, destination)`
 ///
 /// Copies *source* to destination. If Destination is a directory, a file 
 /// of the same name will be created, else it will be the name of the new file.
