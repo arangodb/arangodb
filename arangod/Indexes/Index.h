@@ -40,7 +40,18 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_doc_mptr_t;
+struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index query parameter
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_index_search_value_s {
+  size_t _length;
+  struct TRI_shaped_json_s* _values;
+}
+TRI_index_search_value_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Index
@@ -154,10 +165,9 @@ namespace triagens {
 
         static bool Compare (TRI_json_t const* lhs,
                              TRI_json_t const* rhs);
-
   
         virtual IndexType type () const = 0;
-        virtual bool hasSelectivityEstimate () const;
+        virtual bool hasSelectivityEstimate () const = 0;
         virtual double selectivityEstimate () const;
         virtual size_t memory () const = 0;
         virtual triagens::basics::Json toJson (TRI_memory_zone_t*) const;

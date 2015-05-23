@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeoIndex2.h"
+#include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/voc-shaper.h"
@@ -262,6 +263,35 @@ int GeoIndex2::remove (TRI_doc_mptr_t const* doc,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up all points within a given radius
+////////////////////////////////////////////////////////////////////////////////
+
+GeoCoordinates* GeoIndex2::within (double lat,
+                                   double lon,
+                                   double radius) const {
+  GeoCoordinate gc;
+  gc.latitude = lat;
+  gc.longitude = lon;
+
+  return GeoIndex_PointsWithinRadius(_geoIndex, &gc, radius);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up the nearest points
+////////////////////////////////////////////////////////////////////////////////
+
+GeoCoordinates* GeoIndex2::near (double lat,
+                                 double lon,
+                                 size_t count) const {
+  GeoCoordinate gc;
+  gc.latitude = lat;
+  gc.longitude = lon;
+
+  return GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

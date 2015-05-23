@@ -90,7 +90,14 @@ namespace triagens {
 
       public:
         
-        IndexType type () const override final;
+        IndexType type () const override final {
+          if (_variant == INDEX_GEO_COMBINED_LAT_LON || 
+              _variant == INDEX_GEO_COMBINED_LON_LAT) {
+            return TRI_IDX_TYPE_GEO1_INDEX;
+          }
+
+          return TRI_IDX_TYPE_GEO2_INDEX;
+        }
 
         bool hasSelectivityEstimate () const override final {
           return false;
@@ -103,6 +110,18 @@ namespace triagens {
         int insert (struct TRI_doc_mptr_t const*, bool) override final;
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up all points within a given radius
+////////////////////////////////////////////////////////////////////////////////
+
+        GeoCoordinates* within (double, double, double) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up the nearest points
+////////////////////////////////////////////////////////////////////////////////
+
+        GeoCoordinates* near (double, double, size_t) const;
 
         bool isSame (TRI_shape_pid_t location, bool geoJson) const {
           return (_location != 0 && _location == location && _geoJson == geoJson);

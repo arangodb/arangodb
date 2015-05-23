@@ -35,7 +35,6 @@
 
 #include "HashIndex/hash-array.h"
 #include "HashIndex/hash-array-multi.h"
-#include "VocBase/index.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------

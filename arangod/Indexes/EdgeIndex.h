@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
 #include "Indexes/Index.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -59,6 +60,18 @@ namespace triagens {
         ~EdgeIndex ();
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for hash tables
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef triagens::basics::AssocMulti<void, void, uint32_t> TRI_EdgeIndexHash_t;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -82,7 +95,25 @@ namespace triagens {
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges using the index, restarting at the edge pointed at
+/// by next
+////////////////////////////////////////////////////////////////////////////////
+      
+        void lookup (TRI_edge_index_iterator_t const*,
+                     std::vector<TRI_doc_mptr_copy_t>&,
+                     void*&,
+                     size_t);
+
         int sizeHint (size_t) override final;
+
+        TRI_EdgeIndexHash_t* from () {
+          return _edgesFrom;
+        }
+
+        TRI_EdgeIndexHash_t* to () {
+          return _edgesTo;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -91,12 +122,6 @@ namespace triagens {
       private:
 
         struct TRI_document_collection_t* _collection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for hash tables
-////////////////////////////////////////////////////////////////////////////////
-
-        typedef triagens::basics::AssocMulti<void, void, uint32_t> TRI_EdgeIndexHash_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the hash table for _from 

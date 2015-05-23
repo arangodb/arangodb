@@ -33,11 +33,8 @@
 #include "Basics/Common.h"
 #include "HashIndex/hash-array.h"
 #include "HashIndex/hash-array-multi.h"
-#include "HashIndex/hash-index.h"
 #include "Indexes/Index.h"
 #include "ShapedJson/shaped-json.h"
-// TODO: remove the next include!
-#include "VocBase/index.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 

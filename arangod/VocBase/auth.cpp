@@ -422,8 +422,10 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
 
-  void** beg = document->_primaryIndex._table;
-  void** end = beg + document->_primaryIndex._nrAlloc;
+  auto primaryIndex = document->primaryIndex()->internals();
+
+  void** beg = primaryIndex->_table;
+  void** end = beg + primaryIndex->_nrAlloc;
   void** ptr = beg;
 
   for (;  ptr < end;  ++ptr) {

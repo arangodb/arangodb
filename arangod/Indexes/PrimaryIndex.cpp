@@ -30,6 +30,7 @@
 #include "PrimaryIndex.h"
 #include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
+#include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 

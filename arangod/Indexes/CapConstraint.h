@@ -89,8 +89,6 @@ namespace triagens {
           return false;
         }
 
-        double selectivityEstimate () const override final;
-        
         size_t memory () const override final;
 
         triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
@@ -144,6 +142,17 @@ namespace triagens {
 
         int64_t const _size;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum size
+////////////////////////////////////////////////////////////////////////////////
+
+        static int64_t const MinSize;
     };
 
   }

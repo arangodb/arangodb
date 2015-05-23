@@ -405,6 +405,64 @@ int EdgeIndex::remove (TRI_doc_mptr_t const* doc,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges using the index, restarting at the edge pointed at
+/// by next
+////////////////////////////////////////////////////////////////////////////////
+      
+void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
+                        std::vector<TRI_doc_mptr_copy_t>& result,
+                        void*& next,
+                        size_t batchSize) {
+
+  std::function<void(void*)> callback = [&result] (void* data) -> void {
+    TRI_doc_mptr_t* doc = static_cast<TRI_doc_mptr_t*>(data);
+
+    result.emplace_back(*(doc));
+  };
+
+  std::vector<void*>* found = nullptr;
+  if (next == nullptr) {
+    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
+      found = _edgesFrom->lookupByKey(&(edgeIndexIterator->_edge), batchSize);
+    }
+    else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
+      found = _edgesTo->lookupByKey(&(edgeIndexIterator->_edge), batchSize);
+    }
+    else {
+      TRI_ASSERT(false);
+    }
+    if (found != nullptr && found->size() != 0) {
+      next = found->back();
+    }
+  }
+  else {
+    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
+      found = _edgesFrom->lookupByKeyContinue(next, batchSize);
+    }
+    else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
+      found = _edgesTo->lookupByKeyContinue(next, batchSize);
+    }
+    else {
+      TRI_ASSERT(false);
+    }
+    if (found != nullptr && found->size() != 0) {
+      next = found->back();
+    }
+    else {
+      next = nullptr;
+    }
+  }
+
+  if (found != nullptr) {
+    for (auto& v : *found) {
+      callback(v);
+    }
+
+    delete found;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief provides a size hint for the edge index
 ////////////////////////////////////////////////////////////////////////////////
         

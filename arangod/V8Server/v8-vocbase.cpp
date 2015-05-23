@@ -3565,8 +3565,7 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_NEIGHBORS"), JS_QueryNeighbors, true);
 
 
-
-  TRI_InitV8replication(isolate, context, server, vocbase, loader, threadNumber, v8g);
+  TRI_InitV8Replication(isolate, context, server, vocbase, loader, threadNumber, v8g);
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("COMPARE_STRING"), JS_compare_string);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("NORMALIZE_STRING"), JS_normalize_string);
