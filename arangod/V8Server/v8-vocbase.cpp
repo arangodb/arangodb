@@ -1972,6 +1972,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
 
   // Compute the path
   unique_ptr<ArangoDBPathFinder::Path> path;
+  // FIXME: This vector does not free its pointers in the end.
   vector<EdgeCollectionInfo*> edgeCollectionInfos;
   if (opts.useWeight) {
     for(auto it : edgeCollectionNames) {
@@ -1996,6 +1997,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       ));
     }
   }
+  // FIXME: This vector does not free its pointers in the end.
   vector<VertexCollectionInfo*> vertexCollectionInfos;
   for(auto it : vertexCollectionNames) {
     auto cid = resolver->getCollectionId(it);
