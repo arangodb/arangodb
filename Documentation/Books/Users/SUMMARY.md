@@ -5,6 +5,8 @@
   * [Windows](Installing/Windows.md)
   * [Compiling](Installing/Compiling.md)
   * [Upgrading](Installing/Upgrading.md)
+    * [Incompatible changes in 2.6](Upgrading/UpgradingChanges26.md)
+    * [Upgrading to 2.6](Upgrading/Upgrading26.md)
     * [Incompatible changes in 2.5](Upgrading/UpgradingChanges25.md)
     * [Upgrading to 2.5](Upgrading/Upgrading25.md)
     * [Incompatible changes in 2.4](Upgrading/UpgradingChanges24.md)
