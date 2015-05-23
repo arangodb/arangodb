@@ -2124,9 +2124,9 @@ static bool printHelo(bool useServer, bool promptError) {
   return promptError;
 }
 
-void InitCallbacks (v8::Isolate *isolate,
-                    bool useServer,
-                    eRunMode runMode) {
+static void InitCallbacks (v8::Isolate *isolate,
+                           bool useServer,
+                           eRunMode runMode) {
 
   auto context = isolate->GetCurrentContext();
   // set pretty print default: (used in print.js)
@@ -2208,9 +2208,9 @@ void InitCallbacks (v8::Isolate *isolate,
 
 }
 
-int warmupEnvironment (v8::Isolate *isolate,
-                       std::vector<string> &positionals,
-                       eRunMode runMode) {
+static int WarmupEnvironment (v8::Isolate *isolate,
+                              std::vector<string> &positionals,
+                              eRunMode runMode) {
   auto context = isolate->GetCurrentContext();
   // .............................................................................
   // read files
@@ -2268,7 +2268,7 @@ int warmupEnvironment (v8::Isolate *isolate,
   return EXIT_SUCCESS;
 }
 
-int run (v8::Isolate* isolate, eRunMode runMode, bool promptError) {
+static int Run (v8::Isolate* isolate, eRunMode runMode, bool promptError) {
   auto context = isolate->GetCurrentContext();
   bool ok = false;
   try {
@@ -2447,11 +2447,12 @@ int main (int argc, char* args[]) {
 
       promptError = printHelo(useServer, promptError);
 
-      ret = warmupEnvironment(isolate, positionals, runMode);
+      ret = WarmupEnvironment(isolate, positionals, runMode);
+
       if (ret == EXIT_SUCCESS) {
         BaseClient.openLog();
 
-        ret = run(isolate, runMode, promptError);
+        ret = Run(isolate, runMode, promptError);
       }
 
       isolate->LowMemoryNotification();

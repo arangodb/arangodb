@@ -58,7 +58,7 @@ namespace triagens {
 
         FulltextIndex (TRI_idx_iid_t,
                        struct TRI_document_collection_t*,
-                       std::vector<std::string> const&,
+                       std::string const&,
                        int);
 
         ~FulltextIndex ();
@@ -87,8 +87,12 @@ namespace triagens {
         
         int cleanup () override final;
 
-        bool isSame (char const* field, int minWordLength) const {
-          return (_minWordLength == minWordLength && _fields[0].compare(field) == 0);
+        bool isSame (std::string const& field, int minWordLength) const {
+          return (_minWordLength == minWordLength && fields()[0] == field);
+        }
+
+        TRI_fts_index_t* internals () {
+          return _fulltextIndex;
         }
 
 // -----------------------------------------------------------------------------
@@ -115,7 +119,7 @@ namespace triagens {
 /// @brief the indexed attribute (path)
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_shape_pid_t _attribute;
+        TRI_shape_pid_t _pid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the fulltext index

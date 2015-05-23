@@ -28,12 +28,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
-
 #include "Basics/JsonHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/logging.h"
+#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterComm.h"
 #include "HttpServer/HttpServer.h"
+#include "Indexes/EdgeIndex.h"
+#include "Indexes/Index.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/CollectionGuard.h"
@@ -43,10 +47,7 @@
 #include "VocBase/replication-dump.h"
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
-#include "VocBase/index.h"
 #include "Wal/LogfileManager.h"
-#include "Cluster/ClusterMethods.h"
-#include "Cluster/ClusterComm.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -1843,19 +1844,13 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   }
 
   // create a dummy primary index
-  TRI_index_t* idx = TRI_CreatePrimaryIndex(0);
+  {
+    std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(nullptr));
 
-  if (idx == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
-    errorMsg = "out of memory";
-    return TRI_ERROR_OUT_OF_MEMORY;
+    auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE);
+
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
   }
-
-  TRI_json_t* idxJson = idx->json(idx);
-  TRI_FreeIndex(idx);
-
-  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
 
   TRI_json_t* type = TRI_LookupObjectJson(parameters, "type");
   TRI_col_type_e collectionType;
@@ -1869,19 +1864,11 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   if (collectionType == TRI_COL_TYPE_EDGE) {
     // create a dummy edge index
-    idx = TRI_CreateEdgeIndex(0, new_id_tick);
+    std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(new_id_tick, nullptr));
 
-    if (idx == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
-      errorMsg = "cannot create edge index";
-      return TRI_ERROR_INTERNAL;
-    }
+    auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE);
 
-    idxJson = idx->json(idx);
-    TRI_FreeIndex(idx);
-
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
   }
 
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "indexes", indexes);
@@ -1966,7 +1953,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
-      TRI_index_t* idx = nullptr;
+      triagens::arango::Index* idx = nullptr;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
@@ -2066,7 +2053,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
     TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
     TRI_json_t* res_json = nullptr;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef,
-                     true, IndexComparator, res_json, errorMsg, 3600.0);
+                     true, triagens::arango::Index::Compare, res_json, errorMsg, 3600.0);
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not create index: " + string(TRI_errno_string(res));
       break;

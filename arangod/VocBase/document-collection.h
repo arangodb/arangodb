@@ -39,7 +39,6 @@
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
 #include "VocBase/headers.h"
-#include "VocBase/index.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
@@ -58,6 +57,7 @@ struct TRI_json_t;
 namespace triagens {
   namespace arango {
     class CapConstraint;
+    class EdgeIndex;
     class ExampleMatcher;
     class FulltextIndex;
     class GeoIndex2;
@@ -389,6 +389,7 @@ public:
   std::vector<triagens::arango::Index*> allIndexes () const;
   triagens::arango::Index* lookupIndex (TRI_idx_iid_t) const;
   triagens::arango::PrimaryIndex* primaryIndex ();
+  triagens::arango::EdgeIndex* edgeIndex ();
   triagens::arango::CapConstraint* capConstraint ();
 
   triagens::arango::CapConstraint* _capConstraint;
@@ -869,17 +870,17 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*,
 /// @brief looks up a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::CapConstraint* TRI_LookupCapConstraintDocumentCollection (TRI_document_collection_t*);
+triagens::arango::Index* TRI_LookupCapConstraintDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::CapConstraint* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t*,
-                                                                            TRI_idx_iid_t,
-                                                                            size_t,
-                                                                            int64_t,
-                                                                            bool*);
+triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t*,
+                                                                    TRI_idx_iid_t,
+                                                                    size_t,
+                                                                    int64_t,
+                                                                    bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
@@ -895,9 +896,9 @@ triagens::arango::CapConstraint* TRI_EnsureCapConstraintDocumentCollection (TRI_
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::GeoIndex2* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t*,
-                                                                    char const*,
-                                                                    bool);
+triagens::arango::Index* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t*,
+                                                                std::string const&,
+                                                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, attribute style
@@ -905,29 +906,29 @@ triagens::arango::GeoIndex2* TRI_LookupGeoIndex1DocumentCollection (TRI_document
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::GeoIndex2* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t*,
-                                                                    char const*,
-                                                                    char const*);
+triagens::arango::Index* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t*,
+                                                                std::string const&,
+                                                                std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::GeoIndex2* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t*,
-                                                                    TRI_idx_iid_t,
-                                                                    char const*,
-                                                                    bool,
-                                                                    bool*);
+triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t*,
+                                                                TRI_idx_iid_t,
+                                                                std::string const&,
+                                                                bool,
+                                                                bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::GeoIndex2* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t*,
-                                                                    TRI_idx_iid_t,
-                                                                    char const*,
-                                                                    char const*,
-                                                                    bool*);
+triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t*,
+                                                                TRI_idx_iid_t,
+                                                                std::string const&,
+                                                                std::string const&,
+                                                                bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        HASH INDEX
@@ -945,21 +946,21 @@ triagens::arango::GeoIndex2* TRI_EnsureGeoIndex2DocumentCollection (TRI_document
 /// @note The @FA{paths} must be sorted.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::HashIndex* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t*,
-                                                                    TRI_vector_pointer_t const*,
-                                                                    int,
-                                                                    bool);
+triagens::arango::Index* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t*,
+                                                                std::vector<std::string> const&,
+                                                                int,
+                                                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::HashIndex* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t*,
-                                                                    TRI_idx_iid_t,
-                                                                    TRI_vector_pointer_t const*,
-                                                                    bool,
-                                                                    bool,
-                                                                    bool*);
+triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t*,
+                                                                TRI_idx_iid_t,
+                                                                std::vector<std::string> const&,
+                                                                bool,
+                                                                bool,
+                                                                bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SKIPLIST INDEX
@@ -975,21 +976,21 @@ triagens::arango::HashIndex* TRI_EnsureHashIndexDocumentCollection (TRI_document
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::SkiplistIndex2* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t*,
-                                                                             TRI_vector_pointer_t const*,
-                                                                             int,
-                                                                             bool);
+triagens::arango::Index* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t*,
+                                                                    std::vector<std::string> const&,
+                                                                    int,
+                                                                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::SkiplistIndex2* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t*,
-                                                                             TRI_idx_iid_t,
-                                                                             TRI_vector_pointer_t const*,
-                                                                             bool,
-                                                                             bool,
-                                                                             bool*);
+triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t*,
+                                                                    TRI_idx_iid_t,
+                                                                    std::vector<std::string> const&,
+                                                                    bool,
+                                                                    bool,
+                                                                    bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    FULLTEXT INDEX
@@ -1005,19 +1006,19 @@ triagens::arango::SkiplistIndex2* TRI_EnsureSkiplistIndexDocumentCollection (TRI
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::FulltextIndex* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t*,
-                                                                            char const*,
-                                                                            int);
+triagens::arango::Index* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t*,
+                                                                    std::string const&,
+                                                                    int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::FulltextIndex* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t*,
-                                                                            TRI_idx_iid_t,
-                                                                            char const*,
-                                                                            int,
-                                                                            bool*);
+triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t*,
+                                                                    TRI_idx_iid_t,
+                                                                    std::string const&,
+                                                                    int,
+                                                                    bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

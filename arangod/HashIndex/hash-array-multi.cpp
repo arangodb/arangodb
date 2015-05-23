@@ -33,7 +33,8 @@
 #include "hash-array-multi.h"
 #include "Basics/logging.h"
 #include "Basics/fasthash.h"
-#include "HashIndex/hash-index.h"
+#include "HashIndex/hash-index-common.h"
+#include "Indexes/Index.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
 

@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FulltextIndex.h"
+#include "Basics/logging.h"
 #include "Basics/Utf8Helper.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-wordlist.h"
@@ -118,19 +119,19 @@ static bool ListTextExtractor (TRI_shaper_t* shaper,
 
 FulltextIndex::FulltextIndex (TRI_idx_iid_t iid,
                               TRI_document_collection_t* collection,
-                              std::vector<std::string> const& fields,
+                              std::string const& attribute,
                               int minWordLength) 
-  : Index(iid, fields),
+  : Index(iid, std::vector<std::string>{ attribute }),
     _collection(collection),
-    _attribute(0),
+    _pid(0),
     _fulltextIndex(nullptr),
     _minWordLength(minWordLength > 0 ? minWordLength : 1) {
   
   // look up the attribute
   TRI_shaper_t* shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  _attribute = shaper->findOrCreateAttributePathByName(shaper, fields[0].c_str());
+  _pid = shaper->findOrCreateAttributePathByName(shaper, attribute.c_str());
 
-  if (_attribute == 0) {
+  if (_pid == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
@@ -235,7 +236,7 @@ TRI_fulltext_wordlist_t* FulltextIndex::wordlist (TRI_doc_mptr_t const* document
   TRI_shaper_t* shaper = _collection->getShaper();
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &shaped, 0, _attribute, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &shaped, 0, _pid, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (! ok || shape == nullptr) {
     return nullptr;
