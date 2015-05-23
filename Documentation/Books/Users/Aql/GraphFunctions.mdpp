@@ -26,8 +26,10 @@ instead.
       EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
 
 
-- *NEIGHBORS(vertexcollection, edgecollection, startvertex, direction, edgeexamples)*:
-  Return all neighbors that are directly connected to the vertex *startvertex* as an array. 
+- *NEIGHBORS(vertexcollection, edgecollection, startvertex, direction, edgeexamples, options)*:
+  Returns `_id` values of all distinct neighbors that are directly connected to the
+  vertex *startvertex* as an array.
+  
   The possible values for *direction* are:
   - *outbound*: Return all outbound edges
   - *inbound*: Return all inbound edges
@@ -38,10 +40,20 @@ instead.
   To not restrict the result to specific connections, *edgeexamples* should be left
   unspecified.
 
+  The *options* parameter is an object and used to modify the result.
+  Available options:
+
+  * *includeData* is a boolean value to define if the returned documents should be extracted instead
+    of returning their ids only. Default *false*.
+  * *distinct* is a boolean value to define if the returned documents should be distinct. If set to
+    *false* each document is included once for every edge pointing to it. Default *true*.
+
 *Examples*
 
       NEIGHBORS(friends, friendrelations, "friends/john", "outbound")
       NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ] )
+      NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ], {includeData: true})
+      NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ], {distinct: false})
 
 
 !SECTION General-purpose traversals
@@ -329,11 +341,16 @@ instead.
     set to bound long-running searches. When a search performs as many iterations as the 
     *maxIterations* value, the search will abort with an error. If *maxIterations* is not 
     set, a server-defined value may be used.
-  - *paths*: If *true*, the result will not only contain the vertices along the shortest
-    path, but also the connecting edges. If *false*, only the encountered vertices will 
-    be returned.
-  - *distance*: An optional custom function to be used when calculating the distance 
-    between a vertex and a neighboring vertex. The expected function signature is:
+  - *includeData*: Defines if the documents found on the path should be extracted or not.
+       Default *false*, will only return the *\_id* values.
+  - *distance*: This option can have two different types of values.
+      It can either be the name of an attribute.
+      If so this specific attribute will be examined on every edge on the path and will
+      be used as a distance. In order to let this work properly you have to make sure
+      to store only numerical values in this attribute. If the attribute is not present
+      on any edge the value given in the *defaultDistance* option is used as a replacement.
+      Using a distance attribute is only allowed in combination with *defaultDistance*.
+      The second type of value for this option is a custom function with the following signature:
 
         function (config, vertex1, vertex2, edge)
 
@@ -341,9 +358,13 @@ instead.
     is expected to return a numeric value that expresses the distance between the two
     vertices. Higher values will mean higher distances, giving the connection a lower
     priority in further analysis.
-    If no custom distance function is specified, all vertices are assumed to have the
+    If this options is not specified all vertices are assumed to have the
     same distance (1) to each other. If a function name is specified, it must have been
     registered as a regular user-defined AQL function.
+
+  - *defaultDistance*: Only useful in combination with an attribute name given in *distance*.
+      If any edge does not have the attribute required for *distance* the numeric value
+      defined by this option is used.
 
   - *followEdges*: An optional array of example edge documents that the search will
     expand into. If no examples are given, the search will follow all edges. If one
@@ -403,21 +424,17 @@ instead.
     *data* attribute will be made available to the *visitor* and *filterVertices* functions in the *config.data*
     attribute.
 
-  By default, the result of the SHORTEST_PATH function is an array with the components of the 
-  shortest path. Each component is a document consisting of the following attributes:
-  - *vertex*: The vertex at the traversal point
-  - *path*: The path history for the traversal point. The path is a document with the
-    attributes *vertices* and *edges*, which are both arrays. Note that *path* is only present
-    in the result if the *paths* attribute is set in the *options*.
+  By default, the result of the SHORTEST_PATH function is an object consisting of the following attributes:
+  - *vertices*: The list of all vertices encountered on the path.
+  - *edges*: The list of all edges encountered on the path.
+  - *distance*: The total distance needed on this path. Using the given distance computation.
 
   When using a custom AQL function as a visitor, the result may have a different structure.
  
 
 *Examples*
 
-      SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
-        paths: true
-      })
+      SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound")
 
       // using a user-defined distance function
       SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
