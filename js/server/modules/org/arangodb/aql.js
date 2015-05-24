@@ -6486,6 +6486,31 @@ function FILTERED_EDGES (edges, vertex, direction, examples) {
 /// @brief return connected neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
+function useCXXforDeepNeighbors (vertexCollection, edgeCollection,
+                                 vertex, options) {
+  var l = [vertex];
+  var s = new Set();
+  s.add(vertex);
+  for (var dist = 1; dist <= options.distance; ++dist) {
+    var ll = CPP_NEIGHBORS([vertexCollection], [edgeCollection],
+                           l, {distinct: true, includeData: false,
+                               direction: options.direction});
+    var l = [];
+    for (var i = 0; i < ll.length; ++i) {
+      if (! s.has(ll[i])) {
+        l.push(ll[i]);
+        s.add(ll[i]);
+      }
+    }
+  }
+  if (options.includeData) {
+    for (var j = 0; j < l.length; ++j) {
+      l[j] = db._document(l[j]);
+    }
+  }
+  return l;
+}
+
 function AQL_NEIGHBORS (vertexCollection,
                         edgeCollection,
                         vertex,
@@ -6500,7 +6525,14 @@ function AQL_NEIGHBORS (vertexCollection,
   options.examples = examples;
   if (examples === undefined || 
       (Array.isArray(examples) && examples.length === 0)) {
-    return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, options);
+    if (typeof options.distance === "number" && options.distance > 1) {
+      return useCXXforDeepNeighbors(vertexCollection, edgeCollection, vertex,
+                                    options);
+    }
+    else {
+      return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, 
+                           options);
+    }
   }
   
   var edges = AQL_EDGES(edgeCollection, vertex, direction);
