@@ -2134,10 +2134,24 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (! args[2]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("expecting id for <startVertex>");
+  vector<string> startVertices;
+  if (args[2]->IsString()) {
+    startVertices.push_back(TRI_ObjectToString(args[2]));
   }
-  string const startVertex = TRI_ObjectToString(args[2]);
+  else if (args[2]->IsArray()) {
+    auto list = v8::Handle<v8::Array>::Cast(args[2]);
+    for (uint32_t i = 0; i < list->Length(); i++) {
+      if (list->Get(i)->IsString()) {
+        startVertices.push_back(TRI_ObjectToString(list->Get(i)));
+      }
+      else {
+        TRI_V8_THROW_TYPE_ERROR("expecting array of IDs for <startVertex>");
+      }
+    }
+  }
+  else {
+    TRI_V8_THROW_TYPE_ERROR("expecting string ID for <startVertex>");
+  }
 
   traverser::NeighborsOptions opts;
   bool includeData = false;
@@ -2224,29 +2238,45 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       colObj
     ));
   }
+  auto cleanup = [&] () -> void {
+    for (auto* p : edgeCollectionInfos) {
+      delete p;
+    }
+    for (auto* p : vertexCollectionInfos) {
+      delete p;
+    }
+  };
 
-  try {
-    opts.start = idStringToVertexId(resolver, startVertex);
-  } catch (int e) {
-    // Id string might have illegal collection name
-    trx->finish(e);
-    delete trx;
-    TRI_V8_THROW_EXCEPTION(e);
-  }
+  unordered_set<VertexId> distinctNeighbors;
   vector<VertexId> neighbors;
-  try {
-    neighbors = TRI_RunNeighborsSearch(
-      edgeCollectionInfos,
-      opts
-    );
-  } catch (int e) {
-    trx->finish(e);
-    delete trx;
-    TRI_V8_THROW_EXCEPTION(e);
+  for (auto& startVertex : startVertices) {
+    try {
+      opts.start = idStringToVertexId(resolver, startVertex);
+    } catch (int e) {
+      // Id string might have illegal collection name
+      cleanup();
+      trx->finish(e);
+      delete trx;
+      TRI_V8_THROW_EXCEPTION(e);
+    }
+    try {
+      TRI_RunNeighborsSearch(
+        edgeCollectionInfos,
+        opts,
+        distinctNeighbors,
+        neighbors
+      );
+    } catch (int e) {
+      cleanup();
+      trx->finish(e);
+      delete trx;
+      TRI_V8_THROW_EXCEPTION(e);
+    }
   }
 
   auto result = vertexIdsToV8(isolate, trx, resolver, neighbors, barriers, includeData);
 
+  cleanup();
   trx->finish(res);
   delete trx;
   TRI_V8_RETURN(result);

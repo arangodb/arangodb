@@ -64,6 +64,38 @@ struct VertexId {
   // VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
 };
 
+namespace std {
+  template<>
+  struct hash<VertexId> {
+    public:
+      size_t operator()(VertexId const& s) const {
+        size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
+        size_t h2 = TRI_FnvHashString(s.key);
+        return h1 ^ ( h2 << 1 );
+      }
+  };
+
+  template<>
+  struct equal_to<VertexId> {
+    public:
+      bool operator()(VertexId const& s, VertexId const& t) const {
+        return s.cid == t.cid && strcmp(s.key, t.key) == 0;
+      }
+  };
+
+  template<>
+    struct less<VertexId> {
+      public:
+        bool operator()(const VertexId& lhs, const VertexId& rhs) {
+          if (lhs.cid != rhs.cid) {
+            return lhs.cid < rhs.cid;
+          }
+          return strcmp(lhs.key, rhs.key) < 0;
+        }
+    };
+
+}
+
 // EdgeId and VertexId are similar here. both have a key and a cid
 typedef VertexId EdgeId; 
 
@@ -292,9 +324,11 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
 /// @brief Wrapper for the neighbors computation
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<VertexId> TRI_RunNeighborsSearch (
+void TRI_RunNeighborsSearch (
   std::vector<EdgeCollectionInfo*>& collectionInfos,
-  triagens::basics::traverser::NeighborsOptions& opts
+  triagens::basics::traverser::NeighborsOptions& opts,
+  std::unordered_set<VertexId>& distinct,
+  std::vector<VertexId>& result
 );
 
 #endif
