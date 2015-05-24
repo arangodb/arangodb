@@ -46,37 +46,6 @@ using namespace triagens::basics;
 using namespace triagens::basics::traverser;
 using namespace triagens::arango;
 
-namespace std {
-  template<>
-  struct hash<VertexId> {
-    public:
-      size_t operator()(VertexId const& s) const {
-        size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
-        size_t h2 = TRI_FnvHashString(s.key);
-        return h1 ^ ( h2 << 1 );
-      }
-  };
-
-  template<>
-  struct equal_to<VertexId> {
-    public:
-      bool operator()(VertexId const& s, VertexId const& t) const {
-        return s.cid == t.cid && strcmp(s.key, t.key) == 0;
-      }
-  };
-
-  template<>
-    struct less<VertexId> {
-      public:
-        bool operator()(const VertexId& lhs, const VertexId& rhs) {
-          if (lhs.cid != rhs.cid) {
-            return lhs.cid < rhs.cid;
-          }
-          return strcmp(lhs.key, rhs.key) < 0;
-        }
-    };
-
-}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _from Id out of mptr, we return an RValue reference
 /// to explicitly allow move semantics.
@@ -380,20 +349,22 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
   return path;
 }
 
-vector<VertexId> TRI_RunNeighborsSearch (
+void TRI_RunNeighborsSearch (
   vector<EdgeCollectionInfo*>& collectionInfos,
-  NeighborsOptions& opts
-) {
-  vector<VertexId> result;
+  NeighborsOptions& opts,
+  unordered_set<VertexId>& distinct,
+  vector<VertexId>& result) {
 
   if (opts.distinct) {
-    unordered_set<VertexId> distinct;
     if (opts.direction == TRI_EDGE_IN || opts.direction == TRI_EDGE_ANY) {
       TRI_edge_direction_e dir = TRI_EDGE_IN;
       for (auto col : collectionInfos) {
         auto edges = col->getEdges(dir, opts.start);
         for (size_t j = 0;  j < edges.size(); ++j) {
-          distinct.insert(extractFromId(edges[j]));
+          auto p = distinct.insert(extractFromId(edges[j]));
+          if (p.second) {
+            result.push_back(*p.first);
+          }
         }
       }
     }
@@ -402,11 +373,13 @@ vector<VertexId> TRI_RunNeighborsSearch (
       for (auto col : collectionInfos) {
         auto edges = col->getEdges(dir, opts.start);
         for (size_t j = 0;  j < edges.size(); ++j) {
-          distinct.insert(extractToId(edges[j]));
+          auto p = distinct.insert(extractToId(edges[j]));
+          if (p.second) {
+            result.push_back(*p.first);
+          }
         }
       }
     }
-    copy(distinct.begin(), distinct.end(), back_inserter(result));
   } else {
     if (opts.direction == TRI_EDGE_IN || opts.direction == TRI_EDGE_ANY) {
       TRI_edge_direction_e dir = TRI_EDGE_IN;
@@ -427,5 +400,4 @@ vector<VertexId> TRI_RunNeighborsSearch (
       }
     }
   }
-  return result;
 };
