@@ -6498,7 +6498,8 @@ function AQL_NEIGHBORS (vertexCollection,
   options = options || {};
   options.direction = direction;
   options.examples = examples;
-  if (examples === undefined) {
+  if (examples === undefined || 
+      (Array.isArray(examples) && examples.length === 0)) {
     return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, options);
   }
   
