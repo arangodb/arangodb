@@ -6488,6 +6488,7 @@ function FILTERED_EDGES (edges, vertex, direction, examples) {
 
 function useCXXforDeepNeighbors (vertexCollection, edgeCollection,
                                  vertex, options) {
+  var db = require("internal").db;
   var l = [vertex];
   var s = new Set();
   s.add(vertex);
