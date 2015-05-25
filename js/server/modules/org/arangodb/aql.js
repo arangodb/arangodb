@@ -6531,8 +6531,10 @@ function AQL_NEIGHBORS (vertexCollection,
                                     options);
     }
     else {
-      return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, 
-                           options);
+      var x = CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, options);
+      return x;
+      // return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, 
+        //                   options);
     }
   }
   
