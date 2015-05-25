@@ -33,6 +33,7 @@ var db = require("org/arangodb").db;
 var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
+var getRawQueryResults = helper.getRawQueryResults;
 var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,13 +57,13 @@ function ahuacatlQueryEdgesTestSuite () {
       vertex = db._create("UnitTestsAhuacatlVertex");
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
-      vertex.save({ _key: "v1" });
-      vertex.save({ _key: "v2" });
-      vertex.save({ _key: "v3" });
-      vertex.save({ _key: "v4" });
-      vertex.save({ _key: "v5" });
-      vertex.save({ _key: "v6" });
-      vertex.save({ _key: "v7" });
+      vertex.save({ _key: "v1", name: "v1" });
+      vertex.save({ _key: "v2", name: "v2" });
+      vertex.save({ _key: "v3", name: "v3" });
+      vertex.save({ _key: "v4", name: "v4" });
+      vertex.save({ _key: "v5", name: "v5" });
+      vertex.save({ _key: "v6", name: "v6" });
+      vertex.save({ _key: "v7", name: "v7" });
 
       function makeEdge (from, to) {
         edge.save("UnitTestsAhuacatlVertex/" + from, "UnitTestsAhuacatlVertex/" + to, { what: from + "->" + to });
@@ -145,85 +146,6 @@ function ahuacatlQueryEdgesTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks NEIGHBORS()
-////////////////////////////////////////////////////////////////////////////////
-
-    testNeighborsAny : function () {
-      var actual;
-      var v1 = "UnitTestsAhuacatlVertex/v1";
-      var v2 = "UnitTestsAhuacatlVertex/v2";
-      var v3 = "UnitTestsAhuacatlVertex/v3";
-      var v4 = "UnitTestsAhuacatlVertex/v4";
-      var v5 = "UnitTestsAhuacatlVertex/v5";
-      var v6 = "UnitTestsAhuacatlVertex/v6";
-      var v7 = "UnitTestsAhuacatlVertex/v7";
-      var v8 = "UnitTestsAhuacatlVertex/v8";
-      var theFox = "UnitTestsAhuacatlVertex/thefox";
-      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
-      var queryEnd = "', 'any') SORT n RETURN n";
-      
-      actual = getQueryResults(queryStart + v1 + queryEnd);
-      assertEqual(actual, [ v2, v3 ]);
-
-      actual = getQueryResults(queryStart + v2 + queryEnd);
-      assertEqual(actual, [ v1, v3, v4 ]);
-
-      // v6 and v7 are neighbors twice
-      actual = getQueryResults(queryStart + v3 + queryEnd);
-      assertEqual(actual, [ v1, v2, v4, v6, v7 ]);
-      
-      actual = getQueryResults(queryStart + v8 + queryEnd);
-      assertEqual(actual, [ ]);
-      
-      actual = getQueryResults(queryStart + v5 + queryEnd);
-      assertEqual(actual, [ ]);
-
-      actual = getQueryResults(queryStart + theFox + queryEnd);
-      assertEqual(actual, [ ]);
-      
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks NEIGHBORS()
-////////////////////////////////////////////////////////////////////////////////
-
-    testNeighborsIn : function () {
-      var actual;
-      var v1 = "UnitTestsAhuacatlVertex/v1";
-      var v2 = "UnitTestsAhuacatlVertex/v2";
-      var v3 = "UnitTestsAhuacatlVertex/v3";
-      var v4 = "UnitTestsAhuacatlVertex/v4";
-      var v5 = "UnitTestsAhuacatlVertex/v5";
-      var v6 = "UnitTestsAhuacatlVertex/v6";
-      var v7 = "UnitTestsAhuacatlVertex/v7";
-      var v8 = "UnitTestsAhuacatlVertex/v8";
-      var theFox = "UnitTestsAhuacatlVertex/thefox";
-      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
-      var queryEnd = "', 'inbound') SORT n RETURN n";
-      
-      actual = getQueryResults(queryStart + v1 + queryEnd);
-      assertEqual(actual, [ ]);
-
-      actual = getQueryResults(queryStart + v2 + queryEnd);
-      assertEqual(actual, [v1, v4]);
-      
-      actual = getQueryResults(queryStart + v3 + queryEnd);
-      assertEqual(actual, [v1, v2, v6, v7]);
-      
-      actual = getQueryResults(queryStart + v8 + queryEnd);
-      assertEqual(actual, [ ]);
-      
-      actual = getQueryResults(queryStart + v5 + queryEnd);
-      assertEqual(actual, [ ]);
-
-      actual = getQueryResults(queryStart + theFox + queryEnd);
-      assertEqual(actual, [ ]);
-      
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks EDGES()
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -255,6 +177,109 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief checks NEIGHBORS()
 ////////////////////////////////////////////////////////////////////////////////
 
+    testNeighborsAny : function () {
+      var actual;
+      var v1 = "UnitTestsAhuacatlVertex/v1";
+      var v2 = "UnitTestsAhuacatlVertex/v2";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v5 = "UnitTestsAhuacatlVertex/v5";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var v8 = "UnitTestsAhuacatlVertex/v8";
+      var theFox = "UnitTestsAhuacatlVertex/thefox";
+      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
+      var queryEnd = "', 'any') SORT n RETURN n";
+      var queryEndData = "', 'any', [], {includeData: true}) SORT n RETURN n";
+      
+      actual = getQueryResults(queryStart + v1 + queryEnd);
+      assertEqual(actual, [ v2, v3 ]);
+
+      actual = getQueryResults(queryStart + v2 + queryEnd);
+      assertEqual(actual, [ v1, v3, v4 ]);
+
+      // v6 and v7 are neighbors twice
+      actual = getQueryResults(queryStart + v3 + queryEnd);
+      assertEqual(actual, [ v1, v2, v4, v6, v7 ]);
+      
+      actual = getQueryResults(queryStart + v8 + queryEnd);
+      assertEqual(actual, [ ]);
+      
+      actual = getQueryResults(queryStart + v5 + queryEnd);
+      assertEqual(actual, [ ]);
+
+      actual = getQueryResults(queryStart + theFox + queryEnd);
+      assertEqual(actual, [ ]);
+      
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
+
+      // Inclunding Data
+      actual = getRawQueryResults(queryStart + v3 + queryEndData);
+      actual = actual.map(function(x) {
+        assertTrue(x.hasOwnProperty("_key"), "Neighbor has a _key");
+        assertTrue(x.hasOwnProperty("_rev"), "Neighbor has a _rev");
+        assertTrue(x.hasOwnProperty("_id"), "Neighbor has a _id");
+        assertTrue(x.hasOwnProperty("name"), "Neighbor has a custom attribute");
+        return x.name;
+      });
+      assertEqual(actual, ["v1", "v2", "v4", "v6", "v7"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks NEIGHBORS()
+////////////////////////////////////////////////////////////////////////////////
+
+    testNeighborsIn : function () {
+      var actual;
+      var v1 = "UnitTestsAhuacatlVertex/v1";
+      var v2 = "UnitTestsAhuacatlVertex/v2";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v5 = "UnitTestsAhuacatlVertex/v5";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var v8 = "UnitTestsAhuacatlVertex/v8";
+      var theFox = "UnitTestsAhuacatlVertex/thefox";
+      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
+      var queryEnd = "', 'inbound') SORT n RETURN n";
+      var queryEndData = "', 'inbound', [], {includeData: true}) SORT n RETURN n";
+      
+      actual = getQueryResults(queryStart + v1 + queryEnd);
+      assertEqual(actual, [ ]);
+
+      actual = getQueryResults(queryStart + v2 + queryEnd);
+      assertEqual(actual, [v1, v4]);
+      
+      actual = getQueryResults(queryStart + v3 + queryEnd);
+      assertEqual(actual, [v1, v2, v6, v7]);
+      
+      actual = getQueryResults(queryStart + v8 + queryEnd);
+      assertEqual(actual, [ ]);
+      
+      actual = getQueryResults(queryStart + v5 + queryEnd);
+      assertEqual(actual, [ ]);
+
+      actual = getQueryResults(queryStart + theFox + queryEnd);
+      assertEqual(actual, [ ]);
+      
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
+
+      // Inclunding Data
+      actual = getRawQueryResults(queryStart + v3 + queryEndData);
+      actual = actual.map(function(x) {
+        assertTrue(x.hasOwnProperty("_key"), "Neighbor has a _key");
+        assertTrue(x.hasOwnProperty("_rev"), "Neighbor has a _rev");
+        assertTrue(x.hasOwnProperty("_id"), "Neighbor has a _id");
+        assertTrue(x.hasOwnProperty("name"), "Neighbor has a custom attribute");
+        return x.name;
+      });
+      assertEqual(actual, ["v1", "v2", "v6", "v7"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks NEIGHBORS()
+////////////////////////////////////////////////////////////////////////////////
+
     testNeighborsOut : function () {
       var actual;
       var v1 = "UnitTestsAhuacatlVertex/v1";
@@ -268,6 +293,7 @@ function ahuacatlQueryEdgesTestSuite () {
       var theFox = "UnitTestsAhuacatlVertex/thefox";
       var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
       var queryEnd = "', 'outbound') SORT n RETURN n";
+      var queryEndData = "', 'outbound', [], {includeData: true}) SORT n RETURN n";
       
       actual = getQueryResults(queryStart + v1 + queryEnd);
       assertEqual(actual, [ v2, v3 ]);
@@ -288,6 +314,17 @@ function ahuacatlQueryEdgesTestSuite () {
       assertEqual(actual, [ ]);
 
       assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
+
+      // Inclunding Data
+      actual = getRawQueryResults(queryStart + v3 + queryEndData);
+      actual = actual.map(function(x) {
+        assertTrue(x.hasOwnProperty("_key"), "Neighbor has a _key");
+        assertTrue(x.hasOwnProperty("_rev"), "Neighbor has a _rev");
+        assertTrue(x.hasOwnProperty("_id"), "Neighbor has a _id");
+        assertTrue(x.hasOwnProperty("name"), "Neighbor has a custom attribute");
+        return x.name;
+      });
+      assertEqual(actual, ["v4", "v6", "v7"]);
     }
 
   };
