@@ -221,6 +221,22 @@ class SimpleEdgeExpander {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a new edge matcher object
+////////////////////////////////////////////////////////////////////////////////
+
+void ShortestPathOptions::addEdgeFilter( 
+          v8::Isolate* isolate,
+          v8::Handle<v8::Object> const& example,
+          TRI_shaper_t* shaper,
+          TRI_voc_cid_t const& cid,
+          string& errorMessage) {
+  auto it = _edgeFilter.find(cid);
+  if (it == _edgeFilter.end()) {
+    _edgeFilter.emplace(cid, new ExampleMatcher(isolate, example, shaper, errorMessage));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if an edge matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -236,22 +252,6 @@ bool ShortestPathOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) cons
     return false;
   }
   return it->second->matches(edge);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Insert a new edge matcher object
-////////////////////////////////////////////////////////////////////////////////
-
-void ShortestPathOptions::addEdgeFilter( 
-          v8::Isolate* isolate,
-          v8::Handle<v8::Object> const& example,
-          TRI_shaper_t* shaper,
-          TRI_voc_cid_t const& cid,
-          string& errorMessage) {
-  auto it = _edgeFilter.find(cid);
-  if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid, new ExampleMatcher(isolate, example, shaper, errorMessage));
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,6 +302,45 @@ bool ShortestPathOptions::matchesVertex(VertexId& v) const {
     return false;
   }
   return it->second.matcher->matches(&vertex);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        NeighborsOptions FUNCTIONS
+// -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a new edge matcher object
+////////////////////////////////////////////////////////////////////////////////
+
+void NeighborsOptions::addEdgeFilter( 
+          v8::Isolate* isolate,
+          v8::Handle<v8::Object> const& example,
+          TRI_shaper_t* shaper,
+          TRI_voc_cid_t const& cid,
+          string& errorMessage) {
+  auto it = _edgeFilter.find(cid);
+  if (it == _edgeFilter.end()) {
+    _edgeFilter.emplace(cid, new ExampleMatcher(isolate, example, shaper, errorMessage));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if an edge matches to given examples
+////////////////////////////////////////////////////////////////////////////////
+
+bool NeighborsOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
+  if (!useEdgeFilter) {
+    // Nothing to do
+    return true;
+  }
+  auto it = _edgeFilter.find(e.cid);
+  if (it == _edgeFilter.end()) {
+    // This collection does not have any object of this shape.
+    // Short circuit.
+    return false;
+  }
+  return it->second->matches(edge);
 }
 
 // -----------------------------------------------------------------------------
@@ -361,9 +400,12 @@ void TRI_RunNeighborsSearch (
       for (auto col : collectionInfos) {
         auto edges = col->getEdges(dir, opts.start);
         for (size_t j = 0;  j < edges.size(); ++j) {
-          auto p = distinct.insert(extractFromId(edges[j]));
-          if (p.second) {
-            result.push_back(*p.first);
+          EdgeId edgeId = col->extractEdgeId(edges[j]);
+          if (opts.matchesEdge(edgeId, &edges[j])) {
+            auto p = distinct.insert(extractFromId(edges[j]));
+            if (p.second) {
+              result.push_back(*p.first);
+            }
           }
         }
       }
@@ -373,9 +415,12 @@ void TRI_RunNeighborsSearch (
       for (auto col : collectionInfos) {
         auto edges = col->getEdges(dir, opts.start);
         for (size_t j = 0;  j < edges.size(); ++j) {
-          auto p = distinct.insert(extractToId(edges[j]));
-          if (p.second) {
-            result.push_back(*p.first);
+          EdgeId edgeId = col->extractEdgeId(edges[j]);
+          if (opts.matchesEdge(edgeId, &edges[j])) {
+            auto p = distinct.insert(extractToId(edges[j]));
+            if (p.second) {
+              result.push_back(*p.first);
+            }
           }
         }
       }
@@ -386,7 +431,10 @@ void TRI_RunNeighborsSearch (
       for (auto col : collectionInfos) {
         auto edges = col->getEdges(dir, opts.start);
         for (size_t j = 0;  j < edges.size(); ++j) {
-          result.push_back(extractFromId(edges[j]));
+          EdgeId edgeId = col->extractEdgeId(edges[j]);
+          if (opts.matchesEdge(edgeId, &edges[j])) {
+            result.push_back(extractFromId(edges[j]));
+          }
         }
       }
     }
@@ -395,7 +443,10 @@ void TRI_RunNeighborsSearch (
       for (auto col : collectionInfos) {
         auto edges = col->getEdges(dir, opts.start);
         for (size_t j = 0;  j < edges.size(); ++j) {
-          result.push_back(extractToId(edges[j]));
+          EdgeId edgeId = col->extractEdgeId(edges[j]);
+          if (opts.matchesEdge(edgeId, &edges[j])) {
+            result.push_back(extractToId(edges[j]));
+          }
         }
       }
     }

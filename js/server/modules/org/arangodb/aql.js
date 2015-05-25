@@ -6523,18 +6523,18 @@ function AQL_NEIGHBORS (vertexCollection,
   vertex = TO_ID(vertex, vertexCollection);
   options = options || {};
   options.direction = direction;
-  options.examples = examples;
   if (examples === undefined || 
-      (Array.isArray(examples) && examples.length === 0)) {
+      (Array.isArray(examples) && examples.length <= 1)) {
+    if (examples.length === 1) {
+      options.examples = examples[0];
+    }
     if (typeof options.distance === "number" && options.distance > 1) {
       return useCXXforDeepNeighbors(vertexCollection, edgeCollection, vertex,
                                     options);
     }
     else {
-      var x = CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, options);
-      return x;
-      // return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, 
-        //                   options);
+      return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, 
+                           options);
     }
   }
   

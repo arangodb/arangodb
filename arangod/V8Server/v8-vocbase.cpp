@@ -2155,7 +2155,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   traverser::NeighborsOptions opts;
   bool includeData = false;
-  v8::Handle<v8::Object> vertexExample;
+  v8::Handle<v8::Object> edgeExample;
 
   if (args.Length() == 4) {
     if (! args[3]->IsObject()) {
@@ -2190,6 +2190,12 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       includeData = TRI_ObjectToBoolean(options->Get(keyIncludeData));
     }
 
+    // Parse examples
+    v8::Local<v8::String> keyExamples = TRI_V8_ASCII_STRING("examples");
+    if (options->Has(keyExamples)) {
+      opts.useEdgeFilter = true;
+      edgeExample = v8::Handle<v8::Object>::Cast(options->Get(keyExamples));
+    }
   }
 
   vector<TRI_voc_cid_t> readCollections;
@@ -2249,6 +2255,21 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   unordered_set<VertexId> distinctNeighbors;
   vector<VertexId> neighbors;
+
+  if (opts.useEdgeFilter) {
+    string errorMessage;
+    for (auto it: edgeCollectionInfos) {
+      try {
+        opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(), errorMessage);
+      } catch (int e) {
+        // ELEMENT not found is expected, if there is no shape of this type in this collection
+        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          // TODO Max fragen was mit Fehlern passieren muss
+        }
+      }
+    }
+  }
+
   for (auto& startVertex : startVertices) {
     try {
       opts.start = idStringToVertexId(resolver, startVertex);
