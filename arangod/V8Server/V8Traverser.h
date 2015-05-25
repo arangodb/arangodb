@@ -184,14 +184,30 @@ namespace triagens {
       };
 
       struct NeighborsOptions {
-        TRI_edge_direction_e direction;
-        bool distinct;
-        VertexId start;
+        private:
+          std::unordered_map<TRI_voc_cid_t, triagens::arango::ExampleMatcher*> _edgeFilter;
 
-        NeighborsOptions () :
-          direction(TRI_EDGE_OUT),
-          distinct(true) {
-        }
+        public:
+          TRI_edge_direction_e direction;
+          bool distinct;
+          VertexId start;
+          bool useEdgeFilter;
+
+          NeighborsOptions () :
+            direction(TRI_EDGE_OUT),
+            distinct(true),
+            useEdgeFilter(false) {
+          }
+
+          void addEdgeFilter (
+            v8::Isolate* isolate,
+            v8::Handle<v8::Object> const& example,
+            TRI_shaper_t* shaper,
+            TRI_voc_cid_t const& cid,
+            std::string& errorMessage
+          );
+
+          bool matchesEdge (EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
 
       };
  
