@@ -1,4 +1,4 @@
-v2.6.0-beta2 (2015-05-26)
+v2.6.0-beta3 (2015-05-26)
 -------------------
 
 * changed default value of option `--database.ignore-datafile-errors` from `true` to `false`

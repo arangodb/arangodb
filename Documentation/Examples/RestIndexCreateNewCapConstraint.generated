@@ -6,7 +6,7 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1390975416", 
+  "id" : "products/1392262306", 
   "type" : "cap", 
   "unique" : false, 
   "size" : 10, 

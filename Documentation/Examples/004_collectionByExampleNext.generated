@@ -1,26 +1,26 @@
 arangosh> db.users.save({ name: "Gerhard" });
 { 
-  "_id" : "users/25467320", 
-  "_rev" : "25467320", 
-  "_key" : "25467320" 
+  "_id" : "users/28851362", 
+  "_rev" : "28851362", 
+  "_key" : "28851362" 
 }
 arangosh> db.users.save({ name: "Helmut" });
 { 
-  "_id" : "users/25729464", 
-  "_rev" : "25729464", 
-  "_key" : "25729464" 
+  "_id" : "users/29113506", 
+  "_rev" : "29113506", 
+  "_key" : "29113506" 
 }
 arangosh> db.users.save({ name: "Angela" });
 { 
-  "_id" : "users/25926072", 
-  "_rev" : "25926072", 
-  "_key" : "25926072" 
+  "_id" : "users/29310114", 
+  "_rev" : "29310114", 
+  "_key" : "29310114" 
 }
 arangosh> var a = db.users.byExample( {"name" : "Angela" } );
 arangosh> while (a.hasNext()) print(a.next());
 { 
-  "_id" : "users/25926072", 
-  "_key" : "25926072", 
-  "_rev" : "25926072", 
+  "_id" : "users/29310114", 
+  "_key" : "29310114", 
+  "_rev" : "29310114", 
   "name" : "Angela" 
 }
