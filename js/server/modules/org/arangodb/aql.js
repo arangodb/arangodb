@@ -1,6 +1,6 @@
 /*jshint strict: false, unused: false, bitwise: false */
 /*global COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
-/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS */
+/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS, Set */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions
@@ -6496,7 +6496,7 @@ function useCXXforDeepNeighbors (vertexCollection, edgeCollection,
     var ll = CPP_NEIGHBORS([vertexCollection], [edgeCollection],
                            l, {distinct: true, includeData: false,
                                direction: options.direction});
-    var l = [];
+    l = [];
     for (var i = 0; i < ll.length; ++i) {
       if (! s.has(ll[i])) {
         l.push(ll[i]);
