@@ -7777,9 +7777,8 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
   let graph = graph_module._graph(graphName);
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
   let vertexIds = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, {});
-
-  var distanceMap = AQL_GRAPH_SHORTEST_PATH(graphName, vertexIds , vertexIds, options),
-    result = {};
+  let result = {};
+  let distanceMap = AQL_GRAPH_SHORTEST_PATH(graphName, vertexIds , vertexIds, options);
   for (let k = 0; k < vertexIds.length; k++) {
     result[vertexIds[k]] = 0;
   }
@@ -7795,7 +7794,6 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
       result[v] += val;
     });
   });
-
   return result;
 }
 
