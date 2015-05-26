@@ -173,10 +173,10 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
     return false;
   }
 
-  do {
-    tv.tv_sec = (long) timeout;
-    tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
+  tv.tv_sec = (long) timeout;
+  tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
+  do {
     FD_ZERO(&fdset);
     FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
 
