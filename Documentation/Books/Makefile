@@ -63,6 +63,13 @@ book-check-leftover-docublocks:
 	  exit 1; \
 	fi
 
+book-check-markdown-leftovers:
+	@if test "`find books/Users/ -name '*.html' -exec grep -- '##' {} \; -print | wc -l`" -gt 0; then \
+		echo "found these unconverted markdown titles: "; \
+		find books/Users/ -name '*.html' -exec grep '##' {} \; -print; \
+		exit 1; \
+	fi
+
 clean: clean-md-files clean-books
 	rm -f allComments.txt
 
@@ -81,6 +88,7 @@ build-books-keep-md: md-files check-summary
 	@test -d books || mkdir books
 	make build-book NAME=Users
 	make book-check-leftover-docublocks NAME=Users
+	make book-check-markdown-leftovers NAME=Users
 
 build-book:
 	@test -d books/$(NAME) || mkdir books/$(NAME)
