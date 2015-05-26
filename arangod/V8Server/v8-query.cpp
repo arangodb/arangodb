@@ -2309,7 +2309,7 @@ static void NearQuery (SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->near(latitude, longitude, limit);
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->nearQuery(latitude, longitude, limit);
 
   if (cors != nullptr) {
     int res = StoreGeoResult(isolate, trx, collection, cors, documents, distances);
@@ -2440,7 +2440,7 @@ static void WithinQuery (SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->within(latitude, longitude, radius);
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->withinQuery(latitude, longitude, radius);
 
   if (cors != nullptr) {
     int res = StoreGeoResult(isolate, trx, collection, cors, documents, distances);

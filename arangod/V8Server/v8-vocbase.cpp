@@ -1662,7 +1662,7 @@ static ExplicitTransaction* BeginTransaction (TRI_vocbase_t* vocbase,
       AddBarrier(trx, it, barriers);
     }
   } 
-  catch (int e) {
+  catch (int&) {
     // Could not get a barrier.
     // Abort the collection and free the pointers
     trx->abort();

@@ -264,9 +264,9 @@ int GeoIndex2::remove (TRI_doc_mptr_t const* doc,
 /// @brief looks up all points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::within (double lat,
-                                   double lon,
-                                   double radius) const {
+GeoCoordinates* GeoIndex2::withinQuery (double lat,
+                                        double lon,
+                                        double radius) const {
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
@@ -278,9 +278,9 @@ GeoCoordinates* GeoIndex2::within (double lat,
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::near (double lat,
-                                 double lon,
-                                 size_t count) const {
+GeoCoordinates* GeoIndex2::nearQuery (double lat,
+                                      double lon,
+                                      size_t count) const {
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;

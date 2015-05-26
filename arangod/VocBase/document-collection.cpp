@@ -3261,7 +3261,7 @@ static int FillIndex (TRI_document_collection_t* document,
   catch (triagens::basics::Exception const& ex) {
     return ex.code();
   }
-  catch (std::bad_alloc& ex) {
+  catch (std::bad_alloc&) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   catch (...) {

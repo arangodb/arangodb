@@ -119,13 +119,13 @@ namespace triagens {
 /// @brief looks up all points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeoCoordinates* within (double, double, double) const;
+        GeoCoordinates* withinQuery (double, double, double) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeoCoordinates* near (double, double, size_t) const;
+        GeoCoordinates* nearQuery (double, double, size_t) const;
 
         bool isSame (TRI_shape_pid_t location, bool geoJson) const {
           return (_location != 0 && _location == location && _geoJson == geoJson);
