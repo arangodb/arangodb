@@ -46,7 +46,7 @@ check-docublocks:
 	fi
 
 check-summary:
-	@find . -name \*.md |grep -v books/ |sed -e "s;./Users/;;" |grep -v ^SUMMARY.md$ |grep -v ^README.md$ |sort > /tmp/is_md.txt
+	@find . -name \*.md |grep -v books/ |sed -e "s;./Users/;;" |grep -vf SummaryBlacklist.txt |sort > /tmp/is_md.txt
 	@cat Users/SUMMARY.md |sed -e "s;.*(;;" -e "s;).*;;" |sort |grep -v '# Summary' > /tmp/is_summary.txt
 	@if test "`comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l`" -ne 0; then \
 		echo "not all files are mapped to the summary!"; \
@@ -77,7 +77,7 @@ build-books: build-books-keep-md # not now: check-docublocks
 	awk '{print "ln -s index.html " $$1 "README.html"}' |\
 	bash
 
-build-books-keep-md: md-files # not now: check-summary
+build-books-keep-md: md-files check-summary
 	@test -d books || mkdir books
 	make build-book NAME=Users
 	make book-check-leftover-docublocks NAME=Users
