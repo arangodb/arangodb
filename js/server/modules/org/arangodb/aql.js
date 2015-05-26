@@ -1,4 +1,4 @@
-/*jshint strict: false, unused: false, bitwise: false */
+/*jshint strict: false, unused: false, bitwise: false, esnext: true */
 /*global COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
 /*global CPP_SHORTEST_PATH, CPP_NEIGHBORS */
 
@@ -5259,13 +5259,55 @@ function FILTER_RESTRICTION (list, restrictionList) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get all document _ids matching the given examples
+////////////////////////////////////////////////////////////////////////////////
+
+function DOCUMENT_IDS_BY_EXAMPLE (collectionList, example) {
+  var res = [ ];
+  if (example === "null" || example === null || ! example) {
+    collectionList.forEach(function (c) {
+      res = res.concat(COLLECTION(c).toArray());
+    });
+    return res;
+  }
+  if (typeof example === "string") {
+    // Assume it is an _id. Has to fail later on
+    return [ example ];
+  }
+  if (! Array.isArray(example)) {
+    example = [ example ];
+  }
+  var tmp = [ ];
+  example.forEach(function (e) {
+    if (typeof e === "string") {
+      // We have an _id already
+      res.push(e);
+    } 
+    else if (e !== null) {
+      tmp.push(e);
+    }
+  });
+  collectionList.forEach(function (c) {
+    tmp.forEach(function (e) {
+      res = res.concat(COLLECTION(c).byExample(e).toArray().map(function(t) {
+        return t._id;
+      }));
+    });
+  });
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getAllDocsByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
   var res = [ ];
   if (example === "null" || example === null || ! example) {
-    example = [ { } ];
+    collectionList.forEach(function (c) {
+      res = res.concat(COLLECTION(c).toArray());
+    });
+    return res;
   }
   if (typeof example === "string") {
     example = [ { _id : example } ];
@@ -6047,24 +6089,59 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
   if (! options) {
     options = {  };
   }
-  options.fromVertexExample = startVertexExample;
-  options.toVertexExample = endVertexExample;
+  let graph_module = require("org/arangodb/general-graph");
+  let graph = graph_module._graph(graphName);
+  let edgeCollections;
+  if (options.hasOwnProperty("edgeCollectionRestriction")) {
+    if (!Array.isArray(options.edgeCollectionRestriction)) {
+      if (typeof options.edgeCollectionRestriction === "string") {
+        edgeCollections = [options.edgeCollectionRestriction];
+      }
+    } else {
+      // TODO: Intersect?
+      edgeCollections = options.edgeCollectionRestriction;
+    }
+  } else {
+    edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
+  }
+  let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
+  let startVertices;
+  if (options.hasOwnProperty("startVertexCollectionRestriction")
+    && Array.isArray(options.startVertexCollectionRestriction)) {
+    startVertices = DOCUMENT_IDS_BY_EXAMPLE(options.startVertexCollectionRestriction, startVertexExample);
+  } else {
+    startVertices = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, startVertexExample);
+  }
+  if (startVertices.length === 0) {
+    return [];
+  }
+  let endVertices;
+  if (options.hasOwnProperty("endVertexCollectionRestriction")
+    && Array.isArray(options.endVertexCollectionRestriction)) {
+    endVertices = DOCUMENT_IDS_BY_EXAMPLE(options.endVertexCollectionRestriction, endVertexExample);
+  } else {
+    endVertices = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, endVertexExample);
+  }
+  if (endVertices.length === 0) {
+    return [];
+  }
   if (! options.direction) {
     options.direction =  'any';
   }
-
-  if (! options.algorithm) {
-    if (! IS_EXAMPLE_SET(startVertexExample) && ! IS_EXAMPLE_SET(endVertexExample)) {
-      options.algorithm = "Floyd-Warshall";
+  let res = [];
+  for (let i = 0; i < startVertices.length; ++i) {
+    for (let j = 0; j < endVertices.length; ++j) {
+      if (startVertices[i] !== endVertices[j]) {
+        let p = CPP_SHORTEST_PATH(vertexCollections, edgeCollections,
+          startVertices[i], endVertices[j], options
+        );
+        if (p !== null) {
+          res.push(p);
+        }
+      }
     }
   }
-
-  if (options.algorithm === "Floyd-Warshall") {
-    var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options, "GRAPH_SHORTEST_PATH");
-    return CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL(graph, options);
-  }
-
-  return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(graphName, options);
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6488,16 +6565,17 @@ function FILTERED_EDGES (edges, vertex, direction, examples) {
 
 function useCXXforDeepNeighbors (vertexCollection, edgeCollection,
                                  vertex, options) {
-  var db = require("internal").db;
-  var l = [vertex];
-  var s = new Set();
+ 'use strict';
+  let db = require("internal").db;
+  let l = [vertex];
+  let s = new Set();
   s.add(vertex);
-  for (var dist = 1; dist <= options.distance; ++dist) {
-    var ll = CPP_NEIGHBORS([vertexCollection], [edgeCollection],
+  for (let dist = 1; dist <= options.distance; ++dist) {
+    let ll = CPP_NEIGHBORS([vertexCollection], [edgeCollection],
                            l, {distinct: true, includeData: false,
                                direction: options.direction});
-    var l = [];
-    for (var i = 0; i < ll.length; ++i) {
+    l = [];
+    for (let i = 0; i < ll.length; ++i) {
       if (! s.has(ll[i])) {
         l.push(ll[i]);
         s.add(ll[i]);
@@ -6505,7 +6583,7 @@ function useCXXforDeepNeighbors (vertexCollection, edgeCollection,
     }
   }
   if (options.includeData) {
-    for (var j = 0; j < l.length; ++j) {
+    for (let j = 0; j < l.length; ++j) {
       l[j] = db._document(l[j]);
     }
   }
@@ -6523,23 +6601,17 @@ function AQL_NEIGHBORS (vertexCollection,
   vertex = TO_ID(vertex, vertexCollection);
   options = options || {};
   options.direction = direction;
-  if (examples === undefined || 
-      (Array.isArray(examples) && examples.length <= 1)) {
-    if (examples.length === 1) {
-      options.examples = examples[0];
-    }
-    if (typeof options.distance === "number" && options.distance > 1) {
-      return useCXXforDeepNeighbors(vertexCollection, edgeCollection, vertex,
-                                    options);
-    }
-    else {
-      return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, 
-                           options);
-    }
+  if (examples !== undefined) {
+    options.examples = examples;
   }
-  
-  var edges = AQL_EDGES(edgeCollection, vertex, direction);
-  return FILTERED_EDGES(edges, vertex, direction, examples);
+  if (typeof options.distance === "number" && options.distance > 1) {
+    return useCXXforDeepNeighbors(vertexCollection, edgeCollection, vertex,
+                                  options);
+  }
+  else {
+    return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, 
+                         options);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -2155,7 +2155,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   traverser::NeighborsOptions opts;
   bool includeData = false;
-  v8::Handle<v8::Object> edgeExample;
+  v8::Handle<v8::Value> edgeExample;
 
   if (args.Length() == 4) {
     if (! args[3]->IsObject()) {
@@ -2194,7 +2194,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     v8::Local<v8::String> keyExamples = TRI_V8_ASCII_STRING("examples");
     if (options->Has(keyExamples)) {
       opts.useEdgeFilter = true;
-      edgeExample = v8::Handle<v8::Object>::Cast(options->Get(keyExamples));
+      edgeExample = options->Get(keyExamples);
     }
   }
 

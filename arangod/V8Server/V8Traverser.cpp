@@ -315,13 +315,20 @@ bool ShortestPathOptions::matchesVertex(VertexId& v) const {
 
 void NeighborsOptions::addEdgeFilter( 
           v8::Isolate* isolate,
-          v8::Handle<v8::Object> const& example,
+          v8::Handle<v8::Value> const& example,
           TRI_shaper_t* shaper,
           TRI_voc_cid_t const& cid,
           string& errorMessage) {
   auto it = _edgeFilter.find(cid);
-  if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid, new ExampleMatcher(isolate, example, shaper, errorMessage));
+  if (example->IsArray()) {
+    if (it == _edgeFilter.end()) {
+      _edgeFilter.emplace(cid, new ExampleMatcher(isolate, v8::Handle<v8::Array>::Cast(example), shaper, errorMessage));
+    }
+  } else {
+    // Has to be Object
+    if (it == _edgeFilter.end()) {
+      _edgeFilter.emplace(cid, new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example), shaper, errorMessage));
+    }
   }
 }
 
