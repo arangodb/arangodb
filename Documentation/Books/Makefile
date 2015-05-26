@@ -46,13 +46,21 @@ check-docublocks:
 	fi
 
 check-summary:
-	@find . -name \*.md |grep -v books/ |sed -e "s;./Users/;;" |grep -v ^SUMMARY.md$ |grep -v ^README.md$ |sort > /tmp/is_md.txt
+	@find . -name \*.md |grep -v books/ |sed -e "s;./Users/;;" |grep -vf SummaryBlacklist.txt |sort > /tmp/is_md.txt
 	@cat Users/SUMMARY.md |sed -e "s;.*(;;" -e "s;).*;;" |sort |grep -v '# Summary' > /tmp/is_summary.txt
 	@if test "`comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l`" -ne 0; then \
 		echo "not all files are mapped to the summary!"; \
 		echo " files found       |    files in summary"; \
 		comm -3 /tmp/is_md.txt /tmp/is_summary.txt; \
 		exit 1; \
+	fi
+
+book-check-leftover-docublocks:
+	@if test "`grep -r \"@startDocuBlock\" --include \"*.html\" books/$(NAME) | wc -l`" -ne 0; then \
+	  echo ; \
+	  echo "@startDocuBlock markers still found in generated output files:"; \
+	  grep -rl "@startDocuBlock" --include "*.html" books/$(NAME) | sed -e "s/^/- /g"; \
+	  exit 1; \
 	fi
 
 clean: clean-md-files clean-books
@@ -69,9 +77,10 @@ build-books: build-books-keep-md # not now: check-docublocks
 	awk '{print "ln -s index.html " $$1 "README.html"}' |\
 	bash
 
-build-books-keep-md: md-files
+build-books-keep-md: md-files check-summary
 	@test -d books || mkdir books
 	make build-book NAME=Users
+	make book-check-leftover-docublocks NAME=Users
 
 build-book:
 	@test -d books/$(NAME) || mkdir books/$(NAME)
@@ -83,10 +92,4 @@ build-book:
 	cp Users/cookbookLogo.png books/Users/
 	cp Users/googlegroupsIcon.png books/Users/
 	python deprecated.py
-	@if test "`grep -r \"@startDocuBlock\" --include \"*.html\" books/Users | wc -l`" -ne 0; then \
-	  echo ; \
-	  echo "@startDocuBlock markers still found in generated output files:"; \
-	  grep -rl "@startDocuBlock" --include "*.html" books/Users | sed -e "s/^/- /g"; \
-	  exit 1; \
-	fi
 

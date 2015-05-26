@@ -495,6 +495,52 @@ exports.checkParameter = function (usage, descs, vars) {
   }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate info message for newer version(s) available
+////////////////////////////////////////////////////////////////////////////////
+
+exports.checkAvailableVersions = function (version) {
+  var console = require("console");
+  var log;
+
+  if (require("org/arangodb").isServer) {
+    log = console.info;
+  }
+  else {
+    log = internal.print;
+  }
+
+  if (version === undefined) {
+    version = internal.version;
+  }
+
+  if (version.match(/beta|alpha|preview|devel/) !== null) {
+    log("Your are using an alpha/beta/preview version ('" + version + "') of ArangoDB");
+    return;
+  }
+
+  try {
+    var u = "https://www.arangodb.com/repositories/versions.php?version=";
+    var d = internal.download(u + version, "", {timeout: 300});
+    var v = JSON.parse(d.body);
+
+    if (v.hasOwnProperty("bugfix")) {
+      log("Please note that a new bugfix version '" + v.bugfix.version + "' is available");
+    }
+
+    if (v.hasOwnProperty("minor")) {
+      log("Please note that a new minor version '" + v.minor.version + "' is available");
+    }
+
+    if (v.hasOwnProperty("major")) {
+      log("Please note that a new major version '" + v.major.version + "' is available");
+    }
+  }
+  catch (err) {
+    console.debug("cannot check for newer version: ", err.stack);
+  }
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
