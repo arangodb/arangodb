@@ -144,6 +144,8 @@ typedef enum {
   TRI_DF_MARKER_ATTRIBUTE                  = 1003,
   TRI_DF_MARKER_SHAPE                      = 1004,
 
+  TRI_DF_MARKER_BLANK                      = 1100,
+
   TRI_COL_MARKER_HEADER                    = 2000,
 /*
   TRI_DOC_MARKER_HEADER                    = 3000, // deprecated. do not use
@@ -235,14 +237,15 @@ TRI_df_scan_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_scan_entry_s {
-  TRI_voc_size_t _position;
-  TRI_voc_size_t _size;
-  TRI_voc_size_t _realSize;
-  TRI_voc_tick_t _tick;
+  TRI_voc_size_t       _position;
+  TRI_voc_size_t       _size;
+  TRI_voc_size_t       _realSize;
+  TRI_voc_tick_t       _tick;
 
   TRI_df_marker_type_t _type;
 
-  uint32_t _status;
+  uint32_t             _status;
+  char*                _diagnosis;
 }
 TRI_df_scan_entry_t;
 
@@ -739,6 +742,12 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_TruncateDatafile (char const* path, TRI_voc_size_t position);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to repair a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_TryRepairDatafile (char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the datafile

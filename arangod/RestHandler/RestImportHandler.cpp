@@ -1356,7 +1356,7 @@ bool RestImportHandler::createFromKeyValueList () {
       else {
         // raise any error
         res = TRI_ERROR_INTERNAL;
-        ++result._numErrors;
+        registerError(result, errorMsg);
       }
       
       if (res != TRI_ERROR_NO_ERROR) {

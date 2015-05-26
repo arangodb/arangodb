@@ -345,7 +345,7 @@
         }
       };
 
-      $.ajax("whoAmI", {async:false}).done(
+      $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
         function(data) {
           name = data.name;
 

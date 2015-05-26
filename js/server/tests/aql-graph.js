@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -33,6 +33,7 @@ var db = require("org/arangodb").db;
 var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
+var getRawQueryResults = helper.getRawQueryResults;
 var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,13 +57,13 @@ function ahuacatlQueryEdgesTestSuite () {
       vertex = db._create("UnitTestsAhuacatlVertex");
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
-      vertex.save({ _key: "v1" });
-      vertex.save({ _key: "v2" });
-      vertex.save({ _key: "v3" });
-      vertex.save({ _key: "v4" });
-      vertex.save({ _key: "v5" });
-      vertex.save({ _key: "v6" });
-      vertex.save({ _key: "v7" });
+      vertex.save({ _key: "v1", name: "v1" });
+      vertex.save({ _key: "v2", name: "v2" });
+      vertex.save({ _key: "v3", name: "v3" });
+      vertex.save({ _key: "v4", name: "v4" });
+      vertex.save({ _key: "v5", name: "v5" });
+      vertex.save({ _key: "v6", name: "v6" });
+      vertex.save({ _key: "v7", name: "v7" });
 
       function makeEdge (from, to) {
         edge.save("UnitTestsAhuacatlVertex/" + from, "UnitTestsAhuacatlVertex/" + to, { what: from + "->" + to });
@@ -145,62 +146,6 @@ function ahuacatlQueryEdgesTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks NEIGHBORS()
-////////////////////////////////////////////////////////////////////////////////
-
-    testNeighborsAny : function () {
-      var actual;
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v1', 'any') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v2", "v1->v2" ], [ "v3", "v1->v3" ] ]);
-
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v2', 'any') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v1", "v1->v2" ], [ "v3", "v2->v3" ], [ "v4", "v4->v2" ] ]);
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'any') SORT n.vertex._key, n.edge.what RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v1", "v1->v3"], [ "v2", "v2->v3" ], [ "v4", "v3->v4" ], [ "v6", "v3->v6" ], [ "v6", "v6->v3"], [ "v7", "v3->v7" ], [ "v7", "v7->v3" ] ]);
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v8', 'any') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ ]);
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v5', 'any') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ ]);
-
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/thefox', 'any') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ ]);
-      
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "FOR e IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'thefox/thefox', 'any') SORT n.vertex._key RETURN n.vertex._key");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks NEIGHBORS()
-////////////////////////////////////////////////////////////////////////////////
-
-    testNeighborsIn : function () {
-      var actual;
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v1', 'inbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ ]);
-
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v2', 'inbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v1", "v1->v2" ], [ "v4", "v4->v2" ] ]);
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'inbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v1", "v1->v3"], [ "v2", "v2->v3" ], [ "v6", "v6->v3"], [ "v7", "v7->v3" ] ]);
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v8', 'inbound') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ ]);
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v5', 'inbound') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ ]);
-
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/thefox', 'inbound') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ ]);
-      
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "FOR e IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'thefox/thefox', 'inbound') SORT n.vertex._key RETURN n.vertex._key");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks EDGES()
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -232,28 +177,154 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief checks NEIGHBORS()
 ////////////////////////////////////////////////////////////////////////////////
 
+    testNeighborsAny : function () {
+      var actual;
+      var v1 = "UnitTestsAhuacatlVertex/v1";
+      var v2 = "UnitTestsAhuacatlVertex/v2";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v5 = "UnitTestsAhuacatlVertex/v5";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var v8 = "UnitTestsAhuacatlVertex/v8";
+      var theFox = "UnitTestsAhuacatlVertex/thefox";
+      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
+      var queryEnd = "', 'any') SORT n RETURN n";
+      var queryEndData = "', 'any', [], {includeData: true}) SORT n RETURN n";
+      
+      actual = getQueryResults(queryStart + v1 + queryEnd);
+      assertEqual(actual, [ v2, v3 ]);
+
+      actual = getQueryResults(queryStart + v2 + queryEnd);
+      assertEqual(actual, [ v1, v3, v4 ]);
+
+      // v6 and v7 are neighbors twice
+      actual = getQueryResults(queryStart + v3 + queryEnd);
+      assertEqual(actual, [ v1, v2, v4, v6, v7 ]);
+      
+      actual = getQueryResults(queryStart + v8 + queryEnd);
+      assertEqual(actual, [ ]);
+      
+      actual = getQueryResults(queryStart + v5 + queryEnd);
+      assertEqual(actual, [ ]);
+
+      actual = getQueryResults(queryStart + theFox + queryEnd);
+      assertEqual(actual, [ ]);
+      
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
+
+      // Inclunding Data
+      actual = getRawQueryResults(queryStart + v3 + queryEndData);
+      actual = actual.map(function(x) {
+        assertTrue(x.hasOwnProperty("_key"), "Neighbor has a _key");
+        assertTrue(x.hasOwnProperty("_rev"), "Neighbor has a _rev");
+        assertTrue(x.hasOwnProperty("_id"), "Neighbor has a _id");
+        assertTrue(x.hasOwnProperty("name"), "Neighbor has a custom attribute");
+        return x.name;
+      });
+      assertEqual(actual, ["v1", "v2", "v4", "v6", "v7"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks NEIGHBORS()
+////////////////////////////////////////////////////////////////////////////////
+
+    testNeighborsIn : function () {
+      var actual;
+      var v1 = "UnitTestsAhuacatlVertex/v1";
+      var v2 = "UnitTestsAhuacatlVertex/v2";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v5 = "UnitTestsAhuacatlVertex/v5";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var v8 = "UnitTestsAhuacatlVertex/v8";
+      var theFox = "UnitTestsAhuacatlVertex/thefox";
+      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
+      var queryEnd = "', 'inbound') SORT n RETURN n";
+      var queryEndData = "', 'inbound', [], {includeData: true}) SORT n RETURN n";
+      
+      actual = getQueryResults(queryStart + v1 + queryEnd);
+      assertEqual(actual, [ ]);
+
+      actual = getQueryResults(queryStart + v2 + queryEnd);
+      assertEqual(actual, [v1, v4]);
+      
+      actual = getQueryResults(queryStart + v3 + queryEnd);
+      assertEqual(actual, [v1, v2, v6, v7]);
+      
+      actual = getQueryResults(queryStart + v8 + queryEnd);
+      assertEqual(actual, [ ]);
+      
+      actual = getQueryResults(queryStart + v5 + queryEnd);
+      assertEqual(actual, [ ]);
+
+      actual = getQueryResults(queryStart + theFox + queryEnd);
+      assertEqual(actual, [ ]);
+      
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
+
+      // Inclunding Data
+      actual = getRawQueryResults(queryStart + v3 + queryEndData);
+      actual = actual.map(function(x) {
+        assertTrue(x.hasOwnProperty("_key"), "Neighbor has a _key");
+        assertTrue(x.hasOwnProperty("_rev"), "Neighbor has a _rev");
+        assertTrue(x.hasOwnProperty("_id"), "Neighbor has a _id");
+        assertTrue(x.hasOwnProperty("name"), "Neighbor has a custom attribute");
+        return x.name;
+      });
+      assertEqual(actual, ["v1", "v2", "v6", "v7"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks NEIGHBORS()
+////////////////////////////////////////////////////////////////////////////////
+
     testNeighborsOut : function () {
       var actual;
+      var v1 = "UnitTestsAhuacatlVertex/v1";
+      var v2 = "UnitTestsAhuacatlVertex/v2";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v5 = "UnitTestsAhuacatlVertex/v5";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var v8 = "UnitTestsAhuacatlVertex/v8";
+      var theFox = "UnitTestsAhuacatlVertex/thefox";
+      var queryStart = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, '";
+      var queryEnd = "', 'outbound') SORT n RETURN n";
+      var queryEndData = "', 'outbound', [], {includeData: true}) SORT n RETURN n";
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v1', 'outbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v2", "v1->v2" ], [ "v3", "v1->v3" ] ]);
+      actual = getQueryResults(queryStart + v1 + queryEnd);
+      assertEqual(actual, [ v2, v3 ]);
 
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v2', 'outbound') SORT n.vertex._key RETURN [ n.vertex._key, n.edge.what ]");
-      assertEqual(actual, [ [ "v3", "v2->v3" ] ]);
+      actual = getQueryResults(queryStart + v2 + queryEnd);
+      assertEqual(actual, [ v3 ]);
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ "v4", "v6", "v7" ]);
+      actual = getQueryResults(queryStart + v3 + queryEnd);
+      assertEqual(actual, [ v4, v6, v7 ]);
       
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v8', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
-      assertEqual(actual, [ ]);
-      
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v5', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + v8 + queryEnd);
       assertEqual(actual, [ ]);
 
-      actual = getQueryResults("FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/thefox', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + v5 + queryEnd);
       assertEqual(actual, [ ]);
       
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "FOR e IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, 'thefox/thefox', 'outbound') SORT n.vertex._key RETURN n.vertex._key");
+      actual = getQueryResults(queryStart + theFox + queryEnd);
+      assertEqual(actual, [ ]);
+
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
+
+      // Inclunding Data
+      actual = getRawQueryResults(queryStart + v3 + queryEndData);
+      actual = actual.map(function(x) {
+        assertTrue(x.hasOwnProperty("_key"), "Neighbor has a _key");
+        assertTrue(x.hasOwnProperty("_rev"), "Neighbor has a _rev");
+        assertTrue(x.hasOwnProperty("_id"), "Neighbor has a _id");
+        assertTrue(x.hasOwnProperty("name"), "Neighbor has a custom attribute");
+        return x.name;
+      });
+      assertEqual(actual, ["v4", "v6", "v7"]);
     }
 
   };
@@ -736,25 +807,64 @@ function ahuacatlQueryShortestPathTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path using dijkstra
+/// @brief shortest path using dijkstra default config
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraOutbound : function () {
       var config = {
-        paths: true,
         _sort: true
       };
 
-      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN [ p.vertex._key, p.path.vertices[*]._key, p.path.edges[*]._key ]", { "@v" : vn, "@e" : en }); 
+      var actual = getQueryResults("RETURN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ")", { "@v" : vn, "@e" : en }); 
 
-      assertEqual([ 
-        [ "A", [ "A" ], [ ] ],
-        [ "D", [ "A", "D" ], [ "AD" ] ],
-        [ "E", [ "A", "D", "E" ], [ "AD", "DE" ] ],
-        [ "G", [ "A", "D", "E", "G" ], [ "AD", "DE", "EG" ] ],
-        [ "H", [ "A", "D", "E", "G", "H" ], [ "AD", "DE", "EG", "GH" ] ]
+      assertEqual([
+        {
+          vertices: [
+            vn + "/A",
+            vn + "/D",
+            vn + "/E",
+            vn + "/G",
+            vn + "/H"
+          ],
+          edges: [
+            en + "/AD",
+            en + "/DE",
+            en + "/EG",
+            en + "/GH"
+          ],
+          distance: 4
+        }
       ], actual);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path using dijkstra with includeData: true
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraOutboundIncludeData : function () {
+      var config = {
+        _sort: true,
+        includeData: true
+      };
+
+      var actual = getQueryResults("RETURN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ")", { "@v" : vn, "@e" : en }); 
+
+      assertEqual(actual.length, 1);
+      assertTrue(actual[0].hasOwnProperty("vertices"));
+      assertTrue(actual[0].hasOwnProperty("edges"));
+      var vertices = actual[0].vertices;
+      var edges = actual[0].edges;
+      assertEqual(vertices.length, edges.length + 1);
+      var correct = ["A", "D", "E", "G", "H"];
+      for (var i = 0; i < edges.length; ++i) {
+        assertEqual(vertices[i]._key, correct[i]);
+        assertEqual(vertices[i].name, correct[i]);
+        assertEqual(vertices[i + 1].name, correct[i + 1]);
+        assertEqual(edges[i]._key, correct[i] + correct[i + 1]);
+        assertEqual(edges[i].what, correct[i] + "->" + correct[i + 1]);
+      }
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortest path using dijkstra
@@ -765,9 +875,9 @@ function ahuacatlQueryShortestPathTestSuite () {
         _sort: true
       };
 
-      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/H', '" + vn + "/A', 'inbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+      var actual = getQueryResults("RETURN SHORTEST_PATH(@@v, @@e, '" + vn + "/H', '" + vn + "/A', 'inbound', " + JSON.stringify(config) + ").vertices", { "@v" : vn, "@e" : en }); 
 
-      assertEqual([ "H", "G", "E", "D", "A" ], actual);
+      assertEqual([[ vn + "/H", vn + "/G", vn + "/E", vn + "/D", vn + "/A" ]], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -860,18 +970,27 @@ function ahuacatlQueryShortestPathTestSuite () {
       });
 
       var config = {
-        paths: true,
         _sort: true
       };
 
-      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN [ p.vertex._key, p.path.vertices[*]._key, p.path.edges[*]._key ]", { "@v" : vn, "@e" : en }); 
-
-      assertEqual([ 
-        [ "A", [ "A" ], [ ] ],
-        [ "D", [ "A", "D" ], [ "AD" ] ],
-        [ "E", [ "A", "D", "E" ], [ "AD", "DE" ] ],
-        [ "G", [ "A", "D", "E", "G" ], [ "AD", "DE", "EG" ] ],
-        [ "H", [ "A", "D", "E", "G", "H" ], [ "AD", "DE", "EG", "GH" ] ]
+      var actual = getQueryResults("RETURN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ")", { "@v" : vn, "@e" : en }); 
+      assertEqual([
+        {
+          vertices: [
+            vn + "/A",
+            vn + "/D",
+            vn + "/E",
+            vn + "/G",
+            vn + "/H"
+          ],
+          edges: [
+            en + "/AD",
+            en + "/DE",
+            en + "/EG",
+            en + "/GH"
+          ],
+          distance: 4
+        }
       ], actual);
     },
 
@@ -884,13 +1003,12 @@ function ahuacatlQueryShortestPathTestSuite () {
       vertexCollection.save({ _key: "J", name: "J" });
 
       var config = {
-        paths: true,
         _sort: true
       };
 
-      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/J', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+      var actual = getQueryResults("RETURN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/J', 'outbound', " + JSON.stringify(config) + ")", { "@v" : vn, "@e" : en }); 
 
-      assertEqual([ ], actual);
+      assertEqual([ null ], actual);
     }
 
   };

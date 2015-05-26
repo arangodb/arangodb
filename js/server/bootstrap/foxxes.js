@@ -74,7 +74,12 @@
             }
           } 
           catch (e) {
-            require('console').error(e.stack);
+            // we are intentionally ignoring errors here.
+            // they can be caused by the _sessions collection not
+            // being present in the current database etc.
+            // if this happens, no sessions will be entered into the
+            // session cache at startup, which is tolerable
+            require('console').debug(e.stack);
           }
         }
       }

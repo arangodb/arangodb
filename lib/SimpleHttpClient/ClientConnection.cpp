@@ -228,7 +228,7 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_t* bytesWritten) {
+bool ClientConnection::writeClientConnection (void const* buffer, size_t length, size_t* bytesWritten) {
   if (! checkSocket()) {
     return false;
   }

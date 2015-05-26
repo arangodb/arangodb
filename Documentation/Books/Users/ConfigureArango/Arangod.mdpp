@@ -24,11 +24,11 @@
 @startDocuBlock serverDisableReplicationApplier
 
 
-!SUBSECTION Timeout
+!SUBSECTION Keep-alive timeout
 @startDocuBlock keep_alive_timeout
 
 
-!SUBSECTION Default Api
+!SUBSECTION Default api compatibility
 @startDocuBlock serverDefaultApi
 
 
@@ -52,7 +52,7 @@
 @startDocuBlock serverSSLProtocol
 
 
-!SUBSECTION SSL Cache
+!SUBSECTION SSL cache
 @startDocuBlock serverSSLCache
 
 
@@ -60,23 +60,36 @@
 @startDocuBlock serverSSLOptions
 
 
-!SUBSECTION SSL Cipher
+!SUBSECTION SSL cipher
 @startDocuBlock serverSSLCipher
 
 
-!SUBSECTION Backlog
+!SUBSECTION Backlog size
 @startDocuBlock serverBacklog
 
 
-!SUBSECTION Disable statistics 
+!SUBSECTION Disable server statistics 
 
-`--disable-statistics value`
+`--server.disable-statistics value`
 
 If this option is *value* is *true*, then ArangoDB's statistics gathering
 is turned off. Statistics gathering causes regular CPU activity so using this
 option to turn it off might relieve heavy-loaded instances.
 Note: this option is only available when ArangoDB has not been compiled with
 the option *--disable-figures*.
+
+
+!SUBSECTION Session timeout
+@startDocuBlock SessionTimeout
+
+
+!SUBSECTION Foxx queues scope
+@startDocuBlock foxxQueuesSystemOnly
+
+
+!SUBSECTION Foxx queues poll interval
+@startDocuBlock foxxQueuesPollInterval
+
 
 !SUBSECTION Directory
 @startDocuBlock DatabaseDirectory
@@ -102,15 +115,15 @@ the option *--disable-figures*.
 @startDocuBlock indexThreads
 
 
-!SUBSECTION V8 Contexts
+!SUBSECTION V8 contexts
 @startDocuBlock v8Contexts
 
 
-!SUBSECTION Frequency
+!SUBSECTION Garbage collection frequency (time-based)
 @startDocuBlock jsGcFrequency
 
 
-!SUBSECTION Startup gc-interval
+!SUBSECTION Garbage collection interval (request-based)
 @startDocuBlock jsStartupGcInterval
 
 

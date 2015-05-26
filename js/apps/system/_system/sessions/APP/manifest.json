@@ -1,6 +1,6 @@
 {
   "name": "sessions",
-  "description": "Session storage for Foxx.",
+  "description": "Internal Session storage for Foxx.",
   "author": "ArangoDB GmbH",
   "version": "1.0.0",
   "license": "Apache License, Version 2.0",
@@ -18,10 +18,6 @@
     }
   ],
 
-  "controllers": {
-    "/": "app.js"
-  },
-
   "exports": {
     "sessionStorage": "storage.js"
   },
@@ -30,21 +26,13 @@
 
   "lib": ".",
 
-  "setup": "setup.js",
+  "scripts": {
+    "setup": "setup.js"
+  },
 
   "tests": "test/**",
 
   "configuration": {
-    "timeToLive": {
-      "description": "Session expiry timeout in milliseconds.",
-      "type": "integer",
-      "default": 604800000
-    },
-    "ttlType": {
-      "description": "Timestamp session expiry should be checked against.",
-      "type": "string",
-      "default": "created"
-    },
     "sidTimestamp": {
       "description": "Append a timestamp to the session id.",
       "type": "boolean",

@@ -36,6 +36,7 @@
 #include "Basics/StringUtils.h"
 
 using namespace std;
+using namespace triagens;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8Completer

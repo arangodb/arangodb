@@ -71,6 +71,12 @@ namespace triagens {
                                std::string const& username);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clears all sid entries for a database
+////////////////////////////////////////////////////////////////////////////////
+
+        static void clearSid (std::string const& database);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clears a sid
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -81,8 +87,8 @@ namespace triagens {
 /// @brief gets the last access time
 ////////////////////////////////////////////////////////////////////////////////
 
-        static uint64_t accessSid (std::string const& database,
-                                   std::string const& sid);
+        static double accessSid (std::string const& database,
+                                 std::string const& sid);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -135,6 +141,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         rest::HttpResponse::HttpResponseCode authenticate ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time to live for server sessions
+/// @startDocuBlock SessionTimeout
+/// `--server.session-timeout value`
+///
+/// The timeout for web interface sessions, using for authenticating requests
+/// to the web interface (/_admin/aardvark) and related areas.
+///
+/// Sessions are only used when authentication is turned on.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        static double ServerSessionTtl;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

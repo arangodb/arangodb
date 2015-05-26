@@ -34,7 +34,7 @@ var QUEUE_MANAGER_PERIOD = 1000, // in ms
   tasks = require('org/arangodb/tasks'),
   db = require('org/arangodb').db,
   SkipAttempts = 10;
-  
+
 var runInDatabase = function () {
   db._executeTransaction({
     collections: {
@@ -80,19 +80,22 @@ var runInDatabase = function () {
   });
 };
 
-exports.manage = function () {
+exports.manage = function (runInSystemOnly) {
   var dbName = db._name();
 
-  var databases = db._listDatabases();
+  var databases;
+  if (runInSystemOnly) {
+    // only run jobs found in queues of _system database
+    databases = [ "_system" ];
+  } 
+  else {
+    // check all databases
+    databases = db._listDatabases();
+  }
 
   // loop over all databases
   for (var i = 0;  i < databases.length;  ++i) {
     var current = databases[i];
-
-    if (current !== '_system') {
-      // TODO: FIXME and remove this restriction
-      continue;
-    }
 
     try {
       // switch into dedicated database
@@ -141,12 +144,28 @@ exports.manage = function () {
 };
 
 exports.run = function () {
+  var options = require("internal").options();
+
+  // restrict Foxx queues to _system database only?
+  var runInSystemOnly = true; // default value
+  if (options.hasOwnProperty("server.foxx-queues-system-only")) {
+    runInSystemOnly = options["server.foxx-queues-system-only"];
+  }
+ 
+  // wakeup/poll interval for Foxx queues
+  var period = QUEUE_MANAGER_PERIOD / 1000; // default queue poll interval
+  if (options.hasOwnProperty("server.foxx-queues-poll-interval")) {
+    period = options["server.foxx-queues-poll-interval"];
+  }
+
   db._jobs.updateByExample({status: 'progress'}, {status: 'pending'});
+
   return tasks.register({
-    command: function () {
-      require('org/arangodb/foxx/queues/manager').manage();
+    command: function (params) {
+      require('org/arangodb/foxx/queues/manager').manage(params.runInSystemOnly);
     },
-    period: QUEUE_MANAGER_PERIOD / 1000,
-    isSystem: true
+    period: period,
+    isSystem: true,
+    params: { runInSystemOnly: runInSystemOnly }
   });
 };

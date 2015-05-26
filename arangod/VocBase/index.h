@@ -105,7 +105,6 @@ struct TRI_index_t {
   double (*selectivityEstimate) (TRI_index_t const*);
   size_t (*memory) (TRI_index_t const*);
   TRI_json_t* (*json) (TRI_index_t const*);
-  void (*removeIndex) (TRI_index_t*, struct TRI_document_collection_t*);
 
   // .........................................................................................
   // the following functions are called for document/collection administration

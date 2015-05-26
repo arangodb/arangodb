@@ -2013,6 +2013,18 @@ static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///   * *offset*: initial offset value for *autoincrement* key generator.
 ///     Not used for other key generator types.
 ///
+/// * *indexBuckets*: number of buckets into which indexes using a hash
+///   table are split. The default is 1 and this number has to be a
+///   power of 2 and less than or equal to 1024. 
+///   
+///   For very large collections
+///   one should increase this to avoid long pauses when the hash table
+///   has to be resized, since buckets are resized individually. For 
+///   example, 64 might be a sensible value for a collection with 100
+///   000 000 documents. Currently, only the edge index respects this
+///   value. Changes (see below) are applied when the collection is
+///   loaded the next time.
+///
 /// In a cluster setup, the result will also contain the following attributes:
 ///
 /// * *numberOfShards*: the number of shards of the collection.
@@ -2029,6 +2041,9 @@ static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///   after the data was synced to disk.
 ///
 /// * *journalSize* : The size of the journal in bytes.
+///
+/// * *indexBuckets* : See above, changes are only applied when the
+///   collection is loaded the next time.
 ///
 /// *Note*: it is not possible to change the journal size after the journal or
 /// datafile has been created. Changing this parameter will only effect newly
@@ -3353,6 +3368,47 @@ static void JS_TruncateDatafileVocbaseCol (const v8::FunctionCallbackInfo<v8::Va
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_TryRepairDatafileVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("tryRepairDatafile(<datafile>)");
+  }
+
+  string path = TRI_ObjectToString(args[0]);
+
+  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+
+  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
+      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
+  }
+
+  bool result = TRI_TryRepairDatafile(path.c_str());
+
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+  if (result) {
+    TRI_V8_RETURN_TRUE();
+  }
+    
+  TRI_V8_RETURN_FALSE();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the type of a collection
 /// @startDocuBlock collectionType
 /// `collection.type()`
@@ -4294,8 +4350,9 @@ static void JS_DatafileScanVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>
   v8::Handle<v8::Array> entries = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("entries"), entries);
 
-  for (size_t i = 0;  i < TRI_LengthVector(&scan._entries);  ++i) {
-    TRI_df_scan_entry_t* entry = (TRI_df_scan_entry_t*) TRI_AtVector(&scan._entries, i);
+  size_t const n = TRI_LengthVector(&scan._entries);
+  for (size_t i = 0;  i < n;  ++i) {
+    auto entry = static_cast<TRI_df_scan_entry_t const*>(TRI_AddressVector(&scan._entries, i));
 
     v8::Handle<v8::Object> o = v8::Object::New(isolate);
 
@@ -4305,6 +4362,10 @@ static void JS_DatafileScanVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>
     o->Set(TRI_V8_ASCII_STRING("tick"),     V8TickId(isolate, entry->_tick));
     o->Set(TRI_V8_ASCII_STRING("type"),     v8::Number::New(isolate, (int) entry->_type));
     o->Set(TRI_V8_ASCII_STRING("status"),   v8::Number::New(isolate, (int) entry->_status));
+
+    if (entry->_diagnosis != nullptr) {
+      o->Set(TRI_V8_ASCII_STRING("diagnosis"), TRI_V8_ASCII_STRING(entry->_diagnosis));
+    }
 
     entries->Set((uint32_t) i, o);
   }
@@ -4353,7 +4414,7 @@ void TRI_InitV8collection (v8::Handle<v8::Context> context,
 #endif  
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("count"), JS_CountVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafiles"), JS_DatafilesVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafileScan"), JS_DatafileScanVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafileScan"), JS_DatafileScanVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("document"), JS_DocumentVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"), JS_DropVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("exists"), JS_ExistsVocbaseCol);
@@ -4371,7 +4432,8 @@ void TRI_InitV8collection (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("save"), JS_InsertVocbaseCol); // note: save is now an alias for insert
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("status"), JS_StatusVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("TRUNCATE"), JS_TruncateVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("truncateDatafile"), JS_TruncateDatafileVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("truncateDatafile"), JS_TruncateDatafileVocbaseCol, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("tryRepairDatafile"), JS_TryRepairDatafileVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("type"), JS_TypeVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("unload"), JS_UnloadVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("update"), JS_UpdateVocbaseCol);

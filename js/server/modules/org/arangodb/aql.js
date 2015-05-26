@@ -1,5 +1,6 @@
 /*jshint strict: false, unused: false, bitwise: false */
 /*global COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
+/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS, Set */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions
@@ -5570,15 +5571,66 @@ function AQL_SHORTEST_PATH (vertexCollection,
                             direction,
                             params) {
   'use strict';
+  var opts = {
+    direction: direction
+  };
+  params = params || {};
+  var vertexCollections = [vertexCollection];
+  var edgeCollections = [edgeCollection];
+  // JS Fallback cases. CPP implementation not working here
+  if (params.hasOwnProperty("distance") ||
+      params.hasOwnProperty("filterVertices") ||
+      params.hasOwnProperty("followEdges") ||
+    require("org/arangodb/cluster").isCoordinator()
+  ) {
+    params = SHORTEST_PATH_PARAMS(params);
+    var a = TRAVERSAL_FUNC("SHORTEST_PATH",
+                           TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
+                           TO_ID(startVertex, vertexCollection),
+                           TO_ID(endVertex, vertexCollection),
+                           direction,
+                           params);
+                         return a;
+  }
+  // Fall through to new CPP version.
+  if (params.hasOwnProperty("distance") && params.hasOwnProperty("defaultDistance")) {
+    opts.distance = params.distance;
+    opts.defaultDistance = params.defaultDistance;
+  }
+  if (params.hasOwnProperty("includeData")) {
+    opts.includeData = params.includeData;
+  }
+  if (params.hasOwnProperty("followEdges")) {
+    opts.followEdges = params.followEdges;
+  }
+  if (params.hasOwnProperty("filterVertices")) {
+    opts.filterVertices = params.filterVertices;
+  }
+  var i, c;
+  if (params.hasOwnProperty("vertexCollections") && Array.isArray(params.vertexCollections)) {
+    for (i = 0; i < params.vertexCollections.length; ++i) {
+      c = params.vertexCollections[i];
+      if (typeof c === "string") {
+        vertexCollections.push(c);
+      }
+    }
+  }
+  if (params.hasOwnProperty("edgeCollections") && Array.isArray(params.edgeCollections)) {
+    for (i = 0; i < params.edgeCollections.length; ++i) {
+      c = params.edgeCollections[i];
+      if (typeof c === "string") {
+        edgeCollections.push(c);
+      }
+    }
+  }
 
-  params = SHORTEST_PATH_PARAMS(params);
-
-  return TRAVERSAL_FUNC("SHORTEST_PATH",
-                        TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
-                        TO_ID(startVertex, vertexCollection),
-                        TO_ID(endVertex, vertexCollection),
-                        direction,
-                        params);
+  // newRes has the format: { vertices: [Doc], edges: [Doc], distance: Number}
+  // oldResult had the format: [ {vertex: Doc} ]
+  return CPP_SHORTEST_PATH(vertexCollections, edgeCollections,
+    TO_ID(startVertex, vertexCollection),
+    TO_ID(endVertex, vertexCollection),
+    opts
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6434,14 +6486,58 @@ function FILTERED_EDGES (edges, vertex, direction, examples) {
 /// @brief return connected neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
+function useCXXforDeepNeighbors (vertexCollection, edgeCollection,
+                                 vertex, options) {
+  var db = require("internal").db;
+  var l = [vertex];
+  var s = new Set();
+  s.add(vertex);
+  for (var dist = 1; dist <= options.distance; ++dist) {
+    var ll = CPP_NEIGHBORS([vertexCollection], [edgeCollection],
+                           l, {distinct: true, includeData: false,
+                               direction: options.direction});
+    l = [];
+    for (var i = 0; i < ll.length; ++i) {
+      if (! s.has(ll[i])) {
+        l.push(ll[i]);
+        s.add(ll[i]);
+      }
+    }
+  }
+  if (options.includeData) {
+    for (var j = 0; j < l.length; ++j) {
+      l[j] = db._document(l[j]);
+    }
+  }
+  return l;
+}
+
 function AQL_NEIGHBORS (vertexCollection,
                         edgeCollection,
                         vertex,
                         direction,
-                        examples) {
+                        examples,
+                        options) {
   'use strict';
 
   vertex = TO_ID(vertex, vertexCollection);
+  options = options || {};
+  options.direction = direction;
+  if (examples === undefined || 
+      (Array.isArray(examples) && examples.length <= 1)) {
+    if (Array.isArray(examples) && examples.length === 1) {
+      options.examples = examples[0];
+    }
+    if (typeof options.distance === "number" && options.distance > 1) {
+      return useCXXforDeepNeighbors(vertexCollection, edgeCollection, vertex,
+                                    options);
+    }
+    else {
+      return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, 
+                           options);
+    }
+  }
+  
   var edges = AQL_EDGES(edgeCollection, vertex, direction);
   return FILTERED_EDGES(edges, vertex, direction, examples);
 }

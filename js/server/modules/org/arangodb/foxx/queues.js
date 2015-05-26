@@ -41,22 +41,11 @@ function failImmutable(name) {
   };
 }
 
-var queueMap = Object.create(null);
-var jobMap = Object.create(null);
+var queueMap = { };
+var jobMap = { };
 
 var queues = {
-  _jobTypes: Object.create(null),
-  get: function (key) {
-
-    var queueKey = db._name() + ":" + key;
-    if (!queueMap[queueKey]) {
-      if (!db._queues.exists(key)) {
-        throw new Error('Queue does not exist: ' + key);
-      }
-      queueMap[queueKey] = new Queue(key);
-    }
-    return queueMap[queueKey];
-  },
+  _jobTypes: { },
   _clearCache: function () {
     try {
       KEY_SET("queue-control", "skip", 0);
@@ -64,6 +53,19 @@ var queues = {
     catch (err) {
       // ignore error if key does not exist
     }
+  },
+  get: function (key) {
+    var dbName = db._name();
+    if (! queueMap.hasOwnProperty(dbName)) {
+      queueMap[dbName] = { };
+    }
+    if (! queueMap[dbName][key]) {
+      if (!db._queues.exists(key)) {
+        throw new Error('Queue does not exist: ' + key);
+      }
+      queueMap[dbName][key] = new Queue(key);
+    }
+    return queueMap[dbName][key];
   },
   create: function (key, maxWorkers) {
     try {
@@ -78,11 +80,14 @@ var queues = {
       }
     }
     this._clearCache();
-    var queueKey = db._name() + ":" + key;
-    if (!queueMap[queueKey]) {
-      queueMap[queueKey] = new Queue(key);
+    var dbName = db._name();
+    if (! queueMap.hasOwnProperty(dbName)) {
+      queueMap[dbName] = { };
     }
-    return queueMap[queueKey];
+    if (! queueMap[dbName].hasOwnProperty(key)) {
+      queueMap[dbName][key] = new Queue(key);
+    }
+    return queueMap[dbName][key];
   },
   delete: function (key) {
     var result = false;
@@ -114,7 +119,13 @@ var queues = {
       throw new Error('Schema must be a joi schema!');
     }
     var cfg = _.extend({maxFailures: 0}, opts);
-    queues._jobTypes[type] = cfg;
+
+    // _jobTypes are database-specific
+    var dbName = db._name();
+    if (! queues._jobTypes.hasOwnProperty(dbName)) {
+      queues._jobTypes[dbName] = { };
+    }
+    queues._jobTypes[dbName][type] = cfg;
   }
 };
 
@@ -212,8 +223,13 @@ _.extend(Queue.prototype, {
     if (!opts) {
       opts = {};
     }
+    // _jobTypes are database-specific
+    var dbName = db._name();
+    if (! queues._jobTypes.hasOwnProperty(dbName)) {
+      queues._jobTypes[dbName] = { };
+    }
+    type = queues._jobTypes[dbName][name];
 
-    type = queues._jobTypes[name];
     if (type !== undefined) {
       if (type.schema) {
         result = type.schema.validate(data);
@@ -254,10 +270,15 @@ _.extend(Queue.prototype, {
     if (!id.match(/^_jobs\//)) {
       id = '_jobs/' + id;
     }
-    if (!jobMap[id]) {
-      jobMap[id] = new Job(id);
+    // jobs are database-specific
+    var dbName = db._name();
+    if (! jobMap.hasOwnProperty(dbName)) {
+      jobMap[dbName] = { };
     }
-    return jobMap[id];
+    if (! jobMap[dbName][id]) {
+      jobMap[dbName][id] = new Job(id);
+    }
+    return jobMap[dbName][id];
   },
   delete: function (id) {
     return db._executeTransaction({

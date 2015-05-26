@@ -319,9 +319,11 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
-    _ignoreDatafileErrors(true),
+    _ignoreDatafileErrors(false),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
+    _foxxQueuesSystemOnly(true),
+    _foxxQueuesPollInterval(1.0),
     _server(nullptr),
     _queryRegistry(nullptr),
     _pairForAql(nullptr),
@@ -594,6 +596,9 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
+    ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
+    ("server.foxx-queues-system-only", &_foxxQueuesSystemOnly, "run Foxx queues in _system database only")
+    ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")
   ;
 
   bool disableStatistics = false;
@@ -982,7 +987,9 @@ int ArangoServer::startupServer () {
   // for a cluster coordinator, the users are loaded at a later stage;
   // the kickstarter will trigger a bootstrap process
   //
-  if (role != ServerState::ROLE_COORDINATOR && role != ServerState::ROLE_PRIMARY && role != ServerState::ROLE_SECONDARY) {
+  if (role != ServerState::ROLE_COORDINATOR && 
+      role != ServerState::ROLE_PRIMARY && 
+      role != ServerState::ROLE_SECONDARY) {
 
     // if the authentication info could not be loaded, but authentication is turned on,
     // then we refuse to start

@@ -1,39 +1,31 @@
 /*global applicationContext */
 'use strict';
 
-var _ = require('underscore'),
-  joi = require('joi'),
-  internal = require('internal'),
-  arangodb = require('org/arangodb'),
-  db = arangodb.db,
-  Foxx = require('org/arangodb/foxx'),
-  errors = require('./errors'),
-  cfg = applicationContext.configuration,
-  isSystem = (applicationContext.mount.indexOf('/_system/') === 0),
-  Session = Foxx.Model.extend({
-    schema: {
-      _key: joi.string().required(),
-      uid: joi.string().optional(),
-      sessionData: joi.object().required(),
-      userData: joi.object().required(),
-      created: joi.number().integer().required(),
-      lastAccess: joi.number().integer().required(),
-      lastUpdate: joi.number().integer().required()
-    }
-  }),
-  sessions;
+var _ = require('underscore');
+var joi = require('joi');
+var internal = require('internal');
+var arangodb = require('org/arangodb');
+var db = arangodb.db;
+var Foxx = require('org/arangodb/foxx');
+var errors = require('./errors');
+var cfg = applicationContext.configuration;
 
-if (isSystem) {
-  sessions = new Foxx.Repository(
-    db._collection('_sessions'),
-    {model: Session}
-  );
-} else {
-  sessions = new Foxx.Repository(
-    applicationContext.collection('sessions'),
-    {model: Session}
-  );
-}
+var Session = Foxx.Model.extend({
+  schema: {
+    _key: joi.string().required(),
+    uid: joi.string().optional(),
+    sessionData: joi.object().required(),
+    userData: joi.object().required(),
+    created: joi.number().integer().required(),
+    lastAccess: joi.number().integer().required(),
+    lastUpdate: joi.number().integer().required()
+  }
+});
+
+var sessions = new Foxx.Repository(
+  db._collection('_sessions'),
+  {model: Session}
+);
 
 function generateSessionId() {
   var sid = '';
@@ -48,17 +40,17 @@ function generateSessionId() {
 }
 
 function createSession(sessionData) {
-  var sid = generateSessionId(cfg),
-    now = Number(new Date()),
-    session = new Session({
-      _key: sid,
-      uid: null,
-      sessionData: sessionData || {},
-      userData: {},
-      created: now,
-      lastAccess: now,
-      lastUpdate: now
-    });
+  var sid = generateSessionId(cfg);
+  var now = Number(new Date());
+  var session = new Session({
+    _key: sid,
+    uid: null,
+    sessionData: sessionData || {},
+    userData: {},
+    created: now,
+    lastAccess: now,
+    lastUpdate: now
+  });
   sessions.save(session);
   return session;
 }
@@ -74,12 +66,8 @@ function getSession(sid) {
       try {
         session = sessions.byId(sid);
 
-        if (isSystem) {
-          var accessTime = internal.accessSid(sid);
-          if (session.get('lastAccess') < accessTime) {
-            session.set('lastAccess', accessTime);
-          }
-        }
+        var accessTime = internal.accessSid(sid);
+        session.set('lastAccess', accessTime);
 
         session.enforceTimeout();
       } catch (err) {
@@ -92,11 +80,13 @@ function getSession(sid) {
           throw err;
         }
       }
+
       var now = Number(new Date());
       sessions.collection.update(session.forDB(), {
         lastAccess: now
       });
       session.set('lastAccess', now);
+      session.save();
     }
   });
   return session;
@@ -128,56 +118,40 @@ _.extend(Session.prototype, {
     return this.getTTL() === 0;
   },
   getTTL: function () {
-    if (!cfg.timeToLive) {
-      return Infinity;
-    }
     return Math.max(0, this.getExpiry() - Date.now());
   },
   getExpiry: function () {
-    if (!cfg.timeToLive) {
-      return Infinity;
-    }
-    var prop = cfg.ttlType;
-    if (!prop || !this.get(prop)) {
-      prop = 'created';
-    }
-    return this.get(prop) + cfg.timeToLive;
+    return this.get('lastAccess') + (Number(internal.options()['server.session-timeout']) * 1000);
   },
   setUser: function (user) {
     var session = this;
     if (user) {
       session.set('uid', user.get('_id'));
       session.set('userData', user.get('userData'));
-      if (isSystem) {
-        internal.createSid(session.get('_key'), user.get('user'));
-      }
+      internal.createSid(session.get('_key'), user.get('user'));
     } else {
       delete session.attributes.uid;
       session.set('userData', {});
-      if (isSystem) {
-        internal.cleanSid(session.get('_key'));
-      }
+      internal.clearSid(session.get('_key'));
     }
     return session;
   },
   save: function () {
-    var session = this,
-      now = Number(new Date());
+    var session = this;
+    var now = Number(new Date());
     session.set('lastAccess', now);
     session.set('lastUpdate', now);
     sessions.replace(session);
     return session;
   },
   delete: function () {
-    var session = this,
-      now = Number(new Date());
+    var session = this;
+    var now = Number(new Date());
     session.set('lastAccess', now);
     session.set('lastUpdate', now);
     try {
       var key = session.get('_key');
-      if (isSystem) {
-        internal.clearSid(key);
-      }
+      internal.clearSid(key);
       deleteSession(key);
       return true;
     } catch (e) {

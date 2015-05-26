@@ -44,7 +44,7 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-std::atomic<V8LineEditor*> triagens::arango::serverConsole(nullptr);
+std::atomic<triagens::V8LineEditor*> triagens::arango::serverConsole(nullptr);
 triagens::basics::Mutex triagens::arango::serverConsoleMutex;
 
 // -----------------------------------------------------------------------------

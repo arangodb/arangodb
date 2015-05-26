@@ -12,11 +12,11 @@ An edge definition is always a directed relation of a graph. Each graph can have
 
 !SUBSECTION Initialize the list
 
-@startDocuBlock JSF_general_graph_edge_definitions 
+@startDocuBlock JSF_general_graph_edge_definitions
 
 !SUBSECTION Extend the list
 
-@startDocuBlock JSF_general_graph_extend_edge_definitions 
+@startDocuBlock JSF_general_graph_extend_edge_definitions
 
 !SUBSUBSECTION Relation
 
@@ -128,7 +128,7 @@ it will be removed from the set of orphan collection automatically.
 
 !SUBSECTION Save
 
-@startDocuBlock JSF_general_graph_edge_collection_save 
+@startDocuBlock JSF_general_graph_edge_collection_save
 
 !SUBSECTION Replace
 

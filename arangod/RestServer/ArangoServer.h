@@ -454,25 +454,32 @@ namespace triagens {
 /// @startDocuBlock databaseIgnoreDatafileErrors
 /// `--database.ignore-datafile-errors boolean`
 ///
-/// If set to `false`, CRC mismatch errors in collection datafiles will lead
-/// to a collection not being loaded at all. If a collection needs to be loaded
-/// during WAL recovery, the WAL recovery will also abort (if not forced with
-/// `--wal.ignore-recovery-errors true`). Setting this flag to `false` protects
-/// users from unintentionally using a collection with corrupted datafiles, from
-/// which only a subset of the original data can be recovered.
+/// If set to `false`, CRC mismatch and other errors in collection datafiles 
+/// will lead to a collection not being loaded at all. The collection in this
+/// case becomes unavailable. If such collection needs to be loaded during WAL 
+/// recovery, the WAL recovery will also abort (if not forced with option
+/// `--wal.ignore-recovery-errors true`). 
 ///
-/// If set to `true`, CRC mismatch errors in collection datafiles will lead to
-/// the datafile being partially loaded. All data up to until the mismatch will
-/// be loaded. This will enable users to continue with a collection datafiles
-/// that are corrupted, but will result in only a partial load of the data.
-/// The WAL recovery will still abort when encountering a collection with a 
-/// corrupted datafile, at least if `--wal.ignore-recovery-errors` is not set to
-/// `true`.
+/// Setting this flag to `false` protects users from unintentionally using a 
+/// collection with corrupted datafiles, from which only a subset of the 
+/// original data can be recovered. Working with such collection could lead
+/// to data loss and follow up errors.
+/// In order to access such collection, it is required to inspect and repair
+/// the collection datafile with the datafile debugger (arango-dfdb).
 ///
-/// The default value is *true*, so for collections with corrupted datafiles
-/// there might be partial data loads once the WAL recovery has finished. If
-/// the WAL recovery will need to load a collection with a corrupted datafile,
-/// it will still stop when using the default values.
+/// If set to `true`, CRC mismatch and other errors during the loading of a
+/// collection will lead to the datafile being partially loaded, up to the
+/// position of the first error. All data up to until the invalid position
+/// will be loaded. This will enable users to continue with collection datafiles
+/// even if they are corrupted, but this will result in only a partial load 
+/// of the original data and potential follow up errors. The WAL recovery 
+/// will still abort when encountering a collection with a corrupted datafile, 
+/// at least if `--wal.ignore-recovery-errors` is not set to `true`.
+///
+/// The default value is *false*, so collections with corrupted datafiles will
+/// not be loaded at all, preventing partial loads and follow up errors. However,
+/// if such collection is required at server startup, during WAL recovery, the
+/// server will abort the recovery and refuse to start.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -511,6 +518,40 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _disableQueryTracking;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restrict the Foxx queues to run in the _system database only
+/// @startDocuBlock foxxQueuesSystemOnly
+/// `--server.foxx-queues-system-only flag`
+///
+/// If *true*, the Foxx queues will be handled and jobs in them executed only
+/// for queues and jobs in the _system database. Queues and jobs of all other
+/// databases will be ignored then.
+///
+/// The default is *true*. It should only be changed if Foxx queues are used
+/// with other databases than *_system*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+    
+        bool _foxxQueuesSystemOnly;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief poll interval for Foxx queues
+/// @startDocuBlock foxxQueuesPollInterval
+/// `--server.foxx-queues-poll-interval value`
+///
+/// The poll interval for the Foxx queues manager. The value is specified in
+/// seconds. Lower values will mean more immediate and more frequent Foxx queue 
+/// job execution, but will make the queue thread wake up and query the
+/// queues more often. When set to a low value, the queue thread might cause
+/// CPU load.
+///
+/// The default is *1* second. If Foxx queues are not used, then this value
+/// may be increased to make the queues thread wake up less.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        double _foxxQueuesPollInterval;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests

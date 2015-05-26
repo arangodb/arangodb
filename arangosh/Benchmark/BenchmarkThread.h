@@ -55,7 +55,7 @@ namespace triagens {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-    class BenchmarkThread : public Thread {
+    class BenchmarkThread : public triagens::basics::Thread {
 
       public:
 
@@ -64,7 +64,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         BenchmarkThread (BenchmarkOperation* operation,
-                         ConditionVariable* condition,
+                         basics::ConditionVariable* condition,
                          void (*callback) (),
                          int threadNumber,
                          const unsigned long batchSize,
@@ -104,7 +104,7 @@ namespace triagens {
             _time(0.0),
             _verbose(verbose) {
 
-          _errorHeader = StringUtils::tolower(rest::HttpResponse::BatchErrorHeader);
+          _errorHeader = basics::StringUtils::tolower(rest::HttpResponse::BatchErrorHeader);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,7 +176,7 @@ namespace triagens {
 
           // wait for start condition to be broadcasted
           {
-            ConditionLocker guard(_startCondition);
+            basics::ConditionLocker guard(_startCondition);
             guard.wait();
           }
 
@@ -223,7 +223,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::string rewriteLocation (void* data, const std::string& location) {
-          BenchmarkThread* t = static_cast<BenchmarkThread*>(data);
+          auto t = static_cast<arangob::BenchmarkThread*>(data);
 
           TRI_ASSERT(t != nullptr);
 
@@ -248,7 +248,7 @@ namespace triagens {
           static const char boundary[] = "XXXarangob-benchmarkXXX";
           size_t blen = strlen(boundary);
 
-          StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
+          basics::StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
           int ret = batchPayload.reserve(numOperations * 1024);
           if (ret != TRI_ERROR_NO_ERROR) {
             LOG_FATAL_AND_EXIT("Failed to reserve %lu bytes for %lu batch operations: %d",
@@ -351,7 +351,7 @@ namespace triagens {
             auto it = headers.find(_errorHeader);
 
             if (it != headers.end()) {
-              uint32_t errorCount =  StringUtils::uint32((*it).second);
+              uint32_t errorCount =  basics::StringUtils::uint32((*it).second);
 
               if (errorCount > 0) {
                 _operationsCounter->incFailures(errorCount);
@@ -458,13 +458,13 @@ namespace triagens {
 /// @brief the operation to benchmark
 ////////////////////////////////////////////////////////////////////////////////
 
-        BenchmarkOperation* _operation;
+        arangob::BenchmarkOperation* _operation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-        ConditionVariable* _startCondition;
+        basics::ConditionVariable* _startCondition;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start callback function
@@ -494,7 +494,7 @@ namespace triagens {
 /// @brief benchmark counter
 ////////////////////////////////////////////////////////////////////////////////
 
-        BenchmarkCounter<unsigned long>* _operationsCounter;
+        arangob::BenchmarkCounter<unsigned long>* _operationsCounter;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to use

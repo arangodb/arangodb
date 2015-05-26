@@ -37,36 +37,36 @@
 
 #include <v8.h>
 
-using namespace triagens;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8Completer
 // -----------------------------------------------------------------------------
 
-class V8Completer : public Completer {
+namespace triagens {
 
-  enum {
-    NORMAL,             // start
-    NORMAL_1,           // from NORMAL: seen a single /
-    DOUBLE_QUOTE,       // from NORMAL: seen a single "
-    DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
-    SINGLE_QUOTE,       // from NORMAL: seen a single '
-    SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
-    BACKTICK,           // from NORMAL: seen a single `
-    BACKTICK_ESC,       // from BACKTICK: seen a backslash
-    MULTI_COMMENT,      // from NORMAL_1: seen a *
-    MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
-    SINGLE_COMMENT      // from NORMAL_1; seen a /
-  }
-  state;
+  class V8Completer : public Completer {
 
-  virtual bool isComplete (std::string const&, 
-                           size_t lineno, 
-                           size_t column);
+    enum {
+      NORMAL,             // start
+      NORMAL_1,           // from NORMAL: seen a single /
+      DOUBLE_QUOTE,       // from NORMAL: seen a single "
+      DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
+      SINGLE_QUOTE,       // from NORMAL: seen a single '
+      SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
+      BACKTICK,           // from NORMAL: seen a single `
+      BACKTICK_ESC,       // from BACKTICK: seen a backslash
+      MULTI_COMMENT,      // from NORMAL_1: seen a *
+      MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
+      SINGLE_COMMENT      // from NORMAL_1; seen a /
+    }
+    state;
 
-  virtual void getAlternatives (char const*, 
-                                std::vector<std::string>&);
-};
+    virtual bool isComplete (std::string const&, 
+                            size_t lineno, 
+                            size_t column);
+
+    virtual void getAlternatives (char const*, 
+                                  std::vector<std::string>&);
+  };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class V8LineEditor
@@ -76,28 +76,28 @@ class V8Completer : public Completer {
 /// @brief line editor
 ////////////////////////////////////////////////////////////////////////////////
 
-class V8LineEditor : public LineEditor {
+  class V8LineEditor : public LineEditor {
 
-  V8LineEditor (LineEditor const&) = delete;
-  V8LineEditor& operator= (LineEditor const&) = delete;
+    V8LineEditor (LineEditor const&) = delete;
+    V8LineEditor& operator= (LineEditor const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-  public:
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    V8LineEditor (v8::Handle<v8::Context>, std::string const& history);
+      V8LineEditor (v8::Handle<v8::Context>, std::string const& history);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    ~V8LineEditor ();
+      ~V8LineEditor ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -107,24 +107,26 @@ class V8LineEditor : public LineEditor {
 /// @brief     creates a concrete Shell with the correct parameter (Completer!!)
 ////////////////////////////////////////////////////////////////////////////////
 
-  protected:
+    protected:
 
-    virtual void initializeShell ();
+      virtual void initializeShell ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-  private:
+    private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context
 ////////////////////////////////////////////////////////////////////////////////
 
-    v8::Handle<v8::Context> _context;
+      v8::Handle<v8::Context> _context;
 
-    V8Completer _completer;
-};
+      V8Completer _completer;
+  };
+
+}
 
 #endif
 

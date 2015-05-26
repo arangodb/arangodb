@@ -1157,12 +1157,11 @@ static void JS_Exists (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a file of any type or directory exists
-/// @startDocuBlock JS_Exists
+/// @brief sets file permissions of specified files (non windows only)
+/// @startDocuBlock JS_Chmod
 /// `fs.exists(path)`
 ///
-/// Returns true if a file (of any type) or a directory exists at a given
-/// path. If the file is a broken symbolic link, returns false.
+/// Returns true on success.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1172,7 +1171,7 @@ static void JS_ChMod (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   // extract arguments
   if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("chmod(<path><mode>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("chmod(<path>, <mode>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
@@ -2168,12 +2167,13 @@ static void JS_MoveFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a directory structure
 /// @startDocuBlock JS_CopyDirectoryRecursive
-/// `fs.xcopy(source, destination)`
+/// `fs.copyRecursive(source, destination)`
 ///
-/// Copies *source* to destination. Failure to copy the file, or
-/// specifying a directory for destination when source is a file will throw an
-/// exception. Likewise, specifying a directory as source and destination will
-/// fail.
+/// Copies *source* to *destination*. 
+/// Exceptions will be thrown on:
+///  - Failure to copy the file
+///  - specifying a directory for destination when source is a file
+///  - specifying a directory as source and destination
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2183,7 +2183,7 @@ static void JS_CopyRecursive (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   // extract two arguments
   if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("xcopy(<source>, <destination>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("copyRecursive(<source>, <destination>)");
   }
 
   string source = TRI_ObjectToString(args[0]);
@@ -2226,6 +2226,62 @@ static void JS_CopyRecursive (const v8::FunctionCallbackInfo<v8::Value>& args) {
       " ] : " + 
       std::to_string(errorNo) + 
       ": " + 
+      systemErrorStr;
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errMsg);
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies a file into a target file
+/// @startDocuBlock JS_CopyFile
+/// `fs.copyFile(source, destination)`
+///
+/// Copies *source* to destination. If Destination is a directory, a file 
+/// of the same name will be created in that directory, else the copy will get the
+/// specified filename.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_CopyFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // extract two arguments
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("copyFile(<source>, <destination>)");
+  }
+
+  string source = TRI_ObjectToString(args[0]);
+  string destination = TRI_ObjectToString(args[1]);
+
+  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
+
+  if (! TRI_IsRegularFile(source.c_str())) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("can only copy regular files.");
+  }
+
+  std::string systemErrorStr;
+
+  if (destinationIsDirectory) {
+    const char* file = strrchr(source.c_str(), TRI_DIR_SEPARATOR_CHAR);
+    if (file == nullptr) {
+      if (destination[destination.length()] == TRI_DIR_SEPARATOR_CHAR) {
+        destination += TRI_DIR_SEPARATOR_CHAR;
+      }
+      destination += source;
+    }
+    else {
+      destination += file;
+    }
+  }
+  if (!TRI_CopyFile(source, destination, systemErrorStr)) {
+    std::string errMsg = "cannot copy file [" +
+      source +
+      "] to [" +
+      destination +
+      " ] : " + 
       systemErrorStr;
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errMsg);
   }
@@ -4414,6 +4470,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY_RECURSIVE"), JS_MakeDirectoryRecursive);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MOVE"), JS_MoveFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_COPY_RECURSIVE"), JS_CopyRecursive);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_COPY_FILE"), JS_CopyFile);
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MTIME"), JS_MTime);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE"), JS_Remove);

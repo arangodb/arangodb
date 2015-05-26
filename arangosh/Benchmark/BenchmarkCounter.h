@@ -35,8 +35,6 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 
-using namespace triagens::basics;
-
 namespace triagens {
   namespace arangob {
 
@@ -177,7 +175,7 @@ namespace triagens {
 /// @brief mutex protecting the counter
 ////////////////////////////////////////////////////////////////////////////////
 
-        Mutex _mutex;
+        triagens::basics::Mutex _mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current value

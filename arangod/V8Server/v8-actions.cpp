@@ -1477,9 +1477,9 @@ static void JS_AccessSid (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_MEMORY(); 
   }
 
-  uint64_t t = VocbaseContext::accessSid(v8g->_vocbase->_name, *sidStr);
+  double lastAccess = VocbaseContext::accessSid(v8g->_vocbase->_name, *sidStr);
 
-  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(t)));
+  TRI_V8_RETURN(v8::Number::New(isolate, lastAccess));
 }
 
 // -----------------------------------------------------------------------------

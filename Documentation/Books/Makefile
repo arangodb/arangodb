@@ -10,15 +10,57 @@ md-files:
 
 clean-md-files:
 	@for file in $(basename $(MD_FILES)); do rm -v $${file}.md; done
+	rm -f  `find -name \*.mdpp |sed "s;.mdpp;.md;"`
 
 clean-books:
 	@rm -rv books
 
+check-docublocks:
+	grep -R '^@startDocuBlock' . |grep -v allComments.txt > /tmp/rawindoc.txt
+	cat /tmp/rawindoc.txt | sed "s;.*ck ;;" |sort -u > /tmp/indoc.txt
+	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js |grep -v aardvark > /tmp/rawinprog.txt
+	cat /tmp/rawinprog.txt |sed "s;.*ck ;;" |sort > /tmp/inprog_raw.txt
+	@cat /tmp/inprog_raw.txt |sort -u > /tmp/inprog.txt
+	@if test "`cat /tmp/inprog.txt |wc -l`" -ne "`cat /tmp/inprog_raw.txt|wc -l`"; then \
+		echo "Duplicate entry found in the source trees:"; \
+		comm -3 /tmp/inprog_raw.txt /tmp/inprog.txt; \
+		exit 1; \
+	fi
+	if test "`comm -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l `" -ne 0; then \
+		echo "Not all blocks were found on both sides:"; \
+		echo "Documentation      |     Programcode:"; \
+		comm -3 /tmp/indoc.txt /tmp/inprog.txt; \
+		if test "`comm -2 -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l`" -gt 0; then \
+			echo "Documentation: "; \
+			for grepit in `comm -2 -3 /tmp/indoc.txt /tmp/inprog.txt`; do \
+				grep "$$grepit" /tmp/rawindoc.txt; \
+			done; \
+		fi; \
+		if test "`comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l`" -gt 0; then \
+			echo "Programm code:"; \
+			for grepit in `comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt`; do \
+				grep "$$grepit" /tmp/rawinprog.txt | sed "s;/// @startDocuBlock;\t\t;"; \
+			done; \
+		fi; \
+		exit 1; \
+	fi
+
+check-summary:
+	@find . -name \*.md |grep -v books/ |sed -e "s;./Users/;;" |grep -v ^SUMMARY.md$ |grep -v ^README.md$ |sort > /tmp/is_md.txt
+	@cat Users/SUMMARY.md |sed -e "s;.*(;;" -e "s;).*;;" |sort |grep -v '# Summary' > /tmp/is_summary.txt
+	@if test "`comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l`" -ne 0; then \
+		echo "not all files are mapped to the summary!"; \
+		echo " files found       |    files in summary"; \
+		comm -3 /tmp/is_md.txt /tmp/is_summary.txt; \
+		exit 1; \
+	fi
+
 clean: clean-md-files clean-books
+	rm -f allComments.txt
 
 .PHONY: build-books
 
-build-books: build-books-keep-md
+build-books: build-books-keep-md # not now: check-docublocks
 	make clean-md-files
 	echo "generate backwards compatibility symlinks:"
 	cd books/Users; pwd; \

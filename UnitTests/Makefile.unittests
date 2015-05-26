@@ -348,6 +348,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/associative-multi-pointer-test.cpp \
 	UnitTests/Basics/associative-synced-test.cpp \
 	UnitTests/Basics/skiplist-test.cpp \
+	UnitTests/Basics/priorityqueue-test.cpp \
 	UnitTests/Basics/string-buffer-test.cpp \
 	UnitTests/Basics/string-utf8-normalize-test.cpp \
 	UnitTests/Basics/string-utf8-test.cpp \

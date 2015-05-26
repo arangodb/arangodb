@@ -57,7 +57,24 @@ static triagens::basics::Mutex SidLock;
 /// @brief sid cache
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::unordered_map<std::string, std::unordered_map<std::string, std::pair<std::string, uint64_t>>> SidCache;
+#ifdef _WIN32
+// turn off warnings about too long type name for debug symbols blabla in MSVC only...
+#pragma warning(disable : 4503)
+#endif
+
+typedef std::unordered_map<std::string, std::pair<std::string, double>> DatabaseSessionsType;
+
+static std::unordered_map<std::string, DatabaseSessionsType> SidCache;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               static initializers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time-to-live for aardvark server sessions
+////////////////////////////////////////////////////////////////////////////////
+
+double VocbaseContext::ServerSessionTtl = 60.0 * 60.0 * 2; // 2 hours session timeout
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -76,12 +93,22 @@ void VocbaseContext::createSid (std::string const& database,
   auto it = SidCache.find(database);
 
   if (it == SidCache.end()) {
-    it = SidCache.emplace(database, std::unordered_map<std::string, std::pair<std::string, uint64_t>>()).first;
+    it = SidCache.emplace(database, DatabaseSessionsType()).first;
   }
 
   // now insert a database-specific sid
-  uint64_t t = static_cast<uint64_t>(TRI_microtime() * 1000.0);
-  (*it).second.emplace(sid, std::make_pair(username, t));
+  double const now = TRI_microtime() * 1000.0;
+  (*it).second.emplace(sid, std::make_pair(username, now));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears all sid entries for a database
+////////////////////////////////////////////////////////////////////////////////
+
+void VocbaseContext::clearSid (std::string const& database) {
+  MUTEX_LOCKER(SidLock);
+  
+  SidCache.erase(database); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,22 +133,22 @@ void VocbaseContext::clearSid (std::string const& database,
 /// @brief gets the last access time
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t VocbaseContext::accessSid (std::string const& database,
-                                    std::string const& sid) {
+double VocbaseContext::accessSid (std::string const& database,
+                                  std::string const& sid) {
   MUTEX_LOCKER(SidLock);
 
   auto it = SidCache.find(database);
 
   if (it == SidCache.end()) {
     // database not found. no need to go on
-    return 0;
+    return 0.0;
   }
 
   auto const& sids = (*it).second;
   auto it2 = sids.find(sid);
 
   if (it2 == sids.end()) {
-    return 0;
+    return 0.0;
   }
 
   return (*it2).second.second;
@@ -167,15 +194,18 @@ VocbaseContext::~VocbaseContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VocbaseContext::useClusterAuthentication () const {
-  if (ServerState::instance()->isDBServer()) {
+  auto role = ServerState::instance()->getRole();
+
+  if (ServerState::instance()->isDBServer(role)) {
     return true;
   }
 
-  string s(_request->requestPath());
+  if (ServerState::instance()->isCoordinator(role)) {
+    std::string s(_request->requestPath());
 
-  if (ServerState::instance()->isCoordinator() &&
-      (s == "/_api/shard-comm" || s == "/_admin/shutdown")) {
-    return true;
+    if (s == "/_api/shard-comm" || s == "/_admin/shutdown") {
+      return true;
+    }
   }
 
   return false;
@@ -217,7 +247,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   }
 #endif
 
-  const char* path = _request->requestPath();
+  char const* path = _request->requestPath();
 
   if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.
@@ -262,11 +292,23 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
       if (it2 != sids.end()) {
         _request->setUser((*it2).second.first);
-        // update date of last access
-        (*it2).second.second = static_cast<uint64_t>(TRI_microtime() * 1000.0);
+        double const now = TRI_microtime() * 1000.0;
+        // fetch last access date of session
+        double const lastAccess = (*it2).second.second;
+
+        // check if session has expired
+        if (lastAccess + (ServerSessionTtl * 1000.0) < now) {
+          // session has expired
+          sids.erase(sid);
+          return HttpResponse::UNAUTHORIZED;
+        }
+
+        (*it2).second.second = now;
         return HttpResponse::OK;
       }
     }
+
+    // no cookie found. fall-through to regular HTTP authentication
   }
 
   char const* auth = _request->header("authorization", found);

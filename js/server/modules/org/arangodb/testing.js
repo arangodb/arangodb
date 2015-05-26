@@ -130,8 +130,8 @@ var optionsDefaults = { "cluster": false,
                         "portOffset": 0,
                         "valgrindargs": [],
                         "valgrindXmlFileBase" : "",
-                        "extraargs": []
-
+                        "extraargs": [],
+                        "coreDirectory": "/var/tmp"
 
 };
 var allTests =
@@ -245,7 +245,6 @@ function makeTestingArgs (appDir) {
            "database.force-sync-properties": "false",
            "javascript.app-path":            appDir,
            "javascript.startup-directory":   fs.join(topDir, "js"),
-           "ruby.modules-path":              fs.join(topDir,"mr", "common", "modules"),
            "server.threads":                 "20",
            "javascript.v8-contexts":         "5",
            "server.disable-authentication":  "true",
@@ -475,12 +474,20 @@ function readImportantLogLines(logPath) {
   return importantLines;
 }
 
-function copy (src, dst) {
-  var fs = require("fs");
-  var buffer = fs.readBuffer(src);
+function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
+  var command;
+  command  = '(';
+  command += "printf 'bt full\\n thread apply all bt\\n';";
+  command += "sleep 10;";
+  command += "echo quit;";
+  command += "sleep 2";
+  command += ") | gdb " + storeArangodPath + " " + options.coreDirectory + "/*core*" + pid + '*';
+  var args = ['-c', command];
+  print(JSON.stringify(args));
+  executeExternalAndWait("/bin/bash", args);
 
-  fs.write(dst, buffer);
 }
+
 
 function checkInstanceAlive(instanceInfo, options) {
   var storeArangodPath;
@@ -505,16 +512,17 @@ function checkInstanceAlive(instanceInfo, options) {
         print("Core dump written; copying arangod to " + 
               instanceInfo.tmpDataDir + " for later analysis.");
         res.gdbHint = "Run debugger with 'gdb " + 
-          storeArangodPath + 
-          " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
+          storeArangodPath + " " + options.coreDirectory + 
+          "/core*" + instanceInfo.pid.pid + "*'";
         if (require("internal").platform.substr(0,3) === 'win') {
-          copy("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
-          copy("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
+          fs.copyFile("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
+          fs.copyFile("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
           // Windows: wait for procdump to do its job...
           statusExternal(instanceInfo.monitor, true);
         }
         else {
-          copy("bin/arangod", storeArangodPath);
+          fs.copyFile("bin/arangod", storeArangodPath);
+          analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pid.pid);
         }
       }
       instanceInfo.exitStatus = res;
@@ -541,13 +549,14 @@ function checkInstanceAlive(instanceInfo, options) {
               " /var/tmp/core*" + checkpid.pid + "*'";
 
             if (require("internal").platform.substr(0,3) === 'win') {
-              copy("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
-              copy("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
+              fs.copyFile("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
+              fs.copyFile("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
               // Windows: wait for procdump to do its job...
               statusExternal(instanceInfo.monitor, true);
             }
             else {
-              copy("bin/arangod", storeArangodPath);
+              fs.copyFile("bin/arangod", storeArangodPath);
+              analyzeCoreDump(instanceInfo, options, storeArangodPath, checkpid.pid);
             }
             
             instanceInfo.exitStatus = ress;
@@ -1862,6 +1871,7 @@ var internalMembers = ["code", "error", "status", "duration", "failed", "total",
 function unitTestPrettyPrintResults(r) {
   var testrun;
   var test;
+  var key;
   var oneTest;
   var testFail = 0;
   var testSuiteFail = 0;
@@ -1874,11 +1884,24 @@ function unitTestPrettyPrintResults(r) {
         var isSuccess = true;
         var oneOutput = "";
 
-        oneOutput = "Testrun: " + testrun + "\n";
+        oneOutput = "* Testrun: " + testrun + "\n";
+        var successTests = {};
         for (test in  r[testrun]) {
           if (r[testrun].hasOwnProperty(test) && (internalMembers.indexOf(test) === -1)) {
             if (r[testrun][test].status) {
-              oneOutput += "     [Success] " + test + "\n";
+              var where = test.lastIndexOf(fs.pathSeparator);
+              var which;
+              if (where < 0 ) {
+                which = 'Unittests';
+              }
+              else {
+                which = test.substring(0, where);
+                test = test.substring(where + 1, test.length);
+              }
+              if (!successTests.hasOwnProperty(which)) {
+                successTests[which]=[];
+              }
+              successTests[which].push(test);
             }
             else {
               testSuiteFail++;
@@ -1906,6 +1929,13 @@ function unitTestPrettyPrintResults(r) {
                   }
                 }
               }
+            }
+          }
+        }
+        if (successTests !== "") {
+          for (key in successTests) {
+            if (successTests.hasOwnProperty(key)) {
+              oneOutput = "     [Success] " + key + " / [" + successTests[key].join(', ') + ']\n' + oneOutput;
             }
           }
         }
@@ -1997,7 +2027,7 @@ function UnitTest (which, options) {
   else {
     var r;
     results[which] = r = testFuncs[which](options);
-    print("Testresult:", yaml.safeDump(r));
+    // print("Testresult:", yaml.safeDump(r));
     ok = true;
     for (i in r) {
       if (r.hasOwnProperty(i) &&

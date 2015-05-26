@@ -8,7 +8,7 @@
 
     initialize: function(models, options) {
       var result;
-      $.ajax("whoAmI", {async:false}).done(
+      $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
         function(data) {
           result = data.user;
         }

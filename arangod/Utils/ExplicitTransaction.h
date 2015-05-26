@@ -66,7 +66,6 @@ namespace triagens {
                              bool embed)
           : Transaction(new V8TransactionContext(embed), vocbase, 0) {
 
-          // std::cout << TRI_CurrentThreadId() << ", EXPLICITTRANSACTION " << this << " CTOR\r\n";
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
           if (lockTimeout >= 0.0) {
@@ -87,11 +86,42 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create the transaction with cids
+////////////////////////////////////////////////////////////////////////////////
+
+        ExplicitTransaction (struct TRI_vocbase_s* vocbase,
+                             std::vector<TRI_voc_cid_t> const& readCollections,
+                             std::vector<TRI_voc_cid_t> const& writeCollections,
+                             double lockTimeout,
+                             bool waitForSync,
+                             bool embed)
+          : Transaction(new V8TransactionContext(embed), vocbase, 0) {
+
+          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+
+          if (lockTimeout >= 0.0) {
+            this->setTimeout(lockTimeout);
+          }
+
+          if (waitForSync) {
+            this->setWaitForSync();
+          }
+
+          for (auto it = readCollections.begin(); it != readCollections.end(); ++it) {
+            this->addCollection((*it), TRI_TRANSACTION_READ);
+          }
+
+          for (auto it = writeCollections.begin(); it != writeCollections.end(); ++it) {
+            this->addCollection((*it), TRI_TRANSACTION_WRITE);
+          }
+        }
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
         ~ExplicitTransaction () {
-          // std::cout << TRI_CurrentThreadId() << ", EXPLICITTRANSACTION " << this << " DTOR\r\n";
         }
 
     };
