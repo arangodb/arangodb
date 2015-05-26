@@ -326,6 +326,8 @@ function processQuery (query, explain) {
         return "{ }";
       case "object element":
         return value(JSON.stringify(node.name)) + " : " + buildExpression(node.subNodes[0]);
+      case "calculated object element":
+        return "[ " + buildExpression(node.subNodes[0]) + " ] : " + buildExpression(node.subNodes[1]);
       case "array":
         if (node.hasOwnProperty("subNodes")) {
           return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";
