@@ -45,6 +45,16 @@ check-docublocks:
 		exit 1; \
 	fi
 
+check-summary:
+	@find . -name \*.md |grep -v books/ |sed -e "s;./Users/;;" |grep -v ^SUMMARY.md$ |grep -v ^README.md$ |sort > /tmp/is_md.txt
+	@cat Users/SUMMARY.md |sed -e "s;.*(;;" -e "s;).*;;" |sort |grep -v '# Summary' > /tmp/is_summary.txt
+	@if test "`comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l`" -ne 0; then \
+		echo "not all files are mapped to the summary!"; \
+		echo " files found       |    files in summary"; \
+		comm -3 /tmp/is_md.txt /tmp/is_summary.txt; \
+		exit 1; \
+	fi
+
 clean: clean-md-files clean-books
 	rm -f allComments.txt
 
