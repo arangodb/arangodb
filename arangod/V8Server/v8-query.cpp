@@ -441,12 +441,10 @@ static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
 
 static void DestroySearchValue (TRI_memory_zone_t* zone,
                                 TRI_index_search_value_t& value) {
-  size_t n;
+  size_t n = value._length;
 
-  n = value._length;
-
-  for (size_t j = 0;  j < n;  ++j) {
-    TRI_DestroyShapedJson(zone, &value._values[j]);
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_DestroyShapedJson(zone, &value._values[i]);
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, value._values);
@@ -612,6 +610,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
 
   if (skiplistIterator == nullptr) {
     int res = TRI_errno();
+
     if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
       TRI_V8_RETURN(EmptyResult(isolate));
     }

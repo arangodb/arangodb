@@ -62,6 +62,8 @@ GeoIndex2::GeoIndex2 (TRI_idx_iid_t iid,
     _geoJson(geoJson),
     _geoIndex(nullptr) {
 
+  TRI_ASSERT(iid != 0);
+
   _geoIndex = GeoIndex_new();
 
   if (_geoIndex == nullptr) {
@@ -87,6 +89,8 @@ GeoIndex2::GeoIndex2 (TRI_idx_iid_t iid,
     _geoJson(false),
     _geoIndex(nullptr) {
   
+  TRI_ASSERT(iid != 0);
+
   _geoIndex = GeoIndex_new();
 
   if (_geoIndex == nullptr) {
@@ -163,14 +167,6 @@ triagens::basics::Json GeoIndex2::toJson (TRI_memory_zone_t* zone) const {
       ("unique",     triagens::basics::Json(zone, false))
       ("ignoreNull", triagens::basics::Json(zone, true))
       ("sparse",     triagens::basics::Json(zone, true));
-
-  triagens::basics::Json fields(zone,  triagens::basics::Json::Object, f.size());
-
-  for (auto const& field : f) {
-    fields.add(triagens::basics::Json(zone, field));
-  }
-
-  json("fields", fields);
 
   return json;
 }

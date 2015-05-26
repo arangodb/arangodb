@@ -108,14 +108,8 @@ size_t PrimaryIndex::memory () const {
 triagens::basics::Json PrimaryIndex::toJson (TRI_memory_zone_t* zone) const {
   auto json = Index::toJson(zone);
 
-  triagens::basics::Json f(zone, triagens::basics::Json::Array, fields().size());
-
-  for (auto const& field : fields()) {
-    f.add(triagens::basics::Json(zone, field));
-  }
-  
-  json("fields", f)
-      ("unique", triagens::basics::Json(true))
+  // hard-coded
+  json("unique", triagens::basics::Json(true))
       ("sparse", triagens::basics::Json(false));
 
   return json;

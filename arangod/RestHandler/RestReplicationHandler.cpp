@@ -2630,7 +2630,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
               TRI_json_t const* m = TRI_LookupObjectJson(json, "errorMessage");
               if (TRI_IsStringJson(m)) {
                 errorMsg.append(m->_value._string.data,
-                                m->_value._string.length);
+                                m->_value._string.length - 1);
                 errorMsg.push_back(':');
               }
             }
@@ -2648,7 +2648,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
             TRI_json_t const* m = TRI_LookupObjectJson(json, "errorMessage");
             if (TRI_IsStringJson(m)) {
               errorMsg.append(m->_value._string.data,
-                              m->_value._string.length);
+                              m->_value._string.length - 1);
               errorMsg.push_back(':');
             }
           }

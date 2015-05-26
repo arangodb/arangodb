@@ -1247,7 +1247,7 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
                                                            std::vector<Index*>& idxs, 
                                                            std::vector<size_t>& prefixes) const {
 
-  auto&& indexes = _collection->getIndexes();
+  auto const& indexes = _collection->getIndexes();
 
   for (auto const& idx : indexes) {
     TRI_ASSERT(idx != nullptr);
@@ -1255,9 +1255,9 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
     auto const idxType = idx->type;
 
     if (idxType != triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
+        idxType != triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX &&
         idxType != triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX &&
-        idxType != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX &&
-        idxType != triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        idxType != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
       // only these index types can be used
       continue;
     }
@@ -1268,6 +1268,17 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
       // primary index allows lookups on both "_id" and "_key" in isolation
       if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_ID)) != attrs.end() ||
           attrs.find(std::string(TRI_VOC_ATTRIBUTE_KEY)) != attrs.end()) {
+        // can use index
+        idxs.emplace_back(idx);
+        // <prefixes> not used for this type of index
+        prefixes.emplace_back(0);
+      }
+    }
+    
+    else if (idxType == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      // edge index allows lookups on both "_from" and "_to" in isolation
+      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_FROM)) != attrs.end() ||
+          attrs.find(std::string(TRI_VOC_ATTRIBUTE_TO)) != attrs.end()) {
         // can use index
         idxs.emplace_back(idx);
         // <prefixes> not used for this type of index
@@ -1296,17 +1307,6 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
       }
     }
     
-    else if (idxType == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      // edge index allows lookups on both "_from" and "_to" in isolation
-      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_FROM)) != attrs.end() ||
-          attrs.find(std::string(TRI_VOC_ATTRIBUTE_TO)) != attrs.end()) {
-        // can use index
-        idxs.emplace_back(idx);
-        // <prefixes> not used for this type of index
-        prefixes.emplace_back(0);
-      }
-    }
-    
     else {
       TRI_ASSERT(false);
     }
@@ -1317,7 +1317,7 @@ std::vector<EnumerateCollectionNode::IndexMatch>
     EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec const& attrs) const {
 
   std::vector<IndexMatch> out;
-  auto&& indexes = _collection->getIndexes();
+  auto const& indexes = _collection->getIndexes();
 
   for (auto const& idx : indexes) {
     if (idx->sparse) {

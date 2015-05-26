@@ -380,6 +380,8 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
     _unique(unique),
     _sparse(sparse) {
 
+  TRI_ASSERT(iid != 0);
+
   if (unique) {
     _hashArray._table = nullptr;
     _hashArray._tablePtr = nullptr;
@@ -441,14 +443,7 @@ size_t HashIndex::memory () const {
 triagens::basics::Json HashIndex::toJson (TRI_memory_zone_t* zone) const {
   auto json = Index::toJson(zone);
 
-  triagens::basics::Json f(zone, triagens::basics::Json::Array, fields().size());
-
-  for (auto const& field : fields()) {
-    f.add(triagens::basics::Json(zone, field));
-  }
-
-  json("fields", f)
-      ("unique", triagens::basics::Json(zone, _unique))
+  json("unique", triagens::basics::Json(zone, _unique))
       ("sparse", triagens::basics::Json(zone, _sparse));
 
   return json;

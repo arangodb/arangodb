@@ -567,9 +567,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
     sparsity = sparse ? 1 : 0;
   }
 
-  TRI_vector_pointer_t values;
-  TRI_InitVectorPointer(&values, TRI_CORE_MEM_ZONE);
-
   // extract id
   TRI_idx_iid_t iid = 0;
   value = TRI_LookupObjectJson(json, "id");
@@ -593,11 +590,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
         attributes.emplace_back(std::string(v->_value._string.data, v->_value._string.length - 1));
       }
     }
-
-    // check if copying was successful
-    if (n != attributes.size()) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    }
   }
 
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
@@ -605,13 +597,12 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVectorPointer(&values);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
 
   TRI_document_collection_t* document = trx.documentCollection();
-  const string collectionName = string(collection->_name);
+  std::string const& collectionName = std::string(collection->_name);
 
   // disallow index creation in read-only mode
   if (! TRI_IsSystemNameCollection(collectionName.c_str()) 
@@ -630,13 +621,11 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
     case triagens::arango::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: 
     case triagens::arango::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
       // these indexes cannot be created directly
-      TRI_DestroyVectorPointer(&values);
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     case triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX: {
       if (attributes.size() != 1) {
-        TRI_DestroyVectorPointer(&values);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
@@ -663,7 +652,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX: {
       if (attributes.size() != 2) {
-        TRI_DestroyVectorPointer(&values);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
       
@@ -684,7 +672,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX: {
       if (attributes.empty()) {
-        TRI_DestroyVectorPointer(&values);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
@@ -708,7 +695,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
       if (attributes.empty()) {
-        TRI_DestroyVectorPointer(&values);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
@@ -731,7 +717,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
       if (attributes.size() != 1) {
-        TRI_DestroyVectorPointer(&values);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
@@ -742,7 +727,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
       else if (value != nullptr) {
         // minLength defined but no number
-        TRI_DestroyVectorPointer(&values);
         TRI_V8_THROW_EXCEPTION_PARAMETER("<minLength> must be a number");
       }
 
@@ -791,12 +775,9 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   if (idx == nullptr && create) {
     // something went wrong during creation
     int res = TRI_errno();
-    TRI_DestroyVectorPointer(&values);
 
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  TRI_DestroyVectorPointer(&values);
 
 
   if (idx == nullptr && ! create) {
@@ -847,9 +828,9 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
 
   if (res == TRI_ERROR_NO_ERROR &&
       ServerState::instance()->isCoordinator()) {
-    string const dbname(collection->_dbName);
+    std::string const dbname(collection->_dbName);
     // TODO: someone might rename the collection while we're reading its name...
-    string const collname(collection->_name);
+    std::string const collname(collection->_name);
     shared_ptr<CollectionInfo> const& c = ClusterInfo::instance()->getCollection(dbname, collname);
 
     if (c->empty()) {
@@ -1528,7 +1509,6 @@ triagens::arango::Index* TRI_LookupIndexByHandle (v8::Isolate* isolate,
 
   return idx;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection
