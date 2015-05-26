@@ -35,7 +35,7 @@
 
 #include "Basics/ReadWriteLockCPP11.h"
 #include "Basics/fasthash.h"
-
+#include "Basics/JsonHelper.h"
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
 #include "VocBase/headers.h"
@@ -848,7 +848,7 @@ int TRI_SaveIndex (TRI_document_collection_t*,
 /// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*);
+std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, including index file removal and replication
