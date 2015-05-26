@@ -1096,7 +1096,7 @@ function process_labels_filter (data, labels, collname) {
 /// - `batchSize`: the batch size of the returned cursor
 /// - `limit`: limit the result size
 /// - `count`: return the total number of results (default "false")
-/// - `filter`: a optional filter
+/// - `filter`: an optional filter
 ///
 /// The attributes of filter
 /// - `properties`: filter by an array of vertex properties
@@ -1161,7 +1161,7 @@ function post_graph_all_vertices (req, res, g) {
     var query = "FOR v IN @@vertexColl" + data.filter + limit + " RETURN v";
                                         
     var options = {
-      count: json.count,
+      count: json.count || false,
       batchSize: json.batchSize || 1000
     };
 
@@ -1322,13 +1322,14 @@ function post_graph_vertex_vertices (req, res, g) {
     }
 
     // build aql query
-    var query = 'FOR n IN NEIGHBORS( @@vertexColl, @@edgeColl, @id, "' + direction + '") ' +
+    var query = 'FOR n IN NEIGHBORS( @@vertexColl, @@edgeColl, @id, "' + direction + '", null, { includeData: true }) ' +
             data.filter + limit + " RETURN n.vertex ";
 
     var options = {
       count: json.count,
       batchSize: json.batchSize || 1000
     };
+
     var cursor = AQL_EXECUTE(query, data.bindVars, options);
 
     // error occurred
