@@ -1180,7 +1180,8 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
 
       if (marker->_type == TRI_DF_MARKER_ATTRIBUTE ||
-          marker->_type == TRI_DF_MARKER_SHAPE) {
+          marker->_type == TRI_DF_MARKER_SHAPE ||
+          marker->_type == TRI_DF_MARKER_BLANK) {
         // fully ignore these marker types. they don't need to be replicated,
         // but we also cannot stop iteration if we find one of these
         continue;
