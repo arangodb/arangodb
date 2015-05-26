@@ -141,8 +141,7 @@ global.tutorial = require("org/arangodb/tutorial");
 /// @brief prints help
 ////////////////////////////////////////////////////////////////////////////////
 
-window.initHelp = function() {
-  "use strict";
+(function() {
   var internal = require("internal");
 
   if (internal.db) {
@@ -153,6 +152,8 @@ window.initHelp = function() {
   }
 
   if (internal.quiet !== true) {
+    require("org/arangodb").checkAvailableVersions();
+
     if (internal.arango && internal.arango.isConnected && internal.arango.isConnected()) {
       internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");
     }
@@ -193,7 +194,7 @@ window.initHelp = function() {
     delete global.IS_UNIT_TESTS;
     delete global.IS_JS_LINT;
   } catch (e) {}
-};
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
