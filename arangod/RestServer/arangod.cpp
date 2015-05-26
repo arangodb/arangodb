@@ -58,25 +58,25 @@ AnyServer* ArangoInstance = nullptr;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hooks for OS-Specific functions
 ////////////////////////////////////////////////////////////////////////////////
+
 #ifdef _WIN32
 extern void TRI_GlobalEntryFunction ();
 extern void TRI_GlobalExitFunction (int, void*);
-extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
-extern void TRI_StartService(int argc, char* argv[]);
+extern bool TRI_ParseMoreArgs (int argc, char* argv[]);
+extern void TRI_StartService (int argc, char* argv[]);
 #else
-void TRI_GlobalEntryFunction()                        { }
-void TRI_GlobalExitFunction(int exitCode, void* data) { }
-bool TRI_ParseMoreArgs(int argc, char* argv[])        { return false; }
-void TRI_StartService(int argc, char* argv[])         { }
+void TRI_GlobalEntryFunction ()                        { }
+void TRI_GlobalExitFunction (int exitCode, void* data) { }
+bool TRI_ParseMoreArgs (int argc, char* argv[])        { return false; }
+void TRI_StartService (int argc, char* argv[])         { }
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle fatal SIGNALs; print backtrace,
 ///        and rethrow signal for coredumps.
 ////////////////////////////////////////////////////////////////////////////////
 
-void abortHandler(int signum) {
+static void AbortHandler (int signum) {
   TRI_PrintBacktrace();
 #ifdef _WIN32
   exit(255 + signum);
@@ -97,7 +97,7 @@ void abortHandler(int signum) {
 int main (int argc, char* argv[]) {
   int res = 0;
 
-  signal(SIGSEGV, abortHandler);
+  signal(SIGSEGV, AbortHandler);
 
 #ifdef _WIN32
   bool const startAsService = TRI_ParseMoreArgs(argc, argv);

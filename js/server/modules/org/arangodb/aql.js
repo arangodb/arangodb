@@ -1,6 +1,6 @@
 /*jshint strict: false, unused: false, bitwise: false, esnext: true */
 /*global COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
-/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS */
+/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS, Set */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions
@@ -7771,33 +7771,28 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
   }
   options.algorithm = "Floyd-Warshall";
 
-  var distanceMap = AQL_GRAPH_SHORTEST_PATH(graphName, {} , {}, options),
+  // Make sure we ONLY extract _ids
+  options.includeData = false;
+  let graph_module = require("org/arangodb/general-graph");
+  let graph = graph_module._graph(graphName);
+  let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
+  let vertexIds = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, {});
+
+  var distanceMap = AQL_GRAPH_SHORTEST_PATH(graphName, vertexIds , vertexIds, options),
     result = {};
+  for (let k = 0; k < vertexIds.length; k++) {
+    result[vertexIds[k]] = 0;
+  }
   distanceMap.forEach(function(d) {
-    var tmp = {};
-    if (!result[d.startVertex]) {
-      result[d.startVertex] = 0;
-    }
-    if (!result[d.vertex._id]) {
-      result[d.vertex._id] = 0;
-    }
-    d.paths.forEach(function (p) {
-      p.vertices.forEach(function (v) {
-        if (v._id === d.startVertex || v._id === d.vertex._id) {
-          return;
-        }
-        if (!tmp[v._id]) {
-          tmp[v._id] = 1;
-        } else {
-          tmp[v._id]++;
-        }
-      });
-    });
-    Object.keys(tmp).forEach(function (t) {
-      if (!result[t]) {
-        result[t] = 0;
+    let startVertex = d.vertices[0];
+    let l = d.vertices.length;
+    let targetVertex = d.vertices[l - 1];
+    let val = 1 / l;
+    d.vertices.forEach(function (v) {
+      if (v === startVertex || v === targetVertex) {
+        return;
       }
-      result[t] =  result[t]  + tmp[t] / d.paths.length;
+      result[v] += val;
     });
   });
 

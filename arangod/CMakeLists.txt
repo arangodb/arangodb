@@ -79,7 +79,6 @@ add_executable(
     Aql/Variable.cpp
     Aql/VariableGenerator.cpp
     Aql/ModificationOptions.cpp
-    CapConstraint/cap-constraint.cpp
     Cluster/AgencyComm.cpp
     Cluster/ApplicationCluster.cpp
     Cluster/ClusterComm.cpp
@@ -97,10 +96,16 @@ add_executable(
     FulltextIndex/fulltext-result.cpp
     FulltextIndex/fulltext-wordlist.cpp
     GeoIndex/GeoIndex.cpp
-    GeoIndex/geo-index.cpp
     HashIndex/hash-array.cpp
     HashIndex/hash-array-multi.cpp
-    HashIndex/hash-index.cpp
+    Indexes/CapConstraint.cpp
+    Indexes/EdgeIndex.cpp
+    Indexes/FulltextIndex.cpp
+    Indexes/GeoIndex2.cpp
+    Indexes/HashIndex.cpp
+    Indexes/Index.cpp
+    Indexes/PrimaryIndex.cpp
+    Indexes/SkiplistIndex2.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
@@ -159,9 +164,7 @@ add_executable(
     VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp
     VocBase/headers.cpp
-    VocBase/index.cpp
     VocBase/key-generator.cpp
-    VocBase/primary-index.cpp
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
     VocBase/replication-dump.cpp

@@ -1,0 +1,8 @@
+^SUMMARY.md$
+^README.md$
+^Foxx/Apps/README.md$
+^Foxx/Apps/Sessions.md$
+^Foxx/Apps/SimpleAuth.md$
+^Foxx/Apps/Users.md$
+^node_modules/gitbook-plugin-piwik/README.md$
+^node_modules/gitbook-plugin-toggle-chapters/README.md$

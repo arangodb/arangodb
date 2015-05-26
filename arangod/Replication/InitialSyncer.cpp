@@ -35,11 +35,11 @@
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
+#include "Indexes/Index.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/transactions.h"
-#include "VocBase/index.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -54,7 +54,7 @@ using namespace triagens::rest;
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
 
-static inline void mylocalgetline (char const*& p, 
+static inline void Mylocalgetline (char const*& p, 
                                    string& line, 
                                    char delim) {
   char const* q = p;
@@ -397,7 +397,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
   while (true) {
     string line;
 
-    mylocalgetline(p, line, '\n');
+    Mylocalgetline(p, line, '\n');
 
     if (line.size() < 2) {
       // we are done
@@ -833,7 +833,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
             for (size_t i = 0; i < n; ++i) {
               TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
-              TRI_index_t* idx = nullptr;
+              triagens::arango::Index* idx = nullptr;
  
               // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
     

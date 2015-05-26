@@ -104,7 +104,7 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e operato
 /// @brief Destroys and frees any memory associated with an index operator
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
+static void ClearIndexOperator(TRI_index_operator_t* indexOperator) {
   if (indexOperator == nullptr) {
     return;
   }
@@ -114,8 +114,8 @@ void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
       TRI_logical_index_operator_t* logicalOperator = (TRI_logical_index_operator_t*) indexOperator;
-      TRI_ClearIndexOperator(logicalOperator->_left);
-      TRI_ClearIndexOperator(logicalOperator->_right);
+      ClearIndexOperator(logicalOperator->_left);
+      ClearIndexOperator(logicalOperator->_right);
 
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, logicalOperator);
       break;
@@ -235,7 +235,7 @@ TRI_index_operator_t* TRI_CopyIndexOperator (TRI_index_operator_t* indexOperator
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeIndexOperator (TRI_index_operator_t* indexOperator) {
-  TRI_ClearIndexOperator(indexOperator);
+  ClearIndexOperator(indexOperator);
 }
 
 // -----------------------------------------------------------------------------
