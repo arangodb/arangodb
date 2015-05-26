@@ -511,8 +511,8 @@ static void DocumentVocbaseCol (bool useCollection,
 /// @brief loads a collection for usage
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection,
-                                        const v8::FunctionCallbackInfo<v8::Value>& args) {
+static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection,
+                                               const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   v8::Isolate* isolate = args.GetIsolate();
   int res = TRI_ERROR_INTERNAL;
@@ -778,8 +778,8 @@ static void ModifyVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
 /// @brief replaces a document
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReplaceVocbaseCol (bool useCollection,
-                        const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void ReplaceVocbaseCol (bool useCollection,
+                               const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   UpdateOptions options;
@@ -3564,8 +3564,9 @@ static void JS_CheckPointersVocbaseCol (const v8::FunctionCallbackInfo<v8::Value
   TRI_document_collection_t* document = trx.documentCollection();
 
   // iterate over the primary index and de-reference all the pointers to data
-  void** ptr = document->_primaryIndex._table;
-  void** end = ptr + document->_primaryIndex._nrAlloc;
+  auto primaryIndex = document->primaryIndex()->internals();
+  void** ptr = primaryIndex->_table;
+  void** end = ptr + primaryIndex->_nrAlloc;
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr) {

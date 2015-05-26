@@ -160,7 +160,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t*,
 /// @brief returns a selectivity estimate for the index
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_SelectivityHashArrayMulti (TRI_hash_array_multi_t*);
+double TRI_SelectivityHashArrayMulti (TRI_hash_array_multi_t const*);
 
 #endif
 

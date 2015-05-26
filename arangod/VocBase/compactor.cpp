@@ -460,7 +460,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     TRI_voc_key_t key = (char*) d + d->_offsetKey;
 
     // check if the document is still active
-    TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+    auto primaryIndex = document->primaryIndex();
+
+    auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key));
     deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
@@ -479,7 +481,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
 
     // check if the document is still active
-    found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+    found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key));
     deleted = (found == nullptr);
 
     if (deleted) {
@@ -700,7 +702,8 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
     TRI_voc_key_t key = (char*) d + d->_offsetKey;
 
     // check if the document is still active
-    TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+    auto primaryIndex = document->primaryIndex();
+    auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key));
     deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {

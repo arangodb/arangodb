@@ -245,7 +245,6 @@ function makeTestingArgs (appDir) {
            "database.force-sync-properties": "false",
            "javascript.app-path":            appDir,
            "javascript.startup-directory":   fs.join(topDir, "js"),
-           "ruby.modules-path":              fs.join(topDir,"mr", "common", "modules"),
            "server.threads":                 "20",
            "javascript.v8-contexts":         "5",
            "server.disable-authentication":  "true",
@@ -826,7 +825,7 @@ function runThere (options, instanceInfo, file) {
     }
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
-    o.timeout = 24 * 3600;
+    o.timeout = 3600;
     o.returnBodyOnError = true;
     r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
     if (! r.error && r.code === 200) {

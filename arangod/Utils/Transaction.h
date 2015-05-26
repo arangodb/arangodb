@@ -31,10 +31,13 @@
 #define ARANGODB_UTILS_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-
-#include "Cluster/ServerState.h"
-
 #include "Basics/Exceptions.h"
+#include "Basics/gcd.h"
+#include "Basics/logging.h"
+#include "Basics/random.h"
+#include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
+#include "Indexes/PrimaryIndex.h"
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
@@ -44,12 +47,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
 #include "VocBase/voc-types.h"
-
-#include "Basics/gcd.h"
-#include "Basics/logging.h"
-#include "Basics/random.h"
-#include "Basics/tri-strings.h"
-
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/TransactionContext.h"
@@ -396,7 +393,9 @@ namespace triagens {
             return res;
           }
 
-          if (document->_primaryIndex._nrUsed == 0) {
+          auto primaryIndex = document->primaryIndex()->internals();
+
+          if (primaryIndex->_nrUsed == 0) {
             // nothing to do
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
 
@@ -409,8 +408,8 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          void** beg = document->_primaryIndex._table;
-          void** end = beg + document->_primaryIndex._nrAlloc;
+          void** beg = primaryIndex->_table;
+          void** end = beg + primaryIndex->_nrAlloc;
 
           if (internalSkip > 0) {
             beg += internalSkip;
@@ -418,7 +417,7 @@ namespace triagens {
 
           void** ptr = beg;
           uint32_t count = 0;
-          *total = (uint32_t) document->_primaryIndex._nrUsed;
+          *total = (uint32_t) primaryIndex->_nrUsed;
 
           try {
             if (batchSize > 2048) {
@@ -483,7 +482,8 @@ namespace triagens {
             return res;
           }
 
-          if (document->_primaryIndex._nrUsed == 0) {
+          auto primaryIndex = document->primaryIndex()->internals();
+          if (primaryIndex->_nrUsed == 0) {
             // nothing to do
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
 
@@ -496,7 +496,7 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          *total = (uint32_t) document->_primaryIndex._nrAlloc;
+          *total = (uint32_t) primaryIndex->_nrAlloc;
           if (*step == 0) {
             TRI_ASSERT(initialPosition == 0);
 
@@ -515,7 +515,8 @@ namespace triagens {
 
           TRI_voc_size_t numRead = 0;
           do {
-            TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) document->_primaryIndex._table[position];
+            auto d = static_cast<TRI_doc_mptr_t*>(primaryIndex->_table[position]);
+
             if (d != nullptr) {
               docs.emplace_back(*d);
               ++numRead;
@@ -844,7 +845,9 @@ namespace triagens {
             return res;
           }
 
-          if (document->_primaryIndex._nrUsed == 0) {
+          auto primaryIndex = document->primaryIndex()->internals();
+
+          if (primaryIndex->_nrUsed == 0) {
             // no document found
             mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
           }
@@ -853,9 +856,9 @@ namespace triagens {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            uint32_t total = (uint32_t) document->_primaryIndex._nrAlloc;
+            uint32_t total = (uint32_t) primaryIndex->_nrAlloc;
             uint32_t pos = TRI_UInt32Random() % total;
-            void** beg = document->_primaryIndex._table;
+            void** beg = primaryIndex->_table;
 
             while (beg[pos] == nullptr) {
               pos = TRI_UInt32Random() % total;
@@ -889,15 +892,17 @@ namespace triagens {
             }
           }
 
-          if (document->_primaryIndex._nrUsed > 0) {
+          auto primaryIndex = document->primaryIndex()->internals();
+
+          if (primaryIndex->_nrUsed > 0) {
             if (orderBarrier(trxCollection) == nullptr) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            ids.reserve((size_t) document->_primaryIndex._nrUsed);
+            ids.reserve((size_t) primaryIndex->_nrUsed);
 
-            void** ptr = document->_primaryIndex._table;
-            void** end = ptr + document->_primaryIndex._nrAlloc;
+            void** ptr = primaryIndex->_table;
+            void** end = ptr + primaryIndex->_nrAlloc;
 
             for (;  ptr < end;  ++ptr) {
               if (*ptr) {
@@ -1003,7 +1008,9 @@ namespace triagens {
             return res;
           }
 
-          if (document->_primaryIndex._nrUsed == 0) {
+          auto primaryIndex = document->primaryIndex()->internals();
+
+          if (primaryIndex->_nrUsed == 0) {
             // nothing to do
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
             // READ-LOCK END
@@ -1014,12 +1021,12 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          void** beg = document->_primaryIndex._table;
+          void** beg = primaryIndex->_table;
           void** ptr = beg;
-          void** end = ptr + document->_primaryIndex._nrAlloc;
+          void** end = ptr + primaryIndex->_nrAlloc;
           uint32_t count = 0;
 
-          *total = (uint32_t) document->_primaryIndex._nrUsed;
+          *total = (uint32_t) primaryIndex->_nrUsed;
 
           // apply skip
           if (skip > 0) {
@@ -1081,7 +1088,9 @@ namespace triagens {
             return res;
           }
 
-          if (document->_primaryIndex._nrUsed == 0) {
+          auto primaryIndex = document->primaryIndex()->internals();
+
+          if (primaryIndex->_nrUsed == 0) {
             // nothing to do
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
             // READ-LOCK END
@@ -1092,8 +1101,8 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          void** ptr = document->_primaryIndex._table;
-          void** end = ptr + document->_primaryIndex._nrAlloc;
+          void** ptr = primaryIndex->_table;
+          void** end = ptr + primaryIndex->_nrAlloc;
 
           // fetch documents, taking limit into account
           for (; ptr < end; ++ptr) {
@@ -1129,16 +1138,18 @@ namespace triagens {
             return res;
           }
 
-          if (document->_primaryIndex._nrUsed > 0) {
+          auto primaryIndex = document->primaryIndex()->internals();
+
+          if (primaryIndex->_nrUsed > 0) {
             if (orderBarrier(trxCollection) == nullptr) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
             
-            docs.reserve(static_cast<size_t>(document->_primaryIndex._nrUsed) % static_cast<size_t>(numberOfPartitions));
+            docs.reserve(static_cast<size_t>(primaryIndex->_nrUsed) % static_cast<size_t>(numberOfPartitions));
           
-            void** ptr = document->_primaryIndex._table;
-            void** end = ptr + document->_primaryIndex._nrAlloc;
-            *total = (uint32_t) document->_primaryIndex._nrUsed;
+            void** ptr = primaryIndex->_table;
+            void** end = ptr + primaryIndex->_nrAlloc;
+            *total = (uint32_t) primaryIndex->_nrUsed;
 
             // fetch documents, taking partition into account
             for (; ptr < end; ++ptr) {

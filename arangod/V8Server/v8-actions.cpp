@@ -184,7 +184,13 @@ class v8_action_t : public TRI_action_t {
         }
         v8::HandleScope scope(context->isolate);
         auto localFunction = v8::Local<v8::Function>::New(context->isolate, i->second);
-        result = ExecuteActionVocbase(vocbase, context->isolate, this, localFunction, request);
+
+        try {
+          result = ExecuteActionVocbase(vocbase, context->isolate, this, localFunction, request);
+        }
+        catch (...) {
+          result.isValid = false;
+        }
 
         {
           MUTEX_LOCKER(*dataLock);

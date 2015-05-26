@@ -124,9 +124,11 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    size_t const n = static_cast<size_t>(_document->_primaryIndex._nrAlloc);
+    auto primaryIndex = _document->primaryIndex()->internals();
+    size_t const n = static_cast<size_t>(primaryIndex->_nrAlloc);
 
-    size_t maxDocuments = static_cast<size_t>(_document->_primaryIndex._nrUsed);
+    size_t maxDocuments = static_cast<size_t>(primaryIndex->_nrUsed);
+
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     }
@@ -137,7 +139,7 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
  
     if (maxDocuments > 0) { 
       for (size_t i = 0; i < n; ++i) {
-        auto ptr = _document->_primaryIndex._table[i];
+        auto ptr = primaryIndex->_table[i];
 
         if (ptr != nullptr) {
           void const* marker = static_cast<TRI_doc_mptr_t const*>(ptr)->getDataPtr();
