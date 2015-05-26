@@ -6525,7 +6525,7 @@ function AQL_NEIGHBORS (vertexCollection,
   options.direction = direction;
   if (examples === undefined || 
       (Array.isArray(examples) && examples.length <= 1)) {
-    if (examples.length === 1) {
+    if (Array.isArray(examples) && examples.length === 1) {
       options.examples = examples[0];
     }
     if (typeof options.distance === "number" && options.distance > 1) {
