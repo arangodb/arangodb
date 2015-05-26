@@ -32,23 +32,23 @@
 #include "Basics/logging.h"
 #include "Basics/random.h"
 #include "Basics/string-buffer.h"
-#include "GeoIndex/geo-index.h"
-#include "HashIndex/hash-index.h"
+#include "Indexes/FulltextIndex.h"
+#include "Indexes/GeoIndex2.h"
+#include "Indexes/SkiplistIndex2.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
-#include "SkipLists/skiplistIndex.h"
 #include "Utils/transactions.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8Server/v8-wrapshapedjson.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/vocbase.h"
-#include "v8-wrapshapedjson.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -181,7 +181,7 @@ static void CalculateSkipLimitSlice (size_t length,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
-                                                      TRI_index_t* idx,
+                                                      std::vector<std::string> const& fields,
                                                       TRI_shaper_t* shaper,
                                                       v8::Handle<v8::Object> conditions) {
   TRI_index_operator_t* lastOperator = nullptr;
@@ -195,8 +195,9 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
   }
 
   // iterate over all index fields
-  for (size_t i = 1; i <= idx->_fields._length; ++i) {
-    v8::Handle<v8::String> key = TRI_V8_STRING(idx->_fields._buffer[i - 1]);
+  size_t i = 0;
+  for (auto const& field : fields) {
+    v8::Handle<v8::String> key = TRI_V8_STD_STRING(field);
 
     if (! conditions->HasOwnProperty(key)) {
       break;
@@ -347,6 +348,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
       }
     }
 
+    ++i;
   }
 
   if (numEq) {
@@ -390,7 +392,7 @@ MEM_ERROR:
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
-                                                   TRI_index_t* idx,
+                                                   std::vector<std::string> const& fields,
                                                    TRI_shaper_t* shaper,
                                                    v8::Handle<v8::Object> example) {
   TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
@@ -399,8 +401,8 @@ static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
     return nullptr;
   }
 
-  for (size_t i = 0; i < idx->_fields._length; ++i) {
-    v8::Handle<v8::String> key = TRI_V8_STRING(idx->_fields._buffer[i]);
+  for (auto const& field : fields) {
+    v8::Handle<v8::String> key = TRI_V8_STD_STRING(field);
 
     if (! example->HasOwnProperty(key)) {
       break;
@@ -439,22 +441,20 @@ static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
 
 static void DestroySearchValue (TRI_memory_zone_t* zone,
                                 TRI_index_search_value_t& value) {
-  size_t n;
+  size_t n = value._length;
 
-  n = value._length;
-
-  for (size_t j = 0;  j < n;  ++j) {
-    TRI_DestroyShapedJson(zone, &value._values[j]);
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_DestroyShapedJson(zone, &value._values[i]);
   }
 
-  TRI_Free(TRI_CORE_MEM_ZONE, value._values);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, value._values);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the example object for a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SetupSearchValue (TRI_vector_t const* paths,
+static int SetupSearchValue (std::vector<TRI_shape_pid_t> const& paths,
                              v8::Handle<v8::Object> example,
                              TRI_shaper_t* shaper,
                              TRI_index_search_value_t& result,
@@ -463,17 +463,19 @@ static int SetupSearchValue (TRI_vector_t const* paths,
   v8::Isolate* isolate = args.GetIsolate();
 
   // extract attribute paths
-  size_t n = TRI_LengthVector(paths);
+  size_t const n = paths.size();
 
   // setup storage
   result._length = n;
-  result._values = (TRI_shaped_json_t*) TRI_Allocate(TRI_CORE_MEM_ZONE,
-                                                     n * sizeof(TRI_shaped_json_t),
-                                                     true);
+  result._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), true));
+
+  if (result._values == nullptr) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   // convert
   for (size_t i = 0;  i < n;  ++i) {
-    TRI_shape_pid_t pid = * (TRI_shape_pid_t*) TRI_AtVector(paths, i);
+    TRI_shape_pid_t pid = paths[i];
 
     TRI_ASSERT(pid != 0);
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
@@ -582,10 +584,10 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
 
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), col, args[0], false);
+  auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), col, args[0], false);
 
   if (idx == nullptr ||
-      idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      idx->type() != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -593,21 +595,22 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   v8::Handle<v8::Object> values = args[1]->ToObject();
 
   if (type == QUERY_EXAMPLE) {
-    skiplistOperator = SetupExampleSkiplist(isolate, idx, shaper, values);
+    skiplistOperator = SetupExampleSkiplist(isolate, idx->fields(), shaper, values);
   }
   else {
-    skiplistOperator = SetupConditionsSkiplist(isolate, idx, shaper, values);
+    skiplistOperator = SetupConditionsSkiplist(isolate, idx->fields(), shaper, values);
   }
 
   if (skiplistOperator == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, reverse);
+  TRI_skiplist_iterator_t* skiplistIterator = static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, reverse);
   TRI_FreeIndexOperator(skiplistOperator);
 
   if (skiplistIterator == nullptr) {
     int res = TRI_errno();
+
     if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
       TRI_V8_RETURN(EmptyResult(isolate));
     }
@@ -1549,13 +1552,14 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   result->Set(TRI_V8_ASCII_STRING("documents"), documents);
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], false);
+  auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], false);
 
-  if (idx == nullptr || idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
+  if (idx == nullptr || 
+      idx->type() != triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+  auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
 
   // convert the example (index is locked by lockRead)
   TRI_index_search_value_t searchValue;
@@ -1564,7 +1568,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx from above
   {
     std::string errorMessage;
-    int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, errorMessage, args);
+    int res = SetupSearchValue(hashIndex->paths(), example, shaper, searchValue, errorMessage, args);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
@@ -1578,7 +1582,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   }
 
   // find the matches
-  TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
+  TRI_vector_pointer_t list = static_cast<triagens::arango::HashIndex*>(idx)->lookup(&searchValue);
   DestroySearchValue(shaper->_memoryZone, searchValue);
 
   // convert result
@@ -2041,9 +2045,10 @@ static void FulltextQuery (SingleCollectionReadOnlyTransaction& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], false);
+  auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], false);
 
-  if (idx == nullptr || idx->_type != TRI_IDX_TYPE_FULLTEXT_INDEX) {
+  if (idx == nullptr || 
+      idx->type() != triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -2072,15 +2077,15 @@ static void FulltextQuery (SingleCollectionReadOnlyTransaction& trx,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx;
+  auto fulltextIndex = static_cast<triagens::arango::FulltextIndex*>(idx);
 
-  if (isSubstringQuery && ! fulltextIndex->_indexSubstrings) {
+  if (isSubstringQuery) {
     TRI_FreeQueryFulltextIndex(query);
 
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  TRI_fulltext_result_t* queryResult = TRI_QueryFulltextIndex(fulltextIndex->_fulltextIndex, query);
+  TRI_fulltext_result_t* queryResult = TRI_QueryFulltextIndex(fulltextIndex->internals(), query);
 
   if (! queryResult) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("internal error in fulltext index query");
@@ -2280,11 +2285,11 @@ static void NearQuery (SingleCollectionReadOnlyTransaction& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], false);
+  auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], false);
 
   if (idx == nullptr ||
-      (idx->_type != TRI_IDX_TYPE_GEO1_INDEX &&
-       idx->_type != TRI_IDX_TYPE_GEO2_INDEX)) {
+      (idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX &&
+       idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -2304,9 +2309,9 @@ static void NearQuery (SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = TRI_NearestGeoIndex(idx, latitude, longitude, limit);
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->near(latitude, longitude, limit);
 
-  if (cors != 0) {
+  if (cors != nullptr) {
     int res = StoreGeoResult(isolate, trx, collection, cors, documents, distances);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2411,11 +2416,11 @@ static void WithinQuery (SingleCollectionReadOnlyTransaction& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], false);
+  auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], false);
 
   if (idx == nullptr ||
-      (idx->_type != TRI_IDX_TYPE_GEO1_INDEX &&
-       idx->_type != TRI_IDX_TYPE_GEO2_INDEX)) {
+      (idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX &&
+       idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -2435,9 +2440,9 @@ static void WithinQuery (SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = TRI_WithinGeoIndex(idx, latitude, longitude, radius);
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->within(latitude, longitude, radius);
 
-  if (cors != 0) {
+  if (cors != nullptr) {
     int res = StoreGeoResult(isolate, trx, collection, cors, documents, distances);
 
     if (res != TRI_ERROR_NO_ERROR) {

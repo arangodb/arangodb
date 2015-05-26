@@ -35,10 +35,11 @@
 #include "Basics/Exceptions.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Cluster/ClusterMethods.h"
-#include "HashIndex/hash-index.h"
+#include "Indexes/EdgeIndex.h"
+#include "Indexes/HashIndex.h"
+#include "Indexes/SkiplistIndex2.h"
 #include "V8/v8-globals.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/index.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
@@ -1123,7 +1124,7 @@ IndexRangeBlock::~IndexRangeBlock () {
 
 bool IndexRangeBlock::useHighBounds () const {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  return (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX);
+  return (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX);
 }
 
 bool IndexRangeBlock::hasV8Expression () const {
@@ -1476,11 +1477,11 @@ bool IndexRangeBlock::initRanges () {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_ASSERT(en->_index != nullptr);
    
-  if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return true; //no initialization here!
   }
   
-  if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
     if (_condition == nullptr || _condition->empty()) {
       return false;
     }
@@ -1490,7 +1491,7 @@ bool IndexRangeBlock::initRanges () {
     return (_edgeIndexIterator != nullptr);
   }
       
-  if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
     if (_condition == nullptr || _condition->empty()) {
       return false;
     }
@@ -1500,7 +1501,7 @@ bool IndexRangeBlock::initRanges () {
     return (_hashIndexSearchValue._values != nullptr); 
   }
   
-  if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     if (_condition == nullptr || _condition->empty()) {
       return false;
     }
@@ -1774,18 +1775,18 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   
-  if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     if (_flag && _condition != nullptr) {
       readPrimaryIndex(*_condition);
     }
   }
-  else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+  else if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
     readEdgeIndex(atMost);
   }
-  else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
+  else if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
     readHashIndex(atMost);
   }
-  else if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  else if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex(atMost);
   }
   else {
@@ -1993,7 +1994,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
 void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   ENTER_BLOCK;
-  TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
+  auto primaryIndex = _collection->documentCollection()->primaryIndex();
  
   for (size_t i = 0; i < ranges.size(); i++) {
     std::string key;
@@ -2052,8 +2053,8 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
     if (! key.empty()) {
       ++_engine->_stats.scannedIndex;
 
-      auto found = static_cast<TRI_doc_mptr_t
-        const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key.c_str()));
+      auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key.c_str()));
+
       if (found != nullptr) {
         _documents.emplace_back(*found);
       }
@@ -2128,7 +2129,7 @@ void IndexRangeBlock::readEdgeIndex (size_t atMost) {
   }
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->getInternals();
+  auto idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
  
   try { 
@@ -2140,7 +2141,7 @@ void IndexRangeBlock::readEdgeIndex (size_t atMost) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      TRI_LookupEdgeIndex(idx, _edgeIndexIterator, _documents, _edgeNextElement, atMost);
+      static_cast<triagens::arango::EdgeIndex*>(idx)->lookup(_edgeIndexIterator, _documents, _edgeNextElement, atMost);
     
       size_t const numRead = _documents.size() - n;
 
@@ -2190,13 +2191,15 @@ void IndexRangeBlock::destroyHashIndexSearchValues () {
 
 bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range) { 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->getInternals();
+  auto idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
-  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
+  auto const& paths = hashIndex->paths();
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
 
-  size_t const n = TRI_LengthVector(&hashIndex->_paths);
+  size_t const n = paths.size();
 
   TRI_ASSERT(_hashIndexSearchValue._values == nullptr); // to prevent leak
   _hashIndexSearchValue._length = 0;
@@ -2212,7 +2215,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
 
 
   for (size_t i = 0; i < n; ++i) {
-    TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
+    TRI_shape_pid_t pid = paths[i];
     TRI_ASSERT(pid != 0);
    
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
@@ -2272,7 +2275,7 @@ void IndexRangeBlock::readHashIndex (size_t atMost) {
   }
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->getInternals();
+  auto idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
   
   size_t nrSent = 0;
@@ -2283,7 +2286,7 @@ void IndexRangeBlock::readHashIndex (size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_LookupHashIndex(idx, &_hashIndexSearchValue, _documents, _hashNextElement, atMost);
+    static_cast<triagens::arango::HashIndex*>(idx)->lookup(&_hashIndexSearchValue, _documents, _hashNextElement, atMost);
     size_t const numRead = _documents.size() - n;
 
     _engine->_stats.scannedIndex += static_cast<int64_t>(numRead);
@@ -2345,7 +2348,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   TRI_ASSERT(_skiplistIterator == nullptr);
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->getInternals();
+  auto idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
@@ -2368,6 +2371,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
       }
       if (range._lowConst.isDefined()) {
         auto op = range._lowConst.toIndexOperator(false, parameters.copy(), shaper);
+
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
               skiplistOperator, op, nullptr, shaper, 2);
@@ -2378,6 +2382,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
       }
       if (range._highConst.isDefined()) {
         auto op = range._highConst.toIndexOperator(true, parameters.copy(), shaper);
+
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
               skiplistOperator, op, nullptr, shaper, 2);
@@ -2407,7 +2412,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
     TRI_FreeSkiplistIterator(_skiplistIterator);
   }
 
-  _skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, en->_reverse);
+  _skiplistIterator = static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, en->_reverse);
 
   if (skiplistOperator != nullptr) {
     TRI_FreeIndexOperator(skiplistOperator);

@@ -1775,7 +1775,7 @@ string TRI_LocateBinaryPath (char const* argv0) {
   return result;
 }
 
-bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string& error) {
+static bool CopyFileContents (int srcFD, int dstFD, ssize_t fileSize, std::string& error) {
   bool rc = true;
 #if TRI_LINUX_SPLICE
   bool enableSplice = true;
@@ -1894,7 +1894,7 @@ bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &
   TRI_FSTAT(srcFD, &statbuf);
   dsize = statbuf.st_size;
 
-  bool rc = TRI_CopyFileContents(srcFD, dstFD, dsize, error);
+  bool rc = CopyFileContents(srcFD, dstFD, dsize, error);
   timeval times[2];
   memset(times, 0, sizeof(times));
   times[0].tv_sec = TRI_STAT_ATIME_SEC(statbuf);

@@ -497,7 +497,7 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node
   }
   
   // check index type
-  if (idx->type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  if (idx->type != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     // no skiplist... that means we might have found the primary index or a hash index
     // with no guaranteed sort order.
     // still we can optimize away the sort if (and only if) all index attributes are used
@@ -516,7 +516,7 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node
   }
 
 
-  TRI_ASSERT(idx->type == TRI_IDX_TYPE_SKIPLIST_INDEX);
+  TRI_ASSERT(idx->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX);
 
   size_t const idxFields = idx->fields.size();
   size_t const n = attrs.size();
@@ -1247,24 +1247,24 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
                                                            std::vector<Index*>& idxs, 
                                                            std::vector<size_t>& prefixes) const {
 
-  auto&& indexes = _collection->getIndexes();
+  auto const& indexes = _collection->getIndexes();
 
   for (auto const& idx : indexes) {
     TRI_ASSERT(idx != nullptr);
 
     auto const idxType = idx->type;
 
-    if (idxType != TRI_IDX_TYPE_PRIMARY_INDEX &&
-        idxType != TRI_IDX_TYPE_HASH_INDEX &&
-        idxType != TRI_IDX_TYPE_SKIPLIST_INDEX &&
-        idxType != TRI_IDX_TYPE_EDGE_INDEX) {
+    if (idxType != triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
+        idxType != triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX &&
+        idxType != triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX &&
+        idxType != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
       // only these index types can be used
       continue;
     }
 
     size_t prefix = 0;
 
-    if (idxType == TRI_IDX_TYPE_PRIMARY_INDEX) {
+    if (idxType == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
       // primary index allows lookups on both "_id" and "_key" in isolation
       if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_ID)) != attrs.end() ||
           attrs.find(std::string(TRI_VOC_ATTRIBUTE_KEY)) != attrs.end()) {
@@ -1274,8 +1274,19 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
         prefixes.emplace_back(0);
       }
     }
+    
+    else if (idxType == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      // edge index allows lookups on both "_from" and "_to" in isolation
+      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_FROM)) != attrs.end() ||
+          attrs.find(std::string(TRI_VOC_ATTRIBUTE_TO)) != attrs.end()) {
+        // can use index
+        idxs.emplace_back(idx);
+        // <prefixes> not used for this type of index
+        prefixes.emplace_back(0);
+      }
+    }
 
-    else if (idxType == TRI_IDX_TYPE_HASH_INDEX) {
+    else if (idxType == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
       prefix = getUsableFieldsOfIndex(idx, attrs);
 
       if (prefix == idx->fields.size()) {
@@ -1286,24 +1297,13 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
       } 
     }
 
-    else if (idxType == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    else if (idxType == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
       prefix = getUsableFieldsOfIndex(idx, attrs);
 
       if (prefix > 0) {
         // can use index
         idxs.emplace_back(idx);
         prefixes.emplace_back(prefix);
-      }
-    }
-    
-    else if (idxType == TRI_IDX_TYPE_EDGE_INDEX) {
-      // edge index allows lookups on both "_from" and "_to" in isolation
-      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_FROM)) != attrs.end() ||
-          attrs.find(std::string(TRI_VOC_ATTRIBUTE_TO)) != attrs.end()) {
-        // can use index
-        idxs.emplace_back(idx);
-        // <prefixes> not used for this type of index
-        prefixes.emplace_back(0);
       }
     }
     
@@ -1317,7 +1317,7 @@ std::vector<EnumerateCollectionNode::IndexMatch>
     EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec const& attrs) const {
 
   std::vector<IndexMatch> out;
-  auto&& indexes = _collection->getIndexes();
+  auto const& indexes = _collection->getIndexes();
 
   for (auto const& idx : indexes) {
     if (idx->sparse) {
@@ -1584,7 +1584,7 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
 
   TRI_ASSERT(! _ranges.empty());
   
-  if (_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (_index->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     // always an equality lookup
 
     // selectivity of primary index is always 1
@@ -1592,7 +1592,7 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
     return dependencyCost + nrItems;
   }
   
-  if (_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+  if (_index->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
     // always an equality lookup
     
     // check if the index can provide a selectivity estimate
@@ -1606,7 +1606,7 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
     return dependencyCost + nrItems;
   }
 
-  if (_index->type == TRI_IDX_TYPE_HASH_INDEX) {
+  if (_index->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
     // always an equality lookup
 
     // check if the index can provide a selectivity estimate
@@ -1634,7 +1634,7 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
     return dependencyCost + ((static_cast<double>(nrItems) - matchLengthFactor) * 0.9999995);
   }
 
-  if (_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  if (_index->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     auto const count = _ranges.at(0).size();
     
     if (count == 0) {

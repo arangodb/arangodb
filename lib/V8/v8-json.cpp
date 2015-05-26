@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 
+#include "V8/v8-json.h"
 #include "V8/v8-globals.h"
 
 #include "Basics/tri-strings.h"
@@ -37,7 +38,7 @@
 
 
 
-#line 41 "lib/V8/v8-json.cpp"
+#line 42 "lib/V8/v8-json.cpp"
 
 #define  YY_INT_ALIGNED short int
 

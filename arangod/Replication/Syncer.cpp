@@ -490,7 +490,7 @@ int Syncer::createIndex (TRI_json_t const* json) {
       return res;
     }
 
-    TRI_index_t* idx;
+    triagens::arango::Index* idx = nullptr;
     res = TRI_FromJsonIndexDocumentCollection(document, indexJson, &idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
