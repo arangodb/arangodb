@@ -232,9 +232,7 @@ void ServerState::flush () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::isCoordinator () {
-  auto role = loadRole();
-
-  return (role == ServerState::ROLE_COORDINATOR);
+  return isCoordinator(loadRole());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,10 +249,7 @@ bool ServerState::isCoordinator (ServerState::RoleEnum role) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::isDBServer () {
-  auto role = loadRole();
-
-  return (role == ServerState::ROLE_PRIMARY ||
-          role == ServerState::ROLE_SECONDARY);
+  return isDBServer(loadRole());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
