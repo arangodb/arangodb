@@ -224,11 +224,7 @@
     };
     res = arango.POST("/_admin/foxx/script", JSON.stringify(req));
     arangosh.checkRequestResult(res);
-    return {
-      name: res.name,
-      version: res.version,
-      mount: res.mount
-    };
+    return res;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,10 +569,11 @@
           options = args.slice(3).map(function (arg) {
             return JSON.parse(arg);
           });
-          script(args[1], args[2], options);
+          res = script(args[1], args[2], options);
+          printf(JSON.stringify(res, null, 2) + "\n");
           break;
         case "tests":
-          options = extractOptions(args);
+          options = args[2] ? JSON.parse(args[2]) : undefined;
           res = tests(args[1], options);
           printf(JSON.stringify(res, null, 2) + "\n");
           break;

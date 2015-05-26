@@ -1388,7 +1388,7 @@ function require (path) {
         errorMessage: internal.errors.ERROR_MODULE_BAD_WRAPPER.message
         + "\nFile: " + filename
         + "\nContext variables: " + JSON.stringify(Object.keys(args))
-      }), {stack: e.stack});
+      }), {cause: e});
     }
 
     var fn;
@@ -1403,7 +1403,7 @@ function require (path) {
         errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
         + "\nFile: " + filename
         + "\nContent: " + content
-      }), {stack: e.stack});
+      }), {cause: e});
     }
 
     if (typeof fn !== 'function') {
@@ -1421,7 +1421,7 @@ function require (path) {
         errorMessage: internal.errors.ERROR_MODULE_FAILURE.message
         + "\nFile: " + filename
         + "\nContent: " + content
-      }), {stack: e.stack});
+      }), {cause: e});
     }
 
     return this.exports;

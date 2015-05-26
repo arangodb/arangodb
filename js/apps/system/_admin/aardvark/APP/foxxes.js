@@ -285,13 +285,17 @@
   controller.post("/scripts/:name", function (req, res) {
     var mount = validateMount(req);
     var name = req.params("name");
-    var options = req.params("options");
-    res.json(FoxxManager.runScript(name, mount, options));
+    var argv = req.params("argv");
+    try {
+      res.json(FoxxManager.runScript(name, mount, argv));
+    } catch (e) {
+      throw e.cause || e;
+    }
   })
   .queryParam("mount", mountPoint)
   .pathParam("name", scriptName)
   .bodyParam(
-    "options",
+    "argv",
     joi.any().default(null)
     .description('Options to pass to the script.')
   );
