@@ -88,7 +88,7 @@ the option *--disable-figures*.
 
 
 !SUBSECTION Foxx queues poll interval
-@startDocuBlock foxxQueuesPollInterval 
+@startDocuBlock foxxQueuesPollInterval
 
 
 !SUBSECTION Directory

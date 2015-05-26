@@ -1,77 +1,80 @@
 !CHAPTER Module "fs"
 
-!SUBSECTION File System Module
-
-The implementation follows the CommonJS specification 
+The implementation tries to follow the CommonJS specification where possible.
 [Filesystem/A/0](http://wiki.commonjs.org/wiki/Filesystem/A/0).
 
+!SECTION Single File Directory Manipulation
 
-<!-- lib/V8/v8-utils.cpp  -->
-
+!SUBSUBSECTION exists
 @startDocuBlock JS_Exists
 
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_GetTempFile
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_GetTempPath
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_IsDirectory
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
+!SUBSUBSECTION isFile
 @startDocuBlock JS_IsFile
 
+!SUBSUBSECTION isDirectory
+@startDocuBlock JS_IsDirectory
 
-`fs.join(path, filename)`
+!SUBSUBSECTION size
+@startDocuBlock JS_Size
 
-The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
+!SUBSUBSECTION mtime
+@startDocuBlock JS_MTime
 
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_List
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_ListTree
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_MakeDirectory
-
-
-
+!SUBSUBSECTION pathSeparator
 `fs.pathSeparator`
 
 If you want to combine two paths you can use fs.pathSeparator instead of */* or *\\*.
 
+!SUBSUBSECTION join
+`fs.join(path, filename)`
 
-<!-- lib/V8/v8-utils.cpp  -->
+The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
 
+!SUBSUBSECTION getTempFile
+@startDocuBlock JS_GetTempFile
+
+!SUBSUBSECTION getTempPath
+@startDocuBlock JS_GetTempPath
+
+!SUBSUBSECTION makeAbsolute
+@startDocuBlock JS_MakeAbsolute
+
+!SUBSUBSECTION chmod
+@startDocuBlock JS_Chmod
+
+!SUBSUBSECTION list
+@startDocuBlock JS_List
+
+!SUBSUBSECTION listTree
+@startDocuBlock JS_ListTree
+
+!SUBSUBSECTION makeDirectory
+@startDocuBlock JS_MakeDirectory
+
+!SUBSUBSECTION makeDirectoryRecursive
+@startDocuBlock JS_MakeDirectoryRecursive
+
+!SUBSUBSECTION remove
+@startDocuBlock JS_Remove
+
+!SUBSUBSECTION removeDirectory
+@startDocuBlock JS_RemoveDirectory
+
+!SUBSUBSECTION removeDirectoryRecursive
+@startDocuBlock JS_RemoveDirectoryRecursive
+
+!SECTION File IO
+
+!SUBSUBSECTION read
 @startDocuBlock JS_Read
 
-
-<!-- lib/V8/v8-utils.cpp  -->
-
+!SUBSUBSECTION read64
 @startDocuBlock JS_Read64
 
-
-<!-- lib/V8/v8-utils.cpp  -->
-
+!SUBSUBSECTION readBuffer
 @startDocuBlock JS_ReadBuffer
 
-
+!SUBSUBSECTION readFileSync
 `fs.readFileSync(filename, encoding)`
 
 Reads the contents of the file specified in `filename`. If `encoding` is specified,
@@ -87,29 +90,29 @@ If no `encoding` is specified, the file contents will be returned in a Buffer
 object.
 
 
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_Remove
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_RemoveDirectory
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_Size
-
-
-<!-- lib/V8/v8-utils.cpp  -->
-
+!SUBSUBSECTION save
 @startDocuBlock JS_Save
 
-
-<!-- lib/V8-v8-utils.cpp  -->
-
+!SUBSUBSECTION writeFileSync
 `fs.writeFileSync(filename, content)`
 
 This is an alias for `fs.write(filename, content)`.
 
+!SECTION Recursive Manipulation
+
+!SUBSUBSECTION copyRecursive
+@startDocuBlock JS_CopyDirectoryRecursive
+
+!SUBSUBSECTION CopyFile
+@startDocuBlock JS_CopyFile
+
+!SUBSUBSECTION move
+@startDocuBlock JS_MoveFile
+
+!SECTION ZIP
+
+!SUBSUBSECTION unzipFile
+@startDocuBlock JS_Unzip
+
+!SUBSUBSECTION zipFile
+startDocuBlock JS_Zip

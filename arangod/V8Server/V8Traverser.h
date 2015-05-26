@@ -44,10 +44,10 @@ struct VertexId {
   TRI_voc_cid_t cid;
   char const*   key;
 
-  VertexId() : cid(0), key(nullptr) {
+  VertexId () : cid(0), key(nullptr) {
   }
 
-  VertexId( TRI_voc_cid_t cid, char const* key) 
+  VertexId (TRI_voc_cid_t cid, char const* key) 
     : cid(cid), key(key) {
   }
   
@@ -64,6 +64,38 @@ struct VertexId {
   // VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
 };
 
+namespace std {
+  template<>
+  struct hash<VertexId> {
+    public:
+      size_t operator()(VertexId const& s) const {
+        size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
+        size_t h2 = TRI_FnvHashString(s.key);
+        return h1 ^ ( h2 << 1 );
+      }
+  };
+
+  template<>
+  struct equal_to<VertexId> {
+    public:
+      bool operator()(VertexId const& s, VertexId const& t) const {
+        return s.cid == t.cid && strcmp(s.key, t.key) == 0;
+      }
+  };
+
+  template<>
+    struct less<VertexId> {
+      public:
+        bool operator()(const VertexId& lhs, const VertexId& rhs) {
+          if (lhs.cid != rhs.cid) {
+            return lhs.cid < rhs.cid;
+          }
+          return strcmp(lhs.key, rhs.key) < 0;
+        }
+    };
+
+}
+
 // EdgeId and VertexId are similar here. both have a key and a cid
 typedef VertexId EdgeId; 
 
@@ -77,7 +109,7 @@ struct VertexFilterInfo {
   TRI_transaction_collection_t* col;
   triagens::arango::ExampleMatcher* matcher;
 
-  VertexFilterInfo(
+  VertexFilterInfo (
     triagens::arango::ExplicitTransaction* trx,
     TRI_transaction_collection_t* col,
     triagens::arango::ExampleMatcher* matcher
@@ -126,7 +158,7 @@ namespace triagens {
             useEdgeFilter(false) {
           }
 
-          void addEdgeFilter(
+          void addEdgeFilter (
             v8::Isolate* isolate,
             v8::Handle<v8::Object> const& example,
             TRI_shaper_t* shaper,
@@ -134,7 +166,7 @@ namespace triagens {
             std::string& errorMessage
           );
 
-          void addVertexFilter(
+          void addVertexFilter (
             v8::Isolate* isolate,
             v8::Handle<v8::Object> const& example,
             triagens::arango::ExplicitTransaction* trx,
@@ -144,21 +176,38 @@ namespace triagens {
             std::string& errorMessage
           );
 
-          void addFinalVertex(VertexId& v);
+          void addFinalVertex (VertexId& v);
 
-          bool matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
+          bool matchesEdge (EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
 
-          bool matchesVertex(VertexId& v) const;
-
+          bool matchesVertex (VertexId& v) const;
       };
-      struct NeighborsOptions {
-        std::string direction;
-        bool distinct;
 
-        NeighborsOptions() :
-          direction("outbound"),
-          distinct(false) {
-        }
+      struct NeighborsOptions {
+        private:
+          std::unordered_map<TRI_voc_cid_t, triagens::arango::ExampleMatcher*> _edgeFilter;
+
+        public:
+          TRI_edge_direction_e direction;
+          bool distinct;
+          VertexId start;
+          bool useEdgeFilter;
+
+          NeighborsOptions () :
+            direction(TRI_EDGE_OUT),
+            distinct(true),
+            useEdgeFilter(false) {
+          }
+
+          void addEdgeFilter (
+            v8::Isolate* isolate,
+            v8::Handle<v8::Object> const& example,
+            TRI_shaper_t* shaper,
+            TRI_voc_cid_t const& cid,
+            std::string& errorMessage
+          );
+
+          bool matchesEdge (EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
 
       };
  
@@ -291,15 +340,11 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
 /// @brief Wrapper for the neighbors computation
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<VertexId> TRI_RunNeighborsSearch (
-  v8::Isolate* isolate,
-  TRI_vocbase_t* vocbase,
-  std::string const& vertexCollectionName,
-  std::string const& edgeCollectionName,
-  std::string const& startVertex,
-  triagens::arango::CollectionNameResolver const* resolver,
-  TRI_document_collection_t* ecol,
-  triagens::basics::traverser::NeighborsOptions& opts
+void TRI_RunNeighborsSearch (
+  std::vector<EdgeCollectionInfo*>& collectionInfos,
+  triagens::basics::traverser::NeighborsOptions& opts,
+  std::unordered_set<VertexId>& distinct,
+  std::vector<VertexId>& result
 );
 
 #endif

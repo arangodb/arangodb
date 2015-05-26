@@ -39,7 +39,7 @@ The action module provides the infrastructure for defining HTTP actions.
 
 !SUBSECTION Result temporary redirect
 <!-- js/server/modules/org/arangodb/actions.js -->
-@startDocuBlock actionsResultTemporaryRedirect 
+@startDocuBlock actionsResultTemporaryRedirect
 
 !SECTION ArangoDB Result Generators
 
