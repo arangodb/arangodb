@@ -3556,24 +3556,16 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
 /// the caller must have read-locked the underlying collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
-  TRI_vector_pointer_t* vector = static_cast<TRI_vector_pointer_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_pointer_t), false));
-
-  if (vector == nullptr) {
-    return nullptr;
-  }
-
-  TRI_InitVectorPointer(vector, TRI_CORE_MEM_ZONE);
+std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
+  std::vector<triagens::basics::Json> result;
 
   for (auto const& idx : document->allIndexes()) {
     auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE);
 
-    if (json.json() != nullptr) {
-      TRI_PushBackVectorPointer(vector, json.steal());
-    }
+    result.emplace_back(json);
   }
 
-  return vector;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4067,12 +4059,12 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 
     // need just one field
     if (fieldCount == 1) {
-      TRI_json_t* loc = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 0));
+      auto loc = static_cast<TRI_json_t const*>(TRI_AtVector(&fld->_value._objects, 0));
 
       idx = CreateGeoIndexDocumentCollection(document,
-                                             loc->_value._string.data,
-                                             nullptr,
-                                             nullptr,
+                                             std::string(loc->_value._string.data, loc->_value._string.length - 1),
+                                             std::string(),
+                                             std::string(),
                                              geoJson,
                                              iid,
                                              nullptr);
@@ -4094,13 +4086,13 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   // attribute style
   else if (TRI_EqualString(typeStr, "geo2")) {
     if (fieldCount == 2) {
-      TRI_json_t* lat = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 0));
-      TRI_json_t* lon = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 1));
+      auto lat = static_cast<TRI_json_t const*>(TRI_AtVector(&fld->_value._objects, 0));
+      auto lon = static_cast<TRI_json_t const*>(TRI_AtVector(&fld->_value._objects, 1));
 
       idx = CreateGeoIndexDocumentCollection(document,
-                                             nullptr,
-                                             lat->_value._string.data,
-                                             lon->_value._string.data,
+                                             std::string(),
+                                             std::string(lat->_value._string.data, lat->_value._string.length - 1),
+                                             std::string(lon->_value._string.data, lon->_value._string.length - 1),
                                              false,
                                              iid,
                                              nullptr);
@@ -4204,7 +4196,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_col
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  auto idx = CreateGeoIndexDocumentCollection(document, location, nullptr, nullptr, geoJson, iid, created);
+  auto idx = CreateGeoIndexDocumentCollection(document, location, std::string(), std::string(), geoJson, iid, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4244,7 +4236,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_col
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  auto idx = CreateGeoIndexDocumentCollection(document, nullptr, latitude, longitude, false, iid, created);
+  auto idx = CreateGeoIndexDocumentCollection(document, std::string(), latitude, longitude, false, iid, created);
 
   if (idx != nullptr) {
     if (created) {

@@ -1451,36 +1451,23 @@ static void JS_GetIndexesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
   trx.lockRead();
 
   TRI_document_collection_t* document = trx.documentCollection();
-  const string collectionName = string(collection->_name);
+  std::string const& collectionName = std::string(collection->_name);
 
   // get list of indexes
-  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document);
+  auto&& indexes = TRI_IndexesDocumentCollection(document);
 
   trx.finish(res);
   // READ-LOCK end
 
-  if (indexes == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  size_t n = indexes.size();
+  v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
+
+  for (size_t i = 0;  i < n;  ++i) {
+    result->Set(static_cast<uint32_t>(i), IndexRep(isolate, collectionName, indexes[i].json()));
   }
-
-  v8::Handle<v8::Array> result = v8::Array::New(isolate);
-
-  uint32_t n = (uint32_t) indexes->_length;
-
-  for (uint32_t i = 0, j = 0;  i < n;  ++i) {
-    TRI_json_t* idx = static_cast<TRI_json_t*>(indexes->_buffer[i]);
-
-    if (idx != nullptr) {
-      result->Set(j++, IndexRep(isolate, collectionName, idx));
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, idx);
-    }
-  }
-
-  TRI_FreeVectorPointer(TRI_CORE_MEM_ZONE, indexes);
 
   TRI_V8_RETURN(result);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an index identifier
