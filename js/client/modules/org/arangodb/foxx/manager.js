@@ -211,11 +211,11 @@
 /// Output:
 /// -
 ////////////////////////////////////////////////////////////////////////////////
-  var script = function(name, mount, options) {
+  var script = function(mount, name, options) {
     checkParameter(
-      "script(<name>, <mount>, [<options>])",
-      [ [ "Script name", "string" ], [ "Mount path", "string" ] ],
-      [ name, mount ] );
+      "script(<mount>, <name>, [<options>])",
+      [ [ "Mount path", "string" ], [ "Script name", "string" ] ],
+      [ mount, name ] );
     var res;
     var req = {
       name: name,
@@ -564,14 +564,16 @@
     try {
       switch (type) {
         case "setup":
-          script("setup", args[1]);
+          script(args[1], "setup");
           break;
         case "teardown":
-          script("teardown", args[1]);
+          script(args[1], "teardown");
           break;
         case "script":
-          options = extractOptions(args);
-          script(args[2], args[1], options);
+          options = args.slice(3).map(function (arg) {
+            return JSON.parse(arg);
+          });
+          script(args[1], args[2], options);
           break;
         case "tests":
           options = extractOptions(args);
@@ -659,7 +661,7 @@
              res.mount);
           break;
         case "configure":
-          options = extractOptions(args);
+          options = extractOptions(args).configuration || {};
           res = configure(args[1], options);
           printf("Reconfigured Application %s version %s on mount point %s\n",
              res.name,
@@ -671,7 +673,7 @@
           printf("Configuration options:\n%s\n", JSON.stringify(res, undefined, 2));
           break;
         case "set-dependencies":
-          options = extractOptions(args);
+          options = extractOptions(args).configuration || {};
           res = setDependencies(args[1], options);
           printf("Reconfigured dependencies of Application %s version %s on mount point %s\n",
              res.name,
@@ -705,8 +707,8 @@
 // -----------------------------------------------------------------------------
 
   exports.install = install;
-  exports.setup = script.bind(null, "setup");
-  exports.teardown = script.bind(null, "teardown");
+  exports.setup = function (mount, opts) {return script(mount, "setup", opts);};
+  exports.teardown = function (mount, opts) {return script(mount, "teardown", opts);};
   exports.script = script;
   exports.tests = tests;
   exports.uninstall = uninstall;
