@@ -130,7 +130,7 @@ namespace triagens {
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
 
       // respect timeout
-      double endTime = now() + _requestTimeout;
+      double endTime = TRI_microtime() + _requestTimeout;
       double remainingTime = _requestTimeout;
 
       while (_state < FINISHED && remainingTime > 0.0) {
@@ -267,7 +267,7 @@ namespace triagens {
             break;
         }
 
-        remainingTime = endTime - now();
+        remainingTime = endTime - TRI_microtime();
       }
 
       if (_state < FINISHED && _errorMessage.empty()) {

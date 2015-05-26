@@ -1,0 +1,23 @@
+!CHAPTER Module "process"
+
+mimic parts of nodejs process module
+
+!SUBSECTION env
+
+env maps the systems environment to an associative array.
+
+<!--
+these are copied from node, but don't serve any specific purpose over here
+!SUBSECTION domain
+
+
+!SUBSECTION _events
+
+!SUBSECTION argv
+
+!SUBSECTION stdout
+
+!SUBSECTION CMD
+
+!SUBSECTION nextTick
+-->

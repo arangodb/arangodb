@@ -46,37 +46,6 @@ using namespace triagens::basics;
 using namespace triagens::basics::traverser;
 using namespace triagens::arango;
 
-namespace std {
-  template<>
-  struct hash<VertexId> {
-    public:
-      size_t operator()(VertexId const& s) const {
-        size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
-        size_t h2 = TRI_FnvHashString(s.key);
-        return h1 ^ ( h2 << 1 );
-      }
-  };
-
-  template<>
-  struct equal_to<VertexId> {
-    public:
-      bool operator()(VertexId const& s, VertexId const& t) const {
-        return s.cid == t.cid && strcmp(s.key, t.key) == 0;
-      }
-  };
-
-  template<>
-    struct less<VertexId> {
-      public:
-        bool operator()(const VertexId& lhs, const VertexId& rhs) {
-          if (lhs.cid != rhs.cid) {
-            return lhs.cid < rhs.cid;
-          }
-          return strcmp(lhs.key, rhs.key) < 0;
-        }
-    };
-
-}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _from Id out of mptr, we return an RValue reference
 /// to explicitly allow move semantics.
@@ -252,6 +221,22 @@ class SimpleEdgeExpander {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a new edge matcher object
+////////////////////////////////////////////////////////////////////////////////
+
+void ShortestPathOptions::addEdgeFilter( 
+          v8::Isolate* isolate,
+          v8::Handle<v8::Object> const& example,
+          TRI_shaper_t* shaper,
+          TRI_voc_cid_t const& cid,
+          string& errorMessage) {
+  auto it = _edgeFilter.find(cid);
+  if (it == _edgeFilter.end()) {
+    _edgeFilter.emplace(cid, new ExampleMatcher(isolate, example, shaper, errorMessage));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if an edge matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -267,22 +252,6 @@ bool ShortestPathOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) cons
     return false;
   }
   return it->second->matches(edge);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Insert a new edge matcher object
-////////////////////////////////////////////////////////////////////////////////
-
-void ShortestPathOptions::addEdgeFilter( 
-          v8::Isolate* isolate,
-          v8::Handle<v8::Object> const& example,
-          TRI_shaper_t* shaper,
-          TRI_voc_cid_t const& cid,
-          string& errorMessage) {
-  auto it = _edgeFilter.find(cid);
-  if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid, new ExampleMatcher(isolate, example, shaper, errorMessage));
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,6 +305,45 @@ bool ShortestPathOptions::matchesVertex(VertexId& v) const {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                        NeighborsOptions FUNCTIONS
+// -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a new edge matcher object
+////////////////////////////////////////////////////////////////////////////////
+
+void NeighborsOptions::addEdgeFilter( 
+          v8::Isolate* isolate,
+          v8::Handle<v8::Object> const& example,
+          TRI_shaper_t* shaper,
+          TRI_voc_cid_t const& cid,
+          string& errorMessage) {
+  auto it = _edgeFilter.find(cid);
+  if (it == _edgeFilter.end()) {
+    _edgeFilter.emplace(cid, new ExampleMatcher(isolate, example, shaper, errorMessage));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if an edge matches to given examples
+////////////////////////////////////////////////////////////////////////////////
+
+bool NeighborsOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
+  if (!useEdgeFilter) {
+    // Nothing to do
+    return true;
+  }
+  auto it = _edgeFilter.find(e.cid);
+  if (it == _edgeFilter.end()) {
+    // This collection does not have any object of this shape.
+    // Short circuit.
+    return false;
+  }
+  return it->second->matches(edge);
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                          private Helper Functions
 // -----------------------------------------------------------------------------
 
@@ -380,87 +388,67 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
   return path;
 }
 
-vector<VertexId> TRI_RunNeighborsSearch (
-  v8::Isolate* isolate,
-  TRI_vocbase_t* vocbase,
-  std::string const& vertexCollectionName,
-  std::string const& edgeCollectionName,
-  std::string const& startVertex,
-  CollectionNameResolver const* resolver,
-  TRI_document_collection_t* ecol,
-  NeighborsOptions& opts
-) {
-  // Transform string ids to VertexIds
-  // Needs refactoring!
-  size_t split;
-  char const* str = startVertex.c_str();
-  vector<VertexId> result;
+void TRI_RunNeighborsSearch (
+  vector<EdgeCollectionInfo*>& collectionInfos,
+  NeighborsOptions& opts,
+  unordered_set<VertexId>& distinct,
+  vector<VertexId>& result) {
 
-  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    // TODO Error Handling
-    return result;
-  }
-  string collectionName = startVertex.substr(0, split);
-
-  auto coli = resolver->getCollectionStruct(collectionName);
-  if (coli == nullptr) {
-    // collection not found
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
   if (opts.distinct) {
-    unordered_set<VertexId> distinct;
-    if (opts.direction == "any") {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        distinct.insert(extractFromId(edges[j]));
-      }
-      edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        distinct.insert(extractToId(edges[j]));
-      }
-    } else if (opts.direction == "inbound") {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        distinct.insert(extractFromId(edges[j]));
-      }
-    } else {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        distinct.insert(extractToId(edges[j]));
+    if (opts.direction == TRI_EDGE_IN || opts.direction == TRI_EDGE_ANY) {
+      TRI_edge_direction_e dir = TRI_EDGE_IN;
+      for (auto col : collectionInfos) {
+        auto edges = col->getEdges(dir, opts.start);
+        for (size_t j = 0;  j < edges.size(); ++j) {
+          EdgeId edgeId = col->extractEdgeId(edges[j]);
+          if (opts.matchesEdge(edgeId, &edges[j])) {
+            auto p = distinct.insert(extractFromId(edges[j]));
+            if (p.second) {
+              result.push_back(*p.first);
+            }
+          }
+        }
       }
     }
-    copy(distinct.begin(), distinct.end(), back_inserter(result));
+    if (opts.direction == TRI_EDGE_OUT || opts.direction == TRI_EDGE_ANY) {
+      TRI_edge_direction_e dir = TRI_EDGE_OUT;
+      for (auto col : collectionInfos) {
+        auto edges = col->getEdges(dir, opts.start);
+        for (size_t j = 0;  j < edges.size(); ++j) {
+          EdgeId edgeId = col->extractEdgeId(edges[j]);
+          if (opts.matchesEdge(edgeId, &edges[j])) {
+            auto p = distinct.insert(extractToId(edges[j]));
+            if (p.second) {
+              result.push_back(*p.first);
+            }
+          }
+        }
+      }
+    }
   } else {
-    if (opts.direction == "any") {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        result.push_back(extractFromId(edges[j]));
+    if (opts.direction == TRI_EDGE_IN || opts.direction == TRI_EDGE_ANY) {
+      TRI_edge_direction_e dir = TRI_EDGE_IN;
+      for (auto col : collectionInfos) {
+        auto edges = col->getEdges(dir, opts.start);
+        for (size_t j = 0;  j < edges.size(); ++j) {
+          EdgeId edgeId = col->extractEdgeId(edges[j]);
+          if (opts.matchesEdge(edgeId, &edges[j])) {
+            result.push_back(extractFromId(edges[j]));
+          }
+        }
       }
-      edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        result.push_back(extractToId(edges[j]));
-      }
-    } else if (opts.direction == "inbound") {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_IN, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        result.push_back(extractFromId(edges[j]));
-      }
-    } else {
-      auto edges = TRI_LookupEdgesDocumentCollection(ecol,
-             TRI_EDGE_OUT, coli->_cid, const_cast<char*>(str + split + 1));
-      for (size_t j = 0;  j < edges.size(); ++j) {
-        result.push_back(extractToId(edges[j]));
+    }
+    if (opts.direction == TRI_EDGE_OUT || opts.direction == TRI_EDGE_ANY) {
+      TRI_edge_direction_e dir = TRI_EDGE_OUT;
+      for (auto col : collectionInfos) {
+        auto edges = col->getEdges(dir, opts.start);
+        for (size_t j = 0;  j < edges.size(); ++j) {
+          EdgeId edgeId = col->extractEdgeId(edges[j]);
+          if (opts.matchesEdge(edgeId, &edges[j])) {
+            result.push_back(extractToId(edges[j]));
+          }
+        }
       }
     }
   }
-
-
-  return result;
 };

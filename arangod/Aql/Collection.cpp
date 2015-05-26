@@ -319,7 +319,7 @@ void Collection::fillIndexesDBServer () const {
       triagens::arango::Index* data = nullptr;
 
       auto const& allIndexes = document->allIndexes();
-      size_t const n = indexes.size();
+      size_t const n = allIndexes.size();
 
       // now check if we can find the local index and map it
       for (size_t j = 0; j < n; ++j) {

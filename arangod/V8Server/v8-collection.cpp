@@ -2013,6 +2013,18 @@ static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///   * *offset*: initial offset value for *autoincrement* key generator.
 ///     Not used for other key generator types.
 ///
+/// * *indexBuckets*: number of buckets into which indexes using a hash
+///   table are split. The default is 1 and this number has to be a
+///   power of 2 and less than or equal to 1024. 
+///   
+///   For very large collections
+///   one should increase this to avoid long pauses when the hash table
+///   has to be resized, since buckets are resized individually. For 
+///   example, 64 might be a sensible value for a collection with 100
+///   000 000 documents. Currently, only the edge index respects this
+///   value. Changes (see below) are applied when the collection is
+///   loaded the next time.
+///
 /// In a cluster setup, the result will also contain the following attributes:
 ///
 /// * *numberOfShards*: the number of shards of the collection.
@@ -2029,6 +2041,9 @@ static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///   after the data was synced to disk.
 ///
 /// * *journalSize* : The size of the journal in bytes.
+///
+/// * *indexBuckets* : See above, changes are only applied when the
+///   collection is loaded the next time.
 ///
 /// *Note*: it is not possible to change the journal size after the journal or
 /// datafile has been created. Changing this parameter will only effect newly

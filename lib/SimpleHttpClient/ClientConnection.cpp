@@ -173,10 +173,14 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
     return false;
   }
 
-  do {
-    tv.tv_sec = (long) timeout;
-    tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
+  #ifndef LINUX
+  double start = TRI_microtime();
+  #endif
 
+  tv.tv_sec = (long) timeout;
+  tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
+
+  do {
     FD_ZERO(&fdset);
     FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
 
@@ -192,8 +196,17 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
 
     int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
     res = select(sockn, readFds, writeFds, NULL, &tv);
+    #ifndef LINUX
+    if ((res == -1 && errno == EINTR)) {
+      double end = TRI_microtime();
+      timeout = timeout - (end - start);
+      start = end;
+      tv.tv_sec = (long) timeout;
+      tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
+    }
+    #endif 
   } 
-  while (res == -1 && errno == EINTR);
+  while ((res == -1) && (errno == EINTR) && (timeout > 0.0));
 
   if (res > 0) {
     return true;
