@@ -1,7 +1,10 @@
 import os
+import sys
 import re
 import inspect
 import cgi
+
+fullSuccess = True
 
 def file_content(filepath):
   """ Fetches and formats file's content to perform the required operation.
@@ -151,7 +154,7 @@ def example_content(filepath, fh, tag):
 def fetch_comments(dirpath):
   """ Fetches comments from files and writes to a file in required format.
   """
-
+  global fullSuccess
   comments_filename = "allComments.txt"
   fh = open(comments_filename, "a")
   shouldIgnoreLine = False;
@@ -181,6 +184,7 @@ def fetch_comments(dirpath):
                   if os.path.isfile(dirpath):
                     example_content(dirpath, fh, _filename)
                   else:
+                    fullSuccess = False
                     print "Could not find code for " + _filename
                 else:
                   fh.write("%s\n" % _text)
@@ -206,3 +210,5 @@ if __name__ == "__main__":
     fetch_comments(dirpath)
     print "Searching for docublocks in " + i
     os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'templates'))
+  if not fullSuccess: 
+    sys.exit(1)
