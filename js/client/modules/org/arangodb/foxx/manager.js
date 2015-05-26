@@ -63,23 +63,23 @@
     var nargs = [];
     var i;
 
-    var re1 = /^([\-_a-zA-Z0-9]*)=(.*)$/;
-    var re2 = /^(0|.0|([0-9]*(\.[0-9]*)?))$/;
-    var a, m, k, v;
+    var reOption = /^([\-_a-zA-Z0-9]*)=(.*)$/;
+    var reNumeric = /^(0|.0|([0-9]*(\.[0-9]*)?))$/;
+    var arg, match, key, value;
 
     for (i = 0;  i < args.length;  ++i) {
-      a = args[i];
-      m = re1.exec(a);
+      arg = args[i];
+      match = reOption.exec(arg);
 
-      if (m !== null) {
-        k = m[1];
-        v = m[2];
+      if (match !== null) {
+        key = match[1];
+        value = match[2];
 
-        if (re2.test(v)) {
-          options[k] = parseFloat(v);
+        if (reNumeric.test(value)) {
+          options[key] = parseFloat(value);
         }
         else {
-          options[k] = v;
+          options[key] = value;
         }
       }
       else {
@@ -95,27 +95,27 @@
 /// @brief extract options from CLI options
 ////////////////////////////////////////////////////////////////////////////////
   var extractOptions = function (args) {
-    var co = extractCommandLineOptions(args);
-    if (3 < co.args.length) {
-      var options = JSON.parse(co.args[3]);
+    var opts = extractCommandLineOptions(args);
+    if (3 < opts.args.length) {
+      var options = JSON.parse(opts.args[3]);
 
       if (options.hasOwnProperty("configuration")) {
-        var k;
+        var key;
 
-        for (k in co.options) {
-          if (co.options.hasOwnProperty(k)) {
-            options.configuration[k] = co.options[k];
+        for (key in opts.options) {
+          if (opts.options.hasOwnProperty(key)) {
+            options.configuration[key] = opts.options[key];
           }
         }
       }
       else {
-        options.configuration = co.options;
+        options.configuration = opts.options;
       }
 
       return options;
     }
 
-    return { configuration: co.options };
+    return { configuration: opts.options };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -683,17 +683,17 @@
           printf("Dependencies:\n%s\n", JSON.stringify(res, undefined, 2));
           break;
         default:
-          arangodb.printf("Unknown command '%s', please try:\n", type);
+          printf("Unknown command '%s', please try:\n", type);
           cmdUsage();
       }
       return 0;
     }
     catch (err) {
       if (err instanceof ArangoError) {
-        arangodb.printf("%s\n", err.errorMessage);
+        printf("%s\n", err.errorMessage);
       }
       else {
-        arangodb.printf("%s\n", err.message);
+        printf("%s\n", err.message);
       }
 
       return 1;

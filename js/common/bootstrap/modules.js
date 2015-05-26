@@ -222,8 +222,8 @@ function require (path) {
           throw new internal.ArangoError({
             errorNum: internal.errors.ERROR_MODULE_CAN_NOT_ESCAPE.code,
             errorMessage: internal.errors.ERROR_MODULE_CAN_NOT_ESCAPE.message
-            + " Prefix: " + prefix
-            + " Path: " + path
+            + "\nPrefix: " + prefix
+            + "\nPath: " + path
           });
         }
 
@@ -265,7 +265,7 @@ function require (path) {
           throw new internal.ArangoError({
             errorNum: internal.errors.ERROR_MODULE_DRIVE_LETTER.code,
             errorMessage: internal.errors.ERROR_MODULE_DRIVE_LETTER.message
-            + " Path: " + path
+            + "\nPath: " + path
           });
         }
 
@@ -298,7 +298,7 @@ function require (path) {
           throw new internal.ArangoError({
             errorNum: internal.errors.ERROR_MODULE_DRIVE_LETTER.code,
             errorMessage: internal.errors.ERROR_MODULE_DRIVE_LETTER.message
-            + " Path: " + filename
+            + "\nPath: " + filename
           });
         }
 
@@ -339,7 +339,7 @@ function require (path) {
         throw new internal.ArangoError({
           errorNum: internal.errors.ERROR_MODULE_UNKNOWN_FILE_TYPE.code,
           errorMessage: internal.errors.ERROR_MODULE_UNKNOWN_FILE_TYPE.message
-          + " Path: " + path
+          + "\nPath: " + path
         });
       }
 
@@ -435,7 +435,7 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.code,
         errorMessage: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.message
-        + " Origin: " + origin
+        + "\nOrigin: " + origin
       });
     }
 
@@ -474,8 +474,8 @@ function require (path) {
     throw new internal.ArangoError({
       errorNum: internal.errors.ERROR_MODULE_DOCUMENT_IS_EMPTY.code,
       errorMessage: internal.errors.ERROR_MODULE_DOCUMENT_IS_EMPTY.message
-      + " Collection: " + match[1]
-      + " Path: " + path
+      + "\nCollection: " + match[1]
+      + "\nPath: " + path
     });
   }
 
@@ -544,7 +544,7 @@ function require (path) {
         throw new internal.ArangoError({
           errorNum: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.code,
           errorMessage: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.message
-          + " Origin: " + currentPackage._origin
+          + "\nOrigin: " + currentPackage._origin
         });
       }
 
@@ -560,7 +560,7 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.code,
         errorMessage: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.message
-        + " Origin: " + currentPackage._origin
+        + "\nOrigin: " + currentPackage._origin
       });
     }
 
@@ -592,7 +592,7 @@ function require (path) {
         throw new internal.ArangoError({
           errorNum: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.code,
           errorMessage: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.message
-          + " Origin: " + description.origin
+          + "\nOrigin: " + description.origin
         });
       }
 
@@ -611,7 +611,7 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.code,
         errorMessage: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.message
-        + " Origin: " + currentPackage._origin
+        + "\nOrigin: " + currentPackage._origin
       });
     }
 
@@ -657,8 +657,8 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_MAIN_NOT_READABLE.code,
         errorMessage: internal.errors.ERROR_MODULE_MAIN_NOT_READABLE.message
-        + " Path: " + path
-        + " Main File: " + mainfile
+        + "\nPath: " + path
+        + "\nMain File: " + mainfile
       });
     }
 
@@ -666,9 +666,9 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_MAIN_NOT_JS.code,
         errorMessage: internal.errors.ERROR_MODULE_MAIN_NOT_JS.message
-        + " Path: " + path
-        + " Main File: " + mainfile
-        + " Type: " + description.type
+        + "\nPath: " + path
+        + "\nMain File: " + mainfile
+        + "\nType: " + description.type
       });
     }
 
@@ -678,8 +678,8 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.code,
         errorMessage: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.message
-        + " Path: " + path
-        + " Origin: " + description.origin
+        + "\nPath: " + path
+        + "\nOrigin: " + description.origin
       });
     }
 
@@ -712,7 +712,7 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.code,
         errorMessage: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.message
-        + " Origin: " + currentPackage._origin
+        + "\nOrigin: " + currentPackage._origin
       });
     }
 
@@ -979,7 +979,7 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_PATH_MUST_BE_ABSOLUTE.code,
         errorMessage: internal.errors.ERROR_MODULE_PATH_MUST_BE_ABSOLUTE.message
-        + " Path: " + path
+        + "\nPath: " + path
       });
     }
 
@@ -1214,7 +1214,7 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_NOT_FOUND.code,
         errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message
-        + " Path: " + path
+        + "\nPath: " + path
       });
     }
 
@@ -1350,8 +1350,8 @@ function require (path) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_SYNTAX_ERROR.code,
         errorMessage: internal.errors.ERROR_MODULE_SYNTAX_ERROR.message
-        + " File: " + filename
-        + " Content: " + content
+        + "\nFile: " + filename
+        + "\nContent: " + content
       });
     }
 
@@ -1382,12 +1382,12 @@ function require (path) {
     try {
       script = Function.apply(null, keys.concat(content));
     } catch (e) {
-      require('console').error(e.stack);
+      require('console').errorLines(e.stack);
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_BAD_WRAPPER.code,
         errorMessage: internal.errors.ERROR_MODULE_BAD_WRAPPER.message
-        + " File: " + filename
-        + " Context variables: " + JSON.stringify(Object.keys(args))
+        + "\nFile: " + filename
+        + "\nContext variables: " + JSON.stringify(Object.keys(args))
       }), {stack: e.stack});
     }
 
@@ -1397,12 +1397,12 @@ function require (path) {
       fn = internal.executeScript("(" + script + ")", undefined, filename);
     } catch (e) {
       // This should never happen, right?
-      require('console').error(e.stack);
+      require('console').errorLines(e.stack);
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
         errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
-        + " File: " + filename
-        + " Content: " + content
+        + "\nFile: " + filename
+        + "\nContent: " + content
       }), {stack: e.stack});
     }
 
@@ -1415,12 +1415,12 @@ function require (path) {
         return args[key];
       }));
     } catch (e) {
-      require('console').error(e.stack);
+      require('console').errorLines(e.stack);
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
         errorMessage: internal.errors.ERROR_MODULE_FAILURE.message
-        + " File: " + filename
-        + " Content: " + content
+        + "\nFile: " + filename
+        + "\nContent: " + content
       }), {stack: e.stack});
     }
 
