@@ -152,6 +152,8 @@ global.tutorial = require("org/arangodb/tutorial");
   }
 
   if (internal.quiet !== true) {
+    require("org/arangodb").checkAvailableVersions();
+
     if (internal.arango && internal.arango.isConnected && internal.arango.isConnected()) {
       internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");
     }
