@@ -1395,6 +1395,9 @@ function ahuacatlQueryGeneralPathsTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryGeneralTraversalTestSuite() {
+
+  var vertexIds = {};
+
   return {
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1426,6 +1429,14 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       var Emil = Frankfurt.save({ _key: "Emil", gender: "male", age: 25});
       var Fritz = Frankfurt.save({ _key: "Fritz", gender: "male", age: 30});
       var Gerda = Leipzig.save({ _key: "Gerda", gender: "female", age: 40});
+
+      vertexIds.Anton = Anton._id;
+      vertexIds.Berta = Berta._id;
+      vertexIds.Caesar = Caesar._id;
+      vertexIds.Dieter = Dieter._id;
+      vertexIds.Emil = Emil._id;
+      vertexIds.Fritz = Fritz._id;
+      vertexIds.Gerda = Gerda._id;
 
       try {
         db._collection("_graphs").remove("_graphs/werKenntWen");
@@ -1536,837 +1547,723 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     testGRAPH_SHORTEST_PATH: function () {
       var actual;
 
+      // Caesar -> Berta -> Gerda -> Dieter -> Emil
       actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
         " 'UnitTests_Frankfurter/Emil', {direction : 'outbound', algorithm : 'Floyd-Warshall'}) " +
-        "SORT e.startVertex, e.vertex._id RETURN [e.startVertex, e.vertex._id]");
-      assertEqual(actual,
-        [
-          [
-            "UnitTests_Hamburger/Caesar",
-            "UnitTests_Frankfurter/Emil"
-          ]
-        ]
-      );
+        " RETURN e");
+      assertEqual(actual.length, 1, "Exactly one element is returned");
+      var path = actual[0];
+      assertTrue(path.hasOwnProperty("vertices"), "The path contains all vertices");
+      assertTrue(path.hasOwnProperty("edges"), "The path contains all edges");
+      assertTrue(path.hasOwnProperty("distance"), "The path contains the distance");
+      assertEqual(path.vertices, [
+        vertexIds.Caesar, vertexIds.Berta, vertexIds.Gerda, vertexIds.Dieter, vertexIds.Emil
+      ], "The correct shortest path is using these vertices");
+      assertEqual(path.distance, 4, "The distance is 1 per edge");
 
       actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-        "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT e.startVertex, e.vertex._id RETURN [e.startVertex, e.vertex._id, e.distance]");
+        "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
+        "RETURN {vertices: e.vertices, distance: e.distance}");
+      assertEqual(actual.length, 17, "For each pair that has a shortest path one entry is required");
+      assertEqual(actual[0], {
+        vertices: [vertexIds.Anton, vertexIds.Berta],
+        distance: 1
+      });
+      assertEqual(actual[1], {
+        vertices: [vertexIds.Anton, vertexIds.Caesar],
+        distance: 1
+      });
+      assertEqual(actual[2], {
+        vertices: [vertexIds.Berta, vertexIds.Caesar],
+        distance: 1
+      });
+      assertEqual(actual[3], {
+        vertices: [vertexIds.Emil,vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta],
+        distance: 3
+      });
+      assertEqual(actual[4], {
+        vertices: [vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar],
+        distance: 4
+      });
+      assertEqual(actual[5], {
+        vertices: [vertexIds.Emil, vertexIds.Dieter],
+        distance: 1
+      });
+      assertEqual(actual[6], {
+        vertices: [vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda],
+        distance: 2
+      });
+      assertEqual(actual[7], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil,vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta],
+        distance: 4
+      });
+      assertEqual(actual[8], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil],
+        distance: 1
+      });
+      assertEqual(actual[9], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar],
+        distance: 5
+      });
+      assertEqual(actual[10], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil, vertexIds.Dieter],
+        distance: 2
+      });
+      assertEqual(actual[11], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda],
+        distance: 3
+      });
+      assertEqual(actual[12], {
+        vertices: [vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta],
+        distance: 2
+      });
+      assertEqual(actual[13], {
+        vertices: [vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar],
+        distance: 3
+      });
+      assertEqual(actual[14], {
+        vertices: [vertexIds.Dieter, vertexIds.Gerda],
+        distance: 1
+      });
+      assertEqual(actual[15], {
+        vertices: [vertexIds.Gerda, vertexIds.Berta],
+        distance: 1
+      });
+      assertEqual(actual[16], {
+        vertices: [vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar],
+        distance: 2
+      });
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
+        "{}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
+        "RETURN {vertices: e.vertices, distance: e.distance}");
+      assertEqual(actual.length, 17, "For each pair that has a shortest path one entry is required");
+      assertEqual(actual[0], {
+        vertices: [vertexIds.Anton, vertexIds.Berta],
+        distance: 1
+      });
+      assertEqual(actual[1], {
+        vertices: [vertexIds.Anton, vertexIds.Caesar],
+        distance: 1
+      });
+      assertEqual(actual[2], {
+        vertices: [vertexIds.Berta, vertexIds.Caesar],
+        distance: 1
+      });
+      assertEqual(actual[3], {
+        vertices: [vertexIds.Emil,vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta],
+        distance: 3
+      });
+      assertEqual(actual[4], {
+        vertices: [vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar],
+        distance: 4
+      });
+      assertEqual(actual[5], {
+        vertices: [vertexIds.Emil, vertexIds.Dieter],
+        distance: 1
+      });
+      assertEqual(actual[6], {
+        vertices: [vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda],
+        distance: 2
+      });
+      assertEqual(actual[7], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil,vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta],
+        distance: 4
+      });
+      assertEqual(actual[8], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil],
+        distance: 1
+      });
+      assertEqual(actual[9], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar],
+        distance: 5
+      });
+      assertEqual(actual[10], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil, vertexIds.Dieter],
+        distance: 2
+      });
+      assertEqual(actual[11], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda],
+        distance: 3
+      });
+      assertEqual(actual[12], {
+        vertices: [vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta],
+        distance: 2
+      });
+      assertEqual(actual[13], {
+        vertices: [vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar],
+        distance: 3
+      });
+      assertEqual(actual[14], {
+        vertices: [vertexIds.Dieter, vertexIds.Gerda],
+        distance: 1
+      });
+      assertEqual(actual[15], {
+        vertices: [vertexIds.Gerda, vertexIds.Berta],
+        distance: 1
+      });
+      assertEqual(actual[16], {
+        vertices: [vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar],
+        distance: 2
+      });
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
+        "{_id: 'UnitTests_Berliner/Berta'}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
+        "RETURN {vertices: e.vertices, distance: e.distance}");
+      assertEqual(actual.length, 5, "For each pair that has a shortest path one entry is required");
+      assertEqual(actual[0], {
+        vertices: [vertexIds.Anton, vertexIds.Berta],
+        distance: 1
+      });
+      assertEqual(actual[1], {
+        vertices: [vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta],
+        distance: 3
+      });
+      assertEqual(actual[2], {
+        vertices: [vertexIds.Fritz, vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta],
+        distance: 4
+      });
+      assertEqual(actual[3], {
+        vertices: [vertexIds.Dieter, vertexIds.Gerda, vertexIds.Berta],
+        distance: 2
+      });
+      assertEqual(actual[4], {
+        vertices: [vertexIds.Gerda, vertexIds.Berta],
+        distance: 1
+      });
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
+        " 'UnitTests_Berliner/Anton', {direction : 'outbound',  weight: 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'}) RETURN e.vertices");
+      assertEqual(actual[0].length, 3);
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
+        " 'UnitTests_Berliner/Anton', {direction : 'outbound', algorithm : 'Floyd-Warshall'}) RETURN e.vertices");
+      assertEqual(actual[0].length, 2);
+
+      actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', 'UnitTests_Hamburger/Caesar',  'UnitTests_Frankfurter/Emil', " +
+        "{direction : 'outbound', weight: 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'}) " +
+        "RETURN e");
+      assertEqual(actual,
+        [
+          {
+            vertex: vertexIds.Emil,
+            startVertex: vertexIds.Caesar,
+            distance: 830.1
+          }
+        ]
+      );
+    },
+
+    testGRAPH_SHORTEST_PATH_WITH_DIJKSTRA: function () {
+      var actual;
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
+        " 'UnitTests_Frankfurter/Emil', {direction : 'outbound', algorithm : 'dijkstra'}) RETURN e");
+
+      assertEqual(actual.length, 1, "Exactly one element is returned");
+      var path = actual[0];
+      assertTrue(path.hasOwnProperty("vertices"), "The path contains all vertices");
+      assertTrue(path.hasOwnProperty("edges"), "The path contains all edges");
+      assertTrue(path.hasOwnProperty("distance"), "The path contains the distance");
+      assertEqual(path.vertices, [
+        vertexIds.Caesar, vertexIds.Berta, vertexIds.Gerda, vertexIds.Dieter, vertexIds.Emil
+      ], "The correct shortest path is using these vertices");
+      assertEqual(path.distance, 4, "The distance is 1 per edge");
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
+        "'UnitTests_Berliner/Anton', {direction : 'outbound', algorithm : 'dijkstra'}) " +
+        "RETURN e.vertices");
+      assertEqual(actual[0].length, 2);
+
+      actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', 'UnitTests_Hamburger/Caesar',  'UnitTests_Frankfurter/Emil', " +
+        "{direction : 'outbound', weight: 'entfernung', defaultWeight : 80, algorithm : 'dijkstra'}) RETURN e");
+      assertEqual(actual,
+        [
+          {
+            vertex: vertexIds.Emil,
+            startVertex: vertexIds.Caesar,
+            distance: 830.1
+          }
+        ]
+      );
+    },
+
+    testGRAPH_CLOSENESS: function () {
+      var actual;
+
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen')");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.69).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.92).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.69).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.92).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.73).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.55).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
+
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.89).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.89).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.54).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.95).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.63).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.63).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
+
+
+      actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {gender: 'male'}, {weight : 'entfernung', defaultWeight : 80})");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(1), 1890.9);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(1), 2670.4);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(1), 2671.4);
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(1), 3140.9);
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(1), 1770.4);
+    },
+
+
+    testGRAPH_CLOSENESS_OUTBOUND: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.0909).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.0625).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.3333).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.1666).toFixed(2));
+    },
+
+    testGRAPH_CLOSENESS_OUTBOUND_WEIGHT: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, direction : 'outbound', algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(6), (0.00012192).toFixed(6));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(6), (0.00006367).toFixed(6));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(6), (0.00033322).toFixed(6));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(6), (1).toFixed(6));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(6), (0.00023803).toFixed(6));
+    },
+
+    testGRAPH_CLOSENESS_INBOUND: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.5).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.1666).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.0666).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.3333).toFixed(2));
+    },
+
+    testGRAPH_CLOSENESS_INBOUND_WEIGHT: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, direction : 'inbound', algorithm : 'Floyd-Warshall'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(4), (0.999200).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(4), (1).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(4), (0).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(4), (0.280979).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(4), (0.119659).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(4), (0.119602).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(4), (0.3847100).toFixed(4));
+    },
+
+
+    testGRAPH_ECCENTRICITY: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(1), (0.6).toFixed(1));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.75).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(1), (0.6).toFixed(1));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.75).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(1), (0.6).toFixed(1));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
+    },
+
+    testGRAPH_ECCENTRICITY_inbound: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.3333).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.25).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.2).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.5).toFixed(2));
+    },
+
+    testGRAPH_ECCENTRICITY_inbound_example: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen', {gender : 'female'}, {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 2);
+    },
+
+    testGRAPH_ECCENTRICITY_weight: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.78).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.78).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.54).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.85).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.54).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.54).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
+    },
+
+    testGRAPH_BETWEENNESS: function () {
+      var actual;
+
+      actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"], 16);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 10);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 16);
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 18);
+
+
+      actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.89);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), 0.56);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), 0.89);
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 1);
+
+
+      actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 4);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 6);
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 6);
+
+      actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.67);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), 0.67);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 1);
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 1);
+
+
+
+      actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), 0.56);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), 0.89);
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 1);
+
+
+    },
+
+    testGRAPH_DIAMETER_AND_RADIUS: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0], 3);
+
+      actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0].toFixed(1), 450.1);
+
+      actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0], 5);
+
+      actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0].toFixed(1), 830.3);
+
+
+
+      actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0], 1);
+
+      actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0].toFixed(1), 250.1);
+
+      actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0], 5);
+
+      actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0].toFixed(1), 830.3);
+
+      actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0], 1);
+
+      actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'outbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0].toFixed(1), 0.2);
+
+      actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0], 5);
+
+      actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'outbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+      assertEqual(actual[0].toFixed(1), 830.3);
+    },
+
+    testGRAPH_SHORTEST_PATHWithExamples: function () {
+      var actual;
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
+        "{direction : 'any', algorithm : 'Floyd-Warshall'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
+        "RETURN e");
+      assertEqual(actual.length, 4, "All connected pairs should have one entry.");
+      assertEqual(actual[0].vertices, [
+        vertexIds.Berta, vertexIds.Gerda, vertexIds.Dieter, vertexIds.Emil, vertexIds.Fritz
+      ]);
+      assertEqual(actual[0].distance, 4);
+
+      assertEqual(actual[1].vertices, [
+        vertexIds.Berta, vertexIds.Caesar
+      ]);
+      assertEqual(actual[1].distance, 1);
+
+      assertEqual(actual[2].vertices, [
+        vertexIds.Gerda, vertexIds.Dieter, vertexIds.Emil, vertexIds.Fritz
+      ]);
+      assertEqual(actual[2].distance, 3);
+
+      assertEqual(actual[3].vertices, [
+        vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar
+      ]);
+      assertEqual(actual[3].distance, 2);
+    },
+
+    testGRAPH_DISTANCE_TO_WithExamples: function () {
+      var actual;
+      actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
+        "{direction : 'any'}) SORT e.startVertex, e.vertex._id SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex, e.distance]");
       assertEqual(actual, [
         [
-          "UnitTests_Berliner/Anton",
-          "UnitTests_Berliner/Anton",
-          0
-        ],
-        [
-          "UnitTests_Berliner/Anton",
           "UnitTests_Berliner/Berta",
-          1
-        ],
-        [
-          "UnitTests_Berliner/Anton",
-          "UnitTests_Hamburger/Caesar",
-          1
-        ],
-        [
-          "UnitTests_Berliner/Berta",
-          "UnitTests_Berliner/Berta",
-          0
-        ],
-        [
-          "UnitTests_Berliner/Berta",
-          "UnitTests_Hamburger/Caesar",
-          1
-        ],
-        [
-          "UnitTests_Frankfurter/Emil",
-          "UnitTests_Berliner/Berta",
-          3
-        ],
-        [
-          "UnitTests_Frankfurter/Emil",
-          "UnitTests_Frankfurter/Emil",
-          0
-        ],
-        [
-          "UnitTests_Frankfurter/Emil",
-          "UnitTests_Hamburger/Caesar",
+          "UnitTests_Frankfurter/Fritz",
           4
         ],
         [
-          "UnitTests_Frankfurter/Emil",
-          "UnitTests_Hamburger/Dieter",
-          1
-        ],
-        [
-          "UnitTests_Frankfurter/Emil",
-          "UnitTests_Leipziger/Gerda",
-          2
-        ],
-        [
-          "UnitTests_Frankfurter/Fritz",
           "UnitTests_Berliner/Berta",
-          4
-        ],
-        [
-          "UnitTests_Frankfurter/Fritz",
-          "UnitTests_Frankfurter/Emil",
-          1
-        ],
-        [
-          "UnitTests_Frankfurter/Fritz",
-          "UnitTests_Frankfurter/Fritz",
-          0
-        ],
-        [
-          "UnitTests_Frankfurter/Fritz",
           "UnitTests_Hamburger/Caesar",
-          5
+          1
+
         ],
         [
-          "UnitTests_Frankfurter/Fritz",
-          "UnitTests_Hamburger/Dieter",
-          2
-        ],
-        [
-          "UnitTests_Frankfurter/Fritz",
           "UnitTests_Leipziger/Gerda",
+          "UnitTests_Frankfurter/Fritz",
           3
         ],
         [
-          "UnitTests_Hamburger/Caesar",
-          "UnitTests_Hamburger/Caesar",
-          0
-        ],
-        [
-          "UnitTests_Hamburger/Dieter",
-          "UnitTests_Berliner/Berta",
-          2
-        ],
-        [
-          "UnitTests_Hamburger/Dieter",
-          "UnitTests_Hamburger/Caesar",
-          3
-        ],
-        [
-          "UnitTests_Hamburger/Dieter",
-          "UnitTests_Hamburger/Dieter",
-          0
-        ],
-        [
-          "UnitTests_Hamburger/Dieter",
-          "UnitTests_Leipziger/Gerda",
-          1
-        ],
-        [
-          "UnitTests_Leipziger/Gerda",
-          "UnitTests_Berliner/Berta",
-          1
-        ],
-        [
           "UnitTests_Leipziger/Gerda",
           "UnitTests_Hamburger/Caesar",
           2
-        ],
-        [
-          "UnitTests_Leipziger/Gerda",
-          "UnitTests_Leipziger/Gerda",
-          0
         ]
-      ]
-    );
-
-    actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-      "{}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex, e.distance]");
-    assertEqual(actual, [
-      [
-        "UnitTests_Berliner/Anton",
-        "UnitTests_Berliner/Anton",
-        0
-      ],
-      [
-        "UnitTests_Berliner/Anton",
-        "UnitTests_Berliner/Berta",
-        1
-      ],
-      [
-        "UnitTests_Berliner/Anton",
-        "UnitTests_Hamburger/Caesar",
-        1
-      ],
-      [
-        "UnitTests_Berliner/Berta",
-        "UnitTests_Berliner/Berta",
-        0
-      ],
-      [
-        "UnitTests_Berliner/Berta",
-        "UnitTests_Hamburger/Caesar",
-        1
-      ],
-      [
-        "UnitTests_Frankfurter/Emil",
-        "UnitTests_Berliner/Berta",
-        3
-      ],
-      [
-        "UnitTests_Frankfurter/Emil",
-        "UnitTests_Frankfurter/Emil",
-        0
-      ],
-      [
-        "UnitTests_Frankfurter/Emil",
-        "UnitTests_Hamburger/Caesar",
-        4
-      ],
-      [
-        "UnitTests_Frankfurter/Emil",
-        "UnitTests_Hamburger/Dieter",
-        1
-      ],
-      [
-        "UnitTests_Frankfurter/Emil",
-        "UnitTests_Leipziger/Gerda",
-        2
-      ],
-      [
-        "UnitTests_Frankfurter/Fritz",
-        "UnitTests_Berliner/Berta",
-        4
-      ],
-      [
-        "UnitTests_Frankfurter/Fritz",
-        "UnitTests_Frankfurter/Emil",
-        1
-      ],
-      [
-        "UnitTests_Frankfurter/Fritz",
-        "UnitTests_Frankfurter/Fritz",
-        0
-      ],
-      [
-        "UnitTests_Frankfurter/Fritz",
-        "UnitTests_Hamburger/Caesar",
-        5
-      ],
-      [
-        "UnitTests_Frankfurter/Fritz",
-        "UnitTests_Hamburger/Dieter",
-        2
-      ],
-      [
-        "UnitTests_Frankfurter/Fritz",
-        "UnitTests_Leipziger/Gerda",
-        3
-      ],
-      [
-        "UnitTests_Hamburger/Caesar",
-        "UnitTests_Hamburger/Caesar",
-        0
-      ],
-      [
-        "UnitTests_Hamburger/Dieter",
-        "UnitTests_Berliner/Berta",
-        2
-      ],
-      [
-        "UnitTests_Hamburger/Dieter",
-        "UnitTests_Hamburger/Caesar",
-        3
-      ],
-      [
-        "UnitTests_Hamburger/Dieter",
-        "UnitTests_Hamburger/Dieter",
-        0
-      ],
-      [
-        "UnitTests_Hamburger/Dieter",
-        "UnitTests_Leipziger/Gerda",
-        1
-      ],
-      [
-        "UnitTests_Leipziger/Gerda",
-        "UnitTests_Berliner/Berta",
-        1
-      ],
-      [
-        "UnitTests_Leipziger/Gerda",
-        "UnitTests_Hamburger/Caesar",
-        2
-      ],
-      [
-        "UnitTests_Leipziger/Gerda",
-        "UnitTests_Leipziger/Gerda",
-        0
-      ]
-    ]
-  );
-
-  actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-    "{_id : 'UnitTests_Berliner/Berta'}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex, e.distance]");
-  assertEqual(actual,[
-    [
-      "UnitTests_Berliner/Anton",
-      "UnitTests_Berliner/Berta",
-      1
-    ],
-    [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Berliner/Berta",
-      0
-    ],
-    [
-      "UnitTests_Frankfurter/Emil",
-      "UnitTests_Berliner/Berta",
-      3
-    ],
-    [
-      "UnitTests_Frankfurter/Fritz",
-      "UnitTests_Berliner/Berta",
-      4
-    ],
-    [
-      "UnitTests_Hamburger/Dieter",
-      "UnitTests_Berliner/Berta",
-      2
-    ],
-    [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Berliner/Berta",
-      1
-    ]
-  ]
-);
-
-
-actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
-  " 'UnitTests_Berliner/Anton', {direction : 'outbound',  weight: 'entfernung', algorithm : 'Floyd-Warshall'}) SORT e.startVertex, e.vertex._id RETURN e.paths[0].vertices");
-assertEqual(actual[0].length, 3);
-
-actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
-  " 'UnitTests_Berliner/Anton', {direction : 'outbound', algorithm : 'Floyd-Warshall'}) SORT e.startVertex, e.vertex._id RETURN e.paths[0].vertices");
-assertEqual(actual[0].length, 2);
-
-actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', 'UnitTests_Hamburger/Caesar',  'UnitTests_Frankfurter/Emil', " +
-  "{direction : 'outbound', weight: 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'}) RETURN [e.startVertex, e.vertex._id, e.distance]");
-assertEqual(actual,
-  [
-    [
-      "UnitTests_Hamburger/Caesar",
-      "UnitTests_Frankfurter/Emil",
-      830.1
-    ]
-  ]
-);
-
-
-},
-
-testGRAPH_SHORTEST_PATH_WITH_DIJKSTRA: function () {
-  var actual;
-
-  actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
-    " 'UnitTests_Frankfurter/Emil', {direction : 'outbound', algorithm : 'dijkstra'}) SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex]");
-  assertEqual(actual,
-    [
-      [
-        "UnitTests_Hamburger/Caesar",
-        "UnitTests_Frankfurter/Emil"
-      ]
-    ]
-  );
-
-  actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
-    " 'UnitTests_Berliner/Anton', {direction : 'outbound', algorithm : 'dijkstra', includePath: {vertices: true}}) " +
-    " SORT e.startVertex, e.vertex RETURN e.path.vertices");
-  assertEqual(actual[0].length, 2);
-
-  actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', 'UnitTests_Hamburger/Caesar',  'UnitTests_Frankfurter/Emil', " +
-    "{direction : 'outbound', weight: 'entfernung', defaultWeight : 80, algorithm : 'dijkstra'}) RETURN [e.startVertex, e.vertex, e.distance]");
-  assertEqual(actual,
-    [
-      [
-        "UnitTests_Hamburger/Caesar",
-        "UnitTests_Frankfurter/Emil",
-        830.1
-      ]
-    ]
-  );
-
-
-},
-
-testGRAPH_CLOSENESS: function () {
-  var actual;
-
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen')");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.69).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.92).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.69).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.92).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.73).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.55).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
-
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.89).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.89).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.54).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.95).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.63).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.63).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
-
-
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {gender: 'male'}, {weight : 'entfernung', defaultWeight : 80})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(1), 1890.9);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(1), 2670.4);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(1), 2671.4);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(1), 3140.9);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(1), 1770.4);
-},
-
-
-testGRAPH_CLOSENESS_OUTBOUND: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.0909).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.0625).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.3333).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.1666).toFixed(2));
-},
-
-testGRAPH_CLOSENESS_OUTBOUND_WEIGHT: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, direction : 'outbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(6), (0.00012192).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(6), (0.00006367).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(6), (0.00033322).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(6), (1).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(6), (0.00023803).toFixed(6));
-},
-
-testGRAPH_CLOSENESS_INBOUND: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.5).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.1666).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.0666).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.3333).toFixed(2));
-},
-
-testGRAPH_CLOSENESS_INBOUND_WEIGHT: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, direction : 'inbound', algorithm : 'Floyd-Warshall'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(4), (0.999200).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(4), (1).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(4), (0).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(4), (0.280979).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(4), (0.119659).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(4), (0.119602).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(4), (0.3847100).toFixed(4));
-},
-
-
-testGRAPH_ECCENTRICITY: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(1), (0.6).toFixed(1));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.75).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(1), (0.6).toFixed(1));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.75).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(1), (0.6).toFixed(1));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
-},
-
-testGRAPH_ECCENTRICITY_inbound: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.3333).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.25).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.2).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.5).toFixed(2));
-},
-
-testGRAPH_ECCENTRICITY_inbound_example: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen', {gender : 'female'}, {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 2);
-},
-
-testGRAPH_ECCENTRICITY_weight: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.78).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.78).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.54).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.85).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.54).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.54).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
-},
-
-testGRAPH_BETWEENNESS: function () {
-  var actual;
-
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 16);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 10);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 16);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 18);
-
-
-  actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.89);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), 0.56);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), 0.89);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 1);
-
-
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 4);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 6);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 6);
-
-  actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.67);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), 0.67);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 1);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 1);
-
-
-
-  actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), 0.56);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), 0.89);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 1);
-
-
-},
-
-testGRAPH_DIAMETER_AND_RADIUS: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 3);
-
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0].toFixed(1), 450.1);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 5);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0].toFixed(1), 830.3);
-
-
-
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 1);
-
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0].toFixed(1), 250.1);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 5);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0].toFixed(1), 830.3);
-
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 1);
-
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'outbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0].toFixed(1), 0.2);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 5);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'outbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0].toFixed(1), 830.3);
-
-
-
-},
-
-testGRAPH_SHORTEST_PATHWithExamples: function () {
-  var actual;
-
-  actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
-    "{direction : 'any', algorithm : 'Floyd-Warshall'}) SORT e.startVertex, e.vertex._id RETURN [e.startVertex, e.vertex._id]");
-  assertEqual(actual, [
-    [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Frankfurter/Fritz"
-    ],
-    [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Hamburger/Caesar"
-    ],
-    [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Frankfurter/Fritz"
-    ],
-    [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Hamburger/Caesar"
-    ]
-  ]);
-},
-
-testGRAPH_DISTANCE_TO_WithExamples: function () {
-  var actual;
-  actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
-    "{direction : 'any'}) SORT e.startVertex, e.vertex._id SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex, e.distance]");
-  assertEqual(actual, [
-    [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Frankfurter/Fritz",
-      4
-    ],
-    [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Hamburger/Caesar",
-      1
-
-    ],
-    [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Frankfurter/Fritz",
-      3
-    ],
-    [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Hamburger/Caesar",
-      2
-    ]
-  ]);
-},
-
-testGRAPH_CLOSENESS_WITH_DIJKSTRA: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.69).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.92).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.69).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.92).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.73).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.55).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
-},
-
-testGRAPH_CLOSENESS_WITH_DIJKSTRA_WEIGHT: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.89).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.89).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.54).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.95).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.63).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.63).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
-},
-
-
-testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJKSTRA: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', direction : 'outbound'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.0909).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.0625).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.3333).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.1666).toFixed(2));
-},
-
-testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJKSTRA_WEIGHT: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80, direction : 'outbound'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(6), (0.00012192).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(6), (0.00006367).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(6), (0.00033322).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(6), (1).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(6), (0.00023803).toFixed(6));
-},
-
-
-testGRAPH_CLOSENESS_INBOUND_WITH_DIJKSTRA: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', direction : 'inbound'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.5).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.1666).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.0666).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.3333).toFixed(2));
-},
-
-testGRAPH_CLOSENESS_INBOUND_WITH_DIJKSTRA_WEIGHT: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80, direction : 'inbound'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(4), (0.999200).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(4), (1).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(4), (0).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(4), (0.280979).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(4), (0.119659).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(4), (0.119602).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(4), (0.3847100).toFixed(4));
-
-},
-
-
-testGRAPH_ECCENTRICITY_WITH_DIJKSTRA: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(1), (0.6).toFixed(1));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.75).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(1), (0.6).toFixed(1));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.75).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(1), (0.6).toFixed(1));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
-},
-
-
-testGRAPH_ECCENTRICITY_WITH_DIJKSTRA_inbound: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra', direction : 'inbound'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.33).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.25).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(1), (0.2).toFixed(1));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(1), (0.5).toFixed(1));
-},
-
-testGRAPH_ECCENTRICITY_WITH_DIJKSTRA_weight: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.78).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.78).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.54).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.85).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.54).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.54).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
-},
-
-testGRAPH_DIAMETER_AND_RADIUS_WITH_DIJKSTRA: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'dijkstra'})");
-  assertEqual(actual[0], 3);
-
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
-  assertEqual(actual[0].toFixed(1), 450.1);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'dijkstra'})");
-  assertEqual(actual[0], 5);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
-  assertEqual(actual[0].toFixed(1), 830.3);
-},
-
-testGRAPH_SHORTEST_PATHWithExamples_WITH_DIJKSTRA: function () {
-  var actual;
-
-  actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
-    "{direction : 'any'}) SORT e.startVertex, e.vertex._id RETURN [e.startVertex, e.vertex._id]");
-  assertEqual(actual, [
-    [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Frankfurter/Fritz"
-    ],
-    [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Hamburger/Caesar"
-    ],
-    [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Frankfurter/Fritz"
-    ],
-    [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Hamburger/Caesar"
-    ]
-  ]);
-},
-
-testGRAPH_DISTANCE_TO_WithExamples_WITH_DIJKSTRA: function () {
-  var actual;
-  actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
-    "{direction : 'any'}) SORT e.startVertex, e.vertex SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex, e.distance]");
-  assertEqual(actual, [
-    [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Frankfurter/Fritz",
-      4
-    ],
-    [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Hamburger/Caesar",
-      1
-
-    ],
-    [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Frankfurter/Fritz",
-      3
-    ],
-    [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Hamburger/Caesar",
-      2
-    ]
-  ]);
-}
-};
+      ]);
+    },
+
+    testGRAPH_CLOSENESS_WITH_DIJKSTRA: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.69).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.92).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.69).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.92).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.73).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.55).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
+    },
+
+    testGRAPH_CLOSENESS_WITH_DIJKSTRA_WEIGHT: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.89).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.89).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.54).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.95).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.63).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.63).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
+    },
+
+
+    testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJKSTRA: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', direction : 'outbound'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.0909).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.0625).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.3333).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.1666).toFixed(2));
+    },
+
+    testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJKSTRA_WEIGHT: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80, direction : 'outbound'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(6), (0.00012192).toFixed(6));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(6), (0.00006367).toFixed(6));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(6), (0.00033322).toFixed(6));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(6), (1).toFixed(6));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(6), (0.00023803).toFixed(6));
+    },
+
+
+    testGRAPH_CLOSENESS_INBOUND_WITH_DIJKSTRA: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', direction : 'inbound'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.5).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.1666).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.0666).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.3333).toFixed(2));
+    },
+
+    testGRAPH_CLOSENESS_INBOUND_WITH_DIJKSTRA_WEIGHT: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80, direction : 'inbound'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(4), (0.999200).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(4), (1).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(4), (0).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(4), (0.280979).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(4), (0.119659).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(4), (0.119602).toFixed(4));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(4), (0.3847100).toFixed(4));
+
+    },
+
+
+    testGRAPH_ECCENTRICITY_WITH_DIJKSTRA: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(1), (0.6).toFixed(1));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.75).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(1), (0.6).toFixed(1));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.75).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(1), (0.6).toFixed(1));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
+    },
+
+
+    testGRAPH_ECCENTRICITY_WITH_DIJKSTRA_inbound: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra', direction : 'inbound'})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.33).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.25).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(1), (0.2).toFixed(1));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(1), (0.5).toFixed(1));
+    },
+
+    testGRAPH_ECCENTRICITY_WITH_DIJKSTRA_weight: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
+
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (0.78).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (0.78).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (0.54).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(2), (0.85).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), (0.54).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (0.54).toFixed(2));
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
+    },
+
+    testGRAPH_DIAMETER_AND_RADIUS_WITH_DIJKSTRA: function () {
+      var actual;
+      actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'dijkstra'})");
+      assertEqual(actual[0], 3);
+
+      actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
+      assertEqual(actual[0].toFixed(1), 450.1);
+
+      actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'dijkstra'})");
+      assertEqual(actual[0], 5);
+
+      actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
+      assertEqual(actual[0].toFixed(1), 830.3);
+    },
+
+    testGRAPH_SHORTEST_PATHWithExamples_WITH_DIJKSTRA: function () {
+      var actual;
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
+        "{direction : 'any', algorithm : 'dijkstra'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
+        "RETURN e");
+      assertEqual(actual.length, 4, "All connected pairs should have one entry.");
+      assertEqual(actual[0].vertices, [
+        vertexIds.Berta, vertexIds.Gerda, vertexIds.Dieter, vertexIds.Emil, vertexIds.Fritz
+      ]);
+      assertEqual(actual[0].distance, 4);
+
+      assertEqual(actual[1].vertices, [
+        vertexIds.Berta, vertexIds.Caesar
+      ]);
+      assertEqual(actual[1].distance, 1);
+
+      assertEqual(actual[2].vertices, [
+        vertexIds.Gerda, vertexIds.Dieter, vertexIds.Emil, vertexIds.Fritz
+      ]);
+      assertEqual(actual[2].distance, 3);
+
+      assertEqual(actual[3].vertices, [
+        vertexIds.Gerda, vertexIds.Berta, vertexIds.Caesar
+      ]);
+      assertEqual(actual[3].distance, 2);
+    },
+
+    testGRAPH_DISTANCE_TO_WithExamples_WITH_DIJKSTRA: function () {
+      var actual;
+      actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
+        "{direction : 'any'}) SORT e.startVertex, e.vertex SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex, e.distance]");
+      assertEqual(actual, [
+        [
+          "UnitTests_Berliner/Berta",
+          "UnitTests_Frankfurter/Fritz",
+          4
+        ],
+        [
+          "UnitTests_Berliner/Berta",
+          "UnitTests_Hamburger/Caesar",
+          1
+
+        ],
+        [
+          "UnitTests_Leipziger/Gerda",
+          "UnitTests_Frankfurter/Fritz",
+          3
+        ],
+        [
+          "UnitTests_Leipziger/Gerda",
+          "UnitTests_Hamburger/Caesar",
+          2
+        ]
+      ]);
+    }
+  };
 }
 
 
@@ -2991,7 +2888,6 @@ jsunity.run(ahuacatlQueryGeneralTraversalTestSuite);
 jsunity.run(ahuacatlQueryGeneralPathsTestSuite);
 jsunity.run(ahuacatlQueryGeneralEdgesTestSuite);
 jsunity.run(ahuacatlQueryMultiCollectionMadnessTestSuite);
-
 
 return jsunity.done();
 

@@ -2898,25 +2898,26 @@ function MeasurementsSuite() {
     },
 
     test_shortestPaths : function () {
-      var a = g._shortestPath([{first_name: 'Tim',
-                                age : 24},
-                               {first_name: 'Tom'}],
-                              [{first_name: 'Tam'},
-                               {first_name: 'Tem',
-                                age : 20}]);
+      var a = g._shortestPath([
+        {first_name: 'Tim', age : 24},
+        {first_name: 'Tom'}
+      ], [
+        {first_name: 'Tam'},
+        {first_name: 'Tem', age : 20}
+      ]);
       assertEqual(a[0].length , 9);
     },
+
     test_distanceTo : function () {
-      var a = g._distanceTo([{first_name: 'Tim',
-                              age : 24},
-                             {first_name: 'Tom'}],
-                            [{first_name: 'Tam'},
-                             {first_name: 'Tem',
-                              age : 20}]);
-      assertEqual(a[0].length , 9);
+      var a = g._distanceTo([
+        {first_name: 'Tim', age : 24},
+        {first_name: 'Tom'}
+      ], [
+        {first_name: 'Tam'},
+        {first_name: 'Tem', age : 20}
+      ]);
+      assertEqual(a.length , 9);
     }
-
-
   };
 }
 
