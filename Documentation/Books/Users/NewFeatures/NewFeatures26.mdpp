@@ -158,12 +158,45 @@ RETURN { found: OLD, updated: NEW }
 A more detailed description of `UPSERT` can be found here:
 http://jsteemann.github.io/blog/2015/03/27/preview-of-the-upsert-command/
 
-!SECTION Web Interface
+!SECTION Web Admin Interface
 
-There have been some minor changes in the web interface:
+There have been some minor changes in the web admin interface:
 
 - The query execution time is displayed in the AQL editor now
 - The AQL query button **submit** is now renamed to **execute**
 - We've added a query explain feature in the AQL editor
 - We've added a demo page. This only is shown if demo data is available otherwise it is hidden
-- ArangoDB's built-in web interface now uses sessions. Session information ids are stored in cookies, so clients using the web interface must accept cookies in order to use it
+- ArangoDB's built-in web interface now uses sessions. Session information is stored in cookies, so clients using the web interface must accept cookies in order to use it
+
+!SECTION Foxx improvements
+
+!SUBSECTION Configuration and Dependencies
+
+Foxx app manifests can now define configuration options, as well as dependencies on other Foxx apps.
+
+An introduction to Foxx configurations can be found in the blog:
+https://www.arangodb.com/2015/05/reusable-foxx-apps-with-configurations/
+
+And the blog post on Foxx dependencies can be found here:
+https://www.arangodb.com/2015/05/foxx-dependencies-for-more-composable-foxx-apps/
+
+For more information on manifests see the [Manifest chapter](../Foxx/Develop/Manifest.html). More information on using dependencies can be found in the chapter on [Foxx exports](../Foxx/Advanced/Exports.html).
+
+!SUBSECTION Mocha Tests
+
+You can now write tests for your Foxx apps using the Mocha testing framework:
+https://www.arangodb.com/2015/04/testing-foxx-mocha/
+
+A recipe for writing tests for your Foxx apps can be found in the cookbook:
+https://docs.arangodb.com/cookbook/FoxxTesting.html
+
+!SUBSECTION API Documentation
+
+The API documentation has been updated to Swagger 2. You can now also mount API documentation in your own Foxx apps. For more information see the [API Documentation chapter](../Foxx/Develop/ApiDocumentation.html) in the Foxx documentation.
+
+Also see the blog post introducing this feature:
+https://www.arangodb.com/2015/05/document-your-foxx-apps-with-swagger-2/
+
+!SUBSECTION Custom Scripts
+
+In addition to the existing *setup* and *teardown* scripts you can now define custom scripts in your Foxx manifest and invoke these using the web admin interface or the Foxx manager CLI.
