@@ -6496,7 +6496,6 @@ function useCXXforDeepNeighbors (vertexCollection, edgeCollection,
     var ll = CPP_NEIGHBORS([vertexCollection], [edgeCollection],
                            l, {distinct: true, includeData: false,
                                direction: options.direction});
-    require("internal").print(typeof ll, ll);
     l = [];
     for (var i = 0; i < ll.length; ++i) {
       if (! s.has(ll[i])) {
