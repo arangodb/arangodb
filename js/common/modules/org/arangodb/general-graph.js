@@ -3464,7 +3464,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
     "ex2": ex2
   };
   var result = db._query(query, bindVars).toArray();
-  return result;
+  return result[0];
 };
 
 ////////////////////////////////////////////////////////////////////////////////

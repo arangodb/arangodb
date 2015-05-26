@@ -5620,10 +5620,11 @@ function AQL_SHORTEST_PATH (vertexCollection,
   var vertexCollections = [vertexCollection];
   var edgeCollections = [edgeCollection];
   // JS Fallback cases. CPP implementation not working here
-  if (params.hasOwnProperty("distance") ||
+  if (
+      params.hasOwnProperty("distance") ||
       params.hasOwnProperty("filterVertices") ||
       params.hasOwnProperty("followEdges") ||
-    require("org/arangodb/cluster").isCoordinator()
+      isCoordinator
   ) {
     params = SHORTEST_PATH_PARAMS(params);
     var a = TRAVERSAL_FUNC("SHORTEST_PATH",
@@ -5632,12 +5633,13 @@ function AQL_SHORTEST_PATH (vertexCollection,
                            TO_ID(endVertex, vertexCollection),
                            direction,
                            params);
-                         return a;
+    // Fix Return Format!!
+    return a;
   }
   // Fall through to new CPP version.
-  if (params.hasOwnProperty("distance") && params.hasOwnProperty("defaultDistance")) {
-    opts.distance = params.distance;
-    opts.defaultDistance = params.defaultDistance;
+  if (params.hasOwnProperty("weight") && params.hasOwnProperty("defaultWeight")) {
+    opts.weight = params.weight;
+    opts.defaultWeight = params.defaultWeight;
   }
   if (params.hasOwnProperty("includeData")) {
     opts.includeData = params.includeData;
@@ -6089,6 +6091,30 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
   if (! options) {
     options = {  };
   }
+
+  if (! options.direction) {
+    options.direction =  'any';
+  }
+
+  if (isCoordinator) {
+    // Fallback to old JS function if we are in the cluster.
+    options.fromVertexExample = startVertexExample;
+    options.toVertexExample = endVertexExample;
+
+    if (! options.algorithm) {
+      if (! IS_EXAMPLE_SET(startVertexExample) && ! IS_EXAMPLE_SET(endVertexExample)) {
+        options.algorithm = "Floyd-Warshall";
+      }
+    }
+
+    if (options.algorithm === "Floyd-Warshall") {
+      return CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL(
+        RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options, "GRAPH_SHORTEST_PATH"),
+        options);
+    }
+    return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(graphName, options);
+  }
+
   let graph_module = require("org/arangodb/general-graph");
   let graph = graph_module._graph(graphName);
   let edgeCollections;
@@ -6105,6 +6131,7 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
     edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
   }
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
+
   let startVertices;
   if (options.hasOwnProperty("startVertexCollectionRestriction")
     && Array.isArray(options.startVertexCollectionRestriction)) {
@@ -6115,6 +6142,7 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
   if (startVertices.length === 0) {
     return [];
   }
+
   let endVertices;
   if (options.hasOwnProperty("endVertexCollectionRestriction")
     && Array.isArray(options.endVertexCollectionRestriction)) {
@@ -6125,10 +6153,10 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
   if (endVertices.length === 0) {
     return [];
   }
-  if (! options.direction) {
-    options.direction =  'any';
-  }
+
   let res = [];
+  // Compute all shortest_path pairs.
+  // Needs improvement!
   for (let i = 0; i < startVertices.length; ++i) {
     for (let j = 0; j < endVertices.length; ++j) {
       if (startVertices[i] !== endVertices[j]) {
@@ -6401,9 +6429,19 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
   if (! options.algorithm) {
     options.algorithm = "dijkstra";
   }
-  return AQL_GRAPH_SHORTEST_PATH(
+  let paths = AQL_GRAPH_SHORTEST_PATH(
     graphName, startVertexExample, endVertexExample, options
   );
+  let result = [];
+  for (let i = 0; i < paths.length; ++i) {
+    let p = paths[i];
+    result.push({
+      startVertex: p.vertices[0],
+      vertex: p.vertices[p.vertices.length - 1],
+      distance: p.distance
+    });
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6599,6 +6637,12 @@ function AQL_NEIGHBORS (vertexCollection,
   'use strict';
 
   vertex = TO_ID(vertex, vertexCollection);
+  if (isCoordinator) {
+    // Fallback to JS if we are in the cluster
+    var edges = AQL_EDGES(edgeCollection, vertex, direction);
+    return FILTERED_EDGES(edges, vertex, direction, examples);
+  }
+
   options = options || {};
   options.direction = direction;
   if (examples !== undefined) {
