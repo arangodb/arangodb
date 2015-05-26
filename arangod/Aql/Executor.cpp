@@ -177,7 +177,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 
   // document functions
   { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, false, true, &Functions::Has) },
-  { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "AQL_ATTRIBUTES", "a|b,b", true, false, true) },
+  { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "AQL_ATTRIBUTES", "a|b,b", true, false, true, &Functions::Attributes) },
   { "VALUES",                      Function("VALUES",                      "AQL_VALUES", "a|b", true, false, true) },
   { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "a,a|+", true, false, true, &Functions::Merge) },
   { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, false, true) },
