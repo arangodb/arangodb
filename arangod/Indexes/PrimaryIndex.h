@@ -85,6 +85,10 @@ namespace triagens {
         double selectivityEstimate () const override final {
           return 1.0;
         }
+
+        bool dumpFields () const override final {
+          return true;
+        }
         
         size_t memory () const override final;
 

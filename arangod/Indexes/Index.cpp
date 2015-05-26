@@ -96,20 +96,20 @@ char const* Index::typeName (Index::IndexType type) {
   switch (type) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
       return "primary";
+    case TRI_IDX_TYPE_EDGE_INDEX:
+      return "edge";
+    case TRI_IDX_TYPE_HASH_INDEX:
+      return "hash";
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      return "skiplist";
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+      return "fulltext";
+    case TRI_IDX_TYPE_CAP_CONSTRAINT:
+      return "cap";
     case TRI_IDX_TYPE_GEO1_INDEX:
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
-    case TRI_IDX_TYPE_HASH_INDEX:
-      return "hash";
-    case TRI_IDX_TYPE_EDGE_INDEX:
-      return "edge";
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
-      return "fulltext";
-    case TRI_IDX_TYPE_SKIPLIST_INDEX:
-      return "skiplist";
-    case TRI_IDX_TYPE_CAP_CONSTRAINT:
-      return "cap";
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
     case TRI_IDX_TYPE_BITARRAY_INDEX:
     case TRI_IDX_TYPE_UNKNOWN: {
@@ -315,8 +315,22 @@ bool Index::Compare (TRI_json_t const* lhs,
 triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(zone, triagens::basics::Json::Object, 4);
 
-  json("id", triagens::basics::Json(zone, static_cast<double>(_iid)))
+  json("id", triagens::basics::Json(zone, std::to_string(_iid)))
       ("type", triagens::basics::Json(zone, typeName()));
+
+  if (dumpFields()) {
+    triagens::basics::Json f(zone, triagens::basics::Json::Array, fields().size());
+
+    for (auto const& field : fields()) {
+      f.add(triagens::basics::Json(zone, field));
+    }
+
+    json("fields", f);
+  }
+
+  if (hasSelectivityEstimate()) {
+    json("selectivityEstimate", triagens::basics::Json(selectivityEstimate()));
+  }
 
   return json;
 }

@@ -2669,7 +2669,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
 
   TRI_idx_iid_t iid;
   if (TRI_IsNumberJson(iis)) {
-    iid = (TRI_idx_iid_t) iis->_value._number;
+    iid = static_cast<TRI_idx_iid_t>(iis->_value._number);
   }
   else if (TRI_IsStringJson(iis)) {
     iid = (TRI_idx_iid_t) TRI_UInt64String2(iis->_value._string.data,
@@ -3294,7 +3294,7 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
         auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
 
         if (unique != hashIndex->unique() ||
-            (sparsity != 1 && sparsity != (hashIndex->sparse() ? 1 : 0 ))) {
+            (sparsity != -1 && sparsity != (hashIndex->sparse() ? 1 : 0 ))) {
           continue;
         }
         break;
@@ -3304,7 +3304,7 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
         auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex2*>(idx);
         
         if (unique != skiplistIndex->unique() ||
-            (sparsity != 1 && sparsity != (skiplistIndex->sparse() ? 1 : 0 ))) {
+            (sparsity != -1 && sparsity != (skiplistIndex->sparse() ? 1 : 0 ))) {
           continue;
         }
         break;
@@ -3339,7 +3339,7 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
         found = false;
 
         for (size_t j = 0; j < n; ++j) {
-          if (idxFields[i] == paths[i]) {
+          if (idxFields[i] == paths[j]) {
             found = true;
             break;
           }
@@ -3390,7 +3390,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
 
   // extract fields
   size_t fieldCount;
-  TRI_json_t* fld = ExtractFields(definition, &fieldCount, iid);
+  TRI_json_t const* fld = ExtractFields(definition, &fieldCount, iid);
 
   if (fld == nullptr) {
     return TRI_errno();
@@ -3404,7 +3404,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   }
 
   // determine if the index is unique or non-unique
-  TRI_json_t* bv = TRI_LookupObjectJson(definition, "unique");
+  TRI_json_t const* bv = TRI_LookupObjectJson(definition, "unique");
 
   if (! TRI_IsBooleanJson(bv)) {
     LOG_ERROR("ignoring index %llu, could not determine if unique or non-unique", (unsigned long long) iid);
@@ -3438,6 +3438,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   // Initialise the vector in which we store the fields on which the hashing
   // will be based.
   std::vector<std::string> attributes;
+  attributes.reserve(fieldCount);
 
   // find fields
   for (size_t j = 0;  j < fieldCount;  ++j) {
@@ -3649,6 +3650,9 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
                                      std::vector<std::string>& names,
                                      bool sorted,
                                      bool create) {
+  pids.reserve(attributes.size());
+  names.reserve(attributes.size());
+  
   // .............................................................................
   // sorted case
   // .............................................................................
@@ -3685,7 +3689,6 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
       pids.emplace_back(it.second);
       names.emplace_back(it.first);
     }
-
   }
 
   // .............................................................................
@@ -3693,12 +3696,9 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
   // .............................................................................
 
   else {
-    pids.reserve(attributes.size());
-    names.reserve(attributes.size());
-
     for (auto const& name : attributes) {
       TRI_shape_pid_t pid;
-
+    
       if (create) {
         pid = shaper->findOrCreateAttributePathByName(shaper, name.c_str());
       }
@@ -3750,6 +3750,10 @@ static triagens::arango::Index* CreateCapConstraintDocumentCollection (TRI_docum
       
     TRI_set_errno(TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED);
     return nullptr;
+  }
+  
+  if (iid == 0) {
+    iid = triagens::arango::Index::generateId();
   }
 
   // create a new index
@@ -3962,6 +3966,10 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
     }
 
     return idx;
+  }
+  
+  if (iid == 0) {
+    iid = triagens::arango::Index::generateId();
   }
 
   std::unique_ptr<triagens::arango::GeoIndex2> geoIndex;
@@ -4315,9 +4323,14 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
     return idx;
   }
 
+  if (iid == 0) {
+    iid = triagens::arango::Index::generateId();
+  }
+
+
   // create the hash index. we'll provide it with the current number of documents
   // in the collection so the index can do a sensible memory preallocation
-  std::unique_ptr<triagens::arango::HashIndex> hashIndex(new triagens::arango::HashIndex(iid, document, fields, paths, sparse, unique));
+  std::unique_ptr<triagens::arango::HashIndex> hashIndex(new triagens::arango::HashIndex(iid, document, fields, paths, unique, sparse));
   idx = static_cast<triagens::arango::Index*>(hashIndex.get());
 
   // initialises the index with all existing documents
@@ -4485,9 +4498,13 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
 
     return idx;
   }
+  
+  if (iid == 0) {
+    iid = triagens::arango::Index::generateId();
+  }
 
   // Create the skiplist index
-  std::unique_ptr<triagens::arango::SkiplistIndex2> skiplistIndex(new triagens::arango::SkiplistIndex2(iid, document, fields, paths, sparse, unique));
+  std::unique_ptr<triagens::arango::SkiplistIndex2> skiplistIndex(new triagens::arango::SkiplistIndex2(iid, document, fields, paths, unique, sparse));
   idx = static_cast<triagens::arango::Index*>(skiplistIndex.get());
 
   // initialises the index with all existing documents
@@ -4648,6 +4665,10 @@ static triagens::arango::Index* CreateFulltextIndexDocumentCollection (TRI_docum
       *created = false;
     }
     return idx;
+  }
+  
+  if (iid == 0) {
+    iid = triagens::arango::Index::generateId();
   }
 
   // Create the fulltext index

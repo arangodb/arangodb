@@ -68,12 +68,12 @@ namespace triagens {
           unique = true;
         }
         else if (type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
-          auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
+          auto hashIndex = static_cast<triagens::arango::HashIndex const*>(idx);
           sparse = hashIndex->sparse();
           unique = hashIndex->unique();
         }
         else if (type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-          auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex2*>(idx);
+          auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex2 const*>(idx);
           sparse = skiplistIndex->sparse();
           unique = skiplistIndex->unique();
         }
@@ -94,7 +94,8 @@ namespace triagens {
           fields.reserve(n);
 
           for (size_t i = 0; i < n; ++i) {
-            TRI_json_t const* name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
+            auto * name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
+
             if (TRI_IsStringJson(name)) {
               fields.emplace_back(std::string(name->_value._string.data, name->_value._string.length - 1));
             }

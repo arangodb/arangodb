@@ -320,6 +320,8 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
     _edgesFrom(nullptr),
     _edgesTo(nullptr) {
   
+  TRI_ASSERT(iid != 0);
+
   uint32_t indexBuckets = 1;
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
@@ -369,14 +371,10 @@ size_t EdgeIndex::memory () const {
       
 triagens::basics::Json EdgeIndex::toJson (TRI_memory_zone_t* zone) const {
   auto json = Index::toJson(zone);
-
-  triagens::basics::Json f(zone, triagens::basics::Json::Array, fields().size());
-
-  for (auto const& field : fields()) {
-    f.add(triagens::basics::Json(zone, field));
-  }
-
-  json("fields", f);
+  
+  // hard-coded
+  json("unique", triagens::basics::Json(false))
+      ("sparse", triagens::basics::Json(false));
 
   return json;
 }

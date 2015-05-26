@@ -138,6 +138,8 @@ SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
     _unique(unique),
     _sparse(sparse) {
   
+  TRI_ASSERT(iid != 0);
+  
   _skiplistIndex = SkiplistIndex_new(collection,
                                      paths.size(),
                                      unique);
@@ -164,14 +166,7 @@ size_t SkiplistIndex2::memory () const {
 triagens::basics::Json SkiplistIndex2::toJson (TRI_memory_zone_t* zone) const {
   auto json = Index::toJson(zone);
 
-  triagens::basics::Json f(zone, triagens::basics::Json::Array, fields().size());
-
-  for (auto const& field : fields()) {
-    f.add(triagens::basics::Json(zone, field));
-  }
-
-  json("fields", f)
-      ("unique", triagens::basics::Json(zone, _unique))
+  json("unique", triagens::basics::Json(zone, _unique))
       ("sparse", triagens::basics::Json(zone, _sparse));
 
   return json;

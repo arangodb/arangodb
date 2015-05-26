@@ -127,6 +127,8 @@ FulltextIndex::FulltextIndex (TRI_idx_iid_t iid,
     _fulltextIndex(nullptr),
     _minWordLength(minWordLength > 0 ? minWordLength : 1) {
   
+  TRI_ASSERT(iid != 0);
+
   // look up the attribute
   TRI_shaper_t* shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   _pid = shaper->findOrCreateAttributePathByName(shaper, attribute.c_str());
@@ -160,14 +162,11 @@ size_t FulltextIndex::memory () const {
 triagens::basics::Json FulltextIndex::toJson (TRI_memory_zone_t* zone) const {
   auto json = Index::toJson(zone);
 
-  triagens::basics::Json f(zone, triagens::basics::Json::Array, fields().size());
+  // hard-coded
+  json("unique", triagens::basics::Json(false))
+      ("sparse", triagens::basics::Json(true));
 
-  for (auto const& field : fields()) {
-    f.add(triagens::basics::Json(zone, field));
-  }
-
-  json("fields",    f)
-      ("minLength", triagens::basics::Json(zone, static_cast<double>(_minWordLength)));
+  json("minLength", triagens::basics::Json(zone, static_cast<double>(_minWordLength)));
 
   return json;
 }

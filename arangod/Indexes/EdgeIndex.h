@@ -87,6 +87,10 @@ namespace triagens {
 
         double selectivityEstimate () const override final;
         
+        bool dumpFields () const override final {
+          return true;
+        }
+        
         size_t memory () const override final;
 
         triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
