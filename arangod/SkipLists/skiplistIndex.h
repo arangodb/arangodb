@@ -147,6 +147,10 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*,
                                              TRI_index_operator_t const*,
                                              bool);
 
+TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, 
+                                             TRI_index_operator_t const*,
+                                             bool);
+
 int SkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
 
 int SkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*);

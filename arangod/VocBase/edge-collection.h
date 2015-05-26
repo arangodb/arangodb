@@ -112,17 +112,6 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
                                                   TRI_voc_cid_t,
                                                   TRI_voc_key_t const);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up edges using the index, restarting at the edge pointed at
-/// by next
-////////////////////////////////////////////////////////////////////////////////
-      
-void TRI_LookupEdgeIndex (TRI_index_t*,
-                          TRI_edge_index_iterator_t const*,
-                          std::vector<TRI_doc_mptr_copy_t>&,
-                          void*&,
-                          size_t);
-
 #endif
 
 // -----------------------------------------------------------------------------
