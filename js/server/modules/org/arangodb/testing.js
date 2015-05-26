@@ -825,7 +825,7 @@ function runThere (options, instanceInfo, file) {
     }
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
-    o.timeout = 24 * 3600;
+    o.timeout = 3600;
     o.returnBodyOnError = true;
     r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
     if (! r.error && r.code === 200) {
