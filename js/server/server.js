@@ -69,6 +69,11 @@
     require('org/arangodb/foxx/queues/manager').run();
   }
 
+  // check available versions
+  if (internal.threadNumber === 0 && internal.quiet !== true) {
+    require("org/arangodb").checkAvailableVersions();
+  }
+
   return true;
 }());
 
