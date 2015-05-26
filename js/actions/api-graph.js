@@ -1322,8 +1322,8 @@ function post_graph_vertex_vertices (req, res, g) {
     }
 
     // build aql query
-    var query = 'FOR n IN NEIGHBORS( @@vertexColl, @@edgeColl, @id, "' + direction + '", null, { includeData: true }) ' +
-            data.filter + limit + " RETURN n.vertex ";
+    var query = 'FOR n IN NEIGHBORS( @@vertexColl, @@edgeColl, @id, "' + direction + '", null, ' +
+                '{ includeData: true }) ' + data.filter + limit + " RETURN n.vertex ";
 
     var options = {
       count: json.count,
