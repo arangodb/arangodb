@@ -3,12 +3,12 @@ arangosh> var graph = examples.loadGraph("social");
 arangosh> graph.female.save({name: "Lynda", _key: "linda"});
 { 
   "_id" : "female/linda", 
-  "_rev" : "1203231764", 
+  "_rev" : "1206622648", 
   "_key" : "linda" 
 }
 arangosh> graph.female.update("female/linda", {name: "Linda", _key: "linda"});
 { 
   "_id" : "female/linda", 
-  "_rev" : "1203428372", 
+  "_rev" : "1206819256", 
   "_key" : "linda" 
 }

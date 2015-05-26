@@ -9,19 +9,19 @@ content-type: application/json; charset=utf-8
   "result" : [ 
     { 
       "hello2" : "world1", 
-      "_id" : "products/1651235860", 
-      "_rev" : "1651235860", 
-      "_key" : "1651235860" 
+      "_id" : "products/1650432440", 
+      "_rev" : "1650432440", 
+      "_key" : "1650432440" 
     }, 
     { 
       "hello1" : "world1", 
-      "_id" : "products/1650908180", 
-      "_rev" : "1650908180", 
-      "_key" : "1650908180" 
+      "_id" : "products/1650104760", 
+      "_rev" : "1650104760", 
+      "_key" : "1650104760" 
     } 
   ], 
   "hasMore" : true, 
-  "id" : "1652415508", 
+  "id" : "1651612088", 
   "count" : 5, 
   "extra" : { 
     "stats" : { 
@@ -36,5 +36,5 @@ content-type: application/json; charset=utf-8
   "error" : false, 
   "code" : 201 
 }
-shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/1652415508
+shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/1651612088
 

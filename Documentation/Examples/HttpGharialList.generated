@@ -10,7 +10,7 @@ content-type: application/json
     { 
       "_id" : "_graphs/social", 
       "_key" : "social", 
-      "_rev" : "1550834708", 
+      "_rev" : "1550293432", 
       "edgeDefinitions" : [ 
         { 
           "collection" : "relation", 
@@ -29,7 +29,7 @@ content-type: application/json
     { 
       "_id" : "_graphs/routeplanner", 
       "_key" : "routeplanner", 
-      "_rev" : "1554570260", 
+      "_rev" : "1553439160", 
       "orphanCollections" : [ ], 
       "edgeDefinitions" : [ 
         { 

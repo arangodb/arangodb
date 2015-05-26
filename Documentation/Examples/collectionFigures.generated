@@ -37,6 +37,6 @@ arangosh> db.demo.figures()
     "count" : 1, 
     "size" : 2008 
   }, 
-  "lastTick" : "20569108", 
+  "lastTick" : "20289976", 
   "uncollectedLogfileEntries" : 0 
 }

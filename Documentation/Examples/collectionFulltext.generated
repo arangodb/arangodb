@@ -1,6 +1,6 @@
 arangosh> db.emails.ensureFulltextIndex("content");
 { 
-  "id" : "emails/458415124", 
+  "id" : "emails/458135992", 
   "type" : "fulltext", 
   "unique" : false, 
   "sparse" : true, 
@@ -13,34 +13,34 @@ arangosh> db.emails.ensureFulltextIndex("content");
 }
 arangosh> db.emails.save({ content: "Hello Alice, how are you doing? Regards, Bob" });
 { 
-  "_id" : "emails/458677268", 
-  "_rev" : "458677268", 
-  "_key" : "458677268" 
+  "_id" : "emails/458398136", 
+  "_rev" : "458398136", 
+  "_key" : "458398136" 
 }
 arangosh> db.emails.save({ content: "Hello Charlie, do Alice and Bob know about it?" });
 { 
-  "_id" : "emails/458873876", 
-  "_rev" : "458873876", 
-  "_key" : "458873876" 
+  "_id" : "emails/458594744", 
+  "_rev" : "458594744", 
+  "_key" : "458594744" 
 }
 arangosh> db.emails.save({ content: "I think they don't know. Regards, Eve" });
 { 
-  "_id" : "emails/459070484", 
-  "_rev" : "459070484", 
-  "_key" : "459070484" 
+  "_id" : "emails/458791352", 
+  "_rev" : "458791352", 
+  "_key" : "458791352" 
 }
 arangosh> db.emails.fulltext("content", "charlie,|eve").toArray();
 [ 
   { 
-    "_id" : "emails/458873876", 
-    "_key" : "458873876", 
-    "_rev" : "458873876", 
+    "_id" : "emails/458594744", 
+    "_key" : "458594744", 
+    "_rev" : "458594744", 
     "content" : "Hello Charlie, do Alice and Bob know about it?" 
   }, 
   { 
-    "_id" : "emails/459070484", 
-    "_key" : "459070484", 
-    "_rev" : "459070484", 
+    "_id" : "emails/458791352", 
+    "_key" : "458791352", 
+    "_rev" : "458791352", 
     "content" : "I think they don't know. Regards, Eve" 
   } 
 ]

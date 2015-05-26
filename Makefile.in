@@ -368,6 +368,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/V8Server/arangod_libarangod_a-V8PeriodicTask.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-V8QueueJob.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-V8TimerTask.$(OBJEXT) \
+	arangod/V8Server/arangod_libarangod_a-V8Traverser.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-v8-actions.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-v8-collection.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-v8-collection-util.$(OBJEXT) \
@@ -387,6 +388,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/VocBase/arangod_libarangod_a-compactor.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-datafile.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-document-collection.$(OBJEXT) \
+	arangod/VocBase/arangod_libarangod_a-ExampleMatcher.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-edge-collection.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-headers.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-index.$(OBJEXT) \
@@ -655,6 +657,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Basics/Runner.cpp \
 	UnitTests/Basics/associative-multi-pointer-test.cpp \
 	UnitTests/Basics/associative-synced-test.cpp \
 	UnitTests/Basics/skiplist-test.cpp \
+	UnitTests/Basics/priorityqueue-test.cpp \
 	UnitTests/Basics/string-buffer-test.cpp \
 	UnitTests/Basics/string-utf8-normalize-test.cpp \
 	UnitTests/Basics/string-utf8-test.cpp \
@@ -677,6 +680,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Basics/Runner.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-skiplist-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-buffer-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-utf8-normalize-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-utf8-test.$(OBJEXT) \
@@ -1509,6 +1513,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/V8PeriodicTask.cpp \
 	arangod/V8Server/V8QueueJob.cpp \
 	arangod/V8Server/V8TimerTask.cpp \
+	arangod/V8Server/V8Traverser.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-collection.cpp \
 	arangod/V8Server/v8-collection-util.cpp \
@@ -1528,6 +1533,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/compactor.cpp \
 	arangod/VocBase/datafile.cpp \
 	arangod/VocBase/document-collection.cpp \
+	arangod/VocBase/ExampleMatcher.cpp \
 	arangod/VocBase/edge-collection.cpp \
 	arangod/VocBase/headers.cpp \
 	arangod/VocBase/index.cpp \
@@ -1739,6 +1745,7 @@ CLIENT_OPT := \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/associative-multi-pointer-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/associative-synced-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/skiplist-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/priorityqueue-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/string-buffer-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/string-utf8-normalize-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/string-utf8-test.cpp \
@@ -2477,6 +2484,9 @@ arangod/V8Server/arangod_libarangod_a-V8QueueJob.$(OBJEXT):  \
 arangod/V8Server/arangod_libarangod_a-V8TimerTask.$(OBJEXT):  \
 	arangod/V8Server/$(am__dirstamp) \
 	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
+arangod/V8Server/arangod_libarangod_a-V8Traverser.$(OBJEXT):  \
+	arangod/V8Server/$(am__dirstamp) \
+	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
 arangod/V8Server/arangod_libarangod_a-v8-actions.$(OBJEXT):  \
 	arangod/V8Server/$(am__dirstamp) \
 	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
@@ -2538,6 +2548,9 @@ arangod/VocBase/arangod_libarangod_a-datafile.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-document-collection.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/arangod_libarangod_a-ExampleMatcher.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-edge-collection.$(OBJEXT):  \
@@ -3261,6 +3274,9 @@ UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.$(OBJEXT):  \
 UnitTests/Basics/UnitTests_basics_suite-skiplist-test.$(OBJEXT):  \
 	UnitTests/Basics/$(am__dirstamp) \
 	UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.$(OBJEXT):  \
+	UnitTests/Basics/$(am__dirstamp) \
+	UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Basics/UnitTests_basics_suite-string-buffer-test.$(OBJEXT):  \
 	UnitTests/Basics/$(am__dirstamp) \
 	UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
@@ -3537,6 +3553,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-hashes-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-json-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-json-utilities-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-priorityqueue-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-skiplist-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-string-buffer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-string-test.Po@am__quote@
@@ -3645,6 +3662,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8PeriodicTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8QueueJob.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8TimerTask.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Traverser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-collection-util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-collection.Po@am__quote@
@@ -3657,6 +3675,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-voccursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-vocindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-wrapshapedjson.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-auth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-barrier.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-cleanup.Po@am__quote@
@@ -5252,6 +5271,20 @@ arangod/V8Server/arangod_libarangod_a-V8TimerTask.obj: arangod/V8Server/V8TimerT
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-V8TimerTask.obj `if test -f 'arangod/V8Server/V8TimerTask.cpp'; then $(CYGPATH_W) 'arangod/V8Server/V8TimerTask.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/V8TimerTask.cpp'; fi`
 
+arangod/V8Server/arangod_libarangod_a-V8Traverser.o: arangod/V8Server/V8Traverser.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-V8Traverser.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Traverser.Tpo -c -o arangod/V8Server/arangod_libarangod_a-V8Traverser.o `test -f 'arangod/V8Server/V8Traverser.cpp' || echo '$(srcdir)/'`arangod/V8Server/V8Traverser.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Traverser.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Traverser.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/V8Traverser.cpp' object='arangod/V8Server/arangod_libarangod_a-V8Traverser.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-V8Traverser.o `test -f 'arangod/V8Server/V8Traverser.cpp' || echo '$(srcdir)/'`arangod/V8Server/V8Traverser.cpp
+
+arangod/V8Server/arangod_libarangod_a-V8Traverser.obj: arangod/V8Server/V8Traverser.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-V8Traverser.obj -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Traverser.Tpo -c -o arangod/V8Server/arangod_libarangod_a-V8Traverser.obj `if test -f 'arangod/V8Server/V8Traverser.cpp'; then $(CYGPATH_W) 'arangod/V8Server/V8Traverser.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/V8Traverser.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Traverser.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Traverser.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/V8Traverser.cpp' object='arangod/V8Server/arangod_libarangod_a-V8Traverser.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-V8Traverser.obj `if test -f 'arangod/V8Server/V8Traverser.cpp'; then $(CYGPATH_W) 'arangod/V8Server/V8Traverser.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/V8Traverser.cpp'; fi`
+
 arangod/V8Server/arangod_libarangod_a-v8-actions.o: arangod/V8Server/v8-actions.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-v8-actions.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-actions.Tpo -c -o arangod/V8Server/arangod_libarangod_a-v8-actions.o `test -f 'arangod/V8Server/v8-actions.cpp' || echo '$(srcdir)/'`arangod/V8Server/v8-actions.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-actions.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-actions.Po
@@ -5517,6 +5550,20 @@ arangod/VocBase/arangod_libarangod_a-document-collection.obj: arangod/VocBase/do
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/document-collection.cpp' object='arangod/VocBase/arangod_libarangod_a-document-collection.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-document-collection.obj `if test -f 'arangod/VocBase/document-collection.cpp'; then $(CYGPATH_W) 'arangod/VocBase/document-collection.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/document-collection.cpp'; fi`
+
+arangod/VocBase/arangod_libarangod_a-ExampleMatcher.o: arangod/VocBase/ExampleMatcher.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-ExampleMatcher.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Tpo -c -o arangod/VocBase/arangod_libarangod_a-ExampleMatcher.o `test -f 'arangod/VocBase/ExampleMatcher.cpp' || echo '$(srcdir)/'`arangod/VocBase/ExampleMatcher.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/ExampleMatcher.cpp' object='arangod/VocBase/arangod_libarangod_a-ExampleMatcher.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-ExampleMatcher.o `test -f 'arangod/VocBase/ExampleMatcher.cpp' || echo '$(srcdir)/'`arangod/VocBase/ExampleMatcher.cpp
+
+arangod/VocBase/arangod_libarangod_a-ExampleMatcher.obj: arangod/VocBase/ExampleMatcher.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-ExampleMatcher.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Tpo -c -o arangod/VocBase/arangod_libarangod_a-ExampleMatcher.obj `if test -f 'arangod/VocBase/ExampleMatcher.cpp'; then $(CYGPATH_W) 'arangod/VocBase/ExampleMatcher.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/ExampleMatcher.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/ExampleMatcher.cpp' object='arangod/VocBase/arangod_libarangod_a-ExampleMatcher.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-ExampleMatcher.obj `if test -f 'arangod/VocBase/ExampleMatcher.cpp'; then $(CYGPATH_W) 'arangod/VocBase/ExampleMatcher.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/ExampleMatcher.cpp'; fi`
 
 arangod/VocBase/arangod_libarangod_a-edge-collection.o: arangod/VocBase/edge-collection.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-edge-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-edge-collection.Tpo -c -o arangod/VocBase/arangod_libarangod_a-edge-collection.o `test -f 'arangod/VocBase/edge-collection.cpp' || echo '$(srcdir)/'`arangod/VocBase/edge-collection.cpp
@@ -7295,6 +7342,20 @@ UnitTests/Basics/UnitTests_basics_suite-skiplist-test.obj: UnitTests/Basics/skip
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='UnitTests/Basics/skiplist-test.cpp' object='UnitTests/Basics/UnitTests_basics_suite-skiplist-test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Basics/UnitTests_basics_suite-skiplist-test.obj `if test -f 'UnitTests/Basics/skiplist-test.cpp'; then $(CYGPATH_W) 'UnitTests/Basics/skiplist-test.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Basics/skiplist-test.cpp'; fi`
+
+UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.o: UnitTests/Basics/priorityqueue-test.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.o -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-priorityqueue-test.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.o `test -f 'UnitTests/Basics/priorityqueue-test.cpp' || echo '$(srcdir)/'`UnitTests/Basics/priorityqueue-test.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-priorityqueue-test.Tpo UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-priorityqueue-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='UnitTests/Basics/priorityqueue-test.cpp' object='UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.o `test -f 'UnitTests/Basics/priorityqueue-test.cpp' || echo '$(srcdir)/'`UnitTests/Basics/priorityqueue-test.cpp
+
+UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.obj: UnitTests/Basics/priorityqueue-test.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.obj -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-priorityqueue-test.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.obj `if test -f 'UnitTests/Basics/priorityqueue-test.cpp'; then $(CYGPATH_W) 'UnitTests/Basics/priorityqueue-test.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Basics/priorityqueue-test.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-priorityqueue-test.Tpo UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-priorityqueue-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='UnitTests/Basics/priorityqueue-test.cpp' object='UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.obj `if test -f 'UnitTests/Basics/priorityqueue-test.cpp'; then $(CYGPATH_W) 'UnitTests/Basics/priorityqueue-test.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Basics/priorityqueue-test.cpp'; fi`
 
 UnitTests/Basics/UnitTests_basics_suite-string-buffer-test.o: UnitTests/Basics/string-buffer-test.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-string-buffer-test.o -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-string-buffer-test.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-string-buffer-test.o `test -f 'UnitTests/Basics/string-buffer-test.cpp' || echo '$(srcdir)/'`UnitTests/Basics/string-buffer-test.cpp
@@ -9772,7 +9833,7 @@ clean-zlib:
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	@echo
 
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@clean-etcd:
-@ENABLE_ALL_IN_ONE_ETCD_TRUE@	cd @top_srcdir@/3rdParty/etcd && ./clean
+@ENABLE_ALL_IN_ONE_ETCD_TRUE@	cd @top_srcdir@/3rdParty/etcd && go clean
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	rm -f @top_srcdir@/bin/etcd-arango
 
 ################################################################################
