@@ -80,8 +80,18 @@ triagens::basics::Json CapConstraint::toJson (TRI_memory_zone_t* zone) const {
   return json;
 }
   
-int CapConstraint::insert (TRI_doc_mptr_t const*, 
+int CapConstraint::insert (TRI_doc_mptr_t const* doc, 
                            bool) {
+  if (_size > 0) {
+    // there is a size restriction
+    auto marker = static_cast<TRI_df_marker_t const*>(doc->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+    // check if the document would be too big
+    if (static_cast<int64_t>(marker->_size) > _size) {
+      return TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE;
+    }
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
          
