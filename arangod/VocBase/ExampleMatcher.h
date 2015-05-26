@@ -46,27 +46,43 @@ struct TRI_doc_mptr_t;
 
 namespace triagens {
   namespace arango {
+
+
     class ExampleMatcher {
 
+      // Has no destructor.
+      // The using ExampleMatcher will free all pointers.
+      // Should not directly be used from outside.
+      struct ExampleDefinition {
+        std::vector<TRI_shape_pid_t> _pids;
+        std::vector<TRI_shaped_json_t*> _values;
+      };
+
       TRI_shaper_t* _shaper;
-      std::vector<TRI_shape_pid_t> _pids;
-      std::vector<TRI_shaped_json_t*> _values;
+      std::vector<ExampleDefinition> definitions;
 
       public:
 
-        ExampleMatcher(
+        ExampleMatcher (
           v8::Isolate* isolate,
           v8::Handle<v8::Object> const example,
           TRI_shaper_t* shaper,
           std::string& errorMessage
         );
 
-        ExampleMatcher(
+        ExampleMatcher (
+          v8::Isolate* isolate,
+          v8::Handle<v8::Array> const examples,
+          TRI_shaper_t* shaper,
+          std::string& errorMessage
+        );
+
+        ExampleMatcher (
           TRI_json_t* example,
           TRI_shaper_t* shaper
         );
 
-        ~ExampleMatcher() {
+        ~ExampleMatcher () {
           cleanup();
         };
 

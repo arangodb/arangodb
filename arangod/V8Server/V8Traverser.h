@@ -201,7 +201,7 @@ namespace triagens {
 
           void addEdgeFilter (
             v8::Isolate* isolate,
-            v8::Handle<v8::Object> const& example,
+            v8::Handle<v8::Value> const& example,
             TRI_shaper_t* shaper,
             TRI_voc_cid_t const& cid,
             std::string& errorMessage
