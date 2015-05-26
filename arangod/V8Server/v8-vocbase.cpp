@@ -1901,8 +1901,8 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     }
 
     // Parse Distance
-    v8::Local<v8::String> keyWeight= TRI_V8_ASCII_STRING("distance");
-    v8::Local<v8::String> keyDefaultWeight= TRI_V8_ASCII_STRING("defaultDistance");
+    v8::Local<v8::String> keyWeight= TRI_V8_ASCII_STRING("weight");
+    v8::Local<v8::String> keyDefaultWeight= TRI_V8_ASCII_STRING("defaultWeight");
     if (options->Has(keyWeight) && options->Has(keyDefaultWeight) ) {
       opts.useWeight = true;
       opts.weightAttribute = TRI_ObjectToString(options->Get(keyWeight));
