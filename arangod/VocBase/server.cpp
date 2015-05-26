@@ -711,7 +711,7 @@ static int OpenDatabases (TRI_server_t* server,
 
     databaseName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
                                          nameJson->_value._string.data,
-                                         nameJson->_value._string.length);
+                                         nameJson->_value._string.length - 1);
 
     // .............................................................................
     // setup defaults

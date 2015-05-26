@@ -26,17 +26,16 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterMethods.h"
+#include "ClusterMethods.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
-
 #include "Basics/conversions.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
-#include "VocBase/index.h"
+#include "Indexes/Index.h"
 #include "VocBase/server.h"
 
 using namespace std;
@@ -1333,99 +1332,6 @@ int createEdgeOnCoordinator (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get indexes from coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
-                                             string const& collectionName) {
-  shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, collectionName);
-
-  if ((*c).empty()) {
-    return nullptr;
-  }
-
-  TRI_vector_pointer_t* result = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
-
-  if (result == nullptr) {
-    return nullptr;
-  }
-
-  TRI_InitVectorPointer(result, TRI_UNKNOWN_MEM_ZONE);
-
-  TRI_json_t const* json = (*c).getIndexes();
-
-  if (TRI_IsArrayJson(json)) {
-    size_t const n = TRI_LengthArrayJson(json);
-    for (size_t i = 0;  i < n; ++i) {
-      TRI_json_t const* v = TRI_LookupArrayJson(json, i);
-
-      if (TRI_IsObjectJson(v)) {
-        TRI_json_t const* value = TRI_LookupObjectJson(v, "type");
-
-        if (! TRI_IsStringJson(value)) {
-          continue;
-        }
-
-        TRI_idx_type_e type = TRI_TypeIndex(value->_value._string.data);
-
-        bool unique = false;
-        value = TRI_LookupObjectJson(v, "unique");
-        if (TRI_IsBooleanJson(value)) {
-          unique = value->_value._boolean;
-        }
-
-        bool sparse = false;
-        value = TRI_LookupObjectJson(v, "sparse");
-        if (TRI_IsBooleanJson(value)) {
-          sparse = value->_value._boolean;
-        }
-
-        TRI_idx_iid_t iid = 0;
-        value = TRI_LookupObjectJson(v, "id");
-        if (TRI_IsStringJson(value)) {
-          iid = TRI_UInt64String2(value->_value._string.data, value->_value._string.length - 1);
-        }
-
-        TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false));
-
-        if (idx == nullptr) {
-          continue;
-        }
-
-        idx->_iid      = iid;
-        idx->_type     = type;
-        idx->_unique   = unique;
-        idx->_sparse   = sparse;
-
-        TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
-
-        value = TRI_LookupObjectJson(v, "fields");
-
-        if (TRI_IsArrayJson(value)) {
-          size_t const n = TRI_LengthArrayJson(value);
-
-          for (size_t j = 0; j < n; ++j) {
-            TRI_json_t const* f = TRI_LookupArrayJson(value, j);
-
-            if (TRI_IsStringJson(f)) {
-              char* fieldName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
-                                                      f->_value._string.data,
-                                                      f->_value._string.length - 1);
-
-              TRI_PushBackVectorString(&idx->_fields, fieldName);
-            }
-          }
-        }
-
-        TRI_PushBackVectorPointer(result, idx);
-      }
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1473,15 +1379,6 @@ int flushWalOnAllDBServers (bool waitForSync, bool waitForCollector) {
 
   }  // namespace arango
 }  // namespace triagens
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief c binding for getIndexesCoordinator
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_pointer_t* TRI_GetCoordinatorIndexes (char const* databaseName,
-                                                 char const* collectionName) {
-  return getIndexesCoordinator(string(databaseName), string(collectionName));
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

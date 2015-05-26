@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array implementation
+/// @brief cap constraint
 ///
 /// @file
 ///
@@ -23,115 +23,144 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Martin Schoenert
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HASH_INDEX_HASH__ARRAY_H
-#define ARANGODB_HASH_INDEX_HASH__ARRAY_H 1
+#ifndef ARANGODB_INDEXES_CAP_CONSTRAINT_H
+#define ARANGODB_INDEXES_CAP_CONSTRAINT_H 1
 
 #include "Basics/Common.h"
+#include "Indexes/Index.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                               class CapConstraint
 // -----------------------------------------------------------------------------
 
-struct TRI_hash_index_element_s;
-struct TRI_index_search_value_s;
+namespace triagens {
+  namespace arango {
+
+    class CapConstraint : public Index {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
+
+      public:
+
+        CapConstraint () = delete;
+
+        CapConstraint (TRI_idx_iid_t,
+                       struct TRI_document_collection_t*,
+                       size_t,
+                       int64_t);
+
+        ~CapConstraint ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array
+/// @brief maximum number of documents in the collection
+////////////////////////////////////////////////////////////////////////////////
+  
+        int64_t count () const {
+          return _count;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum size of documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_hash_array_s {
-  size_t _numFields; // the number of fields indexes
+        int64_t size () const {
+          return _size;
+        }
+        
+        IndexType type () const override final {
+          return Index::TRI_IDX_TYPE_CAP_CONSTRAINT;
+        }
 
-  uint64_t _nrAlloc; // the size of the table
-  uint64_t _nrUsed;  // the number of used entries
+        bool hasSelectivityEstimate () const override final {
+          return false;
+        }
+        
+        bool dumpFields () const override final {
+          return false;
+        }
 
-  struct TRI_hash_index_element_s* _table; // the table itself, aligned to a cache line boundary
-  struct TRI_hash_index_element_s* _tablePtr; // the table itself
+        size_t memory () const override final;
+
+        triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
+  
+        int insert (struct TRI_doc_mptr_t const*, bool) override final;
+         
+        int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        
+        int postInsert (struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*) override final;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize the cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply the cap constraint for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int apply (TRI_document_collection_t*,
+                   struct TRI_transaction_collection_s*);
+        
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_document_collection_t* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of documents in the collection
+////////////////////////////////////////////////////////////////////////////////
+  
+        int64_t const _count;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum size of documents in the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t const _size;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum size
+////////////////////////////////////////////////////////////////////////////////
+
+        static int64_t const MinSize;
+    };
+
+  }
 }
-TRI_hash_array_t;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        HASH ARRAY
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises an array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InitHashArray (TRI_hash_array_t*,
-                       size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyHashArray (TRI_hash_array_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeHashArray (TRI_hash_array_t*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hash array's memory usage
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resizes the hash table
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ResizeHashArray (TRI_hash_array_t*,
-                         size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_hash_index_element_s* TRI_LookupByKeyHashArray (TRI_hash_array_t const*,
-                                                           struct TRI_index_search_value_s* key);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an element given a key, returns NULL if not found
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t const*,
-                                                         struct TRI_index_search_value_s* key);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an key/element to the array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertKeyHashArray (TRI_hash_array_t*,
-                            struct TRI_index_search_value_s const* key,
-                            struct TRI_hash_index_element_s const* element,
-                            bool isRollback);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveElementHashArray (TRI_hash_array_t*,
-                                struct TRI_hash_index_element_s* element);
 
 #endif
 
