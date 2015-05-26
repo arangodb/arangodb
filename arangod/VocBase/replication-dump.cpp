@@ -116,8 +116,8 @@ df_entry_t;
 /// @brief translate a (local) collection id into a collection name
 ////////////////////////////////////////////////////////////////////////////////
     
-char const* NameFromCid (TRI_replication_dump_t* dump,
-                         TRI_voc_cid_t cid) {
+static char const* NameFromCid (TRI_replication_dump_t* dump,
+                                TRI_voc_cid_t cid) {
   auto it = dump->_collectionNames.find(cid);
 
   if (it != dump->_collectionNames.end()) {

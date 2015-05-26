@@ -480,7 +480,7 @@ static int ParseInt16Arg (const char * userarg, void * value) {
 /// @brief creates a 16-bit integer option
 ////////////////////////////////////////////////////////////////////////////////
 
-void CreateInt16Option (po_int16_t * desc, const void * input, void * output) {
+static void CreateInt16Option (po_int16_t * desc, const void * input, void * output) {
   TRI_PO_item_t item;
   TRI_program_options_t * po;
   struct option intOpt;
@@ -521,7 +521,7 @@ static int ParseInt32Arg (const char * userarg, void * value) {
 /// @brief creates a 32-bit integer option
 ////////////////////////////////////////////////////////////////////////////////
 
-void CreateInt32Option (po_int32_t * desc, const void * input, void * output) {
+static void CreateInt32Option (po_int32_t * desc, const void * input, void * output) {
   TRI_PO_item_t item;
   TRI_program_options_t * po;
   struct option intOpt;

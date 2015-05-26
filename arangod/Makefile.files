@@ -52,7 +52,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Variable.cpp \
 	arangod/Aql/VariableGenerator.cpp \
 	arangod/Aql/ModificationOptions.cpp \
-	arangod/CapConstraint/cap-constraint.cpp \
 	arangod/Cluster/AgencyComm.cpp \
 	arangod/Cluster/ApplicationCluster.cpp \
 	arangod/Cluster/ClusterComm.cpp \
@@ -70,10 +69,16 @@ arangod_libarangod_a_SOURCES = \
 	arangod/FulltextIndex/fulltext-result.cpp \
 	arangod/FulltextIndex/fulltext-wordlist.cpp \
 	arangod/GeoIndex/GeoIndex.cpp \
-	arangod/GeoIndex/geo-index.cpp \
 	arangod/HashIndex/hash-array.cpp \
 	arangod/HashIndex/hash-array-multi.cpp \
-	arangod/HashIndex/hash-index.cpp \
+	arangod/Indexes/CapConstraint.cpp \
+	arangod/Indexes/EdgeIndex.cpp \
+	arangod/Indexes/FulltextIndex.cpp \
+	arangod/Indexes/GeoIndex2.cpp \
+	arangod/Indexes/HashIndex.cpp \
+	arangod/Indexes/Index.cpp \
+	arangod/Indexes/PrimaryIndex.cpp \
+	arangod/Indexes/SkiplistIndex2.cpp \
 	arangod/IndexOperators/index-operator.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
@@ -132,9 +137,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/ExampleMatcher.cpp \
 	arangod/VocBase/edge-collection.cpp \
 	arangod/VocBase/headers.cpp \
-	arangod/VocBase/index.cpp \
 	arangod/VocBase/key-generator.cpp \
-	arangod/VocBase/primary-index.cpp \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \
 	arangod/VocBase/replication-dump.cpp \

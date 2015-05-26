@@ -95,12 +95,13 @@ static void JS_CasAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   TRI_json_t* oldJson = TRI_ObjectToJson(isolate, args[1]);
 
-  if (oldJson == 0) {
+  if (oldJson == nullptr) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to JSON");
   }
 
   TRI_json_t* newJson = TRI_ObjectToJson(isolate, args[2]);
-  if (newJson == 0) {
+
+  if (newJson == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to JSON");
   }
@@ -249,7 +250,7 @@ static void JS_GetAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
       TRI_json_t const* json = (*it).second._json;
       const std::string idx = StringUtils::itoa((*it).second._index);
 
-      if (json != 0) {
+      if (json != nullptr) {
         v8::Handle<v8::Object> sub = v8::Object::New(isolate);
 
         sub->Set(TRI_V8_ASCII_STRING("value"), TRI_ObjectJson(isolate, json));
@@ -269,7 +270,7 @@ static void JS_GetAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
       const std::string key = (*it).first;
       TRI_json_t const* json = (*it).second._json;
 
-      if (json != 0) {
+      if (json != nullptr) {
         l->ForceSet(TRI_V8_STD_STRING(key), TRI_ObjectJson(isolate, json));
       }
 
@@ -510,7 +511,7 @@ static void JS_SetAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
 
-  if (json == 0) {
+  if (json == nullptr) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <value> to JSON");
   }
 
@@ -579,7 +580,7 @@ static void JS_WatchAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
     const std::string key = (*it).first;
     TRI_json_t* json = (*it).second._json;
 
-    if (json != 0) {
+    if (json != nullptr) {
       l->Set(TRI_V8_STD_STRING(key), TRI_ObjectJson(isolate, json));
     }
 
@@ -660,9 +661,7 @@ static void JS_SetPrefixAgency (const v8::FunctionCallbackInfo<v8::Value>& args)
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1571,7 +1570,7 @@ static void PrepareClusterCommRequest (
 
   clientTransactionID = "";
   coordTransactionID = 0;
-  timeout = 24*3600.0;
+  timeout = 24 * 3600.0;
 
   if (args.Length() > 6 && args[6]->IsObject()) {
     v8::Handle<v8::Object> opt = args[6].As<v8::Object>();
@@ -1598,7 +1597,7 @@ static void PrepareClusterCommRequest (
     coordTransactionID = TRI_NewTickServer();
   }
   if (timeout == 0) {
-    timeout = 24*3600.0;
+    timeout = 24 * 3600.0;
   }
 }
 
@@ -1606,19 +1605,21 @@ static void PrepareClusterCommRequest (
 /// @brief prepare a ClusterCommResult for JavaScript
 ////////////////////////////////////////////////////////////////////////////////
 
-void Return_PrepareClusterCommResultForJS(const v8::FunctionCallbackInfo<v8::Value>& args,
-                                          ClusterCommResult const* res) {
+static void Return_PrepareClusterCommResultForJS (const v8::FunctionCallbackInfo<v8::Value>& args,
+                                                  ClusterCommResult const* res) {
   v8::Isolate* isolate = args.GetIsolate();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
-  if (0 == res) {
+  if (nullptr == res) {
     TRI_GET_GLOBAL_STRING(ErrorMessageKey);
     r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("out of memory"));
-  } else if (res->dropped) {
+  } 
+  else if (res->dropped) {
     TRI_GET_GLOBAL_STRING(ErrorMessageKey);
     r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("operation was dropped"));
-  } else {
+  } 
+  else {
     TRI_GET_GLOBAL_STRING(ClientTransactionIDKey);
     r->Set(ClientTransactionIDKey,
            TRI_V8_STD_STRING(res->clientTransactionID));
@@ -1710,12 +1711,13 @@ void Return_PrepareClusterCommResultForJS(const v8::FunctionCallbackInfo<v8::Val
       r->Set(TRI_V8_ASCII_STRING("headers"), h);
 
       // The body:
-      if (0 != res->answer->body()) {
+      if (nullptr != res->answer->body()) {
         r->Set(TRI_V8_ASCII_STRING("body"),
                TRI_V8_PAIR_STRING(res->answer->body(), (int) res->answer->bodySize()));
       }
     }
   }
+
   TRI_V8_RETURN(r);
 }
 
@@ -1726,8 +1728,6 @@ void Return_PrepareClusterCommResultForJS(const v8::FunctionCallbackInfo<v8::Val
 static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-
-
 
   if (args.Length() < 4 || args.Length() > 7) {
     TRI_V8_THROW_EXCEPTION_USAGE("asyncRequest("
@@ -1747,7 +1747,7 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   ClusterComm* cc = ClusterComm::instance();
 
-  if (cc == 0) {
+  if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "clustercomm object not found");
   }
@@ -1769,7 +1769,7 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   res = cc->asyncRequest(clientTransactionID, coordTransactionID, destination,
                          reqType, path, body, true, headerFields, 0, timeout);
 
-  if (res == 0) {
+  if (res == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "couldn't queue async request");
   }
@@ -1787,8 +1787,6 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
 static void JS_SyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-
-
 
   if (args.Length() < 4 || args.Length() > 7) {
     TRI_V8_THROW_EXCEPTION_USAGE("syncRequest("
@@ -1808,7 +1806,7 @@ static void JS_SyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   ClusterComm* cc = ClusterComm::instance();
 
-  if (cc == 0) {
+  if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "clustercomm object not found");
   }
@@ -1825,14 +1823,12 @@ static void JS_SyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   PrepareClusterCommRequest(args, reqType, destination, path, body, headerFields,
                             clientTransactionID, coordTransactionID, timeout);
 
-  ClusterCommResult const* res;
-
-  res = cc->syncRequest(clientTransactionID, coordTransactionID, destination,
+  ClusterCommResult const* res = cc->syncRequest(clientTransactionID, coordTransactionID, destination,
                          reqType, path, body, *headerFields, timeout);
 
   delete headerFields;
 
-  if (res == 0) {
+  if (res == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "couldn't do sync request");
   }
@@ -1864,7 +1860,7 @@ static void JS_Enquire (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   ClusterComm* cc = ClusterComm::instance();
 
-  if (cc == 0) {
+  if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "clustercomm object not found");
   }
@@ -1989,7 +1985,7 @@ static void JS_Drop (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   ClusterComm* cc = ClusterComm::instance();
 
-  if (cc == 0) {
+  if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "clustercomm object not found");
   }
@@ -2028,7 +2024,6 @@ static void JS_Drop (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_RETURN_UNDEFINED();
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -2039,7 +2034,7 @@ static void JS_Drop (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 void TRI_InitV8Cluster (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  TRI_ASSERT(v8g != 0);
+  TRI_ASSERT(v8g != nullptr);
 
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;

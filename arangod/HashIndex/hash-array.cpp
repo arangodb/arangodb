@@ -33,7 +33,8 @@
 
 #include "Basics/fasthash.h"
 #include "Basics/logging.h"
-#include "HashIndex/hash-index.h"
+#include "HashIndex/hash-index-common.h"
+#include "Indexes/Index.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
 
@@ -362,7 +363,7 @@ int TRI_ResizeHashArray (TRI_hash_array_t* array,
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t* array,
+TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t const* array,
                                                     TRI_index_search_value_t* key) {
   uint64_t const n = array->_nrAlloc;
   uint64_t i, k;
@@ -387,7 +388,7 @@ TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t* array,
 /// @brief finds an element given a key, return NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_hash_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t* array,
+TRI_hash_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t const* array,
                                                   TRI_index_search_value_t* key) {
   TRI_hash_index_element_t* element = TRI_LookupByKeyHashArray(array, key);
 

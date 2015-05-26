@@ -27,14 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "v8-replication.h"
 #include "v8-vocbaseprivate.h"
-
+#include "Replication/InitialSyncer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "Wal/LogfileManager.h"
-
 #include "VocBase/replication-dump.h"
-#include "Replication/InitialSyncer.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -616,15 +615,13 @@ static void JS_ForgetApplierReplication (const v8::FunctionCallbackInfo<v8::Valu
   TRI_V8_RETURN_TRUE();
 }
 
-
-
-void TRI_InitV8replication (v8::Isolate* isolate,
+void TRI_InitV8Replication (v8::Isolate* isolate,
                             v8::Handle<v8::Context> context,
                             TRI_server_t* server,
                             TRI_vocbase_t* vocbase,
                             JSLoader* loader,
-                            const size_t threadNumber,
-                            TRI_v8_global_t* v8g){
+                            size_t threadNumber,
+                            TRI_v8_global_t* v8g) {
 
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_STATE"), JS_StateLoggerReplication, true);
