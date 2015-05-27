@@ -31,11 +31,37 @@ var _ = require('underscore');
 var flatten = require('internal').flatten;
 var arangodb = require('org/arangodb');
 var console = require('console');
+var joi = require('joi');
 var qb = require('aqb');
 var db = arangodb.db;
+
 var queueCache = {};
 var jobCache = {};
 var jobTypeCache = {};
+
+function validate(data, schema) {
+  if (!schema) {
+    schema = joi.forbidden();
+  }
+  var raw = data;
+  var isTuple = Boolean(schema._meta && schema._meta.some(function (meta) {
+    return meta.isTuple;
+  }));
+  if (isTuple) {
+    raw = Array.isArray(raw) ? raw : [raw];
+    data = _.extend({}, raw);
+  }
+  var result = schema.validate(data);
+  if (result.error) {
+    throw result.error;
+  }
+  if (isTuple) {
+    return raw.map(function (x, i) {
+      return result.value[i];
+    });
+  }
+  return result.value;
+}
 
 function resetQueueControl() {
   try {
@@ -222,11 +248,7 @@ _.extend(Queue.prototype, {
 
     if (definition) {
       if (definition.schema) {
-        var result = definition.schema.validate(data);
-        if (result.error) {
-          throw result.error;
-        }
-        data = result.value;
+        data = validate(data, definition.schema);
       }
       if (definition.preprocess) {
         data = definition.preprocess(data);
