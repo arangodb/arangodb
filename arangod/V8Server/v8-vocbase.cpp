@@ -1927,12 +1927,12 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       opts.multiThreaded = TRI_ObjectToBoolean(options->Get(keyMultiThreaded));
     }
 
-    // Parse followEdges
-    v8::Local<v8::String> keyFollowEdges = TRI_V8_ASCII_STRING("followEdges");
-    if (options->Has(keyFollowEdges)) {
+    // Parse filterEdges
+    v8::Local<v8::String> keyFilterEdges = TRI_V8_ASCII_STRING("filterEdges");
+    if (options->Has(keyFilterEdges)) {
       opts.useEdgeFilter = true;
       // TODO: User defined AQL function !!
-      edgeExample = v8::Handle<v8::Object>::Cast(options->Get(keyFollowEdges));
+      edgeExample = v8::Handle<v8::Object>::Cast(options->Get(keyFilterEdges));
     }
 
     // Parse vertexFilter
@@ -2176,6 +2176,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
   traverser::NeighborsOptions opts;
   bool includeData = false;
   v8::Handle<v8::Value> edgeExample;
+  v8::Handle<v8::Value> vertexExample;
 
   if (args.Length() == 4) {
     if (! args[3]->IsObject()) {
@@ -2213,11 +2214,19 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       includeData = TRI_ObjectToBoolean(options->Get(keyIncludeData));
     }
 
-    // Parse examples
-    v8::Local<v8::String> keyExamples = TRI_V8_ASCII_STRING("examples");
-    if (options->Has(keyExamples)) {
+    // Parse filterEdges
+    v8::Local<v8::String> keyFilterEdges = TRI_V8_ASCII_STRING("filterEdges");
+    if (options->Has(keyFilterEdges)) {
       opts.useEdgeFilter = true;
-      edgeExample = options->Get(keyExamples);
+      edgeExample = options->Get(keyFilterEdges);
+    }
+
+    // Parse vertexFilter
+    v8::Local<v8::String> keyFilterVertices = TRI_V8_ASCII_STRING("filterVertices");
+    if (options->Has(keyFilterVertices)) {
+      opts.useVertexFilter = true;
+      // TODO: User defined AQL function !!
+      vertexExample = v8::Handle<v8::Object>::Cast(options->Get(keyFilterVertices));
     }
   }
 
@@ -2285,6 +2294,21 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     for (auto const& it : edgeCollectionInfos) {
       try {
         opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(), errorMessage);
+      } 
+      catch (int e) {
+        // ELEMENT not found is expected, if there is no shape of this type in this collection
+        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          // TODO Max fragen was mit Fehlern passieren muss
+        }
+      }
+    }
+  }
+
+  if (opts.useVertexFilter) {
+    string errorMessage;
+    for (auto const& it: vertexCollectionInfos) {
+      try {
+        opts.addVertexFilter(isolate, vertexExample, trx, it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
       } 
       catch (int e) {
         // ELEMENT not found is expected, if there is no shape of this type in this collection

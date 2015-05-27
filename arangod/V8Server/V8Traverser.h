@@ -129,75 +129,26 @@ typedef triagens::basics::PathFinder<VertexId, EdgeId, double>
 namespace triagens {
   namespace basics {
     namespace traverser {
-      struct ShortestPathOptions {
 
-        private: 
+      // A collection of shared options used in several functions.
+      // Should not be used directly, use specialization instead.
+      struct BasicOptions {
+
+        protected:
+
           std::unordered_map<TRI_voc_cid_t, triagens::arango::ExampleMatcher*> _edgeFilter;
           std::unordered_map<TRI_voc_cid_t, VertexFilterInfo> _vertexFilter;
 
+          BasicOptions () :
+            useEdgeFilter(false),
+            useVertexFilter(false) {
+          }
+
         public:
-          std::string direction;
-          bool useWeight;
-          std::string weightAttribute;
-          double defaultWeight;
-          bool bidirectional;
-          bool multiThreaded;
+          VertexId start;
+          bool useEdgeFilter;
           bool useVertexFilter;
-          bool useEdgeFilter;
-          VertexId start;
-          VertexId end;
 
-          ShortestPathOptions() :
-            direction("outbound"),
-            useWeight(false),
-            weightAttribute(""),
-            defaultWeight(1),
-            bidirectional(true),
-            multiThreaded(true),
-            useVertexFilter(false),
-            useEdgeFilter(false) {
-          }
-
-          void addEdgeFilter (
-            v8::Isolate* isolate,
-            v8::Handle<v8::Object> const& example,
-            TRI_shaper_t* shaper,
-            TRI_voc_cid_t const& cid,
-            std::string& errorMessage
-          );
-
-          void addVertexFilter (
-            v8::Isolate* isolate,
-            v8::Handle<v8::Object> const& example,
-            triagens::arango::ExplicitTransaction* trx,
-            TRI_transaction_collection_t* col,
-            TRI_shaper_t* shaper,
-            TRI_voc_cid_t const& cid,
-            std::string& errorMessage
-          );
-
-          void addFinalVertex (VertexId& v);
-
-          bool matchesEdge (EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
-
-          bool matchesVertex (VertexId& v) const;
-      };
-
-      struct NeighborsOptions {
-        private:
-          std::unordered_map<TRI_voc_cid_t, triagens::arango::ExampleMatcher*> _edgeFilter;
-
-        public:
-          TRI_edge_direction_e direction;
-          bool distinct;
-          VertexId start;
-          bool useEdgeFilter;
-
-          NeighborsOptions () :
-            direction(TRI_EDGE_OUT),
-            distinct(true),
-            useEdgeFilter(false) {
-          }
 
           void addEdgeFilter (
             v8::Isolate* isolate,
@@ -207,10 +158,59 @@ namespace triagens {
             std::string& errorMessage
           );
 
+          void addVertexFilter (
+            v8::Isolate* isolate,
+            v8::Handle<v8::Value> const& example,
+            triagens::arango::ExplicitTransaction* trx,
+            TRI_transaction_collection_t* col,
+            TRI_shaper_t* shaper,
+            TRI_voc_cid_t const& cid,
+            std::string& errorMessage
+          );
+
           bool matchesEdge (EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
+
+          bool matchesVertex (VertexId& v) const;
 
       };
  
+      struct NeighborsOptions : BasicOptions {
+
+          TRI_edge_direction_e direction;
+          bool distinct;
+
+          NeighborsOptions () :
+            direction(TRI_EDGE_OUT),
+            distinct(true) {
+          }
+      };
+
+
+
+      struct ShortestPathOptions : BasicOptions {
+
+        public:
+          std::string direction;
+          bool useWeight;
+          std::string weightAttribute;
+          double defaultWeight;
+          bool bidirectional;
+          bool multiThreaded;
+          VertexId end;
+
+          ShortestPathOptions() :
+            direction("outbound"),
+            useWeight(false),
+            weightAttribute(""),
+            defaultWeight(1),
+            bidirectional(true),
+            multiThreaded(true) {
+          }
+
+          
+          bool matchesVertex (VertexId& v) const;
+
+      };
     }
   }
 }
