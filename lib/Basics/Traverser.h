@@ -587,13 +587,16 @@ namespace triagens {
                 // step is consumed!
                 return;
               }
-              delete step;
               if (s->_done) {
+                delete step;
                 return;
               }
               if (s->weight() > newWeight) {
+                s->_predecessor = step->_predecessor;
+                s->_edge = step->_edge;
                 _myInfo._pq.lowerWeight(s->_vertex, newWeight);
               }
+              delete step;
             }
 
 ////////////////////////////////////////////////////////////////////////////////
