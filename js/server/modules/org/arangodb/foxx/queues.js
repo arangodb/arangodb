@@ -1,7 +1,5 @@
 'use strict';
 
-/*global KEY_SET */
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx queues
 ///
@@ -48,7 +46,7 @@ var queues = {
   _jobTypes: { },
   _clearCache: function () {
     try {
-      KEY_SET("queue-control", "skip", 0);
+      global.KEY_SET("queue-control", "skip", 0);
     }
     catch (err) {
       // ignore error if key does not exist
