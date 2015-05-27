@@ -52,7 +52,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
   var AQL_VERTICES = "FOR e IN GRAPH_VERTICES(@name, @example, @options) SORT e._id RETURN e";
   var AQL_EDGES = "FOR e IN GRAPH_EDGES(@name, @example, @options) SORT e.what RETURN e.what";
-  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e.vertex._id, e.path.edges[0].what RETURN e";
+  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e RETURN e";
 
   var startExample = [{hugo : true}, {heinz : 1}];
   var vertexExample = {_key: "v1"};
@@ -78,7 +78,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       var vertex4 = db._create(v4);
       var edge1 = db._createEdgeCollection(e1);
       var edge2 = db._createEdgeCollection(e2);
-      var oprhan = db._create(or);
+      var orphan = db._create(or);
 
       vertex1.save({ _key: "v1", hugo: true});
       vertex1.save({ _key: "v2", hugo: true});
@@ -88,7 +88,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       vertex3.save({ _key: "v6" });
       vertex4.save({ _key: "v7" });
       vertex4.save({ _key: "v8", heinz: 1});
-      oprhan.save({ _key: "orphan" });
+      orphan.save({ _key: "orphan" });
 
       function makeEdge(from, to, collection) {
         collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
@@ -138,6 +138,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief checks GRAPH_VERTICES()
     ////////////////////////////////////////////////////////////////////////////////
+    
     testVertices: function () {
       var bindVars = {
         name: gN,
@@ -273,7 +274,6 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// Section any direction
     ////////////////////////////////////////////////////////////////////////////////
-    
     testEdgesAny: function () {
       var bindVars = {
         name: gN,
@@ -425,7 +425,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       assertEqual(actual[3], "v3->v6");
       assertEqual(actual[4], "v3->v8");
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// Test Neighbors
     ////////////////////////////////////////////////////////////////////////////////
@@ -444,16 +444,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 3);
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v2");
-      assertEqual(actual[1].path.edges[0].what, "v2->v1");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v2");
-      assertEqual(actual[2].path.edges[0].what, "v1->v5");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v5");
+      assertEqual(actual.length, 2);
+      assertEqual(actual[0], v1 + "/v2");
+      assertEqual(actual[1], v3 + "/v5");
     },
 
     testNeighborsAnyEdgeExample: function () {
@@ -467,9 +460,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 1);
-      assertEqual(actual[0].path.edges[0].what, "v2->v1");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v2");
+      assertEqual(actual[0], v1 + "/v2");
     },
 
     testNeighborsAnyStartExample: function () {
@@ -481,37 +472,13 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 10);
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].path.edges[0].what, "v2->v1");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v1");
-      assertEqual(actual[2].path.edges[0].what, "v1->v2");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v2");
-      assertEqual(actual[3].path.edges[0].what, "v2->v1");
-      assertEqual(actual[3].path.edges.length, 1);
-      assertEqual(actual[3].vertex._key, "v2");
-      assertEqual(actual[4].path.edges[0].what, "v3->v8");
-      assertEqual(actual[4].path.edges.length, 1);
-      assertEqual(actual[4].vertex._key, "v3");
-      assertEqual(actual[5].path.edges[0].what, "v1->v5");
-      assertEqual(actual[5].path.edges.length, 1);
-      assertEqual(actual[5].vertex._key, "v5");
-      assertEqual(actual[6].path.edges[0].what, "v2->v5");
-      assertEqual(actual[6].path.edges.length, 1);
-      assertEqual(actual[6].vertex._key, "v5");
-      assertEqual(actual[7].path.edges[0].what, "v3->v5");
-      assertEqual(actual[7].path.edges.length, 1);
-      assertEqual(actual[7].vertex._key, "v5");
-      assertEqual(actual[8].path.edges[0].what, "v3->v6");
-      assertEqual(actual[8].path.edges.length, 1);
-      assertEqual(actual[8].vertex._key, "v6");
-      assertEqual(actual[9].path.edges[0].what, "v3->v8");
-      assertEqual(actual[9].path.edges.length, 1);
-      assertEqual(actual[9].vertex._key, "v8");
+      assertEqual(actual.length, 6);
+      assertEqual(actual[0], v1 + "/v1");
+      assertEqual(actual[1], v1 + "/v2");
+      assertEqual(actual[2], v2 + "/v3");
+      assertEqual(actual[3], v3 + "/v5");
+      assertEqual(actual[4], v3 + "/v6");
+      assertEqual(actual[5], v4 + "/v8");
     },
 
     testNeighborsAnyVertexExample: function () {
@@ -524,16 +491,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 3);
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].path.edges[0].what, "v1->v5");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v1");
-      assertEqual(actual[2].path.edges[0].what, "v2->v1");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v1");
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0], v1 + "/v1");
     },
     testNeighborsAnyStartExampleRestrictEdges: function () {
       var bindVars = {
@@ -545,25 +504,11 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 6);
-      assertEqual(actual[0].path.edges[0].what, "v3->v8");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v3");
-      assertEqual(actual[1].path.edges[0].what, "v1->v5");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v5");
-      assertEqual(actual[2].path.edges[0].what, "v2->v5");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v5");
-      assertEqual(actual[3].path.edges[0].what, "v3->v5");
-      assertEqual(actual[3].path.edges.length, 1);
-      assertEqual(actual[3].vertex._key, "v5");
-      assertEqual(actual[4].path.edges[0].what, "v3->v6");
-      assertEqual(actual[4].path.edges.length, 1);
-      assertEqual(actual[4].vertex._key, "v6");
-      assertEqual(actual[5].path.edges[0].what, "v3->v8");
-      assertEqual(actual[5].path.edges.length, 1);
-      assertEqual(actual[5].vertex._key, "v8");
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0], v2 + "/v3");
+      assertEqual(actual[1], v3 + "/v5");
+      assertEqual(actual[2], v3 + "/v6");
+      assertEqual(actual[3], v4 + "/v8");
     },
 
     testNeighborsAnyStartExampleRestrictVertices: function () {
@@ -576,31 +521,11 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 8);
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].path.edges[0].what, "v2->v1");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v1");
-      assertEqual(actual[2].path.edges[0].what, "v1->v2");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v2");
-      assertEqual(actual[3].path.edges[0].what, "v2->v1");
-      assertEqual(actual[3].path.edges.length, 1);
-      assertEqual(actual[3].vertex._key, "v2");
-      assertEqual(actual[4].path.edges[0].what, "v1->v5");
-      assertEqual(actual[4].path.edges.length, 1);
-      assertEqual(actual[4].vertex._key, "v5");
-      assertEqual(actual[5].path.edges[0].what, "v2->v5");
-      assertEqual(actual[5].path.edges.length, 1);
-      assertEqual(actual[5].vertex._key, "v5");
-      assertEqual(actual[6].path.edges[0].what, "v3->v5");
-      assertEqual(actual[6].path.edges.length, 1);
-      assertEqual(actual[6].vertex._key, "v5");
-      assertEqual(actual[7].path.edges[0].what, "v3->v6");
-      assertEqual(actual[7].path.edges.length, 1);
-      assertEqual(actual[7].vertex._key, "v6");
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0], v1 + "/v1");
+      assertEqual(actual[1], v1 + "/v2");
+      assertEqual(actual[2], v3 + "/v5");
+      assertEqual(actual[3], v3 + "/v6");
     },
 
     testNeighborsAnyStartExampleRestrictEdgesAndVertices: function () {
@@ -614,19 +539,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 4);
-      assertEqual(actual[0].path.edges[0].what, "v1->v5");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v5");
-      assertEqual(actual[1].path.edges[0].what, "v2->v5");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v5");
-      assertEqual(actual[2].path.edges[0].what, "v3->v5");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v5");
-      assertEqual(actual[3].path.edges[0].what, "v3->v6");
-      assertEqual(actual[3].path.edges.length, 1);
-      assertEqual(actual[3].vertex._key, "v6");
+      assertEqual(actual.length, 2);
+      assertEqual(actual[0], v3 + "/v5");
+      assertEqual(actual[1], v3 + "/v6");
     },
 
  
@@ -644,12 +559,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 2);
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v2");
-      assertEqual(actual[1].path.edges[0].what, "v1->v5");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v5");
+      assertEqual(actual[0], v1 + "/v2");
+      assertEqual(actual[1], v3 + "/v5");
     },
 
     testNeighborsOutboundEdgeExample: function () {
@@ -663,9 +574,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 1);
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v2");
+      assertEqual(actual[0], v1 + "/v2");
     },
 
     testNeighborsOutboundStartExample: function () {
@@ -677,28 +586,13 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 7);
-      assertEqual(actual[0].path.edges[0].what, "v2->v1");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].path.edges[0].what, "v1->v2");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v2");
-      assertEqual(actual[2].path.edges[0].what, "v1->v5");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v5");
-      assertEqual(actual[3].path.edges[0].what, "v2->v5");
-      assertEqual(actual[3].path.edges.length, 1);
-      assertEqual(actual[3].vertex._key, "v5");
-      assertEqual(actual[4].path.edges[0].what, "v3->v5");
-      assertEqual(actual[4].path.edges.length, 1);
-      assertEqual(actual[4].vertex._key, "v5");
-      assertEqual(actual[5].path.edges[0].what, "v3->v6");
-      assertEqual(actual[5].path.edges.length, 1);
-      assertEqual(actual[5].vertex._key, "v6");
-      assertEqual(actual[6].path.edges[0].what, "v3->v8");
-      assertEqual(actual[6].path.edges.length, 1);
-      assertEqual(actual[6].vertex._key, "v8");
+      assertEqual(actual.length, 5);
+
+      assertEqual(actual[0], v1 + "/v1");
+      assertEqual(actual[1], v1 + "/v2");
+      assertEqual(actual[2], v3 + "/v5");
+      assertEqual(actual[3], v3 + "/v6");
+      assertEqual(actual[4], v4 + "/v8");
     },
 
     testNeighborsOutboundVertexExample: function () {
@@ -712,10 +606,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 1);
-      assertEqual(actual[0].path.edges[0].what, "v2->v1");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v1");
+      assertEqual(actual[0], v1 + "/v1");
     },
+
     testNeighborsOutboundStartExampleRestrictEdges: function () {
       var bindVars = {
         name: gN,
@@ -726,22 +619,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 5);
-      assertEqual(actual[0].path.edges[0].what, "v1->v5");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v5");
-      assertEqual(actual[1].path.edges[0].what, "v2->v5");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v5");
-      assertEqual(actual[2].path.edges[0].what, "v3->v5");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v5");
-      assertEqual(actual[3].path.edges[0].what, "v3->v6");
-      assertEqual(actual[3].path.edges.length, 1);
-      assertEqual(actual[3].vertex._key, "v6");
-      assertEqual(actual[4].path.edges[0].what, "v3->v8");
-      assertEqual(actual[4].path.edges.length, 1);
-      assertEqual(actual[4].vertex._key, "v8");
+      assertEqual(actual.length, 3);
+      assertEqual(actual[0], v3 + "/v5");
+      assertEqual(actual[1], v3 + "/v6");
+      assertEqual(actual[2], v4 + "/v8");
     },
 
     testNeighborsOutboundStartExampleRestrictVertices: function () {
@@ -755,24 +636,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 6);
-      assertEqual(actual[0].path.edges[0].what, "v2->v1");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].path.edges[0].what, "v1->v2");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v2");
-      assertEqual(actual[2].path.edges[0].what, "v1->v5");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v5");
-      assertEqual(actual[3].path.edges[0].what, "v2->v5");
-      assertEqual(actual[3].path.edges.length, 1);
-      assertEqual(actual[3].vertex._key, "v5");
-      assertEqual(actual[4].path.edges[0].what, "v3->v5");
-      assertEqual(actual[4].path.edges.length, 1);
-      assertEqual(actual[4].vertex._key, "v5");
-      assertEqual(actual[5].path.edges[0].what, "v3->v6");
-      assertEqual(actual[5].path.edges.length, 1);
-      assertEqual(actual[5].vertex._key, "v6");
+      assertEqual(actual[0], v1 + "/v1");
+      assertEqual(actual[1], v1 + "/v2");
+      assertEqual(actual[2], v3 + "/v5");
+      assertEqual(actual[3], v3 + "/v6");
     },
 
     testNeighborsOutboundStartExampleRestrictEdgesAndVertices: function () {
@@ -786,19 +653,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 4);
-      assertEqual(actual[0].path.edges[0].what, "v1->v5");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v5");
-      assertEqual(actual[1].path.edges[0].what, "v2->v5");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v5");
-      assertEqual(actual[2].path.edges[0].what, "v3->v5");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v5");
-      assertEqual(actual[3].path.edges[0].what, "v3->v6");
-      assertEqual(actual[3].path.edges.length, 1);
-      assertEqual(actual[3].vertex._key, "v6");
+      assertEqual(actual.length, 2);
+      assertEqual(actual[0], v3 + "/v5");
+      assertEqual(actual[1], v3 + "/v6");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -815,9 +672,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 1);
-      assertEqual(actual[0].path.edges[0].what, "v2->v1");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v2");
+      assertEqual(actual[0], v1 + "/v2");
     },
 
     testNeighborsInboundEdgeExample: function () {
@@ -830,10 +685,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 1);
-      assertEqual(actual[0].path.edges[0].what, "v2->v1");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v2");
+      assertEqual(actual[0], v1 + "/v2");
     },
 
     testNeighborsInboundStartExample: function () {
@@ -846,15 +698,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 3);
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].path.edges[0].what, "v2->v1");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v2");
-      assertEqual(actual[2].path.edges[0].what, "v3->v8");
-      assertEqual(actual[2].path.edges.length, 1);
-      assertEqual(actual[2].vertex._key, "v3");
+      assertEqual(actual[0], v1 + "/v1");
+      assertEqual(actual[1], v1 + "/v2");
+      assertEqual(actual[2], v2 + "/v3");
     },
 
     testNeighborsInboundNeighborExample: function () {
@@ -867,13 +713,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 2);
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].path.edges[0].what, "v1->v5");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v1");
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0], v1 + "/v1");
     },
 
     testNeighborsInboundStartExampleRestrictEdges: function () {
@@ -887,9 +728,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 1);
-      assertEqual(actual[0].path.edges[0].what, "v3->v8");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v3");
+      assertEqual(actual[0], v2 + "/v3");
     },
 
     testNeighborsInboundStartExampleRestrictVertices: function () {
@@ -903,12 +742,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 2);
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].path.edges.length, 1);
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].path.edges[0].what, "v2->v1");
-      assertEqual(actual[1].path.edges.length, 1);
-      assertEqual(actual[1].vertex._key, "v2");
+      assertEqual(actual[0], v1 + "/v1");
+      assertEqual(actual[1], v1 + "/v2");
     },
 
     testNeighborsInboundStartExampleRestrictEdgesAndVertices: function () {
@@ -2272,6 +2107,9 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryGeneralCyclesSuite() {
+
+  var vertexIds = {};
+
   return {
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -2303,6 +2141,11 @@ function ahuacatlQueryGeneralCyclesSuite() {
       Frankfurt.save({ _key: "Emil", gender: "male", age: 25});
       var Fritz = Frankfurt.save({ _key: "Fritz", gender: "male", age: 30});
       Leipzig.save({ _key: "Gerda", gender: "female", age: 40});
+
+      vertexIds.Anton = Anton._id;
+      vertexIds.Berta = Berta._id;
+      vertexIds.Caesar = Caesar._id;
+      vertexIds.Fritz = Fritz._id;
 
       try {
         db._collection("_graphs").remove("_graphs/werKenntWen");
@@ -2346,427 +2189,338 @@ function ahuacatlQueryGeneralCyclesSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief checks GRAPH_TRAVERSAL()
+    /// @brief checks GRAPH_SHORTEST_PATH()
     ////////////////////////////////////////////////////////////////////////////////
 
     testGRAPH_SHORTEST_PATH: function () {
       var actual;
       actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-        "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT e.startVertex, e.vertex._id RETURN [e.startVertex, e.vertex._id, e.distance]");
-      assertEqual(actual, [
-        [
-          "UnitTests_Berliner/Anton",
-          "UnitTests_Berliner/Anton",
-          0
-        ],
-        [
-          "UnitTests_Berliner/Anton",
-          "UnitTests_Berliner/Berta",
-          1
-        ],
-        [
-          "UnitTests_Berliner/Anton",
-          "UnitTests_Frankfurter/Fritz",
-          3
-        ],
-        [
-          "UnitTests_Berliner/Anton",
-          "UnitTests_Hamburger/Caesar",
-          2
-        ],
-        [
-          "UnitTests_Berliner/Berta",
-          "UnitTests_Berliner/Anton",
-          1
-        ],
-        [
-          "UnitTests_Berliner/Berta",
-          "UnitTests_Berliner/Berta",
-          0
-        ],
-        [
-          "UnitTests_Berliner/Berta",
-          "UnitTests_Frankfurter/Fritz",
-          2
-        ],
-        [
-          "UnitTests_Berliner/Berta",
-          "UnitTests_Hamburger/Caesar",
-          1
-        ],
-        [
-          "UnitTests_Frankfurter/Emil",
-          "UnitTests_Frankfurter/Emil",
-          0
-        ],
-        [
-          "UnitTests_Frankfurter/Fritz",
-          "UnitTests_Berliner/Anton",
-          1
-        ],
-        [
-          "UnitTests_Frankfurter/Fritz",
-          "UnitTests_Berliner/Berta",
-          2
-        ],
-        [
-          "UnitTests_Frankfurter/Fritz",
-          "UnitTests_Frankfurter/Fritz",
-          0
-        ],
-        [
-          "UnitTests_Frankfurter/Fritz",
-          "UnitTests_Hamburger/Caesar",
-          3
-        ],
-        [
-          "UnitTests_Hamburger/Caesar",
-          "UnitTests_Berliner/Anton",
-          2
-        ],
-        [
-          "UnitTests_Hamburger/Caesar",
-          "UnitTests_Berliner/Berta",
-          1
-        ],
-        [
-          "UnitTests_Hamburger/Caesar",
-          "UnitTests_Frankfurter/Fritz",
-          1
-        ],
-        [
-          "UnitTests_Hamburger/Caesar",
-          "UnitTests_Hamburger/Caesar",
-          0
-        ],
-        [
-          "UnitTests_Hamburger/Dieter",
-          "UnitTests_Hamburger/Dieter",
-          0
-        ],
-        [
-          "UnitTests_Leipziger/Gerda",
-          "UnitTests_Leipziger/Gerda",
-          0
-        ]
-      ]
-    );
+        "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
+        "RETURN {vertices: e.vertices, distance: e.distance}");
+      assertEqual(actual.length, 12, "Expect one entry for every connected pair.");
+      assertEqual(actual[0], {
+        vertices: [vertexIds.Anton, vertexIds.Berta],
+        distance: 1
+      });
+      assertEqual(actual[1], {
+        vertices: [vertexIds.Anton, vertexIds.Berta, vertexIds.Caesar, vertexIds.Fritz],
+        distance: 3
+      });
+      assertEqual(actual[2], {
+        vertices: [vertexIds.Anton, vertexIds.Berta, vertexIds.Caesar],
+        distance: 2
+      });
+      assertEqual(actual[3], {
+        vertices: [vertexIds.Berta, vertexIds.Anton],
+        distance: 1
+      });
+      assertEqual(actual[4], {
+        vertices: [vertexIds.Berta, vertexIds.Caesar, vertexIds.Fritz],
+        distance: 2
+      });
+      assertEqual(actual[5], {
+        vertices: [vertexIds.Berta, vertexIds.Caesar],
+        distance: 1
+      });
+      assertEqual(actual[6], {
+        vertices: [vertexIds.Fritz, vertexIds.Anton],
+        distance: 1
+      });
+      assertEqual(actual[7], {
+        vertices: [vertexIds.Fritz, vertexIds.Anton, vertexIds.Berta],
+        distance: 2
+      });
+      assertEqual(actual[8], {
+        vertices: [vertexIds.Fritz, vertexIds.Anton, vertexIds.Berta, vertexIds.Caesar],
+        distance: 3
+      });
+      // we have two possible paths here.
+      assertEqual(actual[9].distance, 2);
+      assertEqual(actual[9].vertices[0], vertexIds.Caesar);
+      assertEqual(actual[9].vertices[2], vertexIds.Anton);
+      if (actual[9].vertices[1] !== vertexIds.Berta) {
+        assertEqual(actual[9].vertices[1], vertexIds.Fritz);
+      }
+      assertEqual(actual[10], {
+        vertices: [vertexIds.Caesar, vertexIds.Berta],
+        distance: 1
+      });
+      assertEqual(actual[11], {
+        vertices: [vertexIds.Caesar, vertexIds.Fritz],
+        distance: 1
+      });
 
-    actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-      "{}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex, e.distance]");
-    assertEqual(actual.length, 19);
-    assertEqual(actual[0], [
-      "UnitTests_Berliner/Anton",
-      "UnitTests_Berliner/Anton",
-      0
-    ]);
-    assertEqual(actual[1], [
-      "UnitTests_Berliner/Anton",
-      "UnitTests_Berliner/Berta",
-      1
-    ]);
-    assertEqual(actual[2], [
-      "UnitTests_Berliner/Anton",
-      "UnitTests_Frankfurter/Fritz",
-      3
-    ]);
-    assertEqual(actual[3], [
-      "UnitTests_Berliner/Anton",
-      "UnitTests_Hamburger/Caesar",
-      2
-    ]);
-    assertEqual(actual[4], [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Berliner/Anton",
-      1
-    ]);
-    assertEqual(actual[5], [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Berliner/Berta",
-      0
-    ]);
-    assertEqual(actual[6], [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Frankfurter/Fritz",
-      2
-    ]);
-    assertEqual(actual[7], [
-      "UnitTests_Berliner/Berta",
-      "UnitTests_Hamburger/Caesar",
-      1
-    ]);
-    assertEqual(actual[8], [
-      "UnitTests_Frankfurter/Emil",
-      "UnitTests_Frankfurter/Emil",
-      0
-    ]);
-    assertEqual(actual[9], [
-      "UnitTests_Frankfurter/Fritz",
-      "UnitTests_Berliner/Anton",
-      1
-    ]);
-    assertEqual(actual[10], [
-      "UnitTests_Frankfurter/Fritz",
-      "UnitTests_Berliner/Berta",
-      2
-    ]);
-    assertEqual(actual[11], [
-      "UnitTests_Frankfurter/Fritz",
-      "UnitTests_Frankfurter/Fritz",
-      0
-    ]);
-    assertEqual(actual[12], [
-      "UnitTests_Frankfurter/Fritz",
-      "UnitTests_Hamburger/Caesar",
-      3
-    ]);
-    assertEqual(actual[13], [
-      "UnitTests_Hamburger/Caesar",
-      "UnitTests_Berliner/Anton",
-      2
-    ]);
-    assertEqual(actual[14], [
-      "UnitTests_Hamburger/Caesar",
-      "UnitTests_Berliner/Berta",
-      1
-    ]);
-    assertEqual(actual[15], [
-      "UnitTests_Hamburger/Caesar",
-      "UnitTests_Frankfurter/Fritz",
-      1
-    ]);
-    assertEqual(actual[16], [
-      "UnitTests_Hamburger/Caesar",
-      "UnitTests_Hamburger/Caesar",
-      0
-    ]);
-    assertEqual(actual[17], [
-      "UnitTests_Hamburger/Dieter",
-      "UnitTests_Hamburger/Dieter",
-      0
-    ]);
-    assertEqual(actual[18], [
-      "UnitTests_Leipziger/Gerda",
-      "UnitTests_Leipziger/Gerda",
-      0
-    ]);
-},
-/*
-testGRAPH_CLOSENESS: function () {
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
+        "{}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
+        "RETURN {vertices: e.vertices, distance: e.distance}");
+      assertEqual(actual.length, 12, "Expect one entry for every connected pair.");
+      assertEqual(actual[0], {
+        vertices: [vertexIds.Anton, vertexIds.Berta],
+        distance: 1
+      });
+      assertEqual(actual[1], {
+        vertices: [vertexIds.Anton, vertexIds.Berta, vertexIds.Caesar, vertexIds.Fritz],
+        distance: 3
+      });
+      assertEqual(actual[2], {
+        vertices: [vertexIds.Anton, vertexIds.Berta, vertexIds.Caesar],
+        distance: 2
+      });
+      assertEqual(actual[3], {
+        vertices: [vertexIds.Berta, vertexIds.Anton],
+        distance: 1
+      });
+      assertEqual(actual[4], {
+        vertices: [vertexIds.Berta, vertexIds.Caesar, vertexIds.Fritz],
+        distance: 2
+      });
+      assertEqual(actual[5], {
+        vertices: [vertexIds.Berta, vertexIds.Caesar],
+        distance: 1
+      });
+      assertEqual(actual[6], {
+        vertices: [vertexIds.Fritz, vertexIds.Anton],
+        distance: 1
+      });
+      assertEqual(actual[7], {
+        vertices: [vertexIds.Fritz, vertexIds.Anton, vertexIds.Berta],
+        distance: 2
+      });
+      assertEqual(actual[8], {
+        vertices: [vertexIds.Fritz, vertexIds.Anton, vertexIds.Berta, vertexIds.Caesar],
+        distance: 3
+      });
+      // we have two possible paths here.
+      assertEqual(actual[9].distance, 2);
+      assertEqual(actual[9].vertices[0], vertexIds.Caesar);
+      assertEqual(actual[9].vertices[2], vertexIds.Anton);
+      if (actual[9].vertices[1] !== vertexIds.Berta) {
+        assertEqual(actual[9].vertices[1], vertexIds.Fritz);
+      }
+      assertEqual(actual[10], {
+        vertices: [vertexIds.Caesar, vertexIds.Berta],
+        distance: 1
+      });
+      assertEqual(actual[11], {
+        vertices: [vertexIds.Caesar, vertexIds.Fritz],
+        distance: 1
+      });
+  },
 
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {}, {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 4);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 4);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 4);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+  testGRAPH_CLOSENESS: function () {
+
+    var actual;
+    actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {}, {algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 4);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 4);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 4);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
 
 
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+    actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
 
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 1);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 1);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 1);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 1);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
 
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), 0.53);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), 0.94);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
-},
-*/
-
-
-testGRAPH_CLOSENESS_OUTBOUND: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen',{}, {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 4);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 6);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 6);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
-
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, direction : 'outbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(6), (0.67741935).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(6), (0.913043478).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(6), (1).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(6), (0).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(6), (0).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(6), (0.525).toFixed(6));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(6), (0).toFixed(6));
-},
-
-testGRAPH_CLOSENESS_INBOUND: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {}, {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 6);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 6);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 4);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
-
-  actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, direction : 'inbound', algorithm : 'Floyd-Warshall'})");
-
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(4), (0.9166666).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(4), (1).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(4), (0.64705882).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(4), (0).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(4), (0).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(4), (0.6285714).toFixed(4));
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(4), (0).toFixed(4));
-},
+    actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), 0.53);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), 0.94);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+  },
 
 
-testGRAPH_ECCENTRICITY: function () {
-  var actual;
+  testGRAPH_CLOSENESS_OUTBOUND: function () {
+    var actual;
+    actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen',{}, {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 4);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 6);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 6);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
 
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen',{}, {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 2);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 2);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 2);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 2);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+    actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, direction : 'outbound', algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(6), (0.67741935).toFixed(6));
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(6), (0.913043478).toFixed(6));
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(6), (1).toFixed(6));
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(6), (0).toFixed(6));
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(6), (0).toFixed(6));
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(6), (0.525).toFixed(6));
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(6), (0).toFixed(6));
+  },
 
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen',{}, {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 9);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 12);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 12);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 11);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+  testGRAPH_CLOSENESS_INBOUND: function () {
+    var actual;
+    actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {}, {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
 
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 6);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 6);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 4);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
 
-  actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 1);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 1);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+    actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, direction : 'inbound', algorithm : 'Floyd-Warshall'})");
 
-
-  actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (2/3).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (2/3).toFixed(2));
-
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen', {gender : 'female'}, {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 2);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
-
-  actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (1).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (9 / 12).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (9 / 11).toFixed(2));
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (9 / 12).toFixed(2));
-},
-
-testGRAPH_BETWEENNESS: function () {
-  var actual;
-
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 1);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 1);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
-
-  actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 1);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 1);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(4), (0.9166666).toFixed(4));
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(4), (1).toFixed(4));
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(4), (0.64705882).toFixed(4));
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"].toFixed(4), (0).toFixed(4));
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(4), (0).toFixed(4));
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(4), (0.6285714).toFixed(4));
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(4), (0).toFixed(4));
+  },
 
 
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 2);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 3.5);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0.5);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 2);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+  testGRAPH_ECCENTRICITY: function () {
+    var actual;
+
+    actual = getQueryResults("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen',{}, {algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 2);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 2);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 2);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 2);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+
+    actual = getQueryResults("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen',{}, {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 9);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 12);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 12);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 11);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+
+
+    actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 1);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 1);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+
+
+    actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (2/3).toFixed(2));
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (1).toFixed(2));
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (1).toFixed(2));
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (2/3).toFixed(2));
+
+    actual = getQueryResults("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen', {gender : 'female'}, {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 2);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+
+    actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), (1).toFixed(2));
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), (9 / 12).toFixed(2));
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(2), (9 / 11).toFixed(2));
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (9 / 12).toFixed(2));
+  },
+
+  testGRAPH_BETWEENNESS: function () {
+    var actual;
+
+    actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 1);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 1);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+
+    actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 1);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 1);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+
+
+    actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall', direction : 'inbound'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 2);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 3.5);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0.5);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 2);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
 
 
 
-  actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 2);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 2);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"],0 );
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
+    actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 2);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 2);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"],0 );
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
 
-  actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
-  assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
-  assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
-  assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
-  assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
-
-
-},
-
-testGRAPH_DIAMETER_AND_RADIUS: function () {
-  var actual;
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 2);
-
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 9);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 2);
-
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 12);
+    actual = getQueryResults("RETURN GRAPH_BETWEENNESS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
+    assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Emil"], 0);
+    assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"], 0);
+    assertEqual(actual[0]["UnitTests_Hamburger/Caesar"], 0);
+    assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
+    assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
 
 
+  },
 
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 2);
+  testGRAPH_DIAMETER_AND_RADIUS: function () {
+    var actual;
+    actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0], 2);
 
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 13);
+    actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0], 9);
 
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 3);
+    actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0], 2);
 
-  actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 16);
+    actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0], 12);
 
-  actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
-  assertEqual(actual[0], 2);
 
-}
+
+    actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0], 2);
+
+    actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0], 13);
+
+    actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0], 3);
+
+    actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0], 16);
+
+    actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
+    assertEqual(actual[0], 2);
+
+  }
 };
 }
 

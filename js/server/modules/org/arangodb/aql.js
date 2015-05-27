@@ -6601,7 +6601,7 @@ function FILTERED_EDGES (edges, vertex, direction, examples) {
 /// @brief return connected neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-function useCXXforDeepNeighbors (vertexCollection, edgeCollection,
+function useCXXforDeepNeighbors (vertexCollections, edgeCollections,
                                  vertex, options) {
  'use strict';
   let db = require("internal").db;
@@ -6609,7 +6609,7 @@ function useCXXforDeepNeighbors (vertexCollection, edgeCollection,
   let s = new Set();
   s.add(vertex);
   for (let dist = 1; dist <= options.distance; ++dist) {
-    let ll = CPP_NEIGHBORS([vertexCollection], [edgeCollection],
+    let ll = CPP_NEIGHBORS(vertexCollections, edgeCollections,
                            l, {distinct: true, includeData: false,
                                direction: options.direction});
     l = [];
@@ -6645,11 +6645,11 @@ function AQL_NEIGHBORS (vertexCollection,
 
   options = options || {};
   options.direction = direction;
-  if (examples !== undefined) {
+  if (examples !== undefined && Array.isArray(examples) && examples.length > 0) {
     options.examples = examples;
   }
   if (typeof options.distance === "number" && options.distance > 1) {
-    return useCXXforDeepNeighbors(vertexCollection, edgeCollection, vertex,
+    return useCXXforDeepNeighbors([vertexCollection], [edgeCollection], vertex,
                                   options);
   }
   else {
@@ -6729,68 +6729,136 @@ function AQL_GRAPH_NEIGHBORS (graphName,
   if (! options) {
     options = { };
   }
-
-  options.fromVertexExample = vertexExample;
   if (! options.hasOwnProperty("direction")) {
     options.direction =  'any';
   }
+  var params = {};
 
-  if (options.hasOwnProperty("neighborExamples") && typeof options.neighborExamples === "string") {
-    options.neighborExamples = {_id : options.neighborExamples};
+  if (isCoordinator) {
+    // JS Fallback for features not yet included in CPP Neighbor version
+    options.fromVertexExample = vertexExample;
+
+    if (options.hasOwnProperty("neighborExamples") && typeof options.neighborExamples === "string") {
+      options.neighborExamples = {_id : options.neighborExamples};
+    }
+    var neighbors = [],
+      factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+    params = TRAVERSAL_PARAMS();
+    params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
+    params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
+    params.maxIterations = options.maxIterations;
+    params.paths = true;
+    // add user-defined visitor, if specified
+    if (typeof options.visitor === "string") {
+      params.visitor = GET_VISITOR(options.visitor, options);
+      params.visitorReturnsResults = options.visitorReturnsResults || false;
+    }
+    else {
+      params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
+    }
+    
+    var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_NEIGHBORS");
+    if (options.edgeExamples) {
+      params.followEdges = options.edgeExamples;
+    }
+    if (options.edgeCollectionRestriction) {
+      params.edgeCollectionRestriction = options.edgeCollectionRestriction;
+    }
+    if (options.vertexCollectionRestriction) {
+      params.filterVertexCollections = options.vertexCollectionRestriction;
+    }
+    if (options.endVertexCollectionRestriction) {
+      params.filterVertexCollections = options.endVertexCollectionRestriction;
+    }
+    // merge other options
+    Object.keys(options).forEach(function (att) {
+      if (! params.hasOwnProperty(att)) {
+        params[att] = options[att];
+      }
+    });
+    fromVertices.forEach(function (v) {
+      var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
+        factory,
+        v._id,
+        undefined,
+        options.direction,
+        params);
+
+      neighbors = neighbors.concat(e);
+    });
+    var result = [];
+    neighbors.forEach(function (n) {
+      if (FILTER([n.vertex], options.neighborExamples).length > 0) {
+        result.push(n);
+      }
+    });
+
+    return result;
   }
-  var neighbors = [],
-    params = TRAVERSAL_PARAMS(),
-    factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
-  params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
-  params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
-  params.maxIterations = options.maxIterations;
-  params.paths = true;
-  // add user-defined visitor, if specified
-  if (typeof options.visitor === "string") {
-    params.visitor = GET_VISITOR(options.visitor, options);
-    params.visitorReturnsResults = options.visitorReturnsResults || false;
+
+
+  params.direction = options.direction;
+  if (options.hasOwnProperty("edgeExamples")) {
+    if (!Array.isArray(options.edgeExamples)) {
+      params.filterEdges = [options.edgeExamples];
+    } else {
+      params.filterEdges = options.edgeExamples;
+    }
+  }
+
+  if (options.hasOwnProperty("neighborExamples")) {
+    if (!Array.isArray(options.neighborExamples)) {
+      params.filterVertices = [options.neighborExamples];
+    } else {
+      params.filterVertices = options.neighborExamples;
+    }
+  }
+
+  let graph_module = require("org/arangodb/general-graph");
+  let graph = graph_module._graph(graphName);
+  let edgeCollections;
+  if (options.hasOwnProperty("edgeCollectionRestriction")) {
+    if (!Array.isArray(options.edgeCollectionRestriction)) {
+      if (typeof options.edgeCollectionRestriction === "string") {
+        edgeCollections = [options.edgeCollectionRestriction];
+      }
+    } else {
+      // TODO: Intersect?
+      edgeCollections = options.edgeCollectionRestriction;
+    }
+  } else {
+    edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
+  }
+  let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
+  let startVertices = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, vertexExample);
+  if (startVertices.length === 0) {
+    return [];
+  }
+  if (options.hasOwnProperty("vertexCollectionRestriction")) {
+    if (!Array.isArray(options.vertexCollectionRestriction)) {
+      if (typeof options.vertexCollectionRestriction === "string") {
+        vertexCollections = [options.vertexCollectionRestriction];
+      }
+    } else {
+      // TODO: Intersect?
+      vertexCollections = options.vertexCollectionRestriction;
+    }
+  }
+
+
+/*
+  if (typeof options.distance === "number" && options.distance > 1) {
+    return useCXXforDeepNeighbors([vertexCollection], [edgeCollection], vertex,
+                                  params);
   }
   else {
-    params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
+*/
+    return CPP_NEIGHBORS(vertexCollections, edgeCollections, startVertices, 
+                         params);
+/*
   }
-  
-  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_NEIGHBORS");
-  if (options.edgeExamples) {
-    params.followEdges = options.edgeExamples;
-  }
-  if (options.edgeCollectionRestriction) {
-    params.edgeCollectionRestriction = options.edgeCollectionRestriction;
-  }
-  if (options.vertexCollectionRestriction) {
-    params.filterVertexCollections = options.vertexCollectionRestriction;
-  }
-  if (options.endVertexCollectionRestriction) {
-    params.filterVertexCollections = options.endVertexCollectionRestriction;
-  }
-  // merge other options
-  Object.keys(options).forEach(function (att) {
-    if (! params.hasOwnProperty(att)) {
-      params[att] = options[att];
-    }
-  });
-  fromVertices.forEach(function (v) {
-    var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
-      factory,
-      v._id,
-      undefined,
-      options.direction,
-      params);
+*/
 
-    neighbors = neighbors.concat(e);
-  });
-  var result = [];
-  neighbors.forEach(function (n) {
-    if (FILTER([n.vertex], options.neighborExamples).length > 0) {
-      result.push(n);
-    }
-  });
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
