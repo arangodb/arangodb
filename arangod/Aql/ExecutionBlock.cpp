@@ -1444,6 +1444,8 @@ bool IndexRangeBlock::initRanges () {
 
   if (_anyBoundVariable) {
     if (_hasV8Expression) {
+      bool const isRunningInCluster = triagens::arango::ServerState::instance()->isRunningInCluster();
+
       // must have a V8 context here to protect Expression::execute()
       auto engine = _engine;
       triagens::basics::ScopeGuard guard{
@@ -1451,15 +1453,17 @@ bool IndexRangeBlock::initRanges () {
           engine->getQuery()->enterContext(); 
         },
         [&]() -> void {
-          // must invalidate the expression now as we might be called from
-          // different threads
-          if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
-            for (auto e : _allVariableBoundExpressions) {
-              e->invalidate();
+          if (isRunningInCluster) {
+            // must invalidate the expression now as we might be called from
+            // different threads
+            if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
+              for (auto const& e : _allVariableBoundExpressions) {
+                e->invalidate();
+              }
             }
-          }
           
-          engine->getQuery()->exitContext(); 
+            engine->getQuery()->exitContext(); 
+          }
         }
       };
 
@@ -2221,7 +2225,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
     std::string const lookFor(name);
 
-    for (auto x : range) {
+    for (auto const& x : range) {
       if (x._attr == lookFor) {    //found attribute
         if (x._lowConst.bound().json() == nullptr) {
           // attribute is empty. this may be case if a function expression is used as a 
@@ -2923,19 +2927,21 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
     executeExpression(result);
   }
   else {
+    bool const isRunningInCluster = triagens::arango::ServerState::instance()->isRunningInCluster();
+
     // must have a V8 context here to protect Expression::execute()
     triagens::basics::ScopeGuard guard{
       [&]() -> void {
         _engine->getQuery()->enterContext(); 
       },
       [&]() -> void { 
-        // must invalidate the expression now as we might be called from
-        // different threads
-        if (triagens::arango::ServerState::instance()->isRunningInCluster() ||
-            _engine->getQuery()->willExitContext()) {
+        if (isRunningInCluster) {
+          // must invalidate the expression now as we might be called from
+          // different threads
           _expression->invalidate();
+        
+          _engine->getQuery()->exitContext(); 
         }
-        _engine->getQuery()->exitContext(); 
       }
     };
 
@@ -3111,7 +3117,7 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SubqueryBlock::destroySubqueryResults (std::vector<AqlItemBlock*>* results) {
-  for (auto x : *results) {
+  for (auto& x : *results) {
     delete x;
   }
   delete results;
@@ -3265,7 +3271,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
     }
   }
   catch (...) {
-    for (auto c : collector) {
+    for (auto& c : collector) {
       delete c;
     }
     throw;
@@ -3283,12 +3289,12 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         result = AqlItemBlock::concatenate(collector);
       }
       catch (...) {
-        for (auto x : collector) {
+        for (auto& x : collector) {
           delete x;
         }
         throw;
       }
-      for (auto x : collector) {
+      for (auto& x : collector) {
         delete x;
       }
     }
@@ -3334,7 +3340,7 @@ SortedAggregateBlock::SortedAggregateBlock (ExecutionEngine* engine,
     _groupRegister(ExecutionNode::MaxRegisterId),
     _variableNames() {
  
-  for (auto p : en->_aggregateVariables) {
+  for (auto const& p : en->_aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
     auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
@@ -3384,7 +3390,7 @@ SortedAggregateBlock::SortedAggregateBlock (ExecutionEngine* engine,
       }
     }
     else {
-      for (auto x : en->_keepVariables) {
+      for (auto const& x : en->_keepVariables) {
         auto it = registerPlan.find(x->id);
         if (it != registerPlan.end()) {
           _variableNames[(*it).second.registerId] = x->name;
@@ -3663,7 +3669,7 @@ HashedAggregateBlock::HashedAggregateBlock (ExecutionEngine* engine,
     _aggregateRegisters(),
     _groupRegister(ExecutionNode::MaxRegisterId) {
  
-  for (auto p : en->_aggregateVariables) {
+  for (auto const& p : en->_aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
     auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
@@ -3735,7 +3741,7 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
   AqlItemBlock* cur = _buffer.front();
 
   std::vector<TRI_document_collection_t const*> colls;
-  for (auto it : _aggregateRegisters) {
+  for (auto const& it : _aggregateRegisters) {
     colls.emplace_back(cur->getDocumentCollection(it.second));
   }
 
@@ -3933,7 +3939,7 @@ SortBlock::SortBlock (ExecutionEngine* engine,
     _sortRegisters(),
     _stable(en->_stable) {
   
-  for (auto p : en->_elements) {
+  for (auto const& p : en->_elements) {
     auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
     TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
@@ -3975,7 +3981,7 @@ void SortBlock::doSorting () {
   std::vector<std::pair<size_t, size_t>> coords;
 
   size_t sum = 0;
-  for (auto block : _buffer) {
+  for (auto const& block : _buffer) {
     sum += block->size();
   }
 
@@ -3987,7 +3993,7 @@ void SortBlock::doSorting () {
   // install the coords
   size_t count = 0;
 
-  for (auto block : _buffer) {
+  for (auto const& block : _buffer) {
     for (size_t i = 0; i < block->size(); i++) {
       coords.emplace_back(std::make_pair(count, i));
     }
@@ -4126,14 +4132,14 @@ void SortBlock::doSorting () {
     }
   }
   catch (...) {
-    for (auto x : newbuffer) {
+    for (auto& x : newbuffer) {
       delete x;
     }
     throw;
   }
   _buffer.swap(newbuffer);  // does not throw since allocators
   // are the same
-  for (auto x : newbuffer) {
+  for (auto& x : newbuffer) {
     delete x;
   }
 }
@@ -4146,7 +4152,7 @@ bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
                                          std::pair<size_t, size_t> const& b) {
 
   size_t i = 0;
-  for (auto reg : _sortRegisters) {
+  for (auto const& reg : _sortRegisters) {
 
     int cmp = AqlValue::Compare(
       _trx,
@@ -5446,7 +5452,7 @@ GatherBlock::GatherBlock (ExecutionEngine* engine,
     _isSimple(en->getElements().empty()) {
 
   if (! _isSimple) {
-    for (auto p : en->getElements()) {
+    for (auto const& p : en->getElements()) {
       // We know that planRegisters has been run, so
       // getPlanNode()->_registerPlan is set up
       auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
@@ -5566,7 +5572,7 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 int64_t GatherBlock::count () const {
   ENTER_BLOCK
   int64_t sum = 0;
-  for (auto x: _dependencies) {
+  for (auto const& x: _dependencies) {
     if (x->count() == -1) {
       return -1;
     }
@@ -5584,7 +5590,7 @@ int64_t GatherBlock::count () const {
 int64_t GatherBlock::remaining () {
   ENTER_BLOCK
   int64_t sum = 0;
-  for (auto x : _dependencies) {
+  for (auto const& x : _dependencies) {
     if (x->remaining() == -1) {
       return -1;
     }
@@ -5876,8 +5882,7 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
   }
 
   size_t i = 0;
-  for (auto reg : _sortRegisters) {
-
+  for (auto const& reg : _sortRegisters) {
     int cmp = AqlValue::Compare(
       _trx,
       _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
@@ -6371,7 +6376,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
   vector<AqlItemBlock*> collector;
 
   auto freeCollector = [&collector]() {
-    for (auto x : collector) {
+    for (auto& x : collector) {
       delete x;
     }
     collector.clear();

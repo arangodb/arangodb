@@ -192,9 +192,10 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,
 /// @brief creates a new barrier element
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_CreateBarrierElement(a) TRI_CreateBarrierElementZ((a), __LINE__, __FILE__)
+#define TRI_CreateBarrierElement(a, b) TRI_CreateBarrierElementZ((a), (b), __LINE__, __FILE__)
 
 TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
+                                          bool usedByTransaction,
                                           size_t line,
                                           char const* filename);
 
@@ -259,6 +260,18 @@ void TRI_FreeBarrier (TRI_barrier_t* element);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBarrier (TRI_barrier_blocker_t* element, bool fromTransaction);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the _usedByExternal flag, using the required lock
+////////////////////////////////////////////////////////////////////////////////
+    
+void TRI_SetUsedByExternalBarrierElement (TRI_barrier_blocker_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the _usedByTransaction flag, using the required lock
+////////////////////////////////////////////////////////////////////////////////
+    
+void TRI_SetUsedByTransactionBarrierElement (TRI_barrier_blocker_t*);
 
 #endif
 
