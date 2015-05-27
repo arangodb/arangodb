@@ -358,13 +358,12 @@ namespace triagens {
            TRI_ASSERT(document != nullptr);
 
            if (trxCollection->_barrier == nullptr) {
-             trxCollection->_barrier = TRI_CreateBarrierElement(&document->_barrierList);
+             trxCollection->_barrier = TRI_CreateBarrierElement(&document->_barrierList, true);
            }
-
-           if (trxCollection->_barrier != nullptr) {
-              // tell everyone else this barrier is still in use,
-              // at least until the transaction is over
-             reinterpret_cast<TRI_barrier_blocker_t*>(trxCollection->_barrier)->_usedByTransaction = true;
+           else {
+             // tell everyone else this barrier is still in use,
+             // at least until the transaction is over
+             TRI_SetUsedByTransactionBarrierElement(reinterpret_cast<TRI_barrier_blocker_t*>(trxCollection->_barrier));
            }
 
            return trxCollection->_barrier;

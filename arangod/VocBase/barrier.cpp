@@ -182,6 +182,7 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
+                                          bool usedByTransaction,
                                           size_t line,
                                           char const* filename) {
   TRI_barrier_blocker_t* element = CreateBarrier<TRI_barrier_blocker_t>();
@@ -196,7 +197,7 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
   element->_line              = line;
   element->_filename          = filename;
   element->_usedByExternal    = false;
-  element->_usedByTransaction = false;
+  element->_usedByTransaction = usedByTransaction;
 
   LinkBarrierElement(&element->base, container);
 
@@ -348,10 +349,8 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBarrier (TRI_barrier_t* element) {
-  TRI_barrier_list_t* container;
-
   TRI_ASSERT(element != nullptr);
-  container = element->_container;
+  TRI_barrier_list_t* container = element->_container;
   TRI_ASSERT(container != nullptr);
 
   TRI_LockSpin(&container->_lock);
@@ -389,11 +388,10 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
 /// the flags by the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBarrier (TRI_barrier_blocker_t* element, bool fromTransaction) {
-  TRI_barrier_list_t* container;
-
+void TRI_FreeBarrier (TRI_barrier_blocker_t* element, 
+                      bool fromTransaction) {
   TRI_ASSERT(element != nullptr);
-  container = element->base._container;
+  TRI_barrier_list_t* container = element->base._container;
   TRI_ASSERT(container != nullptr);
 
   TRI_LockSpin(&container->_lock);
@@ -445,6 +443,30 @@ void TRI_FreeBarrier (TRI_barrier_blocker_t* element, bool fromTransaction) {
     // Somebody else is still using it, so leave it intact:
     TRI_UnlockSpin(&container->_lock);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the _usedByExternal flag, using the required lock
+////////////////////////////////////////////////////////////////////////////////
+    
+void TRI_SetUsedByExternalBarrierElement (TRI_barrier_blocker_t* element) {
+  TRI_barrier_list_t* container = element->base._container;
+
+  TRI_LockSpin(&container->_lock);
+  element->_usedByExternal = true;
+  TRI_UnlockSpin(&container->_lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the _usedByTransaction flag, using the required lock
+////////////////////////////////////////////////////////////////////////////////
+    
+void TRI_SetUsedByTransactionBarrierElement (TRI_barrier_blocker_t* element) {
+  TRI_barrier_list_t* container = element->base._container;
+
+  TRI_LockSpin(&container->_lock);
+  element->_usedByTransaction = true;
+  TRI_UnlockSpin(&container->_lock);
 }
 
 // -----------------------------------------------------------------------------

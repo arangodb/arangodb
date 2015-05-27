@@ -168,7 +168,7 @@ static void WeakCollectionCallback (const v8::WeakCallbackData<v8::External, v8:
 
   // find the persistent handle
 #if TRI_ENABLE_MAINTAINER_MODE
-  map<void*, v8::Persistent<v8::External>>::iterator it = v8g->JSCollections.find(collection);
+  auto const& it = v8g->JSCollections.find(collection);
   TRI_ASSERT(it != v8g->JSCollections.end())
 #endif
   if (! collection->_isLocal) {
@@ -197,7 +197,7 @@ v8::Handle<v8::Object> WrapCollection (v8::Isolate* isolate,
     result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE));
     result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nonconstCollection));
 
-    map<void*, v8::Persistent<v8::External>>::iterator it = v8g->JSCollections.find(nonconstCollection);
+    auto const& it = v8g->JSCollections.find(nonconstCollection);
 
     if (it == v8g->JSCollections.end()) {
       // increase the reference-counter for the database

@@ -87,7 +87,7 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
   }
  
   // create a barrier under the compaction lock 
-  _barrier = TRI_CreateBarrierElement(&_document->_barrierList);
+  _barrier = TRI_CreateBarrierElement(&_document->_barrierList, false);
   
   // release the lock
   TRI_UnlockCompactorVocBase(_document->_vocbase);
