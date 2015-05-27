@@ -421,7 +421,6 @@ function computeRootAppPath(mount, isValidation) {
         errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
         errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
         + "\nFile: " + filename
-        + "\nContent: " + fileContent
       });
       err.stack = e.stack;
       err.cause = e;
