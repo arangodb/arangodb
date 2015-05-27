@@ -1357,6 +1357,8 @@ function require (path) {
 
     var self = this;
     var args = {
+      __filename: filename,
+      __dirname: filename && normalizeModuleName(filename + '/..'),
       print: internal.print,
       module: this,
       exports: this.exports,
@@ -1365,10 +1367,6 @@ function require (path) {
       }
     };
 
-    if (filename !== null) {
-      args.__filename = filename;
-      args.__dirname = normalizeModuleName(filename + '/..');
-    }
 
     if (context) {
       Object.keys(context).forEach(function (key) {
