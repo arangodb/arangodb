@@ -1362,6 +1362,8 @@ function require (path) {
       print: internal.print,
       module: this,
       exports: this.exports,
+      process: require('process'),
+      console: require('console'),
       require: function (path) {
         return self.require(path);
       }
