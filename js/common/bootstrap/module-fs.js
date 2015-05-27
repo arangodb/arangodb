@@ -485,10 +485,14 @@ if (global.SYS_READ_BUFFER) {
   delete global.SYS_READ_BUFFER;
 
   exports.readFileSync = function (filename, encoding) {
-    if (encoding !== undefined && encoding !== null) {
-      return exports.readBuffer(filename).toString(encoding);
+    var buf = exports.readBuffer(filename);
+    if (!encoding) {
+      return buf;
     }
-    return exports.readBuffer(filename);
+    if (encoding.encoding) {
+      encoding = encoding.encoding;
+    }
+    return buf.toString(encoding);
   };
 }
 
