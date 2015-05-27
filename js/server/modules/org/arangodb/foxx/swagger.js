@@ -101,17 +101,17 @@ function swaggerPath(path, basePath) {
 
 function swaggerJson(req, res, opts) {
   var foxx = FoxxManager.routes(opts.appPath);
-  var app = foxx.appContext.app;
+  var app = foxx.appContext && foxx.appContext.app;
   var swagger = parseRoutes(opts.appPath, foxx.routes, foxx.models);
   res.json({
     swagger: '2.0',
     info: {
-      description: app._manifest.description,
-      version: app._manifest.version,
-      title: app._manifest.name,
-      license: app._manifest.license && {name: app._manifest.license}
+      description: app && app._manifest.description,
+      version: app && app._manifest.version,
+      title: app && app._manifest.name,
+      license: app && app._manifest.license && {name: app._manifest.license}
     },
-    basePath: '/_db/' + encodeURIComponent(req.database) + app._mount,
+    basePath: '/_db/' + encodeURIComponent(req.database) + (app ? app._mount : opts.appPath),
     schemes: [req.protocol],
     paths: swagger.paths,
     // securityDefinitions: {},
@@ -155,6 +155,9 @@ function parseRoutes(tag, routes, models) {
     _.each(route.url.methods, function (method) {
       if (!paths[path]) {
         paths[path] = {};
+      }
+      if (!route.docs) {
+        return;
       }
       paths[path][method] = {
         tags: [tag],
