@@ -27,11 +27,13 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore'),
-  flatten = require('internal').flatten,
-  arangodb = require('org/arangodb'),
-  console = require('console'),
-  db = arangodb.db;
+var _ = require('underscore');
+var flatten = require('internal').flatten;
+var arangodb = require('org/arangodb');
+var console = require('console');
+var db = arangodb.db;
+var queueCache = {};
+var jobCache = {};
 
 function failImmutable(name) {
   return function () {
@@ -39,11 +41,9 @@ function failImmutable(name) {
   };
 }
 
-var queueMap = { };
-var jobMap = { };
 
 var queues = {
-  _jobTypes: { },
+  _jobTypes: {},
   _clearCache: function () {
     try {
       global.KEY_SET("queue-control", "skip", 0);
@@ -54,16 +54,16 @@ var queues = {
   },
   get: function (key) {
     var dbName = db._name();
-    if (! queueMap.hasOwnProperty(dbName)) {
-      queueMap[dbName] = { };
+    if (!queueCache[dbName]) {
+      queueCache[dbName] = {};
     }
-    if (! queueMap[dbName][key]) {
+    if (!queueCache[dbName][key]) {
       if (!db._queues.exists(key)) {
         throw new Error('Queue does not exist: ' + key);
       }
-      queueMap[dbName][key] = new Queue(key);
+      queueCache[dbName][key] = new Queue(key);
     }
-    return queueMap[dbName][key];
+    return queueCache[dbName][key];
   },
   create: function (key, maxWorkers) {
     try {
@@ -79,13 +79,11 @@ var queues = {
     }
     this._clearCache();
     var dbName = db._name();
-    if (! queueMap.hasOwnProperty(dbName)) {
-      queueMap[dbName] = { };
+    if (!queueCache[dbName]) {
+      queueCache[dbName] = {};
     }
-    if (! queueMap[dbName].hasOwnProperty(key)) {
-      queueMap[dbName][key] = new Queue(key);
-    }
-    return queueMap[dbName][key];
+    queueCache[dbName][key] = new Queue(key);
+    return queueCache[dbName][key];
   },
   delete: function (key) {
     var result = false;
@@ -120,8 +118,8 @@ var queues = {
 
     // _jobTypes are database-specific
     var dbName = db._name();
-    if (! queues._jobTypes.hasOwnProperty(dbName)) {
-      queues._jobTypes[dbName] = { };
+    if (!queues._jobTypes[dbName]) {
+      queues._jobTypes[dbName] = {};
     }
     queues._jobTypes[dbName][type] = cfg;
   }
@@ -270,13 +268,13 @@ _.extend(Queue.prototype, {
     }
     // jobs are database-specific
     var dbName = db._name();
-    if (! jobMap.hasOwnProperty(dbName)) {
-      jobMap[dbName] = { };
+    if (!jobCache[dbName]) {
+      jobCache[dbName] = {};
     }
-    if (! jobMap[dbName][id]) {
-      jobMap[dbName][id] = new Job(id);
+    if (!jobCache[dbName][id]) {
+      jobCache[dbName][id] = new Job(id);
     }
-    return jobMap[dbName][id];
+    return jobCache[dbName][id];
   },
   delete: function (id) {
     return db._executeTransaction({

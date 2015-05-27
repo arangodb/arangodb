@@ -28,11 +28,11 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require('org/arangodb').db,
-  flatten = require('internal').flatten,
-  exponentialBackOff = require('internal').exponentialBackOff,
-  console = require('console'),
-  queues = require('org/arangodb/foxx').queues;
+var db = require('org/arangodb').db;
+var flatten = require('internal').flatten;
+var exponentialBackOff = require('internal').exponentialBackOff;
+var console = require('console');
+var queues = require('org/arangodb/foxx').queues;
 
 function getBackOffDelay(job, cfg) {
   var n = job.failures.length - 1;
