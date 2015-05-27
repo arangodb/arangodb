@@ -34,6 +34,7 @@ var TRAVERSAL = require("org/arangodb/graph/traversal");
 var ArangoError = require("org/arangodb").ArangoError;
 var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("org/arangodb/cluster").isCoordinator();
+var underscore = require("underscore");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -7027,24 +7028,6 @@ function AQL_GRAPH_VERTICES (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return common neighbors of two vertices lists
-////////////////////////////////////////////////////////////////////////////////
-
-function TRANSFER_GRAPH_NEIGHBORS_RESULT (result)  {
-  var ret = {};
-  result.forEach(function (r) {
-    var v = JSON.stringify(r.vertex);
-    if (! ret[v]) {
-      ret[v] = [];
-    }
-    if (ret[v].indexOf(r.startVertex) === -1) {
-      ret[v].push(r.startVertex);
-    }
-  });
-  return ret;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors
 /// *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
 /// defined by the examples.*
@@ -7098,51 +7081,85 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
                                      options2) {
   'use strict';
 
-  var neighbors1 = TRANSFER_GRAPH_NEIGHBORS_RESULT(
-    AQL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options1)
-  ), neighbors2;
-  if (vertex1Examples === vertex2Examples && options1 === options2) {
-    neighbors2 = CLONE(neighbors1);
-  } else {
-    neighbors2 = TRANSFER_GRAPH_NEIGHBORS_RESULT(
-      AQL_GRAPH_NEIGHBORS(graphName, vertex2Examples, options2)
-    );
+  options1 = options1 || {};
+  options1.includeData = false;
+  options1.distinct = true;
+  options2 = options2 || {};
+  options2.includeData = false;
+  options2.distinct = true;
+  let vertexCollections1;
+  if (options1.hasOwnProperty("vertexCollectionRestriction")) {
+    if (!Array.isArray(options1.vertexCollectionRestriction)) {
+      if (typeof options1.vertexCollectionRestriction === "string") {
+        vertexCollections1 = [options1.vertexCollectionRestriction];
+      }
+    } else {
+      // TODO: Intersect?
+      vertexCollections1 = options1.vertexCollectionRestriction;
+    }
   }
-  var res = {}, res2 = {}, res3 = [];
+  let vertices1 = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections1, vertex1Examples);
+  let vertices2;
+  if (vertex1Examples === vertex2Examples && 
+    options1.vertexCollectionRestriction === options2.vertexCollectionRestriction) {
+    vertices2 = vertices1;
+  } else {
+    let vertexCollections2;
+    if (options2.hasOwnProperty("vertexCollectionRestriction")) {
+      if (!Array.isArray(options2.vertexCollectionRestriction)) {
+        if (typeof options2.vertexCollectionRestriction === "string") {
+          vertexCollections2 = [options2.vertexCollectionRestriction];
+        }
+      } else {
+        // TODO: Intersect?
+        vertexCollections2 = options2.vertexCollectionRestriction;
+      }
+    }
+    vertices2 = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections2, vertex2Examples);
+  }
+  // Use ES6 Map. Higher performance then Object.
+  let tmpNeighbors = new Map();
+  let result = [];
 
-  Object.keys(neighbors1).forEach(function (v) {
-    if (!neighbors2[v]) {
-      return;
+  // Legacy Format
+  // let tmpRes = {};
+
+  // Iterate over left side vertex list as left.
+  // Calculate its neighbors as ln
+  // For each entry iterate over right side vertex list as right.
+  // Calculate their neighbors as rn
+  // For each store one entry in result {left: left, right: right, neighbors: intersection(ln, rn)}
+  // All Neighbors are cached in tmpNeighbors
+  for (let i = 0; i < vertices1.length; ++i) {
+    let left = vertices1[i];
+    let itemNeighbors;
+    if(tmpNeighbors.has(left)) {
+      itemNeighbors = tmpNeighbors.get(left);
+    } else {
+      itemNeighbors = AQL_GRAPH_NEIGHBORS(graphName, left, options1);
+      tmpNeighbors.set(left, itemNeighbors);
     }
-    if (!res[v]) {
-      res[v] = {n1 : neighbors1[v], n2 : neighbors2[v]};
+    for (let j = 0; j < vertices2.length; ++j) {
+      let right = vertices2[j];
+      let rNeighbors;
+      if(tmpNeighbors.has(right)) {
+        rNeighbors = tmpNeighbors.get(right);
+      } else {
+        rNeighbors = AQL_GRAPH_NEIGHBORS(graphName, right, options2);
+        tmpNeighbors.set(right, rNeighbors);
+      }
+      let neighbors = underscore.intersection(itemNeighbors, rNeighbors);
+
+      // Legacy Format
+      // tmpRes[left] = tmpRes[left] || {};
+      // tmpRes[left][right] = neighbors;
+      result.push({left, right, neighbors});
     }
-  });
-  Object.keys(res).forEach(function (v) {
-    res[v].n1.forEach(function (s1) {
-      if (!res2[s1]) {
-        res2[s1] = {};
-      }
-      res[v].n2.forEach(function (s2) {
-        if (s1 === s2) {
-          return;
-        }
-        if (!res2[s1][s2]) {
-          res2[s1][s2] = [];
-        }
-        res2[s1][s2].push(JSON.parse(v));
-      });
-      if (Object.keys(res2[s1]).length === 0) {
-        delete res2[s1];
-      }
-    });
-  });
-  Object.keys(res2).forEach(function (r) {
-    var e = {};
-    e[r] = res2[r];
-    res3.push(e);
-  });
-  return res3;
+  }
+  // Legacy Format
+  // result.push(tmpRes);
+  tmpNeighbors.clear();
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
