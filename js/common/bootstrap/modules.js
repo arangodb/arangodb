@@ -1351,24 +1351,23 @@ function require (path) {
         errorNum: internal.errors.ERROR_MODULE_SYNTAX_ERROR.code,
         errorMessage: internal.errors.ERROR_MODULE_SYNTAX_ERROR.message
         + "\nFile: " + filename
-        + "\nContent: " + content
       });
     }
 
     var self = this;
     var args = {
+      __filename: filename,
+      __dirname: filename && normalizeModuleName(filename + '/..'),
       print: internal.print,
       module: this,
       exports: this.exports,
+      process: require('process'),
+      console: require('console'),
       require: function (path) {
         return self.require(path);
       }
     };
 
-    if (filename !== null) {
-      args.__filename = filename;
-      args.__dirname = normalizeModuleName(filename + '/..');
-    }
 
     if (context) {
       Object.keys(context).forEach(function (key) {
@@ -1402,7 +1401,6 @@ function require (path) {
         errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
         errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
         + "\nFile: " + filename
-        + "\nContent: " + content
       }), {cause: e});
     }
 
@@ -1420,7 +1418,6 @@ function require (path) {
         errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
         errorMessage: internal.errors.ERROR_MODULE_FAILURE.message
         + "\nFile: " + filename
-        + "\nContent: " + content
       }), {cause: e});
     }
 
