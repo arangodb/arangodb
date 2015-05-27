@@ -203,7 +203,6 @@ function Queue(name) {
 
 _.extend(Queue.prototype, {
   push: function (name, data, opts) {
-    var type, result, now;
     if (typeof name !== 'string') {
       throw new Error('Must pass a job type!');
     }
@@ -215,11 +214,11 @@ _.extend(Queue.prototype, {
     if (!jobTypeCache[dbName]) {
       jobTypeCache[dbName] = {};
     }
-    type = jobTypeCache[dbName][name];
+    var type = jobTypeCache[dbName][name];
 
     if (type !== undefined) {
       if (type.schema) {
-        result = type.schema.validate(data);
+        var result = type.schema.validate(data);
         if (result.error) {
           throw result.error;
         }
@@ -234,7 +233,7 @@ _.extend(Queue.prototype, {
       throw new Error('Unknown job type: ' + name);
     }
     resetQueueControl();
-    now = Date.now();
+    var now = Date.now();
     return db._jobs.save({
       status: 'pending',
       queue: this.name,
