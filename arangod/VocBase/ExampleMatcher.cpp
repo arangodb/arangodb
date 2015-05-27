@@ -141,6 +141,8 @@ ExampleMatcher::ExampleMatcher (
           auto pid = _shaper->lookupAttributePathByName(_shaper, *keyStr);
 
           if (pid == 0) {
+            // _key, _id and _rev do have pid == 0. Have to change matching here
+            cout << "pid == 0 " << *keyStr << endl;
             // no attribute path found. this means the result will be empty
             ExampleMatcher::cleanup();
             throw TRI_RESULT_ELEMENT_NOT_FOUND;
@@ -168,11 +170,6 @@ ExampleMatcher::ExampleMatcher (
     definitions.emplace_back(move(def)); 
   }
 };
-
-
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor using a TRI_json_t object
@@ -234,12 +231,12 @@ bool ExampleMatcher::matches (TRI_doc_mptr_t const* mptr) const {
   if (mptr == nullptr) {
     return false;
   }
+  TRI_shaped_json_t document;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr->getDataPtr());
   for (auto def : definitions) {
-    TRI_shaped_json_t document;
     TRI_shaped_json_t result;
     TRI_shape_t const* shape;
 
-    TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr->getDataPtr());
     for (size_t i = 0;  i < def._values.size();  ++i) {
       TRI_shaped_json_t* example = def._values[i];
 
