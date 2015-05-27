@@ -1,0 +1,6 @@
+arangosh> var graph_module = require("org/arangodb/general-graph");
+arangosh> var edgeDefinitions = [ { collection: "edges", "from": [ "vertices" ], "to" : [ "vertices" ] } ];
+arangosh> graph = graph_module._create("myGraph", edgeDefinitions);
+[ Graph myGraph EdgeDefinitions: [ 
+  "edges: [vertices] -> [vertices]" 
+] VertexCollections: [ ] ]
