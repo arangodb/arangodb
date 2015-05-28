@@ -170,7 +170,8 @@ namespace triagens {
       NODE_TYPE_COLLECT_COUNT                 = 51,
       NODE_TYPE_COLLECT_EXPRESSION            = 52,
       NODE_TYPE_CALCULATED_OBJECT_ELEMENT     = 53,
-      NODE_TYPE_UPSERT                        = 54
+      NODE_TYPE_UPSERT                        = 54,
+      NODE_TYPE_EXAMPLE                       = 55
     };
 
     static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types");

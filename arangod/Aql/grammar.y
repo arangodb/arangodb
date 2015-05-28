@@ -688,10 +688,6 @@ upsert_statement:
       auto forNode = parser->ast()->createNodeFor(variableName.c_str(), $8, false);
       parser->ast()->addOperation(forNode);
 
-      if ($3 == nullptr || $3->type != NODE_TYPE_OBJECT) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "expecting object literal for upsert search document", yylloc.first_line, yylloc.first_column);
-      }
-
       auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName.c_str()), $3);
       parser->ast()->addOperation(filterNode);
       
