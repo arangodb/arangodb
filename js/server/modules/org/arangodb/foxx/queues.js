@@ -7,7 +7,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2015 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,18 +24,44 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Alan Plum
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require('underscore');
 var flatten = require('internal').flatten;
 var arangodb = require('org/arangodb');
 var console = require('console');
+var joi = require('joi');
 var qb = require('aqb');
 var db = arangodb.db;
+
 var queueCache = {};
 var jobCache = {};
 var jobTypeCache = {};
+
+function validate(data, schema) {
+  if (!schema) {
+    schema = joi.forbidden();
+  }
+  var raw = data;
+  var isTuple = Boolean(schema._meta && schema._meta.some(function (meta) {
+    return meta.isTuple;
+  }));
+  if (isTuple) {
+    raw = Array.isArray(raw) ? raw : [raw];
+    data = _.extend({}, raw);
+  }
+  var result = schema.validate(data);
+  if (result.error) {
+    throw result.error;
+  }
+  if (isTuple) {
+    return raw.map(function (x, i) {
+      return result.value[i];
+    });
+  }
+  return result.value;
+}
 
 function resetQueueControl() {
   try {
@@ -44,17 +70,18 @@ function resetQueueControl() {
 }
 
 function getQueue(key) {
-  var dbName = db._name();
-  if (!queueCache[dbName]) {
-    queueCache[dbName] = {};
+  var databaseName = db._name();
+  var cache = queueCache[databaseName];
+  if (!cache) {
+    cache = queueCache[databaseName] = {};
   }
-  if (!queueCache[dbName][key]) {
+  if (!cache[key]) {
     if (!db._queues.exists(key)) {
       throw new Error('Queue does not exist: ' + key);
     }
-    queueCache[dbName][key] = new Queue(key);
+    cache[key] = new Queue(key);
   }
-  return queueCache[dbName][key];
+  return cache[key];
 }
 
 function createQueue(key, maxWorkers) {
@@ -70,12 +97,13 @@ function createQueue(key, maxWorkers) {
     }
   }
   resetQueueControl();
-  var dbName = db._name();
-  if (!queueCache[dbName]) {
-    queueCache[dbName] = {};
+  var databaseName = db._name();
+  var cache = queueCache[databaseName];
+  if (!cache) {
+    cache = queueCache[databaseName] = {};
   }
-  queueCache[dbName][key] = new Queue(key);
-  return queueCache[dbName][key];
+  cache[key] = new Queue(key);
+  return cache[key];
 }
 
 function deleteQueue(key) {
@@ -98,7 +126,7 @@ function deleteQueue(key) {
   return result;
 }
 
-function registerJobType(type, opts) {
+function registerJobType(name, opts) {
   if (typeof opts === 'function') {
     opts = {execute: opts};
   }
@@ -108,14 +136,15 @@ function registerJobType(type, opts) {
   if (opts.schema && typeof opts.schema.validate !== 'function') {
     throw new Error('Schema must be a joi schema!');
   }
-  var cfg = _.extend({maxFailures: 0}, opts);
+  var cfg = _.extend({}, opts);
 
   // _jobTypes are database-specific
-  var dbName = db._name();
-  if (!jobTypeCache[dbName]) {
-    jobTypeCache[dbName] = {};
+  var databaseName = db._name();
+  var cache = jobTypeCache[databaseName];
+  if (!cache) {
+    cache = jobTypeCache[databaseName] = {};
   }
-  jobTypeCache[dbName][type] = cfg;
+  cache[name] = cfg;
 }
 
 function getJobs(queue, status, type) {
@@ -202,43 +231,47 @@ function Queue(name) {
 }
 
 _.extend(Queue.prototype, {
-  push: function (name, data, opts) {
-    var type, result, now;
-    if (typeof name !== 'string') {
+  push: function (jobType, data, opts) {
+    if (!jobType) {
       throw new Error('Must pass a job type!');
     }
+
+    var definition;
+    if (typeof jobType === 'string') {
+      var cache = jobTypeCache[db._name()];
+      definition = cache && cache[jobType];
+    } else {
+      definition = jobType;
+      jobType = _.extend({}, jobType);
+      delete jobType.schema;
+    }
+
+    if (definition) {
+      if (definition.schema) {
+        data = validate(data, definition.schema);
+      }
+      if (definition.preprocess) {
+        data = definition.preprocess(data);
+      }
+    } else {
+      var message = 'Unknown job type: ' + jobType;
+      if (opts.allowUnknown) {
+        console.warn(message);
+      } else {
+        throw new Error(message);
+      }
+    }
+
     if (!opts) {
       opts = {};
     }
-    // _jobTypes are database-specific
-    var dbName = db._name();
-    if (!jobTypeCache[dbName]) {
-      jobTypeCache[dbName] = {};
-    }
-    type = jobTypeCache[dbName][name];
 
-    if (type !== undefined) {
-      if (type.schema) {
-        result = type.schema.validate(data);
-        if (result.error) {
-          throw result.error;
-        }
-        data = result.value;
-      }
-      if (type.preprocess) {
-        data = type.preprocess(data);
-      }
-    } else if (opts.allowUnknown) {
-      console.warn('Unknown job type: ' + name);
-    } else {
-      throw new Error('Unknown job type: ' + name);
-    }
     resetQueueControl();
-    now = Date.now();
+    var now = Date.now();
     return db._jobs.save({
       status: 'pending',
       queue: this.name,
-      type: name,
+      type: jobType,
       failures: [],
       data: data,
       created: now,
@@ -258,14 +291,14 @@ _.extend(Queue.prototype, {
       id = '_jobs/' + id;
     }
     // jobs are database-specific
-    var dbName = db._name();
-    if (!jobCache[dbName]) {
-      jobCache[dbName] = {};
+    var databaseName = db._name();
+    if (!jobCache[databaseName]) {
+      jobCache[databaseName] = {};
     }
-    if (!jobCache[dbName][id]) {
-      jobCache[dbName][id] = new Job(id);
+    if (!jobCache[databaseName][id]) {
+      jobCache[databaseName][id] = new Job(id);
     }
-    return jobCache[dbName][id];
+    return jobCache[databaseName][id];
   },
   delete: function (id) {
     return db._executeTransaction({

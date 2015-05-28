@@ -444,24 +444,16 @@
       var appExports = app._manifest.exports;
 
       if (typeof appExports === "string") {
-        app._exports = loadExport(app, appExports);
+        app._exports = app.loadAppScript(appExports);
       } else if (appExports) {
         Object.keys(appExports).forEach(function (key) {
-          app._exports[key] = loadExport(app, appExports[key]);
+          app._exports[key] = app.loadAppScript(appExports[key]);
         });
       }
     }
     setIsExported(app._mount);
     return app._exports;
 
-  };
-
-  var loadExport = function (app, file) {
-    // TODO ?
-    var context = {exports: {}};
-    var tmpContext = {prefix: "/"};
-    app.loadAppScript(file, {context: context, appContext: tmpContext});
-    return context.exports;
   };
 
 ////////////////////////////////////////////////////////////////////////////////

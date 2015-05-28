@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Alan Plum
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var db = require('org/arangodb').db;
@@ -33,14 +33,21 @@ var flatten = require('internal').flatten;
 var exponentialBackOff = require('internal').exponentialBackOff;
 var console = require('console');
 var queues = require('org/arangodb/foxx').queues;
+var fm = require('org/arangodb/foxx/manager');
+var util = require('util');
+var internal = require('internal');
 
 function getBackOffDelay(job, cfg) {
   var n = job.failures.length - 1;
   if (typeof job.backOff === 'string') {
     try {
       return eval('(' + job.backOff + ')(' + n + ')');
-    } catch (jobStrErr) {
-      console.error('Failed to call backOff function of job ' + job._key, jobStrErr);
+    } catch (e) {
+      console.errorLines(
+        'Failed to call backOff function of job %s:\n%s',
+        job._key,
+        e.stack || String(e)
+      );
     }
   } else if (typeof job.backOff === 'number' && job.backOff >= 0 && job.backOff < Infinity) {
     return exponentialBackOff(n, job.backOff);
@@ -48,14 +55,22 @@ function getBackOffDelay(job, cfg) {
   if (typeof cfg.backOff === 'function') {
     try {
       return cfg.backOff(n);
-    } catch (cfgFnErr) {
-      console.error('Failed to call backOff function of job type ' + job.type, cfgFnErr);
+    } catch (e) {
+      console.errorLines(
+        'Failed to call backOff function of job type %s:\n%s',
+        job.type,
+        e.stack || String(e)
+      );
     }
   } else if (typeof cfg.backOff === 'string') {
     try {
       return eval('(' + cfg.backOff + ')(' + n + ')');
-    } catch (cfgStrErr) {
-      console.error('Failed to call backOff function of job type ' + job.type, cfgStrErr);
+    } catch (e) {
+      console.errorLines(
+        'Failed to call backOff function of job type %s:\n%s',
+        job.type,
+        e.stack || String(e)
+      );
     }
   }
   if (typeof cfg.backOff === 'number' && cfg.backOff >= 0 && cfg.backOff < Infinity) {
@@ -65,37 +80,45 @@ function getBackOffDelay(job, cfg) {
 }
 
 exports.work = function (job) {
-  var cfg = queues._jobTypes[job.type],
-    success = true,
-    callback = null,
-    now = Date.now(),
-    maxFailures,
-    result;
+  var cfg = typeof job.type === 'string' ? queues._jobTypes[job.type] : job.type;
+  var now = Date.now();
 
   if (!cfg) {
-    console.warn('Unknown job type for job ' + job._key + ':', job.type);
+    console.warn('Unknown job type for job %s in %s: %s', job._key, db._name(), job.type);
     db._jobs.update(job._key, {status: 'pending'});
     return;
   }
 
-  maxFailures = (
-    typeof job.maxFailures === 'number'
-      ? (job.maxFailures < 0 ? Infinity : job.maxFailures)
-      : (cfg.maxFailures < 0 ? Infinity : cfg.maxFailures)
-  ) || 0;
+  var maxFailures = (
+    typeof job.maxFailures === 'number' || job.maxFailures === false
+    ? job.maxFailures
+    : (
+      typeof cfg.maxFailures === 'number' || cfg.maxFailures === false
+      ? cfg.maxFailures
+      : 0
+    )
+  );
 
+  var result;
+  var success = true;
   try {
-    result = cfg.execute(job.data, job._id);
-  } catch (executeErr) {
-    console.error('Job ' + job._key + ' failed:', executeErr);
-    job.failures.push(flatten(executeErr));
+    if (cfg.execute) {
+      result = cfg.execute(job.data, job._id);
+    } else {
+      fm.runScript(cfg.name, cfg.mount, [].concat(job.data, job._id));
+    }
+  } catch (e) {
+    console.error('Job %s failed:\n%s', job._key, e.stack || String(e));
+    job.failures.push(flatten(e));
     success = false;
   }
+
+  var callback;
   if (success) {
     // mark complete
     callback = job.onSuccess;
     db._jobs.update(job._key, {modified: Date.now(), status: 'complete'});
-  } else if (job.failures.length > maxFailures) {
+  } else if (maxFailures === false || job.failures.length > maxFailures) {
     // mark failed
     callback = job.onFailure;
     db._jobs.update(job._key, {
@@ -114,19 +137,23 @@ exports.work = function (job) {
   }
 
   if (callback) {
+    var cbType = success ? 'success' : 'failure';
     try {
-      eval('(' + callback + ')(' + [
-        JSON.stringify(job._id) || 'null',
-        JSON.stringify(job.data) || 'null',
-        JSON.stringify(result) || 'null',
-        JSON.stringify(job.failures) || 'null'
-      ].join(', ') + ')');
-    } catch (callbackErr) {
-      console.error(
-        'Failed to execute '
-          + (success ? 'success' : 'failure')
-          + ' callback for job ' + job._key + ':',
-        callbackErr
+      var filename = util.format(
+        '<foxx queue %s callback for job %s in %s>',
+        cbType,
+        job._key,
+        db._name()
+      );
+      var fn = internal.executeScript('(' + callback + ')', undefined, filename);
+      fn(job._id, job.data, result, job.failures);
+    } catch (e) {
+      console.errorLines(
+        'Failed to execute %s callback for job %s in %s:\n%s',
+        cbType,
+        job._key,
+        db._name(),
+        e.stack || String(e)
       );
     }
   }
