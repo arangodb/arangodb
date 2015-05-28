@@ -155,11 +155,11 @@ add_executable(
     V8Server/v8-vocindex.cpp
     V8Server/v8-wrapshapedjson.cpp
     VocBase/auth.cpp
-    VocBase/barrier.cpp
     VocBase/cleanup.cpp
     VocBase/collection.cpp
     VocBase/compactor.cpp
     VocBase/datafile.cpp
+    VocBase/Ditch.cpp
     VocBase/document-collection.cpp
     VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp

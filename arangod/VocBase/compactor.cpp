@@ -913,18 +913,16 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     RemoveCompactor(document, compactor);
 
     for (i = 0; i < n; ++i) {
-      TRI_barrier_t* b;
-
       compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
 
       // datafile is also empty after compaction and thus useless
       RemoveDatafile(document, compaction->_datafile);
 
-      // add a deletion marker to the result set container
-      b = TRI_CreateBarrierDropDatafile(&document->_barrierList, compaction->_datafile, DropDatafileCallback, document);
+      // add a deletion ditch to the collection 
+      auto b = document->ditches()->createDropDatafileDitch(compaction->_datafile, document, DropDatafileCallback, __FILE__, __LINE__);
 
       if (b == nullptr) {
-        LOG_ERROR("out of memory when creating datafile-drop barrier");
+        LOG_ERROR("out of memory when creating datafile-drop ditch");
       }
     }
   }
@@ -947,7 +945,6 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     }
 
     for (i = 0; i < n; ++i) {
-      TRI_barrier_t* b;
       compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
 
       if (i == 0) {
@@ -958,10 +955,10 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
 
         memcpy(copy, &context, sizeof(compaction_context_t));
 
-        b = TRI_CreateBarrierRenameDatafile(&document->_barrierList, compaction->_datafile, RenameDatafileCallback, copy);
+        auto b = document->ditches()->createRenameDatafileDitch(compaction->_datafile, copy, RenameDatafileCallback, __FILE__, __LINE__);
 
         if (b == nullptr) {
-          LOG_ERROR("out of memory when creating datafile-rename barrier");
+          LOG_ERROR("out of memory when creating datafile-rename ditch");
           TRI_Free(TRI_CORE_MEM_ZONE, copy);
         }
       }
@@ -970,10 +967,10 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
         RemoveDatafile(document, compaction->_datafile);
 
         // add a drop datafile marker
-        b = TRI_CreateBarrierDropDatafile(&document->_barrierList, compaction->_datafile, DropDatafileCallback, document);
+        auto b = document->ditches()->createDropDatafileDitch(compaction->_datafile, document, DropDatafileCallback, __FILE__, __LINE__);
 
         if (b == nullptr) {
-          LOG_ERROR("out of memory when creating datafile-drop barrier");
+          LOG_ERROR("out of memory when creating datafile-drop ditch");
         }
       }
     }
@@ -1435,11 +1432,11 @@ void TRI_CompactorVocBase (void* data) {
           }
 
           if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <= now) {
-            TRI_barrier_t* ce = TRI_CreateBarrierCompaction(&document->_barrierList);
+            auto ce = document->ditches()->createCompactionDitch(__FILE__, __LINE__);
 
             if (ce == nullptr) {
               // out of memory
-              LOG_WARNING("out of memory when trying to create a barrier element");
+              LOG_WARNING("out of memory when trying to create compaction ditch");
             }
             else {
               worked = CompactifyDocumentCollection(document);
@@ -1450,7 +1447,7 @@ void TRI_CompactorVocBase (void* data) {
               }
               // if we worked, then we don't set the compaction stamp to force another round of compaction
 
-              TRI_FreeBarrier(ce);
+              document->ditches()->freeDitch(ce);
             }
           }
 

@@ -150,12 +150,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief barrier
+/// @brief ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_barrier_t* barrier (TRI_voc_cid_t cid) {
+        triagens::arango::DocumentDitch* ditch (TRI_voc_cid_t cid) {
           TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
-          return trxColl->_barrier;
+          return trxColl->_ditch;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

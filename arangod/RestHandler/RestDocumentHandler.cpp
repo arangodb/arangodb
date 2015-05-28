@@ -591,7 +591,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // outside read transaction
   // .............................................................................
 
-  TRI_ASSERT(trx.hasBarrier());
+  TRI_ASSERT(trx.hasDitch());
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str());
@@ -1451,7 +1451,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   string const&& cidString = StringUtils::itoa(document->_info._planId);
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
     return false;
