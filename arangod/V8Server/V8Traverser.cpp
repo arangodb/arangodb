@@ -257,7 +257,7 @@ void BasicOptions::addVertexFilter(
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool BasicOptions::matchesVertex(VertexId& v) const {
+bool BasicOptions::matchesVertex (VertexId& v) const {
   if (!useVertexFilter) {
     // Nothing to do
     return true;
@@ -284,7 +284,7 @@ bool BasicOptions::matchesVertex(VertexId& v) const {
 /// @brief Insert a new edge matcher object
 ////////////////////////////////////////////////////////////////////////////////
 
-void BasicOptions::addEdgeFilter( 
+void BasicOptions::addEdgeFilter ( 
           v8::Isolate* isolate,
           v8::Handle<v8::Value> const& example,
           TRI_shaper_t* shaper,
@@ -307,7 +307,7 @@ void BasicOptions::addEdgeFilter(
 /// @brief Checks if an edge matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool BasicOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
+bool BasicOptions::matchesEdge (EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
   if (!useEdgeFilter) {
     // Nothing to do
     return true;
@@ -329,33 +329,41 @@ bool BasicOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ShortestPathOptions::matchesVertex(VertexId& v) const {
-  if (!useVertexFilter) {
-    // Nothing to do
-    return true;
-  }
+bool ShortestPathOptions::matchesVertex (VertexId& v) const {
   if (start == v || end == v) {
     return true;
   }
-
-  auto it = _vertexFilter.find(v.cid);
-  if (it == _vertexFilter.end()) {
-    // This collection does not have any object of this shape.
-    // Short circuit.
-    return false;
-  }
-
-  TRI_doc_mptr_copy_t vertex;
-  int res = it->second.trx->readSingle(it->second.col, &vertex, v.key);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return false;
-  }
-  return it->second.matcher->matches(&vertex);
+  return BasicOptions::matchesVertex(v);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        NeighborsOptions FUNCTIONS
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if a vertex matches to given examples
+////////////////////////////////////////////////////////////////////////////////
 
+bool NeighborsOptions::matchesVertex (VertexId& v) const {
+  // If there are explicitly marked collections check them.
+  if (_explicitCollections.size() > 0) {
+    // If the current collection is not stored the result is invalid
+    if (_explicitCollections.find(v.cid) == _explicitCollections.end()) {
+      return false;
+    }
+  }
+  return BasicOptions::matchesVertex(v);
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Inserts one explicitly allowed collection. As soon as one is explicitly
+/// allowed all others are implicitly disallowed. If there is no explicitly allowed
+/// collection all are implicitly allowed.
+////////////////////////////////////////////////////////////////////////////////
+
+void NeighborsOptions::addCollectionRestriction (TRI_voc_cid_t& cid) {
+  _explicitCollections.insert(cid);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private Helper Functions
@@ -402,21 +410,33 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
   return path;
 }
 
-void TRI_RunNeighborsSearch (
-  vector<EdgeCollectionInfo*>& collectionInfos,
-  NeighborsOptions& opts,
-  unordered_set<VertexId>& distinct,
-  vector<VertexId>& result) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief search for distinct inbound neighbors
+////////////////////////////////////////////////////////////////////////////////
 
-  if (opts.distinct) {
-    if (opts.direction == TRI_EDGE_IN || opts.direction == TRI_EDGE_ANY) {
-      TRI_edge_direction_e dir = TRI_EDGE_IN;
-      for (auto col : collectionInfos) {
-        auto edges = col->getEdges(dir, opts.start);
-        for (size_t j = 0;  j < edges.size(); ++j) {
-          EdgeId edgeId = col->extractEdgeId(edges[j]);
-          if (opts.matchesEdge(edgeId, &edges[j])) {
-            VertexId v = extractFromId(edges[j]);
+static void inboundNeighbors (
+    vector<EdgeCollectionInfo*>& collectionInfos,
+    NeighborsOptions& opts,
+    unordered_set<VertexId>& startVertices,
+    unordered_set<VertexId>& visited,
+    unordered_set<VertexId>& distinct,
+    vector<VertexId>& result,
+    int depth = 1) {
+  TRI_edge_direction_e dir = TRI_EDGE_IN;
+  unordered_set<VertexId> nextDepth;
+  for (auto col : collectionInfos) {
+    for (VertexId start : startVertices) {
+      auto edges = col->getEdges(dir, start);
+      for (size_t j = 0;  j < edges.size(); ++j) {
+        EdgeId edgeId = col->extractEdgeId(edges[j]);
+        if (opts.matchesEdge(edgeId, &edges[j])) {
+          VertexId v = extractFromId(edges[j]);
+          if (visited.find(v) != visited.end()) {
+            // We have already visited this vertex
+            continue;
+          }
+          visited.insert(v);
+          if (depth >= opts.minDepth) {
             if (opts.matchesVertex(v)) {
               auto p = distinct.insert(v);
               if (p.second) {
@@ -424,57 +444,157 @@ void TRI_RunNeighborsSearch (
               }
             }
           }
+          if (depth < opts.maxDepth) {
+            nextDepth.insert(v);
+          }
         }
       }
     }
-    if (opts.direction == TRI_EDGE_OUT || opts.direction == TRI_EDGE_ANY) {
-      TRI_edge_direction_e dir = TRI_EDGE_OUT;
-      for (auto col : collectionInfos) {
-        auto edges = col->getEdges(dir, opts.start);
-        for (size_t j = 0;  j < edges.size(); ++j) {
-          EdgeId edgeId = col->extractEdgeId(edges[j]);
-          if (opts.matchesEdge(edgeId, &edges[j])) {
-            VertexId v = extractFromId(edges[j]);
+  }
+  if (nextDepth.size() > 0) {
+    inboundNeighbors(collectionInfos, opts, nextDepth, visited, distinct, result, depth + 1);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief search for distinct outbound neighbors
+////////////////////////////////////////////////////////////////////////////////
+
+static void outboundNeighbors (
+    vector<EdgeCollectionInfo*>& collectionInfos,
+    NeighborsOptions& opts,
+    unordered_set<VertexId>& startVertices,
+    unordered_set<VertexId>& visited,
+    unordered_set<VertexId>& distinct,
+    vector<VertexId>& result,
+    int depth = 1) {
+  TRI_edge_direction_e dir = TRI_EDGE_OUT;
+  unordered_set<VertexId> nextDepth;
+  for (auto col : collectionInfos) {
+    for (VertexId start : startVertices) {
+      auto edges = col->getEdges(dir, start);
+      for (size_t j = 0;  j < edges.size(); ++j) {
+        EdgeId edgeId = col->extractEdgeId(edges[j]);
+        if (opts.matchesEdge(edgeId, &edges[j])) {
+          VertexId v = extractToId(edges[j]);
+          if (visited.find(v) != visited.end()) {
+            // We have already visited this vertex
+            continue;
+          }
+          visited.insert(v);
+          if (depth >= opts.minDepth) {
             if (opts.matchesVertex(v)) {
-              auto p = distinct.insert(extractToId(edges[j]));
+              auto p = distinct.insert(v);
               if (p.second) {
                 result.push_back(*p.first);
               }
             }
           }
-        }
-      }
-    }
-  } else {
-    if (opts.direction == TRI_EDGE_IN || opts.direction == TRI_EDGE_ANY) {
-      TRI_edge_direction_e dir = TRI_EDGE_IN;
-      for (auto col : collectionInfos) {
-        auto edges = col->getEdges(dir, opts.start);
-        for (size_t j = 0;  j < edges.size(); ++j) {
-          EdgeId edgeId = col->extractEdgeId(edges[j]);
-          if (opts.matchesEdge(edgeId, &edges[j])) {
-            VertexId v = extractFromId(edges[j]);
-            if (opts.matchesVertex(v)) {
-              result.push_back(extractFromId(edges[j]));
-            }
+          if (depth < opts.maxDepth) {
+            nextDepth.insert(v);
           }
         }
       }
     }
-    if (opts.direction == TRI_EDGE_OUT || opts.direction == TRI_EDGE_ANY) {
-      TRI_edge_direction_e dir = TRI_EDGE_OUT;
-      for (auto col : collectionInfos) {
-        auto edges = col->getEdges(dir, opts.start);
-        for (size_t j = 0;  j < edges.size(); ++j) {
-          EdgeId edgeId = col->extractEdgeId(edges[j]);
-          if (opts.matchesEdge(edgeId, &edges[j])) {
-            VertexId v = extractFromId(edges[j]);
+  }
+  if (nextDepth.size() > 0) {
+    outboundNeighbors(collectionInfos, opts, nextDepth, visited, distinct, result, depth + 1);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief search for distinct in- and outbound neighbors
+////////////////////////////////////////////////////////////////////////////////
+
+static void anyNeighbors (
+    vector<EdgeCollectionInfo*>& collectionInfos,
+    NeighborsOptions& opts,
+    unordered_set<VertexId>& startVertices,
+    unordered_set<VertexId>& visited,
+    unordered_set<VertexId>& distinct,
+    vector<VertexId>& result,
+    int depth = 1) {
+  TRI_edge_direction_e dir = TRI_EDGE_OUT;
+  unordered_set<VertexId> nextDepth;
+  for (auto col : collectionInfos) {
+    for (VertexId start : startVertices) {
+      dir = TRI_EDGE_OUT;
+      auto edges = col->getEdges(dir, start);
+      for (size_t j = 0;  j < edges.size(); ++j) {
+        EdgeId edgeId = col->extractEdgeId(edges[j]);
+        if (opts.matchesEdge(edgeId, &edges[j])) {
+          VertexId v = extractToId(edges[j]);
+          if (visited.find(v) != visited.end()) {
+            // We have already visited this vertex
+            continue;
+          }
+          visited.insert(v);
+          if (depth >= opts.minDepth) {
             if (opts.matchesVertex(v)) {
-              result.push_back(extractToId(edges[j]));
+              auto p = distinct.insert(v);
+              if (p.second) {
+                result.push_back(*p.first);
+              }
             }
+          }
+          if (depth < opts.maxDepth) {
+            nextDepth.insert(v);
+          }
+        }
+      }
+      dir = TRI_EDGE_IN;
+      edges = col->getEdges(dir, start);
+      for (size_t j = 0;  j < edges.size(); ++j) {
+        EdgeId edgeId = col->extractEdgeId(edges[j]);
+        if (opts.matchesEdge(edgeId, &edges[j])) {
+          VertexId v = extractFromId(edges[j]);
+          if (visited.find(v) != visited.end()) {
+            // We have already visited this vertex
+            continue;
+          }
+          visited.insert(v);
+          if (depth >= opts.minDepth) {
+            if (opts.matchesVertex(v)) {
+              auto p = distinct.insert(v);
+              if (p.second) {
+                result.push_back(*p.first);
+              }
+            }
+          }
+          if (depth < opts.maxDepth) {
+            nextDepth.insert(v);
           }
         }
       }
     }
+  }
+  if (nextDepth.size() > 0) {
+    anyNeighbors(collectionInfos, opts, nextDepth, visited, distinct, result, depth + 1);
+  }
+}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Execute a search for neighboring vertices
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RunNeighborsSearch (
+    vector<EdgeCollectionInfo*>& collectionInfos,
+    NeighborsOptions& opts,
+    unordered_set<VertexId>& distinct,
+    vector<VertexId>& result) {
+  unordered_set<VertexId> startVertices;
+  unordered_set<VertexId> visited;
+  startVertices.insert(opts.start);
+  visited.insert(opts.start);
+
+  switch (opts.direction) {
+    case TRI_EDGE_IN:
+      inboundNeighbors(collectionInfos, opts, startVertices, visited, distinct, result);
+      break;
+    case TRI_EDGE_OUT:
+      outboundNeighbors(collectionInfos, opts, startVertices, visited, distinct, result);
+      break;
+    case TRI_EDGE_ANY:
+      anyNeighbors(collectionInfos, opts, startVertices, visited, distinct, result);
+      break;
   }
 };
