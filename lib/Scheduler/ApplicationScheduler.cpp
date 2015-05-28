@@ -383,6 +383,39 @@ void ApplicationScheduler::installSignalHandler (SignalTask* task) {
   _scheduler->registerTask(task);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of used threads
+////////////////////////////////////////////////////////////////////////////////
+
+size_t ApplicationScheduler::numberOfThreads () {
+  return _nrSchedulerThreads;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the processor affinity
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
+#ifdef TRI_HAVE_THREAD_AFFINITY
+  size_t j = 0;
+
+  for (uint32_t i = 0;  i < _nrSchedulerThreads) {
+    size_t c = cores[j];
+
+    LOG_INFO("using core %d for scheduler thread %d", c, i);
+
+    _scheduler->setProcessorAffinity(i, c);
+
+    ++j;
+
+    if (j >= cores.size()) {
+      j = 0;
+    }
+  }
+
+#endif
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
