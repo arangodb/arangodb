@@ -439,22 +439,16 @@ typedef struct TRI_v8_global_s {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief barrier mapping for weak pointers
-////////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_map< void*, v8::Persistent<v8::External> > JSBarriers;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection mapping for weak pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::map< void*, v8::Persistent<v8::External> > JSCollections;
+  std::unordered_map<void*, v8::Persistent<v8::External>> JSCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cursor mapping for weak pointers
+/// @brief document ditches mapping for weak pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::map< void*, v8::Persistent<v8::External> > JSCursors;
+  std::unordered_map<void*, v8::Persistent<v8::External>> JSDitches;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       JAVASCRIPT OBJECT TEMPLATES
@@ -931,6 +925,8 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> VersionKey;
+
+  v8::Persistent<v8::String> VersionKeyHidden;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "waitForSync" key name

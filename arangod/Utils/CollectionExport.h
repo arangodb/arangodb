@@ -34,7 +34,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_barrier_s;
 struct TRI_document_collection_t;
 struct TRI_vocbase_s;
 
@@ -42,6 +41,7 @@ namespace triagens {
   namespace arango {
 
     class CollectionGuard;
+    class DocumentDitch;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class CollectionExport
@@ -96,7 +96,7 @@ namespace triagens {
 
         triagens::arango::CollectionGuard*           _guard;
         struct TRI_document_collection_t*            _document;
-        struct TRI_barrier_s*                        _barrier;
+        triagens::arango::DocumentDitch*             _ditch;
         std::string const                            _name;
         triagens::arango::CollectionNameResolver     _resolver;
         Restrictions                                 _restrictions;

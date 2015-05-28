@@ -132,6 +132,8 @@
 #define TRI_OVERLOAD_FUNCS_SIZE_T           1
 #define TRI_MISSING_MEMRCHR                 1
 
+#define TRI_SC_NPROCESSORS_ONLN             1
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 #define TRI_HAVE_GETLINE                    1
 #endif
@@ -475,8 +477,11 @@
 #define TRI_HAVE_POSIX_THREADS              1
 #define TRI_HAVE_POSIX_MMAP                 1
 #define TRI_HAVE_POSIX_PWD_GRP              1
+#define TRI_HAVE_THREAD_AFFINITY            1
 
 #define TRI_HAVE_ANONYMOUS_MMAP             1
+
+#define TRI_SC_NPROCESSORS_ONLN             1
 
 #define TRI_srandom                         srand
 #define TRI_random                          rand

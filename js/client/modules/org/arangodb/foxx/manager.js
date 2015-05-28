@@ -63,23 +63,23 @@
     var nargs = [];
     var i;
 
-    var re1 = /^([\-_a-zA-Z0-9]*)=(.*)$/;
-    var re2 = /^(0|.0|([0-9]*(\.[0-9]*)?))$/;
-    var a, m, k, v;
+    var reOption = /^([\-_a-zA-Z0-9]*)=(.*)$/;
+    var reNumeric = /^(0|.0|([0-9]*(\.[0-9]*)?))$/;
+    var arg, match, key, value;
 
     for (i = 0;  i < args.length;  ++i) {
-      a = args[i];
-      m = re1.exec(a);
+      arg = args[i];
+      match = reOption.exec(arg);
 
-      if (m !== null) {
-        k = m[1];
-        v = m[2];
+      if (match !== null) {
+        key = match[1];
+        value = match[2];
 
-        if (re2.test(v)) {
-          options[k] = parseFloat(v);
+        if (reNumeric.test(value)) {
+          options[key] = parseFloat(value);
         }
         else {
-          options[k] = v;
+          options[key] = value;
         }
       }
       else {
@@ -95,27 +95,27 @@
 /// @brief extract options from CLI options
 ////////////////////////////////////////////////////////////////////////////////
   var extractOptions = function (args) {
-    var co = extractCommandLineOptions(args);
-    if (3 < co.args.length) {
-      var options = JSON.parse(co.args[3]);
+    var opts = extractCommandLineOptions(args);
+    if (3 < opts.args.length) {
+      var options = JSON.parse(opts.args[3]);
 
       if (options.hasOwnProperty("configuration")) {
-        var k;
+        var key;
 
-        for (k in co.options) {
-          if (co.options.hasOwnProperty(k)) {
-            options.configuration[k] = co.options[k];
+        for (key in opts.options) {
+          if (opts.options.hasOwnProperty(key)) {
+            options.configuration[key] = opts.options[key];
           }
         }
       }
       else {
-        options.configuration = co.options;
+        options.configuration = opts.options;
       }
 
       return options;
     }
 
-    return { configuration: co.options };
+    return { configuration: opts.options };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,11 +211,11 @@
 /// Output:
 /// -
 ////////////////////////////////////////////////////////////////////////////////
-  var script = function(name, mount, options) {
+  var script = function(mount, name, options) {
     checkParameter(
-      "script(<name>, <mount>, [<options>])",
-      [ [ "Script name", "string" ], [ "Mount path", "string" ] ],
-      [ name, mount ] );
+      "script(<mount>, <name>, [<options>])",
+      [ [ "Mount path", "string" ], [ "Script name", "string" ] ],
+      [ mount, name ] );
     var res;
     var req = {
       name: name,
@@ -224,11 +224,7 @@
     };
     res = arango.POST("/_admin/foxx/script", JSON.stringify(req));
     arangosh.checkRequestResult(res);
-    return {
-      name: res.name,
-      version: res.version,
-      mount: res.mount
-    };
+    return res;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -564,17 +560,20 @@
     try {
       switch (type) {
         case "setup":
-          script("setup", args[1]);
+          script(args[1], "setup");
           break;
         case "teardown":
-          script("teardown", args[1]);
+          script(args[1], "teardown");
           break;
         case "script":
-          options = extractOptions(args);
-          script(args[2], args[1], options);
+          options = args.slice(3).map(function (arg) {
+            return JSON.parse(arg);
+          });
+          res = script(args[1], args[2], options);
+          printf(JSON.stringify(res, null, 2) + "\n");
           break;
         case "tests":
-          options = extractOptions(args);
+          options = args[2] ? JSON.parse(args[2]) : undefined;
           res = tests(args[1], options);
           printf(JSON.stringify(res, null, 2) + "\n");
           break;
@@ -659,7 +658,7 @@
              res.mount);
           break;
         case "configure":
-          options = extractOptions(args);
+          options = extractOptions(args).configuration || {};
           res = configure(args[1], options);
           printf("Reconfigured Application %s version %s on mount point %s\n",
              res.name,
@@ -671,7 +670,7 @@
           printf("Configuration options:\n%s\n", JSON.stringify(res, undefined, 2));
           break;
         case "set-dependencies":
-          options = extractOptions(args);
+          options = extractOptions(args).configuration || {};
           res = setDependencies(args[1], options);
           printf("Reconfigured dependencies of Application %s version %s on mount point %s\n",
              res.name,
@@ -683,17 +682,17 @@
           printf("Dependencies:\n%s\n", JSON.stringify(res, undefined, 2));
           break;
         default:
-          arangodb.printf("Unknown command '%s', please try:\n", type);
+          printf("Unknown command '%s', please try:\n", type);
           cmdUsage();
       }
       return 0;
     }
     catch (err) {
       if (err instanceof ArangoError) {
-        arangodb.printf("%s\n", err.errorMessage);
+        printf("%s\n", err.errorMessage);
       }
       else {
-        arangodb.printf("%s\n", err.message);
+        printf("%s\n", err.message);
       }
 
       return 1;
@@ -705,8 +704,8 @@
 // -----------------------------------------------------------------------------
 
   exports.install = install;
-  exports.setup = script.bind(null, "setup");
-  exports.teardown = script.bind(null, "teardown");
+  exports.setup = function (mount, opts) {return script(mount, "setup", opts);};
+  exports.teardown = function (mount, opts) {return script(mount, "teardown", opts);};
   exports.script = script;
   exports.tests = tests;
   exports.uninstall = uninstall;

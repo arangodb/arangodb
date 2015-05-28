@@ -238,8 +238,15 @@ function reloadUserFunctions () {
   var functions = { };
 
   c.toArray().forEach(function (f) {
-    var code = "(function() { var callback = " + f.code + "; return callback; })();";
     var key = f._key.replace(/:{1,}/g, '::');
+    var code;
+
+    if (f.code.match(/^\(?function\s+\(/)) {
+      code = f.code;
+    }
+    else {
+      code = "(function() { var callback = " + f.code + ";\n return callback; })();";
+    }
 
     try {
       var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")");
@@ -729,7 +736,7 @@ function FCALL_USER (name, parameters) {
     return FIX_VALUE(UserFunctions[prefix][name].func.apply(null, parameters));
   }
   catch (err) {
-    WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
+    WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
     return null;
   }
 }

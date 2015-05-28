@@ -38,8 +38,8 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/PrimaryIndex.h"
-#include "VocBase/barrier.h"
 #include "VocBase/collection.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
@@ -346,10 +346,10 @@ namespace triagens {
          }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief order a barrier for a collection
+/// @brief order a ditch for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-         TRI_barrier_t* orderBarrier (TRI_transaction_collection_t* trxCollection) {
+         triagens::arango::DocumentDitch* orderDitch (TRI_transaction_collection_t* trxCollection) {
            TRI_ASSERT(_trx != nullptr);
            TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
            TRI_ASSERT(trxCollection->_collection != nullptr);
@@ -357,17 +357,16 @@ namespace triagens {
            TRI_document_collection_t* document = trxCollection->_collection->_collection;
            TRI_ASSERT(document != nullptr);
 
-           if (trxCollection->_barrier == nullptr) {
-             trxCollection->_barrier = TRI_CreateBarrierElement(&document->_barrierList);
+           if (trxCollection->_ditch == nullptr) {
+             trxCollection->_ditch = document->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
+           }
+           else {
+             // tell everyone else this ditch is still in use,
+             // at least until the transaction is over
+             trxCollection->_ditch->setUsedByTransaction();
            }
 
-           if (trxCollection->_barrier != nullptr) {
-              // tell everyone else this barrier is still in use,
-              // at least until the transaction is over
-             reinterpret_cast<TRI_barrier_blocker_t*>(trxCollection->_barrier)->_usedByTransaction = true;
-           }
-
-           return trxCollection->_barrier;
+           return trxCollection->_ditch;
          }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,7 +403,7 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          if (orderBarrier(trxCollection) == nullptr) {
+          if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -492,7 +491,7 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          if (orderBarrier(trxCollection) == nullptr) {
+          if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -624,7 +623,7 @@ namespace triagens {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
           }
 
-          if (orderBarrier(trxCollection) == nullptr) {
+          if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -652,7 +651,7 @@ namespace triagens {
 
           TRI_ASSERT(mptr != nullptr);
 
-          if (orderBarrier(trxCollection) == nullptr) {
+          if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -852,7 +851,7 @@ namespace triagens {
             mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
           }
           else {
-            if (orderBarrier(trxCollection) == nullptr) {
+            if (orderDitch(trxCollection) == nullptr) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
@@ -895,7 +894,7 @@ namespace triagens {
           auto primaryIndex = document->primaryIndex()->internals();
 
           if (primaryIndex->_nrUsed > 0) {
-            if (orderBarrier(trxCollection) == nullptr) {
+            if (orderDitch(trxCollection) == nullptr) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
@@ -937,7 +936,7 @@ namespace triagens {
             return res;
           }
 
-          if (orderBarrier(trxCollection) == nullptr) {
+          if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -1017,7 +1016,7 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          if (orderBarrier(trxCollection) == nullptr) {
+          if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -1097,7 +1096,7 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          if (orderBarrier(trxCollection) == nullptr) {
+          if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -1141,7 +1140,7 @@ namespace triagens {
           auto primaryIndex = document->primaryIndex()->internals();
 
           if (primaryIndex->_nrUsed > 0) {
-            if (orderBarrier(trxCollection) == nullptr) {
+            if (orderDitch(trxCollection) == nullptr) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
             
@@ -1227,7 +1226,7 @@ namespace triagens {
 
           TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
 
-          if (orderBarrier(trxCollection) == nullptr) {
+          if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -1260,7 +1259,7 @@ namespace triagens {
 
           std::vector<std::string> ids;
 
-          if (orderBarrier(trxCollection) == nullptr) {
+          if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 

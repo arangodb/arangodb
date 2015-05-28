@@ -28,47 +28,42 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocbaseprivate.h"
-#include "v8-wrapshapedjson.h"
-#include "v8-replication.h"
-#include "v8-vocindex.h"
-#include "v8-collection.h"
-#include "v8-voccursor.h"
-#include "V8Traverser.h"
-
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Utf8Helper.h"
-
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
 #include "Basics/MutexLocker.h"
-#include "Utils/transactions.h"
-#include "Utils/V8ResolverGuard.h"
-
-#include "HttpServer/ApplicationEndpointServer.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
-#include "V8/V8LineEditor.h"
-#include "Wal/LogfileManager.h"
-
-#include "VocBase/auth.h"
-#include "VocBase/key-generator.h"
-#include "v8.h"
-#include "V8/JSLoader.h"
-
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-
-#include "unicode/timezone.h"
-#include "unicode/smpdtfmt.h"
-#include "unicode/dtfmtsym.h"
-
+#include "HttpServer/ApplicationEndpointServer.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
+#include "Utils/transactions.h"
+#include "Utils/V8ResolverGuard.h"
+#include "V8/JSLoader.h"
+#include "V8/v8-conv.h"
+#include "V8/v8-utils.h"
+#include "V8/V8LineEditor.h"
+#include "V8Server/v8-collection.h"
+#include "V8Server/v8-replication.h"
+#include "V8Server/v8-voccursor.h"
+#include "V8Server/v8-vocindex.h"
+#include "V8Server/v8-wrapshapedjson.h"
+#include "V8Server/V8Traverser.h"
+#include "VocBase/auth.h"
+#include "VocBase/key-generator.h"
+#include "Wal/LogfileManager.h"
+
+#include <unicode/timezone.h>
+#include <unicode/smpdtfmt.h>
+#include <unicode/dtfmtsym.h>
+
+#include <v8.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -110,14 +105,15 @@ int32_t const WRP_VOCBASE_COL_TYPE = 2;
 // --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
 
-struct CollectionBarrierInfo {
-  TRI_barrier_t* barrier;
+struct CollectionDitchInfo {
+  triagens::arango::DocumentDitch* ditch;
   TRI_transaction_collection_t* col;
 
-  CollectionBarrierInfo(
-    TRI_barrier_t* barrier,
-    TRI_transaction_collection_t* col
-  ) : barrier(barrier), col(col) {}
+  CollectionDitchInfo (triagens::arango::DocumentDitch* ditch,
+                       TRI_transaction_collection_t* col) 
+    : ditch(ditch),
+      col(col) {
+  }
 };
 
 // -----------------------------------------------------------------------------
@@ -240,11 +236,11 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
           break;
         }
 
-        readCollections.push_back(TRI_ObjectToString(collection));
+        readCollections.emplace_back(TRI_ObjectToString(collection));
       }
     }
     else if (collections->Get(TRI_V8_ASCII_STRING("read"))->IsString()) {
-      readCollections.push_back(TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("read"))));
+      readCollections.emplace_back(TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("read"))));
     }
     else {
       isValid = false;
@@ -263,11 +259,11 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
           break;
         }
 
-        writeCollections.push_back(TRI_ObjectToString(collection));
+        writeCollections.emplace_back(TRI_ObjectToString(collection));
       }
     }
     else if (collections->Get(TRI_V8_ASCII_STRING("write"))->IsString()) {
-      writeCollections.push_back(TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("write"))));
+      writeCollections.emplace_back(TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("write"))));
     }
     else {
       isValid = false;
@@ -1526,11 +1522,11 @@ static v8::Local<v8::String> EdgeIdToString (v8::Isolate* isolate,
 static v8::Handle<v8::Value> VertexIdToData (v8::Isolate* isolate,
                                              CollectionNameResolver const* resolver,
                                              ExplicitTransaction* trx,
-                                             unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> const& barriers,
+                                             unordered_map<TRI_voc_cid_t, CollectionDitchInfo> const& ditches,
                                              VertexId const& vertexId) {
-  auto i = barriers.find(vertexId.cid);
+  auto i = ditches.find(vertexId.cid);
 
-  if (i == barriers.end()) {
+  if (i == ditches.end()) {
     v8::EscapableHandleScope scope(isolate);
     return scope.Escape<v8::Value>(v8::Null(isolate));
   }
@@ -1544,7 +1540,7 @@ static v8::Handle<v8::Value> VertexIdToData (v8::Isolate* isolate,
     return scope.Escape<v8::Value>(v8::Null(isolate));
   }
 
-  return TRI_WrapShapedJson(isolate, resolver, i->second.barrier,
+  return TRI_WrapShapedJson(isolate, resolver, i->second.ditch,
       vertexId.cid, i->second.col->_collection->_collection, document.getDataPtr());
 }
 
@@ -1555,10 +1551,10 @@ static v8::Handle<v8::Value> VertexIdToData (v8::Isolate* isolate,
 static v8::Handle<v8::Value> EdgeIdToData (v8::Isolate* isolate,
                                            CollectionNameResolver const* resolver,
                                            ExplicitTransaction* trx,
-                                           unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> const& barriers,
+                                           unordered_map<TRI_voc_cid_t, CollectionDitchInfo> const& ditches,
                                            EdgeId const& edgeId) {
   // EdgeId is a typedef of VertexId.
-  return VertexIdToData(isolate, resolver, trx, barriers, edgeId);
+  return VertexIdToData(isolate, resolver, trx, ditches, edgeId);
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -1600,26 +1596,26 @@ static void ExtractCidsFromPath (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Request a barrier for the given collection
+/// @brief Request a ditch for the given collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AddBarrier (ExplicitTransaction* trx,
-                       TRI_voc_cid_t const& cid,
-                       unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers) {
-  TRI_transaction_collection_t* dcol = trx->trxCollection(cid);
+static void AddDitch (ExplicitTransaction* trx,
+                      TRI_voc_cid_t const& cid,
+                      unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches) {
+  TRI_transaction_collection_t* col = trx->trxCollection(cid);
 
-  TRI_barrier_t* barrier = trx->orderBarrier(dcol);
+  auto ditch = trx->orderDitch(col);
 
-  if (barrier == nullptr) {
+  if (ditch == nullptr) {
     throw TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  barriers.emplace(cid, CollectionBarrierInfo(barrier, dcol));
+  ditches.emplace(cid, CollectionDitchInfo(ditch, col));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Start a new transaction for the given collections and request
-///        all necessary barriers.
+///        all necessary ditches.
 ///        The caller is responsible to finish and delete the transaction.
 ///        If this function throws the transaction is non-existent.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1628,7 +1624,7 @@ static ExplicitTransaction* BeginTransaction (TRI_vocbase_t* vocbase,
                                               vector<TRI_voc_cid_t> const& readCollections,
                                               vector<TRI_voc_cid_t> const& writeCollections,
                                               CollectionNameResolver const* resolver,
-                                              unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers) {
+                                              unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches) {
 
   // IHHF isCoordinator
   double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
@@ -1654,16 +1650,16 @@ static ExplicitTransaction* BeginTransaction (TRI_vocbase_t* vocbase,
   }
 
   try {
-    // Get all barriers at once
+    // Get all ditches at once
     for (auto const& it : readCollections) {
-      AddBarrier(trx, it, barriers);
+      AddDitch(trx, it, ditches);
     }
     for (auto const& it : writeCollections) {
-      AddBarrier(trx, it, barriers);
+      AddDitch(trx, it, ditches);
     }
   } 
   catch (int&) {
-    // Could not get a barrier.
+    // Could not get a ditch
     // Abort the collection and free the pointers
     trx->abort();
     delete trx;
@@ -1680,7 +1676,7 @@ static v8::Handle<v8::Value> PathIdsToV8 (v8::Isolate* isolate,
                                           TRI_vocbase_t* vocbase,
                                           CollectionNameResolver const* resolver,
                                           ArangoDBPathFinder::Path const& p,
-                                          unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
+                                          unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
                                           bool& includeData) {
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -1695,14 +1691,14 @@ static v8::Handle<v8::Value> PathIdsToV8 (v8::Isolate* isolate,
     vector<TRI_voc_cid_t> readCollections;
     ExtractCidsFromPath(vocbase, p, readCollections);
     vector<TRI_voc_cid_t> writeCollections;
-    unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
+    unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
     ExplicitTransaction* trx = BeginTransaction(vocbase, readCollections,
-                                                writeCollections, resolver, barriers);
+                                                writeCollections, resolver, ditches);
     for (uint32_t j = 0;  j < vn;  ++j) {
-      vertices->Set(j, VertexIdToData(isolate, resolver, trx, barriers, p.vertices[j]));
+      vertices->Set(j, VertexIdToData(isolate, resolver, trx, ditches, p.vertices[j]));
     }
     for (uint32_t j = 0;  j < en;  ++j) {
-      edges->Set(j, EdgeIdToData(isolate, resolver, trx, barriers, p.edges[j]));
+      edges->Set(j, EdgeIdToData(isolate, resolver, trx, ditches, p.edges[j]));
     }
     trx->finish(0);
     delete trx;
@@ -1959,12 +1955,11 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     readCollections.emplace_back(resolver->getCollectionId(it));
   }
 
-  // Start the transaction and
-  // Order Barriers
-  unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
+  // Start the transaction and order ditches
+  unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
   ExplicitTransaction* trx = nullptr;
   try {
-    trx = BeginTransaction(vocbase, readCollections, writeCollections, resolver, barriers);
+    trx = BeginTransaction(vocbase, readCollections, writeCollections, resolver, ditches);
   } 
   catch (int e) {
     // Nothing to clean up. Throw the error to V8
@@ -1987,7 +1982,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   if (opts.useWeight) {
     for (auto const& it : edgeCollectionNames) {
       auto cid = resolver->getCollectionId(it);
-      auto colObj = barriers.find(cid)->second.col->_collection->_collection;
+      auto colObj = ditches.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
         cid,
         colObj,
@@ -2000,7 +1995,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   else {
     for (auto const& it : edgeCollectionNames) {
       auto cid = resolver->getCollectionId(it);
-      auto colObj = barriers.find(cid)->second.col->_collection->_collection;
+      auto colObj = ditches.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
         cid,
         colObj,
@@ -2011,7 +2006,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   
   for(auto const& it : vertexCollectionNames) {
     auto cid = resolver->getCollectionId(it);
-    auto colObj = barriers.find(cid)->second.col;
+    auto colObj = ditches.find(cid)->second.col;
     vertexCollectionInfos.emplace_back(new VertexCollectionInfo(
       cid,
       colObj
@@ -2091,7 +2086,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   // Adding additional locks on vertex collections at this point to the transaction
   // would cause dead-locks.
   // Will be fixed automatically with new MVCC version.
-  auto result = PathIdsToV8(isolate, vocbase, resolver, *path, barriers, includeData);
+  auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
   TRI_V8_RETURN(result);
 }
 
@@ -2103,7 +2098,7 @@ static v8::Handle<v8::Value> VertexIdsToV8 (v8::Isolate* isolate,
                                             ExplicitTransaction* trx,
                                             CollectionNameResolver const* resolver,
                                             vector<VertexId>& ids,
-                                            unordered_map<TRI_voc_cid_t, CollectionBarrierInfo>& barriers,
+                                            unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
                                             bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
   uint32_t const vn = static_cast<uint32_t>(ids.size());
@@ -2111,7 +2106,7 @@ static v8::Handle<v8::Value> VertexIdsToV8 (v8::Isolate* isolate,
 
   if (includeData) {
     for (uint32_t j = 0;  j < vn;  ++j) {
-      vertices->Set(j, VertexIdToData(isolate, resolver, trx, barriers, ids[j]));
+      vertices->Set(j, VertexIdToData(isolate, resolver, trx, ditches, ids[j]));
     }
   } 
   else {
@@ -2252,11 +2247,11 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     readCollections.emplace_back(resolver->getCollectionId(it));
   }
 
-  unordered_map<TRI_voc_cid_t, CollectionBarrierInfo> barriers;
+  unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
   // Start the transaction
   try {
     trx = BeginTransaction(vocbase, readCollections, writeCollections,
-                           resolver, barriers);
+                           resolver, ditches);
   } 
   catch (int e) {
     // Nothing to clean up. Throw the error to V8
@@ -2266,7 +2261,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
   vector<EdgeCollectionInfo*> edgeCollectionInfos;
   for (auto const& it : edgeCollectionNames) {
     auto cid = resolver->getCollectionId(it);
-    auto colObj = barriers.find(cid)->second.col->_collection->_collection;
+    auto colObj = ditches.find(cid)->second.col->_collection->_collection;
     edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
       cid,
       colObj,
@@ -2277,8 +2272,8 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
   vector<VertexCollectionInfo*> vertexCollectionInfos;
   for(auto it : vertexCollectionNames) {
     auto cid = resolver->getCollectionId(it);
-    auto colObj = barriers.find(cid)->second.col;
-    vertexCollectionInfos.push_back(new VertexCollectionInfo(
+    auto colObj = ditches.find(cid)->second.col;
+    vertexCollectionInfos.emplace_back(new VertexCollectionInfo(
       cid,
       colObj
     ));
@@ -2354,7 +2349,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     }
   }
 
-  auto result = VertexIdsToV8(isolate, trx, resolver, neighbors, barriers, includeData);
+  auto result = VertexIdsToV8(isolate, trx, resolver, neighbors, ditches, includeData);
 
   cleanup();
   trx->finish(res);
@@ -2523,10 +2518,10 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
         TRI_GET_GLOBALS();
 
         TRI_GET_GLOBAL_STRING(_IdKey);
-        TRI_GET_GLOBAL_STRING(VersionKey);
+        TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (value->Has(_IdKey)) {
-          TRI_voc_cid_t cachedCid = static_cast<TRI_voc_cid_t>(TRI_ObjectToUInt64(value->Get(_IdKey), true));
-          uint32_t cachedVersion = (uint32_t) TRI_ObjectToInt64(value->Get(VersionKey));
+          auto cachedCid = static_cast<TRI_voc_cid_t>(TRI_ObjectToUInt64(value->Get(_IdKey), true));
+          uint32_t cachedVersion = (uint32_t) TRI_ObjectToInt64(value->Get(VersionKeyHidden));
 
           if (cachedCid == cid && cachedVersion == internalVersion) {
             // cache hit
@@ -2534,7 +2529,7 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
           }
 
           // store the updated version number in the object for future comparisons
-          value->ForceSet(VersionKey, v8::Number::New(isolate, (double) internalVersion), v8::DontEnum);
+          value->ForceSet(VersionKeyHidden, v8::Number::New(isolate, (double) internalVersion), v8::DontEnum);
 
           // cid has changed (i.e. collection has been dropped and re-created) or version has changed
         }

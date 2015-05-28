@@ -128,11 +128,11 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/v8-util.cpp \
 	arangod/V8Server/v8-wrapshapedjson.cpp \
 	arangod/VocBase/auth.cpp \
-	arangod/VocBase/barrier.cpp \
 	arangod/VocBase/cleanup.cpp \
 	arangod/VocBase/collection.cpp \
 	arangod/VocBase/compactor.cpp \
 	arangod/VocBase/datafile.cpp \
+	arangod/VocBase/Ditch.cpp \
 	arangod/VocBase/document-collection.cpp \
 	arangod/VocBase/ExampleMatcher.cpp \
 	arangod/VocBase/edge-collection.cpp \

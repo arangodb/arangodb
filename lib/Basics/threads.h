@@ -126,6 +126,12 @@ bool TRI_IsSelfThread (TRI_thread_t* thread);
 
 void TRI_AllowCancelation (void);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the process affinity
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetProcessorAffinity (TRI_thread_t*, size_t core);
+
 #endif
 
 // -----------------------------------------------------------------------------

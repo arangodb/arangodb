@@ -32,8 +32,8 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/transactions.h"
-#include "VocBase/barrier.h"
 #include "VocBase/compactor.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::arango;
@@ -51,7 +51,7 @@ CollectionExport::CollectionExport (TRI_vocbase_t* vocbase,
                                     Restrictions const& restrictions)
   : _guard(nullptr),
     _document(nullptr),
-    _barrier(nullptr),
+    _ditch(nullptr),
     _name(name),
     _resolver(vocbase),
     _restrictions(restrictions),
@@ -68,8 +68,8 @@ CollectionExport::CollectionExport (TRI_vocbase_t* vocbase,
 CollectionExport::~CollectionExport () {
   delete _documents;
 
-  if (_barrier != nullptr) {
-    TRI_FreeBarrier(_barrier);
+  if (_ditch != nullptr) {
+    _ditch->ditches()->freeDocumentDitch(_ditch, false);
   }
 
   delete _guard;
@@ -86,14 +86,14 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
     usleep(5000);
   }
  
-  // create a barrier under the compaction lock 
-  _barrier = TRI_CreateBarrierElement(&_document->_barrierList);
+  // create a ditch under the compaction lock 
+  _ditch = _document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
   
   // release the lock
   TRI_UnlockCompactorVocBase(_document->_vocbase);
 
-  // now we either have a barrier or not
-  if (_barrier == nullptr) {
+  // now we either have a ditch or not
+  if (_ditch == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 

@@ -286,7 +286,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_accessType       = accessType;
   trxCollection->_nestingLevel     = nestingLevel;
   trxCollection->_collection       = nullptr;
-  trxCollection->_barrier          = nullptr;
+  trxCollection->_ditch            = nullptr;
   trxCollection->_operations       = nullptr;
   trxCollection->_originalRevision = 0;
   trxCollection->_lockType         = TRI_TRANSACTION_NONE;
@@ -307,18 +307,18 @@ static void FreeCollection (TRI_transaction_collection_t* trxCollection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees an unused barrier if it exists
+/// @brief frees an unused ditch if it exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeBarrier (TRI_transaction_collection_t* trxCollection) {
-  if (trxCollection->_barrier != nullptr) {
-    // we're done with this barrier
-    auto barrier = reinterpret_cast<TRI_barrier_blocker_t*>(trxCollection->_barrier);
+static void FreeDitch (TRI_transaction_collection_t* trxCollection) {
+  auto ditch = trxCollection->_ditch;
 
-    TRI_FreeBarrier(barrier, true /* fromTransaction */ );
-    // If some external entity is still using the barrier, it is kept!
+  if (ditch != nullptr) {
+    // we're done with this ditch
+    ditch->ditches()->freeDocumentDitch(ditch, true /* fromTransaction */);
+    // If some external entity is still using the ditch, it is kept!
 
-    trxCollection->_barrier = nullptr;
+    trxCollection->_ditch = nullptr;
   }
 }
 
@@ -841,7 +841,7 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
   while (i-- > 0) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
-    FreeBarrier(trxCollection);
+    FreeDitch(trxCollection);
     FreeCollection(trxCollection);
   }
 
