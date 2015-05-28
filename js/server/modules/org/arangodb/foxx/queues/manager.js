@@ -1,7 +1,5 @@
 'use strict';
 
-/*global KEY_SET, KEY_GET, KEYSPACE_CREATE */
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx queues manager
 ///
@@ -29,11 +27,11 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var QUEUE_MANAGER_PERIOD = 1000, // in ms
-  _ = require('underscore'),
-  tasks = require('org/arangodb/tasks'),
-  db = require('org/arangodb').db,
-  SkipAttempts = 10;
+var _ = require('underscore');
+var tasks = require('org/arangodb/tasks');
+var db = require('org/arangodb').db;
+var skipAttempts = 10;
+var qb = require('aqb');
 
 var runInDatabase = function () {
   db._executeTransaction({
@@ -52,13 +50,15 @@ var runInDatabase = function () {
         }
         db._createStatement({
           query: (
-            'FOR job IN _jobs'
-              + ' FILTER job.queue == @queue'
-              + ' && job.status == "pending"'
-              + ' && job.delayUntil <= @now'
-              + ' SORT job.delayUntil ASC'
-              + ' LIMIT @max'
-              + ' RETURN job'
+            qb.for('job').in('_jobs')
+            .filter(
+              qb('pending').eq('job.status')
+              .and(qb.ref('@queue').eq('job.queue'))
+              .and(qb.ref('@now').gte('job.delayUntil'))
+            )
+            .sort('job.delayUntil', 'ASC')
+            .limit('@max')
+            .return('job')
           ),
           bindVars: {
             queue: queue._key,
@@ -81,49 +81,36 @@ var runInDatabase = function () {
 };
 
 exports.manage = function (runInSystemOnly) {
-  var dbName = db._name();
+  var initialDatabase = db._name();
 
-  var databases;
-  if (runInSystemOnly) {
-    // only run jobs found in queues of _system database
-    databases = [ "_system" ];
-  } 
-  else {
-    // check all databases
-    databases = db._listDatabases();
-  }
+  var databases = runInSystemOnly ? ['_system'] : db._listDatabases();
 
-  // loop over all databases
-  for (var i = 0;  i < databases.length;  ++i) {
-    var current = databases[i];
-
+  databases.forEach(function (database) {
     try {
-      // switch into dedicated database
-      db._useDatabase(current);
-    
-      KEYSPACE_CREATE("queue-control", 1, true);
+      db._useDatabase(database);
 
-      var skip = KEY_GET("queue-control", "skip") || 0;
-      skip--;
+      global.KEYSPACE_CREATE("queue-control", 1, true);
+
+      var skip = (global.KEY_GET("queue-control", "skip") || 0) - 1;
 
       if (skip <= 0) {
         // fetch _queues and _jobs collections
         var queues = db._collection("_queues");
 
-        if (queues === null || queues.count() === 0) {
-          skip = SkipAttempts;
+        if (!queues || !queues.count()) {
+          skip = skipAttempts;
         }
       }
 
       if (skip <= 0) {
         var jobs = db._collection("_jobs");
 
-        if (jobs === null || jobs.count() === 0) {
-          skip = SkipAttempts;
+        if (!jobs || !jobs.count()) {
+          skip = skipAttempts;
         }
       }
 
-      // both collections exist and there exist documents in them
+      // both collections exist and there are documents in them
 
       if (skip <= 0) {
         runInDatabase();
@@ -133,27 +120,27 @@ exports.manage = function (runInSystemOnly) {
         skip = 1;
       }
 
-      KEY_SET("queue-control", "skip", skip);
+      global.KEY_SET("queue-control", "skip", skip);
     }
-    catch (err) {
+    catch (e) {
     }
-  }
+  });
 
   // switch back into previous database
-  db._useDatabase(dbName);
+  db._useDatabase(initialDatabase);
 };
 
 exports.run = function () {
   var options = require("internal").options();
 
   // restrict Foxx queues to _system database only?
-  var runInSystemOnly = true; // default value
+  var runInSystemOnly = true;
   if (options.hasOwnProperty("server.foxx-queues-system-only")) {
     runInSystemOnly = options["server.foxx-queues-system-only"];
   }
- 
+
   // wakeup/poll interval for Foxx queues
-  var period = QUEUE_MANAGER_PERIOD / 1000; // default queue poll interval
+  var period = 1;
   if (options.hasOwnProperty("server.foxx-queues-poll-interval")) {
     period = options["server.foxx-queues-poll-interval"];
   }
@@ -166,6 +153,6 @@ exports.run = function () {
     },
     period: period,
     isSystem: true,
-    params: { runInSystemOnly: runInSystemOnly }
+    params: {runInSystemOnly: runInSystemOnly}
   });
 };

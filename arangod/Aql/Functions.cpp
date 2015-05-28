@@ -34,6 +34,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/Utf8Helper.h"
 #include "Rest/SslInterface.h"
 
 using namespace triagens::aql;
@@ -70,6 +71,40 @@ static void RegisterInvalidArgumentWarning (triagens::aql::Query* query,
   RegisterWarning(query, functionName, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a boolean parameter from an array
+////////////////////////////////////////////////////////////////////////////////
+
+static bool GetBooleanParameter (triagens::arango::AqlTransaction* trx,
+                                 TRI_document_collection_t const* collection,
+                                 AqlValue const& parameters,
+                                 size_t startParameter,
+                                 bool defaultValue) {
+  size_t const n = parameters.arraySize();
+
+  if (startParameter >= n) {
+    return defaultValue;  
+  }
+    
+  Json temp = parameters.extractArrayMember(trx, collection, startParameter, false);
+  auto const valueJson = temp.json();
+
+  if (TRI_IsBooleanJson(valueJson)) {
+    return valueJson->_value._boolean;
+  } 
+  if (TRI_IsNumberJson(valueJson)) {
+    return valueJson->_value._number != 0.0;
+  }
+  if (TRI_IsStringJson(valueJson)) {
+    return *(valueJson->_value._string.data) != '\0';
+  }
+  if (TRI_IsArrayJson(valueJson) || TRI_IsObjectJson(valueJson)) {
+    return true;
+  }
+
+  return false;
+}
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract attribute names from the arguments
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,6 +600,83 @@ AqlValue Functions::Has (triagens::aql::Query* query,
  
   bool const hasAttribute = (TRI_LookupObjectJson(value.json(), p) != nullptr);
   return AqlValue(new Json(hasAttribute));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function ATTRIBUTES
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Attributes (triagens::aql::Query* query,
+                                triagens::arango::AqlTransaction* trx,
+                                TRI_document_collection_t const* collection,
+                                AqlValue const parameters) {
+  size_t const n = parameters.arraySize();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(new Json(Json::Null));
+  }
+    
+  Json value(parameters.extractArrayMember(trx, collection, 0, false));
+
+  if (! value.isObject()) {
+    // not an object
+    RegisterWarning(query, "ATTRIBUTES", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+ 
+  bool const removeInternal = GetBooleanParameter(trx, collection, parameters, 1, false);
+  bool const doSort = GetBooleanParameter(trx, collection, parameters, 2, false);
+
+  auto const valueJson = value.json();
+  TRI_ASSERT(TRI_IsObjectJson(valueJson));
+
+  size_t const numValues = TRI_LengthVectorJson(valueJson);
+
+  if (numValues == 0) {
+    // empty object
+    return AqlValue(new Json(Json::Object));
+  }
+
+  std::vector<std::pair<char const*, size_t>> sortPositions;
+  sortPositions.reserve(numValues / 2);
+
+  // create a vector with positions into the object
+  for (size_t i = 0; i < numValues; i += 2) {
+    auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, i));
+
+    if (! TRI_IsStringJson(key)) {
+      // somehow invalid
+      continue;
+    }
+
+    if (removeInternal && *key->_value._string.data == '_') {
+      // skip attribute
+      continue;
+    }
+
+    sortPositions.emplace_back(std::make_pair(key->_value._string.data, i));
+  }
+
+  if (doSort) {
+    // sort according to attribute name
+    std::sort(sortPositions.begin(), sortPositions.end(), [] (std::pair<char const*, size_t> const& lhs,
+                                                              std::pair<char const*, size_t> const& rhs) -> bool {
+      return TRI_compare_utf8(lhs.first, rhs.first) < 0;
+    });
+  }
+
+  // create the output
+  Json result(Json::Array, sortPositions.size());
+
+  // iterate over either sorted or unsorted object 
+  for (auto const& it : sortPositions) {
+    auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, it.second));
+
+    result.add(Json(std::string(key->_value._string.data, key->_value._string.length - 1)));
+  } 
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

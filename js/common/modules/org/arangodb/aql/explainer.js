@@ -119,7 +119,7 @@ function wrap (str, width) {
 function printQuery (query) {
   'use strict';
   stringBuilder.appendLine(section("Query string:"));
-  stringBuilder.appendLine(" " + value(wrap(query, 100).replace(/\n/g, "\n ", query)));
+  stringBuilder.appendLine(" " + value(wrap(query, 100).replace(/\n+/g, "\n ", query)));
   stringBuilder.appendLine(); 
 }
 
@@ -326,6 +326,8 @@ function processQuery (query, explain) {
         return "{ }";
       case "object element":
         return value(JSON.stringify(node.name)) + " : " + buildExpression(node.subNodes[0]);
+      case "calculated object element":
+        return "[ " + buildExpression(node.subNodes[0]) + " ] : " + buildExpression(node.subNodes[1]);
       case "array":
         if (node.hasOwnProperty("subNodes")) {
           return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";
@@ -456,9 +458,9 @@ function processQuery (query, explain) {
         index.collection = node.collection;
         index.node = node.id;
         indexes.push(index);
-        return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + node.index.type + " index scan") + annotation("*/");
+        return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + node.index.type + " index scan */");
       case "CalculationNode":
-        return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression);
+        return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");
       case "FilterNode":
         return keyword("FILTER") + " " + variableName(node.inVariable);
       case "AggregateNode":

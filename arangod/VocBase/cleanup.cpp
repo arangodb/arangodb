@@ -28,13 +28,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "cleanup.h"
-
 #include "Basics/files.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Utils/CursorRepository.h"
-#include "VocBase/barrier.h"
 #include "VocBase/compactor.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
@@ -80,148 +79,107 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
 
   // loop until done
   while (true) {
-    TRI_barrier_list_t* container = &document->_barrierList;
-    TRI_barrier_t* element = nullptr;
+    auto ditches = document->ditches();
 
     // check and remove all callback elements at the beginning of the list
-    TRI_LockSpin(&container->_lock);
+    auto callback = [&] (triagens::arango::Ditch const* ditch) -> bool {
+      if (ditch->type() == triagens::arango::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
+        // check if we can really unload, this is only the case if the collection's WAL markers
+        // were fully collected
 
-    // check the element on top of the barrier list
-    if (container->_begin == nullptr) {
-      // nothing to do
-      TRI_UnlockSpin(&container->_lock);
+        if (! unloadChecked && ! isInShutdown) {
+          return false;
+        }
+        // fall-through intentional
+      }
+      else {
+        // retry in next iteration
+        unloadChecked = false;
+      }
+   
+      return true;
+    };
+
+
+    bool popped = false;
+    auto ditch = ditches->process(popped, callback);
+
+    if (ditch == nullptr) {
+      // absolutely nothing to do
       return;
     }
 
-    // if it is a TRI_BARRIER_ELEMENT, it means that there is still a reference held
-    // to document data in a datafile. We must then not unload or remove a file
-    if (container->_begin->_type == TRI_BARRIER_ELEMENT ||
-        container->_begin->_type == TRI_BARRIER_COLLECTION_REPLICATION ||
-        container->_begin->_type == TRI_BARRIER_COLLECTION_COMPACTION ||
-        container->_numBarrierElements > 0) {
-      // did not find anything at the head of the barrier list or found an element marker
-      // this means we must exit and cannot throw away datafiles and can unload collections
+    TRI_ASSERT(ditch != nullptr);
 
-      TRI_UnlockSpin(&container->_lock);
-      return;
-    }
+    if (! popped) {
+      if (! TRI_IsFullyCollectedDocumentCollection(document)) {
+        bool isDeleted = false;
 
-    // no TRI_BARRIER_ELEMENT at the head of the barrier list. This means that there is
-    // some other action we can perform (i.e. unloading a datafile or a collection)
-
-    // note that there is no need to check the entire list for a TRI_BARRIER_ELEMENT as
-    // the list is filled up in chronological order. New barriers are always added to the
-    // tail of the list, and if we have the following list
-    // HEAD -> TRI_BARRIER_DATAFILE_CALLBACK -> TRI_BARRIER_ELEMENT
-    // then it is still safe to execute the datafile callback operation, even if there
-    // is a TRI_BARRIER_ELEMENT after it.
-    // This is the case because the TRI_BARRIER_DATAFILE_CALLBACK is only put into the
-    // barrier list after changing the pointers in all headers. After the pointers are
-    // changed, it is safe to unload/remove an old datafile (that noone points to). And
-    // any newer TRI_BARRIER_ELEMENTS will always reference data inside other datafiles.
-
-    element = container->_begin;
-    TRI_ASSERT(element != nullptr);
-
-    if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
-      // check if we can really unload, this is only the case if the collection's WAL markers
-      // were fully collected
-
-      if (! unloadChecked && ! isInShutdown) {
-        // we must release the lock temporarily to check if the collection is fully collected
-        TRI_UnlockSpin(&container->_lock);
-
-        // must not hold the spin lock while querying the collection
-        if (! TRI_IsFullyCollectedDocumentCollection(document)) {
-          bool isDeleted = false;
-
-          // if there is still some garbage collection to perform, 
-          // check if the collection was deleted already
-          if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-            isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
-            TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-          }
-
-          if (! isDeleted && TRI_IsDeletedVocBase(collection->_vocbase)) {
-             // the collection was not marked as deleted, but the database was
-             isDeleted = true;
-           }
-
-          if (! isDeleted) {
-            // collection is not fully collected and still undeleted - postpone the unload
-            return;
-          }
-          // if deleted, then we may unload / delete
+        // if there is still some garbage collection to perform, 
+        // check if the collection was deleted already
+        if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
+          isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
+          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
         }
 
-        unloadChecked = true;
-        continue;
+        if (! isDeleted && TRI_IsDeletedVocBase(collection->_vocbase)) {
+          // the collection was not marked as deleted, but the database was
+          isDeleted = true;
+        }
+
+        if (! isDeleted) {
+          // collection is not fully collected and still undeleted - postpone the unload
+          return;
+        }
+        // if deleted, then we may unload / delete
       }
-      // fall-through intentional
-    }
-    else {
-      // retry in next iteration
-      unloadChecked = false;
+
+      unloadChecked = true;
+      continue;
     }
 
-    // found an element to go on with
-    container->_begin = element->_next;
+    // if we got here, the ditch was already unlinked from the list of ditches
+    // if we free it, we therefore must not use the freeDitch method!
 
-    if (element->_next == nullptr) {
-      container->_end = nullptr;
-    }
-    else {
-      element->_next->_prev = nullptr;
-    }
-
-    // yes, we can release the lock here
-    TRI_UnlockSpin(&container->_lock);
-
-    // someone else might now insert a new TRI_BARRIER_ELEMENT here, but it will
+    // someone else might now insert a new TRI_DITCH_DOCUMENT now, but it will
     // always refer to a different datafile than the one that we will now unload
 
     // execute callback, sone of the callbacks might delete or free our collection
-    if (element->_type == TRI_BARRIER_DATAFILE_DROP_CALLBACK) {
-      TRI_barrier_datafile_drop_cb_t* de = (TRI_barrier_datafile_drop_cb_t*) element;
+    auto const type = ditch->type();
 
-      de->callback(de->_datafile, de->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+    if (type == triagens::arango::Ditch::TRI_DITCH_DATAFILE_DROP) {
+      dynamic_cast<triagens::arango::DropDatafileDitch*>(ditch)->executeCallback();
+      delete ditch;
       // next iteration
     }
-    else if (element->_type == TRI_BARRIER_DATAFILE_RENAME_CALLBACK) {
-      TRI_barrier_datafile_rename_cb_t* de = (TRI_barrier_datafile_rename_cb_t*) element;
-
-      de->callback(de->_datafile, de->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+    else if (type == triagens::arango::Ditch::TRI_DITCH_DATAFILE_RENAME) {
+      dynamic_cast<triagens::arango::RenameDatafileDitch*>(ditch)->executeCallback();
+      delete ditch;
       // next iteration
     }
-    else if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
-      // collection is unloaded
-      TRI_barrier_collection_cb_t* ce = (TRI_barrier_collection_cb_t*) element;
-
-      bool hasUnloaded = ce->callback(ce->_collection, ce->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+    else if (type == triagens::arango::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
+      // collection will be unloaded
+      bool hasUnloaded = dynamic_cast<triagens::arango::UnloadCollectionDitch*>(ditch)->executeCallback();
+      delete ditch;
 
       if (hasUnloaded) {
         // this has unloaded and freed the collection
         return;
       }
     }
-    else if (element->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK) {
-      // collection is dropped
-      TRI_barrier_collection_cb_t* ce = (TRI_barrier_collection_cb_t*) element;
+    else if (type == triagens::arango::Ditch::TRI_DITCH_COLLECTION_DROP) {
+      // collection will be dropped
+      bool hasDropped = dynamic_cast<triagens::arango::DropCollectionDitch*>(ditch)->executeCallback();
+      delete ditch;
 
-      bool hasUnloaded = ce->callback(ce->_collection, ce->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-
-      if (hasUnloaded) {
+      if (hasDropped) {
         // this has dropped the collection
         return;
       }
     }
     else {
       // unknown type
-      LOG_FATAL_AND_EXIT("unknown barrier type '%d'", (int) element->_type);
+      LOG_FATAL_AND_EXIT("unknown ditch type '%d'", (int) type);
     }
 
     // next iteration
@@ -255,13 +213,13 @@ static void CleanupCursors (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CleanupVocBase (void* data) {
-  TRI_vector_pointer_t collections;
   uint64_t iterations = 0;
 
   TRI_vocbase_t* const vocbase = static_cast<TRI_vocbase_t*>(data);
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(vocbase->_state == 1);
 
+  TRI_vector_pointer_t collections;
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   while (true) {

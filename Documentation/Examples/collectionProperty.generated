@@ -8,5 +8,6 @@ arangosh> db.example.properties({ waitForSync : true });
   "keyOptions" : { 
     "type" : "traditional", 
     "allowUserKeys" : true 
-  } 
+  }, 
+  "indexBuckets" : 1 
 }

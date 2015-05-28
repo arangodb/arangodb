@@ -36,8 +36,8 @@
 #include "Basics/ReadWriteLockCPP11.h"
 #include "Basics/fasthash.h"
 #include "Basics/JsonHelper.h"
-#include "VocBase/barrier.h"
 #include "VocBase/collection.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/headers.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
@@ -392,34 +392,38 @@ public:
   triagens::arango::EdgeIndex* edgeIndex ();
   triagens::arango::CapConstraint* capConstraint ();
 
-  triagens::arango::CapConstraint* _capConstraint;
+  triagens::arango::CapConstraint*       _capConstraint;
 
-  mutable TRI_barrier_list_t   _barrierList;
-  TRI_associative_pointer_t    _datafileInfo;
+  triagens::arango::Ditches* ditches () {
+    return &_ditches;
+  }
 
-  TRI_headers_t*               _headersPtr;
-  KeyGenerator*                _keyGenerator;
+  mutable triagens::arango::Ditches      _ditches;
+  TRI_associative_pointer_t              _datafileInfo;
+
+  TRI_headers_t*                         _headersPtr;
+  KeyGenerator*                          _keyGenerator;
 
   std::vector<triagens::arango::Index*>  _indexes;
 
-  std::set<TRI_voc_tid_t>*     _failedTransactions;
+  std::set<TRI_voc_tid_t>*               _failedTransactions;
 
-  std::atomic<int64_t>         _uncollectedLogfileEntries;
-  int64_t                      _numberDocuments;
-  TRI_read_write_lock_t        _compactionLock;
-  double                       _lastCompaction;
+  std::atomic<int64_t>                   _uncollectedLogfileEntries;
+  int64_t                                _numberDocuments;
+  TRI_read_write_lock_t                  _compactionLock;
+  double                                 _lastCompaction;
 
   // ...........................................................................
   // this condition variable protects the _journalsCondition
   // ...........................................................................
 
-  TRI_condition_t              _journalsCondition;
+  TRI_condition_t                        _journalsCondition;
 
   // whether or not any of the indexes may need to be garbage-collected
   // this flag may be modifying when an index is added to a collection
   // if true, the cleanup thread will periodically call the cleanup functions of
   // the collection's indexes that support cleanup
-  size_t                       _cleanupIndexes;
+  size_t                                 _cleanupIndexes;
 
   int (*beginRead) (struct TRI_document_collection_t*);
   int (*endRead) (struct TRI_document_collection_t*);
@@ -429,10 +433,6 @@ public:
 
   int (*beginReadTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
   int (*beginWriteTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  void (*dump) (struct TRI_document_collection_t*);
-#endif
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_t* collection);
   TRI_voc_size_t (*size) (struct TRI_document_collection_t* collection);

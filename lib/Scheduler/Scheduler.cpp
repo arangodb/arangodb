@@ -434,6 +434,16 @@ int Scheduler::destroyTask (Task* task) {
 void Scheduler::reportStatus () {
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the process affinity
+////////////////////////////////////////////////////////////////////////////////
+
+void Scheduler::setProcessorAffinity (size_t i, size_t c) {
+  MUTEX_LOCKER(schedulerLock);
+
+  threads[i]->setProcessorAffinity(c);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

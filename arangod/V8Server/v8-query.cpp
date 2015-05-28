@@ -622,7 +622,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   TRI_voc_size_t count = 0;
   bool error = false;
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_FreeSkiplistIterator(skiplistIterator);
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
@@ -692,7 +692,7 @@ static int StoreGeoResult (v8::Isolate* isolate,
   geo_coordinate_distance_t* tmp;
   uint32_t i;
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     GeoIndex_CoordinatesFree(cors);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -823,7 +823,7 @@ static void EdgesQuery (TRI_edge_direction_e direction,
 
   bool error = false;
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -954,7 +954,7 @@ static void JS_AllQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
  
   res = trx.read(docs, skip, limit, &total);
-  TRI_ASSERT(docs.empty() || trx.hasBarrier());
+  TRI_ASSERT(docs.empty() || trx.hasDitch());
   
   res = trx.finish(res);
 
@@ -1030,7 +1030,7 @@ static void JS_NthQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   res = trx.readPartition(docs, partitionId, numberOfPartitions, &total);
-  TRI_ASSERT(docs.empty() || trx.hasBarrier());
+  TRI_ASSERT(docs.empty() || trx.hasDitch());
 
   res = trx.finish(res);
 
@@ -1106,7 +1106,7 @@ static void JS_Nth2Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   res = trx.readPartition(docs, partitionId, numberOfPartitions, &total);
-  TRI_ASSERT(docs.empty() || trx.hasBarrier());
+  TRI_ASSERT(docs.empty() || trx.hasDitch());
 
   res = trx.finish(res);
 
@@ -1202,7 +1202,7 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   res = trx.readOffset(docs, internalSkip, batchSize, skip, limit, &total);
-  TRI_ASSERT(docs.empty() || trx.hasBarrier());
+  TRI_ASSERT(docs.empty() || trx.hasDitch());
 
   res = trx.finish(res);
 
@@ -1275,7 +1275,7 @@ static void JS_AnyQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   res = trx.readRandom(&document);
-  TRI_ASSERT(document.getDataPtr() == nullptr || trx.hasBarrier());
+  TRI_ASSERT(document.getDataPtr() == nullptr || trx.hasDitch());
 
   res = trx.finish(res);
 
@@ -1344,7 +1344,7 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   // extract sub-documents
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -1535,7 +1535,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
 
   v8::Handle<v8::Object> example = args[1]->ToObject();
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -1825,7 +1825,7 @@ static void JS_ChecksumCollection (const v8::FunctionCallbackInfo<v8::Value>& ar
 
   TRI_document_collection_t* document = trx.documentCollection();
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -2091,7 +2091,7 @@ static void FulltextQuery (SingleCollectionReadOnlyTransaction& trx,
     TRI_V8_THROW_EXCEPTION_INTERNAL("internal error in fulltext index query");
   }
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 

@@ -49,9 +49,9 @@
 #include "Utils/CursorRepository.h"
 #include "Utils/transactions.h"
 #include "VocBase/auth.h"
-#include "VocBase/barrier.h"
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/server.h"
@@ -250,13 +250,15 @@ static bool UnloadCollectionCallback (TRI_collection_t* col,
     return true;
   }
 
-  if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_ELEMENT) ||
-      TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_REPLICATION) ||
-      TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_COMPACTION)) {
+  auto ditches = collection->_collection->ditches();
+
+  if (ditches->contains(triagens::arango::Ditch::TRI_DITCH_DOCUMENT) ||
+      ditches->contains(triagens::arango::Ditch::TRI_DITCH_REPLICATION) ||
+      ditches->contains(triagens::arango::Ditch::TRI_DITCH_COMPACTION)) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    // still some barriers left...
-    // as the cleanup thread has already popped the unload barrier from the barrier list,
+    // still some ditches left...
+    // as the cleanup thread has already popped the unload ditch from the ditches list,
     // we need to insert a new one to really executed the unload
     TRI_UnloadCollectionVocBase(collection->_collection->_vocbase, collection, false);
 
@@ -1111,7 +1113,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
   // release the WRITE lock and try again
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     // check if there is a deferred drop action going on for this collection
-    if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_DROP_CALLBACK)) {
+    if (collection->_collection->ditches()->contains(triagens::arango::Ditch::TRI_DITCH_COLLECTION_DROP)) {
       // drop call going on, we must abort
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2042,11 +2044,8 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
   // mark collection as unloading
   collection->_status = TRI_VOC_COL_STATUS_UNLOADING;
 
-  // added callback for unload
-  TRI_CreateBarrierUnloadCollection(&collection->_collection->_barrierList,
-                                    collection->_collection,
-                                    UnloadCollectionCallback,
-                                    collection);
+  // add callback for unload
+  collection->_collection->ditches()->createUnloadCollectionDitch(collection->_collection, collection, UnloadCollectionCallback, __FILE__, __LINE__);
 
   // release locks
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -2202,11 +2201,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
       DropCollectionCallback(nullptr, collection);
     }
     else {
-      // added callback for dropping
-      TRI_CreateBarrierDropCollection(&collection->_collection->_barrierList,
-                                      collection->_collection,
-                                      DropCollectionCallback,
-                                      collection);
+      // add callback for dropping
+      collection->_collection->ditches()->createDropCollectionDitch(collection->_collection, collection, DropCollectionCallback, __FILE__, __LINE__);
 
       // wake up the cleanup thread
       TRI_LockCondition(&vocbase->_cleanupCondition);

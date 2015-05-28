@@ -47,16 +47,16 @@ using namespace triagens::rest;
 /// Layout:
 /// - SLOT_CLASS_TYPE
 /// - SLOT_CLASS
-/// - SLOT_BARRIER
+/// - SLOT_DITCH
 ////////////////////////////////////////////////////////////////////////////////
 
 static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slot for a "barrier"
+/// @brief slot for a "ditch"
 ////////////////////////////////////////////////////////////////////////////////
 
-static int const SLOT_BARRIER = 2;
+static int const SLOT_DITCH = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get basic attributes (_id, _key, _rev, _from, _to) for a JavaScript
@@ -229,33 +229,32 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesShaped (v8::Isolate* iso
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for a barrier
+/// @brief weak reference callback for a ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakBarrierCallback (const v8::WeakCallbackData<v8::External, v8::Persistent<v8::External>>& data) {
+static void WeakDocumentDitchCallback (const v8::WeakCallbackData<v8::External, v8::Persistent<v8::External>>& data) {
   auto isolate      = data.GetIsolate();
   auto persistent   = data.GetParameter();
-  auto myBarrier    = v8::Local<v8::External>::New(isolate, *persistent);
+  auto myDitch      = v8::Local<v8::External>::New(isolate, *persistent);
 
-  TRI_barrier_blocker_t* barrier = static_cast<TRI_barrier_blocker_t*>(myBarrier->Value());
+  auto ditch = static_cast<triagens::arango::DocumentDitch*>(myDitch->Value());
+  TRI_ASSERT(ditch != nullptr);
 
   TRI_GET_GLOBALS();
 
-  TRI_ASSERT(barrier != nullptr);
-
   v8g->_hasDeadObjects = true;
 
-  LOG_TRACE("weak-callback for barrier called");
+  LOG_TRACE("weak-callback for document ditch called");
 
   // find the persistent handle
-  v8g->JSBarriers[barrier].Reset();
-  v8g->JSBarriers.erase(barrier);
+  v8g->JSDitches[ditch].Reset();
+  v8g->JSDitches.erase(ditch);
 
-  // get the vocbase pointer from the barrier
-  TRI_vocbase_t* vocbase = barrier->base._container->_collection->_vocbase;
+  // get the vocbase pointer from the ditch
+  TRI_vocbase_t* vocbase = ditch->collection()->_vocbase;
 
-  TRI_FreeBarrier(barrier, false /* fromTransaction */ );
-  // we don't need the barrier anymore, maybe a transaction is still using it
+  ditch->ditches()->freeDocumentDitch(ditch, false /* fromTransaction */);
+  // we don't need the ditch anymore, maybe a transaction is still using it
 
   if (vocbase != nullptr) {
     // decrease the reference-counter for the database
@@ -269,14 +268,14 @@ static void WeakBarrierCallback (const v8::WeakCallbackData<v8::External, v8::Pe
 
 v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
                                           triagens::arango::CollectionNameResolver const* resolver,
-                                          TRI_barrier_t* barrier,
+                                          triagens::arango::DocumentDitch* ditch,
                                           TRI_voc_cid_t cid,
                                           TRI_document_collection_t* collection,
                                           void const* data) {
   v8::EscapableHandleScope scope(isolate);
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(data);
   TRI_ASSERT(marker != nullptr);
-  TRI_ASSERT(barrier != nullptr);
+  TRI_ASSERT(ditch != nullptr);
   TRI_ASSERT(collection != nullptr);
 
   TRI_GET_GLOBALS();
@@ -314,28 +313,27 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
 
   // point the 0 index Field to the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_SHAPED_JSON_TYPE));
-  result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, (void*) marker));
+  result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, const_cast<void*>(static_cast<void const*>(marker))));
 
-  // tell everyone else that this barrier is used by an external
-  reinterpret_cast<TRI_barrier_blocker_t*>(barrier)->_usedByExternal = true;
+  auto it = v8g->JSDitches.find(ditch);
 
-  auto it = v8g->JSBarriers.find(barrier);
+  if (it == v8g->JSDitches.end()) {
+    // tell everyone else that this ditch is used by an external
+    ditch->setUsedByExternal();
 
-  if (it == v8g->JSBarriers.end()) {
     // increase the reference-counter for the database
-    TRI_ASSERT(barrier->_container != nullptr);
-    TRI_ASSERT(barrier->_container->_collection != nullptr);
-    TRI_UseVocBase(barrier->_container->_collection->_vocbase);
-    auto externalBarrier = v8::External::New(isolate, barrier);
-    v8::Persistent<v8::External>& per(v8g->JSBarriers[barrier]);
-    per.Reset(isolate, externalBarrier);
-    result->SetInternalField(SLOT_BARRIER, externalBarrier);
-    per.SetWeak(&per, WeakBarrierCallback);
+    TRI_ASSERT(ditch->collection() != nullptr);
+    TRI_UseVocBase(ditch->collection()->_vocbase);
+    auto externalDitch = v8::External::New(isolate, ditch);
+    v8::Persistent<v8::External>& per(v8g->JSDitches[ditch]);
+    per.Reset(isolate, externalDitch);
+    result->SetInternalField(SLOT_DITCH, externalDitch);
+    per.SetWeak(&per, WeakDocumentDitchCallback);
   }
   else {
-    auto myBarrier = v8::Local<v8::External>::New(isolate, it->second);
+    auto myDitch = v8::Local<v8::External>::New(isolate, it->second);
       
-    result->SetInternalField(SLOT_BARRIER, myBarrier);
+    result->SetInternalField(SLOT_DITCH, myDitch);
   }
 
   return scope.Escape<v8::Value>(SetBasicDocumentAttributesShaped(isolate, resolver, v8g, cid, marker, result));
@@ -352,7 +350,7 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
   // sanity check
   v8::Handle<v8::Object> self = args.Holder();
 
-  if (self->InternalFieldCount() <= SLOT_BARRIER) {
+  if (self->InternalFieldCount() <= SLOT_DITCH) {
     TRI_V8_RETURN(v8::Array::New(isolate));
   }
 
@@ -363,8 +361,8 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
     TRI_V8_RETURN(v8::Array::New(isolate));
   }
 
-  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
-  TRI_document_collection_t* collection = barrier->_container->_collection;
+  auto ditch = static_cast<triagens::arango::DocumentDitch*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))->Value());
+  TRI_document_collection_t* collection = ditch->collection();
 
   // check for array shape
   TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
@@ -435,8 +433,8 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
 static void CopyAttributes (v8::Isolate* isolate,
                             v8::Handle<v8::Object> self, 
                             void* marker) {
-  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
-  TRI_document_collection_t* collection = barrier->_container->_collection;
+  auto ditch = static_cast<triagens::arango::DocumentDitch*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))->Value());
+  TRI_document_collection_t* collection = ditch->collection();
 
   // copy _key and _rev
 
@@ -524,7 +522,7 @@ static void MapGetNamedShapedJson (v8::Local<v8::String> name,
   // sanity check
   v8::Handle<v8::Object> self = args.Holder();
 
-  if (self->InternalFieldCount() <= SLOT_BARRIER) {
+  if (self->InternalFieldCount() <= SLOT_DITCH) {
     // we better not throw here... otherwise this will cause a segfault
     TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
@@ -577,10 +575,10 @@ static void MapGetNamedShapedJson (v8::Local<v8::String> name,
   }
 
   // get the underlying collection
-  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
-  TRI_ASSERT(barrier != nullptr);
+  auto ditch = static_cast<triagens::arango::DocumentDitch*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))->Value());
+  TRI_ASSERT(ditch != nullptr);
 
-  TRI_document_collection_t* collection = barrier->_container->_collection;
+  TRI_document_collection_t* collection = ditch->collection();
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by trx here
@@ -621,7 +619,7 @@ static void MapSetNamedShapedJson (v8::Local<v8::String> name,
   // sanity check
   v8::Handle<v8::Object> self = args.Holder();
 
-  if (self->InternalFieldCount() <= SLOT_BARRIER) {
+  if (self->InternalFieldCount() <= SLOT_DITCH) {
     // we better not throw here... otherwise this will cause a segfault
     TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
@@ -664,7 +662,7 @@ static void MapDeleteNamedShapedJson (v8::Local<v8::String> name,
   // sanity check
   v8::Handle<v8::Object> self = args.Holder();
 
-  if (self->InternalFieldCount() <= SLOT_BARRIER) {
+  if (self->InternalFieldCount() <= SLOT_DITCH) {
     // we better not throw here... otherwise this will cause a segfault
     return;
   }
@@ -699,7 +697,7 @@ static void PropertyQueryShapedJson (v8::Local<v8::String> name,
   v8::Handle<v8::Object> self = args.Holder();
 
   // sanity check
-  if (self->InternalFieldCount() <= SLOT_BARRIER) {
+  if (self->InternalFieldCount() <= SLOT_DITCH) {
     TRI_V8_RETURN(v8::Handle<v8::Integer>());
   }
 
@@ -728,8 +726,8 @@ static void PropertyQueryShapedJson (v8::Local<v8::String> name,
   }
 
   // get underlying collection
-  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
-  TRI_document_collection_t* collection = barrier->_container->_collection;
+  auto ditch = static_cast<triagens::arango::DocumentDitch*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))->Value());
+  TRI_document_collection_t* collection = ditch->collection();
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME

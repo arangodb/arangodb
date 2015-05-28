@@ -72,9 +72,8 @@ uint64_t const PrimaryIndex::InitialSize = 251;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection) 
-  : Index(0, std::vector<std::string>( { TRI_VOC_ATTRIBUTE_KEY } )),
-    _collection(collection) {
+PrimaryIndex::PrimaryIndex (TRI_document_collection_t*) 
+  : Index(0, std::vector<std::string>( { TRI_VOC_ATTRIBUTE_KEY } )) {
 
   _primaryIndex._nrAlloc = 0;
   _primaryIndex._nrUsed  = 0;

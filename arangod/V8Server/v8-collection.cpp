@@ -477,7 +477,7 @@ static void DocumentVocbaseCol (bool useCollection,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -486,7 +486,7 @@ static void DocumentVocbaseCol (bool useCollection,
   res = trx.read(&document, key.get());
   res = trx.finish(res);
 
-  TRI_ASSERT(trx.hasBarrier());
+  TRI_ASSERT(trx.hasDitch());
 
   if (res == TRI_ERROR_NO_ERROR) {
     result = TRI_WrapShapedJson<SingleCollectionReadOnlyTransaction>(isolate, trx, col->_cid, document.getDataPtr());
@@ -655,7 +655,7 @@ static void ExistsVocbaseCol (bool useCollection,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -890,7 +890,7 @@ static void ReplaceVocbaseCol (bool useCollection,
 
   TRI_doc_mptr_copy_t mptr;
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -1030,7 +1030,7 @@ static void InsertVocbaseCol (TRI_vocbase_col_t* col,
 
   // fetch a barrier so nobody unlinks datafiles with the shapes & attributes we might
   // need for this document
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -1216,7 +1216,7 @@ static void UpdateVocbaseCol (bool useCollection,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
@@ -3047,7 +3047,7 @@ static void InsertEdgeCol (TRI_vocbase_col_t* col,
   
   // fetch a barrier so nobody unlinks datafiles with the shapes & attributes we might
   // need for this document
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -3311,7 +3311,7 @@ static void JS_TruncateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& ar
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -3500,7 +3500,6 @@ static void JS_UnloadVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 
   TRI_V8_RETURN_UNDEFINED();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the version of a collection
@@ -3801,7 +3800,7 @@ static void JS_CollectionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
 
   uint32_t n = (uint32_t) colls._length;
   for (uint32_t i = 0;  i < n;  ++i) {
-    TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
+    auto collection = static_cast<TRI_vocbase_col_t const*>(colls._buffer[i]);
 
     v8::Handle<v8::Value> c = WrapCollection(isolate, collection);
 

@@ -49,13 +49,13 @@
 #include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
-#include "VocBase/barrier.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
@@ -115,6 +115,7 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 TRI_document_collection_t::TRI_document_collection_t () 
   : _useSecondaryIndexes(true),
     _capConstraint(nullptr),
+    _ditches(this),
     _headersPtr(nullptr),
     _keyGenerator(nullptr),
     _uncollectedLogfileEntries(0),
@@ -248,7 +249,7 @@ triagens::arango::Index* TRI_document_collection_t::lookupIndex (TRI_idx_iid_t i
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 TRI_shaper_t* TRI_document_collection_t::getShaper () const {
-  if (! TRI_ContainsBarrierList(&_barrierList, TRI_BARRIER_ELEMENT)) {
+  if (! _ditches.contains(triagens::arango::Ditch::TRI_DITCH_DOCUMENT)) {
     TransactionBase::assertSomeTrxInScope();
   }
   return _shaper;
@@ -2062,8 +2063,6 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
     return res;
   }
 
-  TRI_InitBarrierList(&document->_barrierList, document);
-
   TRI_InitReadWriteLock(&document->_compactionLock);
 
   return TRI_ERROR_NO_ERROR;
@@ -2104,7 +2103,8 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
   }
 
   TRI_DestroyAssociativePointer(&document->_datafileInfo);
-  TRI_DestroyBarrierList(&document->_barrierList);
+
+  document->ditches()->destroy();
   TRI_DestroyCollection(document);
 }
 

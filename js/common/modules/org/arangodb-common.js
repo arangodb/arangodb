@@ -536,7 +536,9 @@ exports.checkAvailableVersions = function (version) {
     }
   }
   catch (err) {
-    console.debug("cannot check for newer version: ", err.stack);
+    if (console && console.debug) {
+      console.debug("cannot check for newer version: ", err.stack);
+    }
   }
 };
 

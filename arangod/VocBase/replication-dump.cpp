@@ -1325,7 +1325,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   TRI_document_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
-  TRI_barrier_t* b = TRI_CreateBarrierReplication(&document->_barrierList);
+  auto b = document->ditches()->createReplicationDitch(__FILE__, __LINE__);
 
   if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1339,7 +1339,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
 
   TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
-  TRI_FreeBarrier(b);
+  document->ditches()->freeDitch(b);
 
   return res;
 }

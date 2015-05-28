@@ -419,9 +419,11 @@ function computeRootAppPath(mount, isValidation) {
       }
       var err = new ArangoError({
         errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
-        errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message + " File: " + filename + " Content: " + fileContent
+        errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
+        + "\nFile: " + filename
       });
       err.stack = e.stack;
+      err.cause = e;
       throw err;
     }
   };
