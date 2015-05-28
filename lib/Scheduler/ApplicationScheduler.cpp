@@ -402,7 +402,7 @@ void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
   for (uint32_t i = 0;  i < _nrSchedulerThreads;  ++i) {
     size_t c = cores[j];
 
-    LOG_INFO("using core %d for scheduler thread %d", (int) c, (int) i);
+    LOG_DEBUG("using core %d for scheduler thread %d", (int) c, (int) i);
 
     _scheduler->setProcessorAffinity(i, c);
 

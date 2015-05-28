@@ -377,7 +377,7 @@ bool DispatcherQueue::startQueueThread () {
   if (! _affinityCores.empty()) {
     size_t c = _affinityCores[_affinityPos];
 
-    LOG_INFO("using core %d for standard dispatcher thread", (int) c);
+    LOG_DEBUG("using core %d for standard dispatcher thread", (int) c);
 
     thread->setProcessorAffinity(c);
 
