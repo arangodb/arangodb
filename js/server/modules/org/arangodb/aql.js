@@ -6118,18 +6118,19 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
 
   let graph_module = require("org/arangodb/general-graph");
   let graph = graph_module._graph(graphName);
-  let edgeCollections;
+  let edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
   if (options.hasOwnProperty("edgeCollectionRestriction")) {
     if (!Array.isArray(options.edgeCollectionRestriction)) {
       if (typeof options.edgeCollectionRestriction === "string") {
+        if (!underscore.contains(edgeCollections, options.edgeCollectionRestriction)) {
+          // Short circut collection not in graph, cannot find results.
+          return [];
+        }
         edgeCollections = [options.edgeCollectionRestriction];
       }
     } else {
-      // TODO: Intersect?
-      edgeCollections = options.edgeCollectionRestriction;
+      edgeCollections = underscore.intersection(edgeCollections, options.edgeCollectionRestriction);
     }
-  } else {
-    edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
   }
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
 
@@ -6602,33 +6603,6 @@ function FILTERED_EDGES (edges, vertex, direction, examples) {
 /// @brief return connected neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-function useCXXforDeepNeighbors (vertexCollections, edgeCollections,
-                                 vertex, options) {
- 'use strict';
-  let db = require("internal").db;
-  let l = [vertex];
-  let s = new Set();
-  s.add(vertex);
-  for (let dist = 1; dist <= options.distance; ++dist) {
-    let ll = CPP_NEIGHBORS(vertexCollections, edgeCollections,
-                           l, {distinct: true, includeData: false,
-                               direction: options.direction});
-    l = [];
-    for (let i = 0; i < ll.length; ++i) {
-      if (! s.has(ll[i])) {
-        l.push(ll[i]);
-        s.add(ll[i]);
-      }
-    }
-  }
-  if (options.includeData) {
-    for (let j = 0; j < l.length; ++j) {
-      l[j] = db._document(l[j]);
-    }
-  }
-  return l;
-}
-
 function AQL_NEIGHBORS (vertexCollection,
                         edgeCollection,
                         vertex,
@@ -6649,14 +6623,7 @@ function AQL_NEIGHBORS (vertexCollection,
   if (examples !== undefined && Array.isArray(examples) && examples.length > 0) {
     options.examples = examples;
   }
-  if (typeof options.distance === "number" && options.distance > 1) {
-    return useCXXforDeepNeighbors([vertexCollection], [edgeCollection], vertex,
-                                  options);
-  }
-  else {
-    return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, 
-                         options);
-  }
+  return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6817,18 +6784,19 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 
   let graph_module = require("org/arangodb/general-graph");
   let graph = graph_module._graph(graphName);
-  let edgeCollections;
+  let edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
   if (options.hasOwnProperty("edgeCollectionRestriction")) {
     if (!Array.isArray(options.edgeCollectionRestriction)) {
       if (typeof options.edgeCollectionRestriction === "string") {
+        if (!underscore.contains(edgeCollections, options.edgeCollectionRestriction)) {
+          // Short circut collection not in graph, cannot find results.
+          return [];
+        }
         edgeCollections = [options.edgeCollectionRestriction];
       }
     } else {
-      // TODO: Intersect?
-      edgeCollections = options.edgeCollectionRestriction;
+      edgeCollections = underscore.intersection(edgeCollections, options.edgeCollectionRestriction);
     }
-  } else {
-    edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
   }
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
   let startVertices = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, vertexExample);
@@ -6838,27 +6806,28 @@ function AQL_GRAPH_NEIGHBORS (graphName,
   if (options.hasOwnProperty("vertexCollectionRestriction")) {
     if (!Array.isArray(options.vertexCollectionRestriction)) {
       if (typeof options.vertexCollectionRestriction === "string") {
+        if (!underscore.contains(vertexCollections, options.vertexCollectionRestriction)) {
+          // Short circut collection not in graph, cannot find results.
+          return [];
+        }
         vertexCollections = [options.vertexCollectionRestriction];
       }
     } else {
-      // TODO: Intersect?
-      vertexCollections = options.vertexCollectionRestriction;
+      vertexCollections = underscore.intersection(vertexCollections, options.vertexCollectionRestriction);
     }
   }
+  if (options.hasOwnProperty("minDepth")) {
+    params.minDepth = options.minDepth;
+  }
+  if (options.hasOwnProperty("maxDepth")) {
+    params.maxDepth = options.maxDepth;
+  }
+  if (options.hasOwnProperty("includeData")) {
+    params.includeData = options.includeData;
+  }
 
 
-/*
-  if (typeof options.distance === "number" && options.distance > 1) {
-    return useCXXforDeepNeighbors([vertexCollection], [edgeCollection], vertex,
-                                  params);
-  }
-  else {
-*/
-    return CPP_NEIGHBORS(vertexCollections, edgeCollections, startVertices, 
-                         params);
-/*
-  }
-*/
+  return CPP_NEIGHBORS(vertexCollections, edgeCollections, startVertices, params);
 
 }
 
@@ -6903,6 +6872,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 ///  be returned).
 ///   * *maxIterations*: the maximum number of iterations that the traversal is
 ///      allowed to perform. It is sensible to set this number so unbounded traversals
+///      will terminate.
 ///
 /// @EXAMPLES
 ///
@@ -7083,42 +7053,21 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 
   options1 = options1 || {};
   options1.includeData = false;
-  options1.distinct = true;
   options2 = options2 || {};
   options2.includeData = false;
-  options2.distinct = true;
-  let vertexCollections1;
-  if (options1.hasOwnProperty("vertexCollectionRestriction")) {
-    if (!Array.isArray(options1.vertexCollectionRestriction)) {
-      if (typeof options1.vertexCollectionRestriction === "string") {
-        vertexCollections1 = [options1.vertexCollectionRestriction];
-      }
-    } else {
-      // TODO: Intersect?
-      vertexCollections1 = options1.vertexCollectionRestriction;
-    }
-  }
-  let vertices1 = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections1, vertex1Examples);
+  let graph_module = require("org/arangodb/general-graph");
+  let graph = graph_module._graph(graphName);
+  let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
+  let vertices1 = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, vertex1Examples);
   let vertices2;
-  if (vertex1Examples === vertex2Examples && 
-    options1.vertexCollectionRestriction === options2.vertexCollectionRestriction) {
+  if (vertex1Examples === vertex2Examples) {
     vertices2 = vertices1;
   } else {
-    let vertexCollections2;
-    if (options2.hasOwnProperty("vertexCollectionRestriction")) {
-      if (!Array.isArray(options2.vertexCollectionRestriction)) {
-        if (typeof options2.vertexCollectionRestriction === "string") {
-          vertexCollections2 = [options2.vertexCollectionRestriction];
-        }
-      } else {
-        // TODO: Intersect?
-        vertexCollections2 = options2.vertexCollectionRestriction;
-      }
-    }
-    vertices2 = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections2, vertex2Examples);
+    vertices2 = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, vertex2Examples);
   }
   // Use ES6 Map. Higher performance then Object.
-  let tmpNeighbors = new Map();
+  let tmpNeighborsLeft = new Map();
+  let tmpNeighborsRight = new Map();
   let result = [];
 
   // Legacy Format
@@ -7129,36 +7078,41 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
   // For each entry iterate over right side vertex list as right.
   // Calculate their neighbors as rn
   // For each store one entry in result {left: left, right: right, neighbors: intersection(ln, rn)}
-  // All Neighbors are cached in tmpNeighbors
+  // All Neighbors are cached in tmpNeighborsLeft and tmpNeighborsRight resp.
   for (let i = 0; i < vertices1.length; ++i) {
     let left = vertices1[i];
     let itemNeighbors;
-    if(tmpNeighbors.has(left)) {
-      itemNeighbors = tmpNeighbors.get(left);
+    if(tmpNeighborsLeft.has(left)) {
+      itemNeighbors = tmpNeighborsLeft.get(left);
     } else {
       itemNeighbors = AQL_GRAPH_NEIGHBORS(graphName, left, options1);
-      tmpNeighbors.set(left, itemNeighbors);
+      tmpNeighborsLeft.set(left, itemNeighbors);
     }
     for (let j = 0; j < vertices2.length; ++j) {
       let right = vertices2[j];
+      if (left === right) {
+        continue;
+      }
       let rNeighbors;
-      if(tmpNeighbors.has(right)) {
-        rNeighbors = tmpNeighbors.get(right);
+      if(tmpNeighborsRight.has(right)) {
+        rNeighbors = tmpNeighborsRight.get(right);
       } else {
         rNeighbors = AQL_GRAPH_NEIGHBORS(graphName, right, options2);
-        tmpNeighbors.set(right, rNeighbors);
+        tmpNeighborsRight.set(right, rNeighbors);
       }
       let neighbors = underscore.intersection(itemNeighbors, rNeighbors);
-
-      // Legacy Format
-      // tmpRes[left] = tmpRes[left] || {};
-      // tmpRes[left][right] = neighbors;
-      result.push({left, right, neighbors});
+      if (neighbors.length > 0) {
+        // Legacy Format
+        // tmpRes[left] = tmpRes[left] || {};
+        // tmpRes[left][right] = neighbors;
+        result.push({left, right, neighbors});
+      }
     }
   }
   // Legacy Format
   // result.push(tmpRes);
-  tmpNeighbors.clear();
+  tmpNeighborsLeft.clear();
+  tmpNeighborsRight.clear();
   return result;
 }
 

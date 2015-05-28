@@ -802,6 +802,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
 
 function ahuacatlQueryGeneralCommonTestSuite() {
+
+  var vertexIds = {};
+
   return {
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -817,29 +820,38 @@ function ahuacatlQueryGeneralCommonTestSuite() {
       var vertex2 = db._create("UnitTestsAhuacatlVertex2");
       var edge1 = db._createEdgeCollection("UnitTestsAhuacatlEdge1");
 
-      vertex1.save({ _key: "v1", hugo: true});
-      vertex1.save({ _key: "v2", hugo: true});
-      vertex1.save({ _key: "v3", heinz: 1});
-      vertex1.save({ _key: "v4", harald: "meier"});
-      vertex2.save({ _key: "v5", ageing: true});
-      vertex2.save({ _key: "v6", harald: "meier", ageing: true});
-      vertex2.save({ _key: "v7", harald: "meier"});
-      vertex2.save({ _key: "v8", heinz: 1, harald: "meier"});
+      var v1 = vertex1.save({ _key: "v1", hugo: true})._id;
+      var v2 = vertex1.save({ _key: "v2", hugo: true})._id;
+      var v3 = vertex1.save({ _key: "v3", heinz: 1})._id;
+      var v4 = vertex1.save({ _key: "v4", harald: "meier"})._id;
+      var v5 = vertex2.save({ _key: "v5", ageing: true})._id;
+      var v6 = vertex2.save({ _key: "v6", harald: "meier", ageing: true})._id;
+      var v7 = vertex2.save({ _key: "v7", harald: "meier"})._id;
+      var v8 = vertex2.save({ _key: "v8", heinz: 1, harald: "meier"})._id;
+
+      vertexIds.v1 = v1;
+      vertexIds.v2 = v2;
+      vertexIds.v3 = v3;
+      vertexIds.v4 = v4;
+      vertexIds.v5 = v5;
+      vertexIds.v6 = v6;
+      vertexIds.v7 = v7;
+      vertexIds.v8 = v8;
 
       function makeEdge(from, to, collection) {
         collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
       }
 
-      makeEdge("UnitTestsAhuacatlVertex1/v1", "UnitTestsAhuacatlVertex1/v2", edge1);
-      makeEdge("UnitTestsAhuacatlVertex1/v2", "UnitTestsAhuacatlVertex1/v3", edge1);
-      makeEdge("UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v5", edge1);
-      makeEdge("UnitTestsAhuacatlVertex1/v2", "UnitTestsAhuacatlVertex2/v6", edge1);
-      makeEdge("UnitTestsAhuacatlVertex2/v6", "UnitTestsAhuacatlVertex2/v7", edge1);
-      makeEdge("UnitTestsAhuacatlVertex1/v4", "UnitTestsAhuacatlVertex2/v7", edge1);
-      makeEdge("UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v7", edge1);
-      makeEdge("UnitTestsAhuacatlVertex2/v8", "UnitTestsAhuacatlVertex1/v1", edge1);
-      makeEdge("UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v5", edge1);
-      makeEdge("UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v8", edge1);
+      makeEdge(v1, v2, edge1);
+      makeEdge(v2, v3, edge1);
+      makeEdge(v3, v5, edge1);
+      makeEdge(v2, v6, edge1);
+      makeEdge(v6, v7, edge1);
+      makeEdge(v4, v7, edge1);
+      makeEdge(v3, v7, edge1);
+      makeEdge(v8, v1, edge1);
+      makeEdge(v3, v5, edge1);
+      makeEdge(v3, v8, edge1);
 
       try {
         db._collection("_graphs").remove("_graphs/bla3");
@@ -875,10 +887,15 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighbors: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v3' , 'UnitTestsAhuacatlVertex2/v6',  {direction : 'any'}) SORT  ATTRIBUTES(e)[0]  RETURN e");
-
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v3' , 'UnitTestsAhuacatlVertex2/v6',  {direction : 'any'}) SORT e.left  RETURN e");
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].left, vertexIds.v3);
+      assertEqual(actual[0].right, vertexIds.v6);
+      assertEqual(actual[0].neighbors.sort(), [vertexIds.v2, vertexIds.v7].sort());
+      /* Legacy
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"]["UnitTestsAhuacatlVertex2/v6"][0]._id, "UnitTestsAhuacatlVertex1/v2");
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"]["UnitTestsAhuacatlVertex2/v6"][1]._id, "UnitTestsAhuacatlVertex2/v7");
+      */
 
     },
     ////////////////////////////////////////////////////////////////////////////////
@@ -886,8 +903,42 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsIn: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  {direction : 'inbound'}, {direction : 'inbound'}) SORT TO_STRING(ATTRIBUTES(e))  RETURN e");
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  {direction : 'inbound'}, {direction : 'inbound'}) SORT e.left, e.right RETURN e");
+      assertEqual(actual.length, 8, "We expect one entry for each pair of vertices having at least one common neighbor");
 
+      assertEqual(actual[0].left, vertexIds.v3);
+      assertEqual(actual[0].right, vertexIds.v6);
+      assertEqual(actual[0].neighbors.sort(), [vertexIds.v2].sort());
+
+      assertEqual(actual[1].left, vertexIds.v5);
+      assertEqual(actual[1].right, vertexIds.v7);
+      assertEqual(actual[1].neighbors.sort(), [vertexIds.v3].sort());
+
+      assertEqual(actual[2].left, vertexIds.v5);
+      assertEqual(actual[2].right, vertexIds.v8);
+      assertEqual(actual[2].neighbors.sort(), [vertexIds.v3].sort());
+
+      assertEqual(actual[3].left, vertexIds.v6);
+      assertEqual(actual[3].right, vertexIds.v3);
+      assertEqual(actual[3].neighbors.sort(), [vertexIds.v2].sort());
+
+      assertEqual(actual[4].left, vertexIds.v7);
+      assertEqual(actual[4].right, vertexIds.v5);
+      assertEqual(actual[4].neighbors.sort(), [vertexIds.v3].sort());
+
+      assertEqual(actual[5].left, vertexIds.v7);
+      assertEqual(actual[5].right, vertexIds.v8);
+      assertEqual(actual[5].neighbors.sort(), [vertexIds.v3].sort());
+
+      assertEqual(actual[6].left, vertexIds.v8);
+      assertEqual(actual[6].right, vertexIds.v5);
+      assertEqual(actual[6].neighbors.sort(), [vertexIds.v3].sort());
+
+      assertEqual(actual[7].left, vertexIds.v8);
+      assertEqual(actual[7].right, vertexIds.v7);
+      assertEqual(actual[7].neighbors.sort(), [vertexIds.v3].sort());
+
+      /* Legacy
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"]["UnitTestsAhuacatlVertex2/v6"][0]._id, "UnitTestsAhuacatlVertex1/v2");
       assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v5"]["UnitTestsAhuacatlVertex2/v8"][0]._id, "UnitTestsAhuacatlVertex1/v3");
       assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v5"]["UnitTestsAhuacatlVertex2/v7"][0]._id, "UnitTestsAhuacatlVertex1/v3");
@@ -899,6 +950,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 
       assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v8"]["UnitTestsAhuacatlVertex2/v5"][0]._id, "UnitTestsAhuacatlVertex1/v3");
       assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v8"]["UnitTestsAhuacatlVertex2/v7"][0]._id, "UnitTestsAhuacatlVertex1/v3");
+      */
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -907,7 +959,27 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 
     testCommonNeighborsOut: function () {
       var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', { hugo : true } , {heinz : 1}, " +
-        " {direction : 'outbound', minDepth : 1, maxDepth : 3}, {direction : 'outbound', minDepth : 1, maxDepth : 3}) SORT e RETURN e");
+        " {direction : 'outbound', minDepth : 1, maxDepth : 3}, {direction : 'outbound', minDepth : 1, maxDepth : 3}) SORT e.left, e.right RETURN e");
+
+      assertEqual(actual.length, 4, "Expect one result for each pair of vertices sharing neighbors");
+
+      assertEqual(actual[0].left, vertexIds.v1);
+      assertEqual(actual[0].right, vertexIds.v3);
+      assertEqual(actual[0].neighbors.sort(), [vertexIds.v2, vertexIds.v5, vertexIds.v7, vertexIds.v8].sort());
+
+      assertEqual(actual[1].left, vertexIds.v1);
+      assertEqual(actual[1].right, vertexIds.v8);
+      assertEqual(actual[1].neighbors.sort(), [vertexIds.v2, vertexIds.v3, vertexIds.v6].sort());
+
+      assertEqual(actual[2].left, vertexIds.v2);
+      assertEqual(actual[2].right, vertexIds.v3);
+      assertEqual(actual[2].neighbors.sort(), [vertexIds.v1, vertexIds.v5, vertexIds.v7, vertexIds.v8].sort());
+
+      assertEqual(actual[3].left, vertexIds.v2);
+      assertEqual(actual[3].right, vertexIds.v8);
+      assertEqual(actual[3].neighbors.sort(), [vertexIds.v1, vertexIds.v6, vertexIds.v3].sort());
+
+      /* Legacy
       assertEqual(Object.keys(actual[0])[0], "UnitTestsAhuacatlVertex1/v2");
       assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]), ["UnitTestsAhuacatlVertex2/v8", "UnitTestsAhuacatlVertex1/v3"]);
 
@@ -919,6 +991,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 
       assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex1/v3"].length, 4);
       assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex2/v8"].length, 3);
+      */
 
     },
 
@@ -929,15 +1002,29 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     testCommonNeighborsMixedOptionsDistinctFilters: function () {
       var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
         "{direction : 'outbound', vertexCollectionRestriction : 'UnitTestsAhuacatlVertex1'}, " +
-        "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT TO_STRING(e) RETURN e");
-      assertEqual(actual.length, 0);
+        "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT e.left, e.right RETURN e");
+      assertEqual(actual.length, 0, "Expect one result for each pair of vertices sharing neighbors");
     },
 
     testCommonNeighborsMixedOptionsFilterBasedOnOneCollectionOnly: function () {
       var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
         "{direction : 'outbound', vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}, " +
-        "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT TO_STRING(e) RETURN e");
+        "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT e.left, e.right RETURN e");
 
+      assertEqual(actual.length, 3, "Expect one result for each pair of vertices sharing neighbors");
+      assertEqual(actual[0].left, vertexIds.v2);
+      assertEqual(actual[0].right, vertexIds.v7);
+      assertEqual(actual[0].neighbors.sort(), [vertexIds.v6].sort());
+
+      assertEqual(actual[1].left, vertexIds.v3);
+      assertEqual(actual[1].right, vertexIds.v1);
+      assertEqual(actual[1].neighbors.sort(), [vertexIds.v8].sort());
+
+      assertEqual(actual[2].left, vertexIds.v3);
+      assertEqual(actual[2].right, vertexIds.v2);
+      assertEqual(actual[2].neighbors.sort(), [vertexIds.v8].sort());
+
+      /* Legacy
       assertEqual(Object.keys(actual[0])[0], "UnitTestsAhuacatlVertex1/v3");
       assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]).sort(), ["UnitTestsAhuacatlVertex1/v1", "UnitTestsAhuacatlVertex1/v2"]);
 
@@ -948,6 +1035,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
       assertEqual(Object.keys(actual[1][Object.keys(actual[1])[0]]).sort(), ["UnitTestsAhuacatlVertex2/v7"]);
 
       assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex2/v7"].length, 1);
+      */
 
     },
 
