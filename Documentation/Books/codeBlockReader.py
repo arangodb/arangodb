@@ -112,7 +112,7 @@ def example_content(filepath, fh, tag):
   longTag = "%s_long" % tag
   shortTag = "%s_short" % tag
 
-  longToggle = "$('#%s').hide(); $('#%s').show();" % (longTag, shortTag)
+  longToggle = ""
   shortToggle = "$('#%s').hide(); $('#%s').show();" % (shortTag, longTag)
 
   if shortable:
