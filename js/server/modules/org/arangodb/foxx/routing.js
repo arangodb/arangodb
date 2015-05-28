@@ -147,7 +147,7 @@
     // .............................................................................
 
     // contentType explicitly specified for asset
-    if (asset.hasOwnProperty("contentType") && asset.contentType !== '') {
+    if (asset.contentType) {
       type = asset.contentType;
     }
 
