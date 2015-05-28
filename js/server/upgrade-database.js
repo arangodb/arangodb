@@ -752,7 +752,7 @@
               collection.setAttribute("version", 2);
             }
             catch (e) {
-              logger.error("could not upgrade collection '" + collection.name() + "'");
+              logger.error("could not upgrade collection '" + collection.name() + "': " + (e.stack || String(e)));
               return false;
             }
           }

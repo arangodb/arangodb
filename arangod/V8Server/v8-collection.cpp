@@ -3501,7 +3501,6 @@ static void JS_UnloadVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   TRI_V8_RETURN_UNDEFINED();
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the version of a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -3801,7 +3800,7 @@ static void JS_CollectionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
 
   uint32_t n = (uint32_t) colls._length;
   for (uint32_t i = 0;  i < n;  ++i) {
-    TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
+    auto collection = static_cast<TRI_vocbase_col_t const*>(colls._buffer[i]);
 
     v8::Handle<v8::Value> c = WrapCollection(isolate, collection);
 

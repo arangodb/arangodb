@@ -216,10 +216,10 @@ v8::Handle<v8::Object> WrapCollection (v8::Isolate* isolate,
     }
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
-    TRI_GET_GLOBAL_STRING(VersionKey);
+    TRI_GET_GLOBAL_STRING(VersionKeyHidden);
     result->ForceSet(_IdKey, V8CollectionId(isolate, collection->_cid), v8::ReadOnly);
     result->Set(_DbNameKey, TRI_V8_STRING(collection->_dbName));
-    result->ForceSet(VersionKey, v8::Integer::NewFromUnsigned(isolate, collection->_internalVersion), v8::DontEnum);
+    result->ForceSet(VersionKeyHidden, v8::Integer::NewFromUnsigned(isolate, collection->_internalVersion), v8::DontEnum);
   }
 
   return scope.Escape<v8::Object>(result);
