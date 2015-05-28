@@ -78,7 +78,9 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
     _gracePeriod(5.0),
     _scheduler(scheduler),
     _dispatcher(dispatcher),
-    createDispatcherThread(creator) {
+    createDispatcherThread(creator),
+    _affinityCores(),
+    _affinityPos(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,6 +373,21 @@ bool DispatcherQueue::isRunning () {
 
 bool DispatcherQueue::startQueueThread () {
   DispatcherThread * thread = (*createDispatcherThread)(this, _threadData);
+
+  if (! _affinityCores.empty()) {
+    size_t c = _affinityCores[_affinityPos];
+
+    LOG_INFO("using core %d for standard dispatcher thread", (int) c);
+
+    thread->setProcessorAffinity(c);
+
+    ++_affinityPos;
+
+    if (_affinityPos >= _affinityCores.size()) {
+      _affinityPos = 0;
+    }
+  }
+
   bool ok = thread->start();
 
   if (! ok) {
@@ -382,6 +399,14 @@ bool DispatcherQueue::startQueueThread () {
   }
 
   return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the process affinity
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherQueue::setProcessorAffinity (const vector<size_t>& cores) {
+  _affinityCores = cores;
 }
 
 // -----------------------------------------------------------------------------

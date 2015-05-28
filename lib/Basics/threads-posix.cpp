@@ -234,12 +234,12 @@ void TRI_SetProcessorAffinity (TRI_thread_t* thread, size_t core) {
   cpu_set_t cpuset;
   
   CPU_ZERO(&cpuset);
-  CPU_SET(c, &cpuset);
+  CPU_SET(core, &cpuset);
 
   int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
 
   if (s != 0) {
-    LOG_ERROR("cannot set affinity to core %d: %s", core, strerror(errno));
+    LOG_ERROR("cannot set affinity to core %d: %s", (int) core, strerror(errno));
   }
 
 #endif

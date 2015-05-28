@@ -162,7 +162,7 @@ void ApplicationDispatcher::buildAQLQueue (size_t nrThreads,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t ApplicationDispatcher::numberOfThreads () {
-  return _nrStandardThreads + _nrAQLThreads;
+  return _nrStandardThreads /* + _nrAQLThreads */;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,6 +171,7 @@ size_t ApplicationDispatcher::numberOfThreads () {
 
 void ApplicationDispatcher::setProcessorAffinity (const vector<size_t>& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
+  _dispatcher->setProcessorAffinity("STANDARD", cores);
 #endif
 }
 
