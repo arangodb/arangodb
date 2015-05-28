@@ -314,12 +314,12 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_SHAPED_JSON_TYPE));
   result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, (void*) marker));
 
-  // tell everyone else that this barrier is used by an external
-  reinterpret_cast<TRI_barrier_blocker_t*>(barrier)->_usedByExternal = true;
-
   auto it = v8g->JSBarriers.find(barrier);
 
   if (it == v8g->JSBarriers.end()) {
+    // tell everyone else that this barrier is now used by an external
+    TRI_SetUsedByExternalBarrier(reinterpret_cast<TRI_barrier_blocker_t*>(barrier));
+
     // increase the reference-counter for the database
     TRI_ASSERT(barrier->_container != nullptr);
     TRI_ASSERT(barrier->_container->_collection != nullptr);

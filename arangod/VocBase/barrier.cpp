@@ -182,6 +182,7 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
+                                          bool usedByTransaction,
                                           size_t line,
                                           char const* filename) {
   TRI_barrier_blocker_t* element = CreateBarrier<TRI_barrier_blocker_t>();
@@ -194,8 +195,8 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
 
   element->_line              = line;
   element->_filename          = filename;
-  element->_usedByExternal    = false;
-  element->_usedByTransaction = false;
+  element->_usedByExternal    = 0;
+  element->_usedByTransaction = usedByTransaction;
 
   LinkBarrierElement(&element->base, container);
 
@@ -389,10 +390,8 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBarrier (TRI_barrier_blocker_t* element, bool fromTransaction) {
-  TRI_barrier_list_t* container;
-
   TRI_ASSERT(element != nullptr);
-  container = element->base._container;
+  TRI_barrier_list_t* container = element->base._container;
   TRI_ASSERT(container != nullptr);
 
   TRI_LockSpin(&container->_lock);
@@ -406,12 +405,14 @@ void TRI_FreeBarrier (TRI_barrier_blocker_t* element, bool fromTransaction) {
     // note: _usedByExternal may or may not be true when we get here
     // the reason is that there are barriers not linked to elements at all
     // (when a barrier is created ahead of operations but the operations are
-    // not executed etc.) 
-    element->_usedByExternal = false;
+    // not executed etc.)
+    if (element->_usedByExternal > 0) { 
+      --element->_usedByExternal;
+    }
   }
 
   if (element->_usedByTransaction == false &&
-      element->_usedByExternal == false) {
+      element->_usedByExternal == 0) {
     // Really free it:
 
     // element is at the beginning of the chain
@@ -444,6 +445,34 @@ void TRI_FreeBarrier (TRI_barrier_blocker_t* element, bool fromTransaction) {
     // Somebody else is still using it, so leave it intact:
     TRI_UnlockSpin(&container->_lock);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief track usage of a barrier by an external
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetUsedByExternalBarrier (TRI_barrier_blocker_t* element) {
+  TRI_ASSERT(element != nullptr);
+  TRI_barrier_list_t* container = element->base._container;
+  TRI_ASSERT(container != nullptr);
+
+  TRI_LockSpin(&container->_lock);
+  ++element->_usedByExternal;
+  TRI_UnlockSpin(&container->_lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief track usage of a barrier by a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetUsedByTransactionBarrier (TRI_barrier_blocker_t* element) {
+  TRI_ASSERT(element != nullptr);
+  TRI_barrier_list_t* container = element->base._container;
+  TRI_ASSERT(container != nullptr);
+
+  TRI_LockSpin(&container->_lock);
+  element->_usedByTransaction = true;
+  TRI_UnlockSpin(&container->_lock);
 }
 
 // -----------------------------------------------------------------------------
