@@ -99,6 +99,22 @@ bool IGNORE_DATAFILE_ERRORS;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts list of size_t to string
+////////////////////////////////////////////////////////////////////////////////
+
+template<typename A> string to_string (vector<A> v) {
+  string result = "";
+  string sep = "[";
+
+  for (auto e : v) {
+    result += sep + to_string(e);
+    sep = ",";
+  }
+
+  return result + "]";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief define "_api" and "_admin" handlers
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -327,9 +343,14 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _server(nullptr),
     _queryRegistry(nullptr),
     _pairForAql(nullptr),
-    _indexPool(nullptr) {
+    _indexPool(nullptr),
+    _threadAffinity(0) {
 
   TRI_SetApplicationName("arangod");
+
+#ifndef TRI_HAVE_THREAD_AFFINITY
+  _threadAffinity = 0;
+#endif
 
   // set working directory and database directory
 #ifdef _WIN32
@@ -513,6 +534,7 @@ void ArangoServer::buildApplicationServer () {
     ("no-upgrade", "skip a database upgrade")
     ("start-service", "used to start as windows service")
     ("no-server", "do not start the server, if console is requested")
+    ("use-thread-affinity", &_threadAffinity, "try to set thread affinity (0=disable, 1=disjunct, 2=overlap, 3=scheduler, 4=dispatcher)")
   ;
 
   // .............................................................................
@@ -520,14 +542,12 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
 #ifndef _WIN32
-
   additional["General Options:help-admin"]
     ("daemon", "run as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
     ("supervisor", "starts a supervisor and runs as daemon")
     ("working-directory", &_workingDirectory, "working directory in daemon mode")
   ;
-
 #endif
 
 #ifdef __APPLE__
@@ -977,6 +997,115 @@ int ArangoServer::startupServer () {
   }
 
   startupProgress();
+
+  // .............................................................................
+  // try to figure out the thread affinity
+  // .............................................................................
+
+  size_t n = TRI_numberProcessors();
+
+  if (n > 2 && _threadAffinity > 0) {
+    size_t ns = _applicationScheduler->numberOfThreads();
+    size_t nd = _applicationDispatcher->numberOfThreads();
+
+    if (ns != 0 && nd != 0) {
+      LOG_INFO("the server has %d (hyper) cores, using %d scheduler threads, %d dispatcher threads",
+               (int) n, (int) ns, (int) nd);
+    }
+    else {
+      _threadAffinity = 0;
+    }
+
+    switch (_threadAffinity) {
+      case 1:
+        if (n < ns + nd) {
+          ns = round(1.0 * n * ns / (ns + nd));
+          nd = round(1.0 * n * nd / (ns + nd));
+
+          if (ns < 1) { ns = 1; }
+          if (nd < 1) { nd = 1; }
+
+          while (n < ns + nd) {
+            if (1 < ns) { ns -= 1; }
+            else if (1 < nd) { nd -= 1; }
+            else { ns = 1; nd = 1; }
+          }
+        }
+
+        break;
+
+      case 2:
+        if (n < ns) {
+          ns = n;
+        }
+
+        if (n < nd) {
+          nd = n;
+        }
+
+        break;
+
+      case 3:
+	if (n < ns) {
+	  ns = n;
+	}
+
+	nd = 0;
+
+	break;
+
+      case 4:
+	if (n < nd) {
+	  nd = n;
+	}
+
+	ns = 0;
+
+	break;
+
+      default:
+        _threadAffinity = 0;
+        break;
+    }
+
+    if (_threadAffinity > 0) {
+      TRI_ASSERT(ns <= n);
+      TRI_ASSERT(nd <= n);
+
+      vector<size_t> ps;
+      vector<size_t> pd;
+
+      for (size_t i = 0;  i < ns;  ++i) {
+        ps.push_back(i);
+      }
+
+      for (size_t i = 0;  i < nd;  ++i) {
+        pd.push_back(n - i - 1);
+      }
+
+      if (0 < ns) {
+	_applicationScheduler->setProcessorAffinity(ps);
+      }
+
+      if (0 < nd) {
+	_applicationDispatcher->setProcessorAffinity(pd);
+      }
+
+      if (0 < ns && 0 < nd) {
+	LOG_INFO("scheduler cores: %s, dispatcher cores: %s",
+		 to_string(ps).c_str(), to_string(pd).c_str());
+      }
+      else if (0 < ns) {
+	LOG_INFO("scheduler cores: %s", to_string(ps).c_str());
+      }
+      else if (0 < nd) {
+	LOG_INFO("dispatcher cores: %s", to_string(pd).c_str());
+      }
+    }
+    else {
+      LOG_INFO("the server has %d (hyper) cores", (int) n);
+    }
+  }
 
   // .............................................................................
   // start the main event loop

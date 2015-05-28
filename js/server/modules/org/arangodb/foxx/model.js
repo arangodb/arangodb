@@ -36,7 +36,10 @@ var _ = require('underscore'),
   metadataSchema = {
     _id: joi.string().optional(),
     _key: joi.string().optional(),
-    _rev: joi.string().optional()
+    _oldRev: joi.string().optional(),
+    _rev: joi.string().optional(),
+    _from: joi.string().optional(),
+    _to: joi.string().optional()
   };
 
 // -----------------------------------------------------------------------------
