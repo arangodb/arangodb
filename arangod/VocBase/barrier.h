@@ -82,7 +82,6 @@ TRI_barrier_t;
 typedef struct TRI_barrier_blocker_s {
   TRI_barrier_t base;
 
-  void*         _data;
   size_t        _line;
   char const*   _filename;
 

@@ -191,7 +191,6 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
   }
 
   element->base._type         = TRI_BARRIER_ELEMENT;
-  element->_data              = nullptr;
 
   element->_line              = line;
   element->_filename          = filename;
