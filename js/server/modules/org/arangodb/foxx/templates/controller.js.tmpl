@@ -60,7 +60,7 @@ controller.get('/:id', function (req, res) {
 controller.put('/:id', function (req, res) {
   var id = req.urlParameters.id;
   var <%= modelInstance %> = req.parameters.<%= modelInstance %>;
-  res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>));
+  res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>).forClient());
 })
 .pathParam('id', <%= modelInstance %>IdSchema)
 .bodyParam('<%= modelInstance %>', {
@@ -77,7 +77,7 @@ controller.put('/:id', function (req, res) {
 controller.patch('/:id', function (req, res) {
   var id = req.urlParameters.id;
   var patchData = req.parameters.patch;
-  res.json(<%= repositoryInstance %>.updateById(id, patchData));
+  res.json(<%= repositoryInstance %>.updateById(id, patchData).forClient());
 })
 .pathParam('id', <%= modelInstance %>IdSchema)
 .bodyParam('patch', {
