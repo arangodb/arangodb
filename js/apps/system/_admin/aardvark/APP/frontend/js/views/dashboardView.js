@@ -195,8 +195,12 @@
 
       var tempColor = "";
       Object.keys(map).forEach(function (a) {
-        var v = self.history[self.server][a][1];
         var p = "";
+        var v = 0;
+        if (self.history.hasOwnProperty(self.server) &&
+            self.history[self.server].hasOwnProperty(a)) {
+          v = self.history[self.server][a][1];
+        }
 
         if (v < 0) {
           tempColor = "red";
