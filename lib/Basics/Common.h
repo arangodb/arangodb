@@ -71,6 +71,12 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef TRI_HAVE_POSIX_THREADS
+#define _GNU_SOURCE
+#include <pthread.h>
+#undef _GNU_SOURCE
+#endif
+
 #ifdef TRI_HAVE_PROCESS_H
 #include <process.h>
 #endif

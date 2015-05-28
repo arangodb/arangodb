@@ -99,6 +99,22 @@ bool IGNORE_DATAFILE_ERRORS;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts list of size_t to string
+////////////////////////////////////////////////////////////////////////////////
+
+template<typename A> string to_string (vector<A> v) {
+  string result = "";
+  string sep = "[";
+
+  for (auto e : v) {
+    result += sep + to_string(e);
+    sep = ",";
+  }
+
+  return result + "]";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief define "_api" and "_admin" handlers
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -327,9 +343,14 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _server(nullptr),
     _queryRegistry(nullptr),
     _pairForAql(nullptr),
-    _indexPool(nullptr) {
+    _indexPool(nullptr),
+    _threadAffinity(true) {
 
   TRI_SetApplicationName("arangod");
+
+#ifndef TRI_HAVE_THREAD_AFFINITY
+  _threadAffinity = false;
+#endif
 
   // set working directory and database directory
 #ifdef _WIN32
@@ -513,6 +534,10 @@ void ArangoServer::buildApplicationServer () {
     ("no-upgrade", "skip a database upgrade")
     ("start-service", "used to start as windows service")
     ("no-server", "do not start the server, if console is requested")
+
+#ifndef TRI_HAVE_THREAD_AFFINITY
+    ("use-thread-affinity", &_threadAffinity, "try to set thread affinity")
+#endif
   ;
 
   // .............................................................................
@@ -520,19 +545,23 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
 #ifndef _WIN32
-
   additional["General Options:help-admin"]
     ("daemon", "run as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
     ("supervisor", "starts a supervisor and runs as daemon")
     ("working-directory", &_workingDirectory, "working directory in daemon mode")
   ;
-
 #endif
 
 #ifdef __APPLE__
   additional["General Options:help-admin"]
     ("voice", "enable voice based welcome")
+  ;
+#endif
+
+#ifdef TRI_HAVE_THREAD_AFFINITY
+  additional["General Options:help-admin"]
+    ("use-thread-affinity", &_threadAffinity, "try to set thread affinity")
   ;
 #endif
 
@@ -977,6 +1006,60 @@ int ArangoServer::startupServer () {
   }
 
   startupProgress();
+
+  // .............................................................................
+  // try to figure out the thread affinity
+  // .............................................................................
+
+  size_t n = TRI_numberProcessors();
+
+  if (n > 2) {
+    if (_threadAffinity) {
+      size_t ns = _applicationScheduler->numberOfThreads();
+      size_t nd = _applicationDispatcher->numberOfThreads();
+
+      if (ns != 0 && nd != 0) {
+        LOG_INFO("the server has %d (hyper) cores, using %d scheduler threads, %d dispatcher threads",
+                 (int) n, (int) ns, (int) nd);
+
+        vector<size_t> ps;
+        vector<size_t> pd;
+
+        if (n < ns + nd) {
+          ns = round(1.0 * n * ns / (ns + nd));
+          nd = round(1.0 * n * nd / (ns + nd));
+
+          if (ns < 1) { ns = 1; }
+          if (nd < 1) { nd = 1; }
+
+          while (n < ns + nd) {
+            if (1 < ns) { ns -= 1; }
+            else if (1 < nd) { nd -= 1; }
+            else { ns = 1; nd = 1; }
+          }
+        }
+
+        size_t i = 0;
+
+        for (;  i < ns;  ++i) {
+          ps.push_back(i);
+        }
+
+        for (;  i < ns + nd;  ++i) {
+          pd.push_back(i);
+        }
+
+        _applicationScheduler->setProcessorAffinity(ps);
+        _applicationDispatcher->setProcessorAffinity(pd);
+
+        LOG_INFO("scheduler cores: %s, dispatcher cores: %s",
+                 to_string(ps).c_str(), to_string(pd).c_str());
+      }
+    }
+    else {
+      LOG_INFO("the server has %d (hyper) cores", (int) n);
+    }
+  }
 
   // .............................................................................
   // start the main event loop

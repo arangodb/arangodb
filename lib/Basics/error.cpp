@@ -29,12 +29,6 @@
 
 #include "Basics/Common.h"
 
-#ifndef TRI_GCC_THREAD_LOCAL_STORAGE
-#ifdef TRI_HAVE_POSIX_THREADS
-#include <pthread.h>
-#endif
-#endif
-
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 #include "Basics/associative.h"
