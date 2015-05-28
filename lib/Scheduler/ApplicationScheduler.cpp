@@ -399,10 +399,10 @@ void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   size_t j = 0;
 
-  for (uint32_t i = 0;  i < _nrSchedulerThreads) {
+  for (uint32_t i = 0;  i < _nrSchedulerThreads;  ++i) {
     size_t c = cores[j];
 
-    LOG_INFO("using core %d for scheduler thread %d", c, i);
+    LOG_DEBUG("using core %d for scheduler thread %d", (int) c, (int) i);
 
     _scheduler->setProcessorAffinity(i, c);
 
@@ -412,7 +412,6 @@ void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
       j = 0;
     }
   }
-
 #endif
 }
 
