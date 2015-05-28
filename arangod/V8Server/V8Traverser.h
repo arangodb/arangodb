@@ -176,13 +176,23 @@ namespace triagens {
  
       struct NeighborsOptions : BasicOptions {
 
+        private:
+          std::unordered_set<TRI_voc_cid_t> _explicitCollections; 
+
+        public:
           TRI_edge_direction_e direction;
-          bool distinct;
+          uint64_t minDepth;
+          uint64_t maxDepth;
 
           NeighborsOptions () :
             direction(TRI_EDGE_OUT),
-            distinct(true) {
+            minDepth(1),
+            maxDepth(1) {
           }
+
+          bool matchesVertex (VertexId& v) const;
+
+          void addCollectionRestriction (TRI_voc_cid_t& cid);
       };
 
 

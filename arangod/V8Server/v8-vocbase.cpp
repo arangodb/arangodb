@@ -2202,12 +2202,6 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       }
     }
 
-    // Parse use distinct
-    v8::Local<v8::String> keyDistinct= TRI_V8_ASCII_STRING("distinct");
-    if (options->Has(keyDistinct) ) {
-      opts.distinct  = TRI_ObjectToBoolean(options->Get(keyDistinct));
-    }
-
     // Parse includeData
     v8::Local<v8::String> keyIncludeData = TRI_V8_ASCII_STRING("includeData");
     if (options->Has(keyIncludeData)) {
@@ -2227,6 +2221,18 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       opts.useVertexFilter = true;
       // TODO: User defined AQL function !!
       vertexExample = v8::Handle<v8::Object>::Cast(options->Get(keyFilterVertices));
+    }
+
+    // Parse minDepth
+    v8::Local<v8::String> keyMinDepth = TRI_V8_ASCII_STRING("minDepth");
+    if (options->Has(keyMinDepth)) {
+      opts.minDepth = TRI_ObjectToUInt64(options->Get(keyMinDepth), false);
+    }
+
+    // Parse maxDepth
+    v8::Local<v8::String> keyMaxDepth = TRI_V8_ASCII_STRING("maxDepth");
+    if (options->Has(keyMaxDepth)) {
+      opts.maxDepth = TRI_ObjectToUInt64(options->Get(keyMaxDepth), false);
     }
   }
 
@@ -2276,6 +2282,8 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       cid,
       colObj
     ));
+    // Explicitly allow all collections.
+    opts.addCollectionRestriction(cid);
   }
   auto cleanup = [&] () -> void {
     for (auto& p : edgeCollectionInfos) {
