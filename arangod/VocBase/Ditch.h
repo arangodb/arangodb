@@ -187,7 +187,7 @@ namespace triagens {
 
       private:
 
-        bool          _usedByExternal;
+        uint32_t      _usedByExternal;
         bool          _usedByTransaction;
     };
 

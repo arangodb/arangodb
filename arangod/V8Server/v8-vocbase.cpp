@@ -2486,10 +2486,10 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
         TRI_GET_GLOBALS();
 
         TRI_GET_GLOBAL_STRING(_IdKey);
-        TRI_GET_GLOBAL_STRING(VersionKey);
+        TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (value->Has(_IdKey)) {
-          TRI_voc_cid_t cachedCid = static_cast<TRI_voc_cid_t>(TRI_ObjectToUInt64(value->Get(_IdKey), true));
-          uint32_t cachedVersion = (uint32_t) TRI_ObjectToInt64(value->Get(VersionKey));
+          auto cachedCid = static_cast<TRI_voc_cid_t>(TRI_ObjectToUInt64(value->Get(_IdKey), true));
+          uint32_t cachedVersion = (uint32_t) TRI_ObjectToInt64(value->Get(VersionKeyHidden));
 
           if (cachedCid == cid && cachedVersion == internalVersion) {
             // cache hit
@@ -2497,7 +2497,7 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
           }
 
           // store the updated version number in the object for future comparisons
-          value->ForceSet(VersionKey, v8::Number::New(isolate, (double) internalVersion), v8::DontEnum);
+          value->ForceSet(VersionKeyHidden, v8::Number::New(isolate, (double) internalVersion), v8::DontEnum);
 
           // cid has changed (i.e. collection has been dropped and re-created) or version has changed
         }

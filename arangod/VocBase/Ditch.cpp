@@ -80,7 +80,7 @@ DocumentDitch::DocumentDitch (Ditches* ditches,
                               char const* filename,
                               int line)
   : Ditch(ditches, filename, line),
-    _usedByExternal(false),
+    _usedByExternal(0),
     _usedByTransaction(usedByTransaction) {
 }
 
@@ -99,12 +99,12 @@ void DocumentDitch::setUsedByTransaction () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the _usedByExternal flag, using the required lock
+/// @brief increases the _usedByExternal value, using the required lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void DocumentDitch::setUsedByExternal () {
   auto callback = [this] () -> void {
-    _usedByExternal = true;
+    ++_usedByExternal;
   };
   _ditches->executeProtected(callback);
 }
@@ -431,15 +431,17 @@ void Ditches::freeDocumentDitch (DocumentDitch* ditch,
       ditch->_usedByTransaction = false;
     }
     else {
-      // note: _usedByExternal may or may not be true when we get here
+      // note: _usedByExternal may or may not be set when we get here
       // the reason is that there are ditches not linked at all
       // (when a ditch is created ahead of operations but the operations are
       // not executed etc.) 
-      ditch->_usedByExternal = false;
+      if (ditch->_usedByExternal > 0) {
+        --ditch->_usedByExternal;
+      }
     }
 
     if (ditch->_usedByTransaction == false &&
-        ditch->_usedByExternal == false) {
+        ditch->_usedByExternal == 0) {
       // Really free it:
 
       unlink(ditch);

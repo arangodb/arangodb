@@ -313,7 +313,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
 
   // point the 0 index Field to the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_SHAPED_JSON_TYPE));
-  result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, (void*) marker));
+  result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, const_cast<void*>(static_cast<void const*>(marker))));
 
   auto it = v8g->JSDitches.find(ditch);
 
