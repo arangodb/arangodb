@@ -62,7 +62,8 @@ var PlannerLocalDefaults = {
   "valgrind"                : "",
   "valgrindopts"            : [],
   "valgrindXmlFileBase"     : "",
-  "valgrindTestname"        : ""
+  "valgrindTestname"        : "",
+  "valgrindHosts"           : ""
 };
 
 // Some helpers using underscore:
@@ -399,6 +400,8 @@ function checkDispatcherIps (config) {
 ///   - *valgrindopts*: commandline options to the valgrind process
 ///   - *valgrindXmlFileBase*: pattern for logfiles
 ///   - *valgrindTestname*: name of test to add to the logfiles
+///   - *valgrindHosts*: which host classes should run in valgrind? 
+///        Coordinator / DBServer
 ///
 /// All these values have default values. Here is the current set of
 /// default values:
@@ -672,7 +675,8 @@ Planner.prototype.makePlan = function() {
              "valgrind"            : config.valgrind,
              "valgrindopts"        : config.valgrindopts,
              "valgrindXmlFileBase" : config.valgrindXmlFileBase,
-             "valgrindTestname"    : config.valgrindXmlFileBase
+             "valgrindTestname"    : config.valgrindXmlFileBase,
+             "valgrindHosts"       : config.valgrindHosts
            };
     for (j = 0; j < i; j++) {
       ep = dispatchers[agents[j].dispatcher].endpoint;
@@ -703,7 +707,8 @@ Planner.prototype.makePlan = function() {
                 "valgrind"               : config.valgrind,
                 "valgrindopts"           : config.valgrindopts,
                 "valgrindXmlFileBase"    : config.valgrindXmlFileBase,
-                "valgrindTestname"       : config.valgrindTestname
+                "valgrindTestname"       : config.valgrindTestname,
+                "valgrindHosts"          : config.valgrindHosts
               } );
   }
 
