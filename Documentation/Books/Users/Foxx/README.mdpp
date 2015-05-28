@@ -168,17 +168,6 @@ We will continue with migration of the Application to a newer version.
 
 [Read More](Production/README.md)
 
-!SECTION Available Foxx Applications
-
-You do not want to reinvent the wheel?
-We neither, therefore we shared some general-use applications, like user- and session-management.
-This chapter will introduce you some of these applications and will give you an introduction on
-how to use each of them.
-Some of them can be integrated directly in your own applications.
-Others follow the micro-service philosophy and can be added independently.
-
-[Read More](Apps/README.md)
-
 !SECTION Foxx in a cluster
 
 Ready to scale out?
