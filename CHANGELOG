@@ -1,6 +1,8 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* issue #1341: Can't use bindvars in UPSERT 
+
 * changed default value of option `--database.ignore-datafile-errors` from `true` to `false`
 
   If the new default value of `false` is used, then arangod will refuse loading collections that contain
