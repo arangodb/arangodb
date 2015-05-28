@@ -43,6 +43,9 @@ var db = require("internal").db;
 
 function FoxxManagerSuite () {
   'use strict';
+
+  var mountPoint = "/itz";
+
   function inList (list, name) {
     var i;
 
@@ -51,14 +54,13 @@ function FoxxManagerSuite () {
 
       assertTrue(entry.hasOwnProperty("name"));
 
-      if (entry.name === name) {
+      if (entry.name === name && entry.mount === mountPoint) {
         return true;
       }
     }
 
     return false;
   }
-  var mountPoint = "/itz";
 
   return {
 
