@@ -103,7 +103,8 @@ Thread::Thread (std::string const& name)
     _finishedCondition(nullptr),
     _started(0),
     _running(0),
-    _joined(0) {
+    _joined(0),
+    _affinity(-1) {
   TRI_InitThread(&_thread);
 }
 
@@ -187,6 +188,10 @@ bool Thread::start (ConditionVariable * finishedCondition) {
     LOG_ERROR("could not start thread '%s': %s", _name.c_str(), strerror(errno));
   }
 
+  if (0 <= _affinity) {
+    TRI_SetProcessorAffinity(&_thread, (size_t) _affinity);
+  }
+
   return ok;
 }
 
@@ -258,7 +263,7 @@ int Thread::shutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::setProcessorAffinity (size_t c) {
-  TRI_SetProcessorAffinity(&_thread, c);
+  _affinity = (int) c;
 }
 
 // -----------------------------------------------------------------------------
