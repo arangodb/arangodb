@@ -421,7 +421,7 @@ static void inboundNeighbors (
     unordered_set<VertexId>& visited,
     unordered_set<VertexId>& distinct,
     vector<VertexId>& result,
-    int depth = 1) {
+    uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_IN;
   unordered_set<VertexId> nextDepth;
   for (auto col : collectionInfos) {
@@ -467,7 +467,7 @@ static void outboundNeighbors (
     unordered_set<VertexId>& visited,
     unordered_set<VertexId>& distinct,
     vector<VertexId>& result,
-    int depth = 1) {
+    uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
   unordered_set<VertexId> nextDepth;
   for (auto col : collectionInfos) {
@@ -513,7 +513,7 @@ static void anyNeighbors (
     unordered_set<VertexId>& visited,
     unordered_set<VertexId>& distinct,
     vector<VertexId>& result,
-    int depth = 1) {
+    uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
   unordered_set<VertexId> nextDepth;
   for (auto col : collectionInfos) {
@@ -572,6 +572,7 @@ static void anyNeighbors (
     anyNeighbors(collectionInfos, opts, nextDepth, visited, distinct, result, depth + 1);
   }
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Execute a search for neighboring vertices
 ////////////////////////////////////////////////////////////////////////////////
