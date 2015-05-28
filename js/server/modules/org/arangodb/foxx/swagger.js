@@ -29,6 +29,8 @@
 
 var _ = require('underscore');
 var fs = require('fs');
+var ArangoError = require('org/arangodb').ArangoError;
+var errors = require('org/arangodb').errors;
 var resultNotFound = require('org/arangodb/actions').resultNotFound;
 var FoxxManager = require('org/arangodb/foxx/manager');
 var jsonSchemaPrimitives = [
@@ -100,7 +102,16 @@ function swaggerPath(path, basePath) {
 }
 
 function swaggerJson(req, res, opts) {
-  var foxx = FoxxManager.routes(opts.appPath);
+  var foxx;
+  try {
+    foxx = FoxxManager.routes(opts.appPath);
+  } catch (e) {
+    if (e instanceof ArangoError && e.errorNum === errors.ERROR_APP_NOT_FOUND.code) {
+      resultNotFound(req, res, 404, e.errorMessage);
+      return;
+    }
+    throw e;
+  }
   var app = foxx.appContext && foxx.appContext.app;
   var swagger = parseRoutes(opts.appPath, foxx.routes, foxx.models);
   res.json({

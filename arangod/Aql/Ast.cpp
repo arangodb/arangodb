@@ -169,6 +169,28 @@ void Ast::addOperation (AstNode* node) {
 
   _root->addMember(node);
 }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST example node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeExample (AstNode const* variable,
+                                 AstNode const* example) {
+  if (example == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (example->type != NODE_TYPE_OBJECT && example->type != NODE_TYPE_PARAMETER) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting object literal or bind parameter for example");
+  }
+
+  AstNode* node = createNode(NODE_TYPE_EXAMPLE);
+
+  node->setData(const_cast<AstNode*>(variable));
+  node->addMember(example);
+
+  return node;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST for node
@@ -266,62 +288,9 @@ AstNode* Ast::createNodeFilter (AstNode const* expression) {
 AstNode* Ast::createNodeUpsertFilter (AstNode const* variable,
                                       AstNode const* object) {
   AstNode* node = createNode(NODE_TYPE_FILTER);
+  AstNode* example = createNodeExample(variable, object);
 
-  if (object->type != NODE_TYPE_OBJECT) {
-    // type of the object should have been validated before
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "expecting object literal for upsert");
-  }
-
-  AstNode* result = nullptr;
-  std::vector<char const*> attributeParts{ }; 
-
-  std::function<void(AstNode const*)> createCondition = [&] (AstNode const* object) -> void {
-    TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
-
-    auto const n = object->numMembers();
-
-    for (size_t i = 0; i < n; ++i) {
-      auto member = object->getMember(i); 
-   
-      if (member->type != NODE_TYPE_OBJECT_ELEMENT) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting object literal with literal attribute names for upsert");
-      }
-
-      attributeParts.emplace_back(member->getStringValue());
-
-      auto value = member->getMember(0);
-
-      if (value->type == NODE_TYPE_OBJECT) {
-        createCondition(value);
-      }
-      else {
-        auto access = variable;
-        for (size_t i = 0; i < attributeParts.size(); ++i) {
-          access = createNodeAttributeAccess(access, attributeParts[i]);
-        }
-
-        auto condition = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, value);
-
-        if (result == nullptr) {
-          result = condition;
-        }
-        else {
-          // AND-combine with previous condition
-          result = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, result, condition);
-        }
-      }
-
-      attributeParts.pop_back();
-    }
-  };
-
-  createCondition(object);
-
-  if (result == nullptr) {
-    result = createNodeValueBool(true);
-  }
-
-  node->addMember(result);
+  node->addMember(example);
 
   return node;
 }
@@ -1330,7 +1299,12 @@ void Ast::validateAndOptimize () {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
     }
-  
+
+    // example
+    if (node->type == NODE_TYPE_EXAMPLE) {
+      return this->makeConditionFromExample(node);
+    }
+
     return node;
   };
 
@@ -1510,6 +1484,78 @@ AstNodeType Ast::ReverseOperator (AstNodeType type) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make condition from example
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::makeConditionFromExample (AstNode const* node) {
+  TRI_ASSERT(node->numMembers() == 1);
+
+  auto object = node->getMember(0);
+
+  if (object->type != NODE_TYPE_OBJECT) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting object literal for example");
+  }
+
+  auto variable = static_cast<AstNode*>(node->getData());
+
+  if (variable == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "internal error in object literal handling");
+  }
+
+
+  AstNode* result = nullptr;
+  std::vector<char const*> attributeParts{ }; 
+
+  std::function<void(AstNode const*)> createCondition = [&] (AstNode const* object) -> void {
+    TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
+
+    auto const n = object->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = object->getMember(i); 
+   
+      if (member->type != NODE_TYPE_OBJECT_ELEMENT) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting object literal with literal attribute names in example");
+      }
+
+      attributeParts.emplace_back(member->getStringValue());
+
+      auto value = member->getMember(0);
+
+      if (value->type == NODE_TYPE_OBJECT) {
+        createCondition(value);
+      }
+      else {
+        auto access = variable;
+        for (size_t i = 0; i < attributeParts.size(); ++i) {
+          access = createNodeAttributeAccess(access, attributeParts[i]);
+        }
+
+        auto condition = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, value);
+
+        if (result == nullptr) {
+          result = condition;
+        }
+        else {
+          // AND-combine with previous condition
+          result = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, result, condition);
+        }
+      }
+
+      attributeParts.pop_back();
+    }
+  };
+
+  createCondition(object);
+
+  if (result == nullptr) {
+    result = createNodeValueBool(true);
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a number node for an arithmetic result, integer

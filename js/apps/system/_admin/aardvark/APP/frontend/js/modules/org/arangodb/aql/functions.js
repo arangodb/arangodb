@@ -121,7 +121,7 @@ var stringifyFunction = function (code, name) {
   }
 
   if (typeof code === 'string') {
-    code = "(\n" + code + "\n)";
+    code = "(" + code + "\n)";
 
     if (! internal.parse) {
       // no parsing possible. assume always valid
