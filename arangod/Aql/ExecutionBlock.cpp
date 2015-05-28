@@ -827,7 +827,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
   if (trxCollection != nullptr) {
-    _trx->orderBarrier(trxCollection);
+    _trx->orderDitch(trxCollection);
   }
 
   if (_random) {
@@ -1068,7 +1068,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   auto trxCollection = _trx->trxCollection(_collection->cid());
 
   if (trxCollection != nullptr) {
-    _trx->orderBarrier(trxCollection);
+    _trx->orderDitch(trxCollection);
   }
     
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
@@ -1341,7 +1341,7 @@ int IndexRangeBlock::initialize () {
   int res = ExecutionBlock::initialize();
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (_trx->orderBarrier(_trx->trxCollection(_collection->cid())) == nullptr) {
+    if (_trx->orderDitch(_trx->trxCollection(_collection->cid())) == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;
     }
   }
@@ -4376,7 +4376,7 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
   
   auto trxCollection = _trx->trxCollection(_collection->cid());
   if (trxCollection != nullptr) {
-    _trx->orderBarrier(trxCollection);
+    _trx->orderDitch(trxCollection);
   }
 
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;

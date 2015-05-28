@@ -34,8 +34,8 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "VocBase/barrier.h"
 #include "VocBase/datafile.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
@@ -94,7 +94,7 @@ namespace triagens {
           logfile(logfile),
           totalOperationsCount(totalOperationsCount),
           operations(new std::vector<CollectorOperation>()),
-          barriers(),
+          ditches(),
           dfi(),
           lastFid(0),
           lastDatafile(nullptr) {
@@ -106,28 +106,28 @@ namespace triagens {
         if (operations != nullptr) {
           delete operations;
         }
-        freeBarriers();
+        freeDitches();
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a barrier
+/// @brief add a ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-      void addBarrier (TRI_barrier_t* barrier) {
-        TRI_ASSERT(barrier != nullptr);
-        barriers.push_back(barrier);
+      void addDitch (triagens::arango::DocumentDitch* ditch) {
+        TRI_ASSERT(ditch != nullptr);
+        ditches.emplace_back(ditch);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free all barriers
+/// @brief free all ditches
 ////////////////////////////////////////////////////////////////////////////////
 
-      void freeBarriers () {
-        for (auto it = barriers.begin(); it != barriers.end(); ++it) {
-          TRI_FreeBarrier((*it));
+      void freeDitches () {
+        for (auto& it : ditches) {
+          it->ditches()->freeDocumentDitch(it, false);
         }
 
-        barriers.clear();
+        ditches.clear();
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,10 +161,10 @@ namespace triagens {
       std::vector<CollectorOperation>* operations;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief barriers held by the operations
+/// @brief ditches held by the operations
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::vector<TRI_barrier_t*> barriers;
+      std::vector<triagens::arango::DocumentDitch*> ditches;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile info cache, updated when the collector transfers markers

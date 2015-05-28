@@ -1354,15 +1354,15 @@ leave:
       // create a local datafile info struct
       createDfi(cache, datafile->_fid);
 
-      // we only need the barriers when we are outside the recovery
+      // we only need the ditches when we are outside the recovery
       // the compactor will not run during recovery
-      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList, false);
+      auto ditch = document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
         
-      if (barrier == nullptr) {
+      if (ditch == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      cache->addBarrier(barrier);
+      cache->addDitch(ditch);
     }
   }
   else {

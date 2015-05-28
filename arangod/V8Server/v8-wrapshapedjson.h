@@ -40,7 +40,7 @@
 
 v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
                                           triagens::arango::CollectionNameResolver const*,
-                                          TRI_barrier_t*,
+                                          triagens::arango::DocumentDitch*,
                                           TRI_voc_cid_t,
                                           TRI_document_collection_t*,
                                           void const*);
@@ -54,15 +54,15 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
                                           T& trx,
                                           TRI_voc_cid_t cid,
                                           void const* data) {
-  TRI_barrier_t* barrier = trx.barrier(cid);
-  TRI_ASSERT(barrier != nullptr);
+  auto ditch = trx.ditch(cid);
+  TRI_ASSERT(ditch != nullptr);
 
   triagens::arango::CollectionNameResolver const* resolver = trx.resolver();
   TRI_document_collection_t* collection = trx.documentCollection(cid);
 
   TRI_ASSERT(collection != nullptr);
 
-  return TRI_WrapShapedJson(isolate, resolver, barrier, cid, collection, data);
+  return TRI_WrapShapedJson(isolate, resolver, ditch, cid, collection, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1416,7 +1416,7 @@
 
       task: function () {
         var aal = getCollection("_aal");
-        if (!aal) {
+        if (! aal) {
           return true;
         }
         aal.drop();
