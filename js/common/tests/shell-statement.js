@@ -440,6 +440,24 @@ function StatementSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test execute method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteV8 : function () {
+      /*jshint maxlen:1000*/
+      var st = db._createStatement({ query : "LET doc1 = { foo : \"bar\", a : 1, b : 2 } LET doc2 = { foo : \"baz\", a : 2, c\ : 3 } FOR i IN 1..1000 LET missing = (FOR key IN NOOPT(ATTRIBUTES(doc1))  FILTER ! HAS(doc2, key) RETURN { [ key ]: doc1[key] }) LET changed = (FOR key IN NOOPT(ATTRIBUTES(doc1)) FILTER HAS(doc2, key) && doc1[key] != doc2[key]  RETURN { [ key ] : { old: doc1[key], new: doc2[key] } }) LET added = (FOR key IN NOOPT(ATTRIBUTES(doc2)) FILTER ! HAS(doc1, key) RETURN { [ key ] : doc2[key] }) RETURN { missing : missing, changed : changed, added : added }", batchSize: 100, count: true });
+      var result = st.execute();
+
+      assertEqual(1000, result.count());
+      while (result.hasNext()) {
+        var doc = result.next();
+        assertEqual([ { b: 2 } ], doc.missing);
+        assertEqual([ { foo: { "old": "bar", "new": "baz" } }, { a: { "old" : 1, "new": 2 } } ], doc.changed);
+        assertEqual([ { c: 3 } ], doc.added);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test execute method, return extra
 ////////////////////////////////////////////////////////////////////////////////
 
