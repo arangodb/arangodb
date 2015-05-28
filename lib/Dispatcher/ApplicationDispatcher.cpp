@@ -88,7 +88,9 @@ ApplicationDispatcher::ApplicationDispatcher ()
     _applicationScheduler(nullptr),
     _dispatcher(nullptr),
     _dispatcherReporterTask(nullptr),
-    _reportInterval(0.0) {
+    _reportInterval(0.0),
+    _nrStandardThreads(0),
+    _nrAQLThreads(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,6 +135,8 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addStandardQueue(nrThreads, maxSize);
+
+  _nrStandardThreads = nrThreads;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,6 +153,26 @@ void ApplicationDispatcher::buildAQLQueue (size_t nrThreads,
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addAQLQueue(nrThreads, maxSize);
+  
+  _nrAQLThreads = nrThreads;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of used threads
+////////////////////////////////////////////////////////////////////////////////
+
+size_t ApplicationDispatcher::numberOfThreads () {
+  return _nrStandardThreads /* + _nrAQLThreads */;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the processor affinity
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationDispatcher::setProcessorAffinity (const vector<size_t>& cores) {
+#ifdef TRI_HAVE_THREAD_AFFINITY
+  _dispatcher->setProcessorAffinity("STANDARD", cores);
+#endif
 }
 
 // -----------------------------------------------------------------------------

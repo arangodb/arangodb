@@ -127,8 +127,8 @@ else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
 	  && $(MAKE) \
 		LDFLAGS="-lc++" \
-                CFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
+                CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -159,8 +159,8 @@ if ENABLE_V8_DEBUG
 else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
 	  && $(MAKE) \
-		CFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
+		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \

@@ -355,6 +355,20 @@ void Dispatcher::reportStatus () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the process affinity
+////////////////////////////////////////////////////////////////////////////////
+
+void Dispatcher::setProcessorAffinity (const string& name, const vector<size_t>& cores) {
+  auto const& it = _queues.find(name);
+
+  if (it == _queues.end()) {
+    return;
+  }
+
+  it->second->setProcessorAffinity(cores);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
