@@ -344,12 +344,12 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _queryRegistry(nullptr),
     _pairForAql(nullptr),
     _indexPool(nullptr),
-    _threadAffinity(true) {
+    _threadAffinity(1) {
 
   TRI_SetApplicationName("arangod");
 
 #ifndef TRI_HAVE_THREAD_AFFINITY
-  _threadAffinity = false;
+  _threadAffinity = 0;
 #endif
 
   // set working directory and database directory
@@ -536,7 +536,7 @@ void ArangoServer::buildApplicationServer () {
     ("no-server", "do not start the server, if console is requested")
 
 #ifndef TRI_HAVE_THREAD_AFFINITY
-    ("use-thread-affinity", &_threadAffinity, "try to set thread affinity")
+    ("use-thread-affinity", &_threadAffinity, "try to set thread affinity (0=disable, 1=disjunct, 2=overlap)")
 #endif
   ;
 
@@ -561,7 +561,7 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_HAVE_THREAD_AFFINITY
   additional["General Options:help-admin"]
-    ("use-thread-affinity", &_threadAffinity, "try to set thread affinity")
+    ("use-thread-affinity", &_threadAffinity, "try to set thread affinity (0=disable, 1=disjunct, 2=overlap)")
   ;
 #endif
 
@@ -1013,18 +1013,20 @@ int ArangoServer::startupServer () {
 
   size_t n = TRI_numberProcessors();
 
-  if (n > 2) {
-    if (_threadAffinity) {
-      size_t ns = _applicationScheduler->numberOfThreads();
-      size_t nd = _applicationDispatcher->numberOfThreads();
+  if (n > 2 && _threadAffinity > 0) {
+    size_t ns = _applicationScheduler->numberOfThreads();
+    size_t nd = _applicationDispatcher->numberOfThreads();
 
-      if (ns != 0 && nd != 0) {
-        LOG_INFO("the server has %d (hyper) cores, using %d scheduler threads, %d dispatcher threads",
-                 (int) n, (int) ns, (int) nd);
+    if (ns != 0 && nd != 0) {
+      LOG_INFO("the server has %d (hyper) cores, using %d scheduler threads, %d dispatcher threads",
+               (int) n, (int) ns, (int) nd);
+    }
+    else {
+      _threadAffinity = 0;
+    }
 
-        vector<size_t> ps;
-        vector<size_t> pd;
-
+    switch (_threadAffinity) {
+      case 1:
         if (n < ns + nd) {
           ns = round(1.0 * n * ns / (ns + nd));
           nd = round(1.0 * n * nd / (ns + nd));
@@ -1039,22 +1041,44 @@ int ArangoServer::startupServer () {
           }
         }
 
-        size_t i = 0;
+        break;
 
-        for (;  i < ns;  ++i) {
-          ps.push_back(i);
+      case 2:
+        if (n < ns) {
+          ns = n;
         }
 
-        for (;  i < ns + nd;  ++i) {
-          pd.push_back(i);
+        if (n < nd) {
+          nd = n;
         }
 
-        _applicationScheduler->setProcessorAffinity(ps);
-        _applicationDispatcher->setProcessorAffinity(pd);
+        break;
 
-        LOG_INFO("scheduler cores: %s, dispatcher cores: %s",
-                 to_string(ps).c_str(), to_string(pd).c_str());
+      default:
+        _threadAffinity = 0;
+        break;
+    }
+
+    if (_threadAffinity > 0) {
+      TRI_ASSERT(ns <= n);
+      TRI_ASSERT(nd <= n);
+
+      vector<size_t> ps;
+      vector<size_t> pd;
+
+      for (size_t i = 0;  i < ns;  ++i) {
+        ps.push_back(i);
       }
+
+      for (size_t i = 0;  i < nd;  ++i) {
+        pd.push_back(n - i - 1);
+      }
+
+      _applicationScheduler->setProcessorAffinity(ps);
+      _applicationDispatcher->setProcessorAffinity(pd);
+
+      LOG_INFO("scheduler cores: %s, dispatcher cores: %s",
+               to_string(ps).c_str(), to_string(pd).c_str());
     }
     else {
       LOG_INFO("the server has %d (hyper) cores", (int) n);

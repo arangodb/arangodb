@@ -638,7 +638,7 @@ namespace triagens {
 /// @brief use thread affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _threadAffinity;
+        uint32_t _threadAffinity;
     };
   }
 }
