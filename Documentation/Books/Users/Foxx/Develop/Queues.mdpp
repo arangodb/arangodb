@@ -4,13 +4,13 @@ If you have never built a Foxx App, then you can make your own [first Foxx App](
 
 Foxx allows defining job queues that let you perform slow or expensive actions asynchronously. These queues can be used to send e-mails, call external APIs or perform other actions that you do not want to perform directly or want to retry on failure.
 
-Please note that Foxx job queues are database-specific. Queues and jobs are always relative to the database in which they are created or accessed. 
+Please note that Foxx job queues are database-specific. Queues and jobs are always relative to the database in which they are created or accessed.
 
-By default only jobs from queues inside the `_system` database will be processed automatically by the Foxx queue manager. To automatically process the queues of other databases than `_system`, it is required to start ArangoDB with the option `--server.foxx-queues-system-only false`. 
+By default only jobs from queues inside the `_system` database will be processed automatically by the Foxx queue manager. To automatically process the queues of other databases than `_system`, it is required to start ArangoDB with the option `--server.foxx-queues-system-only false`.
 
 Restricting the Foxx queue manager to the `_system` database will lead to the queue manager having to check only the queue(s) of a single database. Contrary, checking the queues of all databases might result in more work and more CPU time used by the queue manager.
-  
-By default the Foxx queue manager will be checking the queue(s) every second. This value can be changed by setting the startup option `--server.foxx-manager-poll-interval`. Lowering this value will result in the queue manager waking up and checking the queues more frequently, which may increase CPU usage of the server. 
+
+By default the Foxx queue manager will be checking the queue(s) every second. This value can be changed by setting the startup option `--server.foxx-manager-poll-interval`. Lowering this value will result in the queue manager waking up and checking the queues more frequently, which may increase CPU usage of the server.
 
 For the low-level functionality see the section **Task Management** in the chapter **JavaScript Modules**.
 
@@ -68,7 +68,7 @@ Fetches a queue with the given name.
 
 Returns the **Queue** instance for the given **name**. If the queue does not exist an exception is thrown instead.
 
-The queue will be looked for in the context of the current database. 
+The queue will be looked for in the context of the current database.
 
 **Parameters**
 
@@ -99,7 +99,7 @@ Deletes the queue with the given name from the database.
 `Foxx.queues.delete(name)`
 
 Returns **true** if the queue was deleted successfully. If the queue did not exist, it returns **false** instead.
-The queue will be looked for and deleted in the context of the current database. 
+The queue will be looked for and deleted in the context of the current database.
 
 When a queue is deleted, jobs on that queue will no longer be executed.
 
