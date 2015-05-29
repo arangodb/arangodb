@@ -222,9 +222,10 @@ exports.jwtAlgorithms = {
       'use strict';
       return '';
     },
-    verify: function () {
+    verify: function (key) {
       'use strict';
-      return true;
+      // see https://auth0.com/blog/2015/03/31/critical-vulnerabilities-in-json-web-token-libraries/
+      return !key;
     }
   }
 };
