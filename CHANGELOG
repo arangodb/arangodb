@@ -3,6 +3,8 @@ v2.4.8 (XXXX-XX-XX)
 
 * issue #1289: Foxx models created from database documents expose an internal method
 
+* fixed vulnerability in JWT implementation.
+
 
 v2.4.7 (2015-03-23)
 -------------------
