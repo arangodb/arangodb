@@ -36,8 +36,6 @@ var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("org/arangodb/cluster").isCoordinator();
 var underscore = require("underscore");
 
-// isCoordinator = true;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -5993,6 +5991,10 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
       options.direction,
       info.params
     );
+    e = underscore.filter(e, function(x) {
+      return x.edges.length > 0;
+    });
+    require("console").log("Result", e);
     result = result.concat(e);
   });
   return result;
