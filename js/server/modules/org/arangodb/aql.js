@@ -36,7 +36,7 @@ var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("org/arangodb/cluster").isCoordinator();
 var underscore = require("underscore");
 
-// isCoordinator = true;
+isCoordinator = true;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -4961,6 +4961,28 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function SHORTEST_PATH_VISITOR (config, result, vertex, path) {
+  'use strict';
+
+  if (this.includeData) {
+    result.push({
+      vertices: CLONE(path.vertices),
+      edges: CLONE(path.edges),
+      distance: path.edges.length
+    });
+  } else {
+    result.push({
+      vertices: underscore.pluck(path.vertices, "_id"),
+      edges: underscore.pluck(path.edges, "_id"),
+      distance: path.edges.length
+    });
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5172,10 +5194,6 @@ function TRAVERSAL_CONFIG (func, datasource, startVertex, endVertex, direction, 
     startVertex: startVertex,
     endVertex: endVertex
   };
-
-  if (params.hasOwnProperty("includePath")) {
-    config.includePath = params.includePath;
-  }
 
   if (typeof params.filter === "function") {
     config.filter = params.filter;
@@ -5547,47 +5565,24 @@ function TRAVERSAL_DISTANCE_VISITOR (config, result, vertex, path) {
 /// @brief visitor callback function for traversal
 ////////////////////////////////////////////////////////////////////////////////
 
+// NOTE Inject includeData property in this.
 function TRAVERSAL_DIJKSTRA_VISITOR (config, result, node, path) {
   'use strict';
   var vertex = node.vertex;
   var res;
-  if (config.hasOwnProperty("includeData")
-    && config.includeData === true) {
+  if (this.hasOwnProperty("includeData")
+    && this.includeData === true) {
     res = {
-      vertex: vertex,
-      distance: node.dist,
-      startVertex : path.vertices[0]
+      vertices: path.vertices,
+      edges: path.edges,
+      distance: node.dist
     };
   } else {
     res = {
-      vertex: vertex._id,
-      distance: node.dist,
-      startVertex : path.vertices[0]._id
+      vertices: underscore.pluck(path.vertices, "_id"),
+      edges: underscore.pluck(path.edges, "_id"),
+      distance: node.dist
     };
-  }
-  if (config.hasOwnProperty("includePath")) {
-    var incl = config.includePath;
-    res.path = {};
-    if (incl.vertices === true) {
-      if (config.hasOwnProperty("includeData")
-        && config.includeData === true) {
-        res.path.vertices = path.vertices;
-      } else {
-        res.path.vertices = path.vertices.map(function(o) {
-          return o._id;
-        });
-      }
-    }
-    if (incl.edges === true) {
-      if (config.hasOwnProperty("includeData")
-        && config.includeData === true) {
-        res.path.edges = path.edges;
-      } else {
-        res.path.edges = path.edges.map(function(o) {
-          return o._id;
-        });
-      }
-    }
   }
   result.push(CLONE(res));
 }
@@ -5613,7 +5608,10 @@ function SHORTEST_PATH_PARAMS (params) {
       params.visitor = GET_VISITOR(params.visitor, params);
     }
   } else {
-    params.visitor = TRAVERSAL_VISITOR;
+    // params.visitor = TRAVERSAL_VISITOR;
+    params.visitor = SHORTEST_PATH_VISITOR.bind({
+      includeData: params.includeData || false
+    });
   }
 
   if (typeof params.distance === "string") {
@@ -5661,8 +5659,11 @@ function AQL_SHORTEST_PATH (vertexCollection,
                            TO_ID(endVertex, vertexCollection),
                            direction,
                            params);
-    // Fix Return Format!!
-    return a;
+    // Did not want to modify traversal dijkstra search.
+    // Might have unforseen side effects.
+    // Internal function visits all vertices on the path.
+    // So we reset the path on every step again.
+    return a[a.length - 1];
   }
   // Fall through to new CPP version.
   if (params.hasOwnProperty("weight") && params.hasOwnProperty("defaultWeight")) {
@@ -5937,7 +5938,11 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CREATE_DIJKSTRA_PARAMS(graphName, options) {
-  var params = TRAVERSAL_PARAMS(options, TRAVERSAL_DIJKSTRA_VISITOR),
+  var params = TRAVERSAL_PARAMS(options,
+    TRAVERSAL_DIJKSTRA_VISITOR.bind({
+      includeData: options.includeData || false
+    })
+    ),
       factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
   params.paths = true;
   if (options.edgeExamples) {
@@ -6639,13 +6644,28 @@ function AQL_NEIGHBORS (vertexCollection,
   'use strict';
 
   vertex = TO_ID(vertex, vertexCollection);
+  options = options || {};
   if (isCoordinator) {
     // Fallback to JS if we are in the cluster
-    var edges = AQL_EDGES(edgeCollection, vertex, direction);
-    return FILTERED_EDGES(edges, vertex, direction, examples);
+    let edges = AQL_EDGES(edgeCollection, vertex, direction);
+    let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
+    let vertices = [];
+    let distinct = new Set();
+    for (let i = 0; i < tmp.length; ++i) {
+      let v = tmp[i].vertex;
+      if (!distinct.has(v._id)) {
+        distinct.add(v._id);
+        if (options.includeData) {
+          vertices.push(v);
+        } else {
+          vertices.push(v._id);
+        }
+      }
+    }
+    distinct.clear();
+    return vertices;
   }
 
-  options = options || {};
   options.direction = direction;
   if (examples !== undefined && Array.isArray(examples) && examples.length > 0) {
     options.examples = examples;
@@ -6793,16 +6813,20 @@ function AQL_GRAPH_NEIGHBORS (graphName,
       neighbors = neighbors.concat(e);
     });
     var result = [];
+    let uniqueIds = new Set();
     neighbors.forEach(function (n) {
-      if (FILTER([n], options.neighborExamples).length > 0) {
-        if (options.includeData) {
-          result.push(n);
-        } else {
-          result.push(n._id);
+      if (!uniqueIds.has(n._id)) {
+        uniqueIds.add(n._id);
+        if (FILTER([n], options.neighborExamples).length > 0) {
+          if (options.includeData) {
+            result.push(n);
+          } else {
+            result.push(n._id);
+          }
         }
       }
     });
-
+    uniqueIds.clear();
     return result;
   }
 
