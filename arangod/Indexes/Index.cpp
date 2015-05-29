@@ -30,6 +30,7 @@
 #include "Index.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 
 using namespace triagens::arango;
@@ -43,8 +44,10 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 Index::Index (TRI_idx_iid_t iid,
+              TRI_document_collection_t* collection,
               std::vector<std::string> const& fields) 
   : _iid(iid),
+    _collection(collection),
     _fields(fields) {
 }
 
@@ -305,6 +308,21 @@ bool Index::Compare (TRI_json_t const* lhs,
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a contextual string for logging
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Index::context () const {
+  std::ostringstream result;
+
+  result << "index { id: " << id() 
+         << ", type: " << typeName() 
+         << ", collection: " << _collection->_vocbase->_name 
+         << "/" <<  _collection->_info._name << " }";
+
+  return result.str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

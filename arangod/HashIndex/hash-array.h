@@ -40,6 +40,12 @@
 struct TRI_hash_index_element_s;
 struct TRI_index_search_value_s;
 
+namespace triagens {
+  namespace arango {
+    class HashIndex;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -100,7 +106,8 @@ size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const*);
 /// @brief resizes the hash table
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeHashArray (TRI_hash_array_t*,
+int TRI_ResizeHashArray (triagens::arango::HashIndex*,
+                         TRI_hash_array_t*,
                          size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +128,8 @@ struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t const*
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertKeyHashArray (TRI_hash_array_t*,
+int TRI_InsertKeyHashArray (triagens::arango::HashIndex*,
+                            TRI_hash_array_t*,
                             struct TRI_index_search_value_s const* key,
                             struct TRI_hash_index_element_s const* element,
                             bool isRollback);
@@ -130,7 +138,8 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t*,
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveElementHashArray (TRI_hash_array_t*,
+int TRI_RemoveElementHashArray (triagens::arango::HashIndex*,
+                                TRI_hash_array_t*,
                                 struct TRI_hash_index_element_s* element);
 
 #endif

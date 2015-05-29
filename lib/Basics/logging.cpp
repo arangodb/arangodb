@@ -33,9 +33,6 @@
 #include "Basics/win-utils.h"
 #endif
 
-#include "Basics/Exceptions.h"
-#include "Basics/shell-colors.h"
-
 #ifdef TRI_ENABLE_SYSLOG
 #define SYSLOG_NAMES
 #define prioritynames TRI_prioritynames
@@ -43,12 +40,14 @@
 #include <syslog.h>
 #endif
 
+#include "Basics/Exceptions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/tri-strings.h"
+#include "Basics/shell-colors.h"
 #include "Basics/threads.h"
+#include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 
 // -----------------------------------------------------------------------------

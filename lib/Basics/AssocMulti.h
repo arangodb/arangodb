@@ -157,6 +157,8 @@ namespace triagens {
         IsEqualKeyElementFuncType _isEqualKeyElement;
         IsEqualElementElementFuncType _isEqualElementElement;
         IsEqualElementElementFuncType _isEqualElementElementByKey;
+        
+        std::function<std::string()> _contextCallback;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -174,7 +176,8 @@ namespace triagens {
                     IsEqualElementElementFuncType isEqualElementElement,
                     IsEqualElementElementFuncType isEqualElementElementByKey,
                     size_t numberBuckets = 1,
-                    IndexType initialSize = 64) : 
+                    IndexType initialSize = 64, 
+                    std::function<std::string()> contextCallback = [] () -> std::string { return ""; }) :
 #ifdef TRI_INTERNAL_STATS
             _nrFinds(0), _nrAdds(0), _nrRems(0), _nrResizes(0),
             _nrProbes(0), _nrProbesF(0), _nrProbesD(0),
@@ -183,7 +186,8 @@ namespace triagens {
             _hashElement(hashElement),
             _isEqualKeyElement(isEqualKeyElement),
             _isEqualElementElement(isEqualElementElement),
-            _isEqualElementElementByKey(isEqualElementElementByKey) {
+            _isEqualElementElementByKey(isEqualElementElementByKey),
+            _contextCallback(contextCallback) {
 
           // Make the number of buckets a power of two:
           size_t ex = 0;
@@ -840,8 +844,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void resizeInternal (Bucket& b, IndexType size) {
-          
-          LOG_ACTION("edge-index-resize, target size: %llu", 
+          LOG_ACTION("index-resize %s, target size: %llu", 
+                     _contextCallback().c_str(),
                      (unsigned long long) size);
           double start = TRI_microtime();
 
@@ -891,8 +895,10 @@ namespace triagens {
 
           delete [] oldTable;
           
-          LOG_TIMER((TRI_microtime() - start), "resize-edge-index: done ");
-
+          LOG_TIMER((TRI_microtime() - start),
+                    "index-resize, %s, target size: %llu",
+                    _contextCallback().c_str(),
+                    (unsigned long long) size); 
         }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH

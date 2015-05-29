@@ -121,8 +121,7 @@ FulltextIndex::FulltextIndex (TRI_idx_iid_t iid,
                               TRI_document_collection_t* collection,
                               std::string const& attribute,
                               int minWordLength) 
-  : Index(iid, std::vector<std::string>{ attribute }),
-    _collection(collection),
+  : Index(iid, collection, std::vector<std::string>{ attribute }),
     _pid(0),
     _fulltextIndex(nullptr),
     _minWordLength(minWordLength > 0 ? minWordLength : 1) {

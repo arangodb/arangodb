@@ -45,6 +45,12 @@ struct TRI_hash_index_element_overflow_s;
 struct TRI_hash_index_element_multi_s;
 struct TRI_index_search_value_s;
 
+namespace triagens {
+  namespace arango {
+    class HashIndex;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -111,7 +117,8 @@ size_t TRI_MemoryUsageHashArrayMulti (TRI_hash_array_multi_t const*);
 /// @brief resizes the hash table
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeHashArrayMulti (TRI_hash_array_multi_t*,
+int TRI_ResizeHashArrayMulti (triagens::arango::HashIndex*,
+                              TRI_hash_array_multi_t*,
                               size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,7 +150,8 @@ int TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const*,
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t*,
+int TRI_InsertElementHashArrayMulti (triagens::arango::HashIndex*,
+                                     TRI_hash_array_multi_t*,
                                      struct TRI_index_search_value_s const*,
                                      struct TRI_hash_index_element_multi_s*,
                                      bool);
@@ -152,7 +160,8 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t*,
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t*,
+int TRI_RemoveElementHashArrayMulti (triagens::arango::HashIndex*,
+                                     TRI_hash_array_multi_t*,
                                      struct TRI_index_search_value_s const*,
                                      struct TRI_hash_index_element_multi_s*);
 

@@ -39,7 +39,6 @@
 #include "Basics/tri-strings.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/primary-index.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
