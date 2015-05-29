@@ -1,6 +1,12 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* issue #1347: added option `--create-database` for arangorestore. 
+  
+  Setting this option to `true` will now create the target database if it does not exist. When creating
+  the target database, the username and passwords passed to arangorestore will be used to create an 
+  initial user for the new database.
+
 * issue #1345: advanced debug information for User Functions
 
 * issue #1341: Can't use bindvars in UPSERT 
