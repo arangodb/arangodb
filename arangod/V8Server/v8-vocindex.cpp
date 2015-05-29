@@ -1435,17 +1435,25 @@ static void JS_GetIndexesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
   std::string const& collectionName = std::string(collection->_name);
 
   // get list of indexes
-  auto&& indexes = TRI_IndexesDocumentCollection(document);
+  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document);
 
   trx.finish(res);
   // READ-LOCK end
+  
+  if (indexes == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
 
-  size_t n = indexes.size();
+  size_t const n = indexes->_length;
   v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
   for (size_t i = 0;  i < n;  ++i) {
-    result->Set(static_cast<uint32_t>(i), IndexRep(isolate, collectionName, indexes[i].json()));
+    auto idx = static_cast<TRI_json_t*>(indexes->_buffer[i]);
+
+    result->Set(static_cast<uint32_t>(i), IndexRep(isolate, collectionName, idx));
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, idx);
   }
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, indexes);
 
   TRI_V8_RETURN(result);
 }

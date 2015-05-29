@@ -3557,19 +3557,22 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
 /// the caller must have read-locked the underlying collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
-  std::vector<triagens::basics::Json> result;
+TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
+  TRI_vector_pointer_t* vector = static_cast<TRI_vector_pointer_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false));
 
-  auto const& allIndexes = document->allIndexes();
-  result.reserve(allIndexes.size());
+  if (vector == nullptr) {
+    return nullptr;
+  }
+  
+  TRI_InitVectorPointer(vector, TRI_UNKNOWN_MEM_ZONE);
 
-  for (auto const& idx : allIndexes) {
+  for (auto const& idx : document->allIndexes()) {
     auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE);
 
-    result.emplace_back(std::move(json));
+    TRI_PushBackVectorPointer(vector, json.json());
   }
 
-  return result;
+  return vector;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
