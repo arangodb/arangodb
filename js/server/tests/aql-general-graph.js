@@ -278,7 +278,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       var bindVars = {
         name: gN,
         example: v1 + "/v1",
-        options: {direction : 'any'}
+        options: {
+          direction : 'any',
+          includeData: true
+        }
       };
       var actual = getRawQueryResults(AQL_EDGES, bindVars);
       assertEqual(actual, [ "v1->v2", "v1->v5", "v2->v1" ]);
@@ -290,7 +293,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         example: v1 + "/v1",
         options: {
           direction : 'any',
-          edgeCollectionRestriction: [e1]
+          edgeCollectionRestriction: [e1],
+          includeData: true
         }
       };
       var actual = getRawQueryResults(AQL_EDGES, bindVars);
@@ -301,7 +305,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       var bindVars = {
         name: gN,
         example: startExample,
-        options: {direction : 'any'}
+        options: {
+          direction : 'any',
+          includeData: true
+        }
       };
       var actual = getRawQueryResults(AQL_EDGES, bindVars);
       assertEqual(actual, [
@@ -321,6 +328,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         example: v1 + "/v1",
         options: {
           direction : 'any',
+          includeData: true,
           edgeExamples: [{what: 'v2->v1'}]
         }
       };
@@ -333,7 +341,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       var bindVars = {
         name: gN,
         example: v1 + "/v1",
-        options: {direction : 'inbound'}
+        options: {
+          includeData: true,
+          direction : 'inbound'
+        }
       };
       var actual = getRawQueryResults(AQL_EDGES, bindVars);
       assertEqual(actual, [ "v2->v1"]);
@@ -343,7 +354,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       var bindVars = {
         name: gN,
         example: startExample,
-        options: {direction : 'inbound'}
+        options: {
+          includeData: true,
+          direction : 'inbound'
+        }
       };
       var actual = getRawQueryResults(AQL_EDGES, bindVars);
       assertEqual(actual.length, 3);
@@ -357,6 +371,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         name: gN,
         example: startExample,
         options: {
+          includeData: true,
           direction : 'inbound',
           edgeCollectionRestriction: [e2]
         }
@@ -371,6 +386,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         name: gN,
         example: startExample,
         options: {
+          includeData: true,
           direction : 'inbound',
           edgeExamples: [{'what' : 'v3->v8'}]
         }
@@ -384,7 +400,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       var bindVars = {
         name: gN,
         example: v1 + "/v1",
-        options: {direction : 'outbound'}
+        options: {
+          includeData: true,
+          direction : 'outbound'
+        }
       };
       var actual = getRawQueryResults(AQL_EDGES, bindVars);
       assertEqual(actual[0], "v1->v2");
@@ -395,7 +414,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       var bindVars = {
         name: gN,
         example: startExample,
-        options: {direction : 'outbound'}
+        options: {
+          direction : 'outbound',
+          includeData: true
+        }
       };
       var actual = getRawQueryResults(AQL_EDGES, bindVars);
       assertEqual(actual.length, 7);
@@ -414,6 +436,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         example: startExample,
         options: {
           direction : 'outbound',
+          includeData: true,
           edgeCollectionRestriction: [e2]
         }
       };
@@ -758,43 +781,6 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 0);
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief checks EDGES() OLD
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testEdgesOut: function () {
-      var actual;
-
-      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound' ,minDepth : 1, maxDepth : 3}) SORT e.vertex._key RETURN e");
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].vertex._key, "v2");
-      assertEqual(actual[2].vertex._key, "v5");
-      assertEqual(actual[3].vertex._key, "v5");
-
-      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {neighborExamples : {hugo : true} , direction : 'outbound' ,minDepth : 1, maxDepth : 3}) SORT e.vertex._key RETURN e");
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].vertex._key, "v2");
-
-      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound'}) SORT e.what RETURN e");
-      assertEqual(actual[0].path.edges[0].what, "v1->v2");
-      assertEqual(actual[0].vertex._key, "v2");
-      assertEqual(actual[1].path.edges[0].what, "v1->v5");
-      assertEqual(actual[1].vertex._key, "v5");
-
-      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', { hugo : true } , {direction : 'outbound'}) SORT e.vertex._key RETURN e");
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].vertex._key, "v2");
-      assertEqual(actual[2].vertex._key, "v5");
-      assertEqual(actual[3].vertex._key, "v5");
-
-
-      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', { hugo : true } , {direction : 'outbound', endVertexCollectionRestriction : 'UnitTestsAhuacatlVertex3' }) " +
-        "SORT e.vertex._key RETURN e");
-
-      assertEqual(actual[0].vertex._key, "v5");
-      assertEqual(actual[1].vertex._key, "v5");
     }
 
   };
@@ -2688,6 +2674,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
         example: s1,
         options: {
           direction : 'any',
+          includeData: true,
           minDepth: 2,
           maxDepth: 2,
           vertexCollectionRestriction: v3,
@@ -2696,7 +2683,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 1);
-      assertEqual(actual[0].vertex._id, t1);
+      assertEqual(actual[0]._id, t1);
     },
 
     testRestrictedPathHops2: function() {
@@ -2705,6 +2692,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
         example: s2,
         options: {
           direction : 'any',
+          includeData: true,
           minDepth: 2,
           maxDepth: 2,
           vertexCollectionRestriction: v3,
@@ -2713,8 +2701,8 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 2);
-      assertEqual(actual[0].vertex._id, t1);
-      assertEqual(actual[1].vertex._id, t2);
+      assertEqual(actual[0]._id, t2);
+      assertEqual(actual[1]._id, t1);
     }
   };
 }

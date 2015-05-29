@@ -36,6 +36,8 @@ var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("org/arangodb/cluster").isCoordinator();
 var underscore = require("underscore");
 
+// isCoordinator = true;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -4964,8 +4966,26 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
 
 function TRAVERSAL_NEIGHBOR_VISITOR (config, result, vertex, path) {
   'use strict';
+  // The this has to be bound explicitly!
+  // It contains additional options.
+  if (path.edges.length >= this.minDepth) {
+    result.push(CLONE(vertex));
+  }
 
-  result.push(CLONE({ vertex: vertex, path: path, startVertex : config.startVertex }));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for edges
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_EDGE_VISITOR (config, result, vertex, path) {
+  'use strict';
+  // The this has to be bound explicitly!
+  // It contains additional options.
+  if (path.edges.length >= this.minDepth) {
+    result.push(CLONE(path.edges[path.edges.length - 1]));
+  }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6719,18 +6739,29 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     var neighbors = [],
       factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
     params = TRAVERSAL_PARAMS();
-    params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
+    params.paths = true;
+    params.uniqueness = {
+      vertices: "global",
+      edges: "global"
+    };
+    params.minDepth = 1; // Make sure we exclude from depth 1
     params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
     params.maxIterations = options.maxIterations;
-    params.paths = true;
     // add user-defined visitor, if specified
+    // (NOT SUPPORTED RIGHT NOW, return format will break)
+    /*
     if (typeof options.visitor === "string") {
       params.visitor = GET_VISITOR(options.visitor, options);
       params.visitorReturnsResults = options.visitorReturnsResults || false;
     }
     else {
-      params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
-    }
+    */
+   // Injecting additional options into the Visitor
+     params.visitor = TRAVERSAL_NEIGHBOR_VISITOR.bind({
+       minDepth: options.minDepth === undefined ? 1 : options.minDepth,
+       includeData: options.includeData || false
+     });
+     // }
     
     var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_NEIGHBORS");
     if (options.edgeExamples) {
@@ -6763,8 +6794,12 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     });
     var result = [];
     neighbors.forEach(function (n) {
-      if (FILTER([n.vertex], options.neighborExamples).length > 0) {
-        result.push(n);
+      if (FILTER([n], options.neighborExamples).length > 0) {
+        if (options.includeData) {
+          result.push(n);
+        } else {
+          result.push(n._id);
+        }
       }
     });
 
@@ -6869,8 +6904,6 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example
 /// for the edges (see [example](#short_explanation_of_the_example_parameter)).
-///   * *neighborExamples*                 : An example for
-/// the desired neighbors (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *minDepth*                         : Defines the minimal length of a path from an edge
 ///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
 ///  be returned).
@@ -6912,20 +6945,88 @@ function AQL_GRAPH_EDGES (graphName,
                           vertexExample,
                           options) {
   'use strict';
+  if (! options) {
+    options = { };
+  }
+  if (! options.hasOwnProperty("direction")) {
+    options.direction =  'any';
+  }
+  var params = {};
 
-  var neighbors = AQL_GRAPH_NEIGHBORS(graphName,
-    vertexExample,
-    options), result = [],ids = [];
+  // JS Fallback for features not yet included in CPP Neighbor version
+  options.fromVertexExample = vertexExample;
 
-  neighbors.forEach(function (n) {
-    n.path.edges.forEach(function (e) {
-      if (ids.indexOf(e._id) === -1) {
-        result.push(e);
-        ids.push(e._id);
-      }
-    });
+  if (options.hasOwnProperty("neighborExamples") && typeof options.neighborExamples === "string") {
+    options.neighborExamples = {_id : options.neighborExamples};
+  }
+  var edges = [],
+    factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+  params = TRAVERSAL_PARAMS();
+  params.paths = true;
+  params.uniqueness = {
+    vertices: "path",
+    edges: "global"
+  };
+  params.minDepth = 1; // Make sure we exclude from depth 1
+  params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
+  params.maxIterations = options.maxIterations;
+  // add user-defined visitor, if specified
+  // (NOT SUPPORTED RIGHT NOW, return format will break)
+  /*
+  if (typeof options.visitor === "string") {
+    params.visitor = GET_VISITOR(options.visitor, options);
+    params.visitorReturnsResults = options.visitorReturnsResults || false;
+  }
+  else {
+  */
+ // Injecting additional options into the Visitor
+   params.visitor = TRAVERSAL_EDGE_VISITOR.bind({
+     minDepth: options.minDepth === undefined ? 1 : options.minDepth
+   });
+   // }
+  
+  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_NEIGHBORS");
+  if (options.edgeExamples) {
+    params.followEdges = options.edgeExamples;
+  }
+  if (options.edgeCollectionRestriction) {
+    params.edgeCollectionRestriction = options.edgeCollectionRestriction;
+  }
+  if (options.vertexCollectionRestriction) {
+    params.filterVertexCollections = options.vertexCollectionRestriction;
+  }
+  if (options.endVertexCollectionRestriction) {
+    params.filterVertexCollections = options.endVertexCollectionRestriction;
+  }
+  // merge other options
+  Object.keys(options).forEach(function (att) {
+    if (! params.hasOwnProperty(att)) {
+      params[att] = options[att];
+    }
   });
+  fromVertices.forEach(function (v) {
+    var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
+      factory,
+      v._id,
+      undefined,
+      options.direction,
+      params);
 
+    edges = edges.concat(e);
+  });
+  var result = [];
+  let uniqueIds = new Set();
+  edges.forEach(function (n) {
+    if (!uniqueIds.has(n._id)) {
+      uniqueIds.add(n._id);
+      if (options.includeData) {
+        result.push(n);
+      } else {
+        result.push(n._id);
+      }
+    }
+  });
+  uniqueIds.clear();
   return result;
 }
 
