@@ -61,15 +61,15 @@ v2.6.0 (XXXX-XX-XX)
   For example, with a fulltext index present on the `translations` attribute, the following text
   values will now be indexed:
 
-     var c = db._create("example");
-     c.ensureFulltextIndex("translations");
-     c.insert({ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } });
-     c.insert({ translations: "Fox is the English translation of the German word Fuchs" });
-     c.insert({ translations: [ "ArangoDB", "document", "database", "Foxx" ] });
+      var c = db._create("example");
+      c.ensureFulltextIndex("translations");
+      c.insert({ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } });
+      c.insert({ translations: "Fox is the English translation of the German word Fuchs" });
+      c.insert({ translations: [ "ArangoDB", "document", "database", "Foxx" ] });
 
-     c.fulltext("translations", "лиса").toArray();       // returns only first document
-     c.fulltext("translations", "Fox").toArray();        // returns first and second documents
-     c.fulltext("translations", "prefix:Fox").toArray(); // returns all three documents
+      c.fulltext("translations", "лиса").toArray();       // returns only first document
+      c.fulltext("translations", "Fox").toArray();        // returns first and second documents
+      c.fulltext("translations", "prefix:Fox").toArray(); // returns all three documents
 
 * added batch document removal and lookup commands:
 
@@ -257,7 +257,7 @@ v2.6.0 (XXXX-XX-XX)
 
   When documents are imported and the `_key` attribute is specified for them, the import can be
   used for inserting and updating/replacing documents. Previously, the import could be used for
-  inserting new documents only, and re-inserting a document with an existing would have failed
+  inserting new documents only, and re-inserting a document with an existing key would have failed
   with a *unique key constraint violated* error.
 
   The above behavior is still the default. However, the API now allows controlling the behavior
@@ -406,7 +406,7 @@ v2.6.0 (XXXX-XX-XX)
   - `standalone`: server was started manually (e.g. on command-line)
   - `service`: service is running as Windows service, in daemon mode or under the supervisor
 
-* improve system error messages in windows port
+* improve system error messages in Windows port
 
 * increased default value of `--server.request-timeout` from 300 to 1200 seconds for client tools
   (arangosh, arangoimp, arangodump, arangorestore)
@@ -458,7 +458,7 @@ v2.6.0 (XXXX-XX-XX)
 
 * Cluster: don't delete agency connection objects that are currently in use.
 
-* Cluster: improve passing along of http errors
+* Cluster: improve passing along of HTTP errors
 
 * fixed issue #1247: debian init script problems
 
@@ -497,6 +497,7 @@ v2.6.0 (XXXX-XX-XX)
 * allow to split an edge index into buckets which are resized individually.
   This is controlled by the `indexBuckets` attribute in the `properties`
   of the collection.
+
 
 v2.5.4 (2015-05-14)
 -------------------
