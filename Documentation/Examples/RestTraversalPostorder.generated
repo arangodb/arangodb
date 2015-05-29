@@ -11,67 +11,67 @@ content-type: application/json; charset=utf-8
         { 
           "_id" : "persons/alice", 
           "_key" : "alice", 
-          "_rev" : "1287506783", 
+          "_rev" : "1286480980", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "persons/charlie", 
           "_key" : "charlie", 
-          "_rev" : "1287965535", 
+          "_rev" : "1286939732", 
           "name" : "Charlie" 
         }, 
         { 
           "_id" : "persons/dave", 
           "_key" : "dave", 
-          "_rev" : "1288162143", 
+          "_rev" : "1287136340", 
           "name" : "Dave" 
         }, 
         { 
           "_id" : "persons/bob", 
           "_key" : "bob", 
-          "_rev" : "1287703391", 
+          "_rev" : "1286677588", 
           "name" : "Bob" 
         }, 
         { 
           "_id" : "persons/eve", 
           "_key" : "eve", 
-          "_rev" : "1288358751", 
+          "_rev" : "1287332948", 
           "name" : "Eve" 
         }, 
         { 
           "_id" : "persons/alice", 
           "_key" : "alice", 
-          "_rev" : "1287506783", 
+          "_rev" : "1286480980", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "persons/eve", 
           "_key" : "eve", 
-          "_rev" : "1288358751", 
+          "_rev" : "1287332948", 
           "name" : "Eve" 
         }, 
         { 
           "_id" : "persons/charlie", 
           "_key" : "charlie", 
-          "_rev" : "1287965535", 
+          "_rev" : "1286939732", 
           "name" : "Charlie" 
         }, 
         { 
           "_id" : "persons/dave", 
           "_key" : "dave", 
-          "_rev" : "1288162143", 
+          "_rev" : "1287136340", 
           "name" : "Dave" 
         }, 
         { 
           "_id" : "persons/bob", 
           "_key" : "bob", 
-          "_rev" : "1287703391", 
+          "_rev" : "1286677588", 
           "name" : "Bob" 
         }, 
         { 
           "_id" : "persons/alice", 
           "_key" : "alice", 
-          "_rev" : "1287506783", 
+          "_rev" : "1286480980", 
           "name" : "Alice" 
         } 
       ], 
@@ -79,23 +79,23 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1289210719", 
-              "_key" : "1289210719", 
-              "_rev" : "1289210719", 
+              "_id" : "knows/1288184916", 
+              "_key" : "1288184916", 
+              "_rev" : "1288184916", 
               "_from" : "persons/eve", 
               "_to" : "persons/alice" 
             }, 
             { 
-              "_id" : "knows/1289407327", 
-              "_key" : "1289407327", 
-              "_rev" : "1289407327", 
+              "_id" : "knows/1288381524", 
+              "_key" : "1288381524", 
+              "_rev" : "1288381524", 
               "_from" : "persons/eve", 
               "_to" : "persons/bob" 
             }, 
             { 
-              "_id" : "knows/1288620895", 
-              "_key" : "1288620895", 
-              "_rev" : "1288620895", 
+              "_id" : "knows/1287595092", 
+              "_key" : "1287595092", 
+              "_rev" : "1287595092", 
               "_from" : "persons/alice", 
               "_to" : "persons/bob" 
             } 
@@ -104,25 +104,25 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/eve", 
               "_key" : "eve", 
-              "_rev" : "1288358751", 
+              "_rev" : "1287332948", 
               "name" : "Eve" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1287703391", 
+              "_rev" : "1286677588", 
               "name" : "Bob" 
             }, 
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             } 
           ] 
@@ -130,23 +130,23 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1289210719", 
-              "_key" : "1289210719", 
-              "_rev" : "1289210719", 
+              "_id" : "knows/1288184916", 
+              "_key" : "1288184916", 
+              "_rev" : "1288184916", 
               "_from" : "persons/eve", 
               "_to" : "persons/alice" 
             }, 
             { 
-              "_id" : "knows/1289407327", 
-              "_key" : "1289407327", 
-              "_rev" : "1289407327", 
+              "_id" : "knows/1288381524", 
+              "_key" : "1288381524", 
+              "_rev" : "1288381524", 
               "_from" : "persons/eve", 
               "_to" : "persons/bob" 
             }, 
             { 
-              "_id" : "knows/1288817503", 
-              "_key" : "1288817503", 
-              "_rev" : "1288817503", 
+              "_id" : "knows/1287791700", 
+              "_key" : "1287791700", 
+              "_rev" : "1287791700", 
               "_from" : "persons/bob", 
               "_to" : "persons/charlie" 
             } 
@@ -155,25 +155,25 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/eve", 
               "_key" : "eve", 
-              "_rev" : "1288358751", 
+              "_rev" : "1287332948", 
               "name" : "Eve" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1287703391", 
+              "_rev" : "1286677588", 
               "name" : "Bob" 
             }, 
             { 
               "_id" : "persons/charlie", 
               "_key" : "charlie", 
-              "_rev" : "1287965535", 
+              "_rev" : "1286939732", 
               "name" : "Charlie" 
             } 
           ] 
@@ -181,23 +181,23 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1289210719", 
-              "_key" : "1289210719", 
-              "_rev" : "1289210719", 
+              "_id" : "knows/1288184916", 
+              "_key" : "1288184916", 
+              "_rev" : "1288184916", 
               "_from" : "persons/eve", 
               "_to" : "persons/alice" 
             }, 
             { 
-              "_id" : "knows/1289407327", 
-              "_key" : "1289407327", 
-              "_rev" : "1289407327", 
+              "_id" : "knows/1288381524", 
+              "_key" : "1288381524", 
+              "_rev" : "1288381524", 
               "_from" : "persons/eve", 
               "_to" : "persons/bob" 
             }, 
             { 
-              "_id" : "knows/1289014111", 
-              "_key" : "1289014111", 
-              "_rev" : "1289014111", 
+              "_id" : "knows/1287988308", 
+              "_key" : "1287988308", 
+              "_rev" : "1287988308", 
               "_from" : "persons/bob", 
               "_to" : "persons/dave" 
             } 
@@ -206,25 +206,25 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/eve", 
               "_key" : "eve", 
-              "_rev" : "1288358751", 
+              "_rev" : "1287332948", 
               "name" : "Eve" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1287703391", 
+              "_rev" : "1286677588", 
               "name" : "Bob" 
             }, 
             { 
               "_id" : "persons/dave", 
               "_key" : "dave", 
-              "_rev" : "1288162143", 
+              "_rev" : "1287136340", 
               "name" : "Dave" 
             } 
           ] 
@@ -232,16 +232,16 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1289210719", 
-              "_key" : "1289210719", 
-              "_rev" : "1289210719", 
+              "_id" : "knows/1288184916", 
+              "_key" : "1288184916", 
+              "_rev" : "1288184916", 
               "_from" : "persons/eve", 
               "_to" : "persons/alice" 
             }, 
             { 
-              "_id" : "knows/1289407327", 
-              "_key" : "1289407327", 
-              "_rev" : "1289407327", 
+              "_id" : "knows/1288381524", 
+              "_key" : "1288381524", 
+              "_rev" : "1288381524", 
               "_from" : "persons/eve", 
               "_to" : "persons/bob" 
             } 
@@ -250,19 +250,19 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/eve", 
               "_key" : "eve", 
-              "_rev" : "1288358751", 
+              "_rev" : "1287332948", 
               "name" : "Eve" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1287703391", 
+              "_rev" : "1286677588", 
               "name" : "Bob" 
             } 
           ] 
@@ -270,48 +270,9 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1289210719", 
-              "_key" : "1289210719", 
-              "_rev" : "1289210719", 
-              "_from" : "persons/eve", 
-              "_to" : "persons/alice" 
-            } 
-          ], 
-          "vertices" : [ 
-            { 
-              "_id" : "persons/alice", 
-              "_key" : "alice", 
-              "_rev" : "1287506783", 
-              "name" : "Alice" 
-            }, 
-            { 
-              "_id" : "persons/eve", 
-              "_key" : "eve", 
-              "_rev" : "1288358751", 
-              "name" : "Eve" 
-            } 
-          ] 
-        }, 
-        { 
-          "edges" : [ 
-            { 
-              "_id" : "knows/1288620895", 
-              "_key" : "1288620895", 
-              "_rev" : "1288620895", 
-              "_from" : "persons/alice", 
-              "_to" : "persons/bob" 
-            }, 
-            { 
-              "_id" : "knows/1289407327", 
-              "_key" : "1289407327", 
-              "_rev" : "1289407327", 
-              "_from" : "persons/eve", 
-              "_to" : "persons/bob" 
-            }, 
-            { 
-              "_id" : "knows/1289210719", 
-              "_key" : "1289210719", 
-              "_rev" : "1289210719", 
+              "_id" : "knows/1288184916", 
+              "_key" : "1288184916", 
+              "_rev" : "1288184916", 
               "_from" : "persons/eve", 
               "_to" : "persons/alice" 
             } 
@@ -320,25 +281,64 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/eve", 
+              "_key" : "eve", 
+              "_rev" : "1287332948", 
+              "name" : "Eve" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1287595092", 
+              "_key" : "1287595092", 
+              "_rev" : "1287595092", 
+              "_from" : "persons/alice", 
+              "_to" : "persons/bob" 
+            }, 
+            { 
+              "_id" : "knows/1288381524", 
+              "_key" : "1288381524", 
+              "_rev" : "1288381524", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/bob" 
+            }, 
+            { 
+              "_id" : "knows/1288184916", 
+              "_key" : "1288184916", 
+              "_rev" : "1288184916", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/alice" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1287703391", 
+              "_rev" : "1286677588", 
               "name" : "Bob" 
             }, 
             { 
               "_id" : "persons/eve", 
               "_key" : "eve", 
-              "_rev" : "1288358751", 
+              "_rev" : "1287332948", 
               "name" : "Eve" 
             }, 
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             } 
           ] 
@@ -346,16 +346,16 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1288620895", 
-              "_key" : "1288620895", 
-              "_rev" : "1288620895", 
+              "_id" : "knows/1287595092", 
+              "_key" : "1287595092", 
+              "_rev" : "1287595092", 
               "_from" : "persons/alice", 
               "_to" : "persons/bob" 
             }, 
             { 
-              "_id" : "knows/1289407327", 
-              "_key" : "1289407327", 
-              "_rev" : "1289407327", 
+              "_id" : "knows/1288381524", 
+              "_key" : "1288381524", 
+              "_rev" : "1288381524", 
               "_from" : "persons/eve", 
               "_to" : "persons/bob" 
             } 
@@ -364,19 +364,19 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1287703391", 
+              "_rev" : "1286677588", 
               "name" : "Bob" 
             }, 
             { 
               "_id" : "persons/eve", 
               "_key" : "eve", 
-              "_rev" : "1288358751", 
+              "_rev" : "1287332948", 
               "name" : "Eve" 
             } 
           ] 
@@ -384,16 +384,16 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1288620895", 
-              "_key" : "1288620895", 
-              "_rev" : "1288620895", 
+              "_id" : "knows/1287595092", 
+              "_key" : "1287595092", 
+              "_rev" : "1287595092", 
               "_from" : "persons/alice", 
               "_to" : "persons/bob" 
             }, 
             { 
-              "_id" : "knows/1288817503", 
-              "_key" : "1288817503", 
-              "_rev" : "1288817503", 
+              "_id" : "knows/1287791700", 
+              "_key" : "1287791700", 
+              "_rev" : "1287791700", 
               "_from" : "persons/bob", 
               "_to" : "persons/charlie" 
             } 
@@ -402,19 +402,19 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1287703391", 
+              "_rev" : "1286677588", 
               "name" : "Bob" 
             }, 
             { 
               "_id" : "persons/charlie", 
               "_key" : "charlie", 
-              "_rev" : "1287965535", 
+              "_rev" : "1286939732", 
               "name" : "Charlie" 
             } 
           ] 
@@ -422,16 +422,16 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1288620895", 
-              "_key" : "1288620895", 
-              "_rev" : "1288620895", 
+              "_id" : "knows/1287595092", 
+              "_key" : "1287595092", 
+              "_rev" : "1287595092", 
               "_from" : "persons/alice", 
               "_to" : "persons/bob" 
             }, 
             { 
-              "_id" : "knows/1289014111", 
-              "_key" : "1289014111", 
-              "_rev" : "1289014111", 
+              "_id" : "knows/1287988308", 
+              "_key" : "1287988308", 
+              "_rev" : "1287988308", 
               "_from" : "persons/bob", 
               "_to" : "persons/dave" 
             } 
@@ -440,19 +440,19 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1287703391", 
+              "_rev" : "1286677588", 
               "name" : "Bob" 
             }, 
             { 
               "_id" : "persons/dave", 
               "_key" : "dave", 
-              "_rev" : "1288162143", 
+              "_rev" : "1287136340", 
               "name" : "Dave" 
             } 
           ] 
@@ -460,9 +460,9 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1288620895", 
-              "_key" : "1288620895", 
-              "_rev" : "1288620895", 
+              "_id" : "knows/1287595092", 
+              "_key" : "1287595092", 
+              "_rev" : "1287595092", 
               "_from" : "persons/alice", 
               "_to" : "persons/bob" 
             } 
@@ -471,13 +471,13 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1287703391", 
+              "_rev" : "1286677588", 
               "name" : "Bob" 
             } 
           ] 
@@ -488,7 +488,7 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1287506783", 
+              "_rev" : "1286480980", 
               "name" : "Alice" 
             } 
           ] 

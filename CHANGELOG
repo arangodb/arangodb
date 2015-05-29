@@ -1,4 +1,4 @@
-v2.4.8 (XXXX-XX-XX)
+v2.4.8 (2015-05-29)
 -------------------
 
 * issue #1289: Foxx models created from database documents expose an internal method

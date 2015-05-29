@@ -8,16 +8,16 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "vertex" : { 
       "_id" : "germanCity/Cologne", 
       "_key" : "Cologne", 
-      "_rev" : "436390751", 
+      "_rev" : "431957076", 
       "isCapital" : false, 
       "population" : 1000000 
     }, 
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "germanHighway/437898079", 
-          "_key" : "437898079", 
-          "_rev" : "437898079", 
+          "_id" : "germanHighway/433464404", 
+          "_key" : "433464404", 
+          "_rev" : "433464404", 
           "_from" : "germanCity/Hamburg", 
           "_to" : "germanCity/Cologne", 
           "distance" : 500 
@@ -27,14 +27,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
         { 
           "_id" : "germanCity/Hamburg", 
           "_key" : "Hamburg", 
-          "_rev" : "436587359", 
+          "_rev" : "432153684", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "germanCity/Cologne", 
           "_key" : "Cologne", 
-          "_rev" : "436390751", 
+          "_rev" : "431957076", 
           "isCapital" : false, 
           "population" : 1000000 
         } 
@@ -46,24 +46,24 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "vertex" : { 
       "_id" : "frenchCity/Lyon", 
       "_key" : "Lyon", 
-      "_rev" : "436980575", 
+      "_rev" : "432546900", 
       "isCapital" : false, 
       "population" : 80000 
     }, 
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "germanHighway/437898079", 
-          "_key" : "437898079", 
-          "_rev" : "437898079", 
+          "_id" : "germanHighway/433464404", 
+          "_key" : "433464404", 
+          "_rev" : "433464404", 
           "_from" : "germanCity/Hamburg", 
           "_to" : "germanCity/Cologne", 
           "distance" : 500 
         }, 
         { 
-          "_id" : "internationalHighway/439339871", 
-          "_key" : "439339871", 
-          "_rev" : "439339871", 
+          "_id" : "internationalHighway/434906196", 
+          "_key" : "434906196", 
+          "_rev" : "434906196", 
           "_from" : "germanCity/Cologne", 
           "_to" : "frenchCity/Lyon", 
           "distance" : 700 
@@ -73,21 +73,21 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
         { 
           "_id" : "germanCity/Hamburg", 
           "_key" : "Hamburg", 
-          "_rev" : "436587359", 
+          "_rev" : "432153684", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "germanCity/Cologne", 
           "_key" : "Cologne", 
-          "_rev" : "436390751", 
+          "_rev" : "431957076", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "436980575", 
+          "_rev" : "432546900", 
           "isCapital" : false, 
           "population" : 80000 
         } 
@@ -99,24 +99,24 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "vertex" : { 
       "_id" : "frenchCity/Paris", 
       "_key" : "Paris", 
-      "_rev" : "437177183", 
+      "_rev" : "432743508", 
       "isCapital" : true, 
       "population" : 4000000 
     }, 
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "germanHighway/437898079", 
-          "_key" : "437898079", 
-          "_rev" : "437898079", 
+          "_id" : "germanHighway/433464404", 
+          "_key" : "433464404", 
+          "_rev" : "433464404", 
           "_from" : "germanCity/Hamburg", 
           "_to" : "germanCity/Cologne", 
           "distance" : 500 
         }, 
         { 
-          "_id" : "internationalHighway/439536479", 
-          "_key" : "439536479", 
-          "_rev" : "439536479", 
+          "_id" : "internationalHighway/435102804", 
+          "_key" : "435102804", 
+          "_rev" : "435102804", 
           "_from" : "germanCity/Cologne", 
           "_to" : "frenchCity/Paris", 
           "distance" : 550 
@@ -126,21 +126,21 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
         { 
           "_id" : "germanCity/Hamburg", 
           "_key" : "Hamburg", 
-          "_rev" : "436587359", 
+          "_rev" : "432153684", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "germanCity/Cologne", 
           "_key" : "Cologne", 
-          "_rev" : "436390751", 
+          "_rev" : "431957076", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Paris", 
           "_key" : "Paris", 
-          "_rev" : "437177183", 
+          "_rev" : "432743508", 
           "isCapital" : true, 
           "population" : 4000000 
         } 
@@ -152,16 +152,16 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "vertex" : { 
       "_id" : "frenchCity/Paris", 
       "_key" : "Paris", 
-      "_rev" : "437177183", 
+      "_rev" : "432743508", 
       "isCapital" : true, 
       "population" : 4000000 
     }, 
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "internationalHighway/438946655", 
-          "_key" : "438946655", 
-          "_rev" : "438946655", 
+          "_id" : "internationalHighway/434512980", 
+          "_key" : "434512980", 
+          "_rev" : "434512980", 
           "_from" : "germanCity/Hamburg", 
           "_to" : "frenchCity/Paris", 
           "distance" : 900 
@@ -171,14 +171,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
         { 
           "_id" : "germanCity/Hamburg", 
           "_key" : "Hamburg", 
-          "_rev" : "436587359", 
+          "_rev" : "432153684", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Paris", 
           "_key" : "Paris", 
-          "_rev" : "437177183", 
+          "_rev" : "432743508", 
           "isCapital" : true, 
           "population" : 4000000 
         } 
@@ -190,24 +190,24 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "vertex" : { 
       "_id" : "frenchCity/Lyon", 
       "_key" : "Lyon", 
-      "_rev" : "436980575", 
+      "_rev" : "432546900", 
       "isCapital" : false, 
       "population" : 80000 
     }, 
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "internationalHighway/438946655", 
-          "_key" : "438946655", 
-          "_rev" : "438946655", 
+          "_id" : "internationalHighway/434512980", 
+          "_key" : "434512980", 
+          "_rev" : "434512980", 
           "_from" : "germanCity/Hamburg", 
           "_to" : "frenchCity/Paris", 
           "distance" : 900 
         }, 
         { 
-          "_id" : "frenchHighway/438225759", 
-          "_key" : "438225759", 
-          "_rev" : "438225759", 
+          "_id" : "frenchHighway/433792084", 
+          "_key" : "433792084", 
+          "_rev" : "433792084", 
           "_from" : "frenchCity/Paris", 
           "_to" : "frenchCity/Lyon", 
           "distance" : 550 
@@ -217,21 +217,21 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
         { 
           "_id" : "germanCity/Hamburg", 
           "_key" : "Hamburg", 
-          "_rev" : "436587359", 
+          "_rev" : "432153684", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Paris", 
           "_key" : "Paris", 
-          "_rev" : "437177183", 
+          "_rev" : "432743508", 
           "isCapital" : true, 
           "population" : 4000000 
         }, 
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "436980575", 
+          "_rev" : "432546900", 
           "isCapital" : false, 
           "population" : 80000 
         } 
@@ -243,16 +243,16 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "vertex" : { 
       "_id" : "frenchCity/Lyon", 
       "_key" : "Lyon", 
-      "_rev" : "436980575", 
+      "_rev" : "432546900", 
       "isCapital" : false, 
       "population" : 80000 
     }, 
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "internationalHighway/439143263", 
-          "_key" : "439143263", 
-          "_rev" : "439143263", 
+          "_id" : "internationalHighway/434709588", 
+          "_key" : "434709588", 
+          "_rev" : "434709588", 
           "_from" : "germanCity/Hamburg", 
           "_to" : "frenchCity/Lyon", 
           "distance" : 1300 
@@ -262,14 +262,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
         { 
           "_id" : "germanCity/Hamburg", 
           "_key" : "Hamburg", 
-          "_rev" : "436587359", 
+          "_rev" : "432153684", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "436980575", 
+          "_rev" : "432546900", 
           "isCapital" : false, 
           "population" : 80000 
         } 

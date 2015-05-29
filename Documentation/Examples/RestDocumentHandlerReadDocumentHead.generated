@@ -1,2 +1,2 @@
-shell> curl -X HEAD --data-binary @- --dump - http://localhost:8529/_api/document/products/1433586527
+shell> curl -X HEAD --data-binary @- --dump - http://localhost:8529/_api/document/products/1451238484
 
