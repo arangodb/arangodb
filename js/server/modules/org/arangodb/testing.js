@@ -1458,6 +1458,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
     exe = fs.join("bin","arangodump");
   }
   else {
+    args["create-database"] = "true";
     args["input-directory"] = fs.join(instanceInfo.tmpDataDir,"dump");
     exe = fs.join("bin","arangorestore");
   }

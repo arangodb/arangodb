@@ -971,7 +971,7 @@ unittests-dump:
 
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump-setup.js || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangodump --configuration none --server.database "UnitTestsDumpSrc" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --output-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1"
-	$(VALGRIND) @builddir@/bin/arangorestore --configuration none --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --input-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangorestore --configuration none --create-database true --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --input-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1" 
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump.js || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump-teardown.js || test "x$(FORCE)" == "x1"
 

@@ -1015,7 +1015,7 @@ int main (int argc, char* argv[]) {
     // database not found, but database creation requested
    
     std::string old = BaseClient.databaseName();
-    cout << "creating database '" << old << "'" << endl;
+    cout << "Creating database '" << old << "'" << endl;
 
     BaseClient.setDatabaseName("_system");
 
