@@ -142,7 +142,7 @@ ExampleMatcher::ExampleMatcher (
 
           if (pid == 0) {
             // _key, _id and _rev do have pid == 0. Have to change matching here
-            cout << "pid == 0 " << *keyStr << endl;
+            // cout << "pid == 0 " << *keyStr << endl;
             // no attribute path found. this means the result will be empty
             ExampleMatcher::cleanup();
             throw TRI_RESULT_ELEMENT_NOT_FOUND;
