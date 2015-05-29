@@ -218,8 +218,11 @@ exports.jwtAlgorithms = {
     verify: jwtHmacVerifier('sha512')
   },
   none: {
-    sign: function () {
+    sign: function (key) {
       'use strict';
+      if (key) {
+        throw new Error('Can not sign message with key using algorithm "none"!');
+      }
       return '';
     },
     verify: function (key) {

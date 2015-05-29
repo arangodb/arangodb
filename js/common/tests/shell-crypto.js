@@ -359,8 +359,8 @@ function CryptoSuite () {
         [ "SECRET", {foxx: "roxx"}, "HS384", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJmb3h4Ijoicm94eCJ9.HHrNONcNcrK0Y-xfiOsw9tNe-zcsOmS9kdTr14dmH_2-71QTPIRnJGTLfl58URtM" ],
         [ "secret", {foxx: "roxx"}, "HS512", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJmb3h4Ijoicm94eCJ9.zjLEjyjxv_NzWMPQEyXcSgFB9c2-t1n_jZRQkxnpQU9-UNJQ-kUpW8pYsObMHDKcmM8GspmX4X5653Fb-ZDkWA" ],
         [ "SECRET", {foxx: "roxx"}, "HS512", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJmb3h4Ijoicm94eCJ9.6MGHLPoS6r_F9HTZcHyRFWaQmLDf4boaTK5cxNnJPQeXNTSp8itLo4b1KPnq-wL4Q4HxnomghQLWRUjW612Wug" ],
-        [ "secret", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ],
-        [ "SECRET", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ]
+        [ "", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ],
+        [ null, {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ]
       ];
 
       data.forEach(function (value) {
@@ -370,6 +370,38 @@ function CryptoSuite () {
         assertEqual(value[3], crypto.jwtEncode(value[0], value[1], value[2]));
         assertEqual(value[1], crypto.jwtDecode(value[0], value[3]));
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test jwtEncode / jwtDecode
+////////////////////////////////////////////////////////////////////////////////
+
+    testJwtBadSignature : function () {
+      var message = {foxx: "roxx"};
+      var token, err;
+
+      token = crypto.jwtEncode(null, message, 'none');
+      try {
+        crypto.jwtDecode('secret', token);
+      } catch(e) {
+        err = e;
+      }
+      assertTrue(err);
+
+      token = crypto.jwtEncode('secret', message, 'HS512');
+      try {
+        crypto.jwtDecode('SECRET', message);
+      } catch(e) {
+        err = e;
+      }
+      assertTrue(err);
+
+      try {
+        crypto.jwtEncode('secret', message, 'none');
+      } catch(e) {
+        err = e;
+      }
+      assertTrue(err);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
