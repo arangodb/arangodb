@@ -4,38 +4,39 @@ The following list shows in detail which features have been added or improved in
 ArangoDB 2.6. ArangoDB 2.6 also contains several bugfixes that are not listed
 here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
 
-!SECTION 
+!SECTION APIs added
 
-* added batch document removal and lookup commands:
+!SUBSECTION Batch document removal and lookup commands
 
-  collection.lookupByKeys(keys)
-collection.removeByKeys(keys)
+The following commands have been added for `collection` objects:
 
-  These commands can be used to perform multi-document lookup and removal operations efficiently
-  from the ArangoShell. The argument to these operations is an array of document keys.
+* collection.lookupByKeys(keys)
+* collection.removeByKeys(keys)
 
-  Also added HTTP APIs for batch document commands:
+These commands can be used to perform multi-document lookup and removal operations efficiently
+from the ArangoShell. The argument to these operations is an array of document keys.
 
-  * PUT /\_api/simple/lookup-by-keys
-  * PUT /\_api/simple/remove-by-keys
+These commands can also be used via the HTTP REST API. Their endpoints are:
 
+* PUT /\_api/simple/lookup-by-keys
+* PUT /\_api/simple/remove-by-keys
 
-  * added dedicated collection export HTTP REST API
+!SUBSECTION Collection export HTTP REST API
 
-  ArangoDB now provides a dedicated collection export API, which can take snapshots of entire
-  collections more efficiently than the general-purpose cursor API. The export API is useful
-  to transfer the contents of an entire collection to a client application. It provides optional
-  filtering on specific attributes.
+ArangoDB now provides a dedicated collection export API, which can take snapshots of entire
+collections more efficiently than the general-purpose cursor API. The export API is useful
+to transfer the contents of an entire collection to a client application. It provides optional
+filtering on specific attributes.
 
-  Tht export API is available at endpoint `POST /_api/export?collection=...`. The API has the
-  same return value structure as the already established cursor API (`POST /_api/cursor`). 
+The export API is available at endpoint `POST /_api/export?collection=...`. The API has the
+same return value structure as the already established cursor API (`POST /_api/cursor`). 
 
-  An introduction to the export API is given in this blog post:
-  http://jsteemann.github.io/blog/2015/04/04/more-efficient-data-exports/
+An introduction to the export API is given in this blog post:
+http://jsteemann.github.io/blog/2015/04/04/more-efficient-data-exports/
 
 !SECTION AQL improvements
 
-!SUBSECTION subquery optimizations for AQL queries
+!SUBSECTION Subquery optimizations for AQL queries
 
 This optimization avoids copying intermediate results into subqueries that are not required
 by the subquery.
@@ -91,7 +92,7 @@ optimizer guesswork and only produce the *sorted* variant of `COLLECT`.
 A blog post on the new `COLLECT` implementation can be found here:
 http://jsteemann.github.io/blog/2015/04/22/collecting-with-a-hash-table/
 
-!SUBSECTION simplified return value syntax for data-modification AQL queries
+!SUBSECTION Simplified return value syntax for data-modification AQL queries
 
 ArangoDB 2.4 since version allows to return results from data-modification AQL queries. The
 syntax for this was quite limited and verbose:
@@ -123,7 +124,7 @@ can be called that may access documents.
 More information can be found here:
 http://jsteemann.github.io/blog/2015/03/27/improvements-for-data-modification-queries/
 
-!SUBSECTION added AQL `UPSERT` statement
+!SUBSECTION Added AQL `UPSERT` statement
 
 This adds an `UPSERT` statement to AQL that is a combination of both `INSERT` and `UPDATE` /
 `REPLACE`. The `UPSERT` will search for a matching document using a user-provided example.
@@ -158,15 +159,18 @@ RETURN { found: OLD, updated: NEW }
 A more detailed description of `UPSERT` can be found here:
 http://jsteemann.github.io/blog/2015/03/27/preview-of-the-upsert-command/
 
+!SUBSECTION Miscellaneous changes
+
+When errors occur inside AQL user functions, the error message will now contain a stacktrace,
+indicating the line of code in which the error occurred. This should make debugging AQL user functions
+easier.
+
 !SECTION Web Admin Interface
 
-There have been some minor changes in the web admin interface:
+ArangoDB's built-in web interface now uses sessions. Session information is stored in cookies, so clients using the web interface must accept cookies in order to use it.
 
-- The query execution time is displayed in the AQL editor now
-- The AQL query button **submit** is now renamed to **execute**
-- We've added a query explain feature in the AQL editor
-- We've added a demo page. This only is shown if demo data is available otherwise it is hidden
-- ArangoDB's built-in web interface now uses sessions. Session information is stored in cookies, so clients using the web interface must accept cookies in order to use it
+The AQL editor in the web interface now provides an *explain* functionality, which can be used for inspecting and performance-tuning AQL queries.
+The query execution time is now also displayed in the AQL editor.
 
 !SECTION Foxx improvements
 
@@ -200,3 +204,110 @@ https://www.arangodb.com/2015/05/document-your-foxx-apps-with-swagger-2/
 !SUBSECTION Custom Scripts
 
 In addition to the existing *setup* and *teardown* scripts you can now define custom scripts in your Foxx manifest and invoke these using the web admin interface or the Foxx manager CLI.
+
+!SECTION Client tools
+
+The default configuration value for the option `--server.request-timeout` was increased from 
+300 to 1200 seconds for all client tools (arangosh, arangoimp, arangodump, arangorestore).
+
+The default configuration value for the option `--server.connect-timeout` was increased from 
+3 to 5 seconds for client tools (arangosh, arangoimp, arangodump, arangorestore).
+
+!SUBSECTION Arangorestore
+
+The option `--create-database` was added for arangorestore. 
+
+Setting this option to `true` will now create the target database if it does not exist. When creating
+the target database, the username and passwords passed to arangorestore will be used to create an 
+initial user for the new database.
+
+The default value for this option is `false`.
+
+!SUBSECTION Arangoimp
+
+Arangoimp can now optionally update or replace existing documents, provided the import data contains 
+documents with `_key` attributes.
+
+Previously, the import could be used for inserting new documents only, and re-inserting a document with 
+an existing key would have failed with a *unique key constraint violated* error.
+  
+The behavior of arangoimp (insert, update, replace on duplicate key) can now be controlled with the 
+option `--on-duplicate`. The option can have one of the following values:
+  
+* `error`: when a unique key constraint error occurs, do not import or update the document but
+  report an error. This is the default.
+    
+* `update`: when a unique key constraint error occurs, try to (partially) update the existing
+  document with the data specified in the import. This may still fail if the document would
+  violate secondary unique indexes. Only the attributes present in the import data will be
+  updated and other attributes already present will be preserved. The number of updated documents
+  will be reported in the `updated` attribute of the HTTP API result.
+
+* `replace`: when a unique key constraint error occurs, try to fully replace the existing
+  document with the data specified in the import. This may still fail if the document would
+  violate secondary unique indexes. The number of replaced documents will be reported in the 
+  `updated` attribute of the HTTP API result.
+
+* `ignore`: when a unique key constraint error occurs, ignore this error. There will be no
+  insert, update or replace for the particular document. Ignored documents will be reported
+  separately in the `ignored` attribute of the HTTP API result.
+
+The default value is `error`.
+
+A few examples for using arangoimp with the `--on-duplicate` option can be found here:
+http://jsteemann.github.io/blog/2015/04/14/updating-documents-with-arangoimp/
+
+!SECTION Miscellaneous changes
+
+* Allow to split an edge index into buckets which are resized individually. The default value is `1`,
+  resembling the pre-2.6 behavior. Using multiple buckets will lead to the index entries being 
+  distributed to the individual buckets, with each bucket being responsible only for a fraction of
+  the total index entries. Using multiple buckets may lead to more frequent but much faster index
+  bucket resizes, and is recommended for bigger edge collections.
+
+
+* Default configuration value for option `--server.backlog-size` was changed from 10 to 64.
+
+* Default configuration value for option `--database.ignore-datafile-errors` was changed from `true` to `false`
+
+* Document keys can now contain `@` and `.` characters
+
+* Fulltext index can now index text values contained in direct sub-objects of the indexed attribute.
+
+  Previous versions of ArangoDB only indexed the attribute value if it was a string. Sub-attributes
+  of the index attribute were ignored when fulltext indexing.
+
+  Now, if the index attribute value is an object, the object's values will each be included in the
+  fulltext index if they are strings. If the index attribute value is an array, the array's values
+  will each be included in the fulltext index if they are strings.
+
+  For example, with a fulltext index present on the `translations` attribute, the following text
+  values will now be indexed:
+
+      var c = db._create("example");
+      c.ensureFulltextIndex("translations");
+      c.insert({ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } });
+      c.insert({ translations: "Fox is the English translation of the German word Fuchs" });
+      c.insert({ translations: [ "ArangoDB", "document", "database", "Foxx" ] });
+
+      c.fulltext("translations", "лиса").toArray();       // returns only first document
+      c.fulltext("translations", "Fox").toArray();        // returns first and second documents
+      c.fulltext("translations", "prefix:Fox").toArray(); // returns all three documents
+
+* Added configuration option `--server.foxx-queues-poll-interval`
+
+  This startup option controls the frequency with which the Foxx queues manager is checking
+  the queue (or queues) for jobs to be executed.
+
+  The default value is `1` second. Lowering this value will result in the queue manager waking
+  up and checking the queues more frequently, which may increase CPU usage of the server. 
+  When not using Foxx queues, this value can be raised to save some CPU time.
+
+* Added configuration option `--server.foxx-queues-system-only`
+
+  This startup option controls whether the Foxx queue manager will check queue and job entries
+  in the `_system` database only. Restricting the Foxx queue manager to the `_system` database 
+  will lead to the queue manager having to check only the queues collection of a single database,
+  whereas making it check the queues of all databases might result in more work to be done and 
+  more CPU time to be used by the queue manager.
+
