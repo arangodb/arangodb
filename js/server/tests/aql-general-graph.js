@@ -658,7 +658,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-      assertEqual(actual.length, 6);
+      assertEqual(actual.length, 4);
       assertEqual(actual[0], v1 + "/v1");
       assertEqual(actual[1], v1 + "/v2");
       assertEqual(actual[2], v3 + "/v5");

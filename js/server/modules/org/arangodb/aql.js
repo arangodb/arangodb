@@ -5855,18 +5855,11 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
         return;
       }
       if (from === to) {
-        result.push({
-          startVertex : from,
-          vertex : graph.toVerticesIDs[to],
-          paths : options.noPaths ? null :[{edges : [], vertices : []}],
-          distance : 0
-        });
         return;
       }
       result.push({
-        startVertex : from,
-        vertex : graph.toVerticesIDs[to],
-        paths : options.noPaths ? null : transformPath(paths[from][to].paths),
+        vertices: paths[from][to].paths[0].vertices,
+        edges: underscore.pluck(paths[from][to].paths[0].edges, "_id"),
         distance : paths[from][to].distance
       });
     });
