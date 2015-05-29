@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/6", 
       "_key" : "6", 
-      "_rev" : "1158669755", 
+      "_rev" : "1154878998", 
       "_from" : "vertices/2", 
       "_to" : "vertices/1", 
       "$label" : "v2 -> v1" 
@@ -16,7 +16,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/7", 
       "_key" : "7", 
-      "_rev" : "1159194043", 
+      "_rev" : "1155403286", 
       "_from" : "vertices/4", 
       "_to" : "vertices/1", 
       "$label" : "v4 -> v1" 
@@ -24,7 +24,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/5", 
       "_key" : "5", 
-      "_rev" : "1158145467", 
+      "_rev" : "1154354710", 
       "_from" : "vertices/1", 
       "_to" : "vertices/3", 
       "$label" : "v1 -> v3" 

@@ -6,13 +6,13 @@ arangosh> query.edges().vertices().restrict("female").toArray();
   { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "514975163", 
+    "_rev" : "510004758", 
     "name" : "Alice" 
   }, 
   { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "514975163", 
+    "_rev" : "510004758", 
     "name" : "Alice" 
   } 
 ]

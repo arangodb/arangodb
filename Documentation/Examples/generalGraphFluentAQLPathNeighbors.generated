@@ -7,7 +7,7 @@ arangosh> query.neighbors().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "57468347", 
+      "_rev" : "52760086", 
       "name" : "Alice" 
     }, 
     { 
@@ -15,7 +15,7 @@ arangosh> query.neighbors().path().toArray();
         { 
           "_id" : "relation/aliceAndBob", 
           "_key" : "aliceAndBob", 
-          "_rev" : "58516923", 
+          "_rev" : "53808662", 
           "_from" : "female/alice", 
           "_to" : "male/bob", 
           "type" : "married" 
@@ -25,13 +25,13 @@ arangosh> query.neighbors().path().toArray();
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "57468347", 
+          "_rev" : "52760086", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "male/bob", 
           "_key" : "bob", 
-          "_rev" : "57796027", 
+          "_rev" : "53087766", 
           "name" : "Bob" 
         } 
       ] 
@@ -41,7 +41,7 @@ arangosh> query.neighbors().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "57468347", 
+      "_rev" : "52760086", 
       "name" : "Alice" 
     }, 
     { 
@@ -49,7 +49,7 @@ arangosh> query.neighbors().path().toArray();
         { 
           "_id" : "relation/aliceAndCharly", 
           "_key" : "aliceAndCharly", 
-          "_rev" : "58779067", 
+          "_rev" : "54070806", 
           "_from" : "female/alice", 
           "_to" : "male/charly", 
           "type" : "friend" 
@@ -59,13 +59,13 @@ arangosh> query.neighbors().path().toArray();
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "57468347", 
+          "_rev" : "52760086", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "male/charly", 
           "_key" : "charly", 
-          "_rev" : "57992635", 
+          "_rev" : "53284374", 
           "name" : "Charly" 
         } 
       ] 

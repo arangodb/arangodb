@@ -6,10 +6,10 @@ content-type: application/json; charset=utf-8
 
 { 
   "document" : { 
-    "_id" : "products/1251534267", 
-    "_key" : "1251534267", 
-    "_rev" : "1251534267", 
-    "Hello2" : "World2" 
+    "_id" : "products/1247350294", 
+    "_key" : "1247350294", 
+    "_rev" : "1247350294", 
+    "Hello1" : "World1" 
   }, 
   "error" : false, 
   "code" : 200 

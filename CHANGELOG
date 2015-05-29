@@ -1,7 +1,11 @@
-v2.5.5 (????-??-??)
+v2.5.5 (2015-05-29)
 -------------------
 
 * fixed vulnerability in JWT implementation.
+
+* fixed format string for reading /proc/pid/stat
+
+* take into account barriers used in different V8 contexts
 
 
 v2.5.4 (2015-05-14)

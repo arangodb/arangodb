@@ -1,11 +1,11 @@
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/collection/1375790523/properties
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/collection/1371606550/properties
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/properties
 
 { 
-  "id" : "1375790523", 
+  "id" : "1371606550", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 

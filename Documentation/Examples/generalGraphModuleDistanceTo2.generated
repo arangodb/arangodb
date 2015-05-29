@@ -10,7 +10,7 @@ arangosh> g._distanceTo([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}]
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "626058683", 
+        "_rev" : "620039702", 
         "isCapital" : false, 
         "population" : 80000 
       } 

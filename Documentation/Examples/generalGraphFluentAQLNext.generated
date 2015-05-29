@@ -5,27 +5,27 @@ arangosh> query.next();
 { 
   "_id" : "female/diana", 
   "_key" : "diana", 
-  "_rev" : "1031464379", 
+  "_rev" : "1028394518", 
   "name" : "Diana" 
 }
 arangosh> query.next();
 { 
   "_id" : "female/alice", 
   "_key" : "alice", 
-  "_rev" : "1030743483", 
+  "_rev" : "1027673622", 
   "name" : "Alice" 
 }
 arangosh> query.next();
 { 
   "_id" : "male/bob", 
   "_key" : "bob", 
-  "_rev" : "1031071163", 
+  "_rev" : "1028001302", 
   "name" : "Bob" 
 }
 arangosh> query.next();
 { 
   "_id" : "male/charly", 
   "_key" : "charly", 
-  "_rev" : "1031267771", 
+  "_rev" : "1028197910", 
   "name" : "Charly" 
 }
