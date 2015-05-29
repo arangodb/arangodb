@@ -232,7 +232,7 @@ void TRI_AllowCancelation(void) {
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetProcessorAffinity (size_t core) {
+void TRI_SetProcessorAffinity (TRI_thread_t* thread, size_t core) {
 }
 
 // -----------------------------------------------------------------------------
