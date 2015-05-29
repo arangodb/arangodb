@@ -50,8 +50,8 @@ namespace triagens {
 
       private:
 
-        JsonHelper ();
-        ~JsonHelper ();
+        JsonHelper () = delete;
+        ~JsonHelper () = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
@@ -342,11 +342,15 @@ namespace triagens {
           NOFREE
         };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal helper for the generic constructor
 ////////////////////////////////////////////////////////////////////////////////
-
-      private:
 
         void make (type_e t, size_t size_hint) {
           switch (t) {
@@ -1030,6 +1034,13 @@ namespace triagens {
             }
           }
         }
+         
+        friend std::ostream& operator<< (std::ostream&, Json const*);
+        friend std::ostream& operator<< (std::ostream&, Json const&);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 

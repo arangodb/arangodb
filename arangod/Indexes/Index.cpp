@@ -389,6 +389,32 @@ int Index::sizeHint (size_t) {
   return TRI_ERROR_NO_ERROR;
 }
 
+namespace triagens {
+  namespace arango {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the index description to an output stream
+////////////////////////////////////////////////////////////////////////////////
+     
+    std::ostream& operator<< (std::ostream& stream,
+                              Index const* index) {
+      stream << index->context();
+      return stream;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the index description to an output stream
+////////////////////////////////////////////////////////////////////////////////
+
+    std::ostream& operator<< (std::ostream& stream,
+                              Index const& index) {
+      stream << index.context();
+      return stream;
+    }
+
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
