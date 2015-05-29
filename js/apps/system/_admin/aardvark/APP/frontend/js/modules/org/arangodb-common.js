@@ -515,7 +515,7 @@ exports.checkAvailableVersions = function (version) {
   }
 
   if (version.match(/beta|alpha|preview|devel/) !== null) {
-    log("Your are using an alpha/beta/preview version ('" + version + "') of ArangoDB");
+    log("You are using an alpha/beta/preview version ('" + version + "') of ArangoDB");
     return;
   }
 
