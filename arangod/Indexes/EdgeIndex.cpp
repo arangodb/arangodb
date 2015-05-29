@@ -315,8 +315,7 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 
 EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection) 
-  : Index(iid, std::vector<std::string>({ TRI_VOC_ATTRIBUTE_FROM, TRI_VOC_ATTRIBUTE_TO })),
-    _collection(collection),
+  : Index(iid, collection, std::vector<std::string>({ TRI_VOC_ATTRIBUTE_FROM, TRI_VOC_ATTRIBUTE_TO })),
     _edgesFrom(nullptr),
     _edgesTo(nullptr) {
   
@@ -327,20 +326,28 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
     // document is a nullptr in the coordinator case
     indexBuckets = collection->_info._indexBuckets;
   }
+
+  auto context = [this] () -> std::string {
+    return this->context();
+  };
   
   _edgesFrom = new TRI_EdgeIndexHash_t(HashElementKey,
                                        HashElementEdgeFrom,
                                        IsEqualKeyEdgeFrom,
                                        IsEqualElementEdge,
                                        IsEqualElementEdgeFromByKey,
-                                       indexBuckets);
+                                       indexBuckets, 
+                                       64,
+                                       context);
 
   _edgesTo = new TRI_EdgeIndexHash_t(HashElementKey,
                                      HashElementEdgeTo,
                                      IsEqualKeyEdgeTo,
                                      IsEqualElementEdge,
                                      IsEqualElementEdgeToByKey,
-                                     indexBuckets);
+                                     indexBuckets,
+                                     64,
+                                     context);
 }
 
 EdgeIndex::~EdgeIndex () {

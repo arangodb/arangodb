@@ -137,16 +137,24 @@ namespace triagens {
                     size_t batchSize) const;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the underlying collection
-////////////////////////////////////////////////////////////////////////////////
+        int insertUnique (struct TRI_doc_mptr_t const*, bool);
 
-        struct TRI_document_collection_t* _collection;
+        int insertMulti (struct TRI_doc_mptr_t const*, bool);
+        
+        int removeUnique (struct TRI_doc_mptr_t const*);
+
+        int removeMulti (struct TRI_doc_mptr_t const*);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the attribute paths

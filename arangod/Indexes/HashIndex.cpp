@@ -193,126 +193,6 @@ static int HashIndexHelperAllocate (HashIndex const* hashIndex,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a data element into the hash array
-///
-/// Since we do not allow duplicates - we must compare using keys, rather than
-/// documents.
-////////////////////////////////////////////////////////////////////////////////
-
-static int HashIndex_insert (HashIndex* hashIndex,
-                             TRI_hash_array_t* hashArray,
-                             TRI_hash_index_element_t const* element,
-                             bool isRollback) {
-  TRI_IF_FAILURE("InsertHashIndex") {
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_index_search_value_t key;
-  int res = FillIndexSearchValueByHashIndexElement<TRI_hash_index_element_t>(hashIndex, &key, element);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // out of memory
-    return res;
-  }
-
-  res = TRI_InsertKeyHashArray(hashArray, &key, element, isRollback);
-
-  if (key._values != nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an entry from the hash array part of the hash index
-////////////////////////////////////////////////////////////////////////////////
-
-static int HashIndex_remove (TRI_hash_array_t* hashArray,
-                             TRI_hash_index_element_t* element) {
-  TRI_IF_FAILURE("RemoveHashIndex") {
-    return TRI_ERROR_DEBUG;
-  }
-
-  int res = TRI_RemoveElementHashArray(hashArray, element);
-
-  // this might happen when rolling back
-  if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a data element into the hash array
-///
-/// Since we do allow duplicates - we must compare using documents, rather than
-/// keys.
-////////////////////////////////////////////////////////////////////////////////
-
-static int MultiHashIndex_insert (HashIndex* hashIndex,
-                                  TRI_hash_array_multi_t* hashArrayMulti,
-                                  TRI_hash_index_element_multi_t* element,
-                                  bool isRollback) {
-  TRI_IF_FAILURE("InsertHashIndex") {
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_index_search_value_t key;
-  int res = FillIndexSearchValueByHashIndexElement<TRI_hash_index_element_multi_t>(hashIndex, &key, element);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // out of memory
-    return res;
-  }
-
-  res = TRI_InsertElementHashArrayMulti(hashArrayMulti, &key, element, isRollback);
-  
-  if (key._values != nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
-  }
-
-  if (res == TRI_RESULT_ELEMENT_EXISTS) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an entry from the associative array
-////////////////////////////////////////////////////////////////////////////////
-
-static int MultiHashIndex_remove (HashIndex* hashIndex,
-                                  TRI_hash_array_multi_t* hashArrayMulti,
-                                  TRI_hash_index_element_multi_t* element) {
-  TRI_IF_FAILURE("RemoveHashIndex") {
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_index_search_value_t key;
-  int res = FillIndexSearchValueByHashIndexElement<TRI_hash_index_element_multi_t>(hashIndex, &key, element);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // out of memory
-    return res;
-  }
-
-  res = TRI_RemoveElementHashArrayMulti(hashArrayMulti, &key, element);
-
-  if (key._values != nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
-  }
-
-  if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locates a key within the hash array part
 /// it is the callers responsibility to destroy the result
 ////////////////////////////////////////////////////////////////////////////////
@@ -374,8 +254,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
                       std::vector<TRI_shape_pid_t> const& paths,
                       bool unique,
                       bool sparse) 
-  : Index(iid, fields),
-    _collection(collection),
+  : Index(iid, collection, fields),
     _paths(paths),
     _unique(unique),
     _sparse(sparse) {
@@ -451,49 +330,10 @@ triagens::basics::Json HashIndex::toJson (TRI_memory_zone_t* zone) const {
   
 int HashIndex::insert (TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
-  int res;
-
   if (_unique) {
-    TRI_hash_index_element_t hashElement;
-    res = HashIndexHelperAllocate<TRI_hash_index_element_t>(this, &hashElement, doc);
-
-    if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
-      return res;
-    }
-
-    res = HashIndex_insert(this, &_hashArray, &hashElement, isRollback);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
-    }
+    return insertUnique(doc, isRollback);
   }
-  else {
-    TRI_hash_index_element_multi_t hashElement;
-    res = HashIndexHelperAllocate<TRI_hash_index_element_multi_t>(this, &hashElement, doc);
-
-    if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-      return res;
-    }
-
-    res = MultiHashIndex_insert(this, &_hashArrayMulti, &hashElement, isRollback);
-    if (res != TRI_ERROR_NO_ERROR) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-    }
-  }
-
-  return res;
+  return insertMulti(doc, isRollback);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -502,42 +342,11 @@ int HashIndex::insert (TRI_doc_mptr_t const* doc,
          
 int HashIndex::remove (TRI_doc_mptr_t const* doc, 
                        bool) {
-  int res;
 
   if (_unique) {
-    TRI_hash_index_element_t hashElement;
-    res = HashIndexHelperAllocate<TRI_hash_index_element_t>(this, &hashElement, doc);
-
-    if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
-      return res;
-    }
-    res = HashIndex_remove(&_hashArray, &hashElement);
-    FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
+    return removeUnique(doc);
   }
-  else {
-    TRI_hash_index_element_multi_t hashElement;
-    res = HashIndexHelperAllocate<TRI_hash_index_element_multi_t>(this, &hashElement, doc);
-
-    if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-      return res;
-    }
-    res = MultiHashIndex_remove(this, &_hashArrayMulti, &hashElement);
-    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-  }
-
-  return res;
+  return removeMulti(doc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -552,10 +361,10 @@ int HashIndex::sizeHint (size_t size) {
   }
 
   if (_unique) {
-    TRI_ResizeHashArray(&_hashArray, size);
+    TRI_ResizeHashArray(this, &_hashArray, size);
   }
   else {
-    TRI_ResizeHashArrayMulti(&_hashArrayMulti, size);
+    TRI_ResizeHashArrayMulti(this, &_hashArrayMulti, size);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -603,6 +412,189 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
   }
 
   return TRI_LookupByKeyHashArrayMulti(&_hashArrayMulti, searchValue, documents, next, batchSize);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
+                             bool isRollback) {
+
+  TRI_hash_index_element_t hashElement;
+  int res = HashIndexHelperAllocate<TRI_hash_index_element_t>(this, &hashElement, doc);
+
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
+    return res;
+  }
+
+  auto work = [this] (TRI_hash_index_element_t const* element, bool isRollback) -> int {
+    TRI_IF_FAILURE("InsertHashIndex") {
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_index_search_value_t key;
+    int res = FillIndexSearchValueByHashIndexElement<TRI_hash_index_element_t>(this, &key, element);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // out of memory
+      return res;
+    }
+
+    res = TRI_InsertKeyHashArray(this, &_hashArray, &key, element, isRollback);
+
+    if (key._values != nullptr) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
+    }
+
+    return res;
+  };
+
+  res = work(&hashElement, isRollback);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
+  }
+  return res;
+}
+
+int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
+                            bool isRollback) {
+
+  TRI_hash_index_element_multi_t hashElement;
+  int res = HashIndexHelperAllocate<TRI_hash_index_element_multi_t>(this, &hashElement, doc);
+  
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
+    return res;
+  }
+
+
+  auto work = [this] (TRI_hash_index_element_multi_t* element, bool isRollback) -> int {
+    TRI_IF_FAILURE("InsertHashIndex") {
+      return TRI_ERROR_DEBUG;
+    }
+  
+    TRI_index_search_value_t key;
+    int res = FillIndexSearchValueByHashIndexElement<TRI_hash_index_element_multi_t>(this, &key, element);
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      // out of memory
+      return res;
+    }
+    
+    res = TRI_InsertElementHashArrayMulti(this, &_hashArrayMulti, &key, element, isRollback);
+    
+    if (key._values != nullptr) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
+    }
+    
+    if (res == TRI_RESULT_ELEMENT_EXISTS) {
+      return TRI_ERROR_INTERNAL;
+    }
+    
+    return res;
+  };
+  
+  res = work(&hashElement, isRollback);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
+  }
+
+  return res;
+}
+
+int HashIndex::removeUnique (TRI_doc_mptr_t const* doc) {
+  TRI_hash_index_element_t hashElement;
+  int res = HashIndexHelperAllocate<TRI_hash_index_element_t>(this, &hashElement, doc);
+
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
+    return res;
+  }
+
+  auto work = [this] (TRI_hash_index_element_t* element) -> int {
+    TRI_IF_FAILURE("RemoveHashIndex") {
+      return TRI_ERROR_DEBUG;
+    }
+
+    int res = TRI_RemoveElementHashArray(this, &_hashArray, element);
+
+    // this might happen when rolling back
+    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    return res;
+  };
+
+  res = work(&hashElement);
+  FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
+
+  return res;
+}
+
+int HashIndex::removeMulti (TRI_doc_mptr_t const* doc) {
+  TRI_hash_index_element_multi_t hashElement;
+  int res = HashIndexHelperAllocate<TRI_hash_index_element_multi_t>(this, &hashElement, doc);
+
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
+    return res;
+  }
+
+  auto work = [&] (TRI_hash_index_element_multi_t* element) -> int {
+    TRI_IF_FAILURE("RemoveHashIndex") {
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_index_search_value_t key;
+    int res = FillIndexSearchValueByHashIndexElement<TRI_hash_index_element_multi_t>(this, &key, element);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // out of memory
+      return res;
+    }
+
+    res = TRI_RemoveElementHashArrayMulti(this, &_hashArrayMulti, &key, element);
+
+    if (key._values != nullptr) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
+    }
+
+    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+      return TRI_ERROR_INTERNAL;
+    }
+ 
+    return res;
+  };
+
+  res = work(&hashElement);
+  FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
+
+  return res;
 }
 
 // -----------------------------------------------------------------------------

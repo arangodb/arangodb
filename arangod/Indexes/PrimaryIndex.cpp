@@ -72,8 +72,8 @@ uint64_t const PrimaryIndex::InitialSize = 251;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-PrimaryIndex::PrimaryIndex (TRI_document_collection_t*) 
-  : Index(0, std::vector<std::string>( { TRI_VOC_ATTRIBUTE_KEY } )) {
+PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection) 
+  : Index(0, collection, std::vector<std::string>( { TRI_VOC_ATTRIBUTE_KEY } )) {
 
   _primaryIndex._nrAlloc = 0;
   _primaryIndex._nrUsed  = 0;
@@ -340,7 +340,8 @@ bool PrimaryIndex::resize (uint64_t targetSize,
 
   double start = TRI_microtime();
   if (targetSize > NotificationSizeThreshold) {
-    LOG_ACTION("primary-index-resize, target size: %llu", 
+    LOG_ACTION("index-resize %s, target size: %llu", 
+               context().c_str(),
                (unsigned long long) targetSize);
   }
 
@@ -381,7 +382,8 @@ bool PrimaryIndex::resize (uint64_t targetSize,
   _primaryIndex._nrAlloc = targetSize;
 
   LOG_TIMER((TRI_microtime() - start),
-            "primary-index-resize, target size: %llu", 
+            "index-resize, %s, target size: %llu", 
+            context().c_str(),
             (unsigned long long) targetSize);
 
   return true;

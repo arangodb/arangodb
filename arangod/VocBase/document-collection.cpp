@@ -31,11 +31,11 @@
 
 #include "Basics/Barrier.h"
 #include "Basics/conversions.h"
+#include "Basics/Exceptions.h"
 #include "Basics/files.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ThreadPool.h"
-#include "Basics/Exceptions.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/CapConstraint.h"
 #include "Indexes/EdgeIndex.h"
@@ -2929,7 +2929,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   auto primaryIndex = document->primaryIndex()->internals();
 
   if ((n > 1) && (primaryIndex->_nrUsed > NotificationSizeThreshold)) {
-    LOG_ACTION("fill-indexes-document-collection, name: '%s/%s', n: %d", 
+    LOG_ACTION("fill-indexes-document-collection { collection: %s/%s }, n: %d", 
                document->_vocbase->_name,
                document->_info._name,
                (int) (n - 1));
@@ -2999,7 +2999,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   }
     
   LOG_TIMER((TRI_microtime() - start),
-            "fill-indexes-document-collection, name: '%s/%s', n: %d", 
+            "fill-indexes-document-collection { collection: %s/%s }, n: %d", 
             document->_vocbase->_name,
             document->_info._name, 
             (int) (n - 1)); 
@@ -3031,7 +3031,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT(document != nullptr);
   
   double start = TRI_microtime();
-  LOG_ACTION("open-document-collection, name: '%s/%s'", 
+  LOG_ACTION("open-document-collection { collection: %s/%s }", 
              vocbase->_name,
              col->_name);
 
@@ -3084,7 +3084,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   {
     double start = TRI_microtime();
 
-    LOG_ACTION("build-primary-index, name: '%s/%s'", 
+    LOG_ACTION("iterate-markers { collection: %s/%s }", 
                vocbase->_name,
                document->_info._name);
 
@@ -3092,7 +3092,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
     int res = IterateMarkersCollection(collection);
   
     LOG_TIMER((TRI_microtime() - start),
-              "build-primary-index, name: '%s/%s'", 
+              "iterate-markers { collection: %s/%s }", 
               vocbase->_name,
               document->_info._name);
   
@@ -3119,7 +3119,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   LOG_TIMER((TRI_microtime() - start),
-            "open-document-collection, name: '%s/%s'", 
+            "open-document-collection { collection: %s/%s }", 
             vocbase->_name,
             document->_info._name);
 
@@ -3560,10 +3560,13 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
 std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
   std::vector<triagens::basics::Json> result;
 
-  for (auto const& idx : document->allIndexes()) {
+  auto const& allIndexes = document->allIndexes();
+  result.reserve(allIndexes.size());
+
+  for (auto const& idx : allIndexes) {
     auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE);
 
-    result.emplace_back(json);
+    result.emplace_back(std::move(json));
   }
 
   return result;

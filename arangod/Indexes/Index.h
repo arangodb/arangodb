@@ -40,6 +40,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_doc_mptr_t;
+struct TRI_document_collection_t;
 struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
@@ -73,6 +74,7 @@ namespace triagens {
         Index& operator= (Index const&) = delete;
 
         Index (TRI_idx_iid_t,
+               struct TRI_document_collection_t*,
                std::vector<std::string> const&);
 
         virtual ~Index ();
@@ -118,6 +120,12 @@ namespace triagens {
         inline std::vector<std::string> const& fields () const {
           return _fields;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a contextual string for logging
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string context () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of the index
@@ -184,15 +192,17 @@ namespace triagens {
         virtual int sizeHint (size_t);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
 
-      private:
+      protected:
 
-        TRI_idx_iid_t const                  _iid;
+        TRI_idx_iid_t const                      _iid;
 
-        std::vector<std::string> const       _fields;
+        struct TRI_document_collection_t*        _collection;
 
+        std::vector<std::string> const           _fields;
+               
     };
 
   }
