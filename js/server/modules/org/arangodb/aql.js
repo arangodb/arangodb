@@ -36,7 +36,7 @@ var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("org/arangodb/cluster").isCoordinator();
 var underscore = require("underscore");
 
-isCoordinator = true;
+// isCoordinator = true;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
