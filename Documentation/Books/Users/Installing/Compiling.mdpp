@@ -159,6 +159,8 @@ The ArangoShell will be installed in
 
     /usr/local/bin/arangosh
 
+**Note:** The installation directory will be different if you use one of the `precompiled` packages. Please check the default locations of your operating system, e. g. `/etc` and `/var/lib`.
+
 When upgrading from a previous version of ArangoDB, please make sure you inspect ArangoDB's
 log file after an upgrade. It may also be necessary to start ArangoDB with the *--upgrade*
 parameter once to perform required upgrade or initialization tasks.
