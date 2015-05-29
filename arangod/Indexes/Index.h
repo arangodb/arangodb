@@ -173,7 +173,7 @@ namespace triagens {
 
         static bool Compare (TRI_json_t const* lhs,
                              TRI_json_t const* rhs);
-  
+
         virtual IndexType type () const = 0;
         virtual bool hasSelectivityEstimate () const = 0;
         virtual double selectivityEstimate () const;
@@ -190,6 +190,9 @@ namespace triagens {
 
         // give index a hint about the expected size
         virtual int sizeHint (size_t);
+
+        friend std::ostream& operator<< (std::ostream&, Index const*);
+        friend std::ostream& operator<< (std::ostream&, Index const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
