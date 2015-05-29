@@ -25,11 +25,21 @@ or use authentication, you can use the following command-line options:
 * *--server.password <string>*: password to use (omit this and you'll be prompted for the
   password)
 * *--server.disable-authentication <bool>*: whether or not to use authentication
+  
+Since version 2.6 _arangorestore_ provides the option *--create-database*. Setting this 
+option to *true* will create the target database if it does not exist. When creating the
+target database, the username and passwords passed to _arangorestore_ (in options 
+*--server.username* and *--server.password*) will be used to create an initial user for the 
+new database.
 
 Here's an example of reloading data to a non-standard endpoint, using a dedicated
 [database name](../Glossary/README.html#database_name):
 
     unix> arangorestore --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --input-directory "dump"
+
+To create the target database whe restoring, use a command like this:
+    
+    unix> arangorestore --server.username backup --server.database newdb --create-database true --input-directory "dump"
 
 _arangorestore_ will print out its progress while running, and will end with a line
 showing some aggregate statistics:
