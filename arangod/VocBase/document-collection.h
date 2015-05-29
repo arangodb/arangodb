@@ -53,6 +53,7 @@
 struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
 struct TRI_json_t;
+struct TRI_vector_pointer_s;
 
 namespace triagens {
   namespace arango {
@@ -848,7 +849,7 @@ int TRI_SaveIndex (TRI_document_collection_t*,
 /// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t*);
+struct TRI_vector_pointer_s* TRI_IndexesDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, including index file removal and replication
