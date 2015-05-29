@@ -3569,7 +3569,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
   for (auto const& idx : document->allIndexes()) {
     auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE);
 
-    TRI_PushBackVectorPointer(vector, json.json());
+    TRI_PushBackVectorPointer(vector, json.steal());
   }
 
   return vector;
