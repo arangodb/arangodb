@@ -877,6 +877,7 @@ function ahuacatlQueryShortestPathTestSuite () {
       };
 
       var actual = getQueryResults("RETURN SHORTEST_PATH(@@v, @@e, '" + vn + "/H', '" + vn + "/A', 'inbound', " + JSON.stringify(config) + ").vertices", { "@v" : vn, "@e" : en }); 
+      // var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
 
       assertEqual([[ vn + "/H", vn + "/G", vn + "/E", vn + "/D", vn + "/A" ]], actual);
     },
@@ -892,10 +893,12 @@ function ahuacatlQueryShortestPathTestSuite () {
 
       var config = {
         distance: "UnitTests::distance",
+        includeData: true,
         _sort: true
       };
 
-      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+      var actual = getQueryResults("LET p = SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") FOR x IN p.vertices[*]._key RETURN x", { "@v" : vn, "@e" : en }); 
+      // var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
 
       assertEqual([ "A", "B", "C", "D", "E", "G", "H" ], actual);
     },
@@ -913,10 +916,12 @@ function ahuacatlQueryShortestPathTestSuite () {
 
       var config = {
         filterVertices: "UnitTests::distance",
+        includeData: true,
         _sort: true
       };
 
-      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+      var actual = getQueryResults("LET p = SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") FOR x IN p.vertices[*]._key RETURN x", { "@v" : vn, "@e" : en }); 
+      // var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
 
       assertEqual([ "A", "D", "E", "G", "H" ], actual);
     },
@@ -932,10 +937,12 @@ function ahuacatlQueryShortestPathTestSuite () {
 
       var config = {
         filterVertices: "UnitTests::distance",
+        includeData: true,
         _sort: true
       };
 
-      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+      var actual = getQueryResults("LET p = SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") FOR x IN p.vertices[*]._key RETURN x", { "@v" : vn, "@e" : en }); 
+      // var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
 
       assertEqual([ ], actual);
     },
@@ -951,10 +958,12 @@ function ahuacatlQueryShortestPathTestSuite () {
 
       var config = {
         followEdges: "UnitTests::distance",
+        includeData: true,
         _sort: true
       };
 
-      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+      var actual = getQueryResults("LET p = SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") FOR x IN p.vertices[*]._key RETURN x", { "@v" : vn, "@e" : en }); 
+      // var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
 
       assertEqual([ "A", "B", "C", "D", "E", "G", "H" ], actual);
     },
