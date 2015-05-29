@@ -1782,25 +1782,40 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
   current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), TRI_V8_STRING(dirname));
   TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
 
-  v8::Handle<v8::Value> result =
-    TRI_ExecuteJavaScriptString(isolate,
-                                isolate->GetCurrentContext(),
-                                TRI_V8_PAIR_STRING(content, length),
-                                filename->ToString(),
-                                false);
- 
-  // restore old values for __dirname and __filename
-  if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
-    current->ForceDelete(TRI_V8_ASCII_STRING("__filename"));
-  }
-  else {
-    current->ForceSet(TRI_V8_ASCII_STRING("__filename"), oldFilename);
-  }
-  if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
-    current->ForceDelete(TRI_V8_ASCII_STRING("__dirname"));
-  }
-  else {
-    current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), oldDirname);
+  v8::Handle<v8::Value> result;
+  {
+    v8::TryCatch tryCatch;
+
+    result = TRI_ExecuteJavaScriptString(isolate,
+                                         isolate->GetCurrentContext(),
+                                         TRI_V8_PAIR_STRING(content, length),
+                                         filename->ToString(),
+                                         false);
+
+    // restore old values for __dirname and __filename
+    if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
+      current->Delete(TRI_V8_ASCII_STRING("__filename"));
+    }
+    else {
+      current->ForceSet(TRI_V8_ASCII_STRING("__filename"), oldFilename);
+    }
+    if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
+      current->ForceDelete(TRI_V8_ASCII_STRING("__dirname"));
+    }
+    else {
+      current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), oldDirname);
+    }
+    if (result.IsEmpty()) {
+      if (tryCatch.CanContinue()) {
+        TRI_V8_LOG_THROW_EXCEPTION(tryCatch);
+      }
+      else {
+        tryCatch.ReThrow();
+        TRI_GET_GLOBALS();
+        v8g->_canceled = true;
+        TRI_V8_RETURN_UNDEFINED();
+      }
+    }
   }
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
