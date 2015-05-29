@@ -746,6 +746,9 @@ namespace triagens {
 /// prefix `[timer]` will contain timing information for operations. Note that
 /// no timing information will be logged for operations taking less time than
 /// 1 second. This is to ensure that sub-second operations do not pollute logs.
+///
+/// The contents of performance-related log messages enabled by this option
+/// are subject to change in future versions of ArangoDB.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
