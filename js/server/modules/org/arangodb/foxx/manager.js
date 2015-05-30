@@ -456,25 +456,27 @@ var computeAppPath = function(mount) {
 /// @brief executes an app script
 ////////////////////////////////////////////////////////////////////////////////
 
-var executeAppScript = function (scriptName, app, options) {
+var executeAppScript = function (scriptName, app, argv) {
   var readableName = utils.getReadableName(scriptName);
   var scripts = app._manifest.scripts;
 
   // Only run setup/teardown scripts if they exist
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
     try {
-      app.loadAppScript(scripts[scriptName], options && {context: {options: options}});
-    } catch (err) {
+      return app.loadAppScript(scripts[scriptName], {
+        appContext: {
+          argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
+        }
+      });
+    } catch (e) {
       console.errorLines(
-        "Running script '" + readableName + "' not possible for mount '%s': %s",
+        "Running script '" + readableName + "' not possible for mount '%s':\n%s",
         app._mount,
-        err.stack || String(err)
+        e.stack || String(e)
       );
-      throw err;
+      throw e;
     }
   }
-
-  return app.simpleJSON();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -747,9 +749,8 @@ var runScript = function (scriptName, mount, options) {
   );
 
   var app = lookupApp(mount);
-  executeAppScript(scriptName, app, options);
 
-  return app.simpleJSON();
+  return executeAppScript(scriptName, app, options) || null;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1498,8 +1499,8 @@ exports.syncWithFolder = syncWithFolder;
 exports.install = install;
 exports.runTests = runTests;
 exports.runScript = runScript;
-exports.setup = R.partialRight(runScript, 'setup');
-exports.teardown = R.partialRight(runScript, 'teardown');
+exports.setup = R.partial(runScript, 'setup');
+exports.teardown = R.partial(runScript, 'teardown');
 exports.uninstall = uninstall;
 exports.replace = replace;
 exports.upgrade = upgrade;

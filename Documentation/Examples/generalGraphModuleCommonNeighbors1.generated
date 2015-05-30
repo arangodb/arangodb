@@ -8,21 +8,21 @@ arangosh> graph._commonNeighbors({isCapital : true}, {isCapital : true});
         { 
           "_id" : "germanCity/Cologne", 
           "_key" : "Cologne", 
-          "_rev" : "968113314", 
+          "_rev" : "973720819", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "germanCity/Hamburg", 
           "_key" : "Hamburg", 
-          "_rev" : "968309922", 
+          "_rev" : "973917427", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "968703138", 
+          "_rev" : "974310643", 
           "isCapital" : false, 
           "population" : 80000 
         } 
@@ -35,21 +35,21 @@ arangosh> graph._commonNeighbors({isCapital : true}, {isCapital : true});
         { 
           "_id" : "germanCity/Cologne", 
           "_key" : "Cologne", 
-          "_rev" : "968113314", 
+          "_rev" : "973720819", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "germanCity/Hamburg", 
           "_key" : "Hamburg", 
-          "_rev" : "968309922", 
+          "_rev" : "973917427", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "968703138", 
+          "_rev" : "974310643", 
           "isCapital" : false, 
           "population" : 80000 
         } 

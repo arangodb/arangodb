@@ -479,7 +479,7 @@ static int SetError (TRI_replication_applier_t* applier,
 /// @brief applier thread main function
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplyThread (void* data) {
+static void ApplyThread (void* data) {
   triagens::arango::ContinuousSyncer* s = static_cast<triagens::arango::ContinuousSyncer*>(data);
   s->run();
   delete s;

@@ -12,16 +12,16 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1393310882", 
+  "id" : "products/1261882611", 
   "type" : "geo2", 
-  "unique" : false, 
-  "sparse" : true, 
-  "constraint" : false, 
-  "ignoreNull" : true, 
   "fields" : [ 
     "e", 
     "f" 
   ], 
+  "constraint" : false, 
+  "unique" : false, 
+  "ignoreNull" : true, 
+  "sparse" : true, 
   "isNewlyCreated" : true, 
   "error" : false, 
   "code" : 201 

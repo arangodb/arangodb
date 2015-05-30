@@ -38,7 +38,7 @@
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
 
-#include "VocBase/barrier.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
@@ -150,31 +150,31 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the barrier for the collection
-/// note that the barrier must already exist
+/// @brief return the ditch for the collection
+/// note that the ditch must already exist
 /// furthermore note that we have two calling conventions because this
 /// is called in two different ways
 ////////////////////////////////////////////////////////////////////////////////
 
-         inline TRI_barrier_t* barrier () {
+         inline triagens::arango::DocumentDitch* ditch () {
            TRI_transaction_collection_t* trxCollection = this->trxCollection();
-           TRI_ASSERT(trxCollection->_barrier != nullptr);
+           TRI_ASSERT(trxCollection->_ditch != nullptr);
 
-           return trxCollection->_barrier;
+           return trxCollection->_ditch;
          }
 
-         inline TRI_barrier_t* barrier (TRI_voc_cid_t) {
-           return barrier();
+         inline triagens::arango::DocumentDitch* ditch (TRI_voc_cid_t) {
+           return ditch();
          }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a barrier is available for a collection
+/// @brief whether or not a ditch is available for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-         inline bool hasBarrier () {
+         inline bool hasDitch () {
            TRI_transaction_collection_t* trxCollection = this->trxCollection();
 
-           return (trxCollection->_barrier != nullptr);
+           return (trxCollection->_ditch != nullptr);
          }
 
 ////////////////////////////////////////////////////////////////////////////////

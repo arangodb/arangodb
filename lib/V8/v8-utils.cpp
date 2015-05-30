@@ -1782,25 +1782,40 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
   current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), TRI_V8_STRING(dirname));
   TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
 
-  v8::Handle<v8::Value> result =
-    TRI_ExecuteJavaScriptString(isolate,
-                                isolate->GetCurrentContext(),
-                                TRI_V8_PAIR_STRING(content, length),
-                                filename->ToString(),
-                                false);
- 
-  // restore old values for __dirname and __filename
-  if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
-    current->ForceDelete(TRI_V8_ASCII_STRING("__filename"));
-  }
-  else {
-    current->ForceSet(TRI_V8_ASCII_STRING("__filename"), oldFilename);
-  }
-  if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
-    current->ForceDelete(TRI_V8_ASCII_STRING("__dirname"));
-  }
-  else {
-    current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), oldDirname);
+  v8::Handle<v8::Value> result;
+  {
+    v8::TryCatch tryCatch;
+
+    result = TRI_ExecuteJavaScriptString(isolate,
+                                         isolate->GetCurrentContext(),
+                                         TRI_V8_PAIR_STRING(content, length),
+                                         filename->ToString(),
+                                         false);
+
+    // restore old values for __dirname and __filename
+    if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
+      current->Delete(TRI_V8_ASCII_STRING("__filename"));
+    }
+    else {
+      current->ForceSet(TRI_V8_ASCII_STRING("__filename"), oldFilename);
+    }
+    if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
+      current->ForceDelete(TRI_V8_ASCII_STRING("__dirname"));
+    }
+    else {
+      current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), oldDirname);
+    }
+    if (result.IsEmpty()) {
+      if (tryCatch.CanContinue()) {
+        TRI_V8_LOG_THROW_EXCEPTION(tryCatch);
+      }
+      else {
+        tryCatch.ReThrow();
+        TRI_GET_GLOBALS();
+        v8g->_canceled = true;
+        TRI_V8_RETURN_UNDEFINED();
+      }
+    }
   }
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
@@ -4310,7 +4325,7 @@ void TRI_CreateErrorObject (v8::Isolate *isolate,
 /// @brief creates the path list
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Array> static TRI_V8PathList (v8::Isolate* isolate, string const& modules) {
+v8::Handle<v8::Array> static V8PathList (v8::Isolate* isolate, string const& modules) {
   v8::EscapableHandleScope scope(isolate);
 
 #ifdef _WIN32
@@ -4319,11 +4334,11 @@ v8::Handle<v8::Array> static TRI_V8PathList (v8::Isolate* isolate, string const&
   vector<string> paths = StringUtils::split(modules, ";:");
 #endif
 
-  const uint32_t n = (uint32_t) paths.size();
+  uint32_t const n = static_cast<uint32_t>(paths.size());
   v8::Handle<v8::Array> result = v8::Array::New(isolate, n);
 
   for (uint32_t i = 0;  i < n;  ++i) {
-    result->Set(v8::Integer::New(isolate, i), TRI_V8_STD_STRING(paths[i]));
+    result->Set(i, TRI_V8_STD_STRING(paths[i]));
   }
 
   return scope.Escape<v8::Array>(result);
@@ -4333,8 +4348,8 @@ v8::Handle<v8::Array> static TRI_V8PathList (v8::Isolate* isolate, string const&
 /// @brief execute a single garbage collection run
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SingleRunGarbageCollectionV8 (v8::Isolate* isolate,
-                                       int idleTimeInMs) {
+static bool SingleRunGarbageCollectionV8 (v8::Isolate* isolate,
+                                          int idleTimeInMs) {
   isolate->LowMemoryNotification();
   bool rc = isolate->IdleNotification(idleTimeInMs);
   isolate->RunMicrotasks();
@@ -4370,7 +4385,7 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
   int gcTries = 0;
 
   while (++gcTries <= gcAttempts) {
-    if (TRI_SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+    if (SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
       return;
     }
   }
@@ -4380,7 +4395,7 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
     if (++i % 1000 == 0) {
       // garbage collection only every x iterations, otherwise we'll use too much CPU
       if (++gcTries > gcAttempts ||
-          TRI_SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+          SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
         return;  
       } 
     }
@@ -4542,7 +4557,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
 
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("HOME"), TRI_V8_STD_STRING(FileUtils::homeDirectory()));
 
-  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("MODULES_PATH"), TRI_V8PathList(isolate, modules));
+  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("MODULES_PATH"), V8PathList(isolate, modules));
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("STARTUP_PATH"), TRI_V8_STD_STRING(startupPath));
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("PATH_SEPARATOR"), TRI_V8_ASCII_STRING(TRI_DIR_SEPARATOR_STR));
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("VALGRIND"), RUNNING_ON_VALGRIND > 0 ? v8::True(isolate) : v8::False(isolate));

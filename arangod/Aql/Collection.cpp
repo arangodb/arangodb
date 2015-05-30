@@ -67,7 +67,7 @@ Collection::Collection (std::string const& name,
 ////////////////////////////////////////////////////////////////////////////////
       
 Collection::~Collection () {
-  for (auto idx : indexes) {
+  for (auto& idx : indexes) {
     delete idx;
   }
 }
@@ -185,7 +185,7 @@ std::vector<Index*> Collection::getIndexes () {
 Index* Collection::getIndex (TRI_idx_iid_t id) const {
   fillIndexes();
 
-  for (auto idx : indexes) {
+  for (auto const& idx : indexes) {
     if (idx->id == id) {
       return idx;
     }
@@ -209,6 +209,7 @@ Index* Collection::getIndex (std::string const& id) const {
 bool Collection::usesDefaultSharding () const {
   // check if collection shard keys are only _key
   std::vector<std::string>&& sk = shardKeys();
+
   if (sk.size() != 1 || sk[0] != TRI_VOC_ATTRIBUTE_KEY) {
     return false;
   }
@@ -269,8 +270,9 @@ void Collection::fillIndexesCoordinator () const {
 
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* v = TRI_LookupArrayJson(json, i);
+
       if (v != nullptr) {
-        indexes.emplace_back(new Index(v));
+        indexes.emplace_back(new triagens::aql::Index(v));
       }
     }
   }
@@ -314,7 +316,7 @@ void Collection::fillIndexesDBServer () const {
 
       // use numeric index id
       uint64_t iid = triagens::basics::StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
-      TRI_index_t* data = nullptr;
+      triagens::arango::Index* data = nullptr;
 
       auto const& allIndexes = document->allIndexes();
       size_t const n = allIndexes.size();
@@ -323,19 +325,17 @@ void Collection::fillIndexesDBServer () const {
       for (size_t j = 0; j < n; ++j) {
         auto localIndex = allIndexes[j];
 
-        if (localIndex != nullptr) {
-          if (localIndex->_iid == iid) {
-            // found
-            data = localIndex;
-            break;
-          }
-          else if (localIndex->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
-                   localIndex->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-          }
+        if (localIndex->id() == iid) {
+          // found
+          data = localIndex;
+          break;
+        }
+        else if (localIndex->type() == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX || 
+                 localIndex->type() == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
         }
       }
 
-      auto idx = new Index(v);
+      auto idx = new triagens::aql::Index(v);
       // assign the found local index
       idx->setInternals(data);
 
@@ -357,14 +357,12 @@ void Collection::fillIndexesDBServer () const {
 
 void Collection::fillIndexesLocal () const {
   // local collection
-  auto document = documentCollection();
-
-  auto const& allIndexes = document->allIndexes();
+  auto const& allIndexes = documentCollection()->allIndexes();
   size_t const n = allIndexes.size();
   indexes.reserve(n);
 
   for (size_t i = 0; i < n; ++i) {
-    indexes.emplace_back(new Index(allIndexes[i]));
+    indexes.emplace_back(new triagens::aql::Index(allIndexes[i]));
   }
 }
 

@@ -8,62 +8,62 @@ content-type: application/json; charset=utf-8
     { 
       "id" : "products/0", 
       "type" : "primary", 
-      "unique" : true, 
-      "sparse" : false, 
-      "selectivityEstimate" : 1, 
       "fields" : [ 
         "_key" 
-      ] 
+      ], 
+      "selectivityEstimate" : 1, 
+      "unique" : true, 
+      "sparse" : false 
     }, 
     { 
-      "id" : "products/1391279266", 
+      "id" : "products/1259850995", 
       "type" : "hash", 
-      "unique" : false, 
-      "sparse" : false, 
-      "selectivityEstimate" : 1, 
       "fields" : [ 
         "name" 
-      ] 
+      ], 
+      "selectivityEstimate" : 1, 
+      "unique" : false, 
+      "sparse" : false 
     }, 
     { 
-      "id" : "products/1391541410", 
+      "id" : "products/1260113139", 
       "type" : "skiplist", 
-      "unique" : false, 
-      "sparse" : true, 
       "fields" : [ 
         "price" 
-      ] 
+      ], 
+      "unique" : false, 
+      "sparse" : true 
     } 
   ], 
   "identifiers" : { 
     "products/0" : { 
       "id" : "products/0", 
       "type" : "primary", 
-      "unique" : true, 
-      "sparse" : false, 
-      "selectivityEstimate" : 1, 
       "fields" : [ 
         "_key" 
-      ] 
-    }, 
-    "products/1391279266" : { 
-      "id" : "products/1391279266", 
-      "type" : "hash", 
-      "unique" : false, 
-      "sparse" : false, 
+      ], 
       "selectivityEstimate" : 1, 
+      "unique" : true, 
+      "sparse" : false 
+    }, 
+    "products/1259850995" : { 
+      "id" : "products/1259850995", 
+      "type" : "hash", 
       "fields" : [ 
         "name" 
-      ] 
-    }, 
-    "products/1391541410" : { 
-      "id" : "products/1391541410", 
-      "type" : "skiplist", 
+      ], 
+      "selectivityEstimate" : 1, 
       "unique" : false, 
-      "sparse" : true, 
+      "sparse" : false 
+    }, 
+    "products/1260113139" : { 
+      "id" : "products/1260113139", 
+      "type" : "skiplist", 
       "fields" : [ 
         "price" 
-      ] 
+      ], 
+      "unique" : false, 
+      "sparse" : true 
     } 
   }, 
   "error" : false, 

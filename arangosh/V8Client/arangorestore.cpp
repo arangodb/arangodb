@@ -94,6 +94,12 @@ static vector<string> Collections;
 static bool IncludeSystemCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create target database
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CreateDatabase = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief input directory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -139,7 +145,13 @@ static bool Force = false;
 /// @brief cluster mode flag
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool clusterMode = false;
+static bool ClusterMode = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief last error code received
+////////////////////////////////////////////////////////////////////////////////
+
+static int LastErrorCode = TRI_ERROR_NO_ERROR;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics
@@ -165,6 +177,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
+    ("create-database", &CreateDatabase, "create the target database if it does not exist")
     ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
     ("import-data", &ImportData, "import data into collection")
     ("recycle-ids", &RecycleIds, "recycle collection and revision ids from dump")
@@ -268,6 +281,7 @@ static void arangorestoreExitFunction (int exitCode, void* data) {
 static string GetHttpErrorMessage (SimpleHttpResult* result) {
   const StringBuffer& body = result->getBody();
   string details;
+  LastErrorCode = TRI_ERROR_NO_ERROR;
 
   TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
 
@@ -279,6 +293,7 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 
     if (errorMessage != "" && errorNum > 0) {
       details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
+      LastErrorCode = errorNum;
     }
   }
 
@@ -286,6 +301,62 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
          StringUtils::itoa(result->getHttpReturnCode()) +
          " (" + result->getHttpReturnMessage() + ")" +
          details;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to create a database on the server
+////////////////////////////////////////////////////////////////////////////////
+
+static int TryCreateDatabase (std::string const& name) {
+
+  triagens::basics::Json json(triagens::basics::Json::Object);
+  json("name", triagens::basics::Json(name));
+
+  triagens::basics::Json user(triagens::basics::Json::Object);
+  user("username", triagens::basics::Json(BaseClient.username()));
+  user("passwrd", triagens::basics::Json(BaseClient.password()));
+
+  triagens::basics::Json users(triagens::basics::Json::Array);
+  users.add(user);
+  json("users", users);
+                                               
+  std::string const body(triagens::basics::JsonHelper::toString(json.json()));
+
+  map<string, string> headers;
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST,
+                                               "/_api/database",
+                                               body.c_str(),
+                                               body.size(),
+                                               headers);
+
+  if (response == nullptr || ! response->isComplete()) {
+    if (response != nullptr) {
+      delete response;
+    }
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  auto returnCode = response->getHttpReturnCode();
+
+  if (returnCode == HttpResponse::OK ||
+      returnCode == HttpResponse::CREATED) {
+    // all ok
+    delete response;
+    return TRI_ERROR_NO_ERROR;
+  }
+  else if (returnCode == HttpResponse::UNAUTHORIZED ||
+           returnCode == HttpResponse::FORBIDDEN) {
+    // invalid authorization
+    Client->setErrorMessage(GetHttpErrorMessage(response), false);
+    delete response;
+    return TRI_ERROR_FORBIDDEN;
+  }
+
+  // any other error
+  Client->setErrorMessage(GetHttpErrorMessage(response), false);
+  delete response;
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -935,10 +1006,33 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
-  Client->setLocationRewriter(0, &rewriteLocation);
+  Client->setLocationRewriter(nullptr, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
-  const string versionString = GetArangoVersion();
+  string versionString = GetArangoVersion();
+    
+  if (CreateDatabase && LastErrorCode == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+    // database not found, but database creation requested
+   
+    std::string old = BaseClient.databaseName();
+    cout << "Creating database '" << old << "'" << endl;
+
+    BaseClient.setDatabaseName("_system");
+
+    int res = TryCreateDatabase(old);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      cerr << "Could not create database '" << old << "'" << endl;
+      cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+    }
+
+    // restore old database name
+    BaseClient.setDatabaseName(old);
+
+    // re-fetch version
+    versionString = GetArangoVersion();
+  }
 
   if (! Connection->isConnected()) {
     cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
@@ -970,7 +1064,7 @@ int main (int argc, char* argv[]) {
 
   if (major >= 2) {
     // Version 1.4 did not yet have a cluster mode
-    clusterMode = GetArangoIsCluster();
+    ClusterMode = GetArangoIsCluster();
   }
 
   if (Progress) {

@@ -33,7 +33,9 @@
 
 #include "Basics/fasthash.h"
 #include "Basics/logging.h"
-#include "HashIndex/hash-index.h"
+#include "HashIndex/hash-index-common.h"
+#include "Indexes/HashIndex.h"
+#include "Indexes/Index.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
 
@@ -186,7 +188,8 @@ static int AllocateTable (TRI_hash_array_t* array,
 /// @brief resizes the array
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ResizeHashArray (TRI_hash_array_t* array,
+static int ResizeHashArray (triagens::arango::HashIndex* hashIndex,
+                            TRI_hash_array_t* array,
                             uint64_t targetSize,
                             bool allowShrink) {
   if (array->_nrAlloc >= targetSize && ! allowShrink) {
@@ -198,7 +201,8 @@ static int ResizeHashArray (TRI_hash_array_t* array,
 
   double start = TRI_microtime();
   if (targetSize > NotificationSizeThreshold) {
-    LOG_ACTION("resize-hash-array, target size: %llu", 
+    LOG_ACTION("index-resize %s, target size: %llu", 
+               hashIndex->context().c_str(),
                (unsigned long long) targetSize);
   }
 
@@ -244,7 +248,8 @@ static int ResizeHashArray (TRI_hash_array_t* array,
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTablePtr);
   
   LOG_TIMER((TRI_microtime() - start),
-            "resize-hash-array, target size: %llu", 
+            "index-resize %s, target size: %llu", 
+            hashIndex->context().c_str(),
             (unsigned long long) targetSize);
 
   return TRI_ERROR_NO_ERROR;
@@ -254,9 +259,10 @@ static int ResizeHashArray (TRI_hash_array_t* array,
 /// @brief triggers a resize if necessary
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckResize (TRI_hash_array_t* array) {
+static bool CheckResize (triagens::arango::HashIndex* hashIndex,
+                         TRI_hash_array_t* array) {
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    int res = ResizeHashArray(array, 2 * array->_nrAlloc + 1, false);
+    int res = ResizeHashArray(hashIndex, array, 2 * array->_nrAlloc + 1, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return false;
@@ -353,16 +359,17 @@ size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const* array) {
 /// @brief resizes the hash table
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeHashArray (TRI_hash_array_t* array,
+int TRI_ResizeHashArray (triagens::arango::HashIndex* hashIndex,
+                         TRI_hash_array_t* array,
                          size_t size) {
-  return ResizeHashArray(array, (uint64_t) (2 * size + 1), false);
+  return ResizeHashArray(hashIndex, array, (uint64_t) (2 * size + 1), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t* array,
+TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t const* array,
                                                     TRI_index_search_value_t* key) {
   uint64_t const n = array->_nrAlloc;
   uint64_t i, k;
@@ -387,7 +394,7 @@ TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t* array,
 /// @brief finds an element given a key, return NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_hash_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t* array,
+TRI_hash_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t const* array,
                                                   TRI_index_search_value_t* key) {
   TRI_hash_index_element_t* element = TRI_LookupByKeyHashArray(array, key);
 
@@ -405,7 +412,8 @@ TRI_hash_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t* array,
 /// element.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
+int TRI_InsertKeyHashArray (triagens::arango::HashIndex* hashIndex,
+                            TRI_hash_array_t* array,
                             TRI_index_search_value_t const* key,
                             TRI_hash_index_element_t const* element,
                             bool isRollback) {
@@ -414,7 +422,7 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
   // we are adding and the table is more than half full, extend it
   // ...........................................................................
 
-  if (! CheckResize(array)) {
+  if (! CheckResize(hashIndex, array)) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -452,7 +460,8 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
+int TRI_RemoveElementHashArray (triagens::arango::HashIndex* hashIndex,
+                                TRI_hash_array_t* array,
                                 TRI_hash_index_element_t* element) {
   uint64_t const n = array->_nrAlloc;
   uint64_t i, k;
@@ -506,7 +515,7 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
   }
 
   if (array->_nrUsed == 0) {
-    ResizeHashArray(array, InitialSize(), true);
+    ResizeHashArray(hashIndex, array, InitialSize(), true);
   }
 
   return TRI_ERROR_NO_ERROR;

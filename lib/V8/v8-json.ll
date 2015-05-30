@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 
+#include "V8/v8-json.h"
 #include "V8/v8-globals.h"
 
 #include "Basics/tri-strings.h"

@@ -2139,7 +2139,7 @@ bool TRI_TryRepairDatafile (char const* path) {
   // set to read/write access 
   TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &datafile->_mmHandle);
 
-  int result = TryRepairDatafile(datafile);
+  bool result = TryRepairDatafile(datafile);
   TRI_CloseDatafile(datafile);
   TRI_FreeDatafile(datafile);
 

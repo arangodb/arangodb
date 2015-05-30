@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief primary hash index functionality
+/// @brief cap constraint
 ///
 /// @file
 ///
@@ -23,117 +23,138 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Martin Schoenert
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_PRIMARY__INDEX_H
-#define ARANGODB_VOC_BASE_PRIMARY__INDEX_H 1
+#ifndef ARANGODB_INDEXES_CAP_CONSTRAINT_H
+#define ARANGODB_INDEXES_CAP_CONSTRAINT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/hashes.h"
-#include "Basics/locks.h"
-
-struct TRI_doc_mptr_t;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array of pointers
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_primary_index_s {
-  uint64_t _nrAlloc;     // the size of the table
-  uint64_t _nrUsed;      // the number of used entries
-
-  void** _table;         // the table itself
-}
-TRI_primary_index_t;
+#include "Indexes/Index.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                               class CapConstraint
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the index
-////////////////////////////////////////////////////////////////////////////////
+namespace triagens {
+  namespace arango {
 
-int TRI_InitPrimaryIndex (TRI_primary_index_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the index
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ResizePrimaryIndex (TRI_primary_index_t*, 
-                            size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resize the index to a good size if too small
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AutoResizePrimaryIndex (TRI_primary_index_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the index, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyPrimaryIndex (TRI_primary_index_t*);
+    class CapConstraint : public Index {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
+      public:
+
+        CapConstraint () = delete;
+
+        CapConstraint (TRI_idx_iid_t,
+                       struct TRI_document_collection_t*,
+                       size_t,
+                       int64_t);
+
+        ~CapConstraint ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash the key
+/// @brief maximum number of documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
   
-static inline uint64_t TRI_HashKeyPrimaryIndex (char const* key) {
-  return TRI_FnvHashString(key);
-}
+        int64_t count () const {
+          return _count;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash the key
+/// @brief maximum size of documents in the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t size () const {
+          return _size;
+        }
+        
+        IndexType type () const override final {
+          return Index::TRI_IDX_TYPE_CAP_CONSTRAINT;
+        }
+
+        bool hasSelectivityEstimate () const override final {
+          return false;
+        }
+        
+        bool dumpFields () const override final {
+          return false;
+        }
+
+        size_t memory () const override final;
+
+        triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
+  
+        int insert (struct TRI_doc_mptr_t const*, bool) override final;
+         
+        int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        
+        int postInsert (struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*) override final;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize the cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply the cap constraint for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int apply (TRI_document_collection_t*,
+                   struct TRI_transaction_collection_s*);
+        
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
   
-static inline uint64_t TRI_HashKeyPrimaryIndex (char const* key,
-                                                size_t length) {
-  return TRI_FnvHashPointer(static_cast<void const*>(key), length);
+        int64_t const _count;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum size of documents in the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t const _size;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum size
+////////////////////////////////////////////////////////////////////////////////
+
+        static int64_t const MinSize;
+    };
+
+  }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t*,
-                                   char const* key);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an key/element to the index
-/// returns a status code, and *found will contain a found element (if any)
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t*,
-                               struct TRI_doc_mptr_t const*,
-                               void const**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an key/element to the index
-/// this is a special, optimized (read: reduced) variant of the above insert
-/// function 
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InsertKeyPrimaryIndex (TRI_primary_index_t*,
-                                struct TRI_doc_mptr_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a key/element from the index
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t*,
-                                 char const* key);
 
 #endif
 

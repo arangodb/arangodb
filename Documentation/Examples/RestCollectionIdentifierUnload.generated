@@ -4,10 +4,10 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "1548041378", 
+  "id" : "1556401395", 
   "name" : "products", 
   "isSystem" : false, 
-  "status" : 4, 
+  "status" : 2, 
   "type" : 2, 
   "error" : false, 
   "code" : 200 

@@ -606,6 +606,8 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
     TRI_ASSERT(! cache->operations->empty());
 
+    auto primaryIndex = document->primaryIndex();
+
     for (auto it = cache->operations->begin(); it != cache->operations->end(); ++it) {
       auto operation = (*it);
 
@@ -621,7 +623,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         wal::document_marker_t const* m = reinterpret_cast<wal::document_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
 
-        TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+        auto found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(key));
 
         if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
           // somebody inserted a new revision of the document or the revision was already moved by the compactor
@@ -645,7 +647,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         wal::edge_marker_t const* m = reinterpret_cast<wal::edge_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
 
-        TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+        auto found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(key));
 
         if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
           // somebody inserted a new revision of the document or the revision was already moved by the compactor
@@ -669,7 +671,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         wal::remove_marker_t const* m = reinterpret_cast<wal::remove_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + sizeof(wal::remove_marker_t);
 
-        TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+        auto found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(key));
 
         if (found != nullptr && found->_rid > m->_revisionId) {
           // somebody re-created the document with a newer revision
@@ -1352,15 +1354,15 @@ leave:
       // create a local datafile info struct
       createDfi(cache, datafile->_fid);
 
-      // we only need the barriers when we are outside the recovery
+      // we only need the ditches when we are outside the recovery
       // the compactor will not run during recovery
-      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
+      auto ditch = document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
         
-      if (barrier == nullptr) {
+      if (ditch == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      cache->addBarrier(barrier);
+      cache->addDitch(ditch);
     }
   }
   else {

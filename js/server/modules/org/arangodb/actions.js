@@ -2085,6 +2085,10 @@ function resultException (req, res, err, headers, verbose) {
     num = arangodb.ERROR_TYPE_ERROR;
     code = exports.HTTP_BAD;
   }
+  else if (err.statusCode) {
+    num = err.statusCode;
+    code = err.statusCode;
+  }
   else {
     num = arangodb.ERROR_HTTP_SERVER_ERROR;
     code = exports.HTTP_SERVER_ERROR;

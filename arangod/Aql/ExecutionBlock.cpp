@@ -35,10 +35,11 @@
 #include "Basics/Exceptions.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Cluster/ClusterMethods.h"
-#include "HashIndex/hash-index.h"
+#include "Indexes/EdgeIndex.h"
+#include "Indexes/HashIndex.h"
+#include "Indexes/SkiplistIndex2.h"
 #include "V8/v8-globals.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/index.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
@@ -826,7 +827,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
   if (trxCollection != nullptr) {
-    _trx->orderBarrier(trxCollection);
+    _trx->orderDitch(trxCollection);
   }
 
   if (_random) {
@@ -1067,7 +1068,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   auto trxCollection = _trx->trxCollection(_collection->cid());
 
   if (trxCollection != nullptr) {
-    _trx->orderBarrier(trxCollection);
+    _trx->orderDitch(trxCollection);
   }
     
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
@@ -1123,7 +1124,7 @@ IndexRangeBlock::~IndexRangeBlock () {
 
 bool IndexRangeBlock::useHighBounds () const {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  return (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX);
+  return (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX);
 }
 
 bool IndexRangeBlock::hasV8Expression () const {
@@ -1340,7 +1341,7 @@ int IndexRangeBlock::initialize () {
   int res = ExecutionBlock::initialize();
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (_trx->orderBarrier(_trx->trxCollection(_collection->cid())) == nullptr) {
+    if (_trx->orderDitch(_trx->trxCollection(_collection->cid())) == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;
     }
   }
@@ -1443,6 +1444,8 @@ bool IndexRangeBlock::initRanges () {
 
   if (_anyBoundVariable) {
     if (_hasV8Expression) {
+      bool const isRunningInCluster = triagens::arango::ServerState::instance()->isRunningInCluster();
+
       // must have a V8 context here to protect Expression::execute()
       auto engine = _engine;
       triagens::basics::ScopeGuard guard{
@@ -1450,15 +1453,17 @@ bool IndexRangeBlock::initRanges () {
           engine->getQuery()->enterContext(); 
         },
         [&]() -> void {
-          // must invalidate the expression now as we might be called from
-          // different threads
-          if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
-            for (auto e : _allVariableBoundExpressions) {
-              e->invalidate();
+          if (isRunningInCluster) {
+            // must invalidate the expression now as we might be called from
+            // different threads
+            if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
+              for (auto const& e : _allVariableBoundExpressions) {
+                e->invalidate();
+              }
             }
-          }
           
-          engine->getQuery()->exitContext(); 
+            engine->getQuery()->exitContext(); 
+          }
         }
       };
 
@@ -1476,11 +1481,11 @@ bool IndexRangeBlock::initRanges () {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_ASSERT(en->_index != nullptr);
    
-  if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return true; //no initialization here!
   }
   
-  if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
     if (_condition == nullptr || _condition->empty()) {
       return false;
     }
@@ -1490,7 +1495,7 @@ bool IndexRangeBlock::initRanges () {
     return (_edgeIndexIterator != nullptr);
   }
       
-  if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
     if (_condition == nullptr || _condition->empty()) {
       return false;
     }
@@ -1500,7 +1505,7 @@ bool IndexRangeBlock::initRanges () {
     return (_hashIndexSearchValue._values != nullptr); 
   }
   
-  if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     if (_condition == nullptr || _condition->empty()) {
       return false;
     }
@@ -1774,18 +1779,18 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   
-  if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     if (_flag && _condition != nullptr) {
       readPrimaryIndex(*_condition);
     }
   }
-  else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+  else if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
     readEdgeIndex(atMost);
   }
-  else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
+  else if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
     readHashIndex(atMost);
   }
-  else if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  else if (en->_index->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex(atMost);
   }
   else {
@@ -1993,7 +1998,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
 void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   ENTER_BLOCK;
-  TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
+  auto primaryIndex = _collection->documentCollection()->primaryIndex();
  
   for (size_t i = 0; i < ranges.size(); i++) {
     std::string key;
@@ -2052,8 +2057,8 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
     if (! key.empty()) {
       ++_engine->_stats.scannedIndex;
 
-      auto found = static_cast<TRI_doc_mptr_t
-        const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key.c_str()));
+      auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key.c_str()));
+
       if (found != nullptr) {
         _documents.emplace_back(*found);
       }
@@ -2128,7 +2133,7 @@ void IndexRangeBlock::readEdgeIndex (size_t atMost) {
   }
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->getInternals();
+  auto idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
  
   try { 
@@ -2140,7 +2145,7 @@ void IndexRangeBlock::readEdgeIndex (size_t atMost) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      TRI_LookupEdgeIndex(idx, _edgeIndexIterator, _documents, _edgeNextElement, atMost);
+      static_cast<triagens::arango::EdgeIndex*>(idx)->lookup(_edgeIndexIterator, _documents, _edgeNextElement, atMost);
     
       size_t const numRead = _documents.size() - n;
 
@@ -2190,13 +2195,15 @@ void IndexRangeBlock::destroyHashIndexSearchValues () {
 
 bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range) { 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->getInternals();
+  auto idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
-  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
+  auto const& paths = hashIndex->paths();
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
 
-  size_t const n = TRI_LengthVector(&hashIndex->_paths);
+  size_t const n = paths.size();
 
   TRI_ASSERT(_hashIndexSearchValue._values == nullptr); // to prevent leak
   _hashIndexSearchValue._length = 0;
@@ -2212,13 +2219,13 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
 
 
   for (size_t i = 0; i < n; ++i) {
-    TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
+    TRI_shape_pid_t pid = paths[i];
     TRI_ASSERT(pid != 0);
    
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
     std::string const lookFor(name);
 
-    for (auto x : range) {
+    for (auto const& x : range) {
       if (x._attr == lookFor) {    //found attribute
         if (x._lowConst.bound().json() == nullptr) {
           // attribute is empty. this may be case if a function expression is used as a 
@@ -2272,7 +2279,7 @@ void IndexRangeBlock::readHashIndex (size_t atMost) {
   }
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->getInternals();
+  auto idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
   
   size_t nrSent = 0;
@@ -2283,7 +2290,7 @@ void IndexRangeBlock::readHashIndex (size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_LookupHashIndex(idx, &_hashIndexSearchValue, _documents, _hashNextElement, atMost);
+    static_cast<triagens::arango::HashIndex*>(idx)->lookup(&_hashIndexSearchValue, _documents, _hashNextElement, atMost);
     size_t const numRead = _documents.size() - n;
 
     _engine->_stats.scannedIndex += static_cast<int64_t>(numRead);
@@ -2345,7 +2352,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   TRI_ASSERT(_skiplistIterator == nullptr);
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->getInternals();
+  auto idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
@@ -2368,6 +2375,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
       }
       if (range._lowConst.isDefined()) {
         auto op = range._lowConst.toIndexOperator(false, parameters.copy(), shaper);
+
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
               skiplistOperator, op, nullptr, shaper, 2);
@@ -2378,6 +2386,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
       }
       if (range._highConst.isDefined()) {
         auto op = range._highConst.toIndexOperator(true, parameters.copy(), shaper);
+
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
               skiplistOperator, op, nullptr, shaper, 2);
@@ -2407,7 +2416,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
     TRI_FreeSkiplistIterator(_skiplistIterator);
   }
 
-  _skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, en->_reverse);
+  _skiplistIterator = static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, en->_reverse);
 
   if (skiplistOperator != nullptr) {
     TRI_FreeIndexOperator(skiplistOperator);
@@ -2918,19 +2927,21 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
     executeExpression(result);
   }
   else {
+    bool const isRunningInCluster = triagens::arango::ServerState::instance()->isRunningInCluster();
+
     // must have a V8 context here to protect Expression::execute()
     triagens::basics::ScopeGuard guard{
       [&]() -> void {
         _engine->getQuery()->enterContext(); 
       },
       [&]() -> void { 
-        // must invalidate the expression now as we might be called from
-        // different threads
-        if (triagens::arango::ServerState::instance()->isRunningInCluster() ||
-            _engine->getQuery()->willExitContext()) {
+        if (isRunningInCluster) {
+          // must invalidate the expression now as we might be called from
+          // different threads
           _expression->invalidate();
+        
+          _engine->getQuery()->exitContext(); 
         }
-        _engine->getQuery()->exitContext(); 
       }
     };
 
@@ -3106,7 +3117,7 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SubqueryBlock::destroySubqueryResults (std::vector<AqlItemBlock*>* results) {
-  for (auto x : *results) {
+  for (auto& x : *results) {
     delete x;
   }
   delete results;
@@ -3260,7 +3271,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
     }
   }
   catch (...) {
-    for (auto c : collector) {
+    for (auto& c : collector) {
       delete c;
     }
     throw;
@@ -3278,12 +3289,12 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         result = AqlItemBlock::concatenate(collector);
       }
       catch (...) {
-        for (auto x : collector) {
+        for (auto& x : collector) {
           delete x;
         }
         throw;
       }
-      for (auto x : collector) {
+      for (auto& x : collector) {
         delete x;
       }
     }
@@ -3329,7 +3340,7 @@ SortedAggregateBlock::SortedAggregateBlock (ExecutionEngine* engine,
     _groupRegister(ExecutionNode::MaxRegisterId),
     _variableNames() {
  
-  for (auto p : en->_aggregateVariables) {
+  for (auto const& p : en->_aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
     auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
@@ -3379,7 +3390,7 @@ SortedAggregateBlock::SortedAggregateBlock (ExecutionEngine* engine,
       }
     }
     else {
-      for (auto x : en->_keepVariables) {
+      for (auto const& x : en->_keepVariables) {
         auto it = registerPlan.find(x->id);
         if (it != registerPlan.end()) {
           _variableNames[(*it).second.registerId] = x->name;
@@ -3658,7 +3669,7 @@ HashedAggregateBlock::HashedAggregateBlock (ExecutionEngine* engine,
     _aggregateRegisters(),
     _groupRegister(ExecutionNode::MaxRegisterId) {
  
-  for (auto p : en->_aggregateVariables) {
+  for (auto const& p : en->_aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
     auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
@@ -3730,7 +3741,7 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
   AqlItemBlock* cur = _buffer.front();
 
   std::vector<TRI_document_collection_t const*> colls;
-  for (auto it : _aggregateRegisters) {
+  for (auto const& it : _aggregateRegisters) {
     colls.emplace_back(cur->getDocumentCollection(it.second));
   }
 
@@ -3928,7 +3939,7 @@ SortBlock::SortBlock (ExecutionEngine* engine,
     _sortRegisters(),
     _stable(en->_stable) {
   
-  for (auto p : en->_elements) {
+  for (auto const& p : en->_elements) {
     auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
     TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
@@ -3970,7 +3981,7 @@ void SortBlock::doSorting () {
   std::vector<std::pair<size_t, size_t>> coords;
 
   size_t sum = 0;
-  for (auto block : _buffer) {
+  for (auto const& block : _buffer) {
     sum += block->size();
   }
 
@@ -3982,7 +3993,7 @@ void SortBlock::doSorting () {
   // install the coords
   size_t count = 0;
 
-  for (auto block : _buffer) {
+  for (auto const& block : _buffer) {
     for (size_t i = 0; i < block->size(); i++) {
       coords.emplace_back(std::make_pair(count, i));
     }
@@ -4121,14 +4132,14 @@ void SortBlock::doSorting () {
     }
   }
   catch (...) {
-    for (auto x : newbuffer) {
+    for (auto& x : newbuffer) {
       delete x;
     }
     throw;
   }
   _buffer.swap(newbuffer);  // does not throw since allocators
   // are the same
-  for (auto x : newbuffer) {
+  for (auto& x : newbuffer) {
     delete x;
   }
 }
@@ -4141,7 +4152,7 @@ bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
                                          std::pair<size_t, size_t> const& b) {
 
   size_t i = 0;
-  for (auto reg : _sortRegisters) {
+  for (auto const& reg : _sortRegisters) {
 
     int cmp = AqlValue::Compare(
       _trx,
@@ -4365,7 +4376,7 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
   
   auto trxCollection = _trx->trxCollection(_collection->cid());
   if (trxCollection != nullptr) {
-    _trx->orderBarrier(trxCollection);
+    _trx->orderDitch(trxCollection);
   }
 
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
@@ -5441,7 +5452,7 @@ GatherBlock::GatherBlock (ExecutionEngine* engine,
     _isSimple(en->getElements().empty()) {
 
   if (! _isSimple) {
-    for (auto p : en->getElements()) {
+    for (auto const& p : en->getElements()) {
       // We know that planRegisters has been run, so
       // getPlanNode()->_registerPlan is set up
       auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
@@ -5561,7 +5572,7 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 int64_t GatherBlock::count () const {
   ENTER_BLOCK
   int64_t sum = 0;
-  for (auto x: _dependencies) {
+  for (auto const& x: _dependencies) {
     if (x->count() == -1) {
       return -1;
     }
@@ -5579,7 +5590,7 @@ int64_t GatherBlock::count () const {
 int64_t GatherBlock::remaining () {
   ENTER_BLOCK
   int64_t sum = 0;
-  for (auto x : _dependencies) {
+  for (auto const& x : _dependencies) {
     if (x->remaining() == -1) {
       return -1;
     }
@@ -5871,8 +5882,7 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
   }
 
   size_t i = 0;
-  for (auto reg : _sortRegisters) {
-
+  for (auto const& reg : _sortRegisters) {
     int cmp = AqlValue::Compare(
       _trx,
       _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
@@ -6366,7 +6376,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
   vector<AqlItemBlock*> collector;
 
   auto freeCollector = [&collector]() {
-    for (auto x : collector) {
+    for (auto& x : collector) {
       delete x;
     }
     collector.clear();

@@ -38,9 +38,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
-  : JSBarriers(),
-    JSCollections(),
-    JSCursors(),
+  : JSCollections(),
+    JSDitches(),
 
     AgencyTempl(),
     ClusterInfoTempl(),
@@ -118,6 +117,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     UserKey(),
     ValueKey(),
     VersionKey(),
+    VersionKeyHidden(),
     WaitForSyncKey(),
 
     _FromKey(),
@@ -207,6 +207,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   UserKey.Reset(isolate, TRI_V8_ASCII_STRING("user"));
   ValueKey.Reset(isolate, TRI_V8_ASCII_STRING("value"));
   VersionKey.Reset(isolate, TRI_V8_ASCII_STRING("version"));
+  VersionKeyHidden.Reset(isolate, TRI_V8_ASCII_STRING("*version"));
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING("waitForSync"));
 
   _FromKey.Reset(isolate, TRI_V8_ASCII_STRING("_from"));

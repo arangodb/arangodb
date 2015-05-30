@@ -5,6 +5,6 @@ arangosh> graph._betweenness();
   "germanCity/Hamburg" : 0, 
   "germanCity/Cologne" : 0, 
   "germanCity/Berlin" : 0, 
-  "frenchCity/Paris" : 0, 
-  "frenchCity/Lyon" : 0 
+  "frenchCity/Lyon" : 0, 
+  "frenchCity/Paris" : 0 
 }

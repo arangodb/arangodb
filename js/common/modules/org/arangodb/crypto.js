@@ -218,13 +218,17 @@ exports.jwtAlgorithms = {
     verify: jwtHmacVerifier('sha512')
   },
   none: {
-    sign: function () {
+    sign: function (key) {
       'use strict';
+      if (key) {
+        throw new Error('Can not sign message with key using algorithm "none"!');
+      }
       return '';
     },
-    verify: function () {
+    verify: function (key) {
       'use strict';
-      return true;
+      // see https://auth0.com/blog/2015/03/31/critical-vulnerabilities-in-json-web-token-libraries/
+      return !key;
     }
   }
 };

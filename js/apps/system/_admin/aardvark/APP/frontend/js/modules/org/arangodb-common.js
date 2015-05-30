@@ -515,7 +515,7 @@ exports.checkAvailableVersions = function (version) {
   }
 
   if (version.match(/beta|alpha|preview|devel/) !== null) {
-    log("Your are using an alpha/beta/preview version ('" + version + "') of ArangoDB");
+    log("You are using an alpha/beta/preview version ('" + version + "') of ArangoDB");
     return;
   }
 
@@ -537,7 +537,9 @@ exports.checkAvailableVersions = function (version) {
     }
   }
   catch (err) {
-    console.debug("cannot check for newer version: ", err.stack);
+    if (console && console.debug) {
+      console.debug("cannot check for newer version: ", err.stack);
+    }
   }
 };
 

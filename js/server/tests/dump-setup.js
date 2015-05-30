@@ -44,7 +44,6 @@
   }
   catch (err2) {
   }
-  db._createDatabase("UnitTestsDumpDst");
 
 
   db._useDatabase("UnitTestsDumpSrc");

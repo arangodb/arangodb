@@ -45,15 +45,12 @@ instead.
 
   * *includeData* is a boolean value to define if the returned documents should be extracted instead
     of returning their ids only. Default *false*.
-  * *distinct* is a boolean value to define if the returned documents should be distinct. If set to
-    *false* each document is included once for every edge pointing to it. Default *true*.
 
 *Examples*
 
       NEIGHBORS(friends, friendrelations, "friends/john", "outbound")
       NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ] )
       NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ], {includeData: true})
-      NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ], {distinct: false})
 
 
 !SECTION General-purpose traversals

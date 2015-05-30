@@ -116,8 +116,8 @@ df_entry_t;
 /// @brief translate a (local) collection id into a collection name
 ////////////////////////////////////////////////////////////////////////////////
     
-char const* NameFromCid (TRI_replication_dump_t* dump,
-                         TRI_voc_cid_t cid) {
+static char const* NameFromCid (TRI_replication_dump_t* dump,
+                                TRI_voc_cid_t cid) {
   auto it = dump->_collectionNames.find(cid);
 
   if (it != dump->_collectionNames.end()) {
@@ -1180,7 +1180,8 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
 
       if (marker->_type == TRI_DF_MARKER_ATTRIBUTE ||
-          marker->_type == TRI_DF_MARKER_SHAPE) {
+          marker->_type == TRI_DF_MARKER_SHAPE ||
+          marker->_type == TRI_DF_MARKER_BLANK) {
         // fully ignore these marker types. they don't need to be replicated,
         // but we also cannot stop iteration if we find one of these
         continue;
@@ -1324,7 +1325,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   TRI_document_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
-  TRI_barrier_t* b = TRI_CreateBarrierReplication(&document->_barrierList);
+  auto b = document->ditches()->createReplicationDitch(__FILE__, __LINE__);
 
   if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1338,7 +1339,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
 
   TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
-  TRI_FreeBarrier(b);
+  document->ditches()->freeDitch(b);
 
   return res;
 }

@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/vector.h"
+struct TRI_vector_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           LOGGING
@@ -205,13 +205,13 @@ void TRI_Log (char const*,
 /// @brief returns the last log entries
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t* TRI_BufferLogging (TRI_log_level_e, uint64_t pos, bool useUpto);
+struct TRI_vector_s* TRI_BufferLogging (TRI_log_level_e, uint64_t pos, bool useUpto);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the log buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBufferLogging (TRI_vector_t* buffer);
+void TRI_FreeBufferLogging (struct TRI_vector_s*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros

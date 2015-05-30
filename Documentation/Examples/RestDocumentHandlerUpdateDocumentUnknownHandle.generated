@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/1659911330 <<EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/1704709363 <<EOF
 {}
 EOF
 
@@ -7,7 +7,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
-  "errorMessage" : "document /_api/document/products/1659911330 not found", 
+  "errorMessage" : "document /_api/document/products/1704709363 not found", 
   "code" : 404, 
   "errorNum" : 1202 
 }

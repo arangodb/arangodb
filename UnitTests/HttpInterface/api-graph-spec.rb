@@ -1350,6 +1350,7 @@ describe ArangoDB do
         doc.parsed_response['result'].count.should eq(2)
       end
 
+=begin      
       it "checks list of vertices of a vertex" do
         cmd = "/_api/graph/#{graph_name}/vertices"
         body = "{\"batchSize\" : 100 }"
@@ -1413,7 +1414,7 @@ describe ArangoDB do
         doc.parsed_response['result'][0]['_key'].should eq("id3")
 
       end
-
+=end
       it "checks list of vertices of a vertex with compare" do
         cmd = "/_api/graph/#{graph_name}/vertices"
         body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 100 , \"compare\" : \"<\" } ] } }"

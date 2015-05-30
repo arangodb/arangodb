@@ -114,6 +114,25 @@ if test "x$tr_INTERNAL_GO" = "xno"; then
   fi
 fi
 
+dnl ----------------------------------------------------------------------------
+dnl tcmalloc
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(tcmalloc,
+  AS_HELP_STRING([--enable-tcmalloc], [use system-installed tcmalloc library (default: no)]),
+  [tr_TCMALLOC="${enableval:-yes}"],
+  [tr_TCMALLOC=no]
+)
+
+AM_CONDITIONAL(ENABLE_TCMALLOC, test "x$tr_TCMALLOC" = xyes)
+
+if test "x$tr_TCMALLOC" = "xyes"; then
+  TCMALLOC_LIBS="-ltcmalloc"
+else
+  TCMALLOC_LIBS=""
+fi
+AC_SUBST(TCMALLOC_LIBS)
+
 dnl ============================================================================
 dnl --SECTION--                                                          OPTIONS
 dnl ============================================================================

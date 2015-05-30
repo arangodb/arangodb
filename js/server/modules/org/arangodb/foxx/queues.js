@@ -1,7 +1,5 @@
 'use strict';
 
-/*global KEY_SET */
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx queues
 ///
@@ -9,7 +7,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,151 +24,171 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Alan Plum
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore'),
-  flatten = require('internal').flatten,
-  arangodb = require('org/arangodb'),
-  console = require('console'),
-  db = arangodb.db;
+var _ = require('underscore');
+var flatten = require('internal').flatten;
+var arangodb = require('org/arangodb');
+var console = require('console');
+var joi = require('joi');
+var qb = require('aqb');
+var db = arangodb.db;
 
-function failImmutable(name) {
-  return function () {
-    throw new Error(name + ' is not mutable');
-  };
+var queueCache = {};
+var jobCache = {};
+var jobTypeCache = {};
+
+function validate(data, schema) {
+  if (!schema) {
+    schema = joi.forbidden();
+  }
+  var raw = data;
+  var isTuple = Boolean(schema._meta && schema._meta.some(function (meta) {
+    return meta.isTuple;
+  }));
+  if (isTuple) {
+    raw = Array.isArray(raw) ? raw : [raw];
+    data = _.extend({}, raw);
+  }
+  var result = schema.validate(data);
+  if (result.error) {
+    throw result.error;
+  }
+  if (isTuple) {
+    return raw.map(function (x, i) {
+      return result.value[i];
+    });
+  }
+  return result.value;
 }
 
-var queueMap = { };
-var jobMap = { };
+function resetQueueControl() {
+  try {
+    global.KEY_SET("queue-control", "skip", 0);
+  } catch (e) {}
+}
 
-var queues = {
-  _jobTypes: { },
-  _clearCache: function () {
-    try {
-      KEY_SET("queue-control", "skip", 0);
-    }
-    catch (err) {
-      // ignore error if key does not exist
-    }
-  },
-  get: function (key) {
-    var dbName = db._name();
-    if (! queueMap.hasOwnProperty(dbName)) {
-      queueMap[dbName] = { };
-    }
-    if (! queueMap[dbName][key]) {
-      if (!db._queues.exists(key)) {
-        throw new Error('Queue does not exist: ' + key);
-      }
-      queueMap[dbName][key] = new Queue(key);
-    }
-    return queueMap[dbName][key];
-  },
-  create: function (key, maxWorkers) {
-    try {
-      db._queues.save({_key: key, maxWorkers: maxWorkers || 1});
-    } catch (err) {
-      if (!err instanceof arangodb.ArangoError ||
-          err.errorNum !== arangodb.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-        throw err;
-      }
-      if (maxWorkers) {
-        db._queues.update(key, {maxWorkers: maxWorkers});
-      }
-    }
-    this._clearCache();
-    var dbName = db._name();
-    if (! queueMap.hasOwnProperty(dbName)) {
-      queueMap[dbName] = { };
-    }
-    if (! queueMap[dbName].hasOwnProperty(key)) {
-      queueMap[dbName][key] = new Queue(key);
-    }
-    return queueMap[dbName][key];
-  },
-  delete: function (key) {
-    var result = false;
-    db._executeTransaction({
-      collections: {
-        read: ['_queues'],
-        write: ['_queues']
-      },
-      action: function () {
-        if (db._queues.exists(key)) {
-          db._queues.remove(key);
-          result = true;
-        }
-      }
-    });
-    if (result) {
-      this._clearCache();
-    }
-    return result;
-  },
-  registerJobType: function (type, opts) {
-    if (typeof opts === 'function') {
-      opts = {execute: opts};
-    }
-    if (typeof opts.execute !== 'function') {
-      throw new Error('Must provide a function to execute!');
-    }
-    if (opts.schema && typeof opts.schema.validate !== 'function') {
-      throw new Error('Schema must be a joi schema!');
-    }
-    var cfg = _.extend({maxFailures: 0}, opts);
-
-    // _jobTypes are database-specific
-    var dbName = db._name();
-    if (! queues._jobTypes.hasOwnProperty(dbName)) {
-      queues._jobTypes[dbName] = { };
-    }
-    queues._jobTypes[dbName][type] = cfg;
+function getQueue(key) {
+  var databaseName = db._name();
+  var cache = queueCache[databaseName];
+  if (!cache) {
+    cache = queueCache[databaseName] = {};
   }
-};
+  if (!cache[key]) {
+    if (!db._queues.exists(key)) {
+      throw new Error('Queue does not exist: ' + key);
+    }
+    cache[key] = new Queue(key);
+  }
+  return cache[key];
+}
+
+function createQueue(key, maxWorkers) {
+  try {
+    db._queues.save({_key: key, maxWorkers: maxWorkers || 1});
+  } catch (err) {
+    if (!err instanceof arangodb.ArangoError ||
+        err.errorNum !== arangodb.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+      throw err;
+    }
+    if (maxWorkers) {
+      db._queues.update(key, {maxWorkers: maxWorkers});
+    }
+  }
+  resetQueueControl();
+  var databaseName = db._name();
+  var cache = queueCache[databaseName];
+  if (!cache) {
+    cache = queueCache[databaseName] = {};
+  }
+  cache[key] = new Queue(key);
+  return cache[key];
+}
+
+function deleteQueue(key) {
+  var result = false;
+  db._executeTransaction({
+    collections: {
+      read: ['_queues'],
+      write: ['_queues']
+    },
+    action: function () {
+      if (db._queues.exists(key)) {
+        db._queues.remove(key);
+        result = true;
+      }
+    }
+  });
+  if (result) {
+    resetQueueControl();
+  }
+  return result;
+}
+
+function registerJobType(name, opts) {
+  if (typeof opts === 'function') {
+    opts = {execute: opts};
+  }
+  if (typeof opts.execute !== 'function') {
+    throw new Error('Must provide a function to execute!');
+  }
+  if (opts.schema && typeof opts.schema.validate !== 'function') {
+    throw new Error('Schema must be a joi schema!');
+  }
+  var cfg = _.extend({}, opts);
+
+  // _jobTypes are database-specific
+  var databaseName = db._name();
+  var cache = jobTypeCache[databaseName];
+  if (!cache) {
+    cache = jobTypeCache[databaseName] = {};
+  }
+  cache[name] = cfg;
+}
 
 function getJobs(queue, status, type) {
-  var vars = {},
-    aql = 'FOR job IN _jobs';
+  var query = qb.for('job').in('_jobs');
+  var vars = {};
+
   if (queue !== undefined) {
-    aql += ' FILTER job.queue == @queue';
+    query = query.filter(qb.ref('@queue').eq('job.queue'));
     vars.queue = queue;
   }
+
   if (status !== undefined) {
-    aql += ' FILTER job.status == @status';
+    query = query.filter(qb.ref('@status').eq('job.status'));
     vars.status = status;
   }
+
   if (type !== undefined) {
-    aql += ' FILTER job.type == @type';
+    query = query.filter(qb.ref('@type').eq('job.type'));
     vars.type = type;
   }
-  aql += ' SORT job.delayUntil ASC RETURN job._id';
+
   return db._createStatement({
-    query: aql,
+    query: query.sort('job.delayUntil', 'ASC').return('job._id'),
     bindVars: vars
   }).execute().toArray();
 }
 
 function Job(id) {
-  var self = this;
-  Object.defineProperty(self, 'id', {
-    get: function () {
-      return id;
-    },
+  Object.defineProperty(this, 'id', {
+    value: id,
+    writable: false,
     configurable: false,
     enumerable: true
   });
   _.each(['data', 'status', 'type', 'failures'], function (key) {
-    Object.defineProperty(self, key, {
+    Object.defineProperty(this, key, {
       get: function () {
         var value = db._jobs.document(this.id)[key];
         return (value && typeof value === 'object') ? Object.freeze(value) : value;
       },
-      set: failImmutable(key),
       configurable: false,
       enumerable: true
     });
-  });
+  }, this);
 }
 
 _.extend(Job.prototype, {
@@ -184,12 +202,11 @@ _.extend(Job.prototype, {
       action: function () {
         var job = db._jobs.document(self.id);
         if (job.status !== 'completed') {
+          job.failures.push(flatten(new Error('Job aborted.')));
           db._jobs.update(job, {
             status: 'failed',
             modified: Date.now(),
-            failures: job.failures.concat([
-              flatten(new Error('Job aborted.'))
-            ])
+            failures: job.failures
           });
         }
       }
@@ -199,7 +216,7 @@ _.extend(Job.prototype, {
     db._jobs.update(this.id, {
       status: 'pending'
     });
-    queues._clearCache();
+    resetQueueControl();
   }
 });
 
@@ -208,50 +225,53 @@ function Queue(name) {
     get: function () {
       return name;
     },
-    set: failImmutable('name'),
     configurable: false,
     enumerable: true
   });
 }
 
 _.extend(Queue.prototype, {
-  push: function (name, data, opts) {
-    var type, result, now;
-    if (typeof name !== 'string') {
+  push: function (jobType, data, opts) {
+    if (!jobType) {
       throw new Error('Must pass a job type!');
     }
+
+    var definition;
+    if (typeof jobType === 'string') {
+      var cache = jobTypeCache[db._name()];
+      definition = cache && cache[jobType];
+    } else {
+      definition = jobType;
+      jobType = _.extend({}, jobType);
+      delete jobType.schema;
+    }
+
+    if (definition) {
+      if (definition.schema) {
+        data = validate(data, definition.schema);
+      }
+      if (definition.preprocess) {
+        data = definition.preprocess(data);
+      }
+    } else {
+      var message = 'Unknown job type: ' + jobType;
+      if (opts.allowUnknown) {
+        console.warn(message);
+      } else {
+        throw new Error(message);
+      }
+    }
+
     if (!opts) {
       opts = {};
     }
-    // _jobTypes are database-specific
-    var dbName = db._name();
-    if (! queues._jobTypes.hasOwnProperty(dbName)) {
-      queues._jobTypes[dbName] = { };
-    }
-    type = queues._jobTypes[dbName][name];
 
-    if (type !== undefined) {
-      if (type.schema) {
-        result = type.schema.validate(data);
-        if (result.error) {
-          throw result.error;
-        }
-        data = result.value;
-      }
-      if (type.preprocess) {
-        data = type.preprocess(data);
-      }
-    } else if (opts.allowUnknown) {
-      console.warn('Unknown job type: ' + name);
-    } else {
-      throw new Error('Unknown job type: ' + name);
-    }
-    queues._clearCache();
-    now = Date.now();
+    resetQueueControl();
+    var now = Date.now();
     return db._jobs.save({
       status: 'pending',
       queue: this.name,
-      type: name,
+      type: jobType,
       failures: [],
       data: data,
       created: now,
@@ -264,21 +284,21 @@ _.extend(Queue.prototype, {
     })._id;
   },
   get: function (id) {
-    if (id === undefined || id === null) {
+    if (typeof id !== 'string') {
       throw new Error('Invalid job id');
     }
     if (!id.match(/^_jobs\//)) {
       id = '_jobs/' + id;
     }
     // jobs are database-specific
-    var dbName = db._name();
-    if (! jobMap.hasOwnProperty(dbName)) {
-      jobMap[dbName] = { };
+    var databaseName = db._name();
+    if (!jobCache[databaseName]) {
+      jobCache[databaseName] = {};
     }
-    if (! jobMap[dbName][id]) {
-      jobMap[dbName][id] = new Job(id);
+    if (!jobCache[databaseName][id]) {
+      jobCache[databaseName][id] = new Job(id);
     }
-    return jobMap[dbName][id];
+    return jobCache[databaseName][id];
   },
   delete: function (id) {
     return db._executeTransaction({
@@ -289,7 +309,7 @@ _.extend(Queue.prototype, {
       action: function () {
         try {
           db._jobs.remove(id);
-          queues._clearCache();
+          resetQueueControl();
           return true;
         } catch (err) {
           return false;
@@ -314,9 +334,16 @@ _.extend(Queue.prototype, {
   }
 });
 
-queues.create('default');
+createQueue('default');
 
-module.exports = queues;
+module.exports = {
+  _jobTypes: jobTypeCache,
+  _clearCache: resetQueueControl,
+  get: getQueue,
+  create: createQueue,
+  delete: deleteQueue,
+  registerJobType: registerJobType
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

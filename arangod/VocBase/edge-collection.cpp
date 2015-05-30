@@ -29,11 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "edge-collection.h"
-
 #include "Basics/logging.h"
-
+#include "Indexes/EdgeIndex.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/index.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       EDGES INDEX
@@ -42,26 +40,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find the edges index of a document collection
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_edge_index_t* FindEdgesIndex (
-                         TRI_document_collection_t* const document) {
-  if (document->_info._type == TRI_COL_TYPE_EDGE) {
-    for (auto& idx : document->allIndexes()) {
-
-      if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-        TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
-        return edgesIndex;
-      }
-    }
-  }
-
-  // collection does not have an edges index... caller must handle that
-  return nullptr;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the _from and _to end of an edge are identical
@@ -103,17 +81,17 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool FindEdges (TRI_edge_direction_e direction,
-                       TRI_edge_index_t* idx,
+                       triagens::arango::EdgeIndex* edgeIndex,
                        std::vector<TRI_doc_mptr_copy_t>& result,
                        TRI_edge_header_t* entry,
                        int matchType) {
   std::vector<void*>* found = nullptr;
 
   if (direction == TRI_EDGE_OUT) {
-    found = idx->_edges_from->lookupByKey(static_cast<void*>(entry));
+    found = edgeIndex->from()->lookupByKey(static_cast<void*>(entry));
   }
   else if (direction == TRI_EDGE_IN) {
-    found = idx->_edges_to->lookupByKey(static_cast<void*>(entry));
+    found = edgeIndex->to()->lookupByKey(static_cast<void*>(entry));
   }
   else {
     TRI_ASSERT(false);   // TRI_EDGE_ANY not supported here
@@ -151,7 +129,7 @@ static bool FindEdges (TRI_edge_direction_e direction,
         }
       }
 
-      result.push_back(*edge);
+      result.emplace_back(*edge);
 
     }
   }
@@ -182,92 +160,29 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
   // initialise the result vector
   std::vector<TRI_doc_mptr_copy_t> result;
 
-  TRI_edge_index_t* edgesIndex = FindEdgesIndex(document);
+  auto edgeIndex = document->edgeIndex();
 
-  if (edgesIndex == nullptr) {
+  if (edgeIndex == nullptr) {
     LOG_ERROR("collection does not have an edges index");
     return result;
   }
 
   if (direction == TRI_EDGE_IN) {
     // get all edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, edgesIndex, result, &entry, 1);
+    FindEdges(TRI_EDGE_IN, edgeIndex, result, &entry, 1);
   }
   else if (direction == TRI_EDGE_OUT) {
     // get all edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, edgesIndex, result, &entry, 1);
+    FindEdges(TRI_EDGE_OUT, edgeIndex, result, &entry, 1);
   }
   else if (direction == TRI_EDGE_ANY) {
     // get all edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, edgesIndex, result, &entry, 1);
+    FindEdges(TRI_EDGE_IN, edgeIndex, result, &entry, 1);
     // add all non-reflexive edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, edgesIndex, result, &entry, 3);
+    FindEdges(TRI_EDGE_OUT, edgeIndex, result, &entry, 3);
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up edges using the index, restarting at the edge pointed at
-/// by next
-////////////////////////////////////////////////////////////////////////////////
-      
-void TRI_LookupEdgeIndex (TRI_index_t* idx,
-                          TRI_edge_index_iterator_t const* edgeIndexIterator,
-                          std::vector<TRI_doc_mptr_copy_t>& result,
-                          void*& next,
-                          size_t batchSize) {
-
-  std::function<void(void*)> callback = [&result] (void* data) -> void {
-    TRI_doc_mptr_t* doc = static_cast<TRI_doc_mptr_t*>(data);
-
-    result.emplace_back(*(doc));
-  };
-
-  auto edgesIndex = static_cast<TRI_edge_index_t*>(idx);
-  
-  std::vector<void*>* found = nullptr;
-  if (next == nullptr) {
-    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
-      found = edgesIndex->_edges_from->lookupByKey(&(edgeIndexIterator->_edge),
-                                                   batchSize);
-    }
-    else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
-      found = edgesIndex->_edges_to->lookupByKey(&(edgeIndexIterator->_edge),
-                                                 batchSize);
-    }
-    else {
-      TRI_ASSERT(false);
-    }
-    if (found != nullptr && found->size() != 0) {
-      next = found->back();
-    }
-  }
-  else {
-    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
-      found = edgesIndex->_edges_from->lookupByKeyContinue(next, batchSize);
-    }
-    else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
-      found = edgesIndex->_edges_to->lookupByKeyContinue(next, batchSize);
-    }
-    else {
-      TRI_ASSERT(false);
-    }
-    if (found != nullptr && found->size() != 0) {
-      next = found->back();
-    }
-    else {
-      next = nullptr;
-    }
-  }
-
-  if (found != nullptr) {
-    for (auto& v : *found) {
-      callback(v);
-    }
-
-    delete found;
-  }
 }
 
 // -----------------------------------------------------------------------------

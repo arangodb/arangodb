@@ -56,6 +56,7 @@ var optionsDocumentation = [
   '   - `force`: if set to true the tests are continued even if one fails',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipGeo`: if set to true the geo index tests are skipped',
+  '   - `skipGraph`: if set to true the Graph tests are skipped',
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
@@ -206,6 +207,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if (testname.indexOf("-geo") !== -1 && options.skipGeo) {
     whichFilter.filter = 'geo';
+    return false;
+  }
+
+  if (testname.indexOf("-graph") !== -1 && options.skipGraph) {
+    whichFilter.filter = 'graph';
     return false;
   }
 
@@ -1452,6 +1458,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
     exe = fs.join("bin","arangodump");
   }
   else {
+    args["create-database"] = "true";
     args["input-directory"] = fs.join(instanceInfo.tmpDataDir,"dump");
     exe = fs.join("bin","arangorestore");
   }

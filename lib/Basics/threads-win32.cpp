@@ -228,8 +228,12 @@ void TRI_AllowCancelation(void) {
   // TODO: No native implementation of this
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the process affinity
+////////////////////////////////////////////////////////////////////////////////
 
-
+void TRI_SetProcessorAffinity (TRI_thread_t* thread, size_t core) {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
