@@ -311,7 +311,6 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/Aql/arangod_libarangod_a-Variable.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-VariableGenerator.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-ModificationOptions.$(OBJEXT) \
-	arangod/CapConstraint/arangod_libarangod_a-cap-constraint.$(OBJEXT) \
 	arangod/Cluster/arangod_libarangod_a-AgencyComm.$(OBJEXT) \
 	arangod/Cluster/arangod_libarangod_a-ApplicationCluster.$(OBJEXT) \
 	arangod/Cluster/arangod_libarangod_a-ClusterComm.$(OBJEXT) \
@@ -329,10 +328,16 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/FulltextIndex/arangod_libarangod_a-fulltext-result.$(OBJEXT) \
 	arangod/FulltextIndex/arangod_libarangod_a-fulltext-wordlist.$(OBJEXT) \
 	arangod/GeoIndex/arangod_libarangod_a-GeoIndex.$(OBJEXT) \
-	arangod/GeoIndex/arangod_libarangod_a-geo-index.$(OBJEXT) \
 	arangod/HashIndex/arangod_libarangod_a-hash-array.$(OBJEXT) \
 	arangod/HashIndex/arangod_libarangod_a-hash-array-multi.$(OBJEXT) \
-	arangod/HashIndex/arangod_libarangod_a-hash-index.$(OBJEXT) \
+	arangod/Indexes/arangod_libarangod_a-CapConstraint.$(OBJEXT) \
+	arangod/Indexes/arangod_libarangod_a-EdgeIndex.$(OBJEXT) \
+	arangod/Indexes/arangod_libarangod_a-FulltextIndex.$(OBJEXT) \
+	arangod/Indexes/arangod_libarangod_a-GeoIndex2.$(OBJEXT) \
+	arangod/Indexes/arangod_libarangod_a-HashIndex.$(OBJEXT) \
+	arangod/Indexes/arangod_libarangod_a-Index.$(OBJEXT) \
+	arangod/Indexes/arangod_libarangod_a-PrimaryIndex.$(OBJEXT) \
+	arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.$(OBJEXT) \
 	arangod/IndexOperators/arangod_libarangod_a-index-operator.$(OBJEXT) \
 	arangod/Replication/arangod_libarangod_a-ContinuousSyncer.$(OBJEXT) \
 	arangod/Replication/arangod_libarangod_a-InitialSyncer.$(OBJEXT) \
@@ -382,18 +387,16 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/V8Server/arangod_libarangod_a-v8-util.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-v8-wrapshapedjson.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-auth.$(OBJEXT) \
-	arangod/VocBase/arangod_libarangod_a-barrier.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-cleanup.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-collection.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-compactor.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-datafile.$(OBJEXT) \
+	arangod/VocBase/arangod_libarangod_a-Ditch.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-document-collection.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-ExampleMatcher.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-edge-collection.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-headers.$(OBJEXT) \
-	arangod/VocBase/arangod_libarangod_a-index.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-key-generator.$(OBJEXT) \
-	arangod/VocBase/arangod_libarangod_a-primary-index.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-replication-applier.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-replication-common.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-replication-dump.$(OBJEXT) \
@@ -641,7 +644,8 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdataAPPSSYSTEMdir)" \
 	"$(DESTDIR)$(pkgdataCLIENTdir)" \
 	"$(DESTDIR)$(pkgdataCOMMONdir)" "$(DESTDIR)$(pkgdataNODEdir)" \
-	"$(DESTDIR)$(pkgdataSERVERdir)"
+	"$(DESTDIR)$(pkgdataSERVERdir)" \
+	"$(DESTDIR)$(pkgdataSWAGGERdir)"
 @ENABLE_MAINTAINER_MODE_TRUE@am__EXEEXT_1 =  \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/basics_suite$(EXEEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/geo_suite$(EXEEXT)
@@ -841,7 +845,8 @@ DATA = $(arangosysconf_DATA) $(nobase_pkgdata_DATA) \
 	$(nobase_pkgdataACTIONS_DATA) $(nobase_pkgdataAPPSADMIN_DATA) \
 	$(nobase_pkgdataAPPSAPI_DATA) $(nobase_pkgdataAPPSSYSTEM_DATA) \
 	$(nobase_pkgdataCLIENT_DATA) $(nobase_pkgdataCOMMON_DATA) \
-	$(nobase_pkgdataNODE_DATA) $(nobase_pkgdataSERVER_DATA)
+	$(nobase_pkgdataNODE_DATA) $(nobase_pkgdataSERVER_DATA) \
+	$(nobase_pkgdataSWAGGER_DATA)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -954,6 +959,7 @@ LIBOBJS = @LIBOBJS@
 ### @brief libraries
 ################################################################################
 LIBS = \
+	@TCMALLOC_LIBS@ \
 	@RT_LIBS@ \
 	@LIBEV_LIBS@ \
 	@MATH_LIBS@ \
@@ -995,6 +1001,7 @@ RT_LIBS = @RT_LIBS@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
+TCMALLOC_LIBS = @TCMALLOC_LIBS@
 TRI_BITS = @TRI_BITS@
 TRI_CONFIGURE_COMMAND = @TRI_CONFIGURE_COMMAND@
 TRI_CONFIGURE_FLAGS = @TRI_CONFIGURE_FLAGS@
@@ -1265,6 +1272,7 @@ arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*$(PROGRAM_SUFF
 pkgdataACTIONSdir = $(datadir)/arangodb
 pkgdataCOMMONdir = $(datadir)/arangodb
 pkgdataSERVERdir = $(datadir)/arangodb
+pkgdataSWAGGERdir = $(datadir)/arangodb
 pkgdataCLIENTdir = $(datadir)/arangodb
 pkgdataNODEdir = $(datadir)/arangodb
 pkgdataAPPSdir = $(datadir)/arangodb
@@ -1274,7 +1282,8 @@ pkgdataAPPSSYSTEMdir = $(datadir)/arangodb
 nobase_pkgdata_DATA = 
 nobase_pkgdataACTIONS_DATA = $(shell find @srcdir@/js/actions -name "*.js" -print)
 nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
-nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server "(" -name "*.js" -o -name "*.tmpl" ")" -print)
+nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name assets -prune -o "(" -name "*.js" -o -name "*.tmpl" ")" -print)
+nobase_pkgdataSWAGGER_DATA = $(shell find @srcdir@/js/server/assets -type f -print)
 nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
 nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" )
 
@@ -1456,7 +1465,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Variable.cpp \
 	arangod/Aql/VariableGenerator.cpp \
 	arangod/Aql/ModificationOptions.cpp \
-	arangod/CapConstraint/cap-constraint.cpp \
 	arangod/Cluster/AgencyComm.cpp \
 	arangod/Cluster/ApplicationCluster.cpp \
 	arangod/Cluster/ClusterComm.cpp \
@@ -1474,10 +1482,16 @@ arangod_libarangod_a_SOURCES = \
 	arangod/FulltextIndex/fulltext-result.cpp \
 	arangod/FulltextIndex/fulltext-wordlist.cpp \
 	arangod/GeoIndex/GeoIndex.cpp \
-	arangod/GeoIndex/geo-index.cpp \
 	arangod/HashIndex/hash-array.cpp \
 	arangod/HashIndex/hash-array-multi.cpp \
-	arangod/HashIndex/hash-index.cpp \
+	arangod/Indexes/CapConstraint.cpp \
+	arangod/Indexes/EdgeIndex.cpp \
+	arangod/Indexes/FulltextIndex.cpp \
+	arangod/Indexes/GeoIndex2.cpp \
+	arangod/Indexes/HashIndex.cpp \
+	arangod/Indexes/Index.cpp \
+	arangod/Indexes/PrimaryIndex.cpp \
+	arangod/Indexes/SkiplistIndex2.cpp \
 	arangod/IndexOperators/index-operator.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
@@ -1527,18 +1541,16 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/v8-util.cpp \
 	arangod/V8Server/v8-wrapshapedjson.cpp \
 	arangod/VocBase/auth.cpp \
-	arangod/VocBase/barrier.cpp \
 	arangod/VocBase/cleanup.cpp \
 	arangod/VocBase/collection.cpp \
 	arangod/VocBase/compactor.cpp \
 	arangod/VocBase/datafile.cpp \
+	arangod/VocBase/Ditch.cpp \
 	arangod/VocBase/document-collection.cpp \
 	arangod/VocBase/ExampleMatcher.cpp \
 	arangod/VocBase/edge-collection.cpp \
 	arangod/VocBase/headers.cpp \
-	arangod/VocBase/index.cpp \
 	arangod/VocBase/key-generator.cpp \
-	arangod/VocBase/primary-index.cpp \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \
 	arangod/VocBase/replication-dump.cpp \
@@ -2241,15 +2253,6 @@ arangod/Aql/arangod_libarangod_a-VariableGenerator.$(OBJEXT):  \
 arangod/Aql/arangod_libarangod_a-ModificationOptions.$(OBJEXT):  \
 	arangod/Aql/$(am__dirstamp) \
 	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
-arangod/CapConstraint/$(am__dirstamp):
-	@$(MKDIR_P) arangod/CapConstraint
-	@: > arangod/CapConstraint/$(am__dirstamp)
-arangod/CapConstraint/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) arangod/CapConstraint/$(DEPDIR)
-	@: > arangod/CapConstraint/$(DEPDIR)/$(am__dirstamp)
-arangod/CapConstraint/arangod_libarangod_a-cap-constraint.$(OBJEXT):  \
-	arangod/CapConstraint/$(am__dirstamp) \
-	arangod/CapConstraint/$(DEPDIR)/$(am__dirstamp)
 arangod/Cluster/$(am__dirstamp):
 	@$(MKDIR_P) arangod/Cluster
 	@: > arangod/Cluster/$(am__dirstamp)
@@ -2319,9 +2322,6 @@ arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp):
 arangod/GeoIndex/arangod_libarangod_a-GeoIndex.$(OBJEXT):  \
 	arangod/GeoIndex/$(am__dirstamp) \
 	arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
-arangod/GeoIndex/arangod_libarangod_a-geo-index.$(OBJEXT):  \
-	arangod/GeoIndex/$(am__dirstamp) \
-	arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
 arangod/HashIndex/$(am__dirstamp):
 	@$(MKDIR_P) arangod/HashIndex
 	@: > arangod/HashIndex/$(am__dirstamp)
@@ -2334,9 +2334,36 @@ arangod/HashIndex/arangod_libarangod_a-hash-array.$(OBJEXT):  \
 arangod/HashIndex/arangod_libarangod_a-hash-array-multi.$(OBJEXT):  \
 	arangod/HashIndex/$(am__dirstamp) \
 	arangod/HashIndex/$(DEPDIR)/$(am__dirstamp)
-arangod/HashIndex/arangod_libarangod_a-hash-index.$(OBJEXT):  \
-	arangod/HashIndex/$(am__dirstamp) \
-	arangod/HashIndex/$(DEPDIR)/$(am__dirstamp)
+arangod/Indexes/$(am__dirstamp):
+	@$(MKDIR_P) arangod/Indexes
+	@: > arangod/Indexes/$(am__dirstamp)
+arangod/Indexes/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) arangod/Indexes/$(DEPDIR)
+	@: > arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
+arangod/Indexes/arangod_libarangod_a-CapConstraint.$(OBJEXT):  \
+	arangod/Indexes/$(am__dirstamp) \
+	arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
+arangod/Indexes/arangod_libarangod_a-EdgeIndex.$(OBJEXT):  \
+	arangod/Indexes/$(am__dirstamp) \
+	arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
+arangod/Indexes/arangod_libarangod_a-FulltextIndex.$(OBJEXT):  \
+	arangod/Indexes/$(am__dirstamp) \
+	arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
+arangod/Indexes/arangod_libarangod_a-GeoIndex2.$(OBJEXT):  \
+	arangod/Indexes/$(am__dirstamp) \
+	arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
+arangod/Indexes/arangod_libarangod_a-HashIndex.$(OBJEXT):  \
+	arangod/Indexes/$(am__dirstamp) \
+	arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
+arangod/Indexes/arangod_libarangod_a-Index.$(OBJEXT):  \
+	arangod/Indexes/$(am__dirstamp) \
+	arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
+arangod/Indexes/arangod_libarangod_a-PrimaryIndex.$(OBJEXT):  \
+	arangod/Indexes/$(am__dirstamp) \
+	arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
+arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.$(OBJEXT):  \
+	arangod/Indexes/$(am__dirstamp) \
+	arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
 arangod/IndexOperators/$(am__dirstamp):
 	@$(MKDIR_P) arangod/IndexOperators
 	@: > arangod/IndexOperators/$(am__dirstamp)
@@ -2532,9 +2559,6 @@ arangod/VocBase/$(DEPDIR)/$(am__dirstamp):
 arangod/VocBase/arangod_libarangod_a-auth.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/arangod_libarangod_a-barrier.$(OBJEXT):  \
-	arangod/VocBase/$(am__dirstamp) \
-	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-cleanup.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -2545,6 +2569,9 @@ arangod/VocBase/arangod_libarangod_a-compactor.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-datafile.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/arangod_libarangod_a-Ditch.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-document-collection.$(OBJEXT):  \
@@ -2559,13 +2586,7 @@ arangod/VocBase/arangod_libarangod_a-edge-collection.$(OBJEXT):  \
 arangod/VocBase/arangod_libarangod_a-headers.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/arangod_libarangod_a-index.$(OBJEXT):  \
-	arangod/VocBase/$(am__dirstamp) \
-	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-key-generator.$(OBJEXT):  \
-	arangod/VocBase/$(am__dirstamp) \
-	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/arangod_libarangod_a-primary-index.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-replication-applier.$(OBJEXT):  \
@@ -3501,12 +3522,12 @@ mostlyclean-compile:
 	-rm -f UnitTests/Geo/*.$(OBJEXT)
 	-rm -f arangod/Actions/*.$(OBJEXT)
 	-rm -f arangod/Aql/*.$(OBJEXT)
-	-rm -f arangod/CapConstraint/*.$(OBJEXT)
 	-rm -f arangod/Cluster/*.$(OBJEXT)
 	-rm -f arangod/FulltextIndex/*.$(OBJEXT)
 	-rm -f arangod/GeoIndex/*.$(OBJEXT)
 	-rm -f arangod/HashIndex/*.$(OBJEXT)
 	-rm -f arangod/IndexOperators/*.$(OBJEXT)
+	-rm -f arangod/Indexes/*.$(OBJEXT)
 	-rm -f arangod/Replication/*.$(OBJEXT)
 	-rm -f arangod/RestHandler/*.$(OBJEXT)
 	-rm -f arangod/RestServer/*.$(OBJEXT)
@@ -3603,7 +3624,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-VariableGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-grammar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-tokens.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/CapConstraint/$(DEPDIR)/arangod_libarangod_a-cap-constraint.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Cluster/$(DEPDIR)/arangod_libarangod_a-AgencyComm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Cluster/$(DEPDIR)/arangod_libarangod_a-ApplicationCluster.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Cluster/$(DEPDIR)/arangod_libarangod_a-ClusterComm.Po@am__quote@
@@ -3622,11 +3642,17 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/FulltextIndex/$(DEPDIR)/arangod_libarangod_a-fulltext-wordlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/arangod_libarangod_a-GeoIndex.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/arangod_libarangod_a-geo-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-array-multi.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-array.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/IndexOperators/$(DEPDIR)/arangod_libarangod_a-index-operator.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-CapConstraint.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-EdgeIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-FulltextIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-GeoIndex2.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-HashIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-Index.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-PrimaryIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-SkiplistIndex2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Replication/$(DEPDIR)/arangod_libarangod_a-ContinuousSyncer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Replication/$(DEPDIR)/arangod_libarangod_a-InitialSyncer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Replication/$(DEPDIR)/arangod_libarangod_a-Syncer.Po@am__quote@
@@ -3675,9 +3701,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-voccursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-vocindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-wrapshapedjson.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-auth.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-barrier.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-cleanup.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-compactor.Po@am__quote@
@@ -3685,9 +3711,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-document-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-edge-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-headers.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-key-generator.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-primary-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-applier.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-dump.Po@am__quote@
@@ -4473,20 +4497,6 @@ arangod/Aql/arangod_libarangod_a-ModificationOptions.obj: arangod/Aql/Modificati
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-ModificationOptions.obj `if test -f 'arangod/Aql/ModificationOptions.cpp'; then $(CYGPATH_W) 'arangod/Aql/ModificationOptions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/ModificationOptions.cpp'; fi`
 
-arangod/CapConstraint/arangod_libarangod_a-cap-constraint.o: arangod/CapConstraint/cap-constraint.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/CapConstraint/arangod_libarangod_a-cap-constraint.o -MD -MP -MF arangod/CapConstraint/$(DEPDIR)/arangod_libarangod_a-cap-constraint.Tpo -c -o arangod/CapConstraint/arangod_libarangod_a-cap-constraint.o `test -f 'arangod/CapConstraint/cap-constraint.cpp' || echo '$(srcdir)/'`arangod/CapConstraint/cap-constraint.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/CapConstraint/$(DEPDIR)/arangod_libarangod_a-cap-constraint.Tpo arangod/CapConstraint/$(DEPDIR)/arangod_libarangod_a-cap-constraint.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/CapConstraint/cap-constraint.cpp' object='arangod/CapConstraint/arangod_libarangod_a-cap-constraint.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/CapConstraint/arangod_libarangod_a-cap-constraint.o `test -f 'arangod/CapConstraint/cap-constraint.cpp' || echo '$(srcdir)/'`arangod/CapConstraint/cap-constraint.cpp
-
-arangod/CapConstraint/arangod_libarangod_a-cap-constraint.obj: arangod/CapConstraint/cap-constraint.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/CapConstraint/arangod_libarangod_a-cap-constraint.obj -MD -MP -MF arangod/CapConstraint/$(DEPDIR)/arangod_libarangod_a-cap-constraint.Tpo -c -o arangod/CapConstraint/arangod_libarangod_a-cap-constraint.obj `if test -f 'arangod/CapConstraint/cap-constraint.cpp'; then $(CYGPATH_W) 'arangod/CapConstraint/cap-constraint.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/CapConstraint/cap-constraint.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/CapConstraint/$(DEPDIR)/arangod_libarangod_a-cap-constraint.Tpo arangod/CapConstraint/$(DEPDIR)/arangod_libarangod_a-cap-constraint.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/CapConstraint/cap-constraint.cpp' object='arangod/CapConstraint/arangod_libarangod_a-cap-constraint.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/CapConstraint/arangod_libarangod_a-cap-constraint.obj `if test -f 'arangod/CapConstraint/cap-constraint.cpp'; then $(CYGPATH_W) 'arangod/CapConstraint/cap-constraint.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/CapConstraint/cap-constraint.cpp'; fi`
-
 arangod/Cluster/arangod_libarangod_a-AgencyComm.o: arangod/Cluster/AgencyComm.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Cluster/arangod_libarangod_a-AgencyComm.o -MD -MP -MF arangod/Cluster/$(DEPDIR)/arangod_libarangod_a-AgencyComm.Tpo -c -o arangod/Cluster/arangod_libarangod_a-AgencyComm.o `test -f 'arangod/Cluster/AgencyComm.cpp' || echo '$(srcdir)/'`arangod/Cluster/AgencyComm.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Cluster/$(DEPDIR)/arangod_libarangod_a-AgencyComm.Tpo arangod/Cluster/$(DEPDIR)/arangod_libarangod_a-AgencyComm.Po
@@ -4725,20 +4735,6 @@ arangod/GeoIndex/arangod_libarangod_a-GeoIndex.obj: arangod/GeoIndex/GeoIndex.cp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/GeoIndex/arangod_libarangod_a-GeoIndex.obj `if test -f 'arangod/GeoIndex/GeoIndex.cpp'; then $(CYGPATH_W) 'arangod/GeoIndex/GeoIndex.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/GeoIndex.cpp'; fi`
 
-arangod/GeoIndex/arangod_libarangod_a-geo-index.o: arangod/GeoIndex/geo-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/GeoIndex/arangod_libarangod_a-geo-index.o -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/arangod_libarangod_a-geo-index.Tpo -c -o arangod/GeoIndex/arangod_libarangod_a-geo-index.o `test -f 'arangod/GeoIndex/geo-index.cpp' || echo '$(srcdir)/'`arangod/GeoIndex/geo-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/arangod_libarangod_a-geo-index.Tpo arangod/GeoIndex/$(DEPDIR)/arangod_libarangod_a-geo-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/GeoIndex/geo-index.cpp' object='arangod/GeoIndex/arangod_libarangod_a-geo-index.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/GeoIndex/arangod_libarangod_a-geo-index.o `test -f 'arangod/GeoIndex/geo-index.cpp' || echo '$(srcdir)/'`arangod/GeoIndex/geo-index.cpp
-
-arangod/GeoIndex/arangod_libarangod_a-geo-index.obj: arangod/GeoIndex/geo-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/GeoIndex/arangod_libarangod_a-geo-index.obj -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/arangod_libarangod_a-geo-index.Tpo -c -o arangod/GeoIndex/arangod_libarangod_a-geo-index.obj `if test -f 'arangod/GeoIndex/geo-index.cpp'; then $(CYGPATH_W) 'arangod/GeoIndex/geo-index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/geo-index.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/arangod_libarangod_a-geo-index.Tpo arangod/GeoIndex/$(DEPDIR)/arangod_libarangod_a-geo-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/GeoIndex/geo-index.cpp' object='arangod/GeoIndex/arangod_libarangod_a-geo-index.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/GeoIndex/arangod_libarangod_a-geo-index.obj `if test -f 'arangod/GeoIndex/geo-index.cpp'; then $(CYGPATH_W) 'arangod/GeoIndex/geo-index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/geo-index.cpp'; fi`
-
 arangod/HashIndex/arangod_libarangod_a-hash-array.o: arangod/HashIndex/hash-array.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/HashIndex/arangod_libarangod_a-hash-array.o -MD -MP -MF arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-array.Tpo -c -o arangod/HashIndex/arangod_libarangod_a-hash-array.o `test -f 'arangod/HashIndex/hash-array.cpp' || echo '$(srcdir)/'`arangod/HashIndex/hash-array.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-array.Tpo arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-array.Po
@@ -4767,19 +4763,117 @@ arangod/HashIndex/arangod_libarangod_a-hash-array-multi.obj: arangod/HashIndex/h
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/HashIndex/arangod_libarangod_a-hash-array-multi.obj `if test -f 'arangod/HashIndex/hash-array-multi.cpp'; then $(CYGPATH_W) 'arangod/HashIndex/hash-array-multi.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hash-array-multi.cpp'; fi`
 
-arangod/HashIndex/arangod_libarangod_a-hash-index.o: arangod/HashIndex/hash-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/HashIndex/arangod_libarangod_a-hash-index.o -MD -MP -MF arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-index.Tpo -c -o arangod/HashIndex/arangod_libarangod_a-hash-index.o `test -f 'arangod/HashIndex/hash-index.cpp' || echo '$(srcdir)/'`arangod/HashIndex/hash-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-index.Tpo arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/HashIndex/hash-index.cpp' object='arangod/HashIndex/arangod_libarangod_a-hash-index.o' libtool=no @AMDEPBACKSLASH@
+arangod/Indexes/arangod_libarangod_a-CapConstraint.o: arangod/Indexes/CapConstraint.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-CapConstraint.o -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-CapConstraint.Tpo -c -o arangod/Indexes/arangod_libarangod_a-CapConstraint.o `test -f 'arangod/Indexes/CapConstraint.cpp' || echo '$(srcdir)/'`arangod/Indexes/CapConstraint.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-CapConstraint.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-CapConstraint.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/CapConstraint.cpp' object='arangod/Indexes/arangod_libarangod_a-CapConstraint.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/HashIndex/arangod_libarangod_a-hash-index.o `test -f 'arangod/HashIndex/hash-index.cpp' || echo '$(srcdir)/'`arangod/HashIndex/hash-index.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-CapConstraint.o `test -f 'arangod/Indexes/CapConstraint.cpp' || echo '$(srcdir)/'`arangod/Indexes/CapConstraint.cpp
 
-arangod/HashIndex/arangod_libarangod_a-hash-index.obj: arangod/HashIndex/hash-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/HashIndex/arangod_libarangod_a-hash-index.obj -MD -MP -MF arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-index.Tpo -c -o arangod/HashIndex/arangod_libarangod_a-hash-index.obj `if test -f 'arangod/HashIndex/hash-index.cpp'; then $(CYGPATH_W) 'arangod/HashIndex/hash-index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hash-index.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-index.Tpo arangod/HashIndex/$(DEPDIR)/arangod_libarangod_a-hash-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/HashIndex/hash-index.cpp' object='arangod/HashIndex/arangod_libarangod_a-hash-index.obj' libtool=no @AMDEPBACKSLASH@
+arangod/Indexes/arangod_libarangod_a-CapConstraint.obj: arangod/Indexes/CapConstraint.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-CapConstraint.obj -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-CapConstraint.Tpo -c -o arangod/Indexes/arangod_libarangod_a-CapConstraint.obj `if test -f 'arangod/Indexes/CapConstraint.cpp'; then $(CYGPATH_W) 'arangod/Indexes/CapConstraint.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/CapConstraint.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-CapConstraint.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-CapConstraint.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/CapConstraint.cpp' object='arangod/Indexes/arangod_libarangod_a-CapConstraint.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/HashIndex/arangod_libarangod_a-hash-index.obj `if test -f 'arangod/HashIndex/hash-index.cpp'; then $(CYGPATH_W) 'arangod/HashIndex/hash-index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hash-index.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-CapConstraint.obj `if test -f 'arangod/Indexes/CapConstraint.cpp'; then $(CYGPATH_W) 'arangod/Indexes/CapConstraint.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/CapConstraint.cpp'; fi`
+
+arangod/Indexes/arangod_libarangod_a-EdgeIndex.o: arangod/Indexes/EdgeIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-EdgeIndex.o -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-EdgeIndex.Tpo -c -o arangod/Indexes/arangod_libarangod_a-EdgeIndex.o `test -f 'arangod/Indexes/EdgeIndex.cpp' || echo '$(srcdir)/'`arangod/Indexes/EdgeIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-EdgeIndex.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-EdgeIndex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/EdgeIndex.cpp' object='arangod/Indexes/arangod_libarangod_a-EdgeIndex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-EdgeIndex.o `test -f 'arangod/Indexes/EdgeIndex.cpp' || echo '$(srcdir)/'`arangod/Indexes/EdgeIndex.cpp
+
+arangod/Indexes/arangod_libarangod_a-EdgeIndex.obj: arangod/Indexes/EdgeIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-EdgeIndex.obj -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-EdgeIndex.Tpo -c -o arangod/Indexes/arangod_libarangod_a-EdgeIndex.obj `if test -f 'arangod/Indexes/EdgeIndex.cpp'; then $(CYGPATH_W) 'arangod/Indexes/EdgeIndex.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/EdgeIndex.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-EdgeIndex.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-EdgeIndex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/EdgeIndex.cpp' object='arangod/Indexes/arangod_libarangod_a-EdgeIndex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-EdgeIndex.obj `if test -f 'arangod/Indexes/EdgeIndex.cpp'; then $(CYGPATH_W) 'arangod/Indexes/EdgeIndex.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/EdgeIndex.cpp'; fi`
+
+arangod/Indexes/arangod_libarangod_a-FulltextIndex.o: arangod/Indexes/FulltextIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-FulltextIndex.o -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-FulltextIndex.Tpo -c -o arangod/Indexes/arangod_libarangod_a-FulltextIndex.o `test -f 'arangod/Indexes/FulltextIndex.cpp' || echo '$(srcdir)/'`arangod/Indexes/FulltextIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-FulltextIndex.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-FulltextIndex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/FulltextIndex.cpp' object='arangod/Indexes/arangod_libarangod_a-FulltextIndex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-FulltextIndex.o `test -f 'arangod/Indexes/FulltextIndex.cpp' || echo '$(srcdir)/'`arangod/Indexes/FulltextIndex.cpp
+
+arangod/Indexes/arangod_libarangod_a-FulltextIndex.obj: arangod/Indexes/FulltextIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-FulltextIndex.obj -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-FulltextIndex.Tpo -c -o arangod/Indexes/arangod_libarangod_a-FulltextIndex.obj `if test -f 'arangod/Indexes/FulltextIndex.cpp'; then $(CYGPATH_W) 'arangod/Indexes/FulltextIndex.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/FulltextIndex.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-FulltextIndex.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-FulltextIndex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/FulltextIndex.cpp' object='arangod/Indexes/arangod_libarangod_a-FulltextIndex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-FulltextIndex.obj `if test -f 'arangod/Indexes/FulltextIndex.cpp'; then $(CYGPATH_W) 'arangod/Indexes/FulltextIndex.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/FulltextIndex.cpp'; fi`
+
+arangod/Indexes/arangod_libarangod_a-GeoIndex2.o: arangod/Indexes/GeoIndex2.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-GeoIndex2.o -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-GeoIndex2.Tpo -c -o arangod/Indexes/arangod_libarangod_a-GeoIndex2.o `test -f 'arangod/Indexes/GeoIndex2.cpp' || echo '$(srcdir)/'`arangod/Indexes/GeoIndex2.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-GeoIndex2.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-GeoIndex2.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/GeoIndex2.cpp' object='arangod/Indexes/arangod_libarangod_a-GeoIndex2.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-GeoIndex2.o `test -f 'arangod/Indexes/GeoIndex2.cpp' || echo '$(srcdir)/'`arangod/Indexes/GeoIndex2.cpp
+
+arangod/Indexes/arangod_libarangod_a-GeoIndex2.obj: arangod/Indexes/GeoIndex2.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-GeoIndex2.obj -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-GeoIndex2.Tpo -c -o arangod/Indexes/arangod_libarangod_a-GeoIndex2.obj `if test -f 'arangod/Indexes/GeoIndex2.cpp'; then $(CYGPATH_W) 'arangod/Indexes/GeoIndex2.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/GeoIndex2.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-GeoIndex2.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-GeoIndex2.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/GeoIndex2.cpp' object='arangod/Indexes/arangod_libarangod_a-GeoIndex2.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-GeoIndex2.obj `if test -f 'arangod/Indexes/GeoIndex2.cpp'; then $(CYGPATH_W) 'arangod/Indexes/GeoIndex2.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/GeoIndex2.cpp'; fi`
+
+arangod/Indexes/arangod_libarangod_a-HashIndex.o: arangod/Indexes/HashIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-HashIndex.o -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-HashIndex.Tpo -c -o arangod/Indexes/arangod_libarangod_a-HashIndex.o `test -f 'arangod/Indexes/HashIndex.cpp' || echo '$(srcdir)/'`arangod/Indexes/HashIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-HashIndex.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-HashIndex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/HashIndex.cpp' object='arangod/Indexes/arangod_libarangod_a-HashIndex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-HashIndex.o `test -f 'arangod/Indexes/HashIndex.cpp' || echo '$(srcdir)/'`arangod/Indexes/HashIndex.cpp
+
+arangod/Indexes/arangod_libarangod_a-HashIndex.obj: arangod/Indexes/HashIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-HashIndex.obj -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-HashIndex.Tpo -c -o arangod/Indexes/arangod_libarangod_a-HashIndex.obj `if test -f 'arangod/Indexes/HashIndex.cpp'; then $(CYGPATH_W) 'arangod/Indexes/HashIndex.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/HashIndex.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-HashIndex.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-HashIndex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/HashIndex.cpp' object='arangod/Indexes/arangod_libarangod_a-HashIndex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-HashIndex.obj `if test -f 'arangod/Indexes/HashIndex.cpp'; then $(CYGPATH_W) 'arangod/Indexes/HashIndex.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/HashIndex.cpp'; fi`
+
+arangod/Indexes/arangod_libarangod_a-Index.o: arangod/Indexes/Index.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-Index.o -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-Index.Tpo -c -o arangod/Indexes/arangod_libarangod_a-Index.o `test -f 'arangod/Indexes/Index.cpp' || echo '$(srcdir)/'`arangod/Indexes/Index.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-Index.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-Index.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/Index.cpp' object='arangod/Indexes/arangod_libarangod_a-Index.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-Index.o `test -f 'arangod/Indexes/Index.cpp' || echo '$(srcdir)/'`arangod/Indexes/Index.cpp
+
+arangod/Indexes/arangod_libarangod_a-Index.obj: arangod/Indexes/Index.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-Index.obj -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-Index.Tpo -c -o arangod/Indexes/arangod_libarangod_a-Index.obj `if test -f 'arangod/Indexes/Index.cpp'; then $(CYGPATH_W) 'arangod/Indexes/Index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/Index.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-Index.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-Index.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/Index.cpp' object='arangod/Indexes/arangod_libarangod_a-Index.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-Index.obj `if test -f 'arangod/Indexes/Index.cpp'; then $(CYGPATH_W) 'arangod/Indexes/Index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/Index.cpp'; fi`
+
+arangod/Indexes/arangod_libarangod_a-PrimaryIndex.o: arangod/Indexes/PrimaryIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-PrimaryIndex.o -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-PrimaryIndex.Tpo -c -o arangod/Indexes/arangod_libarangod_a-PrimaryIndex.o `test -f 'arangod/Indexes/PrimaryIndex.cpp' || echo '$(srcdir)/'`arangod/Indexes/PrimaryIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-PrimaryIndex.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-PrimaryIndex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/PrimaryIndex.cpp' object='arangod/Indexes/arangod_libarangod_a-PrimaryIndex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-PrimaryIndex.o `test -f 'arangod/Indexes/PrimaryIndex.cpp' || echo '$(srcdir)/'`arangod/Indexes/PrimaryIndex.cpp
+
+arangod/Indexes/arangod_libarangod_a-PrimaryIndex.obj: arangod/Indexes/PrimaryIndex.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-PrimaryIndex.obj -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-PrimaryIndex.Tpo -c -o arangod/Indexes/arangod_libarangod_a-PrimaryIndex.obj `if test -f 'arangod/Indexes/PrimaryIndex.cpp'; then $(CYGPATH_W) 'arangod/Indexes/PrimaryIndex.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/PrimaryIndex.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-PrimaryIndex.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-PrimaryIndex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/PrimaryIndex.cpp' object='arangod/Indexes/arangod_libarangod_a-PrimaryIndex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-PrimaryIndex.obj `if test -f 'arangod/Indexes/PrimaryIndex.cpp'; then $(CYGPATH_W) 'arangod/Indexes/PrimaryIndex.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/PrimaryIndex.cpp'; fi`
+
+arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.o: arangod/Indexes/SkiplistIndex2.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.o -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-SkiplistIndex2.Tpo -c -o arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.o `test -f 'arangod/Indexes/SkiplistIndex2.cpp' || echo '$(srcdir)/'`arangod/Indexes/SkiplistIndex2.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-SkiplistIndex2.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-SkiplistIndex2.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/SkiplistIndex2.cpp' object='arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.o `test -f 'arangod/Indexes/SkiplistIndex2.cpp' || echo '$(srcdir)/'`arangod/Indexes/SkiplistIndex2.cpp
+
+arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.obj: arangod/Indexes/SkiplistIndex2.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.obj -MD -MP -MF arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-SkiplistIndex2.Tpo -c -o arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.obj `if test -f 'arangod/Indexes/SkiplistIndex2.cpp'; then $(CYGPATH_W) 'arangod/Indexes/SkiplistIndex2.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/SkiplistIndex2.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-SkiplistIndex2.Tpo arangod/Indexes/$(DEPDIR)/arangod_libarangod_a-SkiplistIndex2.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Indexes/SkiplistIndex2.cpp' object='arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Indexes/arangod_libarangod_a-SkiplistIndex2.obj `if test -f 'arangod/Indexes/SkiplistIndex2.cpp'; then $(CYGPATH_W) 'arangod/Indexes/SkiplistIndex2.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Indexes/SkiplistIndex2.cpp'; fi`
 
 arangod/IndexOperators/arangod_libarangod_a-index-operator.o: arangod/IndexOperators/index-operator.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/IndexOperators/arangod_libarangod_a-index-operator.o -MD -MP -MF arangod/IndexOperators/$(DEPDIR)/arangod_libarangod_a-index-operator.Tpo -c -o arangod/IndexOperators/arangod_libarangod_a-index-operator.o `test -f 'arangod/IndexOperators/index-operator.cpp' || echo '$(srcdir)/'`arangod/IndexOperators/index-operator.cpp
@@ -5467,20 +5561,6 @@ arangod/VocBase/arangod_libarangod_a-auth.obj: arangod/VocBase/auth.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-auth.obj `if test -f 'arangod/VocBase/auth.cpp'; then $(CYGPATH_W) 'arangod/VocBase/auth.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/auth.cpp'; fi`
 
-arangod/VocBase/arangod_libarangod_a-barrier.o: arangod/VocBase/barrier.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-barrier.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-barrier.Tpo -c -o arangod/VocBase/arangod_libarangod_a-barrier.o `test -f 'arangod/VocBase/barrier.cpp' || echo '$(srcdir)/'`arangod/VocBase/barrier.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-barrier.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-barrier.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/barrier.cpp' object='arangod/VocBase/arangod_libarangod_a-barrier.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-barrier.o `test -f 'arangod/VocBase/barrier.cpp' || echo '$(srcdir)/'`arangod/VocBase/barrier.cpp
-
-arangod/VocBase/arangod_libarangod_a-barrier.obj: arangod/VocBase/barrier.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-barrier.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-barrier.Tpo -c -o arangod/VocBase/arangod_libarangod_a-barrier.obj `if test -f 'arangod/VocBase/barrier.cpp'; then $(CYGPATH_W) 'arangod/VocBase/barrier.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/barrier.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-barrier.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-barrier.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/barrier.cpp' object='arangod/VocBase/arangod_libarangod_a-barrier.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-barrier.obj `if test -f 'arangod/VocBase/barrier.cpp'; then $(CYGPATH_W) 'arangod/VocBase/barrier.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/barrier.cpp'; fi`
-
 arangod/VocBase/arangod_libarangod_a-cleanup.o: arangod/VocBase/cleanup.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-cleanup.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-cleanup.Tpo -c -o arangod/VocBase/arangod_libarangod_a-cleanup.o `test -f 'arangod/VocBase/cleanup.cpp' || echo '$(srcdir)/'`arangod/VocBase/cleanup.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-cleanup.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-cleanup.Po
@@ -5536,6 +5616,20 @@ arangod/VocBase/arangod_libarangod_a-datafile.obj: arangod/VocBase/datafile.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/datafile.cpp' object='arangod/VocBase/arangod_libarangod_a-datafile.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-datafile.obj `if test -f 'arangod/VocBase/datafile.cpp'; then $(CYGPATH_W) 'arangod/VocBase/datafile.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/datafile.cpp'; fi`
+
+arangod/VocBase/arangod_libarangod_a-Ditch.o: arangod/VocBase/Ditch.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-Ditch.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Tpo -c -o arangod/VocBase/arangod_libarangod_a-Ditch.o `test -f 'arangod/VocBase/Ditch.cpp' || echo '$(srcdir)/'`arangod/VocBase/Ditch.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/Ditch.cpp' object='arangod/VocBase/arangod_libarangod_a-Ditch.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-Ditch.o `test -f 'arangod/VocBase/Ditch.cpp' || echo '$(srcdir)/'`arangod/VocBase/Ditch.cpp
+
+arangod/VocBase/arangod_libarangod_a-Ditch.obj: arangod/VocBase/Ditch.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-Ditch.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Tpo -c -o arangod/VocBase/arangod_libarangod_a-Ditch.obj `if test -f 'arangod/VocBase/Ditch.cpp'; then $(CYGPATH_W) 'arangod/VocBase/Ditch.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/Ditch.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/Ditch.cpp' object='arangod/VocBase/arangod_libarangod_a-Ditch.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-Ditch.obj `if test -f 'arangod/VocBase/Ditch.cpp'; then $(CYGPATH_W) 'arangod/VocBase/Ditch.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/Ditch.cpp'; fi`
 
 arangod/VocBase/arangod_libarangod_a-document-collection.o: arangod/VocBase/document-collection.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-document-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-document-collection.Tpo -c -o arangod/VocBase/arangod_libarangod_a-document-collection.o `test -f 'arangod/VocBase/document-collection.cpp' || echo '$(srcdir)/'`arangod/VocBase/document-collection.cpp
@@ -5593,20 +5687,6 @@ arangod/VocBase/arangod_libarangod_a-headers.obj: arangod/VocBase/headers.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-headers.obj `if test -f 'arangod/VocBase/headers.cpp'; then $(CYGPATH_W) 'arangod/VocBase/headers.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/headers.cpp'; fi`
 
-arangod/VocBase/arangod_libarangod_a-index.o: arangod/VocBase/index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-index.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-index.Tpo -c -o arangod/VocBase/arangod_libarangod_a-index.o `test -f 'arangod/VocBase/index.cpp' || echo '$(srcdir)/'`arangod/VocBase/index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-index.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/index.cpp' object='arangod/VocBase/arangod_libarangod_a-index.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-index.o `test -f 'arangod/VocBase/index.cpp' || echo '$(srcdir)/'`arangod/VocBase/index.cpp
-
-arangod/VocBase/arangod_libarangod_a-index.obj: arangod/VocBase/index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-index.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-index.Tpo -c -o arangod/VocBase/arangod_libarangod_a-index.obj `if test -f 'arangod/VocBase/index.cpp'; then $(CYGPATH_W) 'arangod/VocBase/index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/index.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-index.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/index.cpp' object='arangod/VocBase/arangod_libarangod_a-index.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-index.obj `if test -f 'arangod/VocBase/index.cpp'; then $(CYGPATH_W) 'arangod/VocBase/index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/index.cpp'; fi`
-
 arangod/VocBase/arangod_libarangod_a-key-generator.o: arangod/VocBase/key-generator.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-key-generator.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-key-generator.Tpo -c -o arangod/VocBase/arangod_libarangod_a-key-generator.o `test -f 'arangod/VocBase/key-generator.cpp' || echo '$(srcdir)/'`arangod/VocBase/key-generator.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-key-generator.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-key-generator.Po
@@ -5620,20 +5700,6 @@ arangod/VocBase/arangod_libarangod_a-key-generator.obj: arangod/VocBase/key-gene
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/key-generator.cpp' object='arangod/VocBase/arangod_libarangod_a-key-generator.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-key-generator.obj `if test -f 'arangod/VocBase/key-generator.cpp'; then $(CYGPATH_W) 'arangod/VocBase/key-generator.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/key-generator.cpp'; fi`
-
-arangod/VocBase/arangod_libarangod_a-primary-index.o: arangod/VocBase/primary-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-primary-index.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-primary-index.Tpo -c -o arangod/VocBase/arangod_libarangod_a-primary-index.o `test -f 'arangod/VocBase/primary-index.cpp' || echo '$(srcdir)/'`arangod/VocBase/primary-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-primary-index.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-primary-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/primary-index.cpp' object='arangod/VocBase/arangod_libarangod_a-primary-index.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-primary-index.o `test -f 'arangod/VocBase/primary-index.cpp' || echo '$(srcdir)/'`arangod/VocBase/primary-index.cpp
-
-arangod/VocBase/arangod_libarangod_a-primary-index.obj: arangod/VocBase/primary-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-primary-index.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-primary-index.Tpo -c -o arangod/VocBase/arangod_libarangod_a-primary-index.obj `if test -f 'arangod/VocBase/primary-index.cpp'; then $(CYGPATH_W) 'arangod/VocBase/primary-index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/primary-index.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-primary-index.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-primary-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/primary-index.cpp' object='arangod/VocBase/arangod_libarangod_a-primary-index.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-primary-index.obj `if test -f 'arangod/VocBase/primary-index.cpp'; then $(CYGPATH_W) 'arangod/VocBase/primary-index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/primary-index.cpp'; fi`
 
 arangod/VocBase/arangod_libarangod_a-replication-applier.o: arangod/VocBase/replication-applier.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-replication-applier.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-applier.Tpo -c -o arangod/VocBase/arangod_libarangod_a-replication-applier.o `test -f 'arangod/VocBase/replication-applier.cpp' || echo '$(srcdir)/'`arangod/VocBase/replication-applier.cpp
@@ -8071,6 +8137,30 @@ uninstall-nobase_pkgdataSERVERDATA:
 	@list='$(nobase_pkgdataSERVER_DATA)'; test -n "$(pkgdataSERVERdir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
 	dir='$(DESTDIR)$(pkgdataSERVERdir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataSWAGGERDATA: $(nobase_pkgdataSWAGGER_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(nobase_pkgdataSWAGGER_DATA)'; test -n "$(pkgdataSWAGGERdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataSWAGGERdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataSWAGGERdir)" || exit 1; \
+	fi; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataSWAGGERdir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataSWAGGERdir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataSWAGGERdir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataSWAGGERdir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_pkgdataSWAGGERDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_pkgdataSWAGGER_DATA)'; test -n "$(pkgdataSWAGGERdir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	dir='$(DESTDIR)$(pkgdataSWAGGERdir)'; $(am__uninstall_files_from_dir)
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
@@ -8294,7 +8384,7 @@ check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataACTIONSdir)" "$(DESTDIR)$(pkgdataAPPSADMINdir)" "$(DESTDIR)$(pkgdataAPPSAPIdir)" "$(DESTDIR)$(pkgdataAPPSSYSTEMdir)" "$(DESTDIR)$(pkgdataCLIENTdir)" "$(DESTDIR)$(pkgdataCOMMONdir)" "$(DESTDIR)$(pkgdataNODEdir)" "$(DESTDIR)$(pkgdataSERVERdir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataACTIONSdir)" "$(DESTDIR)$(pkgdataAPPSADMINdir)" "$(DESTDIR)$(pkgdataAPPSAPIdir)" "$(DESTDIR)$(pkgdataAPPSSYSTEMdir)" "$(DESTDIR)$(pkgdataCLIENTdir)" "$(DESTDIR)$(pkgdataCOMMONdir)" "$(DESTDIR)$(pkgdataNODEdir)" "$(DESTDIR)$(pkgdataSERVERdir)" "$(DESTDIR)$(pkgdataSWAGGERdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -8336,8 +8426,6 @@ distclean-generic:
 	-rm -f arangod/Actions/$(am__dirstamp)
 	-rm -f arangod/Aql/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/Aql/$(am__dirstamp)
-	-rm -f arangod/CapConstraint/$(DEPDIR)/$(am__dirstamp)
-	-rm -f arangod/CapConstraint/$(am__dirstamp)
 	-rm -f arangod/Cluster/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/Cluster/$(am__dirstamp)
 	-rm -f arangod/FulltextIndex/$(DEPDIR)/$(am__dirstamp)
@@ -8348,6 +8436,8 @@ distclean-generic:
 	-rm -f arangod/HashIndex/$(am__dirstamp)
 	-rm -f arangod/IndexOperators/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/IndexOperators/$(am__dirstamp)
+	-rm -f arangod/Indexes/$(DEPDIR)/$(am__dirstamp)
+	-rm -f arangod/Indexes/$(am__dirstamp)
 	-rm -f arangod/Replication/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/Replication/$(am__dirstamp)
 	-rm -f arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
@@ -8415,7 +8505,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/CapConstraint/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
+	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-local distclean-tags
@@ -8440,7 +8530,8 @@ install-data-am: install-arangosysconfDATA install-data-local \
 	install-nobase_pkgdataCLIENTDATA \
 	install-nobase_pkgdataCOMMONDATA install-nobase_pkgdataDATA \
 	install-nobase_pkgdataNODEDATA \
-	install-nobase_pkgdataSERVERDATA
+	install-nobase_pkgdataSERVERDATA \
+	install-nobase_pkgdataSWAGGERDATA
 	@$(NORMAL_INSTALL)
 	$(MAKE) $(AM_MAKEFLAGS) install-data-hook
 install-dvi: install-dvi-am
@@ -8474,7 +8565,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/CapConstraint/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
+	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -8499,8 +8590,9 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-nobase_pkgdataCLIENTDATA \
 	uninstall-nobase_pkgdataCOMMONDATA \
 	uninstall-nobase_pkgdataDATA uninstall-nobase_pkgdataNODEDATA \
-	uninstall-nobase_pkgdataSERVERDATA uninstall-pkglibexecSCRIPTS \
-	uninstall-sbinPROGRAMS
+	uninstall-nobase_pkgdataSERVERDATA \
+	uninstall-nobase_pkgdataSWAGGERDATA \
+	uninstall-pkglibexecSCRIPTS uninstall-sbinPROGRAMS
 
 uninstall-man: uninstall-man1 uninstall-man8
 
@@ -8528,7 +8620,8 @@ uninstall-man: uninstall-man1 uninstall-man8
 	install-nobase_pkgdataCLIENTDATA \
 	install-nobase_pkgdataCOMMONDATA install-nobase_pkgdataDATA \
 	install-nobase_pkgdataNODEDATA \
-	install-nobase_pkgdataSERVERDATA install-pdf install-pdf-am \
+	install-nobase_pkgdataSERVERDATA \
+	install-nobase_pkgdataSWAGGERDATA install-pdf install-pdf-am \
 	install-pkglibexecSCRIPTS install-ps install-ps-am \
 	install-sbinPROGRAMS install-strip installcheck \
 	installcheck-am installdirs maintainer-clean \
@@ -8543,8 +8636,9 @@ uninstall-man: uninstall-man1 uninstall-man8
 	uninstall-nobase_pkgdataCLIENTDATA \
 	uninstall-nobase_pkgdataCOMMONDATA \
 	uninstall-nobase_pkgdataDATA uninstall-nobase_pkgdataNODEDATA \
-	uninstall-nobase_pkgdataSERVERDATA uninstall-pkglibexecSCRIPTS \
-	uninstall-sbinPROGRAMS
+	uninstall-nobase_pkgdataSERVERDATA \
+	uninstall-nobase_pkgdataSWAGGERDATA \
+	uninstall-pkglibexecSCRIPTS uninstall-sbinPROGRAMS
 
 .PRECIOUS: Makefile
 
@@ -9249,7 +9343,7 @@ unittests-dump:
 
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump-setup.js || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangodump --configuration none --server.database "UnitTestsDumpSrc" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --output-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1"
-	$(VALGRIND) @builddir@/bin/arangorestore --configuration none --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --input-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangorestore --configuration none --create-database true --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --input-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1" 
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump.js || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump-teardown.js || test "x$(FORCE)" == "x1"
 
@@ -9734,8 +9828,8 @@ clean-libev:
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		LDFLAGS="-lc++" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@                CFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@                CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \
@@ -9761,8 +9855,8 @@ clean-libev:
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \

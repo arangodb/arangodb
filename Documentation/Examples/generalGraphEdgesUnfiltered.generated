@@ -2,36 +2,8 @@ arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js")
 arangosh> var graph = examples.loadGraph("social");
 arangosh> graph._edges().toArray();
 [ 
-  { 
-    "_id" : "relation/aliceAndBob", 
-    "_key" : "aliceAndBob", 
-    "_rev" : "715377907", 
-    "_from" : "female/alice", 
-    "_to" : "male/bob", 
-    "type" : "married" 
-  }, 
-  { 
-    "_id" : "relation/aliceAndCharly", 
-    "_key" : "aliceAndCharly", 
-    "_rev" : "715640051", 
-    "_from" : "female/alice", 
-    "_to" : "male/charly", 
-    "type" : "friend" 
-  }, 
-  { 
-    "_id" : "relation/bobAndDiana", 
-    "_key" : "bobAndDiana", 
-    "_rev" : "716033267", 
-    "_from" : "male/bob", 
-    "_to" : "female/diana", 
-    "type" : "friend" 
-  }, 
-  { 
-    "_id" : "relation/charlyAndDiana", 
-    "_key" : "charlyAndDiana", 
-    "_rev" : "715836659", 
-    "_from" : "male/charly", 
-    "_to" : "female/diana", 
-    "type" : "married" 
-  } 
+  "relation/aliceAndBob", 
+  "relation/aliceAndCharly", 
+  "relation/bobAndDiana", 
+  "relation/charlyAndDiana" 
 ]

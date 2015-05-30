@@ -9,39 +9,123 @@ arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
 ........> ).toArray();
 [ 
   [ 
-    "germanCity/Berlin", 
-    "frenchCity/Lyon", 
-    1100, 
-    1 
+    null, 
+    null, 
+    1, 
+    0 
   ], 
   [ 
-    "germanCity/Berlin", 
-    "frenchCity/Paris", 
-    1200, 
-    1 
+    null, 
+    null, 
+    1, 
+    0 
   ], 
   [ 
-    "germanCity/Cologne", 
-    "frenchCity/Paris", 
-    550, 
-    1 
+    null, 
+    null, 
+    1, 
+    0 
   ], 
   [ 
-    "germanCity/Cologne", 
-    "frenchCity/Lyon", 
-    700, 
-    1 
+    null, 
+    null, 
+    1, 
+    0 
   ], 
   [ 
-    "germanCity/Hamburg", 
-    "frenchCity/Paris", 
-    900, 
-    1 
+    null, 
+    null, 
+    1, 
+    0 
   ], 
   [ 
-    "germanCity/Hamburg", 
-    "frenchCity/Lyon", 
-    1200, 
-    1 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
+  ], 
+  [ 
+    null, 
+    null, 
+    1, 
+    0 
   ] 
 ]

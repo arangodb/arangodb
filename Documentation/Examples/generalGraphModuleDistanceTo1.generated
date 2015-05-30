@@ -3,36 +3,104 @@ arangosh> var g = examples.loadGraph("routeplanner");
 arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
 ........> startVertexCollectionRestriction : 'germanCity'});
 [ 
-  [ 
-    { 
-      "vertex" : "frenchCity/Lyon", 
-      "distance" : 1100, 
-      "startVertex" : "germanCity/Berlin" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Paris", 
-      "distance" : 1200, 
-      "startVertex" : "germanCity/Berlin" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Paris", 
-      "distance" : 900, 
-      "startVertex" : "germanCity/Hamburg" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Lyon", 
-      "distance" : 1200, 
-      "startVertex" : "germanCity/Hamburg" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Paris", 
-      "distance" : 550, 
-      "startVertex" : "germanCity/Cologne" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Lyon", 
-      "distance" : 700, 
-      "startVertex" : "germanCity/Cologne" 
-    } 
-  ] 
+  { 
+    "startVertex" : "germanCity/Berlin", 
+    "vertex" : "germanCity/Hamburg", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Berlin", 
+    "vertex" : "germanCity/Cologne", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Berlin", 
+    "vertex" : "frenchCity/Paris", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Berlin", 
+    "vertex" : "frenchCity/Lyon", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Hamburg", 
+    "vertex" : "germanCity/Berlin", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Hamburg", 
+    "vertex" : "germanCity/Cologne", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Hamburg", 
+    "vertex" : "frenchCity/Paris", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Hamburg", 
+    "vertex" : "frenchCity/Lyon", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Cologne", 
+    "vertex" : "germanCity/Berlin", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Cologne", 
+    "vertex" : "germanCity/Hamburg", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Cologne", 
+    "vertex" : "frenchCity/Paris", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Cologne", 
+    "vertex" : "frenchCity/Lyon", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "frenchCity/Paris", 
+    "vertex" : "germanCity/Berlin", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "frenchCity/Paris", 
+    "vertex" : "germanCity/Hamburg", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "frenchCity/Paris", 
+    "vertex" : "germanCity/Cologne", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "frenchCity/Paris", 
+    "vertex" : "frenchCity/Lyon", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "frenchCity/Lyon", 
+    "vertex" : "germanCity/Berlin", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "frenchCity/Lyon", 
+    "vertex" : "germanCity/Hamburg", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "frenchCity/Lyon", 
+    "vertex" : "germanCity/Cologne", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "frenchCity/Lyon", 
+    "vertex" : "frenchCity/Paris", 
+    "distance" : 1 
+  } 
 ]

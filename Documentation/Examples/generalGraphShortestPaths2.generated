@@ -7,9 +7,9 @@ arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
 ........> ).toArray();
 [ 
   [ 
-    "germanCity/Cologne", 
-    "frenchCity/Lyon", 
-    700, 
+    null, 
+    null, 
+    1, 
     0 
   ] 
 ]

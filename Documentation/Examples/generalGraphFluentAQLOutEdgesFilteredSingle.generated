@@ -3,12 +3,5 @@ arangosh> var graph = examples.loadGraph("social");
 arangosh> var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 arangosh> query.outEdges({type: "married"}).toArray();
 [ 
-  { 
-    "_id" : "relation/aliceAndBob", 
-    "_key" : "aliceAndBob", 
-    "_rev" : "796183795", 
-    "_from" : "female/alice", 
-    "_to" : "male/bob", 
-    "type" : "married" 
-  } 
+  "relation/aliceAndBob" 
 ]

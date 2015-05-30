@@ -2,18 +2,4 @@ arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js")
 arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
 ........> {direction : 'outbound', maxDepth : 2});
-[ 
-  { 
-    "germanCity/Hamburg" : [ 
-      { 
-        "germanCity/Berlin" : 3 
-      }, 
-      { 
-        "germanCity/Cologne" : 2 
-      }, 
-      { 
-        "frenchCity/Paris" : 1 
-      } 
-    ] 
-  } 
-]
+[ArangoError 1563: array expected as operand to FOR loop (while executing)]

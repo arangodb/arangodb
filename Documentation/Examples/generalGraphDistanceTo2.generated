@@ -9,11 +9,11 @@ arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
   [ 
     "germanCity/Cologne", 
     "frenchCity/Lyon", 
-    700 
+    1 
   ], 
   [ 
     "germanCity/Hamburg", 
     "frenchCity/Lyon", 
-    1200 
+    1 
   ] 
 ]

@@ -1,6 +1,6 @@
 arangosh> db.geo.ensureGeoIndex("loc");
 { 
-  "id" : "geo/172215539", 
+  "id" : "geo/168662609", 
   "type" : "geo1", 
   "fields" : [ 
     "loc" 
@@ -17,9 +17,9 @@ arangosh> for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j
 arangosh> db.geo.near(0, 0).distance().limit(2).toArray();
 [ 
   { 
-    "_id" : "geo/241618163", 
-    "_key" : "241618163", 
-    "_rev" : "241618163", 
+    "_id" : "geo/238065233", 
+    "_key" : "238065233", 
+    "_rev" : "238065233", 
     "name" : "Name/0/0", 
     "loc" : [ 
       0, 
@@ -28,9 +28,9 @@ arangosh> db.geo.near(0, 0).distance().limit(2).toArray();
     "distance" : 0 
   }, 
   { 
-    "_id" : "geo/234343667", 
-    "_key" : "234343667", 
-    "_rev" : "234343667", 
+    "_id" : "geo/230790737", 
+    "_key" : "230790737", 
+    "_rev" : "230790737", 
     "name" : "Name/-10/0", 
     "loc" : [ 
       -10, 
