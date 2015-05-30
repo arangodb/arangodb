@@ -4859,8 +4859,10 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
   TRI_doc_mptr_t** ptr = (TRI_doc_mptr_t**) primaryIndex->_table;
   TRI_doc_mptr_t** end = (TRI_doc_mptr_t**) ptr + primaryIndex->_nrAlloc;
 
+  // TODO Right now this space is protected by JS for internal Attributes.
+  // cid is not required here. But this is subject to change in the future
   for (;  ptr < end;  ++ptr) {
-    if (matcher.matches(*ptr)) {
+    if (matcher.matches(0, *ptr)) {
       filtered.emplace_back(**ptr);
     }
   }

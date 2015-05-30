@@ -517,6 +517,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       assertEqual(actual.length, 1);
       assertEqual(actual[0], v1 + "/v1");
     },
+
     testNeighborsAnyStartExampleRestrictEdges: function () {
       var bindVars = {
         name: gN,
@@ -1825,6 +1826,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
     },
 
+    /*
     testGRAPH_BETWEENNESS: function () {
       var actual;
 
@@ -1880,6 +1882,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
 
     },
+*/
 
     testGRAPH_DIAMETER_AND_RADIUS: function () {
       var actual;
@@ -2509,6 +2512,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(2), (9 / 12).toFixed(2));
   },
 
+/*
   testGRAPH_BETWEENNESS: function () {
     var actual;
 
@@ -2562,6 +2566,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
 
 
   },
+*/
 
   testGRAPH_DIAMETER_AND_RADIUS: function () {
     var actual;
@@ -2711,7 +2716,6 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ahuacatlQueryGeneralCommonTestSuite);
 jsunity.run(ahuacatlQueryGeneralCyclesSuite);
 jsunity.run(ahuacatlQueryGeneralTraversalTestSuite);

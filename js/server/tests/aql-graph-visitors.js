@@ -3002,12 +3002,13 @@ function ahuacatlGraphVisitorsSuite () {
       ];
         
       assertEqual(expected, result.json);
-    },
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests a built-in visitor
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
     testNeighborsBuiltinHasAnyAttributesVisitor : function () {
       var graphModule = require("org/arangodb/general-graph");
 
@@ -3035,6 +3036,7 @@ function ahuacatlGraphVisitorsSuite () {
       catch (err) {
       }
     }
+*/
 
   };
 

@@ -2035,6 +2035,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
         opts.addVertexFilter(isolate, vertexExample, trx, it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
       } 
       catch (int e) {
+        cout << "ARG!!!" << endl;
         // ELEMENT not found is expected, if there is no shape of this type in this collection
         if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
           // TODO Max fragen was mit Fehlern passieren muss
