@@ -50,16 +50,41 @@ namespace triagens {
 
     class ExampleMatcher {
 
+      struct DocumentId {
+        TRI_voc_cid_t cid;
+        std::string   key;
+
+        DocumentId (
+          TRI_voc_cid_t cid,
+          std::string   key
+        ) : cid(cid), key(key) {};
+      };
+
+      enum internalAttr {
+        key, id, rev, from, to
+      };
+
       // Has no destructor.
       // The using ExampleMatcher will free all pointers.
       // Should not directly be used from outside.
       struct ExampleDefinition {
+        std::map<internalAttr, DocumentId> _internal;
         std::vector<TRI_shape_pid_t> _pids;
         std::vector<TRI_shaped_json_t*> _values;
       };
 
       TRI_shaper_t* _shaper;
       std::vector<ExampleDefinition> definitions;
+
+      void fillExampleDefinition (
+        v8::Isolate* isolate,
+        v8::Handle<v8::Object> const& example,
+        v8::Handle<v8::Array> const& names,
+        size_t& n,
+        std::string& errorMessage,
+        ExampleDefinition& def
+      );
+
 
       public:
 
@@ -86,7 +111,7 @@ namespace triagens {
           cleanup();
         };
 
-        bool matches (TRI_doc_mptr_t const* mptr) const;
+        bool matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) const;
 
       private:
 

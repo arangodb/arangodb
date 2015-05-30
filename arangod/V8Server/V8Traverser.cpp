@@ -27,6 +27,7 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "V8Traverser.h"
 #include "v8.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -38,7 +39,6 @@
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
-#include "V8Traverser.h"
 #include "VocBase/key-generator.h"
 
 using namespace std;
@@ -275,7 +275,7 @@ bool BasicOptions::matchesVertex (VertexId& v) const {
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
-  return it->second.matcher->matches(&vertex);
+  return it->second.matcher->matches(v.cid, &vertex);
 }
 
 
@@ -318,7 +318,7 @@ bool BasicOptions::matchesEdge (EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
     // Short circuit.
     return false;
   }
-  return it->second->matches(edge);
+  return it->second->matches(e.cid, edge);
 }
 
 // -----------------------------------------------------------------------------
