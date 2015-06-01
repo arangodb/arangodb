@@ -244,7 +244,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
     absConfig.prioList = config.prioList;
   }
   absAdapter = new AbstractAdapter(nodes, edges, this, viewer, absConfig);
-
   parseConfig(config);
 
   queries.getAllGraphs = "FOR g IN _graphs"
@@ -267,12 +266,18 @@ function GharialAdapter(nodes, edges, viewer, config) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
 
+  self.customNodes = [];
+  self.extraNodes = [];
+
   self.loadRandomNode = function(callback) {
     var collections = _.shuffle(self.getNodeCollections()), i;
     for (i = 0; i < collections.length; ++i) {
-      var list = getNRandom(1, collections[i]);
-      
+      var list = getNRandom(10, collections[i]);
       if (list.length > 0) {
+        var counter = 0;
+        _.each(list, function(node) {
+          self.extraNodes.push(node);
+        });
         self.loadInitialNode(list[0]._id, callback);
         return;
       }
@@ -287,12 +292,46 @@ function GharialAdapter(nodes, edges, viewer, config) {
     self.loadNode(nodeId, insertInitialCallback(callback));
   };
 
+  self.addCustomNodes = function () {
+
+    var nodeArray = [];
+    var nodes = [];
+
+    //if no extra nodes available, get n-random nodes
+    if (self.customNodes.length > 0) {
+      nodes = self.customNodes;
+    }
+    //else: get defined nodes
+    else if (self.extraNodes.length > 0) {
+      nodes = self.extraNodes;
+    }
+
+    _.each(nodes, function(node) {
+      nodeArray.push({
+        vertex: node,
+        path: {
+          edges: [],
+          vertices: [node]
+        }
+      });
+    });
+
+  return nodeArray;
+  };
+
   self.loadNodeFromTreeById = function(nodeId, callback) {
+
+
     sendQuery(queries.traversal, {
       example: nodeId
     }, function(res) {
+      _.each(self.addCustomNodes(), function(node) {
+        res[0][0].push(node);
+      });
+
       parseResultOfTraversal(res, callback);
     });
+
   };
 
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
