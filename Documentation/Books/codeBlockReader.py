@@ -1,7 +1,12 @@
 import os
+import sys
 import re
 import inspect
+import cgi
 
+validExtensions = (".cpp", ".h", ".js")
+searchPaths = ["arangod/", "lib/", "js/"]
+fullSuccess = True
 
 def file_content(filepath):
   """ Fetches and formats file's content to perform the required operation.
@@ -88,6 +93,7 @@ def example_content(filepath, fh, tag):
         curlState = CURL_STATE_BODY
 
       if curlState == CURL_STATE_CMD or curlState == CURL_STATE_HEADER:
+        line = cgi.escape(line)
         short = short + line
         shortLines = shortLines + 1
       else:
@@ -112,7 +118,7 @@ def example_content(filepath, fh, tag):
   longTag = "%s_long" % tag
   shortTag = "%s_short" % tag
 
-  longToggle = "$('#%s').hide(); $('#%s').show();" % (longTag, shortTag)
+  longToggle = ""
   shortToggle = "$('#%s').hide(); $('#%s').show();" % (shortTag, longTag)
 
   if shortable:
@@ -121,18 +127,18 @@ def example_content(filepath, fh, tag):
     fh.write("<div id=\"%s\">\n" % longTag)
 
   fh.write("<pre>\n")
-  fh.write("```\n")
+#  fh.write("```\n")
   fh.write("%s" % long)
-  fh.write("```\n")
+#  fh.write("```\n")
   fh.write("</pre>\n")
   fh.write("</div>\n")
   
   if shortable:
     fh.write("<div id=\"%s\" onclick=\"%s\">\n" % (shortTag, shortToggle))
     fh.write("<pre>\n")
-    fh.write("```\n")
+#    fh.write("```\n")
     fh.write("%s" % short)
-    fh.write("```\n")
+#    fh.write("```\n")
 
     if arangosh:
       fh.write("</pre><div class=\"example_show_button\">show execution results</div>\n")
@@ -150,14 +156,15 @@ def example_content(filepath, fh, tag):
 def fetch_comments(dirpath):
   """ Fetches comments from files and writes to a file in required format.
   """
-
+  global fullSuccess
+  global validExtensions
   comments_filename = "allComments.txt"
   fh = open(comments_filename, "a")
   shouldIgnoreLine = False;
 
   for root, directories, files in os.walk(dirpath):
     for filename in files:
-      if filename.endswith((".cpp", ".h", ".js")):
+      if filename.endswith(validExtensions):
         filepath = os.path.join(root, filename)
         file_comments = file_content(filepath)
         for comment in file_comments:
@@ -180,7 +187,8 @@ def fetch_comments(dirpath):
                   if os.path.isfile(dirpath):
                     example_content(dirpath, fh, _filename)
                   else:
-                    print "Could not find code for " + _filename
+                    fullSuccess = False
+                    print "Could not find the generated example for " + _filename + " found in " + filepath
                 else:
                   fh.write("%s\n" % _text)
               elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text or \
@@ -197,11 +205,10 @@ if __name__ == "__main__":
   commentsFile.write("@endDocuBlock \n")
   commentsFile.close()
   errorsFile.close()
-  path = ["arangod/cluster","arangod/RestHandler","arangod/V8Server","arangod/RestServer","arangod/Wal",
-      "lib/Admin","lib/HttpServer","lib/V8","lib/ApplicationServer","lib/Scheduler","lib/Rest","lib/BasicsC",
-      "js/actions","js/client","js/apps/databases","js/apps/system/cerberus","js/apps/system/gharial","js/common","js/server"]
-  for i in path:
+  for i in searchPaths:
+    print "Searching for docublocks in " + i + ": "
     dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir,"ArangoDB/../../"+i))
     fetch_comments(dirpath)
-    print "Searching for docublocks in " + i
     os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'templates'))
+  if not fullSuccess: 
+    sys.exit(1)
