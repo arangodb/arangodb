@@ -23,6 +23,7 @@
       "applications/:mount": "applicationDetail",
       "application/documentation/:mount": "appDocumentation",
       "graph": "graphManagement",
+      "graph/:name": "showGraph",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
       "logs": "logs",
@@ -312,6 +313,24 @@
         );
       }
       this.graphManagementView.render();
+      this.naviView.selectMenuItem('graphviewer-menu');
+    },
+
+    showGraph: function (name) {
+      if (!this.checkUser()) {
+        return;
+      }
+      if (!this.graphManagementView) {
+        this.graphManagementView =
+        new window.GraphManagementView(
+          {
+            collection: new window.GraphCollection(),
+            collectionCollection: this.arangoCollectionsStore
+          }
+        );
+      }
+      this.graphManagementView.render();
+      this.graphManagementView.loadGraphViewer(name);
       this.naviView.selectMenuItem('graphviewer-menu');
     },
 
