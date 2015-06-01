@@ -72,6 +72,7 @@ AqlItemBlock::AqlItemBlock (size_t nrItems,
 
 AqlItemBlock::AqlItemBlock (Json const& json) {
   bool exhausted = JsonHelper::getBooleanValue(json.json(), "exhausted", false);
+
   if (exhausted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "exhausted must be false");
   }

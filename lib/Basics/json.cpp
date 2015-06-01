@@ -601,51 +601,11 @@ size_t TRI_LengthVectorJson (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determines whether the JSON passed is of type object
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsObjectJson (TRI_json_t const* json) {
-  return json != nullptr && json->_type == TRI_JSON_OBJECT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determines whether the JSON passed is of type array
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsArrayJson (TRI_json_t const* json) {
-  return json != nullptr && json->_type == TRI_JSON_ARRAY;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines whether the JSON passed is of type string
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsStringJson (TRI_json_t const* json) {
   return IsString(json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determines whether the JSON passed is of type number
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsNumberJson (TRI_json_t const* json) {
-  return json != nullptr && json->_type == TRI_JSON_NUMBER;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determines whether the JSON passed is of type boolean
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsBooleanJson (TRI_json_t const* json) {
-  return json != nullptr && json->_type == TRI_JSON_BOOLEAN;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determines whether the JSON passed is of type null
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsNullJson (TRI_json_t const* json) {
-  return json != nullptr && json->_type == TRI_JSON_NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -820,7 +780,7 @@ TRI_json_t* TRI_LookupObjectJson (TRI_json_t const* object, char const* name) {
     size_t const length = strlen(name) + 1;
 
     for (size_t i = 0;  i < n;  i += 2) {
-      auto key = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i));
+      auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
 
       if (! IsString(key)) {
         continue;
@@ -828,22 +788,22 @@ TRI_json_t* TRI_LookupObjectJson (TRI_json_t const* object, char const* name) {
  
       // check string length first, and contents only if string lengths are equal
       if (key->_value._string.length == length && 
-          TRI_EqualString(key->_value._string.data, name)) {
-        return static_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i + 1));
+          strcmp(key->_value._string.data, name) == 0) {
+        return static_cast<TRI_json_t*>(TRI_AddressVector(&object->_value._objects, i + 1));
       }
     }
   }
   else {
     // simple case for smaller objects
     for (size_t i = 0;  i < n;  i += 2) {
-      auto key = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i));
+      auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
 
       if (! IsString(key)) {
         continue;
       }
 
-      if (TRI_EqualString(key->_value._string.data, name)) {
-        return static_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i + 1));
+      if (strcmp(key->_value._string.data, name) == 0) {
+        return static_cast<TRI_json_t*>(TRI_AddressVector(&object->_value._objects, i + 1));
       }
     }
   }
