@@ -127,40 +127,28 @@ function notImplementedFunction (route, message) {
 function createCallbackActionCallbackString (callback, foxxModule, route) {
   'use strict';
 
-  var sandbox = {};
-  var key;
-
-  sandbox.module = module.root;
-
-  sandbox.require = function (path) {
-    return foxxModule.require(path);
+  var args = {
+    module: module.root,
+    require: function (path) {
+      return foxxModule.require(path);
+    }
   };
 
-  var content = "(function(__myenv__) {";
+  var keys = Object.keys(args);
+  var content = "return (" + callback + ");";
+  var script = Function.apply(null, keys.concat(content));
+  var fn = internal.executeScript("(" + script + ")", undefined, route);
 
-  for (key in sandbox) {
-    if (sandbox.hasOwnProperty(key)) {
-      content += "var " + key + " = __myenv__['" + key + "'];";
-    }
+  if (fn) {
+    return fn.apply(null, keys.map(function (key) {
+      return args[key];
+    }));
   }
 
-  content += "delete __myenv__;"
-    + "return (" + callback + ")"
-    + "\n});";
-
-  var func = internal.executeScript(content, undefined, route);
-
-  if (func !== undefined) {
-    func = func(sandbox);
-  }
-
-  if (func === undefined) {
-    func = notImplementedFunction(
-      route,
-      "could not generate callback for '" + callback + "'");
-  }
-
-  return func;
+  return notImplementedFunction(route, util.format(
+    "could not generate callback for '%s'",
+    callback
+  ));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
