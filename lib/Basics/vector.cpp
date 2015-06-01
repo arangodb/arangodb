@@ -454,9 +454,9 @@ void TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
 /// @brief initialises a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitVectorPointer2 (TRI_vector_pointer_t* vector,
-                            TRI_memory_zone_t* zone,
-                            size_t initialCapacity) {
+int TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
+                           TRI_memory_zone_t* zone,
+                           size_t initialCapacity) {
   TRI_InitVectorPointer(vector, zone);
 
   if (initialCapacity != 0) {
@@ -606,14 +606,6 @@ int TRI_CopyDataVectorPointer (TRI_vector_pointer_t* dst,
 
 bool TRI_EmptyVectorPointer (TRI_vector_pointer_t const* vector) {
   return vector->_length == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns length of the vector
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_LengthVectorPointer (TRI_vector_pointer_t const* vector) {
-  return vector->_length;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -972,14 +964,6 @@ int TRI_CopyDataFromVectorPointerVectorString (TRI_memory_zone_t* zone,
 
 bool TRI_EmptyVectorString (TRI_vector_string_t const* vector) {
   return vector->_length == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns length of vector
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_LengthVectorString (TRI_vector_string_t const* vector) {
-  return vector->_length;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

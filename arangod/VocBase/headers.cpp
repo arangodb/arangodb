@@ -76,7 +76,7 @@ TRI_headers_t::TRI_headers_t ()
     _nrLinked(0),
     _totalSize(0) {
 
-  TRI_InitVectorPointer2(&_blocks, TRI_UNKNOWN_MEM_ZONE, 16);
+  TRI_InitVectorPointer(&_blocks, TRI_UNKNOWN_MEM_ZONE, 16);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -44,7 +44,9 @@ struct VertexId {
   TRI_voc_cid_t cid;
   char const*   key;
 
-  VertexId () : cid(0), key(nullptr) {
+  VertexId () 
+    : cid(0), 
+      key(nullptr) {
   }
 
   VertexId (TRI_voc_cid_t cid, char const* key) 
@@ -68,7 +70,7 @@ namespace std {
   template<>
   struct hash<VertexId> {
     public:
-      size_t operator()(VertexId const& s) const {
+      size_t operator() (VertexId const& s) const {
         size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
         size_t h2 = TRI_FnvHashString(s.key);
         return h1 ^ ( h2 << 1 );
@@ -78,7 +80,7 @@ namespace std {
   template<>
   struct equal_to<VertexId> {
     public:
-      bool operator()(VertexId const& s, VertexId const& t) const {
+      bool operator() (VertexId const& s, VertexId const& t) const {
         return s.cid == t.cid && strcmp(s.key, t.key) == 0;
       }
   };
@@ -86,7 +88,7 @@ namespace std {
   template<>
     struct less<VertexId> {
       public:
-        bool operator()(const VertexId& lhs, const VertexId& rhs) {
+        bool operator() (const VertexId& lhs, const VertexId& rhs) {
           if (lhs.cid != rhs.cid) {
             return lhs.cid < rhs.cid;
           }
@@ -109,12 +111,14 @@ struct VertexFilterInfo {
   TRI_transaction_collection_t* col;
   triagens::arango::ExampleMatcher* matcher;
 
-  VertexFilterInfo (
-    triagens::arango::ExplicitTransaction* trx,
-    TRI_transaction_collection_t* col,
-    triagens::arango::ExampleMatcher* matcher
-  ) : trx(trx), col(col), matcher(matcher) {
-  }
+  VertexFilterInfo (triagens::arango::ExplicitTransaction* trx,
+                    TRI_transaction_collection_t* col,
+                    triagens::arango::ExampleMatcher* matcher) 
+    : trx(trx), 
+      col(col), 
+      matcher(matcher) {
+    }
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,8 +127,6 @@ struct VertexFilterInfo {
 
 typedef triagens::basics::PathFinder<VertexId, EdgeId, double> 
         ArangoDBPathFinder;
-
-
 
 namespace triagens {
   namespace basics {
@@ -144,33 +146,39 @@ namespace triagens {
             useVertexFilter(false) {
           }
 
+          ~BasicOptions () {
+            // properly clean up the mess
+            for (auto& it : _edgeFilter) {
+              delete it.second;
+            }
+            for (auto& it: _vertexFilter) {
+              delete it.second.matcher;
+              it.second.matcher = nullptr;
+            }
+          }
+
         public:
           VertexId start;
           bool useEdgeFilter;
           bool useVertexFilter;
 
+          void addEdgeFilter (v8::Isolate* isolate,
+                              v8::Handle<v8::Value> const& example,
+                              TRI_shaper_t* shaper,
+                              TRI_voc_cid_t const& cid,
+                              std::string& errorMessage);
 
-          void addEdgeFilter (
-            v8::Isolate* isolate,
-            v8::Handle<v8::Value> const& example,
-            TRI_shaper_t* shaper,
-            TRI_voc_cid_t const& cid,
-            std::string& errorMessage
-          );
-
-          void addVertexFilter (
-            v8::Isolate* isolate,
-            v8::Handle<v8::Value> const& example,
-            triagens::arango::ExplicitTransaction* trx,
-            TRI_transaction_collection_t* col,
-            TRI_shaper_t* shaper,
-            TRI_voc_cid_t const& cid,
-            std::string& errorMessage
-          );
+          void addVertexFilter (v8::Isolate* isolate,
+                                v8::Handle<v8::Value> const& example,
+                                triagens::arango::ExplicitTransaction* trx,
+                                TRI_transaction_collection_t* col,
+                                TRI_shaper_t* shaper,
+                                TRI_voc_cid_t const& cid,
+                                std::string& errorMessage);
 
           bool matchesEdge (EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
 
-          bool matchesVertex (VertexId& v) const;
+          bool matchesVertex (VertexId const& v) const;
 
       };
  
@@ -184,15 +192,15 @@ namespace triagens {
           uint64_t minDepth;
           uint64_t maxDepth;
 
-          NeighborsOptions () :
-            direction(TRI_EDGE_OUT),
-            minDepth(1),
-            maxDepth(1) {
+          NeighborsOptions () 
+            : direction(TRI_EDGE_OUT),
+              minDepth(1),
+              maxDepth(1) {
           }
 
-          bool matchesVertex (VertexId& v) const;
+          bool matchesVertex (VertexId const&) const;
 
-          void addCollectionRestriction (TRI_voc_cid_t& cid);
+          void addCollectionRestriction (TRI_voc_cid_t cid);
       };
 
 
@@ -208,17 +216,16 @@ namespace triagens {
           bool multiThreaded;
           VertexId end;
 
-          ShortestPathOptions() :
-            direction("outbound"),
-            useWeight(false),
-            weightAttribute(""),
-            defaultWeight(1),
-            bidirectional(true),
-            multiThreaded(true) {
+          ShortestPathOptions () 
+            : direction("outbound"),
+              useWeight(false),
+              weightAttribute(""),
+              defaultWeight(1),
+              bidirectional(true),
+              multiThreaded(true) {
           }
-
           
-          bool matchesVertex (VertexId& v) const;
+          bool matchesVertex (VertexId const&) const;
 
       };
     }
@@ -261,34 +268,33 @@ class EdgeCollectionInfo {
 
   public:
 
-    EdgeCollectionInfo(
-      TRI_voc_cid_t& edgeCollectionCid,
-      TRI_document_collection_t* edgeCollection,
-      WeightCalculatorFunction weighter
-     ) : _edgeCollectionCid(edgeCollectionCid),
-       _edgeCollection(edgeCollection),
-       _weighter(weighter) {
+    EdgeCollectionInfo (TRI_voc_cid_t& edgeCollectionCid,
+                        TRI_document_collection_t* edgeCollection,
+                        WeightCalculatorFunction weighter)
+      : _edgeCollectionCid(edgeCollectionCid),
+        _edgeCollection(edgeCollection),
+        _weighter(weighter) {
     }
 
-    EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
+    EdgeId extractEdgeId (TRI_doc_mptr_copy_t& ptr) {
       return EdgeId(_edgeCollectionCid, TRI_EXTRACT_MARKER_KEY(&ptr));
     }
 
-    std::vector<TRI_doc_mptr_copy_t> getEdges (TRI_edge_direction_e& direction,
-        VertexId& vertexId) {
+    std::vector<TRI_doc_mptr_copy_t> getEdges (TRI_edge_direction_e direction,
+                                               VertexId const& vertexId) const {
       return TRI_LookupEdgesDocumentCollection(_edgeCollection,
                    direction, vertexId.cid, const_cast<char*>(vertexId.key));
     }
 
-    TRI_voc_cid_t getCid() {
+    TRI_voc_cid_t getCid () {
       return _edgeCollectionCid;
     }
 
-    TRI_shaper_t* getShaper() {
+    TRI_shaper_t* getShaper () {
       return _edgeCollection->getShaper();
     }
 
-    double weightEdge(TRI_doc_mptr_copy_t& ptr) {
+    double weightEdge (TRI_doc_mptr_copy_t& ptr) {
       return _weighter(ptr);
     }
 };
@@ -299,6 +305,7 @@ class EdgeCollectionInfo {
 ////////////////////////////////////////////////////////////////////////////////
 
 class VertexCollectionInfo {
+
   private:
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,22 +322,21 @@ class VertexCollectionInfo {
 
   public:
 
-    VertexCollectionInfo(
-      TRI_voc_cid_t& vertexCollectionCid,
-      TRI_transaction_collection_t* vertexCollection
-     ) : _vertexCollectionCid(vertexCollectionCid),
-       _vertexCollection(vertexCollection) {
+    VertexCollectionInfo (TRI_voc_cid_t& vertexCollectionCid,
+                          TRI_transaction_collection_t* vertexCollection) 
+      : _vertexCollectionCid(vertexCollectionCid),
+        _vertexCollection(vertexCollection) {
     }
 
-    TRI_voc_cid_t getCid() {
+    TRI_voc_cid_t getCid () {
       return _vertexCollectionCid;
     }
 
-    TRI_transaction_collection_t* getCollection() {
+    TRI_transaction_collection_t* getCollection () {
       return _vertexCollection;
     }
 
-    TRI_shaper_t* getShaper() {
+    TRI_shaper_t* getShaper () {
       return _vertexCollection->_collection->_collection->getShaper();
     }
 };
@@ -341,6 +347,7 @@ class VertexCollectionInfo {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Wrapper for the shortest path computation
 ////////////////////////////////////////////////////////////////////////////////
+
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
     std::vector<EdgeCollectionInfo*>& collectionInfos,
     triagens::basics::traverser::ShortestPathOptions& opts
@@ -350,11 +357,9 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
 /// @brief Wrapper for the neighbors computation
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RunNeighborsSearch (
-  std::vector<EdgeCollectionInfo*>& collectionInfos,
-  triagens::basics::traverser::NeighborsOptions& opts,
-  std::unordered_set<VertexId>& distinct,
-  std::vector<VertexId>& result
-);
+void TRI_RunNeighborsSearch (std::vector<EdgeCollectionInfo*>& collectionInfos,
+                             triagens::basics::traverser::NeighborsOptions& opts,
+                             std::unordered_set<VertexId>& distinct,
+                             std::vector<VertexId>& result);
 
 #endif

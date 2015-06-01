@@ -361,7 +361,7 @@ int TRI_InitHashArrayMulti (TRI_hash_array_multi_t* array,
   array->_nrOverflowAlloc = 0;
   array->_freelist        = nullptr;
 
-  TRI_InitVectorPointer2(&array->_blocks, TRI_UNKNOWN_MEM_ZONE, 16);
+  TRI_InitVectorPointer(&array->_blocks, TRI_UNKNOWN_MEM_ZONE, 16);
 
   return AllocateTable(array, InitialSize());
 }
