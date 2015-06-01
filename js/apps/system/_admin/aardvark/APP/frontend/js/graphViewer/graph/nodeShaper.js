@@ -424,10 +424,19 @@ function NodeShaper(parent, flags, idfunc) {
                  return colourMapper.getCommunityColour();
                }
                return colourMapper.getColour(findFirstValue(color.key, n._data));
-             }).attr("opacity", function(n) {
+             }).attr("stroke", function(n) {
                if (!n._expanded) {
-                 return "0.8";
+                 // if node is not expanded
+                 return "#000";
                }
+               // if node is expanded
+               return "#fff";
+             }).attr("fill-opacity", function(n) {
+               if (!n._expanded) {
+                 // if node is not expanded
+                 return "0.3";
+               }
+               // if node is expanded
                return "1";
              });
           };
