@@ -27,7 +27,7 @@ controller.get('/', function (req, res) {
   }));
 });
 
-/** Creates a new <%= modelInstance %>
+/** Creates a new <%= modelInstance %>.
  *
  * Creates a new <%= modelInstance %>. The information has to be in the
  * requestBody.
@@ -41,7 +41,7 @@ controller.post('/', function (req, res) {
   type: <%= model %>
 });
 
-/** Reads a <%= modelInstance %>
+/** Reads a <%= modelInstance %>.
  *
  * Reads a <%= modelInstance %>.
  */
@@ -52,7 +52,7 @@ controller.get('/:id', function (req, res) {
 .pathParam('id', <%= modelInstance %>IdSchema)
 .errorResponse(ArangoError, 404, 'The <%= modelInstance %> could not be found');
 
-/** Replaces a <%= modelInstance %>
+/** Replaces a <%= modelInstance %>.
  *
  * Changes a <%= modelInstance %>. The information has to be in the
  * requestBody.
@@ -69,7 +69,7 @@ controller.put('/:id', function (req, res) {
 })
 .errorResponse(ArangoError, 404, 'The <%= modelInstance %> could not be found');
 
-/** Updates a <%= modelInstance %>
+/** Updates a <%= modelInstance %>.
  *
  * Changes a <%= modelInstance %>. The information has to be in the
  * requestBody.
@@ -86,7 +86,7 @@ controller.patch('/:id', function (req, res) {
 })
 .errorResponse(ArangoError, 404, 'The <%= modelInstance %> could not be found');
 
-/** Removes a <%= modelInstance %>
+/** Removes a <%= modelInstance %>.
  *
  * Removes a <%= modelInstance %>.
  */
