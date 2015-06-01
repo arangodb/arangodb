@@ -245,9 +245,9 @@ void TRI_InitVectorPointer (TRI_vector_pointer_t*, TRI_memory_zone_t*);
 /// @brief initialises a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitVectorPointer2 (TRI_vector_pointer_t*,
-                            TRI_memory_zone_t*,
-                            size_t);
+int TRI_InitVectorPointer (TRI_vector_pointer_t*,
+                           TRI_memory_zone_t*,
+                           size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a vector, but does not free the pointer
@@ -303,7 +303,9 @@ bool TRI_EmptyVectorPointer (TRI_vector_pointer_t const*);
 /// @brief returns length of vector
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_LengthVectorPointer (TRI_vector_pointer_t const*);
+static inline size_t TRI_LengthVectorPointer (TRI_vector_pointer_t const* vector) {
+  return vector->_length;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the vector
@@ -431,7 +433,9 @@ bool TRI_EmptyVectorString (TRI_vector_string_t const*);
 /// @brief returns length of vector
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_LengthVectorString (TRI_vector_string_t const*);
+static inline size_t TRI_LengthVectorString (TRI_vector_string_t const* vector) {
+  return vector->_length;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the vector
