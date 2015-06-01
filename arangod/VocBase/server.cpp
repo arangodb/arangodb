@@ -1797,7 +1797,7 @@ int TRI_InitServer (TRI_server_t* server,
 
   TRI_InitReadWriteLock(&server->_databasesLock);
 
-  TRI_InitVectorPointer2(&server->_droppedDatabases, TRI_UNKNOWN_MEM_ZONE, 64);
+  TRI_InitVectorPointer(&server->_droppedDatabases, TRI_UNKNOWN_MEM_ZONE, 64);
 
   TRI_InitMutex(&server->_createLock);
 
