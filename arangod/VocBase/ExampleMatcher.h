@@ -47,17 +47,17 @@ struct TRI_doc_mptr_t;
 namespace triagens {
   namespace arango {
 
-
     class ExampleMatcher {
 
       struct DocumentId {
         TRI_voc_cid_t cid;
         std::string   key;
 
-        DocumentId (
-          TRI_voc_cid_t cid,
-          std::string   key
-        ) : cid(cid), key(key) {};
+        DocumentId (TRI_voc_cid_t cid,
+                    std::string const& key) 
+          : cid(cid), 
+            key(key) {
+        }
       };
 
       enum internalAttr {
@@ -76,42 +76,34 @@ namespace triagens {
       TRI_shaper_t* _shaper;
       std::vector<ExampleDefinition> definitions;
 
-      void fillExampleDefinition (
-        v8::Isolate* isolate,
-        v8::Handle<v8::Object> const& example,
-        v8::Handle<v8::Array> const& names,
-        size_t& n,
-        std::string& errorMessage,
-        ExampleDefinition& def
-      );
-
+      void fillExampleDefinition (v8::Isolate* isolate,
+                                  v8::Handle<v8::Object> const& example,
+                                  v8::Handle<v8::Array> const& names,
+                                  size_t& n,
+                                  std::string& errorMessage,
+                                  ExampleDefinition& def);
 
       public:
 
-        ExampleMatcher (
-          v8::Isolate* isolate,
-          v8::Handle<v8::Object> const example,
-          TRI_shaper_t* shaper,
-          std::string& errorMessage
-        );
+        ExampleMatcher (v8::Isolate* isolate,
+                        v8::Handle<v8::Object> const example,
+                        TRI_shaper_t* shaper,
+                        std::string& errorMessage);
 
-        ExampleMatcher (
-          v8::Isolate* isolate,
-          v8::Handle<v8::Array> const examples,
-          TRI_shaper_t* shaper,
-          std::string& errorMessage
-        );
+        ExampleMatcher (v8::Isolate* isolate,
+                        v8::Handle<v8::Array> const examples,
+                        TRI_shaper_t* shaper,
+                        std::string& errorMessage);
 
-        ExampleMatcher (
-          TRI_json_t* example,
-          TRI_shaper_t* shaper
-        );
+        ExampleMatcher (TRI_json_t* example,
+                        TRI_shaper_t* shaper);
 
         ~ExampleMatcher () {
           cleanup();
         };
 
-        bool matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) const;
+        bool matches (TRI_voc_cid_t cid, 
+                      TRI_doc_mptr_t const* mptr) const;
 
       private:
 
