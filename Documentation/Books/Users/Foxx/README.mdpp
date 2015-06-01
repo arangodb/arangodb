@@ -62,7 +62,7 @@ used to separate the Foxx applications of different databases running in the
 same ArangoDB instance.
 
 Let's assume for now that you are working in the default database (*_system*), that
-is used when no [database name](../Glossary/README.html#database_name) is specified otherwise. To use Foxx applications with
+is used when no [database name](../Glossary/index.html#database_name) is specified otherwise. To use Foxx applications with
 the *_system* database, create a sub-directory *_system* inside the *databases* 
 subdirectory. All Foxx applications for the *_system* database will go into this 
 directory. Note: to add a Foxx application for a different databases than *_system*, 

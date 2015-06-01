@@ -1,6 +1,6 @@
 !CHAPTER Address and ETag of an Edge 
 
-All documents in ArangoDB have a [document handle](../Glossary/README.html#document_handle). This handle uniquely identifies 
+All documents in ArangoDB have a [document handle](../Glossary/index.html#document_handle). This handle uniquely identifies 
 a document. Any document can be retrieved using its unique URI:
 
     http://server:port/_api/document/<document-handle>
@@ -15,7 +15,7 @@ attribute of the edge, is *demo/362549736*, then the URL of that edge is:
 
     http://localhost:8529/_api/edge/demo/362549736
 
-The above URL scheme does not specify a [database name](../Glossary/README.html#database_name) explicitly, so the 
+The above URL scheme does not specify a [database name](../Glossary/index.html#database_name) explicitly, so the 
 default database will be used. To explicitly specify the database context, use
 the following URL schema:
 
