@@ -161,6 +161,110 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       return div;
     },
 
+    makeNodeDiv = function () {
+      var
+        div = document.createElement("div"),
+        innerDiv = document.createElement("div"),
+        queryLine = document.createElement("div"),
+        searchAttrDiv = document.createElement("div"),
+        searchAttrExampleToggle = document.createElement("button"),
+        searchAttrExampleCaret = document.createElement("span"),
+        searchValueField = document.createElement("input"),
+        searchStart = document.createElement("img"),
+        equalsField = document.createElement("span"),
+
+        showSpinner = function() {
+          $(background).css("cursor", "progress");
+        },
+
+        hideSpinner = function() {
+          $(background).css("cursor", "");
+        },
+
+        alertError = function(msg) {
+          window.alert(msg);
+        },
+
+        resultCB = function(res) {
+          hideSpinner();
+          if (res && res.errorCode && res.errorCode === 404) {
+            alertError("Sorry could not find a matching node.");
+            return;
+          }
+          return;
+        },
+
+        searchFunction = function() {
+          showSpinner();
+          if (searchAttrField.value === ""
+            || searchAttrField.value === undefined) {
+            graphViewer.loadGraph(
+              searchValueField.value,
+              resultCB
+            );
+          } else {
+            graphViewer.loadGraphWithAttributeValue(
+              searchAttrField.value,
+              searchValueField.value,
+              resultCB
+            );
+          }
+        };
+
+      div.id = "nodeDropdown";
+      div.className = "headerDropdown";
+      innerDiv.className = "dropdownInner";
+      queryLine.className = "queryline";
+
+      searchAttrField = document.createElement("input");
+      searchAttrExampleList = document.createElement("ul");
+
+      searchAttrDiv.className = "pull-left input-append searchByAttribute";
+      searchAttrField.id = "attribute";
+      //searchAttrField.className = "input";
+      searchAttrField.type = "text";
+      searchAttrField.placeholder = "Attribute name";
+      searchAttrExampleToggle.id = "attribute_example_toggle";
+      searchAttrExampleToggle.className = "button-neutral gv_example_toggle";
+      searchAttrExampleCaret.className = "caret gv_caret";
+      searchAttrExampleList.className = "gv-dropdown-menu";
+      searchValueField.id = "value";
+      searchValueField.className = "searchInput gv_searchInput";
+      //searchValueField.className = "filterValue";
+      searchValueField.type = "text";
+      searchValueField.placeholder = "Attribute value";
+      searchStart.id = "loadnode";
+      searchStart.className = "gv-search-submit-icon";
+      equalsField.className = "searchEqualsLabel";
+      equalsField.appendChild(document.createTextNode("=="));
+
+      innerDiv.appendChild(queryLine);
+      queryLine.appendChild(searchAttrDiv);
+
+      searchAttrDiv.appendChild(searchAttrField);
+      searchAttrDiv.appendChild(searchAttrExampleToggle);
+      searchAttrDiv.appendChild(searchAttrExampleList);
+      searchAttrExampleToggle.appendChild(searchAttrExampleCaret);
+      queryLine.appendChild(equalsField);
+      queryLine.appendChild(searchValueField);
+      queryLine.appendChild(searchStart);
+
+      searchStart.onclick = searchFunction;
+      $(searchValueField).keypress(function(e) {
+        if (e.keyCode === 13 || e.which === 13) {
+          searchFunction();
+          return false;
+        }
+      });
+
+      searchAttrExampleToggle.onclick = function() {
+        $(searchAttrExampleList).slideToggle(200);
+      };
+
+      div.appendChild(innerDiv);
+      return div;
+    },
+
     makeConfigureDiv = function () {
       var div, innerDiv, nodeList, nodeHeader, colList, colHeader,
           edgeList, edgeHeader;
@@ -196,14 +300,19 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       };
     },
 
-    makeConfigure = function (div, idConf, idFilter) {
-      var ul, liConf, aConf, spanConf, liFilter, aFilter, spanFilter, lists;
+    makeConfigure = function (div, idConf, idFilter, idNode) {
+      var ul, lists,
+      liConf, aConf, spanConf,
+      liNode, aNode, spanNode,
+      liFilter, aFilter, spanFilter;
+
       div.className = "headerButtonBar";
       ul = document.createElement("ul");
       ul.className = "headerButtonList";
 
       div.appendChild(ul);
 
+      //CONF
       liConf = document.createElement("li");
       liConf.className = "enabled";
       aConf = document.createElement("a");
@@ -217,6 +326,21 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       liConf.appendChild(aConf);
       aConf.appendChild(spanConf);
 
+      //NODE
+      liNode = document.createElement("li");
+      liNode.className = "enabled";
+      aNode = document.createElement("a");
+      aNode.id = idNode;
+      aNode.className = "headerButton";
+      spanNode = document.createElement("span");
+      spanNode.className = "icon_arangodb_edit";
+      $(spanNode).attr("title", "Show custom nodes");
+
+      ul.appendChild(liNode);
+      liNode.appendChild(aNode);
+      aNode.appendChild(spanNode);
+
+      //FILTER
       liFilter = document.createElement("li");
       liFilter.className = "enabled";
       aFilter = document.createElement("a");
@@ -229,19 +353,35 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       ul.appendChild(liFilter);
       liFilter.appendChild(aFilter);
       aFilter.appendChild(spanFilter);
+
       lists = makeConfigureDiv();
       lists.filter = makeFilterDiv();
+      lists.node = makeNodeDiv();
+
       aConf.onclick = function () {
         $('#filterdropdown').removeClass('activated');
+        $('#nodedropdown').removeClass('activated');
         $('#configuredropdown').toggleClass('activated');
         $(lists.configure).slideToggle(200);
         $(lists.filter).hide();
+        $(lists.node).hide();
+      };
+
+      aNode.onclick = function () {
+        $('#filterdropdown').removeClass('activated');
+        $('#configuredropdown').removeClass('activated');
+        $('#nodedropdown').toggleClass('activated');
+        $(lists.node).slideToggle(200);
+        $(lists.filter).hide();
+        $(lists.configure).hide();
       };
 
       aFilter.onclick = function () {
         $('#configuredropdown').removeClass('activated');
+        $('#nodedropdown').removeClass('activated');
         $('#filterdropdown').toggleClass('activated');
         $(lists.filter).slideToggle(200);
+        $(lists.node).hide();
         $(lists.configure).hide();
       };
 
@@ -363,7 +503,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         configureLists = makeConfigure(
           buttons,
           "configuredropdown",
-          "filterdropdown"
+          "filterdropdown",
+          "nodedropdown"
         );
 
       nodeShaperUI = new NodeShaperControls(
@@ -398,6 +539,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       menubar.appendChild(transparentHeader);
       menubar.appendChild(configureLists.configure);
       menubar.appendChild(configureLists.filter);
+      menubar.appendChild(configureLists.node);
       transparentHeader.appendChild(buttons);
       transparentHeader.appendChild(title);
 
