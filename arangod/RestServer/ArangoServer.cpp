@@ -1019,8 +1019,8 @@ int ArangoServer::startupServer () {
     switch (_threadAffinity) {
       case 1:
         if (n < ns + nd) {
-          ns = round(1.0 * n * ns / (ns + nd));
-          nd = round(1.0 * n * nd / (ns + nd));
+          ns = static_cast<size_t>(round(1.0 * n * ns / (ns + nd)));
+          nd = static_cast<size_t>(round(1.0 * n * nd / (ns + nd)));
 
           if (ns < 1) { ns = 1; }
           if (nd < 1) { nd = 1; }
