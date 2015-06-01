@@ -2,7 +2,6 @@
   "gitbook": ">=2.0.0",
   "title": "ArangoDB Documentation",
   "language": "en",
-  "theme": "./localtheme",
   "plugins":["toggle-chapters"],
   "pdf": {
     "fontSize": 12,
