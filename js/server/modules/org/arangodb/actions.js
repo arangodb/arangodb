@@ -35,6 +35,7 @@ module.isSystem = true;
 var internal = require("internal");
 
 var fs = require("fs");
+var util = require("util");
 var console = require("console");
 var _ = require("underscore");
 
@@ -108,9 +109,9 @@ var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ]
 function notImplementedFunction (route, message) {
   'use strict';
 
-  message += "\nThis error was triggered by the following route '" + route.name + "'";
+  message += "\nThis error was triggered by the following route: " + route.name;
 
-  console.errorLines("%s", message);
+  console.errorLines(message);
 
   return function (req, res, options, next) {
     res.responseCode = exports.HTTP_NOT_IMPLEMENTED;
@@ -175,10 +176,10 @@ function lookupCallbackActionCallbackString (route, action, foxxModule) {
     func = createCallbackActionCallbackString(action.callback, foxxModule, route);
   }
   catch (err) {
-    func = errorFunction(
-      route,
-      "an error occurred construction callback for '"
-        + action.callback + "': " + String(err.stack || err));
+    func = errorFunction(route, util.format(
+      "an error occurred constructing callback for '%s': %s",
+      action.callback, String(err.stack || err)
+    ));
   }
 
   return {
@@ -208,10 +209,10 @@ function lookupCallbackActionCallback (route, action, foxxModule) {
   }
 
   return {
-    controller: errorFunction(
-      route,
-      "an error occurred while generating callback '"
-        + action.callback + "': unknown type '" + String(typeof action.callback) + "'"),
+    controller: errorFunction(route, util.format(
+      "an error occurred while generating callback '%s': unknown type '%s'",
+      action.callback, typeof action.callback
+    )),
     options: action.options || {},
     methods: action.methods || ALL_METHODS
   };
@@ -229,16 +230,16 @@ function requireModule (name, route) {
   }
   catch (err) {
     if (err instanceof internal.ArangoError && err.errorNum === internal.errors.ERROR_MODULE_NOT_FOUND.code) {
-      return notImplementedFunction(
-        route,
-        "an error occurred while loading the action module '" + name
-          + "': " + String(err.stack || err));
+      return notImplementedFunction(route, util.format(
+        "an error occurred while loading the action module '%s': %s",
+        name, String(err.stack || err)
+      ));
     }
     else {
-      return errorFunction(
-        route,
-        "an error occurred while loading action module '" + name
-          + "': " + String(err.stack || err));
+      return errorFunction(route, util.format(
+        "an error occurred while loading action module '%s': %s",
+        name, String(err.stack || err)
+      ));
     }
   }
 }
@@ -254,10 +255,10 @@ function moduleFunction (actionModule, name, route) {
   var type = typeof func;
 
   if (type !== 'function') {
-    func = errorFunction(
-      route,
-      "invalid definition ('" + type + "') for '" + name 
-        + "' action in action module '" + actionModule.id + "'");
+    func = errorFunction(route, util.format(
+      "invalid definition ('%s') for '%s' action in action module '%s'",
+      type, name, actionModule.id
+    ));
   }
 
   return func;
@@ -287,16 +288,17 @@ function lookupCallbackActionDo (route, action) {
 
   // module found, extract function
   actionModule = actionModule.module;
-  
+
   var func;
 
   if (actionModule.hasOwnProperty(funcName)) {
     func = moduleFunction(actionModule, funcName, route);
   }
   else {
-    func = notImplementedFunction(
-      route,
-      "could not find action named '" + funcName + "' in module '" + moduleName + "'");
+    func = notImplementedFunction(route, util.format(
+      "could not find action named '%s' in module '%s'",
+      funcName, moduleName
+    ));
   }
 
   return {
@@ -1428,7 +1430,7 @@ function defineHttp (options) {
   var callback = options.callback;
 
   if (typeof callback !== "function") {
-    console.error("callback for '%s' must be a function, got '%s'", url, (typeof callback));
+    console.error("callback for '%s' must be a function, got '%s'", url, typeof callback);
     return;
   }
 
@@ -1639,8 +1641,9 @@ function errorFunction (route, message) {
 function badParameter (req, res, name) {
   'use strict';
 
-  resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD,
-              "invalid value for parameter '" + name + "'");
+  resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD, util.format(
+    "invalid value for parameter '%s'", name
+  ));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
