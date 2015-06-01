@@ -169,7 +169,7 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
   size_t exCount = examples->Length();
   for (size_t j = 0; j < exCount; ++j) {
     auto tmp = examples->Get((uint32_t) j);
-    if (!tmp->IsObject() || tmp->IsArray()) {
+    if (! tmp->IsObject() || tmp->IsArray()) {
       // Right now silently ignore this example
       continue;
     }
