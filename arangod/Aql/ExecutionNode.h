@@ -324,7 +324,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void removeDependencies () {
-          for (auto x : _dependencies) {
+          for (auto& x : _dependencies) {
             for (auto it = x->_parents.begin();
                  it != x->_parents.end();
                  ++it) {
@@ -381,7 +381,7 @@ namespace triagens {
         void invalidateCost () {
           _estimatedCostSet = false;
           
-          for (auto dep : _dependencies) {
+          for (auto& dep : _dependencies) {
             dep->invalidateCost();
           }
         }
@@ -1514,7 +1514,7 @@ namespace triagens {
           std::vector<Variable const*> v;
           v.reserve(vars.size());
 
-          for (auto vv : vars) {
+          for (auto& vv : vars) {
             v.emplace_back(vv);
           }
 
@@ -1930,7 +1930,9 @@ namespace triagens {
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
-          for (auto p : _elements) {
+          v.reserve(_elements.size());
+
+          for (auto& p : _elements) {
             v.emplace_back(p.first);
           }
           return v;
@@ -2185,7 +2187,7 @@ namespace triagens {
           size_t const n = _aggregateVariables.size() + (_outVariable == nullptr ? 0 : 1);
           v.reserve(n);
 
-          for (auto p : _aggregateVariables) {
+          for (auto const& p : _aggregateVariables) {
             v.emplace_back(p.first);
           }
           if (_outVariable != nullptr) {
@@ -3532,7 +3534,7 @@ namespace triagens {
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
-          for (auto p : _elements) {
+          for (auto const& p : _elements) {
             v.emplace_back(p.first);
           }
           return v;

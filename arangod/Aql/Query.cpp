@@ -868,7 +868,7 @@ QueryResult Query::explain () {
       triagens::basics::Json out(Json::Array);
 
       auto plans = opt.getPlans();
-      for (auto it : plans) {
+      for (auto& it : plans) {
         TRI_ASSERT(it != nullptr);
 
         it->findVarUsage();

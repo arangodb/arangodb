@@ -145,7 +145,6 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   // which optimizer rules are disabled?
   std::unordered_set<int> const&& disabledIds = getDisabledRuleIds(rulesSpecification);
 
-
   // _plans contains the previous optimisation result
   _plans.clear();
   try {
@@ -160,7 +159,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
   while (leastDoneLevel < maxRuleLevel) {
     // Find variable usage for all old plans now:
-    for (auto p : _plans.list) {
+    for (auto& p : _plans.list) {
       if (! p->varUsageComputed()) {
         p->findVarUsage();
       }
@@ -249,7 +248,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
     _plans.steal(_newPlans);
     leastDoneLevel = maxRuleLevel;
-    for (auto l : _plans.levelDone) {
+    for (auto const& l : _plans.levelDone) {
       if (l < leastDoneLevel) {
         leastDoneLevel = l;
       }
@@ -293,8 +292,9 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 std::vector<std::string> Optimizer::translateRules (std::vector<int> const& rules) {
   std::vector<std::string> names;
 
-  for (auto r : rules) {
+  for (auto const& r : rules) {
     auto it = _rules.find(r);
+
     if (it != _rules.end()) {
       names.emplace_back((*it).second.name);
     }
@@ -311,7 +311,7 @@ std::vector<std::string> Optimizer::translateRules (std::vector<int> const& rule
 ////////////////////////////////////////////////////////////////////////////////
 
 void Optimizer::estimatePlans () {
-  for (auto p : _plans.list) {
+  for (auto& p : _plans.list) {
     p->getCost();
     // this value is cached in the plan, so formally this step is
     // unnecessary, but for the sake of cleanliness...
@@ -336,20 +336,21 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> 
   std::unordered_set<int> disabled;
 
   // lookup ids of all disabled rules
-  for (auto name : names) {
+  for (auto const& name : names) {
     if (name[0] == '-') {
       // disable rule
       if (name == "-all") {
         // disable all rules
-        for (auto it : _rules) {
-          disabled.insert(it.first);
+        for (auto const& it : _rules) {
+          disabled.emplace(it.first);
         }
       }
       else {
         // disable a specific rule
         auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+
         if (it != _ruleLookup.end()) {
-          disabled.insert((*it).second);
+          disabled.emplace((*it).second);
         }
       }
     }
@@ -361,6 +362,7 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> 
       }
       else {
         auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+
         if (it != _ruleLookup.end()) {
           disabled.erase((*it).second);
         }

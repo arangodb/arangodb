@@ -223,7 +223,7 @@ void Expression::replaceVariables (std::unordered_map<VariableId, Variable const
   _node = _ast->clone(_node);
   TRI_ASSERT(_node != nullptr);
 
-  _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
+  _node = _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
   invalidate(); 
 }
 
