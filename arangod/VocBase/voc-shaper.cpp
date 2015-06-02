@@ -284,7 +284,7 @@ static char const* LookupAttributeId (TRI_shaper_t* shaper,
 
 static uint64_t HashElementShape (TRI_associative_synced_t* array,
                                   void const* element) {
-  TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
+  auto shape = static_cast<TRI_shape_t const*>(element);
   TRI_ASSERT(shape != nullptr);
   char const* s = reinterpret_cast<char const*>(shape);
   return TRI_FnvHashPointer(s + sizeof(TRI_shape_sid_t), static_cast<size_t>(shape->_size - sizeof(TRI_shape_sid_t)));
@@ -297,8 +297,8 @@ static uint64_t HashElementShape (TRI_associative_synced_t* array,
 static bool EqualElementShape (TRI_associative_synced_t* array,
                                void const* left,
                                void const* right) {
-  TRI_shape_t const* l = static_cast<TRI_shape_t const*>(left);
-  TRI_shape_t const* r = static_cast<TRI_shape_t const*>(right);
+  auto l = static_cast<TRI_shape_t const*>(left);
+  auto r = static_cast<TRI_shape_t const*>(right);
   char const* ll = reinterpret_cast<char const*>(l);
   char const* rr = reinterpret_cast<char const*>(r);
 
@@ -409,7 +409,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 
 static uint64_t HashKeyShapeId (TRI_associative_synced_t* array,
                                 void const* key) {
-  TRI_shape_sid_t const* k = static_cast<TRI_shape_sid_t const*>(key);
+  auto k = static_cast<TRI_shape_sid_t const*>(key);
   return TRI_FnvHashPointer(k, sizeof(TRI_shape_sid_t));
 }
 
@@ -419,7 +419,7 @@ static uint64_t HashKeyShapeId (TRI_associative_synced_t* array,
 
 static uint64_t HashElementShapeId (TRI_associative_synced_t* array,
                                     void const* element) {
-  TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
+  auto shape = static_cast<TRI_shape_t const*>(element);
   TRI_ASSERT(shape != nullptr);
   return TRI_FnvHashPointer(&shape->_sid, sizeof(TRI_shape_sid_t));
 }
@@ -431,8 +431,8 @@ static uint64_t HashElementShapeId (TRI_associative_synced_t* array,
 static bool EqualKeyShapeId (TRI_associative_synced_t* array,
                              void const* key,
                              void const* element) {
-  TRI_shape_sid_t const* k = static_cast<TRI_shape_sid_t const*>(key);
-  TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
+  auto k = static_cast<TRI_shape_sid_t const*>(key);
+  auto shape = static_cast<TRI_shape_t const*>(element);
   TRI_ASSERT(shape != nullptr);
 
   return *k == shape->_sid;
@@ -459,7 +459,7 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAccessor (TRI_associative_pointer_t* array, void const* element) {
-  TRI_shape_access_t const* ee = static_cast<TRI_shape_access_t const*>(element);
+  auto ee = static_cast<TRI_shape_access_t const*>(element);
   uint64_t v[2];
 
   v[0] = ee->_sid;
@@ -473,10 +473,10 @@ static uint64_t HashElementAccessor (TRI_associative_pointer_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool EqualElementAccessor (TRI_associative_pointer_t* array, void const* left, void const* right) {
-  TRI_shape_access_t const* ll = static_cast<TRI_shape_access_t const*>(left);
-  TRI_shape_access_t const* rr = static_cast<TRI_shape_access_t const*>(right);
+  auto l = static_cast<TRI_shape_access_t const*>(left);
+  auto r = static_cast<TRI_shape_access_t const*>(right);
 
-  return ll->_sid == rr->_sid && ll->_pid == rr->_pid;
+  return l->_sid == r->_sid && l->_pid == r->_pid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -967,17 +967,19 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
   TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(shaper, document->_sid, pid);
 
   if (accessor == nullptr) {
-    LOG_TRACE("failed to get accessor for sid %lu and path %lu",
-              (unsigned long) document->_sid,
-              (unsigned long) pid);
-
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_TRACE("failed to get accessor for sid %llu and path %llu",
+              (unsigned long long) document->_sid,
+              (unsigned long long) pid);
+#endif
     return false;
   }
 
   if (accessor->_resultSid == TRI_SHAPE_ILLEGAL) {
-    LOG_TRACE("expecting any object for path %lu, got nothing",
-              (unsigned long) pid);
-
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_TRACE("expecting any object for path %llu, got nothing",
+              (unsigned long long) pid);
+#endif
     *shape = nullptr;
 
     return sid == TRI_SHAPE_ILLEGAL;
@@ -986,31 +988,34 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
   *shape = shaper->lookupShapeId(shaper, accessor->_resultSid);
 
   if (*shape == nullptr) {
-    LOG_TRACE("expecting any object for path %lu, got unknown shape id %lu",
-              (unsigned long) pid,
-              (unsigned long) accessor->_resultSid);
-
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_TRACE("expecting any object for path %llu, got unknown shape id %llu",
+              (unsigned long long) pid,
+              (unsigned long long) accessor->_resultSid);
+#endif
     *shape = nullptr;
 
     return sid == TRI_SHAPE_ILLEGAL;
   }
 
   if (sid != 0 && sid != accessor->_resultSid) {
-    LOG_TRACE("expecting sid %lu for path %lu, got sid %lu",
-              (unsigned long) sid,
-              (unsigned long) pid,
-              (unsigned long) accessor->_resultSid);
-
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_TRACE("expecting sid %llu for path %llu, got sid %llu",
+              (unsigned long long) sid,
+              (unsigned long long) pid,
+              (unsigned long long) accessor->_resultSid);
+#endif
     return false;
   }
 
   bool ok = TRI_ExecuteShapeAccessor(accessor, document, result);
 
   if (! ok) {
-    LOG_TRACE("failed to get accessor for sid %lu and path %lu",
-              (unsigned long) document->_sid,
-              (unsigned long) pid);
-
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_TRACE("failed to get accessor for sid %llu and path %llu",
+              (unsigned long long) document->_sid,
+              (unsigned long long) pid);
+#endif
     return false;
   }
 
@@ -1033,8 +1038,8 @@ attribute_entry_t;
 
 static int AttributeNameComparator (void const* lhs,
                                     void const* rhs) {
-  attribute_entry_t const* l = static_cast<attribute_entry_t const*>(lhs);
-  attribute_entry_t const* r = static_cast<attribute_entry_t const*>(rhs);
+  auto l = static_cast<attribute_entry_t const*>(lhs);
+  auto r = static_cast<attribute_entry_t const*>(rhs);
 
   if (l->_attribute == nullptr || r->_attribute == nullptr) {
     // error !
@@ -1093,8 +1098,6 @@ static int FillAttributesVector (TRI_vector_t* vector,
   TRI_shape_size_t const* offsets = (TRI_shape_size_t const*) charShape;
 
   for (TRI_shape_size_t i = 0; i < fixedEntries; ++i) {
-    attribute_entry_t attribute;
-
     char const* a = shaper->lookupAttributeId((TRI_shaper_t*) shaper, aids[i]);
 
     if (a == nullptr) {
@@ -1107,6 +1110,7 @@ static int FillAttributesVector (TRI_vector_t* vector,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
+    attribute_entry_t attribute;
     attribute._attribute          = copy;
     attribute._value._sid         = sids[i];
     attribute._value._data.data   = shapedJson->_data.data + offsets[i];
@@ -1118,8 +1122,6 @@ static int FillAttributesVector (TRI_vector_t* vector,
   offsets = (TRI_shape_size_t const*) shapedJson->_data.data;
 
   for (TRI_shape_size_t i = 0; i < variableEntries; ++i) {
-    attribute_entry_t attribute;
-
     char const* a = shaper->lookupAttributeId((TRI_shaper_t*) shaper, aids[i + fixedEntries]);
 
     if (a == nullptr) {
@@ -1132,6 +1134,7 @@ static int FillAttributesVector (TRI_vector_t* vector,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
+    attribute_entry_t attribute;
     attribute._attribute          = copy;
     attribute._value._sid         = sids[i + fixedEntries];
     attribute._value._data.data   = shapedJson->_data.data + offsets[i];

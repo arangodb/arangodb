@@ -120,7 +120,7 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
       if (result.isShaped()) {
         switch (_attributeType) {
           case ATTRIBUTE_TYPE_KEY: {
-            return extractKey(result);
+            return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(result._marker)));
           }
 
           case ATTRIBUTE_TYPE_REV: {
@@ -188,16 +188,6 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
   return AqlValue(new Json(Json::Null));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the _key attribute from a ShapedJson marker
-////////////////////////////////////////////////////////////////////////////////
-      
-AqlValue AttributeAccessor::extractKey (AqlValue const& src) {
-  auto json = new Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(src._marker));
-
-  return AqlValue(json);
-}
-                                          
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _rev attribute from a ShapedJson marker
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,13 +294,13 @@ AqlValue AttributeAccessor::extractRegular (AqlValue const& src,
     // attribute exists
     TRI_ASSERT_EXPENSIVE(_shaper != nullptr);
 
-    TRI_shaped_json_t document;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(document, src._marker);
+    TRI_shaped_json_t shapedJson;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, src._marker);
 
     TRI_shaped_json_t json;
     TRI_shape_t const* shape;
 
-    bool ok = TRI_ExtractShapedJsonVocShaper(_shaper, &document, 0, _pid, &json, &shape);
+    bool ok = TRI_ExtractShapedJsonVocShaper(_shaper, &shapedJson, 0, _pid, &json, &shape);
 
     if (ok && shape != nullptr) {
       std::unique_ptr<TRI_json_t> extracted(TRI_JsonShapedJson(_shaper, &json));
