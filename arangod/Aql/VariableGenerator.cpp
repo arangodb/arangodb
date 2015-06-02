@@ -54,7 +54,7 @@ VariableGenerator::VariableGenerator ()
 
 VariableGenerator::~VariableGenerator () {
   // free all variables
-  for (auto it : _variables) {
+  for (auto& it : _variables) {
     delete it.second;
   }
 }
@@ -213,7 +213,7 @@ std::string VariableGenerator::nextName () {
 triagens::basics::Json VariableGenerator::toJson (TRI_memory_zone_t* zone) const {
   Json jsonAllVariablesList(Json::Array, _variables.size());
 
-  for (auto oneVariable: _variables) {
+  for (auto const& oneVariable : _variables) {
     jsonAllVariablesList(oneVariable.second->toJson());
   }
 

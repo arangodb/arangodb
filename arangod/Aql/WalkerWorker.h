@@ -73,7 +73,7 @@ namespace triagens {
 
         bool done (T* en) {
           if (_done.find(en) == _done.end()) {
-            _done.insert(en);
+            _done.emplace(en);
             return false;
           }
 

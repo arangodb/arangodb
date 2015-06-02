@@ -644,7 +644,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(cc != nullptr);
 
     // iterate over all shards of the collection
-    for (auto & shardId : collection->shardIds()) {
+    for (auto& shardId : collection->shardIds()) {
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
       auto jsonPlan = generatePlanForOneShard(info, connectedId, shardId, true);

@@ -361,8 +361,8 @@ RangeInfoMap* RangeInfoMap::clone () const {
   std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
   
   try { 
-    for (auto const& x: _ranges) {
-      for (auto const& y: x.second) {
+    for (auto const& x : _ranges) {
+      for (auto const& y : x.second) {
         rim->insert(y.second.clone());
       }
     }
@@ -427,7 +427,7 @@ void RangeInfoMap::attributes (std::unordered_set<std::string>& set,
   std::unordered_map<std::string, RangeInfo> const* map = find(var);
 
   if (map != nullptr) {
-    for (auto const& x: *map) {
+    for (auto const& x : *map) {
       set.emplace(x.first);
     }
   }
@@ -440,7 +440,7 @@ void RangeInfoMap::attributes (std::unordered_set<std::string>& set,
 std::unordered_set<std::string> RangeInfoMap::variables () const {
   std::unordered_set<std::string> vars;
 
-  for (auto const& x: _ranges) {
+  for (auto const& x : _ranges) {
     vars.emplace(x.first);
   }
 
@@ -467,7 +467,7 @@ RangeInfoMapVec::RangeInfoMapVec (RangeInfoMap* rim)
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec::~RangeInfoMapVec () {
-  for (auto& x: _rangeInfoMapVec) {
+  for (auto& x : _rangeInfoMapVec) {
     delete x;
   }
   _rangeInfoMapVec.clear();
@@ -495,7 +495,7 @@ void RangeInfoMapVec::emplace_back (RangeInfoMap* rim) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RangeInfoMapVec::eraseEmptyOrUndefined (std::string const& var) {
-  for (auto& x: _rangeInfoMapVec) {
+  for (auto& x : _rangeInfoMapVec) {
     x->eraseEmptyOrUndefined(var);
   }
 }
@@ -616,8 +616,8 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
     for (size_t i = 0; i < rhs->size(); i++) {
       std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
 
-      for (auto const& x: (*rhs)[i]->_ranges) {
-        for (auto const& y: x.second) {
+      for (auto const& x : (*rhs)[i]->_ranges) {
+        for (auto const& y : x.second) {
           RangeInfo ri = y.second.clone();
           rim->insert(ri);
         }
@@ -646,8 +646,8 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
 
 RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, 
                                                       RangeInfoMap* rhs) {
-  for (auto const& x: rhs->_ranges) {
-    for (auto const& y: x.second) {
+  for (auto const& x : rhs->_ranges) {
+    for (auto const& y : x.second) {
       lhs->insert(y.second.clone());
     }
   }

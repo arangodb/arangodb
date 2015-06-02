@@ -110,27 +110,27 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
                 }
 
                 // remove sort that is a direct predecessor of a sort
-                toUnlink.insert(current);
+                toUnlink.emplace(current);
               }
               break;
             }
 
             case SortInformation::otherLessAccurate: {
-              toUnlink.insert(current);
+              toUnlink.emplace(current);
               break;
             }
 
             case SortInformation::ourselvesLessAccurate: {
               // the sort at the start of the pipeline makes the sort at the end
               // superfluous, so we'll remove it
-              toUnlink.insert(n);
+              toUnlink.emplace(n);
               break;
             }
             
             case SortInformation::allEqual: {
               // the sort at the end of the pipeline makes the sort at the start
               // superfluous, so we'll remove it
-              toUnlink.insert(current);
+              toUnlink.emplace(current);
               break;
             }
           }
@@ -176,7 +176,7 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
           sortNode->simplify(plan)) {
         // sort node had only constant expressions. it will make no difference if we execute it or not
         // so we can remove it
-        toUnlink.insert(n);
+        toUnlink.emplace(n);
       }
     }
   }
@@ -239,7 +239,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     if (root->isTrue()) {
       // filter is always true
       // remove filter node and merge with following node
-      toUnlink.insert(n);
+      toUnlink.emplace(n);
       modified = true;
     }
     else if (root->isFalse()) {
@@ -708,7 +708,7 @@ class PropagateConstantAttributesHelper {
 
       if (it2 == (*it).second.end()) {
         // first value for the attribute
-        (*it).second.insert(std::make_pair(name, value));
+        (*it).second.emplace(std::make_pair(name, value));
       }
       else {
         auto previous = (*it2).second;
@@ -1712,7 +1712,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
       // The variable whose value is calculated here is not used at
       // all further down the pipeline! We remove the whole
       // calculation node, 
-      toUnlink.insert(n);
+      toUnlink.emplace(n);
     }
   }
 
@@ -2053,7 +2053,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _changesPlaces(changesPlaces),
         _changes(changes) {
 
-      _varIds.insert(var->id);
+      _varIds.emplace(var->id);
     };
 
     ~FilterToEnumCollFinder () {
@@ -2775,7 +2775,7 @@ public:
     // only remove a node once, otherwise this might cause follow up failures
     if (removedNodes.find(sortNodeID) == removedNodes.end()) {
       newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
-      removedNodes.insert(sortNodeID);
+      removedNodes.emplace(sortNodeID);
     }
   }
 };
@@ -3204,8 +3204,8 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
         for (auto const& it : ranges) {
           for (auto it2 : it) {
             if (condition.isFullyCoveredBy(it2)) {
-              toUnlink.insert(setter);
-              toUnlink.insert(n);
+              toUnlink.emplace(setter);
+              toUnlink.emplace(n);
               break;
             }
           } 
@@ -3285,7 +3285,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
   std::unordered_set<ExecutionNode*> nodesSet;
   for (auto const& n : nodes) {
     TRI_ASSERT(nodesSet.find(n) == nodesSet.end());
-    nodesSet.insert(n);
+    nodesSet.emplace(n);
   }
 
   std::vector<ExecutionNode*> nodesToPermute;
@@ -3950,8 +3950,8 @@ int triagens::aql::removeUnnecessaryRemoteScatterRule (Optimizer* opt,
     }
 
     if (canOptimize) {
-      toUnlink.insert(n);
-      toUnlink.insert(deps[0]);
+      toUnlink.emplace(n);
+      toUnlink.emplace(deps[0]);
     }
   }
 
@@ -4054,7 +4054,7 @@ class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           return false; // continue . . .
         }
         case EN::REMOTE: {
-          _toUnlink.insert(en);
+          _toUnlink.emplace(en);
           _lastNode = en;
           return false; // continue . . .
         }
@@ -4064,7 +4064,7 @@ class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             break;        // abort . . . 
           }
           _scatter = true;
-          _toUnlink.insert(en);
+          _toUnlink.emplace(en);
           _lastNode = en;
           return false; // continue . . .
         }
@@ -4073,7 +4073,7 @@ class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             break;       // abort . . . 
           }
           _gather = true;
-          _toUnlink.insert(en);
+          _toUnlink.emplace(en);
           _lastNode = en;
           return false; // continue . . .
         }

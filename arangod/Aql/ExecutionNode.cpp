@@ -300,7 +300,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   _regsToClear.reserve(len);
   for (size_t i = 0; i < len; i++) {
     RegisterId oneRegToClear = JsonHelper::getNumericValue<RegisterId>(jsonRegsToClearList.at(i).json(), 0);
-    _regsToClear.insert(oneRegToClear);
+    _regsToClear.emplace(oneRegToClear);
   }
 
   auto allVars = plan->getAst()->variables();
@@ -320,7 +320,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
       std::string errmsg = "varsUsedLater: ID not found in all-array: " + StringUtils::itoa(oneVarUsedLater->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
-    _varsUsedLater.insert(oneVariable);
+    _varsUsedLater.emplace(oneVariable);
   }
 
   auto jsonvarsValidList = json.get("varsValid");
@@ -339,7 +339,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
       std::string errmsg = "varsValid: ID not found in all-array: " + StringUtils::itoa(oneVarValid->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
-    _varsValid.insert(oneVariable);
+    _varsValid.emplace(oneVariable);
   }
 }
 
@@ -379,7 +379,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
     for (auto const& orgVar: _varsUsedLater) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
-      other->_varsUsedLater.insert(var);
+      other->_varsUsedLater.emplace(var);
     }
 
     other->_varsValid.reserve(_varsValid.size());
@@ -387,7 +387,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
     for (auto const& orgVar: _varsValid) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
-      other->_varsValid.insert(var);
+      other->_varsValid.emplace(var);
     }
 
     if (_registerPlan.get() != nullptr) {
@@ -1119,7 +1119,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
         auto it2 = varInfo.find(v->id);
         TRI_ASSERT(it2 != varInfo.end());
         RegisterId r = it2->second.registerId;
-        regsToClear.insert(r);
+        regsToClear.emplace(r);
       }
     }
     en->setRegsToClear(regsToClear);
@@ -1504,7 +1504,7 @@ ExecutionNode* IndexRangeNode::clone (ExecutionPlan* plan,
   for (size_t i = 0; i < _ranges.size(); i++){
     ranges.emplace_back(std::vector<RangeInfo>());
     
-    for (auto const& x: _ranges.at(i)) {
+    for (auto const& x : _ranges.at(i)) {
       ranges.at(i).emplace_back(x);
     }
   }
@@ -1739,7 +1739,7 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
         AstNode const* a = b.getExpressionAst(_plan->getAst());
         std::unordered_set<Variable*> vars = Ast::getReferencedVariables(a);
         for (auto const& vv : vars) {
-          s.insert(vv);
+          s.emplace(vv);
         }
       };
 
@@ -1982,7 +1982,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
     // Add variables used here to _usedLater:
     auto&& usedHere = en->getVariablesUsedHere();
     for (auto const& v : usedHere) {
-      _usedLater.insert(v);
+      _usedLater.emplace(v);
     }
     return false;
   }
@@ -1991,7 +1991,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
     // Add variables set here to _valid:
     auto&& setHere = en->getVariablesSetHere();
     for (auto const& v : setHere) {
-      _valid.insert(v);
+      _valid.emplace(v);
     }
   }
 
@@ -2005,7 +2005,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
     // create the set difference. note: cannot use std::set_difference as our sets are NOT sorted
     for (auto it = subfinder._usedLater.begin(); it != subfinder._usedLater.end(); ++it) {
       if (_valid.find(*it) != _valid.end()) {
-        _usedLater.insert((*it));
+        _usedLater.emplace((*it));
       }
     }
     return false;
@@ -2482,12 +2482,12 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
         myselfAsNonConst->walk(&finder);
       }
       for (auto& x : finder.userVars) {
-        v.insert(x);
+        v.emplace(x);
       }
     }
     else {
       for (auto& x : _keepVariables) {
-        v.insert(x);
+        v.emplace(x);
       }
     }
   }
