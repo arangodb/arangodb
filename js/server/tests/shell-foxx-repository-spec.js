@@ -159,11 +159,13 @@ describe('Repository Methods', function () {
       'firstExample',
       'remove',
       'removeByExample',
+      'type',
       'update',
       'updateByExample',
       'replace',
       'replaceByExample'
     ]);
+    collection.type.and.returnValue(2);
     instance = new FoxxRepository(collection, { model: Model });
   });
 
