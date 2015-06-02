@@ -185,8 +185,16 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 
   parseConfig(config || {});
 
-  this.start = function() {
+  this.start = function(expand) {
     layouter.stop();
+
+    //expand all nodes
+    if (expand) {
+      _.each(nodes, function(node) {
+        node._expanded = true;
+      });
+    }
+
     nodeShaper.drawNodes(nodes);
     edgeShaper.drawEdges(edges);
     layouter.start();
@@ -215,7 +223,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         return;
       }
       node._expanded = true;
-      self.start();
+      self.start(true);
       if (_.isFunction(callback)) {
         callback();
       }
