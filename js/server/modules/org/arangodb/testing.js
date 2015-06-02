@@ -589,7 +589,7 @@ function waitOnServerForGC(instanceInfo, options, waitTime) {
     t = 'require("internal").wait(' + waitTime + ', true);';
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
-    o.timeout = 24 * 3600;
+    o.timeout = waitTime * 10;
     o.returnBodyOnError = true;
     r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
     print("waiting " + waitTime + " for server GC - done.");
