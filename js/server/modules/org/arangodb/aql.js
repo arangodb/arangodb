@@ -6887,9 +6887,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     params.includeData = options.includeData;
   }
 
-
   return CPP_NEIGHBORS(vertexCollections, edgeCollections, startVertices, params);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
