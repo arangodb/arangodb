@@ -264,10 +264,7 @@ namespace triagens {
 
         void generateDocumentNotFound (std::string const& collectionName,
                                        TRI_voc_key_t key) {
-          generateError(rest::HttpResponse::NOT_FOUND,
-                        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                        "document " + DOCUMENT_PATH + "/" +
-                        DocumentHelper::assembleDocumentId(collectionName, key) + " not found");
+          generateError(rest::HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
