@@ -2357,7 +2357,7 @@ int main (int argc, char* args[]) {
   bool promptError = false;
 #if _WIN32
   extern bool cygwinShell;
-  if (getenv("SHELL") != NULL) {
+  if (getenv("SHELL") != nullptr) {
     cygwinShell = true;
   }
 #endif
