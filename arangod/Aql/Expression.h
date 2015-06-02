@@ -289,15 +289,15 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find a value in a list
+/// @brief find a value in an array
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool findInList (AqlValue const&, 
-                         AqlValue const&, 
-                         TRI_document_collection_t const*, 
-                         TRI_document_collection_t const*,
-                         triagens::arango::AqlTransaction*,
-                         AstNode const*) const;
+        bool findInArray (AqlValue const&, 
+                          AqlValue const&, 
+                          TRI_document_collection_t const*, 
+                          TRI_document_collection_t const*,
+                          triagens::arango::AqlTransaction*,
+                          AstNode const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief analyze the expression (determine its type etc.)
@@ -322,7 +322,8 @@ namespace triagens {
                                           AqlItemBlock const*,
                                           size_t,
                                           std::vector<Variable*> const&,
-                                          std::vector<RegisterId> const&);
+                                          std::vector<RegisterId> const&,
+                                          bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
