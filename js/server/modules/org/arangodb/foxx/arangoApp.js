@@ -161,6 +161,12 @@ function computeRootAppPath(mount, isValidation) {
       name: "unknown",
       version: "error"
     };
+    if (!this._manifest.configuration) {
+      this._manifest.configuration = {};
+    }
+    if (!this._manifest.dependencies) {
+      this._manifest.dependencies = {};
+    }
     this._name = this._manifest.name;
     this._version = this._manifest.version;
     this._root = computeRootAppPath(config.mount, config.id === "__internal");
