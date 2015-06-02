@@ -266,12 +266,18 @@ function GharialAdapter(nodes, edges, viewer, config) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
 
+  //origin nodes to display, real display may be more (depending on their relations)
+  self.NODES_TO_DISPLAY = 30;
+  self.TOTAL_NODES = 0;
+
   self.customNodes = [];
   self.extraNodes = [];
 
   self.loadRandomNode = function(callback) {
     var collections = _.shuffle(self.getNodeCollections()), i;
     for (i = 0; i < collections.length; ++i) {
+
+
       var list = getNRandom(10, collections[i]);
       if (list.length > 0) {
         var counter = 0;
@@ -297,7 +303,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
     var nodeArray = [];
     var nodes = [];
 
-    //if no extra nodes available, get n-random nodes
+    //if no extra nodes available, get "NODES_TO_DISPLAY"-random nodes
     if (self.customNodes.length > 0) {
       nodes = self.customNodes;
     }
@@ -306,14 +312,18 @@ function GharialAdapter(nodes, edges, viewer, config) {
       nodes = self.extraNodes;
     }
 
+    var counter = 0;
     _.each(nodes, function(node) {
-      nodeArray.push({
-        vertex: node,
-        path: {
-          edges: [],
-          vertices: [node]
-        }
-      });
+      if (counter < self.NODES_TO_DISPLAY) {
+        nodeArray.push({
+          vertex: node,
+          path: {
+            edges: [],
+            vertices: [node]
+          }
+        });
+        counter++;
+      }
     });
 
   return nodeArray;
@@ -536,7 +546,19 @@ function GharialAdapter(nodes, edges, viewer, config) {
       var collections = _.shuffle(self.getNodeCollections()), i;
       for (i = 0; i < collections.length; ++i) {
         var l = getNRandom(10, collections[i]);
-      
+
+        //count vertices of graph
+        $.ajax({
+          cache: false,
+          type: 'GET',
+          async: false,
+          url: "/_api/collection/" + encodeURIComponent(collections[i]) + "/count",
+          contentType: "application/json",
+          success: function(data) {
+            self.TOTAL_NODES = self.TOTAL_NODES + data.count;
+          }
+        });
+
         if (l.length > 0) {
           ret = ret.concat(_.flatten(
            _.map(l, function(o) {

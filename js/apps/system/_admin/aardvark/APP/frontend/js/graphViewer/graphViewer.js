@@ -188,10 +188,14 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   this.start = function(expand) {
     layouter.stop();
 
-    //expand all nodes
+    //expand all wanted nodes
     if (expand) {
       _.each(nodes, function(node) {
-        node._expanded = true;
+        _.each(adapter.extraNodes, function(compare) {
+          if (node._id === compare._id) {
+            node._expanded = true;
+          }
+        });
       });
     }
 
