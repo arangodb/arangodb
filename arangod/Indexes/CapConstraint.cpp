@@ -74,7 +74,8 @@ triagens::basics::Json CapConstraint::toJson (TRI_memory_zone_t* zone) const {
   auto json = Index::toJson(zone);
 
   json("size",     triagens::basics::Json(zone, static_cast<double>(_count)))
-      ("byteSize", triagens::basics::Json(zone, static_cast<double>(_size)));
+      ("byteSize", triagens::basics::Json(zone, static_cast<double>(_size)))
+      ("unique",   triagens::basics::Json(zone, false));
 
   return json;
 }
