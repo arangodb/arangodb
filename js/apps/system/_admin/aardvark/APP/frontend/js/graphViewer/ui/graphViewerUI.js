@@ -59,6 +59,15 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     //mousePointerBox = document.createElement("div"),
     svg,
 
+    makeDisplayInformationDiv = function() {
+      if (graphViewer.adapter.NODES_TO_DISPLAY < graphViewer.adapter.TOTAL_NODES) {
+        $('.headerBar').append(
+          '<div class="infoField">Graph too big. A random section is rendered.<div class="fa fa-info-circle"></div></div>'
+        );
+        $('.infoField .fa-info-circle').attr("title", "You can add additional indices through the context-menu.").tooltip();
+      }
+    },
+
     makeFilterDiv = function() {
       var
         div = document.createElement("div"),
@@ -503,6 +512,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     },
 
     createMenu = function() {
+
       var transparentHeader = document.createElement("div"),
         buttons = document.createElement("div"),
         title = document.createElement("a"),
@@ -593,6 +603,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   createZoomUIWidget();
   createMenu();
   createColourList();
+  makeDisplayInformationDiv();
 
   if (startNode) {
     if (typeof startNode === "string") {
