@@ -1,6 +1,8 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* issue #1353: Windows: HTTP API - incorrect path in errorMessage
+
 * issue #1347: added option `--create-database` for arangorestore. 
   
   Setting this option to `true` will now create the target database if it does not exist. When creating
