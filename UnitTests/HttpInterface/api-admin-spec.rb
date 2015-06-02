@@ -10,7 +10,7 @@ describe ArangoDB do
     before do
       # load the most current routing information
       cmd = "/_admin/routing/reload"
-      doc = ArangoDB.get(cmd)
+      ArangoDB.get(cmd)
     end
 
 ################################################################################
@@ -121,10 +121,10 @@ describe ArangoDB do
       it "checks whether the admin interface is available at /_admin/aardvark/index.html" do
         cmd = "/_admin/aardvark/index.html"
         begin 
-          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+          ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
-          e.response.code.should eq("301")
+          e.response.code.should eq("302")
         end
       end
 
@@ -149,7 +149,7 @@ describe ArangoDB do
       it "checks whether the admin interface is available at /" do
         cmd = "/"
         begin
-          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+          ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
           e.response.code.should eq("301")
@@ -160,7 +160,7 @@ describe ArangoDB do
       it "checks whether the admin interface is available at /_admin/html" do
         cmd = "/_admin/html"
         begin
-          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+          ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
           e.response.code.should eq("301")
@@ -171,7 +171,7 @@ describe ArangoDB do
       it "checks whether the admin interface is available at /_admin/html/" do
         cmd = "/_admin/html/"
         begin
-          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+          ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
           e.response.code.should eq("301")
@@ -182,7 +182,7 @@ describe ArangoDB do
       it "checks whether the admin interface is available at /_admin/aardvark/" do
         cmd = "/_admin/aardvark/"
         begin
-          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+          ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
           e.response.code.should eq("301")
