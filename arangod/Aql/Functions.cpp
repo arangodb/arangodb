@@ -680,6 +680,65 @@ AqlValue Functions::Attributes (triagens::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief function VALUES
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Values (triagens::aql::Query* query,
+                            triagens::arango::AqlTransaction* trx,
+                            TRI_document_collection_t const* collection,
+                            AqlValue const parameters) {
+  size_t const n = parameters.arraySize();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(new Json(Json::Null));
+  }
+    
+  Json value(parameters.extractArrayMember(trx, collection, 0, false));
+
+  if (! value.isObject()) {
+    // not an object
+    RegisterWarning(query, "ATTRIBUTES", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+ 
+  bool const removeInternal = GetBooleanParameter(trx, collection, parameters, 1, false);
+
+  auto const valueJson = value.json();
+  TRI_ASSERT(TRI_IsObjectJson(valueJson));
+
+  size_t const numValues = TRI_LengthVectorJson(valueJson);
+
+  if (numValues == 0) {
+    // empty object
+    return AqlValue(new Json(Json::Object));
+  }
+
+  // create the output
+  Json result(Json::Array, numValues);
+
+  // create a vector with positions into the object
+  for (size_t i = 0; i < numValues; i += 2) {
+    auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, i));
+
+    if (! TRI_IsStringJson(key)) {
+      // somehow invalid
+      continue;
+    }
+
+    if (removeInternal && *key->_value._string.data == '_') {
+      // skip attribute
+      continue;
+    }
+
+    auto value = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, i + 1));
+    result.add(Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value)));
+  }
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function MIN
 ////////////////////////////////////////////////////////////////////////////////
 
