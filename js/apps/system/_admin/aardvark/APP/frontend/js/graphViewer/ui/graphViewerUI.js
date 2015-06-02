@@ -343,7 +343,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       aNode.id = idNode;
       aNode.className = "headerButton";
       spanNode = document.createElement("span");
-      spanNode.className = "icon_arangodb_edit";
+      spanNode.className = "fa fa-search-plus";
       $(spanNode).attr("title", "Show custom nodes");
 
       ul.appendChild(liNode);
