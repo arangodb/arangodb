@@ -163,7 +163,7 @@ Scopes::~Scopes () {
 void Scopes::start (ScopeType type) {
   auto scope = new Scope(type);
   try {
-    _activeScopes.push_back(scope);
+    _activeScopes.emplace_back(scope);
   }
   catch (...) {
     delete scope;

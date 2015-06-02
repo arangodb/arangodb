@@ -77,7 +77,7 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
       // we found a sort that we can understand
       std::vector<ExecutionNode*> stack;
       for (auto const& dep : sortNode->getDependencies()) {
-        stack.push_back(dep);
+        stack.emplace_back(dep);
       }
 
       int nodesRelyingOnSort = 0;
@@ -168,7 +168,7 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
         }
       
         for (auto const& dep : deps) {
-          stack.push_back(dep);
+          stack.emplace_back(dep);
         }
       }
 
@@ -935,7 +935,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 
     std::vector<ExecutionNode*> stack;
     for (auto const& dep : n->getDependencies()) {
-      stack.push_back(dep);
+      stack.emplace_back(dep);
     }
 
     while (! stack.empty()) {
@@ -968,7 +968,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
       }
       
       for (auto const& dep : deps) {
-        stack.push_back(dep);
+        stack.emplace_back(dep);
       }
 
       // first, unlink the calculation from the plan
@@ -1015,7 +1015,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
 
     std::vector<ExecutionNode*> stack;
     for (auto const& p : n->getParents()) {
-      stack.push_back(p);
+      stack.emplace_back(p);
     }
       
     bool shouldMove = false;
@@ -1069,7 +1069,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
       }
       
       for (auto const& p : parents) {
-        stack.push_back(p);
+        stack.emplace_back(p);
       }
     }
 
@@ -1316,16 +1316,15 @@ int triagens::aql::splitFiltersRule (Optimizer* opt,
       continue;
     }
 
-    std::vector<AstNode const*> stack;
-    stack.push_back(expression->node());
+    std::vector<AstNode const*> stack{ expression->node() };
 
     while (! stack.empty()) {
       auto current = stack.back();
       stack.pop_back();
     
       if (current->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-        stack.push_back(current->getMember(0));
-        stack.push_back(current->getMember(1));
+        stack.emplace_back(current->getMember(0));
+        stack.emplace_back(current->getMember(1));
       }
       else {
         modified = true;
@@ -1385,7 +1384,7 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
 
     std::vector<ExecutionNode*> stack;
     for (auto const& dep : n->getDependencies()) {
-      stack.push_back(dep);
+      stack.emplace_back(dep);
     }
 
     while (! stack.empty()) {
@@ -1436,7 +1435,7 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
       }
       
       for (auto const& dep : deps) {
-        stack.push_back(dep);
+        stack.emplace_back(dep);
       }
 
       // first, unlink the filter from the plan
@@ -2598,23 +2597,22 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   // to doing a cartesian product, which we do recursively. The result will
   // be in the todo variable:
 
-  std::function <void(size_t, size_t, std::vector<size_t>&)> doworkrecursive;
+  std::function <void(size_t, size_t, std::vector<size_t>&)> doworkRecursive;
   std::vector<std::vector<size_t>> todo;
   std::vector<size_t> work;
 
-
-  doworkrecursive = [&doworkrecursive, &changes, &todo] 
+  doworkRecursive = [&doworkRecursive, &changes, &todo] 
                     (size_t index, size_t limit, std::vector<size_t>& v) {
     if (index >= limit) {
       todo.push_back(v);  // intentionally copy vector
     }
     else if (changes[index].second.size() < 2) {
-      doworkrecursive(index+1, limit, v);
+      doworkRecursive(index + 1, limit, v);
     }
     else {
       for (size_t l = 0; l < changes[index].second.size(); l++) {
         v[index] = l;
-        doworkrecursive(index+1, limit, v);
+        doworkRecursive(index + 1, limit, v);
       }
     }
   };
@@ -2625,10 +2623,10 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   try {
     work.reserve(i);
     for (size_t l = 0; l < i; l++) {
-      work.push_back(0);
+      work.emplace_back(0);
     }
 
-    doworkrecursive(0, i, work);
+    doworkRecursive(0, i, work);
   }
   catch (...) {
     cleanupChanges();
@@ -3297,7 +3295,6 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
   // We use that the order of the nodes is such that a node B that is among the
   // recursive dependencies of a node A is later in the vector.
   for (auto const& n : nodes) {
-
     if (nodesSet.find(n) != nodesSet.end()) {
       std::vector<ExecutionNode*> nn{ n };
       nodesSet.erase(n);
@@ -3309,8 +3306,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
         if (deps.size() == 0) {
           break;
         }
-        if (deps[0]->getType() != 
-            EN::ENUMERATE_COLLECTION) {
+        if (deps[0]->getType() != EN::ENUMERATE_COLLECTION) {
           break;
         }
         nwalker = deps[0];
@@ -3321,8 +3317,8 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
         // Move it into the permutation tuple:
         starts.push_back(permTuple.size());
         for (auto const& nnn : nn) {
-          nodesToPermute.push_back(nnn);
-          permTuple.push_back(permTuple.size());
+          nodesToPermute.emplace_back(nnn);
+          permTuple.emplace_back(permTuple.size());
         }
       }
     }
@@ -3346,7 +3342,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
         // old plan that we want to permute:
         std::vector<ExecutionNode*> newNodes;
         for (size_t j = 0; j < nodesToPermute.size(); j++) {
-          newNodes.push_back(newPlan->getNodeById(nodesToPermute[j]->id()));
+          newNodes.emplace_back(newPlan->getNodeById(nodesToPermute[j]->id()));
         }
 
         // Now get going with the permutations:
@@ -4252,7 +4248,7 @@ struct CommonNodeFinder {
           // don't return, must consider the other side of the condition
         } 
         else {
-          possibleNodes.push_back(lhs);
+          possibleNodes.emplace_back(lhs);
         }
       }
       if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
@@ -4269,7 +4265,7 @@ struct CommonNodeFinder {
           return false;
         } 
         else {
-          possibleNodes.push_back(rhs);
+          possibleNodes.emplace_back(rhs);
           return true;
         }
       }
@@ -4321,12 +4317,12 @@ struct OrToInConverter {
       auto rhs = node->getMember(1);
 
       if (canConvertExpressionWalker(rhs) && ! canConvertExpressionWalker(lhs)) {
-        valueNodes.push_back(lhs);
+        valueNodes.emplace_back(lhs);
         return true;
       } 
       
       if (canConvertExpressionWalker(lhs) && ! canConvertExpressionWalker(rhs)) {
-        valueNodes.push_back(rhs);
+        valueNodes.emplace_back(rhs);
         return true;
       } 
       // if canConvertExpressionWalker(lhs) and canConvertExpressionWalker(rhs), then one of
