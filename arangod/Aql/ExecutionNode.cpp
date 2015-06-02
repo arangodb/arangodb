@@ -2639,10 +2639,17 @@ void ModificationNode::toJsonHelper (triagens::basics::Json& json,
 double ModificationNode::estimateCost (size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  nrItems = 0;
+  if (_outVariableOld != nullptr || 
+      _outVariableNew != nullptr) {
+    // node produces output
+    nrItems = incoming;
+  }
+  else {
+    // node produces no output
+    nrItems = 0;
+  }
   return depCost + incoming;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             methods of RemoveNode

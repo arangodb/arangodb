@@ -224,8 +224,36 @@ void Expression::replaceVariables (std::unordered_map<VariableId, Variable const
   TRI_ASSERT(_node != nullptr);
 
   _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
- 
   invalidate(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a variable reference in the expression with another
+/// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter 
+/// becomes `a + b + 1`
+////////////////////////////////////////////////////////////////////////////////
+
+void Expression::replaceVariableReference (Variable const* variable, 
+                                           AstNode const* node) {
+  _node = _ast->clone(_node);
+  TRI_ASSERT(_node != nullptr);
+
+  _node = _ast->replaceVariableReference(const_cast<AstNode*>(_node), variable, node);
+  invalidate(); 
+
+  if (_type == ATTRIBUTE) {
+    if (_built) {
+      delete _accessor;
+      _accessor = nullptr;
+      _built = false;
+    }
+    // must even set back the expression type so the expression will be analyzed again
+    _type = UNPROCESSED;
+  }
+
+  const_cast<AstNode*>(_node)->clearFlags();
+  _attributes.clear();
+  _hasDeterminedAttributes = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

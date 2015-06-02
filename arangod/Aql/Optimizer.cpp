@@ -572,15 +572,19 @@ void Optimizer::setupRules () {
                useIndexForSortRule_pass6,
                true);
 
-//////////////////////////////////////////////////////////////////////////////
-/// Pass 9: push down calculations beyond FILTERs and LIMITs
-//////////////////////////////////////////////////////////////////////////////
-  
   // finally, push calculations as far down as possible
   registerRule("move-calculations-down",
                moveCalculationsDownRule,
                moveCalculationsDownRule_pass9,
                true);
+
+  // fuse calculations 
+#if 0
+  registerRule("fuse-calculations",
+               fuseCalculationsRule,
+               fuseCalculationsRule_pass9,
+               true);
+#endif
 
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster

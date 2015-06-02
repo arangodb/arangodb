@@ -1094,6 +1094,114 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fuse calculations in the plan
+/// this rule modifies the plan in place
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::fuseCalculationsRule (Optimizer* opt, 
+                                         ExecutionPlan* plan, 
+                                         Optimizer::Rule const* rule) {
+  std::unordered_set<ExecutionNode*> toUnlink;
+  std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::CALCULATION, true);
+ 
+  for (auto const& n : nodes) {
+    auto nn = static_cast<CalculationNode*>(n);
+    if (nn->expression()->canThrow() || 
+        ! nn->expression()->isDeterministic()) {
+      // we will only fuse calculations of expressions that cannot throw and that are deterministic
+      continue;
+    }
+
+    if (toUnlink.find(n) != toUnlink.end()) {
+      // do not process the same node twice
+      continue;
+    }
+     
+    std::unordered_map<Variable const*, ExecutionNode*> toInsert;
+    for (auto&& it : nn->getVariablesUsedHere()) {
+      if (! n->isVarUsedLater(it)) {
+        toInsert.emplace(it, n);
+      }
+    }
+
+    auto const& deps = n->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+    std::vector<ExecutionNode*> stack{ deps[0] };
+      
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      bool handled = false;
+
+      if (current->getType() == EN::CALCULATION) {
+        auto otherExpression = static_cast<CalculationNode const*>(current)->expression();
+
+        if (otherExpression->isDeterministic() && 
+            ! otherExpression->canThrow() &&
+            otherExpression->canRunOnDBServer() == nn->expression()->canRunOnDBServer()) {
+          // found another calculation node
+          auto&& varsSet = current->getVariablesSetHere();
+          if (varsSet.size() == 1) {
+            // check if it is a calculation for a variable that we are looking for
+            auto it = toInsert.find(varsSet[0]);
+
+            if (it != toInsert.end()) {
+              // remove the variable from the list of search variables
+              toInsert.erase(it);
+
+              // replace the variable reference in the original expression with the expression for that variable 
+              auto expression = nn->expression();
+              TRI_ASSERT(expression != nullptr);
+              expression->replaceVariableReference((*it).first, otherExpression->node());
+
+              toUnlink.emplace(current);
+     
+              // insert the calculations' own referenced variables into the list of search variables
+              for (auto&& it2 : current->getVariablesUsedHere()) {
+                if (! n->isVarUsedLater(it2)) {
+                  toInsert.emplace(it2, n);
+                }
+              }
+
+              handled = true;
+            }
+          }
+        }
+      }
+      
+      if (! handled) {
+        // remove all variables from our list that might be used elsewhere
+        for (auto&& it : current->getVariablesUsedHere()) {
+          toInsert.erase(it);
+        }
+      }
+
+      if (toInsert.empty()) {
+        // done
+        break;
+      }
+
+      auto const& deps = current->getDependencies();
+      if (deps.size() != 1) {
+        break;
+      }
+      
+      stack.emplace_back(deps[0]);
+    }
+  }
+        
+  if (! toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule, ! toUnlink.empty());
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the "right" type of AggregateNode and 
 /// add a sort node for each COLLECT (note: the sort may be removed later) 
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)
