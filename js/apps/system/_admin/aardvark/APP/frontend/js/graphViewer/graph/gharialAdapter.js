@@ -321,15 +321,20 @@ function GharialAdapter(nodes, edges, viewer, config) {
 
   self.loadNodeFromTreeById = function(nodeId, callback) {
 
-
     sendQuery(queries.traversal, {
       example: nodeId
     }, function(res) {
-      _.each(self.addCustomNodes(), function(node) {
-        res[0][0].push(node);
-      });
 
-      parseResultOfTraversal(res, callback);
+      _.each(self.addCustomNodes(), function(node) {
+        sendQuery(queries.traversal, {
+          example: node.vertex._id
+        }, function(res2) {
+          _.each(res2[0][0], function(obj) {
+            res[0][0].push(obj);
+          });
+          parseResultOfTraversal(res, callback);
+        });
+      });
     });
 
   };
