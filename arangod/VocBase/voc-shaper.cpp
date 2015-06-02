@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief json shaper used to compute the shape of an json object
+/// @brief json shaper used to compute the shape of a json object
 ///
 /// @file
 ///
