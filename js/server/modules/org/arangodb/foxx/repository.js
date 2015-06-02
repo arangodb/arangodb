@@ -191,7 +191,12 @@ _.extend(Repository.prototype, {
     model.emit('beforeCreate');
     this.emit('beforeSave', model);
     model.emit('beforeSave');
-    var id_and_rev = this.collection.save(model.forDB());
+    var id_and_rev;
+    if (this.collection.type() === 3) {
+      id_and_rev = this.collection.save(model.get('_from'), model.get('_to'), model.forDB());
+    } else {
+      id_and_rev = this.collection.save(model.forDB());
+    }
     model.set(id_and_rev);
     this.emit('afterSave', model);
     model.emit('afterSave');
