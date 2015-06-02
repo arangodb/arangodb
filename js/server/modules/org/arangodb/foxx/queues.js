@@ -162,7 +162,14 @@ function getJobs(queue, status, type) {
   }
 
   if (type !== undefined) {
-    query = query.filter(qb.ref('@type').eq('job.type'));
+    if (typeof type === 'string') {
+      query = query.filter(qb.ref('@type').eq('job.type'));
+    } else {
+      query = query.filter(
+        qb.ref('@type.name').eq('job.type.name')
+        .and(qb.ref('@type.mount').eq('job.type.mount'))
+      );
+    }
     vars.type = type;
   }
 
