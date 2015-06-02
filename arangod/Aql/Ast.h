@@ -549,6 +549,16 @@ namespace triagens {
                                    std::unordered_map<VariableId, Variable const*> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a variable reference in the expression with another 
+/// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter 
+/// becomes `a + b + 1`
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* replaceVariableReference (AstNode*,
+                                           Variable const*,
+                                           AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the AST
 ////////////////////////////////////////////////////////////////////////////////
 

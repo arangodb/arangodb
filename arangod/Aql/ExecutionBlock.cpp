@@ -4689,6 +4689,7 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
           result->setValue(dstRow,
                            _outRegOld,
                            AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
+
         }
       }
         
