@@ -446,9 +446,10 @@ bool HttpsCommTask::trySSLWrite () {
 
 void HttpsCommTask::shutdownSsl (bool initShutdown) {
   static int const SHUTDOWN_ITERATIONS = 10;
-  bool ok = false;
 
   if (nullptr != _ssl) {
+    bool ok = false;
+
     if (initShutdown) {
       for (int i = 0;  i < SHUTDOWN_ITERATIONS;  ++i) {
         ERR_clear_error();

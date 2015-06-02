@@ -310,9 +310,9 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::done (size_t maxCount) {
 const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus (AsyncJobResult::Status status,
                                                                 size_t maxCount) {
   vector<AsyncJobResult::IdType> jobs;
-  size_t n = 0;
 
   {
+    size_t n = 0;
     READ_LOCKER(_lock);
     auto it = _jobs.begin();
 
@@ -321,7 +321,7 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus (AsyncJobResult::
       AsyncJobResult::IdType jobId = (*it).first;
 
       if ((*it).second._status == status) {
-        jobs.push_back(jobId);
+        jobs.emplace_back(jobId);
 
         if (++n >= maxCount) {
           break;

@@ -3040,10 +3040,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
     else {
       // initial subquery execution or subquery is not constant
 
-      // prevent accidental double-freeing in case of exception
-      subqueryResults = nullptr;
-
-      // and execute the subquery
+      // execute the subquery
       subqueryResults = executeSubquery(); 
       TRI_ASSERT(subqueryResults != nullptr);
 

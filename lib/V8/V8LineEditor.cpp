@@ -82,13 +82,6 @@ bool V8Completer::isComplete (std::string const& source, size_t lineno, size_t c
       state = SINGLE_QUOTE;
       ptr++;
     }
-    else if (state == MULTI_COMMENT) {
-      if (*ptr == '*') {
-        state = MULTI_COMMENT_1;
-      }
-
-      ++ptr;
-    }
     else if (state == BACKTICK) {
       if (*ptr == '\\') {
         state = BACKTICK_ESC;

@@ -730,7 +730,6 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
       return res;
     }
 
-    uint32_t j = 0;
     QueryResultV8 result(TRI_ERROR_NO_ERROR);
     result.result = v8::Array::New(isolate);
     triagens::basics::Json stats;
@@ -741,6 +740,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
     AqlItemBlock* value = nullptr;
 
     try {
+      uint32_t j = 0;
       while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
         auto doc = value->getDocumentCollection(resultRegister);
 

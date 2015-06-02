@@ -590,8 +590,8 @@ void AgencyComm::cleanup () {
   AgencyComm::disconnect();
   
   while (true) {
-    bool busyFound = false;
     {
+      bool busyFound = false;
       WRITE_LOCKER(AgencyComm::_globalLock);
 
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
@@ -609,7 +609,7 @@ void AgencyComm::cleanup () {
           delete agencyEndpoint;
         }
       }
-      if (!busyFound) {
+      if (! busyFound) {
         break;
       }
     }
