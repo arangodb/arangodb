@@ -444,7 +444,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto name = static_cast<char const*>(node->getData());
 
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs, true);
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs, false);
 
     auto j = result.extractObjectMember(trx, myCollection, name, true, _buffer);
     result.destroy();
@@ -535,7 +535,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     std::unique_ptr<Json> array(new Json(Json::Array, n));
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
       TRI_document_collection_t const* myCollection = nullptr;
 
       AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs, false);
@@ -562,7 +562,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     std::unique_ptr<Json> object(new Json(Json::Object, n));
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
       TRI_document_collection_t const* myCollection = nullptr;
 
       TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
@@ -616,10 +616,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_ASSERT(func->implementation != nullptr);
 
     TRI_document_collection_t const* myCollection = nullptr;
-    auto member = node->getMember(0);
+    auto member = node->getMemberUnchecked(0);
     TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs, true);
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs, false);
        
     try { 
       auto res2 = func->implementation(_ast->query(), trx, myCollection, result);
