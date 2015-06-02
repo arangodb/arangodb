@@ -2321,21 +2321,21 @@ void IndexRangeBlock::readHashIndex (size_t atMost) {
 // only have equalities followed by a single arbitrary comparison (i.e x.a == 1
 // && x.b == 2 && x.c > 3 && x.c <= 4). Then we do: 
 //
-//   TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, left, right, NULL, shaper,
+//   TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, left, right, nullptr, shaper,
 //     2);
 //
 // where 
 //
-//   left =  TRI_CreateIndexOperator(TRI_GT_INDEX_OPERATOR, NULL, NULL, [1,2,3],
+//   left =  TRI_CreateIndexOperator(TRI_GT_INDEX_OPERATOR, nullptr, nullptr, [1,2,3],
 //     shaper, 3)
 //
-//   right =  TRI_CreateIndexOperator(TRI_LE_INDEX_OPERATOR, NULL, NULL, [1,2,4],
+//   right =  TRI_CreateIndexOperator(TRI_LE_INDEX_OPERATOR, nullptr, nullptr, [1,2,4],
 //     shaper, 3)
 //
 // If the final comparison is an equality (x.a == 1 && x.b == 2 && x.c ==3), then 
 // we just do:
 //
-//   TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL, NULL, [1,2,3],
+//   TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr, nullptr, [1,2,3],
 //     shaper, 3)
 //
 // It is necessary that values of the attributes are listed in the correct
