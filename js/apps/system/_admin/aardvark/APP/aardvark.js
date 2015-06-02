@@ -110,12 +110,12 @@ publicController.get("/unauthorized", function() {
 publicController.get("/index.html", function(req, res) {
   var prefix = '/_db/' + encodeURIComponent(req.database) + applicationContext.mount;
 
-  res.status(301);
-  if (cluster.dispatcherDisabled()) {
-    res.set("Location", prefix + "/standalone.html");
-  } else {
-    res.set("Location", prefix + "/cluster.html");
-  }
+  res.status(302);
+  res.set("Location", prefix + (
+    cluster.dispatcherDisabled()
+    ? "/standalone.html"
+    : "/cluster.html"
+  ));
 });
 
 controller.activateSessions({
