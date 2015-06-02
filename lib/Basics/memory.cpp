@@ -286,37 +286,6 @@ TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the memory zone for a zone id
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_memory_zone_t* TRI_MemoryZone (TRI_memory_zone_id_t zid) {
-  if (zid == 0) {
-    return TRI_CORE_MEM_ZONE;
-  }
-  else if (zid != 1) {
-    TRI_ASSERT(false);
-    // fall-through for non-debug builds
-  }
-  return TRI_UNKNOWN_MEM_ZONE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the memory zone id for a zone
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_memory_zone_id_t TRI_MemoryZoneId (TRI_memory_zone_t const* zone) {
-  if (zone == TRI_CORE_MEM_ZONE) {
-    return TRI_CORE_MEM_ZONE->_zid;
-  }
-  else if (zone != TRI_UNKNOWN_MEM_ZONE) {
-    TRI_ASSERT(false);
-    // fall-through for non-debug builds
-  }
-
-  return TRI_UNKNOWN_MEM_ZONE->_zid;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the unknown memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
