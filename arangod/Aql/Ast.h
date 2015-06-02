@@ -134,7 +134,7 @@ namespace triagens {
           auto root = createNode(type);
 
           // save the root node
-          _queries.push_back(root);
+          _queries.emplace_back(root);
 
           // set the current root node if everything went well
           _root = root;
