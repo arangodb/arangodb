@@ -161,7 +161,7 @@
       "production"      : "activates production mode for the given mountpoint",
       "replace"         : ["replaces an installed Foxx application",
                            "WARNING: this action will remove application data if the application implements teardown!" ],
-      "script"          : "runs the given script of a foxx app mounted at the given mountpoint",
+      "run"             : "runs the given script of a foxx app mounted at the given mountpoint",
       "search"          : "searches the local foxx-apps repository",
       "set-dependencies": "sets the dependencies for the given mountpoint",
       "setup"           : "executes the setup script",
@@ -211,9 +211,9 @@
 /// Output:
 /// -
 ////////////////////////////////////////////////////////////////////////////////
-  var script = function(mount, name, options) {
+  var runScript = function(mount, name, options) {
     checkParameter(
-      "script(<mount>, <name>, [<options>])",
+      "run(<mount>, <name>, [<options>])",
       [ [ "Mount path", "string" ], [ "Script name", "string" ] ],
       [ mount, name ] );
     var res;
@@ -560,16 +560,16 @@
     try {
       switch (type) {
         case "setup":
-          script(args[1], "setup");
+          runScript(args[1], "setup");
           break;
         case "teardown":
-          script(args[1], "teardown");
+          runScript(args[1], "teardown");
           break;
-        case "script":
+        case "run":
           options = args.slice(3).map(function (arg) {
             return JSON.parse(arg);
           });
-          res = script(args[1], args[2], options);
+          res = runScript(args[1], args[2], options);
           printf(JSON.stringify(res, null, 2) + "\n");
           break;
         case "tests":
@@ -704,9 +704,9 @@
 // -----------------------------------------------------------------------------
 
   exports.install = install;
-  exports.setup = function (mount, opts) {return script(mount, "setup", opts);};
-  exports.teardown = function (mount, opts) {return script(mount, "teardown", opts);};
-  exports.script = script;
+  exports.setup = function (mount, opts) {return runScript(mount, "setup", opts);};
+  exports.teardown = function (mount, opts) {return runScript(mount, "teardown", opts);};
+  exports.run = runScript;
   exports.tests = tests;
   exports.uninstall = uninstall;
   exports.replace = replace;
