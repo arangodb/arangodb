@@ -807,11 +807,13 @@ void HttpCommTask::addResponse (HttpResponse* response) {
   // clear body
   response->body().clear();
           
-  double totalTime = 0.0;
+  double totalTime;
 
 #ifdef TRI_ENABLE_FIGURES
   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
   totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
+#else
+  totalTime = 0.0;
 #endif
 
   // disable the following statement to prevent excessive logging of incoming requests
@@ -1081,7 +1083,7 @@ void HttpCommTask::resetState (bool close) {
 
 bool HttpCommTask::sendWwwAuthenticateHeader () const {
   bool found;
-  string const value = _request->header("x-omit-www-authenticate", found);
+  _request->header("x-omit-www-authenticate", found);
 
   return ! found;
 }

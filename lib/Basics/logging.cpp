@@ -678,7 +678,7 @@ static void OutputMessage (TRI_log_level_e level,
   else {
     MUTEX_LOCKER(AppendersLock);
 
-    for (auto it : Appenders) {
+    for (auto& it : Appenders) {
       // apply severity filter
       if (it->_severityFilter != TRI_LOG_SEVERITY_UNKNOWN &&
           it->_severityFilter != severity) {
@@ -734,11 +734,11 @@ static void MessageQueueWorker (void* data) {
       TRI_ASSERT(! buffer.empty());
 
       // output messages using the appenders
-      for (auto msg : buffer) {
+      for (auto& msg : buffer) {
         {
           MUTEX_LOCKER(AppendersLock);
 
-          for (auto it : Appenders) {
+          for (auto& it : Appenders) {
             // apply severity filter
             if (it->_severityFilter != TRI_LOG_SEVERITY_UNKNOWN &&
                 it->_severityFilter != msg->_severity) {
@@ -786,7 +786,7 @@ static void MessageQueueWorker (void* data) {
   // cleanup
   {
     MUTEX_LOCKER(LogMessageQueueLock);
-    for (auto it : LogMessageQueue) {
+    for (auto& it : LogMessageQueue) {
       delete it;
     }
     LogMessageQueue.clear();
@@ -932,7 +932,7 @@ static void LogThread (char const* func,
 static void CloseLogging () {
   MUTEX_LOCKER(AppendersLock);
 
-  for (auto it : Appenders) {
+  for (auto& it : Appenders) {
     delete it;
   }
 
@@ -985,44 +985,44 @@ char const* TRI_LogLevelLogging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetLogLevelLogging (char const* level) {
-  IsFatal = 1;
-  IsError = 0;
+  IsFatal   = 1;
+  IsError   = 0;
   IsWarning = 0;
-  IsInfo = 0;
-  IsDebug = 0;
-  IsTrace = 0;
+  IsInfo    = 0;
+  IsDebug   = 0;
+  IsTrace   = 0;
 
   if (TRI_CaseEqualString(level, "fatal")) {
   }
   else if (TRI_CaseEqualString(level, "error")) {
-    IsError = 1;
+    IsError   = 1;
   }
   else if (TRI_CaseEqualString(level, "warning")) {
-    IsError = 1;
+    IsError   = 1;
     IsWarning = 1;
   }
   else if (TRI_CaseEqualString(level, "info")) {
-    IsError = 1;
+    IsError   = 1;
     IsWarning = 1;
-    IsInfo = 1;
+    IsInfo    = 1;
   }
   else if (TRI_CaseEqualString(level, "debug")) {
-    IsError = 1;
+    IsError   = 1;
     IsWarning = 1;
-    IsInfo = 1;
-    IsDebug = 1;
+    IsInfo    = 1;
+    IsDebug   = 1;
   }
   else if (TRI_CaseEqualString(level, "trace")) {
-    IsError = 1;
+    IsError   = 1;
     IsWarning = 1;
-    IsInfo = 1;
-    IsDebug = 1;
-    IsTrace = 1;
+    IsInfo    = 1;
+    IsDebug   = 1;
+    IsTrace   = 1;
   }
   else {
-    IsError = 1;
+    IsError   = 1;
     IsWarning = 1;
-    IsInfo = 1;
+    IsInfo   = 1;
 
     LOG_ERROR("strange log level '%s'. using log level 'info'", level);
   }
@@ -1134,7 +1134,6 @@ bool TRI_IsFatalLogging () {
 
 bool TRI_IsErrorLogging () {
   return IsError != 0;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1214,14 +1213,12 @@ void TRI_Log (char const* func,
               TRI_log_severity_e severity,
               char const* fmt,
               ...) {
-  TRI_pid_t processId;
-  TRI_tid_t threadId;
   va_list ap;
 
   va_start(ap, fmt);
 #ifdef _WIN32
   #include "win-utils.h"
-  if ((level == TRI_LOG_LEVEL_FATAL) || (level == TRI_LOG_LEVEL_ERROR)) {
+  if (level == TRI_LOG_LEVEL_FATAL || level == TRI_LOG_LEVEL_ERROR) {
     va_list wva;
     va_copy(wva, ap);
     TRI_LogWindowsEventlog(func, file, line, fmt, ap);
@@ -1229,12 +1226,12 @@ void TRI_Log (char const* func,
   }
 #endif
   if (! LoggingActive) {
-    return;
     va_end(ap);
+    return;
   }
 
-  processId = TRI_CurrentProcessId();
-  threadId = TRI_CurrentThreadId();
+  TRI_pid_t processId = TRI_CurrentProcessId();
+  TRI_tid_t threadId  = TRI_CurrentThreadId();
 
   LogThread(func, file, line, level, severity, processId, threadId, fmt, ap);
   va_end(ap);
@@ -1407,7 +1404,7 @@ void log_appender_file_t::logMessage (TRI_log_level_e level,
 
     // this function is already called when the appenders lock is held
     // no need to lock it again
-    for (auto it : Appenders) {
+    for (auto& it : Appenders) {
       char* details = it->details();
 
       if (details != nullptr) {
@@ -1934,7 +1931,7 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
 void TRI_ReopenLogging () {
   MUTEX_LOCKER(AppendersLock);
 
-  for (auto it : Appenders) {
+  for (auto& it : Appenders) {
     it->reopenLog();
   }
 }
