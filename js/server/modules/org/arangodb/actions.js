@@ -1437,9 +1437,8 @@ function defineHttp (options) {
 
   try {
     internal.defineAction(url, callback, parameter);
-  }
-  catch (err) {
-    console.error("action '%s' encountered error: %s", url, err);
+  } catch (e) {
+    console.errorLines("action '%s' encountered error:\n%s", url, e.stack || String(e));
   }
 }
 
