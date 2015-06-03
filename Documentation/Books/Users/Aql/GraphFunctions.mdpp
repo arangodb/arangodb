@@ -44,7 +44,11 @@ instead.
   Available options:
 
   * *includeData* is a boolean value to define if the returned documents should be extracted instead
-    of returning their ids only. Default *false*.
+    of returning their ids only. The default is *false*.
+
+  Note: in ArangoDB versions prior to 2.6 *NEIGHBORS* returned the array of neighbor vertices with 
+  all attributes and not just the vertex ids. To return to the same behavior, set the *includeData*
+  option to *true* in 2.6 and above.
 
 *Examples*
 
