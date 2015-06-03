@@ -458,7 +458,6 @@ function BaseMiddleware() {
   };
 
   return {
-    stringRepresentation: String(middleware),
     functionRepresentation: middleware
   };
 }
