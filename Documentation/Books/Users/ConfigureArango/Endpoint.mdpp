@@ -5,8 +5,8 @@ The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 The endpoints are normally specified either in ArangoDB's configuration file or on
 the command-line, using the ["--server.endpoint"](../ConfigureArango/Arangod.md) option.
 The default endpoint for ArangoDB is *tcp://127.0.0.1:8529* or *tcp://localhost:8529*.
-ArangoDB can also do a so called *broadcast bind* using *tcp://0.0.0.0:8529*; which
-will result in it being reachable on all interfaces of the host. This may be usefull
+ArangoDB can also do a so called *broadcast bind* using *tcp://0.0.0.0:8529*. This way
+it will be reachable on all interfaces of the host. This may be useful
 on development systems that frequently change their network setup like laptops.
 
 The number of endpoints can also be changed at runtime using the API described
@@ -19,15 +19,15 @@ just specific databases.
 
 Endpoints equal TCP ports to be bound. On one specific ethernet interface each port
 can only be bound **exactly once**. You can look up your available interfaces using
-the *ifconfig* command on Linux / MacOSX; the Windows equivilant is *ipconfig*;
-[See the wikipedia for more details](http://en.wikipedia.org/wiki/Ifconfig).
-The general names of the interfaces differ on os'es and hardwares they run on.
+the *ifconfig* command on Linux / MacOSX - the Windows equivalent is *ipconfig*
+([See Wikipedia for more details](http://en.wikipedia.org/wiki/Ifconfig)).
+The general names of the interfaces differ on OS's and hardwares they run on.
 However, typically every host has a so called
 [loopback interface](http://en.wikipedia.org/wiki/Loop_device), which is a
 virtual interface. By convention it always has the address *127.0.0.1* or *::1* (ipv6),
 and can only be reached from exactly the very same host.
 Ethernet interfaces usually have names like *eth0*, *wlan0*, *eth1:17*, *le0* or
-a plain text name in windows.
+a plain text name in Windows.
 
 To find out which services already use ports (so ArangoDB can't bind them anymore),
 you can use the [netstat command](http://en.wikipedia.org/wiki/Netstat)
