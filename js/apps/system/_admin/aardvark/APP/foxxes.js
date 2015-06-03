@@ -95,26 +95,21 @@
     var mount = validateMount(req);
     var upgrade = req.params("upgrade") || false;
     var replace = req.params("replace") || false;
-    try {
-      var app;
-      if (upgrade) {
-        app = FoxxManager.upgrade(appInfo, mount, options);
-      } else if (replace) {
-        app = FoxxManager.replace(appInfo, mount, options);
-      } else {
-        app = FoxxManager.install(appInfo, mount, options);
-      }
-      var config = FoxxManager.configuration(mount);
-      res.json({
-        error: false,
-        configuration: config,
-        name: app.name,
-        version: app.version
-      });
-    } catch (e) {
-      e.error = true;
-      res.json(e);
+    var app;
+    if (upgrade) {
+      app = FoxxManager.upgrade(appInfo, mount, options);
+    } else if (replace) {
+      app = FoxxManager.replace(appInfo, mount, options);
+    } else {
+      app = FoxxManager.install(appInfo, mount, options);
     }
+    var config = FoxxManager.configuration(mount);
+    res.json({
+      error: false,
+      configuration: config,
+      name: app.name,
+      version: app.version
+    });
   };
 
   /** Install a Foxx from the store
@@ -171,23 +166,14 @@
   controller.delete("/", function (req, res) {
     var mount = validateMount(req);
     var runTeardown = req.parameters.teardown;
-    try {
-      var app = FoxxManager.uninstall(mount, {
-        teardown: runTeardown
-      });
-      res.json({
-        error: false,
-        name: app.name,
-        version: app.version
-      });
-    } catch (e) {
-      res.json({
-        error: true,
-        message: e.message || String(e)
-      });
-      res.json(e);
-      res.status = actions.HTTP_SERVER_ERROR;
-    }
+    var app = FoxxManager.uninstall(mount, {
+      teardown: runTeardown
+    });
+    res.json({
+      error: false,
+      name: app.name,
+      version: app.version
+    });
   })
   .queryParam("mount", mountPoint)
   .queryParam("teardown", joi.boolean().default(true));
