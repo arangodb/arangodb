@@ -387,6 +387,22 @@ v2.6.0 (XXXX-XX-XX)
       GRAPH_NEIGHBORS(<graph>, <vertex>, { includeData: true })
 
 * INCOMPATIBLE CHANGE:
+  
+  The AQL function `GRAPH_COMMON_NEIGHBORS` now provides an additional option `includeData`.
+  This option allows controlling whether the function should return the complete vertices
+  or just their IDs. Returning only the IDs instead of the full vertices can lead to
+  improved performance .
+
+  If provided, `includeData` is set to `true`, all vertices in the result will be returned
+  with all their attributes. The default value of `includeData` is `false`.
+  This makes the default function results incompatible with previous versions of ArangoDB. 
+
+  To get the old result style in ArangoDB 2.6, please set the options as follows in calls
+  to `GRAPH_COMMON_NEIGHBORS`:
+  
+      GRAPH_COMMON_NEIGHBORS(<graph>, <vertexExamples1>, <vertexExamples2>, { includeData: true }, { includeData: true })
+
+* INCOMPATIBLE CHANGE:
 
   The AQL function `GRAPH_SHORTEST_PATH` now provides an additional option `includeData`.
   This option allows controlling whether the function should return the complete vertices
