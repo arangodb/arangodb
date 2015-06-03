@@ -1993,22 +1993,20 @@ int TRI_StartServer (TRI_server_t* server,
   if (server->_appPath != nullptr &&
       strlen(server->_appPath) > 0 &&
       ! TRI_IsDirectory(server->_appPath)) {
-    if (! performUpgrade) {
-      LOG_ERROR("specified --javascript.app-path directory '%s' does not exist. "
-                "Please start again with --upgrade option to create it.",
-                server->_appPath);
-      return TRI_ERROR_BAD_PARAMETER;
-    }
 
     long systemError;
     std::string errorMessage;
-    res = TRI_CreateDirectory(server->_appPath, systemError, errorMessage);
+    int res = TRI_CreateRecursiveDirectory(server->_appPath, systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("unable to create --javascript.app-path directory '%s': %s",
                 server->_appPath,
                 errorMessage.c_str());
       return res;
+    }
+    else {
+        LOG_INFO("created --javascript.app-path directory '%s'.",
+                 server->_appPath);
     }
   }
 
