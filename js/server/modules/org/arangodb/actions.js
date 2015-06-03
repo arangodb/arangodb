@@ -41,6 +41,7 @@ var _ = require("underscore");
 
 var arangodb = require("org/arangodb");
 var foxxManager = require("org/arangodb/foxx/manager");
+var ErrorStackParser = require("error-stack-parser");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -1989,29 +1990,19 @@ function resultException (req, res, err, headers, verbose) {
   'use strict';
 
   var code;
-  var msg;
+  var msg = err.message;
   var num;
 
   var info = {};
-  var showTrace = false;
 
-  if (typeof verbose === 'string') {
-    msg = verbose;
+  if (verbose !== false) {
     info.exception = String(err);
-    showTrace = true;
-  }
-  else if (verbose || verbose === undefined) {
-    info.exception = String(err);
-    msg = "An error has occurred during execution: " + info.exception;
-    showTrace = true;
-  }
-  else {
-    msg = String(err);
-  }
-
-  if (showTrace) {
     if (err.stack) {
-      info.stacktrace = String(err.stack).split("\n");
+      err.stack = err.stack.replace(/\n+$/, '');
+      info.stacktrace = ErrorStackParser.parse(err);
+    }
+    if (typeof verbose === 'string') {
+      msg = verbose;
     }
   }
 
@@ -2024,10 +2015,10 @@ function resultException (req, res, err, headers, verbose) {
     }
 
     if (err.errorMessage !== "") {
-      if (typeof verbose === 'string') {
+      if (verbose !== false) {
         info.message = err.errorMessage;
       }
-      else {
+      if (typeof verbose !== 'string') {
         msg = err.errorMessage;
       }
     }
