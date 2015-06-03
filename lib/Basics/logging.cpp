@@ -1346,8 +1346,8 @@ void TRI_Log (char const* func,
   }
 #endif
   if (! LoggingActive) {
-    return;
     va_end(ap);
+    return;
   }
 
   processId = TRI_CurrentProcessId();
