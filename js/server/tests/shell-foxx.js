@@ -964,7 +964,8 @@ function DocumentationAndConstraintsSpec () {
         paramName = 'flurb',
         description = stub(),
         requestBody = 'banana',
-        schema = joi.array().items({x: joi.number().integer().required()});
+        schema = joi.array().items({x: joi.number().integer().required()}),
+        called = false;
 
       allow(req)
         .toReceive("body")
@@ -980,6 +981,7 @@ function DocumentationAndConstraintsSpec () {
       var callback = transformRoute(routes[0].action);
       callback(req, res);
 
+      assertFalse(called);
       assertEqual(res.responseCode, 400);
     },
 
