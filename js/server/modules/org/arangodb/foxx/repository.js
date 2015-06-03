@@ -90,7 +90,7 @@ var EVENTS = [
 ////////////////////////////////////////////////////////////////////////////////
 
 function Repository(collection, opts) {
-  if (! collection instanceof ArangoCollection) {
+  if (!(collection instanceof ArangoCollection)) {
     throw new ArangoError({
       errorNum: errors.ERROR_BAD_PARAMETER.code,
       errorMessage: "Collection parameter has to be of type ArangoCollection"
