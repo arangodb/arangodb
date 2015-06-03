@@ -124,6 +124,15 @@ AC_ARG_ENABLE(tcmalloc,
   [tr_TCMALLOC=no]
 )
 
+if test "x$tr_TCMALLOC" = "xyes" ; then
+  AC_MSG_CHECKING([for tcmalloc])
+
+  AC_SEARCH_LIBS([tc_malloc], [tcmalloc tcmalloc_minimal tcmalloc_debug], [], [
+    AC_MSG_ERROR([unable to find the tc_malloc library function])
+  ])
+fi
+
+
 AM_CONDITIONAL(ENABLE_TCMALLOC, test "x$tr_TCMALLOC" = xyes)
 
 if test "x$tr_TCMALLOC" = "xyes"; then
@@ -132,6 +141,12 @@ else
   TCMALLOC_LIBS=""
 fi
 AC_SUBST(TCMALLOC_LIBS)
+
+if test "x$tr_TCMALLOC" = "xyes";  then
+  BASIC_INFO="$BASIC_INFO|TCMALLOC support: enabled ($TCMALLOC_LIBS)"
+else
+  BASIC_INFO="$BASIC_INFO|TCMALLOC support: disabled"
+fi
 
 dnl ============================================================================
 dnl --SECTION--                                                          OPTIONS
