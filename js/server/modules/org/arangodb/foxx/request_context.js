@@ -35,6 +35,7 @@ var SwaggerDocs = require("org/arangodb/foxx/swaggerDocs").Docs,
   internal = require("org/arangodb/foxx/internals"),
   toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema,
   is = require("org/arangodb/is"),
+  BadRequest = require("http-errors").BadRequest,
   UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError;
 
 function createBodyParamExtractor(rootElement, paramName, allowInvalid) {
@@ -100,7 +101,7 @@ function validateOrThrow(raw, schema, allowInvalid) {
   }
   var result = joi.validate(raw, schema);
   if (result.error && !allowInvalid) {
-    throw result.error;
+    throw new BadRequest(result.error.message);
   }
   return result.value;
 }
