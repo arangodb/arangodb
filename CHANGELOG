@@ -1,6 +1,15 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* added `--enable-tcmalloc` configure option.
+
+  When this option is set, arangod and the client tools will be linked against tcmalloc, which replaces
+  the system allocator. When the option is set, a tcmalloc library must be present on the system under
+  one of the names `libtcmalloc`, `libtcmalloc_minimal` or `libtcmalloc_debug`. 
+
+  As this is a configure option, it is supported for manual builds on Linux-like systems only. tcmalloc
+  support is currently experimental.
+
 * issue #1353: Windows: HTTP API - incorrect path in errorMessage
 
 * issue #1347: added option `--create-database` for arangorestore. 

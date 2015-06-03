@@ -53,7 +53,7 @@ In addition you will need the following libraries:
 
 * the GNU readline library
 * the OpenSSL library
-* Go 1.2 (or higher)
+* Go 1.4 (or higher)
 
 Under Mac OS X you also need to install:
 
@@ -184,7 +184,7 @@ Verify that your system contains
 * Python, version 2 or 3
 * the OpenSSL library, version 1.0.1g or higher (development package)
 * the GNU readline library (development package)
-* Go, version 1.2.2
+* Go, version 1.4.1
 
 Most Linux systems already supply RPMs or DPKGs for these packages. 
 Some distributions, for example Ubuntu 12.04 or Centos 5, provide only very out-dated 
@@ -287,6 +287,14 @@ option is useful for writing tests.
 
 Builds a debug version of the V8 library. This is useful only when working on the
 V8 integration inside ArangoDB. 
+
+`--enable-tcmalloc`
+
+Links arangod and the client tools against the tcmalloc library installed on the
+system. Note that when this option is set, a tcmalloc library must be present
+and exposed under the name `libtcmalloc`, `libtcmalloc_minimal` or `libtcmalloc_debug`.
+
+tcmalloc support in ArangoDB is currently experimental.
 
 !SUBSECTION Compiling Go
 
