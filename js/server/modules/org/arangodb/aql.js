@@ -7161,7 +7161,7 @@ function AQL_GRAPH_VERTICES (graphName,
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all common outbound neighbors of Hamburg with any other location
-/// which have a maximal depth of 2 :
+/// which have a maximal depth of 2:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors2}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -7184,9 +7184,7 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
   'use strict';
 
   options1 = options1 || {};
-  options1.includeData = false;
   options2 = options2 || {};
-  options2.includeData = false;
   let graph_module = require("org/arangodb/general-graph");
   let graph = graph_module._graph(graphName);
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
