@@ -335,16 +335,15 @@ var transformControllerToRoute = function (routeInfo, route, isDevel) {
         }
       }
       // Default Error Handler
-      var body = {
-        error: e.message || String(e)
-      };
-      if (isDevel) {
-        body.stack = e.stack;
+      if (!e.statusCode) {
+        console.errorLines(
+          "Error in foxx route '%s': '%s', Stacktrace:\n%s",
+          route,
+          e.message || String(e),
+          e.stack || ""
+        );
       }
-      res.status(500);
-      res.json(body);
-      console.errorLines("Error in foxx route '%s': '%s', Stacktrace: %s",
-        route, e.message || String(e), e.stack || "");
+      actions.resultException(req, res, e, undefined, isDevel);
     }
   };
 };
