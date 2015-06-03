@@ -23,7 +23,7 @@ request URI path as follows:
 The above will load the web interface for the database *mydb*.
 
 To restrict access to the web interface, use 
-[ArangoDB's authentication feature](../GeneralHttp/README.html#Authentication).
+[ArangoDB's authentication feature](../GeneralHttp/index.html#Authentication).
 
 !SECTION Select Functionality provided by the Web Interface
 
@@ -71,7 +71,7 @@ application can be installed multiple times using different mount points.
 
 The *Graphs* tab provides a viewer facility for graph data stored in ArangoDB. It
 allows browsing ArangoDB graphs stored in the *_graphs* system collection or a
-graph consisting of an arbitrary vertex and [edge collection](../Glossary/README.html#edge_collection). 
+graph consisting of an arbitrary vertex and [edge collection](../Glossary/index.html#edge_collection). 
 
 Please note that the graph viewer requires client-side SVG and that you need a
 browser capable of rendering that. Especially Internet Explorer browsers older

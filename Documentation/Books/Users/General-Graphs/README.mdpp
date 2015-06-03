@@ -10,7 +10,7 @@ There is no need to include the referenced collections within the query, this mo
 A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge
 collections*. In general a vertex is stored in a document collection.
 The type of edges that are allowed within a graph is defined by *edge definitions*:
-An edge definition is a combination of a [edge collection](../Glossary/README.html#edge_collection), and the vertex collections that the edges within this collection can connect.
+An edge definition is a combination of a [edge collection](../Glossary/index.html#edge_collection), and the vertex collections that the edges within this collection can connect.
 A graph can have an arbitrary number of edge definitions and arbitrary many additional vertex collections.
 
 !SUBSECTION Warning
