@@ -174,9 +174,6 @@ function Sessions(opts) {
     if (opts.cookie.secret && typeof opts.cookie.secret !== 'string') {
       throw new Error('Cookie secret must be a string or empty.');
     }
-    if (!opts.cookie.name) {
-      opts.cookie.name = 'sid';
-    }
   } else if (opts.type === 'header') {
     if (opts.header && typeof opts.header !== 'string') {
       throw new Error('Header name must be a string or empty.');
