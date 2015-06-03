@@ -2,12 +2,12 @@
 
 
 function isNothing(subject) {
-  return (undefined === subject) || (null === subject);
+  return (typeof subject === 'undefined') || (null === subject);
 }
 
 
 function isObject(subject) {
-  return ('object' === typeof subject) && (null !== subject);
+  return (typeof subject === 'object') && (null !== subject);
 }
 
 
@@ -16,9 +16,8 @@ function toArray(sequence) {
     return sequence;
   } else if (isNothing(sequence)) {
     return [];
-  } else {
-    return [ sequence ];
   }
+  return [ sequence ];
 }
 
 

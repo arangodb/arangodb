@@ -678,7 +678,7 @@ var used = []
  * Chai version
  */
 
-exports.version = '2.2.0';
+exports.version = '2.3.0';
 
 /*!
  * Assertion Error
@@ -1051,7 +1051,7 @@ module.exports = function (chai, _) {
    * ### .any
    *
    * Sets the `any` flag, (opposite of the `all` flag)
-   * later used in the `keys` assertion. 
+   * later used in the `keys` assertion.
    *
    *     expect(foo).to.have.any.keys('bar', 'baz');
    *
@@ -1068,7 +1068,7 @@ module.exports = function (chai, _) {
   /**
    * ### .all
    *
-   * Sets the `all` flag (opposite of the `any` flag) 
+   * Sets the `all` flag (opposite of the `any` flag)
    * later used by the `keys` assertion.
    *
    *     expect(foo).to.have.all.keys('bar', 'baz');
@@ -1249,7 +1249,7 @@ module.exports = function (chai, _) {
    * Asserts that the target is `null`.
    *
    *     expect(null).to.be.null;
-   *     expect(undefined).not.to.be.null;
+   *     expect(undefined).to.not.be.null;
    *
    * @name null
    * @api public
@@ -1725,7 +1725,7 @@ module.exports = function (chai, _) {
    *         green: { tea: 'matcha' }
    *       , teas: [ 'chai', 'matcha', { tea: 'konacha' } ]
    *     };
-   * 
+   *
    *     expect(deepObj).to.have.deep.property('green.tea', 'matcha');
    *     expect(deepObj).to.have.deep.property('teas[1]', 'matcha');
    *     expect(deepObj).to.have.deep.property('teas[2].tea', 'konacha');
@@ -1847,6 +1847,55 @@ module.exports = function (chai, _) {
   Assertion.addMethod('haveOwnProperty', assertOwnProperty);
 
   /**
+   * ### .ownPropertyDescriptor(name[, descriptor[, message]])
+   *
+   * Asserts that the target has an own property descriptor `name`, that optionally matches `descriptor`.
+   *
+   *     expect('test').to.have.ownPropertyDescriptor('length');
+   *     expect('test').to.have.ownPropertyDescriptor('length', { enumerable: false, configurable: false, writable: false, value: 4 });
+   *     expect('test').not.to.have.ownPropertyDescriptor('length', { enumerable: false, configurable: false, writable: false, value: 3 });
+   *     expect('test').ownPropertyDescriptor('length').to.have.property('enumerable', false);
+   *     expect('test').ownPropertyDescriptor('length').to.have.keys('value');
+   *
+   * @name ownPropertyDescriptor
+   * @alias haveOwnPropertyDescriptor
+   * @param {String} name
+   * @param {Object} descriptor _optional_
+   * @param {String} message _optional_
+   * @api public
+   */
+
+  function assertOwnPropertyDescriptor (name, descriptor, msg) {
+    if (typeof descriptor === 'string') {
+      msg = descriptor;
+      descriptor = null;
+    }
+    if (msg) flag(this, 'message', msg);
+    var obj = flag(this, 'object');
+    var actualDescriptor = Object.getOwnPropertyDescriptor(Object(obj), name);
+    if (actualDescriptor && descriptor) {
+      this.assert(
+          _.eql(descriptor, actualDescriptor)
+        , 'expected the own property descriptor for ' + _.inspect(name) + ' on #{this} to match ' + _.inspect(descriptor) + ', got ' + _.inspect(actualDescriptor)
+        , 'expected the own property descriptor for ' + _.inspect(name) + ' on #{this} to not match ' + _.inspect(descriptor)
+        , descriptor
+        , actualDescriptor
+        , true
+      );
+    } else {
+      this.assert(
+          actualDescriptor
+        , 'expected #{this} to have an own property descriptor for ' + _.inspect(name)
+        , 'expected #{this} to not have an own property descriptor for ' + _.inspect(name)
+      );
+    }
+    flag(this, 'object', actualDescriptor);
+  }
+
+  Assertion.addMethod('ownPropertyDescriptor', assertOwnPropertyDescriptor);
+  Assertion.addMethod('haveOwnPropertyDescriptor', assertOwnPropertyDescriptor);
+
+  /**
    * ### .length(value)
    *
    * Asserts that the target's `length` property has
@@ -1947,30 +1996,30 @@ module.exports = function (chai, _) {
    * ### .keys(key1, [key2], [...])
    *
    * Asserts that the target contains any or all of the passed-in keys.
-   * Use in combination with `any`, `all`, `contains`, or `have` will affect 
+   * Use in combination with `any`, `all`, `contains`, or `have` will affect
    * what will pass.
-   * 
-   * When used in conjunction with `any`, at least one key that is passed 
-   * in must exist in the target object. This is regardless whether or not 
+   *
+   * When used in conjunction with `any`, at least one key that is passed
+   * in must exist in the target object. This is regardless whether or not
    * the `have` or `contain` qualifiers are used. Note, either `any` or `all`
    * should be used in the assertion. If neither are used, the assertion is
    * defaulted to `all`.
-   * 
-   * When both `all` and `contain` are used, the target object must have at 
+   *
+   * When both `all` and `contain` are used, the target object must have at
    * least all of the passed-in keys but may have more keys not listed.
-   * 
+   *
    * When both `all` and `have` are used, the target object must both contain
    * all of the passed-in keys AND the number of keys in the target object must
-   * match the number of keys passed in (in other words, a target object must 
+   * match the number of keys passed in (in other words, a target object must
    * have all and only all of the passed-in keys).
-   * 
+   *
    *     expect({ foo: 1, bar: 2 }).to.have.any.keys('foo', 'baz');
    *     expect({ foo: 1, bar: 2 }).to.have.any.keys('foo');
    *     expect({ foo: 1, bar: 2 }).to.contain.any.keys('bar', 'baz');
    *     expect({ foo: 1, bar: 2 }).to.contain.any.keys(['foo']);
    *     expect({ foo: 1, bar: 2 }).to.contain.any.keys({'foo': 6});
    *     expect({ foo: 1, bar: 2 }).to.have.all.keys(['bar', 'foo']);
-   *     expect({ foo: 1, bar: 2 }).to.have.all.keys({'bar': 6, 'foo', 7});
+   *     expect({ foo: 1, bar: 2 }).to.have.all.keys({'bar': 6, 'foo': 7});
    *     expect({ foo: 1, bar: 2, baz: 3 }).to.contain.all.keys(['bar', 'foo']);
    *     expect({ foo: 1, bar: 2, baz: 3 }).to.contain.all.keys([{'bar': 6}}]);
    *

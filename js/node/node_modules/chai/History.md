@@ -1,3 +1,17 @@
+2.3.0 / 2015-04-26
+==================
+
+  * Merge pull request #423 from ehntoo/patch-1
+  * Merge pull request #422 from ljharb/fix_descriptor_tests
+  * Fix a small bug in the .null assertion docs
+  * Use a regex to account for property ordering issues across engines.
+  * Add `make test-firefox`
+  * Merge pull request #417 from astorije/astorije/minimalist-typo
+  * Remove trailing whitespaces
+  * Fix super minor typo in an example
+  * Merge pull request #408 from ljharb/enumerableProperty
+  * Add `ownPropertyDescriptor` assertion.
+
 2.2.0 / 2015-03-26
 ==================
 
