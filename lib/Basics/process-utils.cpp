@@ -90,8 +90,8 @@ typedef struct process_state_s {
     unsigned long cmajflt;
     unsigned long utime;
     unsigned long stime;
-    unsigned long cutime;
     /* ld */
+    long cutime;
     long cstime;
     long priority;
     long nice;
