@@ -88,6 +88,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
 
 std::string const& ExecutionNode::getTypeString () const {
   auto it = TypeNames.find(static_cast<int>(getType()));
+
   if (it != TypeNames.end()) {
     return (*it).second;
   }
@@ -97,6 +98,7 @@ std::string const& ExecutionNode::getTypeString () const {
 
 void ExecutionNode::validateType (int type) {
   auto it = TypeNames.find(static_cast<int>(type));
+
   if (it == TypeNames.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown TypeID");
   }
@@ -106,14 +108,18 @@ void ExecutionNode::getSortElements (SortElementVector& elements,
                                      ExecutionPlan* plan,
                                      triagens::basics::Json const& oneNode,
                                      char const* which) {
+
   triagens::basics::Json jsonElements = oneNode.get("elements");
+
   if (! jsonElements.isArray()){
     std::string error = std::string("unexpected value for ") +
       std::string(which) + std::string(" elements");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
   }
+
   size_t len = jsonElements.size();
   elements.reserve(len);
+
   for (size_t i = 0; i < len; i++) {
     triagens::basics::Json oneJsonElement = jsonElements.at(static_cast<int>(i));
     bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
@@ -249,7 +255,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
 
   auto jsonVarInfoList = json.get("varInfoList");
   if (! jsonVarInfoList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varInfoList needs to be a json array"); 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "varInfoList needs to be a json array"); 
   }
  
   size_t len = jsonVarInfoList.size();
@@ -258,7 +264,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   for (size_t i = 0; i < len; i++) {
     auto jsonVarInfo = jsonVarInfoList.at(i);
     if (! jsonVarInfo.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList item needs to be an object"); 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList item needs to be a json object"); 
     }
     VariableId variableId = JsonHelper::checkAndGetNumericValue<VariableId>      (jsonVarInfo.json(), "VariableId");
     RegisterId registerId = JsonHelper::checkAndGetNumericValue<RegisterId>      (jsonVarInfo.json(), "RegisterId");
@@ -269,7 +275,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
 
   auto jsonNrRegsList = json.get("nrRegs");
   if (! jsonNrRegsList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "nrRegs needs to be a json array"); 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "nrRegs needs to be a json array"); 
   }
 
   len = jsonNrRegsList.size();
@@ -362,7 +368,7 @@ triagens::basics::Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
 /// @brief execution Node clone utility to be called by derives
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::CloneHelper (ExecutionNode* other,
+void ExecutionNode::cloneHelper (ExecutionNode* other,
                                  ExecutionPlan* plan,
                                  bool withDependencies,
                                  bool withProperties) const {
@@ -811,7 +817,7 @@ void ExecutionNode::planRegisters (ExecutionNode* super) {
 
   walk(v.get());
   // Now handle the subqueries:
-  for (auto s : v->subQueryNodes) {
+  for (auto& s : v->subQueryNodes) {
     auto sq = static_cast<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s);
   }
@@ -1143,6 +1149,7 @@ void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }
@@ -1211,7 +1218,7 @@ ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
     
   auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable, _random);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1396,7 +1403,7 @@ ExecutionNode* EnumerateListNode::clone (ExecutionPlan* plan,
 
   auto c = new EnumerateListNode(plan, _id, inVariable, outVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1518,7 +1525,7 @@ ExecutionNode* IndexRangeNode::clone (ExecutionPlan* plan,
   auto c = new IndexRangeNode(plan, _id, _vocbase, _collection, 
                               outVariable, _index, ranges, _reverse);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1888,7 +1895,7 @@ ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
 
   auto c = new CalculationNode(plan, _id, _expression->clone(), conditionVariable, outVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1943,7 +1950,7 @@ ExecutionNode* SubqueryNode::clone (ExecutionPlan* plan,
   auto c = new SubqueryNode(plan, _id, _subquery->clone(plan, true, withProperties),
                             outVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2102,7 +2109,7 @@ ExecutionNode* FilterNode::clone (ExecutionPlan* plan,
   }
   auto c = new FilterNode(plan, _id, inVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2414,7 +2421,7 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
                              _variableMap,
                              _count);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2576,7 +2583,7 @@ ExecutionNode* ReturnNode::clone (ExecutionPlan* plan,
 
   auto c = new ReturnNode(plan, _id, inVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2702,7 +2709,7 @@ ExecutionNode* RemoveNode::clone (ExecutionPlan* plan,
 
   auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options, inVariable, outVariableOld);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2758,7 +2765,7 @@ ExecutionNode* InsertNode::clone (ExecutionPlan* plan,
 
   auto c = new InsertNode(plan, _id, _vocbase, _collection, _options, inVariable, outVariableNew);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2829,7 +2836,7 @@ ExecutionNode* UpdateNode::clone (ExecutionPlan* plan,
 
   auto c = new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable, inKeyVariable, outVariableOld, outVariableNew);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2901,7 +2908,7 @@ ExecutionNode* ReplaceNode::clone (ExecutionPlan* plan,
                            _options, inDocVariable, inKeyVariable,
                            outVariableOld, outVariableNew);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2978,7 +2985,7 @@ ExecutionNode* UpsertNode::clone (ExecutionPlan* plan,
     _isReplace
   );
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
