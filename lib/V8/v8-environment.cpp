@@ -142,7 +142,7 @@ static void EnvDeleter (v8::Local<v8::String> property,
   if (key_ptr[0] == L'=' || !SetEnvironmentVariableW(key_ptr, nullptr)) {
     // Deletion failed. Return true if the key wasn't there in the first place,
     // false if it is still there.
-    rc = GetEnvironmentVariableW(key_ptr, nullptr, nullptr) == 0 &&
+    rc = GetEnvironmentVariableW(key_ptr, nullptr, 0) == 0 &&
          GetLastError() != ERROR_SUCCESS;
   }
 #endif
@@ -177,7 +177,7 @@ static void EnvEnumerator (const v8::PropertyCallbackInfo<v8::Array>& args) {
   v8::Local<v8::Array> envarr = v8::Array::New(isolate);
   WCHAR* p = environment;
   int i = 0;
-  while (*p != nullptr) {
+  while (*p != 0) {
     WCHAR *s;
     if (*p == L'=') {
       // If the key starts with '=' it is a hidden environment variable.
