@@ -1,6 +1,5 @@
 <script id="modalTestResults.ejs" type="text/template">
 <%
-  var results = content[0];
   function createSuite(suite) {
     %>
     <dt class="tests-result-spec-suite-title">
@@ -45,31 +44,31 @@
   <%
   } %>
   <div class="tests-result">
-    <% if (results.stack) { %>
+    <% if (info.stack) { %>
       <div class="tests-result-stats fail">
         Test runner failed with an error.
       </div>
-      <pre class="stack"><%= results.stack %></pre>
+      <pre class="stack"><%= info.stack %></pre>
     <% } else { %>
       <div class="tests-result-stats">
-        Completed <b><%= results.stats.tests %></b> tests in <b><%= results.stats.duration %>ms</b>
-        (<span class="pass" title="passes"><%= results.stats.passes
-        %></span>/<span class="fail" title="failures"><%= results.stats.failures
-        %></span>/<span class="pending" title="pending"><%= results.stats.pending
+        Completed <b><%= info.stats.tests %></b> tests in <b><%= info.stats.duration %>ms</b>
+        (<span class="pass" title="passes"><%= info.stats.passes
+        %></span>/<span class="fail" title="failures"><%= info.stats.failures
+        %></span>/<span class="pending" title="pending"><%= info.stats.pending
         %></span>)
       </div>
       <div class="tests-result-spec">
-        <% if (results.tests.length) { %>
+        <% if (info.tests.length) { %>
           <ul class="tests-result-spec-tests">
-            <% _.each(results.tests, createTest) %>
+            <% _.each(info.tests, createTest) %>
           </ul>
         <% } %>
-        <% if (results.suites.length) { %>
+        <% if (info.suites.length) { %>
           <dl class="tests-result-spec-suites">
-            <% _.each(results.suites, createSuite) %>
+            <% _.each(info.suites, createSuite) %>
           </dl>
         <% } %>
-        <% if (!results.tests.length && !results.suites.length) { %>
+        <% if (!info.tests.length && !info.suites.length) { %>
           <div class="tests-result-spec-empty">No tests found.</div>
         <% } %>
       </div>
