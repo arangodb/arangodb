@@ -108,6 +108,10 @@ namespace triagens {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
+        ExecutionNode () = delete;
+        ExecutionNode (ExecutionNode const&) = delete;
+        ExecutionNode& operator= (ExecutionNode const&) = delete;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor using an id
 ////////////////////////////////////////////////////////////////////////////////
@@ -355,7 +359,7 @@ namespace triagens {
 /// @brief execution Node clone utility to be called by derives
 ////////////////////////////////////////////////////////////////////////////////
 
-        void CloneHelper (ExecutionNode *Other,
+        void cloneHelper (ExecutionNode *Other,
                           ExecutionPlan* plan,
                           bool withDependencies,
                           bool withProperties) const;
@@ -814,7 +818,7 @@ namespace triagens {
                               bool withProperties) const override final {
           auto c = new SingletonNode(plan, _id);
 
-          CloneHelper(c, plan, withDependencies, withProperties);
+          cloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -857,6 +861,7 @@ namespace triagens {
             _collection(collection),
             _outVariable(outVariable),  
             _random(random) {
+
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -1125,6 +1130,7 @@ namespace triagens {
             _index(index),
             _ranges(ranges),
             _reverse(reverse) {
+
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -1362,7 +1368,7 @@ namespace triagens {
             c->setFullCount();
           }
 
-          CloneHelper(c, plan, withDependencies, withProperties);
+          cloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -1873,6 +1879,7 @@ namespace triagens {
           : ExecutionNode(plan, id),
             _elements(elements),
             _stable(stable) {
+
         }
         
         SortNode (ExecutionPlan* plan,
@@ -1913,7 +1920,7 @@ namespace triagens {
                               bool withProperties) const override final {
           auto c = new SortNode(plan, _id, _elements, _stable);
 
-          CloneHelper(c, plan, withDependencies, withProperties);
+          cloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -2028,9 +2035,7 @@ namespace triagens {
             _count(count) {
 
           // outVariable can be a nullptr, but only if _count is not set
-          if (_count) {
-            TRI_ASSERT(_outVariable != nullptr);
-          }
+          TRI_ASSERT(! _count || _outVariable != nullptr);
         }
         
         AggregateNode (ExecutionPlan*,
@@ -3034,7 +3039,7 @@ namespace triagens {
                               bool withProperties) const override final {
           auto c = new NoResultsNode(plan, _id);
 
-          CloneHelper(c, plan, withDependencies, withProperties);
+          cloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -3109,7 +3114,7 @@ namespace triagens {
                               bool withProperties) const override final {
           auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName, _queryId);
 
-          CloneHelper(c, plan, withDependencies, withProperties);
+          cloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -3283,7 +3288,7 @@ namespace triagens {
                               bool withProperties) const override final {
           auto c = new ScatterNode(plan, _id, _vocbase, _collection);
 
-          CloneHelper(c, plan, withDependencies, withProperties);
+          cloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -3398,7 +3403,7 @@ namespace triagens {
                               bool withProperties) const override final {
           auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _alternativeVarId, _createKeys);
           
-          CloneHelper(c, plan, withDependencies, withProperties);
+          cloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -3517,7 +3522,7 @@ namespace triagens {
                               bool withProperties) const override final {
           auto c = new GatherNode(plan, _id, _vocbase, _collection);
 
-          CloneHelper(c, plan, withDependencies, withProperties);
+          cloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
