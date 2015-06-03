@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogfileManager.h"
+#include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/json.h"
 #include "Basics/logging.h"
@@ -266,7 +267,18 @@ bool LogfileManager::prepare () {
     _directory = (*_databasePath);
 
     if (! basics::FileUtils::isDirectory(_directory)) {
-      LOG_FATAL_AND_EXIT("database directory '%s' does not exist.", _directory.c_str());
+      std::string systemErrorStr;
+      long errorNo;
+
+      int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_FATAL_AND_EXIT("unable to create database directory: %s",
+                           systemErrorStr.c_str());
+      }
+      else {
+        LOG_INFO("created database directory '%s'.",
+                           _directory.c_str());
+      }
     }
 
     // append "/journals"
