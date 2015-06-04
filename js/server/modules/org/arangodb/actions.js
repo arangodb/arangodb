@@ -1999,7 +1999,7 @@ function resultException (req, res, err, headers, verbose) {
     info.exception = String(err);
     if (err.stack) {
       err.stack = err.stack.replace(/\n+$/, '');
-      info.stacktrace = ErrorStackParser.parse(err);
+      info.stacktrace = err.stack.split('\n');
     }
     if (typeof verbose === 'string') {
       msg = verbose;
