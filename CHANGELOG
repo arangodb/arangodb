@@ -510,11 +510,12 @@ v2.6.0 (XXXX-XX-XX)
       var Foxx = require("org/arangodb/foxx");
       Foxx.queues.create(db._name() + ":" + queueName);
 
-* Javascript APIs:
-  * fs.copyFile to copy single files
-  * fs.copyRecursive to copy diretory trees
-  * fs.chmod to set the file permissions (non-windows onnly)
-  * process.env to access the process environment
+* Added the following JavaScript methods for file access:
+  * fs.copyFile() to copy single files
+  * fs.copyRecursive() to copy diretory trees
+  * fs.chmod() to set the file permissions (non-Windows onnly)
+
+* Added process.env for accessing the process environment from JavaScript code
 
 * Cluster: kickstarter shutdown routines will more precisely follow the shutdown of its nodes.
 
