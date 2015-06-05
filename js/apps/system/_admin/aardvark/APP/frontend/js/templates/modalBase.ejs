@@ -26,7 +26,7 @@
     </div>
     <% } %>
     <div class="alert alert-error modal-delete-confirmation" id="modal-delete-confirmation">
-      <strong>Really delete?</strong>
+      <strong><%=confirm||'Really delete?'%></strong>
       <button id="modal-confirm-delete" class="button-danger pull-right modal-confirm-delete">Yes</button>
       <button id="modal-abort-delete" class="button-neutral pull-right">No</button>
     </div>

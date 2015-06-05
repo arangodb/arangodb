@@ -72,7 +72,7 @@
       buttons.push(
         window.modalView.createSuccessButton('Save', this.saveAQL.bind(this))
       );
-      window.modalView.show('modalTable.ejs', 'Save Query', buttons, tableContent, undefined,
+      window.modalView.show('modalTable.ejs', 'Save Query', buttons, tableContent, undefined, undefined,
         {'keyup #new-query-name' : this.listenKey.bind(this)});
     },
 
