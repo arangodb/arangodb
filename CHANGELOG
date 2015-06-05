@@ -1,6 +1,8 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* issue #1360: improved foxx-manager help
+
 * added `--enable-tcmalloc` configure option.
 
   When this option is set, arangod and the client tools will be linked against tcmalloc, which replaces
