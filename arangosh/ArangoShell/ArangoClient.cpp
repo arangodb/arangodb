@@ -395,9 +395,18 @@ void ArangoClient::parse (ProgramOptions& options,
 
   if (! help.empty()) {
     if (! example.empty()) {
-      cout << "USAGE: " << argv[0] << " " << example << endl << endl;
+      cout << "USAGE:  " << argv[0] << " " << example << endl << endl;
     }
     cout << description.usage(help) << endl;
+
+    {
+      // check if we are the foxx-manager
+      std::string const progname(argv[0]);
+      std::string const compare("foxx-manager");
+      if (progname.size() >= compare.size() && progname.substr(progname.size() - compare.size(), compare.size()) == compare) {
+        cout << "Use  " << argv[0] << " help  to get an overview of the actions specific to foxx-manager." << endl << endl;
+      }
+    }
 
     // --help always returns success
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
