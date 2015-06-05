@@ -1,5 +1,36 @@
 # Release Notes
 
+## 2.3.0 / 2015-04-26
+
+Added `ownPropertyDescriptor` assertion:
+
+```js
+expect('test').to.have.ownPropertyDescriptor('length');
+expect('test').to.have.ownPropertyDescriptor('length', { enumerable: false, configurable: false, writable: false, value: 4 });
+expect('test').not.to.have.ownPropertyDescriptor('length', { enumerable: false, configurable: false, writable: false, value: 3 });
+expect('test').ownPropertyDescriptor('length').to.have.property('enumerable', false);
+expect('test').ownPropertyDescriptor('length').to.have.keys('value');
+```
+
+### Community Contributions
+
+#### Code Features & Fixes
+
+ * [#408](https://github.com/chaijs/chai/pull/408) Add `ownPropertyDescriptor`
+   assertion.
+   By [@ljharb](https://github.com/ljharb)
+ * [#422](https://github.com/chaijs/chai/pull/422) Improve ownPropertyDescriptor
+   tests.
+   By [@ljharb](https://github.com/ljharb)
+
+#### Documentation fixes
+
+ * [#417](https://github.com/chaijs/chai/pull/417) Fix documentation typo
+ By [@astorije](https://github.com/astorije)
+ * [#423](https://github.com/chaijs/chai/pull/423) Fix inconsistency in docs.
+ By [@ehntoo](https://github.com/ehntoo)
+
+
 ## 2.2.0 / 2015-03-26
 
 Deep property strings can now be escaped using `\\` - for example:

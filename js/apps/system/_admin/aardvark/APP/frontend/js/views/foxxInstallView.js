@@ -296,6 +296,7 @@
       buttons,
       upgrade,
       undefined,
+      undefined,
       modalEvents
     );
     $("#new-app-collections").select2({

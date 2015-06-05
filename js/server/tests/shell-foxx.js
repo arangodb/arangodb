@@ -965,8 +965,7 @@ function DocumentationAndConstraintsSpec () {
         description = stub(),
         requestBody = 'banana',
         schema = joi.array().items({x: joi.number().integer().required()}),
-        called = false,
-        thrown = false;
+        called = false;
 
       allow(req)
         .toReceive("body")
@@ -979,15 +978,11 @@ function DocumentationAndConstraintsSpec () {
         type: schema
       });
 
-      try {
-        var callback = transformRoute(routes[0].action);
-        callback(req, res);
-      } catch(e) {
-        thrown = true;
-      }
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
-      assertTrue(thrown);
       assertFalse(called);
+      assertEqual(res.responseCode, 400);
     },
 
     testSetParamForUndocumentedBodyParam: function () {

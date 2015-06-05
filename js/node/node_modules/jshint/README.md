@@ -21,7 +21,7 @@ execute in.
 
 To report a bug simply create a
 [new GitHub Issue](https://github.com/jshint/jshint/issues/new) and describe
-your problem or suggestion. We welcome all kind of feedback regarding
+your problem or suggestion. We welcome all kinds of feedback regarding
 JSHint including but not limited to:
 
  * When JSHint doesn't work as expected
@@ -53,4 +53,4 @@ Pennisi](https://github.com/jugglinmike/).
 
 ## Thank you!
 
-We really appreciate all kind of feedback and contributions. Thanks for using and supporting JSHint!
+We really appreciate all kinds of feedback and contributions. Thanks for using and supporting JSHint!

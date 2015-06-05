@@ -176,7 +176,7 @@ extend(Console.prototype, {
     if (this._tracing) {
       var e = new Error();
       Error.captureStackTrace(e, callee || this._log);
-      e.stack = e.stack.replace(/\n$/, '');
+      e.stack = e.stack.replace(/\n+$/, '');
       doc.stack = ErrorStackParser.parse(e).slice(1);
     }
 

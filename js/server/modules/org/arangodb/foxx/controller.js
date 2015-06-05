@@ -333,7 +333,7 @@ function Controller(context, options) {
     {
       url: { match: "/*" },
       action: {
-        callback: baseMiddleware.stringRepresentation,
+        callback: baseMiddleware.functionRepresentation,
         options: {
           name: context.name,
           version: context.version,

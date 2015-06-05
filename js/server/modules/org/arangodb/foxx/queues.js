@@ -88,7 +88,7 @@ function createQueue(key, maxWorkers) {
   try {
     db._queues.save({_key: key, maxWorkers: maxWorkers || 1});
   } catch (err) {
-    if (!err instanceof arangodb.ArangoError ||
+    if (!(err instanceof arangodb.ArangoError) ||
         err.errorNum !== arangodb.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
       throw err;
     }

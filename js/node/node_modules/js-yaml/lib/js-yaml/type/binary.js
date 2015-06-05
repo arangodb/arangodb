@@ -1,5 +1,6 @@
 'use strict';
 
+/*eslint-disable no-bitwise*/
 
 // A trick for browserified version.
 // Since we make browserifier to ignore `buffer` module, NodeBuffer will be undefined
@@ -19,7 +20,7 @@ function resolveYamlBinary(data) {
   var code, idx, bitlen = 0, len = 0, max = data.length, map = BASE64_MAP;
 
   // Convert one by one.
-  for (idx = 0; idx < max; idx ++) {
+  for (idx = 0; idx < max; idx++) {
     code = map.indexOf(data.charAt(idx));
 
     // Skip CR/LF
@@ -57,7 +58,7 @@ function constructYamlBinary(data) {
 
   // Dump tail
 
-  tailbits = (max % 4)*6;
+  tailbits = (max % 4) * 6;
 
   if (tailbits === 0) {
     result.push((bits >> 16) & 0xFF);
