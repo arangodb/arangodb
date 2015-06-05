@@ -2,7 +2,7 @@
 
 Welcome to the ArangoDB documentation!
 
-The documentation introduces ArangoDB for you as an user, developer and administrator and describes all of its functions in detail. 
+The documentation introduces ArangoDB for you as a user, developer and administrator and describes all of its functions in detail. 
 
 ArangoDB is a multi-model, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally and vertically with a few mouse clicks.
 
