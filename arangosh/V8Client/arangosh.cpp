@@ -2357,7 +2357,7 @@ int main (int argc, char* args[]) {
   bool promptError = false;
 #if _WIN32
   extern bool cygwinShell;
-  if (getenv("SHELL") != NULL) {
+  if (getenv("SHELL") != nullptr) {
     cygwinShell = true;
   }
 #endif
@@ -2367,6 +2367,14 @@ int main (int argc, char* args[]) {
   TRIAGENS_REST_INITIALISE(argc, args);
 
   TRI_InitialiseLogging(false);
+        
+  {
+    std::ostringstream foxxManagerHelp;
+    foxxManagerHelp << "Use  " << args[0] << " help  to get an overview of the actions specific to foxx-manager." << endl << endl;
+    foxxManagerHelp << "There is also an online manual available at:" << endl << "https://docs.arangodb.com/Foxx/Install/" << endl << endl;
+
+    BaseClient.setupSpecificHelp("foxx-manager", foxxManagerHelp.str());
+  }
 
   BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
 

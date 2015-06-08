@@ -1,5 +1,6 @@
 'use strict';
 
+/*eslint-disable no-console*/
 
 var yaml = require('../lib/js-yaml');
 var object = require('./dumper.json');

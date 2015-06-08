@@ -29,10 +29,6 @@
 
 var Model = require("org/arangodb/foxx/model").Model,
   _ = require("underscore"),
-  arangodb = require("org/arangodb"),
-  ArangoError = arangodb.ArangoError,
-  ArangoCollection = arangodb.ArangoCollection,
-  errors = arangodb.errors,
   extend = require('extendible'),
   EventEmitter = require('events').EventEmitter,
   util = require('util');
@@ -90,12 +86,6 @@ var EVENTS = [
 ////////////////////////////////////////////////////////////////////////////////
 
 function Repository(collection, opts) {
-  if (! collection instanceof ArangoCollection) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: "Collection parameter has to be of type ArangoCollection"
-    });
-  }
   this.options = opts || {};
 
 // -----------------------------------------------------------------------------

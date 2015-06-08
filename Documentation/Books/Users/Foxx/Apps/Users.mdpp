@@ -1,10 +1,10 @@
 !CHAPTER The Users App
 
-The users app provides an username-based user storage JavaScript API that can be used in other Foxx apps.
+The users app provides a username-based user storage JavaScript API that can be used in other Foxx apps.
 
 !SECTION JavaScript API: **userStorage**
 
-This app exposes an user storage via a JavaScript API named **userStorage**.
+This app exposes a user storage via a JavaScript API named **userStorage**.
 
 @EXAMPLES
 
@@ -16,11 +16,11 @@ var userStorage = Foxx.requireApp('/_system/users').userStorage;
 
 !SUBSUBSECTION User Not Found
 
-Indicates an user could not be found in the database.
+Indicates a user could not be found in the database.
 
 `new userStorage.errors.UserNotFound(userId)`
 
-Thrown by the user storages **delete** and **get** methods if passed an user ID that does not exist in the database.
+Thrown by the user storages **delete** and **get** methods if passed a user ID that does not exist in the database.
 
 @EXAMPLES
 
@@ -34,7 +34,7 @@ try {
 
 !SUBSUBSECTION Username Not Available
 
-Indicates an username is already in use.
+Indicates a username is already in use.
 
 `new userStorage.errors.UsernameNotAvailable(username)`
 
@@ -58,13 +58,13 @@ User objects are instances of a Foxx model with the following attributes:
 * **userData**: application-specific user data
 * **authData**: an arbitrary object used by authentication apps to store sensitive data. For password authentication this could be a hash, for third-party authentication services this could be information about the user's identity. This attribute should never be exposed to the user directly
 
-!SUBSECTION Create an user
+!SUBSECTION Create a user
 
 Creates and saves a new instance of the user model.
 
 `userStorage.create(username, [userData,] [authData])`
 
-Throws **UsernameNotAvailable** if an user with the given username already exists.
+Throws **UsernameNotAvailable** if a user with the given username already exists.
 
 **Note:** When using the system users app (mounted at **/\_system/users**), new users will automatically have their **active** flag set to **true** if no value is provided in the **authData** (or if **authData** is omitted entirely).
 
@@ -83,14 +83,14 @@ assertEqual(user.get('userData').hair, 'fuzzy');
 
 !SUBSECTION Fetch an existing user
 
-There are two ways to fetch an user via the user storage API:
+There are two ways to fetch a user via the user storage API:
 
 * resolving a **username** with the user storages **resolve** method
-* calling the user storages **get** method with an user ID directly
+* calling the user storages **get** method with a user ID directly
 
 !SUBSUBSECTION Resolve a **username**
 
-Fetches an user with a given **username**.
+Fetches a user with a given **username**.
 
 `userStorage.resolve(username)`
 
@@ -107,9 +107,9 @@ var user = userStorage.resolve('malaclypse');
 assertEqual(user.user, 'malaclypse');
 ```
 
-!SUBSUBSECTION Resolve an user ID directly
+!SUBSUBSECTION Resolve a user ID directly
 
-Fetches an user with a given ID.
+Fetches a user with a given ID.
 
 `userStorage.get(userId)`
 
@@ -117,7 +117,7 @@ Attempts to fetch the user with the given ID from the database. If the user does
 
 **Parameter**
 
-* **userId**: an user **_key**.
+* **userId**: a user **_key**.
 
 @EXAMPLES
 
@@ -126,16 +126,16 @@ var user = userStorage.get(userId);
 assertEqual(user.get('_key'), userId);
 ```
 
-!SUBSECTION Delete an user
+!SUBSECTION Delete a user
 
-There are two ways to delete an user from the database:
+There are two ways to delete a user from the database:
 
-* calling the user storages **delete** method with an user ID directly
-* telling an user to delete itself
+* calling the user storages **delete** method with a user ID directly
+* telling a user to delete itself
 
-!SUBSUBSECTION Delete an user by its ID
+!SUBSUBSECTION Delete a user by its ID
 
-Delete an user with a given ID.
+Delete a user with a given ID.
 
 `userStorage.delete(userId)`
 
@@ -143,7 +143,7 @@ Attempts to delete the user with the given user ID from the database. If the use
 
 **Parameter**
 
-* **userId**: an user **_key**.
+* **userId**: a user **_key**.
 
 @EXAMPLES
 
@@ -151,9 +151,9 @@ Attempts to delete the user with the given user ID from the database. If the use
 userStorage.delete(userId);
 ```
 
-!SUBSUBSECTION Tell an user to delete itself
+!SUBSUBSECTION Tell a user to delete itself
 
-Delete an user from the database.
+Delete a user from the database.
 
 `user.delete()`
 
@@ -170,9 +170,9 @@ var user = userStorage.get(userId);
 user.delete();
 ```
 
-!SUBSECTION Save an user
+!SUBSECTION Save a user
 
-Save an user to the database.
+Save a user to the database.
 
 `user.save()`
 

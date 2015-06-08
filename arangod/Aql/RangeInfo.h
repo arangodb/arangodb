@@ -606,10 +606,10 @@ namespace triagens {
           copy._lowConst.assign(_lowConst);
           copy._highConst.assign(_highConst);
 
-          for (auto x: _lows) {
+          for (auto const& x : _lows) {
             copy._lows.emplace_back(x);
           }
-          for (auto x: _highs) {
+          for (auto const& x : _highs) {
             copy._highs.emplace_back(x);
           }
           copy._valid = _valid;
@@ -799,7 +799,7 @@ namespace triagens {
           triagens::basics::Json list(triagens::basics::Json::Array);
 
           for (auto const& x : _ranges) {
-            for (auto const& y: x.second) {
+            for (auto const& y : x.second) {
               triagens::basics::Json item(triagens::basics::Json::Object);
 
               item("variable", triagens::basics::Json(x.first))

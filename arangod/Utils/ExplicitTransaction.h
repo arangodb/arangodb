@@ -75,13 +75,13 @@ namespace triagens {
           if (waitForSync) {
             this->setWaitForSync();
           }
-
-          for (auto it = readCollections.begin(); it != readCollections.end(); ++it) {
-            this->addCollection((*it), TRI_TRANSACTION_READ);
+          
+          for (auto const& it : readCollections) {
+            this->addCollection(it, TRI_TRANSACTION_READ);
           }
 
-          for (auto it = writeCollections.begin(); it != writeCollections.end(); ++it) {
-            this->addCollection((*it), TRI_TRANSACTION_WRITE);
+          for (auto const& it : writeCollections) {
+            this->addCollection(it, TRI_TRANSACTION_WRITE);
           }
         }
 
@@ -107,15 +107,14 @@ namespace triagens {
             this->setWaitForSync();
           }
 
-          for (auto it = readCollections.begin(); it != readCollections.end(); ++it) {
-            this->addCollection((*it), TRI_TRANSACTION_READ);
+          for (auto const& it : readCollections) {
+            this->addCollection(it, TRI_TRANSACTION_READ);
           }
 
-          for (auto it = writeCollections.begin(); it != writeCollections.end(); ++it) {
-            this->addCollection((*it), TRI_TRANSACTION_WRITE);
+          for (auto const& it : writeCollections) {
+            this->addCollection(it, TRI_TRANSACTION_WRITE);
           }
         }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction

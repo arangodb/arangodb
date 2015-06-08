@@ -88,6 +88,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
 
 std::string const& ExecutionNode::getTypeString () const {
   auto it = TypeNames.find(static_cast<int>(getType()));
+
   if (it != TypeNames.end()) {
     return (*it).second;
   }
@@ -97,6 +98,7 @@ std::string const& ExecutionNode::getTypeString () const {
 
 void ExecutionNode::validateType (int type) {
   auto it = TypeNames.find(static_cast<int>(type));
+
   if (it == TypeNames.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown TypeID");
   }
@@ -106,14 +108,18 @@ void ExecutionNode::getSortElements (SortElementVector& elements,
                                      ExecutionPlan* plan,
                                      triagens::basics::Json const& oneNode,
                                      char const* which) {
+
   triagens::basics::Json jsonElements = oneNode.get("elements");
+
   if (! jsonElements.isArray()){
     std::string error = std::string("unexpected value for ") +
       std::string(which) + std::string(" elements");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
   }
+
   size_t len = jsonElements.size();
   elements.reserve(len);
+
   for (size_t i = 0; i < len; i++) {
     triagens::basics::Json oneJsonElement = jsonElements.at(static_cast<int>(i));
     bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
@@ -249,7 +255,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
 
   auto jsonVarInfoList = json.get("varInfoList");
   if (! jsonVarInfoList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varInfoList needs to be a json array"); 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "varInfoList needs to be a json array"); 
   }
  
   size_t len = jsonVarInfoList.size();
@@ -258,7 +264,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   for (size_t i = 0; i < len; i++) {
     auto jsonVarInfo = jsonVarInfoList.at(i);
     if (! jsonVarInfo.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList item needs to be an object"); 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList item needs to be a json object"); 
     }
     VariableId variableId = JsonHelper::checkAndGetNumericValue<VariableId>      (jsonVarInfo.json(), "VariableId");
     RegisterId registerId = JsonHelper::checkAndGetNumericValue<RegisterId>      (jsonVarInfo.json(), "RegisterId");
@@ -269,7 +275,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
 
   auto jsonNrRegsList = json.get("nrRegs");
   if (! jsonNrRegsList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "nrRegs needs to be a json array"); 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "nrRegs needs to be a json array"); 
   }
 
   len = jsonNrRegsList.size();
@@ -300,7 +306,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   _regsToClear.reserve(len);
   for (size_t i = 0; i < len; i++) {
     RegisterId oneRegToClear = JsonHelper::getNumericValue<RegisterId>(jsonRegsToClearList.at(i).json(), 0);
-    _regsToClear.insert(oneRegToClear);
+    _regsToClear.emplace(oneRegToClear);
   }
 
   auto allVars = plan->getAst()->variables();
@@ -320,7 +326,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
       std::string errmsg = "varsUsedLater: ID not found in all-array: " + StringUtils::itoa(oneVarUsedLater->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
-    _varsUsedLater.insert(oneVariable);
+    _varsUsedLater.emplace(oneVariable);
   }
 
   auto jsonvarsValidList = json.get("varsValid");
@@ -339,7 +345,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
       std::string errmsg = "varsValid: ID not found in all-array: " + StringUtils::itoa(oneVarValid->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
-    _varsValid.insert(oneVariable);
+    _varsValid.emplace(oneVariable);
   }
 }
 
@@ -362,7 +368,7 @@ triagens::basics::Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
 /// @brief execution Node clone utility to be called by derives
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::CloneHelper (ExecutionNode* other,
+void ExecutionNode::cloneHelper (ExecutionNode* other,
                                  ExecutionPlan* plan,
                                  bool withDependencies,
                                  bool withProperties) const {
@@ -379,7 +385,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
     for (auto const& orgVar: _varsUsedLater) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
-      other->_varsUsedLater.insert(var);
+      other->_varsUsedLater.emplace(var);
     }
 
     other->_varsValid.reserve(_varsValid.size());
@@ -387,7 +393,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
     for (auto const& orgVar: _varsValid) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
-      other->_varsValid.insert(var);
+      other->_varsValid.emplace(var);
     }
 
     if (_registerPlan.get() != nullptr) {
@@ -811,7 +817,7 @@ void ExecutionNode::planRegisters (ExecutionNode* super) {
 
   walk(v.get());
   // Now handle the subqueries:
-  for (auto s : v->subQueryNodes) {
+  for (auto& s : v->subQueryNodes) {
     auto sq = static_cast<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s);
   }
@@ -1119,7 +1125,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
         auto it2 = varInfo.find(v->id);
         TRI_ASSERT(it2 != varInfo.end());
         RegisterId r = it2->second.registerId;
-        regsToClear.insert(r);
+        regsToClear.emplace(r);
       }
     }
     en->setRegsToClear(regsToClear);
@@ -1143,6 +1149,7 @@ void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }
@@ -1211,7 +1218,7 @@ ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
     
   auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable, _random);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1396,7 +1403,7 @@ ExecutionNode* EnumerateListNode::clone (ExecutionPlan* plan,
 
   auto c = new EnumerateListNode(plan, _id, inVariable, outVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1504,7 +1511,7 @@ ExecutionNode* IndexRangeNode::clone (ExecutionPlan* plan,
   for (size_t i = 0; i < _ranges.size(); i++){
     ranges.emplace_back(std::vector<RangeInfo>());
     
-    for (auto const& x: _ranges.at(i)) {
+    for (auto const& x : _ranges.at(i)) {
       ranges.at(i).emplace_back(x);
     }
   }
@@ -1518,7 +1525,7 @@ ExecutionNode* IndexRangeNode::clone (ExecutionPlan* plan,
   auto c = new IndexRangeNode(plan, _id, _vocbase, _collection, 
                               outVariable, _index, ranges, _reverse);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1739,7 +1746,7 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
         AstNode const* a = b.getExpressionAst(_plan->getAst());
         std::unordered_set<Variable*> vars = Ast::getReferencedVariables(a);
         for (auto const& vv : vars) {
-          s.insert(vv);
+          s.emplace(vv);
         }
       };
 
@@ -1888,7 +1895,7 @@ ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
 
   auto c = new CalculationNode(plan, _id, _expression->clone(), conditionVariable, outVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1943,7 +1950,7 @@ ExecutionNode* SubqueryNode::clone (ExecutionPlan* plan,
   auto c = new SubqueryNode(plan, _id, _subquery->clone(plan, true, withProperties),
                             outVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1982,7 +1989,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
     // Add variables used here to _usedLater:
     auto&& usedHere = en->getVariablesUsedHere();
     for (auto const& v : usedHere) {
-      _usedLater.insert(v);
+      _usedLater.emplace(v);
     }
     return false;
   }
@@ -1991,7 +1998,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
     // Add variables set here to _valid:
     auto&& setHere = en->getVariablesSetHere();
     for (auto const& v : setHere) {
-      _valid.insert(v);
+      _valid.emplace(v);
     }
   }
 
@@ -2005,7 +2012,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
     // create the set difference. note: cannot use std::set_difference as our sets are NOT sorted
     for (auto it = subfinder._usedLater.begin(); it != subfinder._usedLater.end(); ++it) {
       if (_valid.find(*it) != _valid.end()) {
-        _usedLater.insert((*it));
+        _usedLater.emplace((*it));
       }
     }
     return false;
@@ -2102,7 +2109,7 @@ ExecutionNode* FilterNode::clone (ExecutionPlan* plan,
   }
   auto c = new FilterNode(plan, _id, inVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2414,7 +2421,7 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
                              _variableMap,
                              _count);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2482,12 +2489,12 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
         myselfAsNonConst->walk(&finder);
       }
       for (auto& x : finder.userVars) {
-        v.insert(x);
+        v.emplace(x);
       }
     }
     else {
       for (auto& x : _keepVariables) {
-        v.insert(x);
+        v.emplace(x);
       }
     }
   }
@@ -2576,7 +2583,7 @@ ExecutionNode* ReturnNode::clone (ExecutionPlan* plan,
 
   auto c = new ReturnNode(plan, _id, inVariable);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2639,10 +2646,17 @@ void ModificationNode::toJsonHelper (triagens::basics::Json& json,
 double ModificationNode::estimateCost (size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  nrItems = 0;
+  if (_outVariableOld != nullptr || 
+      _outVariableNew != nullptr) {
+    // node produces output
+    nrItems = incoming;
+  }
+  else {
+    // node produces no output
+    nrItems = 0;
+  }
   return depCost + incoming;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             methods of RemoveNode
@@ -2695,7 +2709,7 @@ ExecutionNode* RemoveNode::clone (ExecutionPlan* plan,
 
   auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options, inVariable, outVariableOld);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2751,7 +2765,7 @@ ExecutionNode* InsertNode::clone (ExecutionPlan* plan,
 
   auto c = new InsertNode(plan, _id, _vocbase, _collection, _options, inVariable, outVariableNew);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2822,7 +2836,7 @@ ExecutionNode* UpdateNode::clone (ExecutionPlan* plan,
 
   auto c = new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable, inKeyVariable, outVariableOld, outVariableNew);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2894,7 +2908,7 @@ ExecutionNode* ReplaceNode::clone (ExecutionPlan* plan,
                            _options, inDocVariable, inKeyVariable,
                            outVariableOld, outVariableNew);
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2971,7 +2985,7 @@ ExecutionNode* UpsertNode::clone (ExecutionPlan* plan,
     _isReplace
   );
 
-  CloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }

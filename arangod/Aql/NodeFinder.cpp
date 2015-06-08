@@ -73,7 +73,7 @@ NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder (std::vector<Execut
 template<>
 bool NodeFinder<ExecutionNode::NodeType>::before (ExecutionNode* en) {
   if (en->getType() == _lookingFor) {
-    _out.push_back(en);
+    _out.emplace_back(en);
   }
   return false;
 }
@@ -87,7 +87,7 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before (ExecutionNode* en
   auto const nodeType = en->getType();
   for (auto& type : _lookingFor) {
     if (type == nodeType) {
-      _out.push_back(en);
+      _out.emplace_back(en);
       break; 
     }
   }

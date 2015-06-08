@@ -268,10 +268,18 @@ namespace triagens {
         void stringifyIfNotTooLong (triagens::basics::StringBuffer*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replace variables in the expression
+/// @brief replace variables in the expression with other variables
 ////////////////////////////////////////////////////////////////////////////////
 
         void replaceVariables (std::unordered_map<VariableId, Variable const*> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a variable reference in the expression with another
+/// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter 
+/// becomes `a + b + 1`
+////////////////////////////////////////////////////////////////////////////////
+
+        void replaceVariableReference (Variable const*, AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidates an expression
@@ -400,7 +408,8 @@ namespace triagens {
         bool                      _built;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the top-level attributes used in the expression, group by variable name
+/// @brief the top-level attributes used in the expression, grouped 
+/// by variable name
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributes;

@@ -89,7 +89,7 @@ static void InstallServiceCommand (std::string command) {
             << "' (internal '" << ServiceName << "')"
             << std::endl;
 
-  SC_HANDLE schSCManager = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
+  SC_HANDLE schSCManager = OpenSCManager(nullptr, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
 
   if (schSCManager == 0) {
     std::cerr << "FATAL: OpenSCManager failed with " << GetLastError() << std::endl;
@@ -105,11 +105,11 @@ static void InstallServiceCommand (std::string command) {
     SERVICE_AUTO_START,          // start type
     SERVICE_ERROR_NORMAL,        // error control type
     command.c_str(),             // path to service's binary
-    NULL,                        // no load ordering group
-    NULL,                        // no tag identifier
-    NULL,                        // no dependencies
-    NULL,                        // account (LocalSystem)
-    NULL);                       // password
+    nullptr,                     // no load ordering group
+    nullptr,                     // no tag identifier
+    nullptr,                     // no dependencies
+    nullptr,                     // account (LocalSystem)
+    nullptr);                    // password
 
   CloseServiceHandle(schSCManager);
 
@@ -133,7 +133,7 @@ static void InstallServiceCommand (std::string command) {
 static void InstallService (int argc, char* argv[]) {
   CHAR path[MAX_PATH];
 
-  if (! GetModuleFileNameA(NULL, path, MAX_PATH)) {
+  if (! GetModuleFileNameA(nullptr, path, MAX_PATH)) {
     std::cerr << "FATAL: GetModuleFileNameA failed" << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -158,14 +158,14 @@ static void InstallService (int argc, char* argv[]) {
 static void DeleteService (int argc, char* argv[], bool force) {
   CHAR path[MAX_PATH] = "";
 
-  if (! GetModuleFileNameA(NULL, path, MAX_PATH)) {
+  if (! GetModuleFileNameA(nullptr, path, MAX_PATH)) {
     std::cerr << "FATAL: GetModuleFileNameA failed" << std::endl;
     exit(EXIT_FAILURE);
   }
 
   std::cout << "INFO: removing service '" << ServiceName << "'" << std::endl;
 
-  SC_HANDLE schSCManager = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
+  SC_HANDLE schSCManager = OpenSCManager(nullptr, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
 
   if (schSCManager == 0) {
     std::cerr << "FATAL: OpenSCManager failed with " << GetLastError() << std::endl;
@@ -233,7 +233,7 @@ static void StartArangoService (bool WaitForRunning) {
   SERVICE_STATUS_PROCESS ssp;
   DWORD bytesNeeded;
 
-  SC_HANDLE schSCManager = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
+  SC_HANDLE schSCManager = OpenSCManager(nullptr, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
 
   if (schSCManager == 0) {
     TRI_SYSTEM_ERROR();
@@ -247,7 +247,7 @@ static void StartArangoService (bool WaitForRunning) {
                                    SERVICE_QUERY_STATUS |
                                    SERVICE_ENUMERATE_DEPENDENTS);
 
-  if (arangoService == NULL) {
+  if (arangoService == nullptr) {
     TRI_SYSTEM_ERROR();
     std::cerr << "INFO: OpenService failed with " << windowsErrorBuf << std::endl;
     exit(EXIT_FAILURE);
@@ -270,7 +270,7 @@ static void StartArangoService (bool WaitForRunning) {
     exit(EXIT_SUCCESS);
   }
 
-  if (! StartService(arangoService, 0, NULL) ) {
+  if (! StartService(arangoService, 0, nullptr) ) {
     TRI_SYSTEM_ERROR();
     std::cout << "StartService failed " << windowsErrorBuf << std::endl;
     CloseServiceHandle(arangoService);
@@ -312,7 +312,7 @@ static void StopArangoService (bool WaitForShutdown) {
   SERVICE_STATUS_PROCESS ssp;
   DWORD bytesNeeded;
 
-  SC_HANDLE schSCManager = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
+  SC_HANDLE schSCManager = OpenSCManager(nullptr, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
 
   if (schSCManager == 0) {
     TRI_SYSTEM_ERROR();
@@ -327,7 +327,7 @@ static void StopArangoService (bool WaitForShutdown) {
                                    SERVICE_QUERY_STATUS |
                                    SERVICE_ENUMERATE_DEPENDENTS);
 
-  if (arangoService == NULL) {
+  if (arangoService == nullptr) {
     TRI_SYSTEM_ERROR();
     std::cerr << "INFO: OpenService failed with " << windowsErrorBuf << std::endl;
     CloseServiceHandle(schSCManager);
@@ -513,13 +513,13 @@ LONG CALLBACK unhandledExceptionHandler (EXCEPTION_POINTERS *e) {
                     MINIDUMP_TYPE(MiniDumpWithIndirectlyReferencedMemory |
                                   MiniDumpScanMemory |
                                   MiniDumpWithFullMemory),
-                    e ? &exceptionInfo : NULL,
-                    NULL,
-                    NULL);
+                    e ? &exceptionInfo : nullptr,
+                    nullptr,
+                    nullptr);
 
   if (hFile) {
     CloseHandle(hFile);
-    hFile = NULL;
+    hFile = nullptr;
   }
 #endif
   if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
@@ -705,7 +705,7 @@ void TRI_StartService (int argc, char* argv[]) {
 
   SERVICE_TABLE_ENTRY ste[] = {
     { TEXT(""), (LPSERVICE_MAIN_FUNCTION) ServiceMain },
-    { NULL, NULL }
+    { nullptr, nullptr }
   };
 
   ARGC = argc;

@@ -12,5 +12,8 @@
       "top": 35,
       "bottom": 35
     }
+  },
+  "styles": {
+    "website": "styles/website.css"
   }
 }

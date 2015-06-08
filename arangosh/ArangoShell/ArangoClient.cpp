@@ -175,15 +175,23 @@ ArangoClient::ArangoClient (char const* appName)
 }
 
 ArangoClient::~ArangoClient () {
-  if (_endpointServer != nullptr) {
-    delete _endpointServer;
-  }
+  delete _endpointServer;
 }
 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up a program-specific help message
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::setupSpecificHelp (std::string const& progname, 
+                                      std::string const& message) {
+  _specificHelp.progname = progname;
+  _specificHelp.message  = message;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the general and logging options
@@ -395,9 +403,18 @@ void ArangoClient::parse (ProgramOptions& options,
 
   if (! help.empty()) {
     if (! example.empty()) {
-      cout << "USAGE: " << argv[0] << " " << example << endl << endl;
+      cout << "USAGE:  " << argv[0] << " " << example << endl << endl;
     }
     cout << description.usage(help) << endl;
+
+    // check for program-specific help
+    std::string const progname(argv[0]);
+    if (! _specificHelp.progname.empty() && 
+        progname.size() >= _specificHelp.progname.size() && 
+        progname.substr(progname.size() - _specificHelp.progname.size(), _specificHelp.progname.size()) == _specificHelp.progname) {
+      // found a program-specific help
+      cout << _specificHelp.message << endl;
+    }
 
     // --help always returns success
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);

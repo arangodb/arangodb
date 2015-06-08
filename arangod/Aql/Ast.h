@@ -134,7 +134,7 @@ namespace triagens {
           auto root = createNode(type);
 
           // save the root node
-          _queries.push_back(root);
+          _queries.emplace_back(root);
 
           // set the current root node if everything went well
           _root = root;
@@ -547,6 +547,16 @@ namespace triagens {
 
         AstNode* replaceVariables (AstNode*,
                                    std::unordered_map<VariableId, Variable const*> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a variable reference in the expression with another 
+/// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter 
+/// becomes `a + b + 1`
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* replaceVariableReference (AstNode*,
+                                           Variable const*,
+                                           AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the AST

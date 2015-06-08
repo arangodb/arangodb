@@ -285,10 +285,10 @@ TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs,
   uint32_t numLhs, numRhs;
   uint32_t listPos;
 
-  if (lhs == NULL) {
+  if (lhs == nullptr) {
     return rhs;
   }
-  if (rhs == NULL) {
+  if (rhs == nullptr) {
     return lhs;
   }
 
@@ -307,10 +307,10 @@ TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs,
   }
 
   list = TRI_CreateListFulltextIndex(numLhs + numRhs);
-  if (list == NULL) {
+  if (list == nullptr) {
     TRI_FreeListFulltextIndex(lhs);
     TRI_FreeListFulltextIndex(rhs);
-    return NULL;
+    return nullptr;
   }
 
   SortList(lhs);
@@ -378,11 +378,11 @@ TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t* lhs,
   uint32_t listPos;
 
   // check if one of the pointers is NULL
-  if (lhs == NULL) {
+  if (lhs == nullptr) {
     return rhs;
   }
 
-  if (rhs == NULL) {
+  if (rhs == nullptr) {
     return lhs;
   }
 
@@ -393,10 +393,10 @@ TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t* lhs,
 
   // check the easy cases when one of the lists is empty
   if (numLhs == 0 || numRhs == 0) {
-    if (lhs != NULL) {
+    if (lhs != nullptr) {
       TRI_FreeListFulltextIndex(lhs);
     }
-    if (rhs != NULL) {
+    if (rhs != nullptr) {
       TRI_FreeListFulltextIndex(rhs);
     }
 
@@ -406,10 +406,10 @@ TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t* lhs,
 
   // we have at least one entry in each list
   list = TRI_CreateListFulltextIndex(numLhs < numRhs ? numLhs : numRhs);
-  if (list == NULL) {
+  if (list == nullptr) {
     TRI_FreeListFulltextIndex(lhs);
     TRI_FreeListFulltextIndex(rhs);
-    return NULL;
+    return nullptr;
   }
 
   SortList(lhs);
@@ -477,12 +477,12 @@ TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* list,
   uint32_t numExclude;
   uint32_t i, j, listPos;
 
-  if (list == NULL) {
+  if (list == nullptr) {
     TRI_FreeListFulltextIndex(exclude);
     return list;
   }
 
-  if (exclude == NULL) {
+  if (exclude == nullptr) {
     return list;
   }
 
@@ -576,8 +576,8 @@ TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t* list,
 
     // increase the existing list
     clone = IncreaseList(list, newSize);
-    if (clone == NULL) {
-      return NULL;
+    if (clone == nullptr) {
+      return nullptr;
     }
 
     // switch over

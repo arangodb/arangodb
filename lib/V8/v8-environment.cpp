@@ -40,9 +40,8 @@ extern char **environ;
 #endif
 #endif
 
-
-static void EnvGetter(v8::Local<v8::String> property,
-                      const v8::PropertyCallbackInfo<v8::Value>& args) {
+static void EnvGetter (v8::Local<v8::String> property,
+                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
@@ -72,10 +71,9 @@ static void EnvGetter(v8::Local<v8::String> property,
   TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(property));
 }
 
-
-static void EnvSetter(v8::Local<v8::String> property,
-                      v8::Local<v8::Value> value,
-                      const v8::PropertyCallbackInfo<v8::Value>& args) {
+static void EnvSetter (v8::Local<v8::String> property,
+                       v8::Local<v8::Value> value,
+                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
@@ -96,21 +94,22 @@ static void EnvSetter(v8::Local<v8::String> property,
 }
 
 
-static void EnvQuery(v8::Local<v8::String> property,
-                     const v8::PropertyCallbackInfo<v8::Integer>& args) {
+static void EnvQuery (v8::Local<v8::String> property,
+                      const v8::PropertyCallbackInfo<v8::Integer>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t rc = -1;  // Not found unless proven otherwise.
 #ifndef _WIN32
   v8::String::Utf8Value key(property);
-  if (getenv(*key))
+  if (getenv(*key)) {
     rc = 0;
+  }
 #else  // _WIN32
   v8::String::Value key(property);
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
   SetLastError(ERROR_SUCCESS);
 
-  if (GetEnvironmentVariableW(key_ptr, NULL, 0) > 0 ||
+  if (GetEnvironmentVariableW(key_ptr, nullptr, 0) > 0 ||
       GetLastError() == ERROR_SUCCESS) {
     rc = 0;
     if (key_ptr[0] == L'=') {
@@ -121,47 +120,46 @@ static void EnvQuery(v8::Local<v8::String> property,
     }
   }
 #endif
-  if (rc != -1)
+  if (rc != -1) {
     TRI_V8_RETURN(rc);
+  }
 }
 
-
-static void EnvDeleter(v8::Local<v8::String> property,
-                       const v8::PropertyCallbackInfo<v8::Boolean>& args) {
+static void EnvDeleter (v8::Local<v8::String> property,
+                        const v8::PropertyCallbackInfo<v8::Boolean>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   bool rc = true;
 #ifndef _WIN32
   v8::String::Utf8Value key(property);
-  rc = getenv(*key) != NULL;
-  if (rc)
+  rc = getenv(*key) != nullptr;
+  if (rc) {
     unsetenv(*key);
+  }
 #else
   v8::String::Value key(property);
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
-  if (key_ptr[0] == L'=' || !SetEnvironmentVariableW(key_ptr, NULL)) {
+  if (key_ptr[0] == L'=' || !SetEnvironmentVariableW(key_ptr, nullptr)) {
     // Deletion failed. Return true if the key wasn't there in the first place,
     // false if it is still there.
-    rc = GetEnvironmentVariableW(key_ptr, NULL, NULL) == 0 &&
+    rc = GetEnvironmentVariableW(key_ptr, nullptr, 0) == 0 &&
          GetLastError() != ERROR_SUCCESS;
   }
 #endif
   if (rc) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
 }
 
-
-static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
+static void EnvEnumerator (const v8::PropertyCallbackInfo<v8::Array>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
   int size = 0;
-  while (environ[size])
+  while (environ[size]) {
     size++;
+  }
 
   v8::Local<v8::Array> envarr = v8::Array::New(isolate, size);
 
@@ -174,21 +172,22 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   }
 #else  // _WIN32
   WCHAR* environment = GetEnvironmentStringsW();
-  if (environment == NULL)
+  if (environment == nullptr)
     return;  // This should not happen.
   v8::Local<v8::Array> envarr = v8::Array::New(isolate);
   WCHAR* p = environment;
   int i = 0;
-  while (*p != NULL) {
+  while (*p != 0) {
     WCHAR *s;
     if (*p == L'=') {
       // If the key starts with '=' it is a hidden environment variable.
       p += wcslen(p) + 1;
       continue;
-    } else {
+    } 
+    else {
       s = wcschr(p, L'=');
     }
-    if (!s) {
+    if (! s) {
       s = p + wcslen(p);
     }
     const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(p);
@@ -204,7 +203,6 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
 
   TRI_V8_RETURN(envarr);
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             module initialisation

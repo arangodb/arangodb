@@ -66,8 +66,7 @@
       buttons.push(
         window.modalView.createDeleteButton('Delete', this.deleteDocument.bind(this))
       );
-      window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent, undefined,
-      null);
+      window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent);
     },
 
     deleteDocument: function() {

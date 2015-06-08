@@ -531,7 +531,7 @@ def generateArangoshShutdown():
     print '''
 if (allErrors.length > 0) {
     print(allErrors);
-    throw new Error('troubles during generating documentation data; see above.');
+    throw new Error('trouble during generating documentation data; see above.');
 }
 '''
 
