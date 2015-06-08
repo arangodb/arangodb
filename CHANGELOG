@@ -358,19 +358,37 @@ v2.6.0 (XXXX-XX-XX)
 
 * INCOMPATIBLE CHANGE:
 
-  The AQL function `NEIGHBORS` now provides an additional option `includeData`.
-  This option allows controlling whether the function should return the complete vertices
-  or just their IDs. Returning only the IDs instead of the full vertices can lead to
-  improved performance .
+  The result format of the AQL function `NEIGHBORS` has been changed.
+  Before it has returned an array of objects containing 'vertex' and 'edge'.
+  Now it will only contain the vertex directly.
+  Also an additional option 'includeData' has been added.
+  This is used to define if only the 'vertex._id' value should be returned (false, default),
+  or if the vertex should be looked up in the collection and the complete JSON should be returned
+  (true).
+  Using only the id values can lead to significantly improved performance if this is the only information
+  required.
 
-  If provided, `includeData` is set to `true`, all vertices in the result will be returned
-  with all their attributes. The default value of `includeData` is `false`.
-  This makes the default function results incompatible with previous versions of ArangoDB. 
-
-  To get the old result style in ArangoDB 2.6, please set the options as follows in calls
-  to `NEIGHBORS`:
+  In order to get the old result format prior to ArangoDB 2.6, please use the function EDGES instead.
+  Edges allows for a new option 'includeVertices' which, set to true, returns exactly the format of NEIGHBORS.
+  Example:
   
-      NEIGHBORS(<vertexCollection>, <edgeCollection>, <vertex>, <direction>, <example>, { includeData: true })
+      NEIGHBORS(<vertexCollection>, <edgeCollection>, <vertex>, <direction>, <example>)
+
+  Now achieved by:
+      
+      EDGES(<vertexCollection>, <edgeCollection>, <vertex>, <direction>, <example>, {includeVertices: true})
+
+  If you are nesting several NEIGHBORS steps you can speed up their performance in the following way:
+
+  Old Example:
+
+  FOR va IN NEIGHBORS(Users, relations, 'Users/123', 'outbound') FOR vc IN NEIGHBORS(Products, relations, va.vertex._id, 'outbound') RETURN vc
+
+  Can be achieved by:
+
+  FOR va IN NEIGHBORS(Users, relations, 'Users/123', 'outbound') FOR vc IN NEIGHBORS(Products, relations, va, 'outbound', null, {includeData: true}) RETURN vc
+                                                                                                          ^^^^            ^^^^^^^^^^^^^^^^^^^
+                                                                                           Use intermediate directly     include Data for final
 
 * INCOMPATIBLE CHANGE:
 
