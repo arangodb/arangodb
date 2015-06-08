@@ -249,12 +249,18 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   };
 
   this.loadGraphWithAttributeValue = function(attribute, value, callback) {
+
+    //clear random and defined nodes
+    adapter.randomNodes = [];
+    adapter.definedNodes = [];
+
     adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
       if (node.errorCode) {
         callback(node);
         return;
       }
       node._expanded = true;
+
       self.start();
       if (_.isFunction(callback)) {
         callback();
