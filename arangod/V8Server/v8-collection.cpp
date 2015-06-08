@@ -1530,7 +1530,9 @@ static void RemoveVocbaseCol (bool useCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DocumentVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   DocumentVocbaseCol(true, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1584,7 +1586,7 @@ static void DropVocbaseColCoordinator (const v8::FunctionCallbackInfo<v8::Value>
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DropVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -1608,6 +1610,7 @@ static void JS_DropVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1640,7 +1643,9 @@ static void JS_DropVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExistsVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ExistsVocbaseCol(true, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1783,7 +1788,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FiguresVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -1871,6 +1876,7 @@ static void JS_FiguresVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& arg
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1894,7 +1900,7 @@ static void JS_FiguresVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LoadVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1930,6 +1936,7 @@ static void JS_LoadVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   ReleaseCollection(collection);
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1937,7 +1944,7 @@ static void JS_LoadVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t const* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -1964,10 +1971,15 @@ static void JS_NameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, name);
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection's cluster plan id
+////////////////////////////////////////////////////////////////////////////////
+
 static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t const* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -1981,6 +1993,7 @@ static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_V8_RETURN(V8CollectionId(isolate, collection->_planId));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2075,7 +2088,7 @@ static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
 
@@ -2344,6 +2357,7 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
 
   ReleaseCollection(collection);
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2407,7 +2421,9 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return RemoveVocbaseCol(true, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2438,7 +2454,7 @@ static void JS_RemoveVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
@@ -2488,6 +2504,7 @@ static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2559,7 +2576,9 @@ static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReplaceVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ReplaceVocbaseCol(true, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2623,7 +2642,7 @@ static int GetRevisionCoordinator (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RevisionVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -2647,6 +2666,7 @@ static void JS_RevisionVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& ar
   }
 
   TRI_V8_RETURN(V8RevisionId(isolate, rid));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2665,7 +2685,7 @@ static void JS_RevisionVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RotateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (ServerState::instance()->isCoordinator()) {
@@ -2694,6 +2714,7 @@ static void JS_RotateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2801,7 +2822,9 @@ static void JS_RotateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UpdateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return UpdateVocbaseCol(true, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3222,7 +3245,7 @@ static void InsertEdgeColCoordinator (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InsertVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -3249,6 +3272,7 @@ static void JS_InsertVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   else {
     InsertEdgeCol(collection, args);
   }
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3256,7 +3280,7 @@ static void JS_InsertVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StatusVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -3284,6 +3308,7 @@ static void JS_StatusVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int) status));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3291,7 +3316,7 @@ static void JS_StatusVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TruncateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   bool const forceSync = ExtractWaitForSync(args, 1);
@@ -3323,6 +3348,7 @@ static void JS_TruncateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& ar
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3330,7 +3356,7 @@ static void JS_TruncateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TruncateDatafileVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -3365,6 +3391,7 @@ static void JS_TruncateDatafileVocbaseCol (const v8::FunctionCallbackInfo<v8::Va
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3372,7 +3399,7 @@ static void JS_TruncateDatafileVocbaseCol (const v8::FunctionCallbackInfo<v8::Va
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TryRepairDatafileVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -3406,6 +3433,7 @@ static void JS_TryRepairDatafileVocbaseCol (const v8::FunctionCallbackInfo<v8::V
   }
     
   TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3420,7 +3448,7 @@ static void JS_TryRepairDatafileVocbaseCol (const v8::FunctionCallbackInfo<v8::V
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TypeVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -3450,6 +3478,7 @@ static void JS_TypeVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int) type));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3474,7 +3503,7 @@ static void JS_TypeVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnloadVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -3499,6 +3528,7 @@ static void JS_UnloadVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3506,7 +3536,7 @@ static void JS_UnloadVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_VersionVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -3533,6 +3563,7 @@ static void JS_VersionVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& arg
   }
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int) info._version));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3541,7 +3572,7 @@ static void JS_VersionVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& arg
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 static void JS_CheckPointersVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -3580,10 +3611,9 @@ static void JS_CheckPointersVocbaseCol (const v8::FunctionCallbackInfo<v8::Value
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 #endif
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes the operation mode of the server
@@ -3607,7 +3637,7 @@ static void JS_CheckPointersVocbaseCol (const v8::FunctionCallbackInfo<v8::Value
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ChangeOperationModeVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
@@ -3653,6 +3683,7 @@ static void JS_ChangeOperationModeVocbase (const v8::FunctionCallbackInfo<v8::Va
   TRI_ChangeOperationModeServer(newMode);
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3710,7 +3741,7 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -3754,6 +3785,7 @@ static void JS_CollectionVocbase (const v8::FunctionCallbackInfo<v8::Value>& arg
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3775,7 +3807,7 @@ static void JS_CollectionVocbase (const v8::FunctionCallbackInfo<v8::Value>& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -3819,6 +3851,7 @@ static void JS_CollectionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3826,7 +3859,7 @@ static void JS_CollectionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CompletionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -3890,6 +3923,7 @@ static void JS_CompletionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
   result->Set(j++, TRI_V8_ASCII_STRING("_version()"));
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -3967,7 +4001,9 @@ static void JS_CompletionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return RemoveVocbaseCol(false, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4008,7 +4044,9 @@ static void JS_RemoveVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DocumentVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  return DocumentVocbaseCol(false, args);
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  DocumentVocbaseCol(false, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4033,7 +4071,9 @@ static void JS_DocumentVocbase (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExistsVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ExistsVocbaseCol(false, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4089,7 +4129,9 @@ static void JS_ExistsVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReplaceVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ReplaceVocbaseCol(false, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4153,7 +4195,9 @@ static void JS_ReplaceVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UpdateVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return UpdateVocbaseCol(false, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -4179,7 +4223,7 @@ static void JS_UpdateVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CountVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -4228,6 +4272,7 @@ static void JS_CountVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args)
   // READ-LOCK end
 
   TRI_V8_RETURN(v8::Number::New(isolate, (double) s));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4238,7 +4283,7 @@ static void JS_CountVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DatafilesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -4293,6 +4338,7 @@ static void JS_DatafilesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& a
   TRI_DestroyFileStructureCollection(&structure);
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -4312,7 +4358,7 @@ static void JS_DatafilesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& a
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DatafileScanVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -4374,6 +4420,7 @@ static void JS_DatafileScanVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>
 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 // .............................................................................
@@ -4444,3 +4491,4 @@ void TRI_InitV8collection (v8::Handle<v8::Context> context,
   v8g->VocbaseColTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("ArangoCollection"), ft->GetFunction());
 }
+

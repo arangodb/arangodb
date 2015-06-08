@@ -210,7 +210,7 @@ static bool VoiceMode = false;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PagerOutput (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   for (int i = 0; i < args.Length(); i++) {
 
@@ -223,6 +223,7 @@ static void JS_PagerOutput (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,7 +231,7 @@ static void JS_PagerOutput (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StartOutputPager (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (BaseClient.usePager()) {
@@ -242,6 +243,7 @@ static void JS_StartOutputPager (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +251,7 @@ static void JS_StartOutputPager (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StopOutputPager (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (BaseClient.usePager()) {
@@ -262,6 +264,7 @@ static void JS_StopOutputPager (const v8::FunctionCallbackInfo<v8::Value>& args)
   BaseClient.setUsePager(false);
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -283,9 +286,8 @@ static void JS_StopOutputPager (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ImportCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("importCsvFile(<filename>, <collection>[, <options>])");
@@ -351,6 +353,7 @@ static void JS_ImportCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, ih.getErrorMessage().c_str());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,9 +366,8 @@ static void JS_ImportCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ImportJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("importJsonFile(<filename>, <collection>)");
@@ -401,13 +403,15 @@ static void JS_ImportJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, ih.getErrorMessage().c_str());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_normalize_string (const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_NormalizeString (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -417,16 +421,16 @@ static void JS_normalize_string (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_normalize_V8_Obj(args, args[0]);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_compare_string (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+static void JS_CompareString (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("COMPARE_STRING(<left string>, <right string>)");
@@ -438,6 +442,7 @@ static void JS_compare_string (const v8::FunctionCallbackInfo<v8::Value>& args) 
   int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
 
   TRI_V8_RETURN(v8::Integer::New(isolate, result));
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -2217,8 +2222,8 @@ static void InitCallbacks (v8::Isolate *isolate,
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_STOP_PAGER"),       v8::FunctionTemplate::New(isolate, JS_StopOutputPager)->GetFunction());
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_IMPORT_CSV_FILE"),  v8::FunctionTemplate::New(isolate, JS_ImportCsvFile)->GetFunction());
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_IMPORT_JSON_FILE"), v8::FunctionTemplate::New(isolate, JS_ImportJsonFile)->GetFunction());
-  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("NORMALIZE_STRING"),     v8::FunctionTemplate::New(isolate, JS_normalize_string)->GetFunction());
-  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("COMPARE_STRING"),       v8::FunctionTemplate::New(isolate, JS_compare_string)->GetFunction());
+  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("NORMALIZE_STRING"),     v8::FunctionTemplate::New(isolate, JS_NormalizeString)->GetFunction());
+  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("COMPARE_STRING"),       v8::FunctionTemplate::New(isolate, JS_CompareString)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("ARANGO_QUIET"),         v8::Boolean::New(isolate, BaseClient.quiet()));
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("VALGRIND"),             v8::Boolean::New(isolate, (RUNNING_ON_VALGRIND > 0)));
@@ -2330,7 +2335,7 @@ static int Run (v8::Isolate* isolate, eRunMode runMode, bool promptError) {
     cerr << "caught unknown exception" << endl;
     ok = false;
   }
-  return (ok)? EXIT_SUCCESS : EXIT_FAILURE;
+  return (ok) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 class BufferAllocator : public v8::ArrayBuffer::Allocator {
@@ -2483,7 +2488,17 @@ int main (int argc, char* args[]) {
       if (ret == EXIT_SUCCESS) {
         BaseClient.openLog();
 
-        ret = Run(isolate, runMode, promptError);
+        try {
+          ret = Run(isolate, runMode, promptError);
+        }
+        catch (std::bad_alloc const&) {
+          LOG_ERROR("caught exception %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+          ret = EXIT_FAILURE;
+        }
+        catch (...) {
+          LOG_ERROR("caught unknown exception");
+          ret = EXIT_FAILURE;
+        }
       }
 
       isolate->LowMemoryNotification();

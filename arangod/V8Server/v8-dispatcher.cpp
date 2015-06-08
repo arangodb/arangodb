@@ -108,7 +108,7 @@ static DispatcherThread* CreateV8DispatcherThread (DispatcherQueue* queue, void*
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
@@ -262,6 +262,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,7 +272,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnregisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -291,6 +292,7 @@ static void JS_UnregisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,7 +302,7 @@ static void JS_UnregisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 1) {
@@ -330,6 +332,7 @@ static void JS_GetTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,7 +347,7 @@ static void JS_GetTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateNamedQueue (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (GlobalDispatcher == nullptr) {
@@ -417,6 +420,7 @@ static void JS_CreateNamedQueue (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -426,7 +430,7 @@ static void JS_CreateNamedQueue (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_AddJob (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   
   if (args.Length() != 2 || ! args[1]->IsObject()) {
@@ -456,6 +460,7 @@ static void JS_AddJob (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------

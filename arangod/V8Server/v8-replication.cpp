@@ -31,6 +31,7 @@
 #include "v8-vocbaseprivate.h"
 #include "Replication/InitialSyncer.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "Wal/LogfileManager.h"
 #include "VocBase/replication-dump.h"
@@ -49,7 +50,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StateLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   triagens::wal::LogfileManagerState s = triagens::wal::LogfileManager::instance()->state();
@@ -72,6 +73,7 @@ static void JS_StateLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>
   result->Set(TRI_V8_ASCII_STRING("clients"), clients);
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +82,7 @@ static void JS_StateLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 static void JS_LastLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -113,6 +115,7 @@ static void JS_LastLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>&
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 #endif
 
@@ -121,7 +124,7 @@ static void JS_LastLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>&
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SynchroniseReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1 || ! args[0]->IsObject()) {
@@ -251,6 +254,7 @@ static void JS_SynchroniseReplication (const v8::FunctionCallbackInfo<v8::Value>
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,11 +262,12 @@ static void JS_SynchroniseReplication (const v8::FunctionCallbackInfo<v8::Value>
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ServerIdReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   const string serverId = StringUtils::itoa(TRI_GetIdServer());
   TRI_V8_RETURN_STD_STRING(serverId);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +275,7 @@ static void JS_ServerIdReplication (const v8::FunctionCallbackInfo<v8::Value>& a
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -476,6 +481,7 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
 
     TRI_V8_RETURN(result);
   }
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,7 +489,7 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StartApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -517,6 +523,7 @@ static void JS_StartApplierReplication (const v8::FunctionCallbackInfo<v8::Value
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -524,7 +531,7 @@ static void JS_StartApplierReplication (const v8::FunctionCallbackInfo<v8::Value
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ShutdownApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -548,6 +555,7 @@ static void JS_ShutdownApplierReplication (const v8::FunctionCallbackInfo<v8::Va
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,7 +563,7 @@ static void JS_ShutdownApplierReplication (const v8::FunctionCallbackInfo<v8::Va
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StateApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -582,6 +590,7 @@ static void JS_StateApplierReplication (const v8::FunctionCallbackInfo<v8::Value
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -589,7 +598,7 @@ static void JS_StateApplierReplication (const v8::FunctionCallbackInfo<v8::Value
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ForgetApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -613,6 +622,7 @@ static void JS_ForgetApplierReplication (const v8::FunctionCallbackInfo<v8::Valu
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 void TRI_InitV8Replication (v8::Isolate* isolate,
