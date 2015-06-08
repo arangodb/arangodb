@@ -38,7 +38,7 @@ function resolveYamlInteger(data) {
 
   if (ch === '0') {
     // 0
-    if (index+1 === max) { return true; }
+    if (index + 1 === max) { return true; }
     ch = data[++index];
 
     // base 2, base 8, base 16

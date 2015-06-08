@@ -1381,7 +1381,6 @@ function require (path) {
     try {
       script = Function.apply(null, keys.concat(content));
     } catch (e) {
-      require('console').errorLines(e.stack);
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_BAD_WRAPPER.code,
         errorMessage: internal.errors.ERROR_MODULE_BAD_WRAPPER.message
@@ -1396,7 +1395,6 @@ function require (path) {
       fn = internal.executeScript("(" + script + ")", undefined, filename);
     } catch (e) {
       // This should never happen, right?
-      require('console').errorLines(e.stack);
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
         errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
@@ -1413,7 +1411,6 @@ function require (path) {
         return args[key];
       }));
     } catch (e) {
-      require('console').errorLines(e.stack);
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
         errorMessage: internal.errors.ERROR_MODULE_FAILURE.message

@@ -1,5 +1,6 @@
 'use strict';
 
+/*eslint-disable no-console*/
 
 var fs   = require('fs');
 var path = require('path');

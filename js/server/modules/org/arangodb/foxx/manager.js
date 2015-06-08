@@ -469,11 +469,13 @@ var executeAppScript = function (scriptName, app, argv) {
         }
       });
     } catch (e) {
-      console.errorLines(
-        "Running script '" + readableName + "' not possible for mount '%s':\n%s",
-        app._mount,
-        e.stack || String(e)
-      );
+      if (!(e.cause || e).statusCode) {
+        console.errorLines(
+          "Running script '" + readableName + "' not possible for mount '%s':\n%s",
+          app._mount,
+          (e.cause || e).stack || String(e.cause || e)
+        );
+      }
       throw e;
     }
   }

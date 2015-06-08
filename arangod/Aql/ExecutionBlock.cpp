@@ -73,8 +73,8 @@ AggregatorGroup::AggregatorGroup (bool count)
 
 AggregatorGroup::~AggregatorGroup () {
   //reset();
-  for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
-    delete (*it);
+  for (auto& it : groupBlocks) {
+    delete it;
   }
   for (auto& it : groupValues) {
     it.destroy();
@@ -105,8 +105,8 @@ void AggregatorGroup::initialize (size_t capacity) {
 }
 
 void AggregatorGroup::reset () {
-  for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
-    delete (*it);
+  for (auto& it : groupBlocks) {
+    delete it;
   }
 
   groupBlocks.clear();
@@ -187,8 +187,8 @@ ExecutionBlock::ExecutionBlock (ExecutionEngine* engine,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionBlock::~ExecutionBlock () {
-  for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
-    delete *it;
+  for (auto& it : _buffer) {
+    delete it;
   }
 
   _buffer.clear();
@@ -204,7 +204,7 @@ ExecutionBlock::~ExecutionBlock () {
 
 size_t ExecutionBlock::countBlocksRows (std::vector<AqlItemBlock*> const& blocks) const {
   size_t count = 0;
-  for (auto it : blocks) {
+  for (auto const& it : blocks) {
     count += it->size();
   }
   return count;
@@ -223,14 +223,15 @@ bool ExecutionBlock::removeDependency (ExecutionBlock* ep) {
 }
 
 int ExecutionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
-  for (auto d : _dependencies) {
+  for (auto& d : _dependencies) {
     int res = d->initializeCursor(items, pos);
+
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
   }
 
-  for (auto it : _buffer) {
+  for (auto& it : _buffer) {
     delete it;
   }
   _buffer.clear();
@@ -272,7 +273,7 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
   }
 
   // Now the children in their natural order:
-  for (auto c : _dependencies) {
+  for (auto& c : _dependencies) {
     if (c->walk(worker)) {
       return true;
     }
@@ -299,6 +300,7 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
 int ExecutionBlock::initialize () {
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
     int res = (*it)->initialize();
+
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -313,8 +315,8 @@ int ExecutionBlock::initialize () {
 int ExecutionBlock::shutdown (int errorCode) {
   int ret = TRI_ERROR_NO_ERROR;
 
-  for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
-    delete *it;
+  for (auto& it : _buffer) {
+    delete it;
   }
   _buffer.clear();
 
@@ -571,8 +573,8 @@ bool ExecutionBlock::hasMore () {
 
 int64_t ExecutionBlock::remaining () {
   int64_t sum = 0;
-  for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
-    sum += (*it)->size();
+  for (auto const& it : _buffer) {
+    sum += it->size();
   }
   return sum + _dependencies[0]->remaining();
 }
@@ -593,7 +595,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
   std::vector<AqlItemBlock*> collector;
 
   auto freeCollector = [&collector]() {
-    for (auto x : collector) {
+    for (auto& x : collector) {
       delete x;
     }
     collector.clear();
@@ -722,7 +724,7 @@ int SingletonBlock::initializeCursor (AqlItemBlock* items,
     // build a whitelist with all the registers that we will copy from above
     std::unordered_set<RegisterId> whitelist;
 
-    for (auto it : varsUsedLater) {
+    for (auto const& it : varsUsedLater) {
       auto it2 = registerPlan.find(it->id);
 
       if (it2 != registerPlan.end()) {
@@ -1077,7 +1079,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   for (size_t i = 0; i < n; i++) {
     _condition->emplace_back(IndexAndCondition());
 
-    for (auto const& ri: en->_ranges[i]) {
+    for (auto const& ri : en->_ranges[i]) {
       _condition->at(i).emplace_back(ri.clone());
     }
   }
@@ -1107,7 +1109,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
 IndexRangeBlock::~IndexRangeBlock () {
   destroyHashIndexSearchValues();
 
-  for (auto e : _allVariableBoundExpressions) {
+  for (auto& e : _allVariableBoundExpressions) {
     delete e;
   }
 
@@ -1128,7 +1130,7 @@ bool IndexRangeBlock::useHighBounds () const {
 }
 
 bool IndexRangeBlock::hasV8Expression () const {
-  for (auto expression : _allVariableBoundExpressions) {
+  for (auto const& expression : _allVariableBoundExpressions) {
     TRI_ASSERT(expression != nullptr);
 
     if (expression->isV8()) {
@@ -1313,7 +1315,7 @@ void IndexRangeBlock::buildExpressions () {
         newCondition.reset(indexAnds.release());
       }
       else {
-        for (auto const& indexAnd: *indexAnds) {
+        for (auto const& indexAnd : *indexAnds) {
           newCondition->emplace_back(std::move(indexAnd));
         }
       } 
@@ -1373,7 +1375,7 @@ int IndexRangeBlock::initialize () {
 
     std::unordered_set<Variable*>&& inVars = expression->variables();
 
-    for (auto v : inVars) {
+    for (auto const& v : inVars) {
       inVarsCur.emplace_back(v);
       auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getPlanNode()->getRegisterPlan()->varInfo.end());
@@ -1405,7 +1407,7 @@ int IndexRangeBlock::initialize () {
         }
       }
       catch (...) {
-        for (auto e : _allVariableBoundExpressions) {
+        for (auto& e : _allVariableBoundExpressions) {
           delete e;
         }
         _allVariableBoundExpressions.clear();
@@ -2319,21 +2321,21 @@ void IndexRangeBlock::readHashIndex (size_t atMost) {
 // only have equalities followed by a single arbitrary comparison (i.e x.a == 1
 // && x.b == 2 && x.c > 3 && x.c <= 4). Then we do: 
 //
-//   TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, left, right, NULL, shaper,
+//   TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, left, right, nullptr, shaper,
 //     2);
 //
 // where 
 //
-//   left =  TRI_CreateIndexOperator(TRI_GT_INDEX_OPERATOR, NULL, NULL, [1,2,3],
+//   left =  TRI_CreateIndexOperator(TRI_GT_INDEX_OPERATOR, nullptr, nullptr, [1,2,3],
 //     shaper, 3)
 //
-//   right =  TRI_CreateIndexOperator(TRI_LE_INDEX_OPERATOR, NULL, NULL, [1,2,4],
+//   right =  TRI_CreateIndexOperator(TRI_LE_INDEX_OPERATOR, nullptr, nullptr, [1,2,4],
 //     shaper, 3)
 //
 // If the final comparison is an equality (x.a == 1 && x.b == 2 && x.c ==3), then 
 // we just do:
 //
-//   TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL, NULL, [1,2,3],
+//   TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr, nullptr, [1,2,3],
 //     shaper, 3)
 //
 // It is necessary that values of the attributes are listed in the correct
@@ -3040,10 +3042,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
     else {
       // initial subquery execution or subquery is not constant
 
-      // prevent accidental double-freeing in case of exception
-      subqueryResults = nullptr;
-
-      // and execute the subquery
+      // execute the subquery
       subqueryResults = executeSubquery(); 
       TRI_ASSERT(subqueryResults != nullptr);
 
@@ -4689,6 +4688,7 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
           result->setValue(dstRow,
                            _outRegOld,
                            AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
+
         }
       }
         

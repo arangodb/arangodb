@@ -5,11 +5,12 @@
 (function () {
   "use strict";
 
-  var createButtonStub = function(type, title, cb) {
+  var createButtonStub = function(type, title, cb, confirm) {
     return {
       type: type,
       title: title,
-      callback: cb
+      callback: cb,
+      confirm: confirm
     };
   };
 
@@ -80,23 +81,16 @@
     tables: {
       READONLY: "readonly",
       TEXT: "text",
+      BLOB: "blob",
       PASSWORD: "password",
       SELECT: "select",
       SELECT2: "select2",
       CHECKBOX: "checkbox"
     },
-    closeButton: {
-      type: "close",
-      title: "Cancel"
-    },
 
     initialize: function() {
       Object.freeze(this.buttons);
       Object.freeze(this.tables);
-      var self = this;
-      this.closeButton.callback = function() {
-        self.hide();
-      };
     },
 
     createModalHotkeys: function() {
@@ -147,11 +141,13 @@
 
     },
 
-    createCloseButton: function(cb) {
+    createCloseButton: function(title, cb) {
       var self = this;
-      return createButtonStub(this.buttons.CLOSE, this.closeButton.title, function () {
-          self.closeButton.callback();
+      return createButtonStub(this.buttons.CLOSE, title, function () {
+        self.hide();
+        if (cb) {
           cb();
+        }
       });
     },
 
@@ -163,8 +159,8 @@
       return createButtonStub(this.buttons.NOTIFICATION, title, cb);
     },
 
-    createDeleteButton: function(title, cb) {
-      return createButtonStub(this.buttons.DELETE, title, cb);
+    createDeleteButton: function(title, cb, confirm) {
+      return createButtonStub(this.buttons.DELETE, title, cb, confirm);
     },
 
     createNeutralButton: function(title, cb) {
@@ -186,6 +182,13 @@
 
     createTextEntry: function(id, label, value, info, placeholder, mandatory, regexp) {
       var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory,
+                               regexp);
+      obj.id = id;
+      return obj;
+    },
+
+    createBlobEntry: function(id, label, value, info, placeholder, mandatory, regexp) {
+      var obj = createTextStub(this.tables.BLOB, label, value, info, placeholder, mandatory,
                                regexp);
       obj.id = id;
       return obj;
@@ -231,37 +234,40 @@
       };
     },
 
-    show: function(templateName, title, buttons, tableContent, advancedContent,
-        events, ignoreConfirm) {
-      var self = this, lastBtn, closeButtonFound = false;
+    show: function(templateName, title, buttons, tableContent, advancedContent, extraInfo, events, noConfirm) {
+      var self = this, lastBtn, confirmMsg, closeButtonFound = false;
       buttons = buttons || [];
-      ignoreConfirm = ignoreConfirm || false;
+      noConfirm = Boolean(noConfirm);
       this.clearValidators();
-      // Insert close as second from right
       if (buttons.length > 0) {
         buttons.forEach(function (b) {
-            if (b.type === self.buttons.CLOSE) {
-                closeButtonFound = true;
-            }
+          if (b.type === self.buttons.CLOSE) {
+              closeButtonFound = true;
+          }
+          if (b.type === self.buttons.DELETE) {
+              confirmMsg = confirmMsg || b.confirm;
+          }
         });
         if (!closeButtonFound) {
-            lastBtn = buttons.pop();
-            buttons.push(self.closeButton);
-            buttons.push(lastBtn);
+          // Insert close as second from right
+          lastBtn = buttons.pop();
+          buttons.push(self.createCloseButton('Cancel'));
+          buttons.push(lastBtn);
         }
       } else {
-        buttons.push(this.closeButton);
+        buttons.push(self.createCloseButton('Dismiss'));
       }
       $(this.el).html(this.baseTemplate.render({
         title: title,
         buttons: buttons,
-        hideFooter: this.hideFooter
+        hideFooter: this.hideFooter,
+        confirm: confirmMsg
       }));
       _.each(buttons, function(b, i) {
         if (b.disabled || !b.callback) {
           return;
         }
-        if (b.type === self.buttons.DELETE && !ignoreConfirm) {
+        if (b.type === self.buttons.DELETE && !noConfirm) {
           $("#modalButton" + i).bind("click", function() {
             $(self.confirm.yes).unbind("click");
             $(self.confirm.yes).bind("click", b.callback);
@@ -275,50 +281,41 @@
         $(self.confirm.list).css("display", "none");
       });
 
-      var template = templateEngine.createTemplate(templateName),
-        model = {};
-      model.content = tableContent || [];
-      model.advancedContent = advancedContent || false;
-      $(".modal-body").html(template.render(model));
+      var template = templateEngine.createTemplate(templateName);
+      $(".modal-body").html(template.render({
+        content: tableContent,
+        advancedContent: advancedContent,
+        info: extraInfo
+      }));
       $('.modalTooltips').tooltip({
         position: {
           my: "left top",
           at: "right+55 top-1"
         }
       });
-      var ind = buttons.indexOf(this.closeButton);
-      buttons.splice(ind, 1);
 
-      var completeTableContent = tableContent;
-      try {
-        _.each(advancedContent.content, function(x) {
-          completeTableContent.push(x);
-        });
-      }
-      catch(ignore) {
+      var completeTableContent = tableContent || [];
+      if (advancedContent && advancedContent.content) {
+        completeTableContent = completeTableContent.concat(advancedContent.content);
       }
 
-      //handle select2
-      _.each(completeTableContent, function(r) {
-        if (r.type === self.tables.SELECT2) {
-          $('#'+r.id).select2({
-            tags: r.tags || [],
+      _.each(completeTableContent, function(row) {
+        self.modalBindValidation(row);
+        if (row.type === self.tables.SELECT2) {
+          //handle select2
+          $('#'+row.id).select2({
+            tags: row.tags || [],
             showSearchBox: false,
             minimumResultsForSearch: -1,
             width: "336px",
-            maximumSelectionSize: r.maxEntrySize || 8
+            maximumSelectionSize: row.maxEntrySize || 8
           });
         }
-      });//handle select2
+      });
 
-      self.testInput = (function(){
-        _.each(completeTableContent, function(r){
-          self.modalBindValidation(r);
-        });
-      }());
       if (events) {
-          this.events = events;
-          this.delegateEvents();
+        this.events = events;
+        this.delegateEvents();
       }
 
       $("#modal-dialog").modal("show");
@@ -355,27 +352,30 @@
         var validCheck = function() {
           var $el = $("#" + entry.id);
           var validation = entry.validateInput($el);
-          var error = false, msg;
+          var error = false;
           _.each(validation, function(validator) {
-            var schema = Joi.object().keys({
-              toCheck: validator.rule
-            });
-            var valueToCheck = $el.val();
-            Joi.validate(
-              {
-                toCheck: valueToCheck
-              },
-              schema,
-              function (err) {
-                if (err) {
-                  msg = validator.msg;
-                  error = true;
-                }
+            var value = $el.val();
+            if (!validator.rule) {
+              validator = {rule: validator};
+            }
+            if (typeof validator.rule === 'function') {
+              try {
+                validator.rule(value);
+              } catch (e) {
+                error = validator.msg || e.message;
               }
-            );
+            } else {
+              var result = Joi.validate(value, validator.rule);
+              if (result.error) {
+                error = validator.msg || result.error.message;
+              }
+            }
+            if (error) {
+              return false;
+            }
           });
           if (error) {
-            return msg;
+            return error;
           }
         };
         var $el = $('#' + entry.id);
@@ -383,7 +383,7 @@
         $el.on('keyup focusout', function() {
           var msg = validCheck();
           var errorElement = $el.next()[0];
-          if (msg !== undefined) {
+          if (msg) {
             $el.addClass('invalid-input');
             if (errorElement) {
               //error element available

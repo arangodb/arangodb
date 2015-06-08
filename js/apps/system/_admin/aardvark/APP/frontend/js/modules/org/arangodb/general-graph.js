@@ -3058,7 +3058,9 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount1}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
-///   graph._countCommonNeighbors({isCapital : true}, {isCapital : true});
+///   var example = { isCapital: true };
+///   var options = { includeData: true };
+///   graph._countCommonNeighbors(example, example, options, options);
 /// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3068,8 +3070,8 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount2}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
-/// | graph._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
-///   {direction : 'outbound', maxDepth : 2});
+///   var options = { direction: 'outbound', maxDepth: 2, includeData: true };
+///   graph._countCommonNeighbors('germanCity/Hamburg', {}, options, options);
 /// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3085,8 +3087,8 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
     + ',@ex2'
     + ',@options1'
     + ',@options2'
-    + ') FOR a in ATTRIBUTES(e) FOR b in ATTRIBUTES(e[a])  '
-    + 'SORT  ATTRIBUTES(e)[0] RETURN [a, b, LENGTH(e[a][b]) ]';
+    + ') FOR a in ATTRIBUTES(e) FOR b in ATTRIBUTES(e[a]) '
+    + 'SORT ATTRIBUTES(e)[0] RETURN [a, b, LENGTH(e[a][b]) ]';
   optionsVertex1 = optionsVertex1 || {};
   optionsVertex2 = optionsVertex2 || {};
   var bindVars = {
@@ -3096,6 +3098,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
     "ex1": ex1,
     "ex2": ex2
   };
+
   var result = db._query(query, bindVars, {count: true}).toArray(),
     tmp = {}, tmp2={}, returnHash = [];
   result.forEach(function (r) {

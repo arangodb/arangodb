@@ -779,7 +779,7 @@ void ApplicationV8::upgradeDatabase (bool skip,
     }
 
     LOG_INFO("finished");
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
   else {
     // and return from the context
@@ -865,10 +865,10 @@ void ApplicationV8::versionCheck () {
   }
 
   if (result == 1) {
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
   else {
-    TRI_EXIT_FUNCTION(result, NULL);
+    TRI_EXIT_FUNCTION(result, nullptr);
   }
 }
 

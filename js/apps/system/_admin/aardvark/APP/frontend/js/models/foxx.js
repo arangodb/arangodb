@@ -7,18 +7,9 @@
     var req = {
       contentType: "application/json",
       processData: false,
-      success: function (data) {
-        if (typeof callback === "function") {
-          callback(null, data);
-        }
-      },
-      error: function (err) {
-        if (typeof callback === "function") {
-          callback(err);
-        }
-      }
+      type: method
     };
-    req.type = method;
+    callback = callback || function () {};
     args = _.extend({mount: foxx.encodedMount()}, args);
     var qs = _.reduce(args, function (base, value, key) {
       return base + encodeURIComponent(key) + '=' + encodeURIComponent(value) + '&';
@@ -27,7 +18,20 @@
     if (body !== undefined) {
       req.data = JSON.stringify(body);
     }
-    $.ajax(req);
+    $.ajax(req).then(
+      function (data) {
+        callback(null, data);
+      },
+      function (xhr) {
+        window.xhr = xhr;
+        callback(_.extend(
+          xhr.status
+          ? new Error(xhr.responseJSON ? xhr.responseJSON.errorMessage : xhr.responseText)
+          : new Error('Network Error'),
+          {statusCode: xhr.status}
+        ));
+      }
+    );
   };
 
   window.Foxx = Backbone.Model.extend({
@@ -56,8 +60,8 @@
       return encodeURIComponent(this.get("mount"));
     },
 
-    destroy: function (opts, callback) {
-      sendRequest(this, callback, "DELETE", undefined, undefined, opts);
+    destroy: function (options, callback) {
+      sendRequest(this, callback, "DELETE", undefined, undefined, options);
     },
 
     isBroken: function () {
@@ -121,8 +125,8 @@
       }.bind(this), "PATCH", "devel", activate);
     },
 
-    runScript: function (name, callback) {
-      sendRequest(this, callback, "POST", "scripts/" + name);
+    runScript: function (name, options, callback) {
+      sendRequest(this, callback, "POST", "scripts/" + name, options);
     },
 
     runTests: function (options, callback) {

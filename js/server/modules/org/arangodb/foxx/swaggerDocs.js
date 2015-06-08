@@ -1,3 +1,4 @@
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Swagger documentation
@@ -26,67 +27,63 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
-  'use strict';
+var foxxInternal = require("org/arangodb/foxx/internals");
+var _ = require("underscore");
+var internal = require("internal");
 
-  var foxxInternal = require("org/arangodb/foxx/internals");
-  var _ = require("underscore");
-  var internal = require("internal");
+// Wraps the docs object of a route to add swagger compatible documentation
+var SwaggerDocs = function (docs, models) {
+  this.docs = docs;
+  this.models = models;
+};
 
-  // Wraps the docs object of a route to add swagger compatible documentation
-  var SwaggerDocs = function (docs, models) {
-    this.docs = docs;
-    this.models = models;
-  };
+SwaggerDocs.prototype.addNickname = function (httpMethod, match) {
+  this.docs.nickname = foxxInternal.constructNickname(httpMethod, match);
+};
 
-  SwaggerDocs.prototype.addNickname = function (httpMethod, match) {
-    this.docs.nickname = foxxInternal.constructNickname(httpMethod, match);
-  };
+SwaggerDocs.prototype.addPathParam = function (paramName, description, dataType, required) {
+  this.docs.parameters.push(foxxInternal.constructPathParamDoc(paramName, description, dataType, required));
+};
 
-  SwaggerDocs.prototype.addPathParam = function (paramName, description, dataType, required) {
-    this.docs.parameters.push(foxxInternal.constructPathParamDoc(paramName, description, dataType, required));
-  };
+SwaggerDocs.prototype.addQueryParam = function (paramName, description, dataType, required, allowMultiple) {
+  this.docs.parameters.push(foxxInternal.constructQueryParamDoc(
+    paramName,
+    description,
+    dataType,
+    required,
+    allowMultiple
+  ));
+};
 
-  SwaggerDocs.prototype.addQueryParam = function (paramName, description, dataType, required, allowMultiple) {
-    this.docs.parameters.push(foxxInternal.constructQueryParamDoc(
-      paramName,
-      description,
-      dataType,
-      required,
-      allowMultiple
-    ));
-  };
+SwaggerDocs.prototype.addBodyParam = function (paramName, description, jsonSchema) {
 
-  SwaggerDocs.prototype.addBodyParam = function (paramName, description, jsonSchema) {
+  var token = internal.genRandomAlphaNumbers(32);
+  this.models[token] = jsonSchema;
 
-    var token = internal.genRandomAlphaNumbers(32);
-    this.models[token] = jsonSchema;
+  var param = _.find(this.docs.parameters, function (parameter) {
+    return parameter.name === 'undocumented body';
+  });
 
-    var param = _.find(this.docs.parameters, function (parameter) {
-      return parameter.name === 'undocumented body';
+  if (_.isUndefined(param)) {
+    this.docs.parameters.push({
+      name: paramName,
+      paramType: "body",
+      description: description,
+      dataType: token
     });
+  } else {
+    param.name = paramName;
+    param.description = description;
+    param.dataType = token;
+  }
+};
 
-    if (_.isUndefined(param)) {
-      this.docs.parameters.push({
-        name: paramName,
-        paramType: "body",
-        description: description,
-        dataType: token
-      });
-    } else {
-      param.name = paramName;
-      param.description = description;
-      param.dataType = token;
-    }
-  };
+SwaggerDocs.prototype.addSummary = function (summary) {
+  this.docs.summary = summary;
+};
 
-  SwaggerDocs.prototype.addSummary = function (summary) {
-    this.docs.summary = summary;
-  };
-
-  SwaggerDocs.prototype.addNotes = function (notes) {
-    this.docs.notes = notes;
-  };
+SwaggerDocs.prototype.addNotes = function (notes) {
+  this.docs.notes = notes;
+};
 
 exports.Docs = SwaggerDocs;
-}());

@@ -1,4 +1,4 @@
-/*jslint continue:true */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx application store
@@ -27,26 +27,23 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
-  'use strict';
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-  var checkedFishBowl = false;
+var checkedFishBowl = false;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           imports
 // -----------------------------------------------------------------------------
 
-  var arangodb = require("org/arangodb");
-  var db = arangodb.db;
-  var download = require("internal").download;
-  var fs = require("fs");
-  var throwDownloadError = arangodb.throwDownloadError;
-  var utils = require("org/arangodb/foxx/manager-utils");
+var arangodb = require("org/arangodb");
+var db = arangodb.db;
+var download = require("internal").download;
+var fs = require("fs");
+var throwDownloadError = arangodb.throwDownloadError;
+var utils = require("org/arangodb/foxx/manager-utils");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -56,9 +53,9 @@
 /// @brief returns the fishbowl repository
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getFishbowlUrl () {
-    return "arangodb/foxx-apps";
-  }
+function getFishbowlUrl () {
+  return "arangodb/foxx-apps";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the fishbowl collection
@@ -68,190 +65,190 @@
 /// used in context of the database.
 ////////////////////////////////////////////////////////////////////////////////
 
-  var getFishbowlStorage = function() {
+var getFishbowlStorage = function() {
 
-    var c = db._collection('_fishbowl');
-    if (c ===  null) {
-      c = db._create('_fishbowl', { isSystem : true });
-    }
+  var c = db._collection('_fishbowl');
+  if (c ===  null) {
+    c = db._create('_fishbowl', { isSystem : true });
+  }
 
-    if (c !== null && ! checkedFishBowl) {
-      // ensure indexes
-      c.ensureFulltextIndex("description");
-      c.ensureFulltextIndex("name");
-      checkedFishBowl = true;
-    }
+  if (c !== null && ! checkedFishBowl) {
+    // ensure indexes
+    c.ensureFulltextIndex("description");
+    c.ensureFulltextIndex("name");
+    checkedFishBowl = true;
+  }
 
-    return c;
-  };
+  return c;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator for applications
 ////////////////////////////////////////////////////////////////////////////////
 
-  var compareApps =  function(l, r) {
-    var left = l.name.toLowerCase();
-    var right = r.name.toLowerCase();
+var compareApps =  function(l, r) {
+  var left = l.name.toLowerCase();
+  var right = r.name.toLowerCase();
 
-    if (left < right) {
-      return -1;
-    }
+  if (left < right) {
+    return -1;
+  }
 
-    if (right < left) {
-      return 1;
-    }
+  if (right < left) {
+    return 1;
+  }
 
-    return 0;
-  };
+  return 0;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator for versions
 ////////////////////////////////////////////////////////////////////////////////
 
-  var compareVersions = function (a, b) {
-    var i;
+var compareVersions = function (a, b) {
+  var i;
 
-    if (a === b) {
-      return 0;
-    }
-
-    // error handling
-    if (typeof a !== "string") {
-      return -1;
-    }
-    if (typeof b !== "string") {
-      return 1;
-    }
-
-    var aComponents = a.split(".");
-    var bComponents = b.split(".");
-    var len = Math.min(aComponents.length, bComponents.length);
-
-    // loop while the components are equal
-    for (i = 0; i < len; i++) {
-
-      // A bigger than B
-      if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
-        return 1;
-      }
-
-      // B bigger than A
-      if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
-        return -1;
-      }
-    }
-
-    // If one's a prefix of the other, the longer one is bigger one.
-    if (aComponents.length > bComponents.length) {
-      return 1;
-    }
-
-    if (aComponents.length < bComponents.length) {
-      return -1;
-    }
-
-    // Otherwise they are the same.
+  if (a === b) {
     return 0;
-  };
+  }
+
+  // error handling
+  if (typeof a !== "string") {
+    return -1;
+  }
+  if (typeof b !== "string") {
+    return 1;
+  }
+
+  var aComponents = a.split(".");
+  var bComponents = b.split(".");
+  var len = Math.min(aComponents.length, bComponents.length);
+
+  // loop while the components are equal
+  for (i = 0; i < len; i++) {
+
+    // A bigger than B
+    if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
+      return 1;
+    }
+
+    // B bigger than A
+    if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
+      return -1;
+    }
+  }
+
+  // If one's a prefix of the other, the longer one is bigger one.
+  if (aComponents.length > bComponents.length) {
+    return 1;
+  }
+
+  if (aComponents.length < bComponents.length) {
+    return -1;
+  }
+
+  // Otherwise they are the same.
+  return 0;
+};
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the fishbowl from a zip archive
 ////////////////////////////////////////////////////////////////////////////////
 
-  var updateFishbowlFromZip = function(filename) {
-    var i;
-    var tempPath = fs.getTempPath();
-    var toSave = [ ];
+var updateFishbowlFromZip = function(filename) {
+  var i;
+  var tempPath = fs.getTempPath();
+  var toSave = [ ];
 
-    try {
-      fs.makeDirectoryRecursive(tempPath);
-      var root = fs.join(tempPath, "foxx-apps-master/applications");
+  try {
+    fs.makeDirectoryRecursive(tempPath);
+    var root = fs.join(tempPath, "foxx-apps-master/applications");
 
-      // remove any previous files in the directory
-      fs.listTree(root).forEach(function (file) {
-        if (file.match(/\.json$/)) {
-          try {
-            fs.remove(fs.join(root, file));
-          }
-          catch (ignore) {
-          }
-        }
-      });
-
-      fs.unzipFile(filename, tempPath, false, true);
-
-      if (! fs.exists(root)) {
-        throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
-      }
-
-      var m = fs.listTree(root);
-      var reSub = /(.*)\.json$/;
-      var f, match, app, desc;
-
-      for (i = 0;  i < m.length;  ++i) {
-        f = m[i];
-        match = reSub.exec(f);
-        if (match === null) {
-          continue;
-        }
-
-        app = fs.join(root, f);
-
+    // remove any previous files in the directory
+    fs.listTree(root).forEach(function (file) {
+      if (file.match(/\.json$/)) {
         try {
-          desc = JSON.parse(fs.read(app));
-        }
-        catch (err1) {
-          arangodb.printf("Cannot parse description for app '" + f + "': %s\n", String(err1));
-          continue;
-        }
-
-        desc._key = match[1];
-
-        if (! desc.hasOwnProperty("name")) {
-          desc.name = match[1];
-        }
-
-        toSave.push(desc);
-      }
-
-      if (toSave.length > 0) {
-        var fishbowl = getFishbowlStorage();
-
-        db._executeTransaction({
-          collections: {
-            write: fishbowl.name()
-          },
-          action: function (params) {
-            var c = require("internal").db._collection(params.collection);
-            c.truncate();
-
-            params.apps.forEach(function(app) {
-              c.save(app);
-            });
-          },
-          params: {
-            apps: toSave,
-            collection: fishbowl.name()
-          }
-        });
-
-        arangodb.printf("Updated local repository information with %d application(s)\n",
-                        toSave.length);
-      }
-    }
-    catch (err) {
-      if (tempPath !== undefined && tempPath !== "") {
-        try {
-          fs.removeDirectoryRecursive(tempPath);
+          fs.remove(fs.join(root, file));
         }
         catch (ignore) {
         }
       }
+    });
 
-      throw err;
+    fs.unzipFile(filename, tempPath, false, true);
+
+    if (! fs.exists(root)) {
+      throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
     }
-  };
+
+    var m = fs.listTree(root);
+    var reSub = /(.*)\.json$/;
+    var f, match, app, desc;
+
+    for (i = 0;  i < m.length;  ++i) {
+      f = m[i];
+      match = reSub.exec(f);
+      if (match === null) {
+        continue;
+      }
+
+      app = fs.join(root, f);
+
+      try {
+        desc = JSON.parse(fs.read(app));
+      }
+      catch (err1) {
+        arangodb.printf("Cannot parse description for app '" + f + "': %s\n", String(err1));
+        continue;
+      }
+
+      desc._key = match[1];
+
+      if (! desc.hasOwnProperty("name")) {
+        desc.name = match[1];
+      }
+
+      toSave.push(desc);
+    }
+
+    if (toSave.length > 0) {
+      var fishbowl = getFishbowlStorage();
+
+      db._executeTransaction({
+        collections: {
+          write: fishbowl.name()
+        },
+        action: function (params) {
+          var c = require("internal").db._collection(params.collection);
+          c.truncate();
+
+          params.apps.forEach(function(app) {
+            c.save(app);
+          });
+        },
+        params: {
+          apps: toSave,
+          collection: fishbowl.name()
+        }
+      });
+
+      arangodb.printf("Updated local repository information with %d application(s)\n",
+                      toSave.length);
+    }
+  }
+  catch (err) {
+    if (tempPath !== undefined && tempPath !== "") {
+      try {
+        fs.removeDirectoryRecursive(tempPath);
+      }
+      catch (ignore) {
+      }
+    }
+
+    throw err;
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -261,87 +258,87 @@
 /// @brief returns the search result for FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-  var searchJson = function (name) {
+var searchJson = function (name) {
 
-    var fishbowl = getFishbowlStorage();
+  var fishbowl = getFishbowlStorage();
 
-    if (fishbowl.count() === 0) {
-      arangodb.print("Repository is empty, please use 'update'");
+  if (fishbowl.count() === 0) {
+    arangodb.print("Repository is empty, please use 'update'");
 
-      return [];
+    return [];
+  }
+
+  var docs;
+
+  if (name === undefined || (typeof name === "string" && name.length === 0)) {
+    docs = fishbowl.toArray();
+  }
+  else {
+    name = name.replace(/[^a-zA-Z0-9]/g, ' ');
+
+    // get results by looking in "description" attribute
+    docs = fishbowl.fulltext("description", "prefix:" + name).toArray();
+
+    // build a hash of keys
+    var i;
+    var keys = { };
+
+    for (i = 0; i < docs.length; ++i) {
+      keys[docs[i]._key] = 1;
     }
 
-    var docs;
+    // get results by looking in "name" attribute
+    var docs2= fishbowl.fulltext("name", "prefix:" + name).toArray();
 
-    if (name === undefined || (typeof name === "string" && name.length === 0)) {
-      docs = fishbowl.toArray();
-    }
-    else {
-      name = name.replace(/[^a-zA-Z0-9]/g, ' ');
-
-      // get results by looking in "description" attribute
-      docs = fishbowl.fulltext("description", "prefix:" + name).toArray();
-
-      // build a hash of keys
-      var i;
-      var keys = { };
-
-      for (i = 0; i < docs.length; ++i) {
-        keys[docs[i]._key] = 1;
+    // merge the two result sets, avoiding duplicates
+    for (i = 0; i < docs2.length; ++i) {
+      if (!keys.hasOwnProperty(docs2[i]._key)) {
+        docs.push(docs2[i]);
       }
 
-      // get results by looking in "name" attribute
-      var docs2= fishbowl.fulltext("name", "prefix:" + name).toArray();
-
-      // merge the two result sets, avoiding duplicates
-      for (i = 0; i < docs2.length; ++i) {
-        if (!keys.hasOwnProperty(docs2[i]._key)) {
-          docs.push(docs2[i]);
-        }
-
-      }
     }
+  }
 
-    return docs;
-  };
+  return docs;
+};
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief searchs for an available FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-  var search = function (name) {
-    var docs = searchJson(name);
+var search = function (name) {
+  var docs = searchJson(name);
 
-    arangodb.printTable(
-      docs.sort(compareApps),
-      [ "name", "author", "description" ],
-      {
-        prettyStrings: true,
-        totalString: "%s application(s) found",
-        emptyString: "no applications found",
-        rename: {
-          name : "Name",
-          author : "Author",
-          description : "Description"
-        }
+  arangodb.printTable(
+    docs.sort(compareApps),
+    [ "name", "author", "description" ],
+    {
+      prettyStrings: true,
+      totalString: "%s application(s) found",
+      emptyString: "no applications found",
+      rename: {
+        name : "Name",
+        author : "Author",
+        description : "Description"
       }
-    );
-  };
+    }
+  );
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the highest version number from the document
 ////////////////////////////////////////////////////////////////////////////////
 
 function extractMaxVersion (versionDoc) {
-  var maxVersion = "-";
-  var versions = Object.keys(versionDoc);
-  versions.sort(compareVersions);
-  if (versions.length > 0) {
-    versions.reverse();
-    maxVersion = versions[0];
-  }
-  return maxVersion;
+var maxVersion = "-";
+var versions = Object.keys(versionDoc);
+versions.sort(compareVersions);
+if (versions.length > 0) {
+  versions.reverse();
+  maxVersion = versions[0];
+}
+return maxVersion;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -349,26 +346,26 @@ function extractMaxVersion (versionDoc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function availableJson() {
-  var fishbowl = getFishbowlStorage();
-  var cursor = fishbowl.all();
-  var result = [];
-  var doc, maxVersion, res;
+var fishbowl = getFishbowlStorage();
+var cursor = fishbowl.all();
+var result = [];
+var doc, maxVersion, res;
 
-  while (cursor.hasNext()) {
-    doc = cursor.next();
-    maxVersion = extractMaxVersion(doc.versions);
+while (cursor.hasNext()) {
+  doc = cursor.next();
+  maxVersion = extractMaxVersion(doc.versions);
 
-    res = {
-      name: doc.name,
-      description: doc.description || "",
-      author: doc.author || "",
-      latestVersion: maxVersion
-    };
+  res = {
+    name: doc.name,
+    description: doc.description || "",
+    author: doc.author || "",
+    latestVersion: maxVersion
+  };
 
-    result.push(res);
-  }
+  result.push(res);
+}
 
-  return result;
+return result;
 }
 
 
@@ -379,181 +376,179 @@ function availableJson() {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-  var update = function() {
-    var url = utils.buildGithubUrl(getFishbowlUrl());
-    var filename = fs.getTempFile("downloads", false);
-    var path = fs.getTempFile("zip", false);
+var update = function() {
+  var url = utils.buildGithubUrl(getFishbowlUrl());
+  var filename = fs.getTempFile("downloads", false);
+  var path = fs.getTempFile("zip", false);
+
+  try {
+    var result = download(url, "", {
+      method: "get",
+      followRedirects: true,
+      timeout: 30
+    }, filename);
+
+    if (result.code < 200 || result.code > 299) {
+      throwDownloadError("Github download from '" + url + "' failed with error code " + result.code);
+    }
+
+    updateFishbowlFromZip(filename);
+
+    filename = undefined;
+  }
+  catch (err) {
+    if (filename !== undefined && fs.exists(filename)) {
+      fs.remove(filename);
+    }
 
     try {
-      var result = download(url, "", {
-        method: "get",
-        followRedirects: true,
-        timeout: 30
-      }, filename);
-
-      if (result.code < 200 || result.code > 299) {
-        throwDownloadError("Github download from '" + url + "' failed with error code " + result.code);
-      }
-
-      updateFishbowlFromZip(filename);
-
-      filename = undefined;
+      fs.removeDirectoryRecursive(path);
     }
-    catch (err) {
-      if (filename !== undefined && fs.exists(filename)) {
-        fs.remove(filename);
-      }
-
-      try {
-        fs.removeDirectoryRecursive(path);
-      }
-      catch (ignore) {
-      }
-
-      throw err;
+    catch (ignore) {
     }
-  };
+
+    throw err;
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints all available FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-  var available = function () {
-    var list = availableJson();
+var available = function () {
+  var list = availableJson();
 
-    arangodb.printTable(
-      list.sort(compareApps),
-      [ "name", "author", "description", "latestVersion" ],
-      {
-        prettyStrings: true,
-        totalString: "%s application(s) found",
-        emptyString: "no applications found, please use 'update'",
-        rename: {
-          "name" : "Name",
-          "author" : "Author",
-          "description" : "Description",
-          "latestVersion" : "Latest Version"
-        }
+  arangodb.printTable(
+    list.sort(compareApps),
+    [ "name", "author", "description", "latestVersion" ],
+    {
+      prettyStrings: true,
+      totalString: "%s application(s) found",
+      emptyString: "no applications found, please use 'update'",
+      rename: {
+        "name" : "Name",
+        "author" : "Author",
+        "description" : "Description",
+        "latestVersion" : "Latest Version"
       }
-    );
-  };
+    }
+  );
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets json-info for an available FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
 var infoJson = function (name) {
-  utils.validateAppName(name);
+utils.validateAppName(name);
 
-  var fishbowl = getFishbowlStorage();
+var fishbowl = getFishbowlStorage();
 
-  if (fishbowl.count() === 0) {
-    arangodb.print("Repository is empty, please use 'update'");
-    return;
-  }
+if (fishbowl.count() === 0) {
+  arangodb.print("Repository is empty, please use 'update'");
+  return;
+}
 
-  var desc;
+var desc;
 
-  try {
-    desc = fishbowl.document(name);
-    return desc;
-  }
-  catch (err) {
-    arangodb.print("No application '" + name + "' available, please try 'search'");
-    return;
-  }
+try {
+  desc = fishbowl.document(name);
+  return desc;
+}
+catch (err) {
+  arangodb.print("No application '" + name + "' available, please try 'search'");
+  return;
+}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a download URL for the given app information
 ////////////////////////////////////////////////////////////////////////////////
 
-  var buildUrl = function(appInfo) {
-    // TODO Validate
-    var infoSplit = appInfo.split(":");
-    var name = infoSplit[0];
-    var version = infoSplit[1];
-    var storeInfo = infoJson(name);
-    if (storeInfo === undefined) {
-      throw "Application not found";
+var buildUrl = function(appInfo) {
+  // TODO Validate
+  var infoSplit = appInfo.split(":");
+  var name = infoSplit[0];
+  var version = infoSplit[1];
+  var storeInfo = infoJson(name);
+  if (storeInfo === undefined) {
+    throw "Application not found";
+  }
+  var versions = storeInfo.versions;
+  var versionInfo;
+  if (version === undefined) {
+    versionInfo = versions[extractMaxVersion(versions)];
+  } else {
+    if (!versions.hasOwnProperty(version)) {
+      throw "Unknown version";
     }
-    var versions = storeInfo.versions;
-    var versionInfo;
-    if (version === undefined) {
-      versionInfo = versions[extractMaxVersion(versions)];
-    } else {
-      if (!versions.hasOwnProperty(version)) {
-        throw "Unknown version";
-      }
-      versionInfo = versions[version];
-    }
-    return utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
-  };
+    versionInfo = versions[version];
+  }
+  return utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints info for an available FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
-  var info = function (name) {
-    var desc = infoJson(name);
-    arangodb.printf("Name:        %s\n", desc.name);
+var info = function (name) {
+  var desc = infoJson(name);
+  arangodb.printf("Name:        %s\n", desc.name);
 
-    if (desc.hasOwnProperty('author')) {
-      arangodb.printf("Author:      %s\n", desc.author);
+  if (desc.hasOwnProperty('author')) {
+    arangodb.printf("Author:      %s\n", desc.author);
+  }
+
+  var isSystem = desc.hasOwnProperty('isSystem') && desc.isSystem;
+  arangodb.printf("System:      %s\n", JSON.stringify(isSystem));
+
+  if (desc.hasOwnProperty('description')) {
+    arangodb.printf("Description: %s\n\n", desc.description);
+  }
+
+  var header = false;
+  var versions = Object.keys(desc.versions);
+  versions.sort(compareVersions);
+
+  versions.forEach(function (v) {
+    var version = desc.versions[v];
+
+    if (! header) {
+      arangodb.print("Versions:");
+      header = true;
     }
 
-    var isSystem = desc.hasOwnProperty('isSystem') && desc.isSystem;
-    arangodb.printf("System:      %s\n", JSON.stringify(isSystem));
-
-    if (desc.hasOwnProperty('description')) {
-      arangodb.printf("Description: %s\n\n", desc.description);
+    if (version.type === "github") {
+      if (version.hasOwnProperty("tag")) {
+        arangodb.printf('%s: fetch github "%s" "%s"\n', v, version.location, version.tag);
+      }
+      else if (v.hasOwnProperty("branch")) {
+        arangodb.printf('%s: fetch github "%s" "%s"\n', v, version.location, version.branch);
+      }
+      else {
+        arangodb.printf('%s: fetch "github" "%s"\n', v, version.location);
+      }
     }
+  });
 
-    var header = false;
-    var versions = Object.keys(desc.versions);
-    versions.sort(compareVersions);
-
-    versions.forEach(function (v) {
-      var version = desc.versions[v];
-
-      if (! header) {
-        arangodb.print("Versions:");
-        header = true;
-      }
-
-      if (version.type === "github") {
-        if (version.hasOwnProperty("tag")) {
-          arangodb.printf('%s: fetch github "%s" "%s"\n', v, version.location, version.tag);
-        }
-        else if (v.hasOwnProperty("branch")) {
-          arangodb.printf('%s: fetch github "%s" "%s"\n', v, version.location, version.branch);
-        }
-        else {
-          arangodb.printf('%s: fetch "github" "%s"\n', v, version.location);
-        }
-      }
-    });
-
-    arangodb.printf("\n");
-  };
+  arangodb.printf("\n");
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 export public API
 // -----------------------------------------------------------------------------
 
-  exports.available = available;
-  exports.availableJson = availableJson;
-  exports.buildUrl = buildUrl;
-  exports.getFishbowlStorage = getFishbowlStorage;
-  exports.info = info;
-  exports.search = search;
-  exports.searchJson = searchJson;
-  exports.update = update;
+exports.available = available;
+exports.availableJson = availableJson;
+exports.buildUrl = buildUrl;
+exports.getFishbowlStorage = getFishbowlStorage;
+exports.info = info;
+exports.search = search;
+exports.searchJson = searchJson;
+exports.update = update;
 
-  // Temporary export to avoid breaking the client
-  exports.compareVersions = compareVersions;
-
-}());
+// Temporary export to avoid breaking the client
+exports.compareVersions = compareVersions;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

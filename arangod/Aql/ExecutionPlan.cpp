@@ -69,7 +69,7 @@ ExecutionPlan::ExecutionPlan (Ast* ast)
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionPlan::~ExecutionPlan () {
-  for (auto x : _ids){
+  for (auto& x : _ids){
     delete x.second;
   }
 }
@@ -151,7 +151,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
 ExecutionPlan* ExecutionPlan::clone (Query& onThatQuery) {
   std::unique_ptr<ExecutionPlan> otherPlan(new ExecutionPlan(onThatQuery.ast()));
 
-  for (auto it: _ids) {
+  for (auto const& it: _ids) {
     otherPlan->registerNode(it.second->clone(otherPlan.get(), false, true));
   }
 
@@ -171,7 +171,7 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
   auto const&& appliedRules = Optimizer::translateRules(_appliedRules);
   triagens::basics::Json rules(Json::Array, appliedRules.size());
 
-  for (auto r : appliedRules) {
+  for (auto const& r : appliedRules) {
     rules.add(triagens::basics::Json(r));
   }
   result.set("rules", rules);
@@ -179,7 +179,7 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
   auto usedCollections = *ast->query()->collections()->collections();
   triagens::basics::Json jsonCollectionList(Json::Array, usedCollections.size());
 
-  for (auto c : usedCollections) {
+  for (auto const& c : usedCollections) {
     Json json(Json::Object);
 
     jsonCollectionList(json("name", Json(c.first))
@@ -275,7 +275,7 @@ ModificationOptions ExecutionPlan::createModificationOptions (AstNode const* nod
 
     auto const collections = _ast->query()->collections();
 
-    for (auto it : *(collections->collections())) {
+    for (auto const& it : *(collections->collections())) {
       if (it.second->isReadWrite) {
         isReadWrite = true;
         break;
@@ -615,8 +615,8 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
   }
   catch (...) {
     // prevent memleak
-    for (auto it = temp.begin(); it != temp.end(); ++it) {
-      delete (*it);
+    for (auto& it : temp) {
+      delete it;
     }
     throw;
   }
@@ -1436,8 +1436,8 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
       auto&& usedHere = en->getVariablesUsedHere();
-      for (auto v : usedHere) {
-        _usedLater.insert(v);
+      for (auto& v : usedHere) {
+        _usedLater.emplace(v);
       }
       return false;
     }
@@ -1445,8 +1445,8 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
     void after (ExecutionNode* en) override final {
       // Add variables set here to _valid:
       auto&& setHere = en->getVariablesSetHere();
-      for (auto v : setHere) {
-        _valid.insert(v);
+      for (auto& v : setHere) {
+        _valid.emplace(v);
         _varSetBy->emplace(std::make_pair(v->id, en));
       }
       en->setVarsValid(_valid);
@@ -1488,7 +1488,7 @@ bool ExecutionPlan::varUsageComputed () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*>& toRemove) {
-  for (auto x : toRemove) {
+  for (auto& x : toRemove) {
     unlinkNode(x);
   }
 }

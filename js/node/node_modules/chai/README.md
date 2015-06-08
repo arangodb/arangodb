@@ -25,82 +25,85 @@ Chai offers a robust Plugin architecture for extending Chai's assertions and int
 ### Contributors
 
      project  : chai
-     repo age : 3 years, 3 months
-     active   : 232 days
-     commits  : 879
+     repo age : 3 years, 5 months
+     active   : 244 days
+     commits  : 900
      files    : 59
      authors  :
-       555  Jake Luer           63.1%
-        79  Veselin Todorov     9.0%
-        43  Domenic Denicola    4.9%
-        41  Keith Cirkel        4.7%
+       555  Jake Luer           61.7%
+        79  Veselin Todorov     8.8%
+        52  Keith Cirkel        5.8%
+        43  Domenic Denicola    4.8%
         14  Joshua Perry        1.6%
          8  Chris Polis         0.9%
          6  Ruben Verborgh      0.7%
          6  Ian Zamojc          0.7%
-         5  leider              0.6%
          5  George Kats         0.6%
+         5  leider              0.6%
          5  Scott Nonnenberg    0.6%
-         5  Jo Liss             0.6%
          5  Juliusz Gonera      0.6%
-         4  Veselin             0.5%
-         4  Nick Heiner         0.5%
-         4  David da Silva      0.5%
-         4  Chris Jones         0.5%
-         4  josher19            0.5%
-         4  John Firebaugh      0.5%
-         4  Max Edmands         0.5%
-         4  charlierudolph      0.5%
+         5  Jo Liss             0.6%
+         4  Jérémie Astori      0.4%
+         4  John Firebaugh      0.4%
+         4  charlierudolph      0.4%
+         4  Veselin             0.4%
+         4  Chris Jones         0.4%
+         4  Nick Heiner         0.4%
+         4  Max Edmands         0.4%
+         4  David da Silva      0.4%
+         4  Kaito Udagawa       0.4%
+         4  josher19            0.4%
+         3  Jordan Harband      0.3%
          3  Ryunosuke SATO      0.3%
+         3  Jake Rosoman        0.3%
+         3  Duncan Beevers      0.3%
          3  Jason Karns         0.3%
          3  Jeff Barczewski     0.3%
          3  Andrei Neculau      0.3%
-         3  Duncan Beevers      0.3%
-         3  Jake Rosoman        0.3%
-         2  Teddy Cross         0.2%
+         2  eldritch fossicker  0.2%
          2  Bartvds             0.2%
          2  Edwin Shao          0.2%
          2  Gregg Lind          0.2%
-         2  Roman Masek         0.2%
-         2  Jérémie Astori      0.2%
          2  Jakub Nešetřil      0.2%
-         2  eldritch fossicker  0.2%
-         1  Adam Hull           0.1%
-         1  toastynerd          0.1%
-         1  Anand Patil         0.1%
-         1  Benjamin Horsleben  0.1%
-         1  Brandon Payton      0.1%
-         1  Chasen Le Hara      0.1%
-         1  Chris Connelly      0.1%
-         1  Chris Thompson      0.1%
-         1  Christopher Hiller  0.1%
-         1  Chun-Yi             0.1%
-         1  DD                  0.1%
-         1  Danilo Vaz          0.1%
-         1  Dido Arellano       0.1%
-         1  Doug Neiner         0.1%
-         1  Jeff Welch          0.1%
+         2  Roman Masek         0.2%
+         2  Teddy Cross         0.2%
          1  Jesse McCarthy      0.1%
-         1  Julien Wajsberg     0.1%
+         1  Doug Neiner         0.1%
+         1  Dido Arellano       0.1%
          1  Kilian Ciuffolo     0.1%
          1  Luís Cardoso        0.1%
          1  Martin Middel       0.1%
          1  Mathias Schreck     0.1%
+         1  Danilo Vaz          0.1%
          1  Michael Lange       0.1%
+         1  Mitchell Johnson    0.1%
+         1  DD                  0.1%
          1  Niklas Närhinen     0.1%
          1  Paul Miller         0.1%
          1  Refael Ackermann    0.1%
+         1  shinnn              0.1%
+         1  Chun-Yi             0.1%
+         1  Christopher Hiller  0.1%
          1  Sasha Koss          0.1%
+         1  Chris Thompson      0.1%
+         1  toastynerd          0.1%
+         1  Chris Connelly      0.1%
+         1  Chasen Le Hara      0.1%
          1  Victor Costan       0.1%
          1  Vinay Pulim         0.1%
          1  Virginie BARDALES   0.1%
          1  Vlad GURDIGA        0.1%
+         1  Brandon Payton      0.1%
+         1  Adam Hull           0.1%
          1  ericdouglas         0.1%
+         1  Benjamin Horsleben  0.1%
          1  laconbass           0.1%
+         1  Anand Patil         0.1%
          1  mohayonao           0.1%
          1  piecioshka          0.1%
          1  root                0.1%
-         1  shinnn              0.1%
+         1  Julien Wajsberg     0.1%
+         1  Jeff Welch          0.1%
 
 ## License
 

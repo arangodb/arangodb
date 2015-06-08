@@ -2603,7 +2603,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
                                "/_api/replication/restore-data?collection=" +
                                it->first + forceopt,
                                new string(bufs[j]->c_str(), bufs[j]->length()),
-                               true, headers, NULL, 300.0);
+                               true, headers, nullptr, 300.0);
         delete result;
       }
     }

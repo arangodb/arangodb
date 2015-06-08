@@ -592,7 +592,7 @@
       );
 
       window.modalView.show(
-        "modalGraphTable.ejs", title, buttons, tableContent, null, this.events
+        "modalGraphTable.ejs", title, buttons, tableContent, undefined, undefined, this.events
       );
 
       if (graph) {

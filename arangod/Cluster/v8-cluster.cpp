@@ -1904,7 +1904,7 @@ static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   ClusterComm* cc = ClusterComm::instance();
 
-  if (cc == 0) {
+  if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "clustercomm object not found");
   }
@@ -1957,7 +1957,6 @@ static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
   Return_PrepareClusterCommResultForJS(args, res);
   delete res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop the result of an asynchronous request

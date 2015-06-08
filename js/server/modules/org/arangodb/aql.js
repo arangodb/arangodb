@@ -6684,26 +6684,33 @@ function AQL_NEIGHBORS (vertexCollection,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explanation_of_the_example_parameter)).
+///                          vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options*            : An object containing the following options:
 ///   * *direction*                        : The direction
-///      of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///     of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeExamples*                     : A filter example for the edges to
-///      the neighbors (see [example](#short_explanation_of_the_example_parameter)).
+///     the neighbors (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *neighborExamples*                 : An example for the desired neighbors
-///      (see [example](#short_explanation_of_the_example_parameter)).
+///     (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
 ///   collection names. Only edges from these collections will be considered for the path.
 ///   * *vertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be contained in the
+///     collection names. Only vertices from these collections will be contained in the
 ///   result. This does not effect vertices on the path.
 ///   * *minDepth*                         : Defines the minimal
-///      depth a path to a neighbor must have to be returned (default is 1).
+///     depth a path to a neighbor must have to be returned (default is 1).
 ///   * *maxDepth*                         : Defines the maximal
-///      depth a path to a neighbor must have to be returned (default is 1).
+///     depth a path to a neighbor must have to be returned (default is 1).
 ///   * *maxIterations*: the maximum number of iterations that the traversal is
-///      allowed to perform. It is sensible to set this number so unbounded traversals
-/// will terminate at some point.
+///     allowed to perform. It is sensible to set this number so unbounded traversals
+///     will terminate at some point.
+///   * *includeData* is a boolean value to define if the returned documents should be extracted 
+///     instead of returning their ids only. The default is *false*.
+///
+/// Note: in ArangoDB versions prior to 2.6 *NEIGHBORS* returned the array of neighbor vertices with 
+/// all attributes and not just the vertex ids. To return to the same behavior, set the *includeData*
+/// option to *true* in 2.6 and above.
+///
 /// @EXAMPLES
 ///
 /// A route planner example, all neighbors of locations with a distance of either
@@ -7154,7 +7161,7 @@ function AQL_GRAPH_VERTICES (graphName,
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all common outbound neighbors of Hamburg with any other location
-/// which have a maximal depth of 2 :
+/// which have a maximal depth of 2:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors2}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -7177,9 +7184,7 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
   'use strict';
 
   options1 = options1 || {};
-  options1.includeData = false;
   options2 = options2 || {};
-  options2.includeData = false;
   let graph_module = require("org/arangodb/general-graph");
   let graph = graph_module._graph(graphName);
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});

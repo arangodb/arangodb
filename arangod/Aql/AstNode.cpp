@@ -179,7 +179,7 @@ static AstNode const* ResolveAttribute (AstNode const* node) {
     char const* attributeName = node->getStringValue();
 
     TRI_ASSERT(attributeName != nullptr);
-    attributeNames.push_back(attributeName);
+    attributeNames.emplace_back(attributeName);
     node = node->getMember(0);
   }
 

@@ -1,7 +1,7 @@
 # ArangoDB configuration file for running in docker containers
 # 
 # Documentation: 
-# https://docs.arangodb.com/ConfigureArango/README.html
+# https://docs.arangodb.com/ConfigureArango/
 # 
 
 temp-path = /tmp/arangodb

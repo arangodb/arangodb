@@ -199,6 +199,12 @@ namespace triagens {
         moveCalculationsDownRule_pass9                = 900,
 
 //////////////////////////////////////////////////////////////////////////////
+/// Pass 9: fuse calculations
+//////////////////////////////////////////////////////////////////////////////
+
+        fuseCalculationsRule_pass9                    = 901,
+
+//////////////////////////////////////////////////////////////////////////////
 /// "Pass 10": final transformations for the cluster
 //////////////////////////////////////////////////////////////////////////////
 
@@ -296,7 +302,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           ~PlanList () {
-            for (auto p : list) {
+            for (auto& p : list) {
               delete p;
             }
           }
@@ -306,7 +312,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
           
           bool isContained (ExecutionPlan* plan) const {
-            for (auto p : list) {
+            for (auto const& p : list) {
               if (p == plan) {
                 return true;
               }
@@ -373,7 +379,7 @@ namespace triagens {
           void steal (PlanList& b) {
             list.swap(b.list);
             levelDone.swap(b.levelDone);
-            for (auto p : b.list) {
+            for (auto& p : b.list) {
               delete p;
             }
             b.list.clear();
@@ -405,7 +411,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           void clear () {
-            for (auto p : list) {
+            for (auto& p : list) {
               delete p;
             }
             list.clear();

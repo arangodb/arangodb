@@ -39,7 +39,7 @@ internals.compare = function (type, compare) {
 
             var compareTo;
             if (isRef) {
-                compareTo = limit(state.parent);
+                compareTo = limit(state.parent, options);
 
                 if (!Hoek.isInteger(compareTo)) {
                     return Errors.create('string.ref', { ref: limit.key }, state, options);
@@ -349,7 +349,7 @@ internals.String.prototype.hex = function () {
 
     var regex = /^[a-f0-9]+$/i;
 
-    return this._test('guid', regex, function (value, state, options) {
+    return this._test('hex', regex, function (value, state, options) {
 
         if (regex.test(value)) {
             return null;
