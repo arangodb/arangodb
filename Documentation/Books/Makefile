@@ -37,5 +37,4 @@ build-book:
 	python bot.py
 	cd $(NAME) && gitbook install
 	cd $(NAME) && gitbook build ./ ./../books/$(NAME)
-	cp -r Users/images/ books/Users/images/
 	python deprecated.py
