@@ -46,6 +46,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
   }
   config = config || {};
 
+
   var self = this,
     isRunning = false,
     initialX = {},
@@ -56,6 +57,9 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
     reducer,
     joiner,
     childLimit,
+    collapseCounter = 0,
+    collapsePrevEdge = {},
+    collapsePrevNode = {},
 
     changeTo = function (config) {
       if (config.prioList !== undefined) {
@@ -604,12 +608,41 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
     },
 
     collapseNode = function(node) {
+
       node._expanded = false;
       if (joinedInCommunities[node._id]) {
         cachedCommunities[joinedInCommunities[node._id]].collapseNode(node);
       }
       var removedEdges = removeOutboundEdgesFromNode(node);
-      _.each(removedEdges, handleRemovedEdge);
+
+      var checkEdges = [];
+      _.each(removedEdges, function(edge) {
+        if (collapseCounter === 0) {
+          collapsePrevEdge = edge;
+          collapsePrevNode = node;
+          checkEdges.push(edge);
+        }
+        else {
+          if (node !== undefined) {
+            if (node._id === collapsePrevEdge.target._id) {
+              if (edge.target._id === collapsePrevNode._id) {
+                checkEdges.push(collapsePrevEdge);
+              }
+            }
+            else {
+              checkEdges.push(edge);
+            }
+            collapsePrevEdge = edge;
+            collapsePrevNode = node;
+          }
+        }
+
+        collapseCounter++;
+      });
+
+
+      _.each(checkEdges, handleRemovedEdge);
+      collapseCounter = 0;
     },
 
     collapseExploreCommunity = function(commNode) {
