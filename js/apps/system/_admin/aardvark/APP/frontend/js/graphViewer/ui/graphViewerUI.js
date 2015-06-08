@@ -204,16 +204,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           return;
         },
 
-        searchFunction2 = function() {
+        addCustomNode = function() {
           showSpinner();
-          if (searchAttrField2.value === ""
-            || searchAttrField2.value === undefined) {
-            graphViewer.loadGraph(
-              searchValueField2.value,
-              resultCB2
-            );
-          } else {
-            graphViewer.loadGraphWithAttributeValue(
+          if (searchAttrField2.value !== "") {
+            graphViewer.loadGraphWithAdditionalNode(
               searchAttrField2.value,
               searchValueField2.value,
               resultCB2
@@ -263,10 +257,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       //  updateAttributeExamples(searchAttrExampleList2);
       //};
 
-      searchStart2.onclick = searchFunction2;
+      searchStart2.onclick = addCustomNode;
       $(searchValueField2).keypress(function(e) {
         if (e.keyCode === 13 || e.which === 13) {
-          searchFunction();
+          addCustomNode();
           return false;
         }
       });
