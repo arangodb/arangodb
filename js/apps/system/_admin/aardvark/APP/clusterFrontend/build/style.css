@@ -2517,6 +2517,8 @@ div .tile, div .bigtile {
 div .tile {
   height: 100px;
   width: 228px; }
+div .tile-graph .tile-icon:hover {
+  cursor: pointer; }
 div .bigtile {
   height: 309px;
   width: 456px; }
@@ -5112,6 +5114,8 @@ div .tile, div .bigtile {
 div .tile {
   height: 100px;
   width: 228px; }
+div .tile-graph .tile-icon:hover {
+  cursor: pointer; }
 div .bigtile {
   height: 309px;
   width: 456px; }
