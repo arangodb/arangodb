@@ -299,7 +299,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
   };
 
   self.getRandomNodes = function () {
-
     var nodeArray = [];
     var nodes = [];
 
@@ -337,16 +336,28 @@ function GharialAdapter(nodes, edges, viewer, config) {
       example: nodeId
     }, function(res) {
 
-      _.each(self.getRandomNodes(), function(node) {
-        sendQuery(queries.traversal, {
-          example: node.vertex._id
-        }, function(res2) {
-          _.each(res2[0][0], function(obj) {
-            res[0][0].push(obj);
+      var nodes = [];
+      nodes = self.getRandomNodes();
+
+      if (nodes.length > 0) {
+        _.each(nodes, function(node) {
+          sendQuery(queries.traversal, {
+            example: node.vertex._id
+          }, function(res2) {
+            _.each(res2[0][0], function(obj) {
+              res[0][0].push(obj);
+            });
+            parseResultOfTraversal(res, callback);
           });
+        });
+      }
+      else {
+        sendQuery(queries.traversal, {
+          example: nodeId
+        }, function(res) {
           parseResultOfTraversal(res, callback);
         });
-      });
+      }
     });
 
   };
