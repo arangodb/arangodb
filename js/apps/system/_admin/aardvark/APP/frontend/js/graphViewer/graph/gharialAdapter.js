@@ -385,12 +385,15 @@ function GharialAdapter(nodes, edges, viewer, config) {
       }
       else {
         _.each(res[0][0], function(node) {
-          var nodeToAdd = {};
-          nodeToAdd._key = node.vertex._key;
-          nodeToAdd._id = node.vertex._id;
-          nodeToAdd._rev = node.vertex._rev;
-          absAdapter.insertNode(nodeToAdd);
-          callback(nodeToAdd);
+          if (node.vertex[attribute] === value) {
+            var nodeToAdd = {};
+            nodeToAdd._key = node.vertex._key;
+            nodeToAdd._id = node.vertex._id;
+            nodeToAdd._rev = node.vertex._rev;
+            absAdapter.insertNode(nodeToAdd);
+            callback(nodeToAdd);
+          }
+
         });
       }
     });
