@@ -258,7 +258,7 @@ struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
     TRI_doc_mptr_copy_t (TRI_doc_mptr_copy_t&& that) {
       copy(that);
     }
-
+    
     TRI_doc_mptr_copy_t&& operator= (TRI_doc_mptr_copy_t&& that) {
       copy(that);
       return std::move(*this);

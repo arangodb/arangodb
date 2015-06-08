@@ -255,10 +255,16 @@ void V8Completer::getAlternatives (char const * text,
     if (funcVal->IsFunction()) {
       v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
       v8::Handle<v8::Value> args;
-      v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
 
-      if (cpls->IsArray()) {
-        properties = v8::Handle<v8::Array>::Cast(cpls);
+      try {
+        v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
+
+        if (cpls->IsArray()) {
+          properties = v8::Handle<v8::Array>::Cast(cpls);
+        }
+      }
+      catch (...) {
+        // silently ignore errors here
       }
     }
   }

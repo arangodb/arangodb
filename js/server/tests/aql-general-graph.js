@@ -2716,6 +2716,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
+
 jsunity.run(ahuacatlQueryGeneralCommonTestSuite);
 jsunity.run(ahuacatlQueryGeneralCyclesSuite);
 jsunity.run(ahuacatlQueryGeneralTraversalTestSuite);
