@@ -1087,7 +1087,7 @@ namespace triagens {
 /// @brief shutdown, tell dependency and the subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-        int shutdown (int errorCode) override;
+        int shutdown (int errorCode) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for the pointer to the subquery
@@ -1136,8 +1136,8 @@ namespace triagens {
                      FilterNode const*);
 
         ~FilterBlock ();
-
-        int initialize () override;
+        
+        int initialize () override final;
 
       private:
 
@@ -1349,7 +1349,7 @@ namespace triagens {
 
         int initialize () override;
 
-        virtual int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dosorting
@@ -1423,7 +1423,7 @@ namespace triagens {
 
         int initialize () override;
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override final;
 
         virtual int getOrSkipSome (size_t atLeast,
                                    size_t atMost,
@@ -1840,7 +1840,7 @@ namespace triagens {
 /// @brief initializeCursor, store a copy of the register values coming from above
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override final;
 
         bool hasMore () override final {
           return false;
@@ -1901,7 +1901,7 @@ namespace triagens {
 /// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief count: the sum of the count() of the dependencies or -1 (if any
@@ -2033,13 +2033,13 @@ namespace triagens {
 /// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializeCursor
+/// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-        int shutdown (int);
+        int shutdown (int) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome: shouldn't be used, use skipSomeForShard
@@ -2199,13 +2199,13 @@ namespace triagens {
 /// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-        int shutdown (int);
+        int shutdown (int) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMoreForShard: any more for shard <shardId>?
@@ -2269,13 +2269,13 @@ namespace triagens {
 /// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-        int shutdown (int);
+        int shutdown (int) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remainingForShard: remaining for shard <shardId>?
@@ -2410,7 +2410,7 @@ namespace triagens {
 /// @brief initializeCursor, could be called multiple times
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos) final;
+        int initializeCursor (AqlItemBlock* items, size_t pos) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown, will be called exactly once for the whole query
