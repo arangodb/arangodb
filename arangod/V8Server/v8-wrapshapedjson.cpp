@@ -517,91 +517,96 @@ static void CopyAttributes (v8::Isolate* isolate,
 static void MapGetNamedShapedJson (v8::Local<v8::String> name,
                                   const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
+  try {
+    v8::HandleScope scope(isolate);
 
-  // sanity check
-  v8::Handle<v8::Object> self = args.Holder();
+    // sanity check
+    v8::Handle<v8::Object> self = args.Holder();
 
-  if (self->InternalFieldCount() <= SLOT_DITCH) {
-    // we better not throw here... otherwise this will cause a segfault
-    TRI_V8_RETURN(v8::Handle<v8::Value>());
-  }
-
-  // get shaped json
-  void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
-
-  if (marker == nullptr) {
-    TRI_V8_RETURN(v8::Handle<v8::Value>());
-  }
-
-  // convert the JavaScript string to a string
-  // we take the fast path here and don't normalize the string
-  v8::String::Utf8Value const str(name);
-  string const key(*str, (size_t) str.length());
-
-  if (key.empty()) {
-    TRI_V8_RETURN(v8::Handle<v8::Value>());
-  }
-
-  if (key[0] == '_') { 
-    char buffer[TRI_VOC_KEY_MAX_LENGTH + 1];
-
-    if (key == TRI_VOC_ATTRIBUTE_KEY) {
-      char const* docKey = TRI_EXTRACT_MARKER_KEY(static_cast<TRI_df_marker_t const*>(marker));
-      TRI_ASSERT(docKey != nullptr);
-      size_t keyLength = strlen(docKey);
-      memcpy(buffer, docKey, keyLength);
-      TRI_V8_RETURN_PAIR_STRING(buffer, (int) keyLength);
-    }
-    else if (key == TRI_VOC_ATTRIBUTE_REV) {
-      TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(static_cast<TRI_df_marker_t const*>(marker));
-      TRI_ASSERT(rid > 0);
-      size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
-      TRI_V8_RETURN_PAIR_STRING((char const*) buffer, (int) len);
-    }
-
-    if (key == TRI_VOC_ATTRIBUTE_ID || 
-        key == TRI_VOC_ATTRIBUTE_FROM || 
-        key == TRI_VOC_ATTRIBUTE_TO) {
-      // strip reserved attributes
+    if (self->InternalFieldCount() <= SLOT_DITCH) {
+      // we better not throw here... otherwise this will cause a segfault
       TRI_V8_RETURN(v8::Handle<v8::Value>());
     }
-  }
 
-  // TODO: check whether accessing an attribute with a dot is actually possible, 
-  // e.g. doc.a.b vs. doc["a.b"]
-  if (strchr(key.c_str(), '.') != nullptr) {
+    // get shaped json
+    void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
+
+    if (marker == nullptr) {
+      TRI_V8_RETURN(v8::Handle<v8::Value>());
+    }
+
+    // convert the JavaScript string to a string
+    // we take the fast path here and don't normalize the string
+    v8::String::Utf8Value const str(name);
+    string const key(*str, (size_t) str.length());
+
+    if (key.empty()) {
+      TRI_V8_RETURN(v8::Handle<v8::Value>());
+    }
+
+    if (key[0] == '_') { 
+      char buffer[TRI_VOC_KEY_MAX_LENGTH + 1];
+
+      if (key == TRI_VOC_ATTRIBUTE_KEY) {
+        char const* docKey = TRI_EXTRACT_MARKER_KEY(static_cast<TRI_df_marker_t const*>(marker));
+        TRI_ASSERT(docKey != nullptr);
+        size_t keyLength = strlen(docKey);
+        memcpy(buffer, docKey, keyLength);
+        TRI_V8_RETURN_PAIR_STRING(buffer, (int) keyLength);
+      }
+      else if (key == TRI_VOC_ATTRIBUTE_REV) {
+        TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(static_cast<TRI_df_marker_t const*>(marker));
+        TRI_ASSERT(rid > 0);
+        size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
+        TRI_V8_RETURN_PAIR_STRING((char const*) buffer, (int) len);
+      }
+
+      if (key == TRI_VOC_ATTRIBUTE_ID || 
+          key == TRI_VOC_ATTRIBUTE_FROM || 
+          key == TRI_VOC_ATTRIBUTE_TO) {
+        // strip reserved attributes
+        TRI_V8_RETURN(v8::Handle<v8::Value>());
+      }
+    }
+
+    // TODO: check whether accessing an attribute with a dot is actually possible, 
+    // e.g. doc.a.b vs. doc["a.b"]
+    if (strchr(key.c_str(), '.') != nullptr) {
+      TRI_V8_RETURN(v8::Handle<v8::Value>());
+    }
+
+    // get the underlying collection
+    auto ditch = static_cast<triagens::arango::DocumentDitch*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))->Value());
+    TRI_ASSERT(ditch != nullptr);
+
+    TRI_document_collection_t* collection = ditch->collection();
+
+    // get shape accessor
+    TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by trx here
+    TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, key.c_str());
+
+    if (pid == 0) {
+      TRI_V8_RETURN(v8::Handle<v8::Value>());
+    }
+
+    TRI_shaped_json_t document;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
+
+    TRI_shaped_json_t json;
+    TRI_shape_t const* shape;
+
+    bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+
+    if (ok && shape != nullptr) {
+      TRI_V8_RETURN(TRI_JsonShapeData(isolate, shaper, shape, json._data.data, json._data.length));
+    }
+
+    // we must not throw a v8 exception here because this will cause follow up errors
     TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
-
-  // get the underlying collection
-  auto ditch = static_cast<triagens::arango::DocumentDitch*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))->Value());
-  TRI_ASSERT(ditch != nullptr);
-
-  TRI_document_collection_t* collection = ditch->collection();
-
-  // get shape accessor
-  TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by trx here
-  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, key.c_str());
-
-  if (pid == 0) {
+  catch (...) {
     TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
-
-  TRI_shaped_json_t document;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
-
-  TRI_shaped_json_t json;
-  TRI_shape_t const* shape;
-
-  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
-
-  if (ok && shape != nullptr) {
-    TRI_V8_RETURN(TRI_JsonShapeData(isolate, shaper, shape, json._data.data, json._data.length));
-  }
-
-  // we must not throw a v8 exception here because this will cause follow up errors
-  TRI_V8_RETURN(v8::Handle<v8::Value>());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -614,38 +619,43 @@ static void MapSetNamedShapedJson (v8::Local<v8::String> name,
                                    v8::Local<v8::Value> value,
                                    const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
+  try {
+    v8::HandleScope scope(isolate);
 
-  // sanity check
-  v8::Handle<v8::Object> self = args.Holder();
+    // sanity check
+    v8::Handle<v8::Object> self = args.Holder();
 
-  if (self->InternalFieldCount() <= SLOT_DITCH) {
-    // we better not throw here... otherwise this will cause a segfault
-    TRI_V8_RETURN(v8::Handle<v8::Value>());
-  }
+    if (self->InternalFieldCount() <= SLOT_DITCH) {
+      // we better not throw here... otherwise this will cause a segfault
+      TRI_V8_RETURN(v8::Handle<v8::Value>());
+    }
 
-  // get shaped json
-  void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
+    // get shaped json
+    void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
-  if (marker == nullptr) {
-    return;
-  }
+    if (marker == nullptr) {
+      return;
+    }
 
-  if (self->HasRealNamedProperty(name)) {
-    // object already has the property. use the regular property setter
+    if (self->HasRealNamedProperty(name)) {
+      // object already has the property. use the regular property setter
+      self->ForceSet(name, value);
+      TRI_V8_RETURN_TRUE();
+    }
+
+    // copy all attributes from the shaped json into the object
+    CopyAttributes(isolate, self, marker);
+
+    // remove pointer to marker, so the object becomes stand-alone
+    self->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nullptr));
+
+    // and now use the regular property setter
     self->ForceSet(name, value);
     TRI_V8_RETURN_TRUE();
   }
-
-  // copy all attributes from the shaped json into the object
-  CopyAttributes(isolate, self, marker);
-
-  // remove pointer to marker, so the object becomes stand-alone
-  self->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nullptr));
-
-  // and now use the regular property setter
-  self->ForceSet(name, value);
-  TRI_V8_RETURN_TRUE();
+  catch (...) {
+    TRI_V8_RETURN(v8::Handle<v8::Value>());
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -657,32 +667,37 @@ static void MapSetNamedShapedJson (v8::Local<v8::String> name,
 static void MapDeleteNamedShapedJson (v8::Local<v8::String> name,
                                       const v8::PropertyCallbackInfo<v8::Boolean>& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-  
-  // sanity check
-  v8::Handle<v8::Object> self = args.Holder();
+  try {
+    v8::HandleScope scope(isolate);
+    
+    // sanity check
+    v8::Handle<v8::Object> self = args.Holder();
 
-  if (self->InternalFieldCount() <= SLOT_DITCH) {
-    // we better not throw here... otherwise this will cause a segfault
-    return;
-  }
+    if (self->InternalFieldCount() <= SLOT_DITCH) {
+      // we better not throw here... otherwise this will cause a segfault
+      return;
+    }
 
-  // get shaped json
-  void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
+    // get shaped json
+    void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
-  if (marker == nullptr) {
+    if (marker == nullptr) {
+      self->ForceDelete(name);
+      TRI_V8_RETURN_TRUE();
+    }
+    
+    // copy all attributes from the shaped json into the object
+    CopyAttributes(isolate, self, marker);
+    
+    // remove pointer to marker, so the object becomes stand-alone
+    self->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nullptr));
+
     self->ForceDelete(name);
     TRI_V8_RETURN_TRUE();
   }
-  
-  // copy all attributes from the shaped json into the object
-  CopyAttributes(isolate, self, marker);
-  
-  // remove pointer to marker, so the object becomes stand-alone
-  self->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nullptr));
-
-  self->ForceDelete(name);
-  TRI_V8_RETURN_TRUE();
+  catch (...) {
+    return;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -692,70 +707,75 @@ static void MapDeleteNamedShapedJson (v8::Local<v8::String> name,
 static void PropertyQueryShapedJson (v8::Local<v8::String> name,
                                      const v8::PropertyCallbackInfo<v8::Integer>& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
+  try {
+    v8::HandleScope scope(isolate);
 
-  v8::Handle<v8::Object> self = args.Holder();
+    v8::Handle<v8::Object> self = args.Holder();
 
-  // sanity check
-  if (self->InternalFieldCount() <= SLOT_DITCH) {
-    TRI_V8_RETURN(v8::Handle<v8::Integer>());
-  }
-
-  // get shaped json
-  void* marker = TRI_UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
-
-  if (marker == nullptr) {
-    TRI_V8_RETURN(v8::Handle<v8::Integer>());
-  }
-
-  // convert the JavaScript string to a string
-  string const&& key = TRI_ObjectToString(name);
-
-  if (key.empty()) {
-    TRI_V8_RETURN(v8::Handle<v8::Integer>());
-  }
-
-  if (key[0] == '_') {
-    if (key == TRI_VOC_ATTRIBUTE_KEY || 
-        key == TRI_VOC_ATTRIBUTE_REV || 
-        key == TRI_VOC_ATTRIBUTE_ID || 
-        key == TRI_VOC_ATTRIBUTE_FROM || 
-        key == TRI_VOC_ATTRIBUTE_TO) {
-      TRI_V8_RETURN(v8::Handle<v8::Integer>(v8::Integer::New(isolate, v8::None)));
+    // sanity check
+    if (self->InternalFieldCount() <= SLOT_DITCH) {
+      TRI_V8_RETURN(v8::Handle<v8::Integer>());
     }
-  }
 
-  // get underlying collection
-  auto ditch = static_cast<triagens::arango::DocumentDitch*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))->Value());
-  TRI_document_collection_t* collection = ditch->collection();
+    // get shaped json
+    void* marker = TRI_UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
 
-  // get shape accessor
-  TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
-  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, key.c_str());
+    if (marker == nullptr) {
+      TRI_V8_RETURN(v8::Handle<v8::Integer>());
+    }
 
-  if (pid == 0) {
-    TRI_V8_RETURN(v8::Handle<v8::Integer>());
-  }
+    // convert the JavaScript string to a string
+    string const&& key = TRI_ObjectToString(name);
 
-  TRI_shape_sid_t sid;
-  TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
+    if (key.empty()) {
+      TRI_V8_RETURN(v8::Handle<v8::Integer>());
+    }
 
-  if (sid == TRI_SHAPE_ILLEGAL) {
-    // invalid shape
+    if (key[0] == '_') {
+      if (key == TRI_VOC_ATTRIBUTE_KEY || 
+          key == TRI_VOC_ATTRIBUTE_REV || 
+          key == TRI_VOC_ATTRIBUTE_ID || 
+          key == TRI_VOC_ATTRIBUTE_FROM || 
+          key == TRI_VOC_ATTRIBUTE_TO) {
+        TRI_V8_RETURN(v8::Handle<v8::Integer>(v8::Integer::New(isolate, v8::None)));
+      }
+    }
+
+    // get underlying collection
+    auto ditch = static_cast<triagens::arango::DocumentDitch*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))->Value());
+    TRI_document_collection_t* collection = ditch->collection();
+
+    // get shape accessor
+    TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
+    TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, key.c_str());
+
+    if (pid == 0) {
+      TRI_V8_RETURN(v8::Handle<v8::Integer>());
+    }
+
+    TRI_shape_sid_t sid;
+    TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
+
+    if (sid == TRI_SHAPE_ILLEGAL) {
+      // invalid shape
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_WARNING("invalid shape id '%llu' found for key '%s'", (unsigned long long) sid, key.c_str());
+      LOG_WARNING("invalid shape id '%llu' found for key '%s'", (unsigned long long) sid, key.c_str());
 #endif
+      TRI_V8_RETURN(v8::Handle<v8::Integer>());
+    }
+
+    TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
+
+    // key not found
+    if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
+      TRI_V8_RETURN(v8::Handle<v8::Integer>());
+    }
+
+    TRI_V8_RETURN(v8::Handle<v8::Integer>(v8::Integer::New(isolate, v8::None)));
+  }
+  catch (...) {
     TRI_V8_RETURN(v8::Handle<v8::Integer>());
   }
-
-  TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
-
-  // key not found
-  if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-    TRI_V8_RETURN(v8::Handle<v8::Integer>());
-  }
-
-  TRI_V8_RETURN(v8::Handle<v8::Integer>(v8::Integer::New(isolate, v8::None)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -839,9 +859,9 @@ void TRI_InitV8ShapedJson (v8::Isolate *isolate,
   // accessor for indexed properties (e.g. doc[1])
   rt->SetIndexedPropertyHandler(MapGetIndexedShapedJson,    // IndexedPropertyGetter,
                                 MapSetIndexedShapedJson,    // IndexedPropertySetter,
-                                0,                          // IndexedPropertyQuery,
+                                nullptr,                    // IndexedPropertyQuery,
                                 MapDeleteIndexedShapedJson, // IndexedPropertyDeleter,
-                                0                           // IndexedPropertyEnumerator,
+                                nullptr                     // IndexedPropertyEnumerator,
                                                             // Handle<Value> data = Handle<Value>());
                                );
 

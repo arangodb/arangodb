@@ -49,7 +49,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateCursor (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -110,6 +110,7 @@ static void JS_CreateCursor (const v8::FunctionCallbackInfo<v8::Value>& args) {
   catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +118,7 @@ static void JS_CreateCursor (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_JsonCursor (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -197,6 +198,7 @@ static void JS_JsonCursor (const v8::FunctionCallbackInfo<v8::Value>& args) {
     cursors->release(cursor);
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
+  TRI_V8_TRY_CATCH_END
 }
 
 // .............................................................................

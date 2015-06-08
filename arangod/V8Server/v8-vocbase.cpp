@@ -31,10 +31,11 @@
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/Utf8Helper.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
@@ -157,7 +158,7 @@ static v8::Handle<v8::Object> WrapClass (v8::Isolate *isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1 || ! args[0]->IsObject()) {
@@ -356,7 +357,7 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   v8::Handle<v8::Value> result;
-  {
+  try {
     v8::TryCatch tryCatch;
     v8::Handle<v8::Value> arguments = params;
     result = action->Call(current, 1, &arguments);
@@ -374,6 +375,18 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
       }
     }
   }
+  catch (triagens::basics::Exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  }
+  catch (std::bad_alloc const& ex) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  catch (std::exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+  }
+  catch (...) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 
   res = trx.commit();
 
@@ -382,6 +395,7 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
   
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -444,7 +458,7 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PropertiesWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 1 || (args.Length() == 1 && ! args[0]->IsObject())) {
@@ -497,6 +511,7 @@ static void JS_PropertiesWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
   result->Set(TRI_V8_ASCII_STRING("throttleWhenPending"),   v8::Number::New(isolate, (double) l->throttleWhenPending()));
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -529,7 +544,7 @@ static void JS_PropertiesWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FlushWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   bool waitForSync = false;
@@ -564,14 +579,15 @@ static void JS_FlushWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_normalize_string (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+static void JS_NormalizeString (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -579,6 +595,7 @@ static void JS_normalize_string (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_normalize_V8_Obj(args, args[0]);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -586,7 +603,7 @@ static void JS_normalize_string (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_EnableNativeBacktraces (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -596,6 +613,7 @@ static void JS_EnableNativeBacktraces (const v8::FunctionCallbackInfo<v8::Value>
   triagens::basics::Exception::SetVerbose(TRI_ObjectToBoolean(args[0]));
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 extern triagens::V8LineEditor* theConsole;
@@ -605,7 +623,7 @@ extern triagens::V8LineEditor* theConsole;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
 
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING("debug loop"));
   v8::Local<v8::String> debug(TRI_V8_ASCII_STRING("debug"));
@@ -651,14 +669,15 @@ static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_compare_string (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+static void JS_CompareString (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 2) {
@@ -676,14 +695,15 @@ static void JS_compare_string (const v8::FunctionCallbackInfo<v8::Value>& args) 
   int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
 
   TRI_V8_RETURN(v8::Integer::New(isolate, result));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get list of timezones
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_getIcuTimezones (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+static void JS_GetIcuTimezones (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -708,14 +728,15 @@ static void JS_getIcuTimezones (const v8::FunctionCallbackInfo<v8::Value>& args)
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get list of locales
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_getIcuLocales (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+static void JS_GetIcuLocales (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -737,14 +758,15 @@ static void JS_getIcuLocales (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief format datetime
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_formatDatetime (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+static void JS_FormatDatetime (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2) {
@@ -796,14 +818,15 @@ static void JS_formatDatetime (const v8::FunctionCallbackInfo<v8::Value>& args) 
   delete tz;
 
   TRI_V8_RETURN_STD_STRING(resultString);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse datetime
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_parseDatetime (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+static void JS_ParseDatetime (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2) {
@@ -854,6 +877,7 @@ static void JS_parseDatetime (const v8::FunctionCallbackInfo<v8::Value>& args) {
   delete tz;
 
   TRI_V8_RETURN(v8::Number::New(isolate, udate / 1000));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -888,12 +912,12 @@ static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReloadAuth (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -911,11 +935,9 @@ static void JS_ReloadAuth (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                               AQL
@@ -926,7 +948,7 @@ static void JS_ReloadAuth (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ParseAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -986,6 +1008,7 @@ static void JS_ParseAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -994,7 +1017,7 @@ static void JS_ParseAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_WarningAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 2) {
@@ -1020,6 +1043,7 @@ static void JS_WarningAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1027,7 +1051,7 @@ static void JS_WarningAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExplainAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1116,6 +1140,7 @@ static void JS_ExplainAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,7 +1148,7 @@ static void JS_ExplainAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1189,6 +1214,7 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
   
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1196,7 +1222,8 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1287,6 +1314,7 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
   
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1294,7 +1322,7 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesPropertiesAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1346,6 +1374,7 @@ static void JS_QueriesPropertiesAql (const v8::FunctionCallbackInfo<v8::Value>& 
   result->Set(TRI_V8_ASCII_STRING("maxQueryStringLength"), v8::Number::New(isolate, static_cast<double>(queryList->maxQueryStringLength())));
   
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1353,7 +1382,7 @@ static void JS_QueriesPropertiesAql (const v8::FunctionCallbackInfo<v8::Value>& 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesCurrentAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1395,6 +1424,7 @@ static void JS_QueriesCurrentAql (const v8::FunctionCallbackInfo<v8::Value>& arg
   catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1402,7 +1432,7 @@ static void JS_QueriesCurrentAql (const v8::FunctionCallbackInfo<v8::Value>& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesSlowAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1447,6 +1477,7 @@ static void JS_QueriesSlowAql (const v8::FunctionCallbackInfo<v8::Value>& args) 
   catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1454,7 +1485,7 @@ static void JS_QueriesSlowAql (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesKillAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1479,6 +1510,7 @@ static void JS_QueriesKillAql (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_V8_THROW_EXCEPTION(res);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1486,14 +1518,16 @@ static void JS_QueriesKillAql (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
   if (v8g->_query != nullptr && static_cast<triagens::aql::Query*>(v8g->_query)->killed()) {
     TRI_V8_RETURN_TRUE();
   }
+
   TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1632,40 +1666,31 @@ static ExplicitTransaction* BeginTransaction (TRI_vocbase_t* vocbase,
   bool waitForSync = false;
 
   // Start Transaction to collect all parts of the path
-  ExplicitTransaction* trx = new ExplicitTransaction(
+  std::unique_ptr<ExplicitTransaction> trx(new ExplicitTransaction(
     vocbase,
     readCollections,
     writeCollections,
     lockTimeout,
     waitForSync,
     embed
-  );
+  ));
   
   int res = trx->begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
     trx->finish(res);
-    delete trx;
     throw res;
   }
 
-  try {
-    // Get all ditches at once
-    for (auto const& it : readCollections) {
-      AddDitch(trx, it, ditches);
-    }
-    for (auto const& it : writeCollections) {
-      AddDitch(trx, it, ditches);
-    }
-  } 
-  catch (int&) {
-    // Could not get a ditch
-    // Abort the collection and free the pointers
-    trx->abort();
-    delete trx;
-    throw;
+  // Get all ditches at once
+  for (auto const& it : readCollections) {
+    AddDitch(trx.get(), it, ditches);
   }
-  return trx;
+  for (auto const& it : writeCollections) {
+    AddDitch(trx.get(), it, ditches);
+  }
+
+  return trx.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1692,16 +1717,16 @@ static v8::Handle<v8::Value> PathIdsToV8 (v8::Isolate* isolate,
     ExtractCidsFromPath(vocbase, p, readCollections);
     vector<TRI_voc_cid_t> writeCollections;
     unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
-    ExplicitTransaction* trx = BeginTransaction(vocbase, readCollections,
-                                                writeCollections, resolver, ditches);
+
+    std::unique_ptr<ExplicitTransaction> trx(BeginTransaction(vocbase, readCollections,
+                                                              writeCollections, resolver, ditches));
     for (uint32_t j = 0;  j < vn;  ++j) {
-      vertices->Set(j, VertexIdToData(isolate, resolver, trx, ditches, p.vertices[j]));
+      vertices->Set(j, VertexIdToData(isolate, resolver, trx.get(), ditches, p.vertices[j]));
     }
     for (uint32_t j = 0;  j < en;  ++j) {
-      edges->Set(j, EdgeIdToData(isolate, resolver, trx, ditches, p.edges[j]));
+      edges->Set(j, EdgeIdToData(isolate, resolver, trx.get(), ditches, p.edges[j]));
     }
-    trx->finish(0);
-    delete trx;
+    trx->finish(TRI_ERROR_NO_ERROR);
   } 
   else {
     for (uint32_t j = 0;  j < vn;  ++j) {
@@ -1821,7 +1846,7 @@ static VertexId IdStringToVertexId (CollectionNameResolver const* resolver,
     throw TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
   }
 
-  string collectionName = vertex.substr(0, split);
+  string const collectionName = vertex.substr(0, split);
   auto coli = resolver->getCollectionStruct(collectionName);
 
   if (coli == nullptr) {
@@ -1836,7 +1861,7 @@ static VertexId IdStringToVertexId (CollectionNameResolver const* resolver,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 4 || args.Length() > 5) {
@@ -1924,18 +1949,18 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     }
 
     // Parse filterEdges
+    // note: only works with edge examples and not with user-defined AQL functions
     v8::Local<v8::String> keyFilterEdges = TRI_V8_ASCII_STRING("filterEdges");
     if (options->Has(keyFilterEdges)) {
       opts.useEdgeFilter = true;
-      // TODO: User defined AQL function !!
       edgeExample = v8::Handle<v8::Object>::Cast(options->Get(keyFilterEdges));
     }
 
     // Parse vertexFilter
+    // note: only works with vertex examples and not with user-defined AQL functions
     v8::Local<v8::String> keyFilterVertices = TRI_V8_ASCII_STRING("filterVertices");
     if (options->Has(keyFilterVertices)) {
       opts.useVertexFilter = true;
-      // TODO: User defined AQL function !!
       vertexExample = v8::Handle<v8::Object>::Cast(options->Get(keyFilterVertices));
     }
   } 
@@ -1957,25 +1982,21 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
 
   // Start the transaction and order ditches
   unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
-  ExplicitTransaction* trx = nullptr;
-  try {
-    trx = BeginTransaction(vocbase, readCollections, writeCollections, resolver, ditches);
-  } 
-  catch (int e) {
-    // Nothing to clean up. Throw the error to V8
-    TRI_V8_THROW_EXCEPTION(e);
-  }
   
+  std::unique_ptr<ExplicitTransaction> trx(BeginTransaction(vocbase, readCollections, writeCollections, resolver, ditches));
   
   vector<EdgeCollectionInfo*> edgeCollectionInfos;
   vector<VertexCollectionInfo*> vertexCollectionInfos;
-
-  auto cleanup = [&] () -> void {
-    for (auto& p : edgeCollectionInfos) {
-      delete p;
-    }
-    for (auto& p : vertexCollectionInfos) {
-      delete p;
+      
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&edgeCollectionInfos, &vertexCollectionInfos]() -> void {
+      for (auto& p : edgeCollectionInfos) {
+        delete p;
+      }
+      for (auto& p : vertexCollectionInfos) {
+        delete p;
+      }
     }
   };
 
@@ -2022,7 +2043,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       catch (int e) {
         // ELEMENT not found is expected, if there is no shape of this type in this collection
         if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
-          // TODO Max fragen was mit Fehlern passieren muss
+          TRI_V8_THROW_EXCEPTION(e);
         }
       }
     }
@@ -2032,13 +2053,12 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     string errorMessage;
     for (auto const& it: vertexCollectionInfos) {
       try {
-        opts.addVertexFilter(isolate, vertexExample, trx, it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
+        opts.addVertexFilter(isolate, vertexExample, trx.get(), it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
       } 
       catch (int e) {
-        cout << "ARG!!!" << endl;
         // ELEMENT not found is expected, if there is no shape of this type in this collection
         if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
-          // TODO Max fragen was mit Fehlern passieren muss
+          TRI_V8_THROW_EXCEPTION(e);
         }
       }
     }
@@ -2051,8 +2071,6 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   catch (int e) {
     // Id string might have illegal collection name
     trx->finish(e);
-    cleanup();
-    delete trx;
     TRI_V8_THROW_EXCEPTION(e);
   }
   
@@ -2067,8 +2085,6 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   } 
   catch (int e) {
     trx->finish(e);
-    cleanup();
-    delete trx;
     TRI_V8_THROW_EXCEPTION(e);
   }
 
@@ -2076,19 +2092,20 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   if (path.get() == nullptr) {
     v8::EscapableHandleScope scope(isolate);
     trx->finish(res);
-    cleanup();
-    delete trx;
     TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Null(isolate)));
   }
+
   trx->finish(res);
-  cleanup();
-  delete trx;
+  // must finish "old" transaction first before starting a new in PathIdsToV8
+  delete trx.release();
+
   // Potential inconsistency here. Graph is outside a transaction in this very second.
   // Adding additional locks on vertex collections at this point to the transaction
   // would cause dead-locks.
   // Will be fixed automatically with new MVCC version.
   auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2123,7 +2140,7 @@ static v8::Handle<v8::Value> VertexIdsToV8 (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 3 || args.Length() > 4) {
@@ -2215,7 +2232,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     v8::Local<v8::String> keyFilterVertices = TRI_V8_ASCII_STRING("filterVertices");
     if (options->Has(keyFilterVertices)) {
       opts.useVertexFilter = true;
-      // TODO: User defined AQL function !!
+    // note: only works with vertex examples and not with user-defined AQL functions
       vertexExample = v8::Handle<v8::Object>::Cast(options->Get(keyFilterVertices));
     }
 
@@ -2237,7 +2254,6 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   V8ResolverGuard resolverGuard(vocbase);
 
-  ExplicitTransaction* trx = nullptr;
   int res = TRI_ERROR_NO_ERROR;
   CollectionNameResolver const* resolver = resolverGuard.getResolver();
 
@@ -2250,16 +2266,23 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
   // Start the transaction
-  try {
-    trx = BeginTransaction(vocbase, readCollections, writeCollections,
-                           resolver, ditches);
-  } 
-  catch (int e) {
-    // Nothing to clean up. Throw the error to V8
-    TRI_V8_THROW_EXCEPTION(e);
-  }
-
+  std::unique_ptr<ExplicitTransaction> trx(BeginTransaction(vocbase, readCollections, writeCollections, resolver, ditches));
+  
   vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  vector<VertexCollectionInfo*> vertexCollectionInfos;
+  
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&edgeCollectionInfos, &vertexCollectionInfos]() -> void {
+      for (auto& p : edgeCollectionInfos) {
+        delete p;
+      }
+      for (auto& p : vertexCollectionInfos) {
+        delete p;
+      }
+    }
+  };
+
   for (auto const& it : edgeCollectionNames) {
     auto cid = resolver->getCollectionId(it);
     auto colObj = ditches.find(cid)->second.col->_collection->_collection;
@@ -2270,8 +2293,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     ));
   }
 
-  vector<VertexCollectionInfo*> vertexCollectionInfos;
-  for(auto it : vertexCollectionNames) {
+  for (auto it : vertexCollectionNames) {
     auto cid = resolver->getCollectionId(it);
     auto colObj = ditches.find(cid)->second.col;
     vertexCollectionInfos.emplace_back(new VertexCollectionInfo(
@@ -2281,14 +2303,6 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     // Explicitly allow all collections.
     opts.addCollectionRestriction(cid);
   }
-  auto cleanup = [&] () -> void {
-    for (auto& p : edgeCollectionInfos) {
-      delete p;
-    }
-    for (auto& p : vertexCollectionInfos) {
-      delete p;
-    }
-  };
 
   unordered_set<VertexId> distinctNeighbors;
   vector<VertexId> neighbors;
@@ -2302,7 +2316,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       catch (int e) {
         // ELEMENT not found is expected, if there is no shape of this type in this collection
         if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
-          // TODO Max fragen was mit Fehlern passieren muss
+          TRI_V8_THROW_EXCEPTION(e);
         }
       }
     }
@@ -2312,12 +2326,12 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     string errorMessage;
     for (auto const& it: vertexCollectionInfos) {
       try {
-        opts.addVertexFilter(isolate, vertexExample, trx, it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
+        opts.addVertexFilter(isolate, vertexExample, trx.get(), it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
       } 
       catch (int e) {
         // ELEMENT not found is expected, if there is no shape of this type in this collection
         if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
-          // TODO Max fragen was mit Fehlern passieren muss
+          TRI_V8_THROW_EXCEPTION(e);
         }
       }
     }
@@ -2329,9 +2343,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     } 
     catch (int e) {
       // Id string might have illegal collection name
-      cleanup();
       trx->finish(e);
-      delete trx;
       TRI_V8_THROW_EXCEPTION(e);
     }
     try {
@@ -2343,19 +2355,17 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       );
     } 
     catch (int e) {
-      cleanup();
       trx->finish(e);
-      delete trx;
       TRI_V8_THROW_EXCEPTION(e);
     }
   }
 
-  auto result = VertexIdsToV8(isolate, trx, resolver, neighbors, ditches, includeData);
+  auto result = VertexIdsToV8(isolate, trx.get(), resolver, neighbors, ditches, includeData);
 
-  cleanup();
   trx->finish(res);
-  delete trx;
+
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2363,7 +2373,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QuerySleepAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // extract arguments
@@ -2393,6 +2403,7 @@ static void JS_QuerySleepAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -3308,7 +3319,7 @@ static void JS_DropDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ConfigureEndpoint (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1 || args.Length() > 2) {
@@ -3372,6 +3383,7 @@ static void JS_ConfigureEndpoint (const v8::FunctionCallbackInfo<v8::Value>& arg
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3381,7 +3393,7 @@ static void JS_ConfigureEndpoint (const v8::FunctionCallbackInfo<v8::Value>& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveEndpoint (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1 || args.Length() > 2) {
@@ -3414,6 +3426,7 @@ static void JS_RemoveEndpoint (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3423,7 +3436,7 @@ static void JS_RemoveEndpoint (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ListEndpoints (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -3470,6 +3483,7 @@ static void JS_ListEndpoints (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -3691,12 +3705,12 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
 
   TRI_InitV8Replication(isolate, context, server, vocbase, loader, threadNumber, v8g);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("COMPARE_STRING"), JS_compare_string);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("NORMALIZE_STRING"), JS_normalize_string);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("TIMEZONES"), JS_getIcuTimezones);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("LOCALES"), JS_getIcuLocales);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FORMAT_DATETIME"), JS_formatDatetime);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("PARSE_DATETIME"), JS_parseDatetime);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("COMPARE_STRING"), JS_CompareString);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("NORMALIZE_STRING"), JS_NormalizeString);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("TIMEZONES"), JS_GetIcuTimezones);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("LOCALES"), JS_GetIcuLocales);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FORMAT_DATETIME"), JS_FormatDatetime);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("PARSE_DATETIME"), JS_ParseDatetime);
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CONFIGURE_ENDPOINT"), JS_ConfigureEndpoint, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REMOVE_ENDPOINT"), JS_RemoveEndpoint, true);

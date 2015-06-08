@@ -809,6 +809,14 @@ QueryResult Query::parse () {
   catch (triagens::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   }
+  catch (std::bad_alloc const&) {
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+  }
+  catch (std::exception const& ex) {
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what());
+  }
   catch (...) {
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
