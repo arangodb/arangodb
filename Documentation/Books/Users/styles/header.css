@@ -1,0 +1,103 @@
+/* Header Hack - to prevent using a custom theme */
+
+/* Disable Search - temp. 
+.book-search { visibility: hidden}
+.toggle-search { visibility: hidden}
+*/
+
+#spacer {
+  margin-top: 40px;
+}
+
+#searchx { padding-left: 100;}
+
+#logo {
+  display: block;
+  float: left;
+  font-family: 'Kalam', 'Trebuchet MS', sans-serif;
+  color: #fff;
+  font-weight: normal;
+  width: 20%;
+/*  font-size: 1.85em; *//
+  line-height: 40px; // 80px;
+}
+
+#logo img {
+  width: 150px;
+  margin-top: -3px;
+}
+
+.wrap {
+  display: block;
+  margin: 0 auto;
+  max-width: 1200px;
+  padding: 0 10px;
+}
+
+#header {
+  display: block;
+  width: 100%;
+  height: 40px; // 80px;
+  background: #444; //4e5f81;
+  -webkit-box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+  -moz-box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+}
+.fixed{
+  position: fixed;
+  z-index: 10;
+  right: 0;
+  left: 0;
+  top: 0;
+}
+
+#navmenu {
+  display: block;
+  float: right;
+  margin: 0px;
+}
+
+#navmenu li {
+  display: block;
+  float: left;  
+}
+
+#navmenu li a {
+  display: block;
+  float: left;
+  padding: 0 20px;
+  font-size: 1.4em;
+  line-height: 40px;// 80px;
+  font-weight: bold;
+  color: #fff;
+  text-decoration: none;
+}
+
+#navmenu li a:hover {
+  background: #80A54D !important;
+}
+
+.owntab {
+  background-color:#6a873e;
+}
+
+.socialIcons {
+  margin-left: -15px;
+}
+
+/** simple responsive updates **/
+
+@media screen and (max-width: 770px) {
+  #navmenu li a { font-size: 0.8em; padding: 0 15px; }
+  #navmenu li a img { width:11px; height:36px; padding-top: 4px; }
+  #logo { width: 10%; }
+  #logo img { width: 80px; margin-top:8px;}
+  .owntab { display: none !important; }
+}
+
+/** clearfix **/
+.clearfix:after { content: "."; display: block; clear: both; visibility: hidden; line-height: 0; height: 0; }
+.clearfix { display: inline-block; }
+
+html[xmlns] .clearfix { display: block; }
+* html .clearfix { height: 1%; }

@@ -96,8 +96,6 @@ build-book:
 	python bot.py
 	cd $(NAME) && gitbook install
 	cd $(NAME) && gitbook build ./ ./../books/$(NAME)
-	cp Users/arangodbLogo.png books/Users/
-	cp Users/cookbookLogo.png books/Users/
-	cp Users/googlegroupsIcon.png books/Users/
+	cp -r Users/images/ books/Users/images/
 	python deprecated.py
 
