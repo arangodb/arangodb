@@ -172,6 +172,8 @@ ArangoDB's built-in web interface now uses sessions. Session information is stor
 The AQL editor in the web interface now provides an *explain* functionality, which can be used for inspecting and performance-tuning AQL queries.
 The query execution time is now also displayed in the AQL editor.
 
+Foxx apps that require configuration or are missing dependencies are now indicated in the app overview and details.
+
 !SECTION Foxx improvements
 
 !SUBSECTION Configuration and Dependencies
@@ -196,14 +198,24 @@ https://docs.arangodb.com/cookbook/FoxxTesting.html
 
 !SUBSECTION API Documentation
 
-The API documentation has been updated to Swagger 2. You can now also mount API documentation in your own Foxx apps. For more information see the [API Documentation chapter](../Foxx/Develop/ApiDocumentation.html) in the Foxx documentation.
+The API documentation has been updated to Swagger 2. You can now also mount API
+documentation in your own Foxx apps. For more information see the
+[API Documentation chapter](../Foxx/Develop/ApiDocumentation.html) in the
+Foxx documentation.
 
 Also see the blog post introducing this feature:
 https://www.arangodb.com/2015/05/document-your-foxx-apps-with-swagger-2/
 
-!SUBSECTION Custom Scripts
+!SUBSECTION Custom Scripts and Foxx Queue
 
-In addition to the existing *setup* and *teardown* scripts you can now define custom scripts in your Foxx manifest and invoke these using the web admin interface or the Foxx manager CLI.
+In addition to the existing *setup* and *teardown* scripts you can now define custom scripts
+in your Foxx manifest and invoke these using the web admin interface or the Foxx manager CLI.
+These scripts can now also take positional arguments and export return values.
+
+Job types for the Foxx Queue can now be defined as a script name and app mount path allowing
+the use of Foxx scripts as job types. The pre-2.6 job types are known to cause issues when
+restarting the server and are error-prone; we strongly recommended converting any existing
+job types to the new format.
 
 !SECTION Client tools
 
