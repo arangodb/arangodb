@@ -356,6 +356,15 @@ v2.6.0 (XXXX-XX-XX)
 
 * REST Server: fix memory leaks when failing to add jobs
 
+* 'EDGES' AQL Function
+
+  The AQL function EDGES got a new fifth option parameter.
+  Right now only one option is available 'includeVertices' this is a boolean parameter
+  that allows to modify the result of EDGES.
+  Default is 'includeVertices: false' which does not have any effect.
+  'includeVertices: true' modifies the result, such that
+  {vertex: <vertexDocument>, edge: <edgeDocument>} is returned.
+
 * INCOMPATIBLE CHANGE:
 
   The result format of the AQL function `NEIGHBORS` has been changed.
