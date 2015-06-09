@@ -23,6 +23,7 @@ ArangoDB and shouldn't be used if possible.
 
 ## 2.6
 * Foxx: method `Model#toJSONSchema(id)` has been removed entirely. Please use `Foxx.toJSONSchema(id, model)` instead.
+* Foxx: Function-based Foxx Queue job types are deprecated and known to cause issues, they will raise a warning if you use them. Please use the new script-based job types instead.
 
 
 ## 2.7
@@ -34,4 +35,5 @@ ArangoDB and shouldn't be used if possible.
 ## 2.8
 * Foxx: the property `assets` in manifests has been removed entirely. Please use the `files` property and an external build tool instead.
 * Foxx: properties `setup` and `teardown` in manifests have been removed entirely. Please use the `scripts` property instead.
+* Foxx: Function-based Foxx Queue job types have been removed entirely. Please use the new script-based job types instead.
 * The module `org/arangodb/extend` has been removed entirely. Please use the module `extendible` instead.
