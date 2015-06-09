@@ -13,14 +13,14 @@ name. ArangoDB internally uses the collection's unique identifier to look up
 collections. This identifier, however, is managed by ArangoDB and the user has
 no control over it. In order to allow users to use their own names, each collection
 also has a unique name which is specified by the user. To access a collection
-from the user perspective, the [collection name](../Glossary/README.html#collection_name) should be used, i.e.:
+from the user perspective, the [collection name](../Glossary/index.html#collection_name) should be used, i.e.:
 
 !SUBSECTION Collection
 `db._collection(collection-name)`
 
 A collection is created by a ["db._create"](../Collections/DatabaseMethods.md) call.
 
-For example: Assume that the [collection identifier](../Glossary/README.html#collection_identifier) is *7254820* and the name is
+For example: Assume that the [collection identifier](../Glossary/index.html#collection_identifier) is *7254820* and the name is
 *demo*, then the collection can be accessed as:
 
     db._collection("demo")
