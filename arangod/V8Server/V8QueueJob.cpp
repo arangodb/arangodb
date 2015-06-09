@@ -136,19 +136,30 @@ Job::status_t V8QueueJob::work () {
     }
 
     // call the function
-    v8::TryCatch tryCatch;
-    main->Call(current, 1, &fArgs);
+    try {
+      v8::TryCatch tryCatch;
+      main->Call(current, 1, &fArgs);
 
-    if (tryCatch.HasCaught()) {
-      if (tryCatch.CanContinue()) {
-        TRI_LogV8Exception(isolate, &tryCatch);
-      }
-      else {
-        TRI_GET_GLOBALS();
+      if (tryCatch.HasCaught()) {
+        if (tryCatch.CanContinue()) {
+          TRI_LogV8Exception(isolate, &tryCatch);
+        }
+        else {
+          TRI_GET_GLOBALS();
 
-        v8g->_canceled = true;
-        LOG_WARNING("caught non-catchable exception (aka termination) in V8 queue job");
+          v8g->_canceled = true;
+          LOG_WARNING("caught non-catchable exception (aka termination) in V8 queue job");
+        }
       }
+    }
+    catch (triagens::basics::Exception const& ex) {
+      LOG_ERROR("caught exception in V8 queue job: %s %s", TRI_errno_string(ex.code()), ex.what());
+    }
+    catch (std::bad_alloc const&) {
+      LOG_ERROR("caught exception in V8 queue job: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    }
+    catch (...) {
+      LOG_ERROR("caught unknown exception in V8 queue job");
     }
   }
 

@@ -1,6 +1,6 @@
 !CHAPTER Address and ETag of a Document
 
-All documents in ArangoDB have a [document handle](../Glossary/README.html#document_handle). This handle uniquely identifies 
+All documents in ArangoDB have a [document handle](../Glossary/index.html#document_handle). This handle uniquely identifies 
 a document. Any document can be retrieved using its unique URI:
 
     http://server:port/_api/document/<document-handle>
@@ -11,7 +11,7 @@ is:
 
     http://localhost:8529/_api/document/demo/362549736
 
-The above URL scheme does not specify a [database name](../Glossary/README.html#database_name) explicitly, so the 
+The above URL scheme does not specify a [database name](../Glossary/index.html#database_name) explicitly, so the 
 default database will be used. To explicitly specify the database context, use
 the following URL schema:
 
@@ -23,7 +23,7 @@ Example:
 
 **Note**: The following examples use the short URL format for brevity.
 
-Each document also has a [document revision](../Glossary/README.html#document_revision) or etag with is returned in the
+Each document also has a [document revision](../Glossary/index.html#document_revision) or etag with is returned in the
 "ETag" HTTP header when requesting a document.
 
 If you obtain a document using *GET* and you want to check if a newer revision

@@ -52,8 +52,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     edgeShaperUI,
     adapterUI,
     slider,
-    searchAttrField,
-    searchAttrField2,
     searchAttrExampleList,
     searchAttrExampleList2,
     //mousePointerBox = document.createElement("div"),
@@ -79,6 +77,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         searchValueField = document.createElement("input"),
         searchStart = document.createElement("img"),
         equalsField = document.createElement("span"),
+        searchAttrField,
 
         showSpinner = function() {
           $(background).css("cursor", "progress");
@@ -128,7 +127,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
       searchAttrDiv.className = "pull-left input-append searchByAttribute";
       searchAttrField.id = "attribute";
-      //searchAttrField.className = "input";
       searchAttrField.type = "text";
       searchAttrField.placeholder = "Attribute name";
       searchAttrExampleToggle.id = "attribute_example_toggle";
@@ -183,6 +181,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         searchValueField2 = document.createElement("input"),
         searchStart2 = document.createElement("img"),
         equalsField2 = document.createElement("span"),
+        searchAttrField2,
 
         showSpinner = function() {
           $(background).css("cursor", "progress");
@@ -196,7 +195,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           window.alert(msg);
         },
 
-        resultCB = function(res) {
+        resultCB2 = function(res) {
           hideSpinner();
           if (res && res.errorCode && res.errorCode === 404) {
             alertError("Sorry could not find a matching node.");
@@ -205,19 +204,13 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           return;
         },
 
-        searchFunction = function() {
+        addCustomNode = function() {
           showSpinner();
-          if (searchAttrField.value === ""
-            || searchAttrField.value === undefined) {
-            graphViewer.loadGraph(
-              searchValueField.value,
-              resultCB
-            );
-          } else {
-            graphViewer.loadGraphWithAttributeValue(
-              searchAttrField.value,
-              searchValueField.value,
-              resultCB
+          if (searchAttrField2.value !== "") {
+            graphViewer.loadGraphWithAdditionalNode(
+              searchAttrField2.value,
+              searchValueField2.value,
+              resultCB2
             );
           }
         };
@@ -234,7 +227,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchAttrField2.id = "attribute";
       searchAttrField2.type = "text";
       searchAttrField2.placeholder = "Attribute name";
-      searchAttrExampleToggle2.id = "attribute_example_toggle";
+      searchAttrExampleToggle2.id = "attribute_example_toggle2";
       searchAttrExampleToggle2.className = "button-neutral gv_example_toggle";
       searchAttrExampleCaret2.className = "caret gv_caret";
       searchAttrExampleList2.className = "gv-dropdown-menu";
@@ -259,10 +252,15 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       queryLine2.appendChild(searchValueField2);
       queryLine2.appendChild(searchStart2);
 
-      searchStart2.onclick = searchFunction;
+      updateAttributeExamples(searchAttrExampleList2);
+      //searchAttrExampleList2.onclick = function() {
+      //  updateAttributeExamples(searchAttrExampleList2);
+      //};
+
+      searchStart2.onclick = addCustomNode;
       $(searchValueField2).keypress(function(e) {
         if (e.keyCode === 13 || e.which === 13) {
-          searchFunction();
+          addCustomNode();
           return false;
         }
       });
@@ -344,7 +342,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       aNode.className = "headerButton";
       spanNode = document.createElement("span");
       spanNode.className = "fa fa-search-plus";
-      $(spanNode).attr("title", "Show custom nodes");
+      $(spanNode).attr("title", "Show additional nodes");
 
       ul.appendChild(liNode);
       liNode.appendChild(aNode);
@@ -480,32 +478,37 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       $("#control_event_expand").click();
     },
 
-    updateAttributeExamples = function() {
-      searchAttrExampleList.innerHTML = "";
-      searchAttrExampleList2.innerHTML = "";
+    updateAttributeExamples = function(e) {
+      var element;
+
+      if (e) {
+        element = $(e);
+      }
+      else {
+        element = $(searchAttrExampleList);
+      }
+
+      element.innerHTML = "";
       var throbber = document.createElement("li"),
         throbberImg = document.createElement("img");
-      throbber.appendChild(throbberImg);
+      $(throbber).append(throbberImg);
       throbberImg.className = "gv-throbber";
-      searchAttrExampleList.appendChild(throbber);
-      searchAttrExampleList2.appendChild(throbber);
+      element.append(throbber);
       graphViewer.adapter.getAttributeExamples(function(res) {
-        searchAttrExampleList.innerHTML = "";
-        searchAttrExampleList2.innerHTML = "";
+        $(element).html('');
         _.each(res, function(r) {
           var entry = document.createElement("li"),
             link = document.createElement("a"),
             lbl = document.createElement("label");
-          entry.appendChild(link);
-          link.appendChild(lbl);
-          lbl.appendChild(document.createTextNode(r));
+          $(entry).append(link);
+          $(link).append(lbl);
+          $(lbl).append(document.createTextNode(r));
           lbl.className = "gv_dropdown_label";
-          searchAttrExampleList.appendChild(entry);
-          searchAttrExampleList2.appendChild(entry);
+          element.append(entry);
           entry.onclick = function() {
-            searchAttrField.value = r;
-            $(searchAttrExampleList).slideToggle(200);
-            $(searchAttrExampleList2).slideToggle(200);
+            element.value = r;
+            $(element).parent().find('input').val(r);
+            $(element).slideToggle(200);
           };
         });
       });

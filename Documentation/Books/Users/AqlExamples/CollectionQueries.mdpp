@@ -86,7 +86,7 @@ relationships between users. The example data for *relations* are as follows:
 Note that all documents created in the two collections will automatically get the
 following server-generated attributes:
 
-* *_id*: A unique id, consisting of [collection name](../Glossary/README.html#collection_name) and a server-side sequence value
+* *_id*: A unique id, consisting of [collection name](../Glossary/index.html#collection_name) and a server-side sequence value
 * *_key*: The server sequence value
 * *_rev*: The document's revision id
 
@@ -97,6 +97,6 @@ Please also note that with real-world data, you might want to create additional
 indexes on the data (left out here for brevity). Adding indexes on attributes that are
 used in *FILTER* statements may considerably speed up queries. Furthermore, instead of
 using attributes such as *id*, *from* and *to*, you might want to use the built-in
-*_id*, *_from* and *_to* attributes. Finally, [edge collection](../Glossary/README.html#edge_collection)s provide a nice way of
+*_id*, *_from* and *_to* attributes. Finally, [edge collection](../Glossary/index.html#edge_collection)s provide a nice way of
 establishing references / links between documents. These features have been left out here 
 for brevity as well.

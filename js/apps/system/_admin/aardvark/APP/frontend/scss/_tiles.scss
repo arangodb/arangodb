@@ -229,6 +229,12 @@ div {
     width: $tile-width - 12px;
   }
 
+  & .tile-graph {
+    .tile-icon:hover {
+      cursor:pointer;
+    }
+  }
+
   & .bigtile {
     @extend %clickable;
     @extend %tile;

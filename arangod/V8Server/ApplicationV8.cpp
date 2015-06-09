@@ -220,7 +220,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
     _globalMethods.clear();
   }
 
-  for (auto type : copy) {
+  for (auto& type : copy) {
     string const& func = GlobalContextMethods::getCode(type);
 
     LOG_DEBUG("executing global context methods '%s' for context %d", func.c_str(), (int) _id);

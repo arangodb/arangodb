@@ -6,10 +6,10 @@ corresponding language API.
 
 Edges in ArangoDB are special documents. In addition to the internal 
 attributes *_key*, *_id* and *_rev*, they have two attributes *_from* and *_to*, 
-which contain [document handles](../Glossary/README.html#document_handle), namely the start-point and the end-point of the edge.
+which contain [document handles](../Glossary/index.html#document_handle), namely the start-point and the end-point of the edge.
 The values of *_from* and *_to* are immutable once saved.
 
-[Edge collections](../Glossary/README.html#edge_collection) are special collections that store edge documents. Edge documents 
+[Edge collections](../Glossary/index.html#edge_collection) are special collections that store edge documents. Edge documents 
 are connection documents that reference other documents. The type of a collection 
 must be specified when a collection is created and cannot be changed afterwards.
 

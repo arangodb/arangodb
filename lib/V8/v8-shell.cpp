@@ -31,6 +31,7 @@
 
 #include "Basics/conversions.h"
 #include "Basics/csv.h"
+#include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 #include "Basics/shell-colors.h"
 #include "Basics/string-buffer.h"
@@ -120,7 +121,7 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t, 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ProcessCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2) {
@@ -216,6 +217,7 @@ static void JS_ProcessCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) 
   TRI_CLOSE(fd);
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +239,7 @@ static void JS_ProcessCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ProcessJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2) {
@@ -308,6 +310,7 @@ static void JS_ProcessJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args)
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------

@@ -7,7 +7,7 @@ This is an introduction to ArangoDB's Http interface for collections.
 !SUBSUBSECTION Collection
 
 A collection consists of documents. It is uniquely identified by its 
-[collection identifier](../Glossary/README.html#collection_identifier). It also has a unique name that clients should 
+[collection identifier](../Glossary/index.html#collection_identifier). It also has a unique name that clients should 
 use to identify and access it. Collections can be renamed. This will 
 change the collection name, but not the collection identifier.
 Collections have a type that is specified by the user when the collection 

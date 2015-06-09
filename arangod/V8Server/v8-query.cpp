@@ -920,7 +920,7 @@ static void EdgesQuery (TRI_edge_direction_e direction,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_AllQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // expecting two arguments
@@ -986,6 +986,7 @@ static void JS_AllQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, count));
  
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -994,7 +995,7 @@ static void JS_AllQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NthQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // expecting two arguments
@@ -1062,6 +1063,7 @@ static void JS_NthQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, count));
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1070,7 +1072,7 @@ static void JS_NthQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Nth2Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // expecting two arguments
@@ -1132,6 +1134,7 @@ static void JS_Nth2Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
   result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, count));
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1139,7 +1142,7 @@ static void JS_Nth2Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Nth3Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // expecting two arguments
@@ -1157,6 +1160,7 @@ static void JS_Nth3Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
   uint64_t hash = TRI_FnvHashPointer(static_cast<void const*>(key.c_str()), key.size());
 
   TRI_V8_RETURN(v8::Number::New(isolate, static_cast<int>(hash % numberOfPartitions)));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1165,7 +1169,7 @@ static void JS_Nth3Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // expecting two arguments
@@ -1235,6 +1239,7 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   result->Set(TRI_V8_ASCII_STRING("skip"), v8::Number::New(isolate, internalSkip));
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1254,7 +1259,7 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_AnyQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t const* col;
@@ -1294,6 +1299,7 @@ static void JS_AnyQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(doc);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1301,7 +1307,7 @@ static void JS_AnyQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // expecting example, skip, limit
@@ -1352,7 +1358,8 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
   std::unique_ptr<ExampleMatcher> matcher;
   try {
     matcher.reset(new ExampleMatcher(isolate, example, shaper, errorMessage));
-  } catch (int e) {
+  } 
+  catch (int e) {
     if (e == TRI_RESULT_ELEMENT_NOT_FOUND) {
       // empty result
       TRI_V8_RETURN(EmptyResult(isolate));
@@ -1416,99 +1423,15 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
     }
   }
 
-
   result->Set(TRI_V8_ASCII_STRING("total"), v8::Integer::New(isolate, (int32_t) total));
   result->Set(TRI_V8_ASCII_STRING("count"), v8::Integer::New(isolate, (int32_t) count));
-
 
   if (error) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   TRI_V8_RETURN(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aggregate(count) value of a single attribute, experiment
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_AggregateCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  // expecting example, skip, limit
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AGGREGATE_COUNT(<attribute>)");
-  }
-
-  // extract the attribute name
-  if (! args[0]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("<attribute> must be a string");
-  }
-  std::string attName = TRI_ObjectToString(args[0]);
-
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
-
-  if (col == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
-
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  TRI_document_collection_t* document = trx.documentCollection();
-  TRI_shaper_t* shaper = document->getShaper();
-
-  // to extract sub-documents in the attribute:
-  TRI_shape_pid_t pid 
-      = shaper->lookupAttributePathByName(shaper, attName.c_str());
-
-  // ...........................................................................
-  // inside a read transaction
-  // ...........................................................................
-
-  CountingAggregation* agg;
-
-  trx.lockRead();
-
-  // find documents by example
-  try {
-    agg = TRI_AggregateBySingleAttribute(trx.trxCollection(), pid);
-  }
-  catch (std::exception&) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  trx.finish(res);
-
-  // ...........................................................................
-  // outside a read transaction
-  // ...........................................................................
-
-  // setup result
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  v8::Handle<v8::Array> documents = v8::Array::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), documents);
-  uint32_t count = 0;
-  for (auto& x : *agg) {
-    v8::Handle<v8::Object> w = v8::Object::New(isolate);
-    Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &x.first));
-    w->Set(TRI_V8_ASCII_STRING("value"),
-           TRI_ObjectJson(isolate, json.json()));
-    w->Set(TRI_V8_ASCII_STRING("count"), 
-           v8::Number::New(isolate, static_cast<double>(x.second)));
-    documents->Set(count++, w);
-  }
-  delete agg;
-  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1631,7 +1554,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByExampleHashIndex (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t const* col;
@@ -1665,6 +1588,7 @@ static void JS_ByExampleHashIndex (const v8::FunctionCallbackInfo<v8::Value>& ar
   // outside a write transaction
   // .............................................................................
 
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1672,9 +1596,11 @@ static void JS_ByExampleHashIndex (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByConditionSkiplist (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   std::string const signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>, <reverse>)");
 
   return ExecuteSkiplistQuery(args, signature, QUERY_CONDITION);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1682,9 +1608,11 @@ static void JS_ByConditionSkiplist (const v8::FunctionCallbackInfo<v8::Value>& a
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByExampleSkiplist (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   std::string const signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>, <reverse>)");
 
   return ExecuteSkiplistQuery(args, signature, QUERY_EXAMPLE);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1788,7 +1716,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ChecksumCollection (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1871,6 +1799,7 @@ static void JS_ChecksumCollection (const v8::FunctionCallbackInfo<v8::Value>& ar
   result->Set(TRI_V8_ASCII_STRING("revision"), TRI_V8_STD_STRING(rid));
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1907,7 +1836,9 @@ static void JS_ChecksumCollection (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_EdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_ANY, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1943,7 +1874,9 @@ static void JS_EdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InEdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_IN, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1951,7 +1884,7 @@ static void JS_InEdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FirstQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 1) {
@@ -2025,6 +1958,7 @@ static void JS_FirstQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
     TRI_V8_RETURN(result);
   }
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2149,7 +2083,7 @@ static void FulltextQuery (SingleCollectionReadOnlyTransaction& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FulltextQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t const* col;
@@ -2182,6 +2116,8 @@ static void JS_FulltextQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   // .............................................................................
   // outside a write transaction
   // .............................................................................
+
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2189,7 +2125,7 @@ static void JS_FulltextQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LastQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 1) {
@@ -2265,6 +2201,7 @@ static void JS_LastQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
     TRI_V8_RETURN(result);
   }
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2327,7 +2264,7 @@ static void NearQuery (SingleCollectionReadOnlyTransaction& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NearQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t const* col;
@@ -2360,6 +2297,8 @@ static void JS_NearQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   // .............................................................................
   // outside a write transaction
   // .............................................................................
+
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2395,7 +2334,9 @@ static void JS_NearQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_OutEdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_OUT, args);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2458,7 +2399,7 @@ static void WithinQuery (SingleCollectionReadOnlyTransaction& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_WithinQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t const* col;
@@ -2491,6 +2432,7 @@ static void JS_WithinQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   // .............................................................................
   // outside a read transaction
   // .............................................................................
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2521,7 +2463,7 @@ static void JS_WithinQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LookupByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
@@ -2535,45 +2477,38 @@ static void JS_LookupByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("documents(<keys>)");
   }
   
-  try { 
-    triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
-    bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
-    bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_ObjectToJson(isolate, args[0])));
+  triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
+  bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
+  bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_ObjectToJson(isolate, args[0])));
 
-    std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
+  std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
     
-    TRI_GET_GLOBALS();
-    triagens::aql::Query query(v8g->_applicationV8, 
-                               true, 
-                               col->_vocbase, 
-                               aql.c_str(),
-                               aql.size(),
-                               bindVars.steal(),
-                               nullptr,
-                               triagens::aql::PART_MAIN);
- 
-    auto queryResult = query.executeV8(isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+  TRI_GET_GLOBALS();
+  triagens::aql::Query query(v8g->_applicationV8, 
+                             true, 
+                             col->_vocbase, 
+                             aql.c_str(),
+                             aql.size(),
+                             bindVars.steal(),
+                             nullptr,
+                             triagens::aql::PART_MAIN);
 
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED || 
-          queryResult.code == TRI_ERROR_QUERY_KILLED) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
-      }
+  auto queryResult = query.executeV8(isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED || 
+        queryResult.code == TRI_ERROR_QUERY_KILLED) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
-    result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
 
-    TRI_V8_RETURN(result);
-  }  
-  catch (triagens::basics::Exception const& ex) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
-  }
-  catch (...) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2608,7 +2543,7 @@ static void JS_LookupByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
@@ -2622,61 +2557,54 @@ static void JS_RemoveByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("removeByKeys(<keys>)");
   }
   
-  try { 
-    triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
-    bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
-    bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_ObjectToJson(isolate, args[0])));
+  triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
+  bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
+  bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_ObjectToJson(isolate, args[0])));
 
-    std::string const aql("FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: true }");
-    
-    TRI_GET_GLOBALS();
-    triagens::aql::Query query(v8g->_applicationV8, 
-                               true, 
-                               col->_vocbase, 
-                               aql.c_str(),
-                               aql.size(),
-                               bindVars.steal(),
-                               nullptr,
-                               triagens::aql::PART_MAIN);
- 
-    auto queryResult = query.executeV8(isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+  std::string const aql("FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: true }");
+  
+  TRI_GET_GLOBALS();
+  triagens::aql::Query query(v8g->_applicationV8, 
+                              true, 
+                              col->_vocbase, 
+                              aql.c_str(),
+                              aql.size(),
+                              bindVars.steal(),
+                              nullptr,
+                              triagens::aql::PART_MAIN);
 
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED || 
-          queryResult.code == TRI_ERROR_QUERY_KILLED) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
-      }
+  auto queryResult = query.executeV8(isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED || 
+        queryResult.code == TRI_ERROR_QUERY_KILLED) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+  
+  size_t ignored = 0;
+  size_t removed = 0;
     
-    size_t ignored = 0;
-    size_t removed = 0;
+  if (queryResult.stats != nullptr) {
+    auto found = TRI_LookupObjectJson(queryResult.stats, "writesIgnored");
+    if (TRI_IsNumberJson(found)) {
+      ignored = static_cast<size_t>(found->_value._number);
+    }
       
-    if (queryResult.stats != nullptr) {
-      auto found = TRI_LookupObjectJson(queryResult.stats, "writesIgnored");
-      if (TRI_IsNumberJson(found)) {
-        ignored = static_cast<size_t>(found->_value._number);
-      }
-        
-      found = TRI_LookupObjectJson(queryResult.stats, "writesExecuted");
-      if (TRI_IsNumberJson(found)) {
-        removed = static_cast<size_t>(found->_value._number);
-      }
+    found = TRI_LookupObjectJson(queryResult.stats, "writesExecuted");
+    if (TRI_IsNumberJson(found)) {
+      removed = static_cast<size_t>(found->_value._number);
     }
-
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
-    result->Set(TRI_V8_ASCII_STRING("removed"), v8::Number::New(isolate, static_cast<double>(removed)));
-    result->Set(TRI_V8_ASCII_STRING("ignored"), v8::Number::New(isolate, static_cast<double>(ignored)));
-
-    TRI_V8_RETURN(result);
-  }  
-  catch (triagens::basics::Exception const& ex) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   }
-  catch (...) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
+
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  result->Set(TRI_V8_ASCII_STRING("removed"), v8::Number::New(isolate, static_cast<double>(removed)));
+  result->Set(TRI_V8_ASCII_STRING("ignored"), v8::Number::New(isolate, static_cast<double>(ignored)));
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -2723,7 +2651,6 @@ void TRI_InitV8Queries (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("removeByKeys"), JS_RemoveByKeys, true);
   
   // internal methods. not intended to be used by end-users
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("AGGREGATE_COUNT"), JS_AggregateCount, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH"), JS_NthQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH2"), JS_Nth2Query, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH3"), JS_Nth3Query, true);

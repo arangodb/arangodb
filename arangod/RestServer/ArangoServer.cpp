@@ -1353,19 +1353,34 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
       }
       else {
         v8::Handle<v8::Value> args[] = { params };
-        v8::Handle<v8::Value> result = main->Call(main, 1, args);
 
-        if (tryCatch.HasCaught()) {
-          if (tryCatch.CanContinue()) {
-            TRI_LogV8Exception(isolate, &tryCatch);
+        try {
+          v8::Handle<v8::Value> result = main->Call(main, 1, args);
+
+          if (tryCatch.HasCaught()) {
+            if (tryCatch.CanContinue()) {
+              TRI_LogV8Exception(isolate, &tryCatch);
+            }
+            else {
+              // will stop, so need for v8g->_canceled = true;
+              TRI_ASSERT(! ok);
+            }
           }
           else {
-            // will stop, so need for v8g->_canceled = true;
-            TRI_ASSERT(! ok);
+            ok = TRI_ObjectToDouble(result) == 0;
           }
         }
-        else {
-          ok = TRI_ObjectToDouble(result) == 0;
+        catch (triagens::basics::Exception const& ex) {
+          LOG_ERROR("caught exception %s: %s", TRI_errno_string(ex.code()), ex.what());
+          ok = false;
+        }
+        catch (std::bad_alloc const&) {
+          LOG_ERROR("caught exception %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+          ok = false;
+        }
+        catch (...) {
+          LOG_ERROR("caught unknown exception");
+          ok = false;
         }
       }
     }
