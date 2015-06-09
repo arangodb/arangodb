@@ -55,6 +55,16 @@ v2.6.0 (XXXX-XX-XX)
 
 * web interface: demo page added. only working if demo data is available, hidden otherwise
 
+* web interface: added support for custom app scripts with optional arguments and results
+
+* web interface: mounted apps that need to be configured are now indicated in the app overview
+
+* web interface: added button for running tests to app details
+
+* web interface: added button for configuring app dependencies to app details
+
+* web interface: upgraded API documentation to use Swagger 2
+
 * removed startup option `--log.severity`
 
 * add backtrace to fatal log events
@@ -537,6 +547,15 @@ v2.6.0 (XXXX-XX-XX)
       var Foxx = require("org/arangodb/foxx");
       Foxx.queues.create(db._name() + ":" + queueName);
 
+* added support for Foxx queue job types defined as app scripts.
+
+  The old job types introduced in 2.4 are still supported but are known to cause issues in 2.5
+  and later when the server is restarted or the job types are not defined in every thread.
+
+  The new job types avoid this issue by storing an explicit mount path and script name rather
+  than an assuming the job type is defined globally. It is strongly recommended to convert your
+  job types to the new script-based system.
+
 * Added the following JavaScript methods for file access:
   * fs.copyFile() to copy single files
   * fs.copyRecursive() to copy diretory trees
@@ -568,13 +587,22 @@ v2.6.0 (XXXX-XX-XX)
 
 * removed remainders of MRuby integration, removed arangoirb
 
-* simplified `controllers` property in Foxx manifests. You can now specify a filename directly if you only want to use a single file mounted at the base URL of your Foxx app.
+* simplified `controllers` property in Foxx manifests. You can now specify a filename directly
+  if you only want to use a single file mounted at the base URL of your Foxx app.
 
-* simplified `exports` property in Foxx manifests. You can now specify a filename directly if you only want to export variables from a single file in your Foxx app.
+* simplified `exports` property in Foxx manifests. You can now specify a filename directly if
+  you only want to export variables from a single file in your Foxx app.
 
-* added support for node.js-style exports in Foxx exports. Your Foxx exports file can now export arbitrary values using the `module.exports` property instead of adding properties to the `exports` object.
+* added support for node.js-style exports in Foxx exports. Your Foxx exports file can now export
+  arbitrary values using the `module.exports` property instead of adding properties to the
+  `exports` object.
 
-* added `scripts` property to Foxx manifests. You should now specify the `setup` and `teardown` files as properties of the `scripts` object in your manifests.
+* added `scripts` property to Foxx manifests. You should now specify the `setup` and `teardown`
+  files as properties of the `scripts` object in your manifests and can define custom,
+  app-specific scripts that can be executed from the web interface or the CLI.
+
+* added `tests` property to Foxx manifests. You can now define test cases using the `mocha`
+  framework which can then be executed inside ArangoDB.
 
 * updated `joi` package to 6.0.8.
 
