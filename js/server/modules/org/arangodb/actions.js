@@ -1341,6 +1341,16 @@ function reloadRouting () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief warms up the Foxx exports
+////////////////////////////////////////////////////////////////////////////////
+
+function warmupExports () {
+  'use strict';
+
+  foxxManager._warmupExports();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief loads all actions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2263,6 +2273,7 @@ exports.getErrorMessage          = getErrorMessage;
 exports.getJsonBody              = getJsonBody;
 exports.errorFunction            = errorFunction;
 exports.reloadRouting            = reloadRouting;
+exports.warmupExports            = warmupExports;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.addCookie                = addCookie;
