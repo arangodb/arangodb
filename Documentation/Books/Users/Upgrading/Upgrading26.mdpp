@@ -1,11 +1,11 @@
-!CHAPTER Upgrading to ArangoDB 2.5
+!CHAPTER Upgrading to ArangoDB 2.6
 
 Please read the following sections if you upgrade from a previous version to
-ArangoDB 2.5. Please be sure that you have checked the list of [changes in 2.5](../Upgrading/UpgradingChanges25.html)
+ArangoDB 2.6. Please be sure that you have checked the list of [changes in 2.6](../Upgrading/UpgradingChanges26.html)
 before upgrading.
 
-Please note first that a database directory used with ArangoDB 2.5
-cannot be used with earlier versions (e.g. ArangoDB 2.4) any
+Please note first that a database directory used with ArangoDB 2.6
+cannot be used with earlier versions (e.g. ArangoDB 2.5) any
 more. Upgrading a database directory cannot be reverted. Therefore
 please make sure to create a full backup of your existing ArangoDB
 installation before performing an upgrade.
@@ -64,7 +64,7 @@ The last line of the output should look like this:
 
 Please check the full output the `--upgrade` run. Upgrading may produce errors, which need
 to be fixed before ArangoDB can be used properly. If no errors are present or
-they have been resolved manually, you can start ArangoDB 2.5 regularly.
+they have been resolved manually, you can start ArangoDB 2.6 regularly.
 
 !SECTION Upgrading a cluster planned in the web interface
 
