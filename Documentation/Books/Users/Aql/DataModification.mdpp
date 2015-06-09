@@ -76,7 +76,7 @@ and the attributes not specified in the update expression of a partial update.
 
 The name of the modified collection (*users* and *backup* in the above cases) 
 must be known to the AQL executor at query-compile time and cannot change at 
-runtime. Using a bind parameter to specify the [collection name](../Glossary/README.html#collection_name) is allowed.
+runtime. Using a bind parameter to specify the [collection name](../Glossary/index.html#collection_name) is allowed.
 
 Data-modification queries are restricted to modifying data in a single 
 collection per query. That means a data-modification query cannot modify 

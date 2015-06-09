@@ -22,7 +22,7 @@ The *collection* URL parameter must be used to specify the target collection for
 the import. The optional URL parameter *createCollection* can be used to create
 a non-existing collection during the import. If not used, importing data into a
 non-existing collection will produce an error. Please note that the *createCollection*
-flag can only be used to create document collections, not [edge collections](../Glossary/README.html#edge_collection).
+flag can only be used to create document collections, not [edge collections](../Glossary/index.html#edge_collection).
 
 The *waitForSync* URL parameter can be set to *true* to make the import only 
 return if all documents have been synced to disk.

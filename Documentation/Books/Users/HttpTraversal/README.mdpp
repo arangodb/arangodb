@@ -7,7 +7,7 @@ initiated by clients by sending the traversal description for execution to
 the server.
 
 Traversals in ArangoDB are used to walk over a graph
-stored in one [edge collection](../Glossary/README.html#edge_collection). It can easily be described
+stored in one [edge collection](../Glossary/index.html#edge_collection). It can easily be described
 which edges of the graph should be followed and which actions
 should be performed on each visited vertex.
 Furthermore the ordering of visiting the nodes can be

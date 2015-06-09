@@ -36,7 +36,7 @@ errors occurred.
 
 !SECTION Importing into Edge Collections
 
-Please note that when importing documents into an [edge collection](../Glossary/README.html#edge_collection), it is 
+Please note that when importing documents into an [edge collection](../Glossary/index.html#edge_collection), it is 
 mandatory that all imported documents contain the *_from* and *_to* attributes,
 and that these contain references to existing collections.
 
