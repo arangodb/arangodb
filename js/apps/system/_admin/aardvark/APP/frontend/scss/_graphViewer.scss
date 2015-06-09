@@ -1,6 +1,6 @@
 div.gv_zoom_widget {
   height: 300px;
-  left: 95px;
+  left: 82px;
   position: absolute;
   top: 20px;
   width: 40px;
@@ -84,10 +84,12 @@ div.gv-background {
 }
 
 div.gv-colour-list {
+  border: 1px solid #686766;
+  border-radius: 2px;
   max-height: 680px;
   overflow: auto;
   position: absolute;
-  right: 26px;
+  right: 8px;
   text-align: right;
   top: 20px;
   z-index: 1;

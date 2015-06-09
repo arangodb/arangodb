@@ -859,9 +859,8 @@ static KeySpace* GetKeySpace (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyspaceCreate (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 1 || ! args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_CREATE(<name>, <size>, <ignoreExisting>)");
@@ -914,6 +913,7 @@ static void JS_KeyspaceCreate (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -921,7 +921,7 @@ static void JS_KeyspaceCreate (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyspaceDrop (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1 || ! args[0]->IsString()) {
@@ -952,6 +952,7 @@ static void JS_KeyspaceDrop (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -959,9 +960,8 @@ static void JS_KeyspaceDrop (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyspaceCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 1 || ! args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_COUNT(<name>, <prefix>)");
@@ -997,6 +997,7 @@ static void JS_KeyspaceCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(v8::Number::New(isolate, static_cast<int>(count)));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1004,9 +1005,8 @@ static void JS_KeyspaceCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyspaceExists (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() != 1 || ! args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_EXISTS(<name>)");
@@ -1028,9 +1028,8 @@ static void JS_KeyspaceExists (const v8::FunctionCallbackInfo<v8::Value>& args) 
   if (hash != nullptr) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1038,9 +1037,8 @@ static void JS_KeyspaceExists (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyspaceKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 1 || ! args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_KEYS(<name>, <prefix>)");
@@ -1070,6 +1068,7 @@ static void JS_KeyspaceKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(hash->keyspaceKeys(isolate));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1077,9 +1076,8 @@ static void JS_KeyspaceKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyspaceGet (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 1 || ! args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_GET(<name>, <prefix>)");
@@ -1109,17 +1107,16 @@ static void JS_KeyspaceGet (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(hash->keyspaceGet(isolate));
+  TRI_V8_TRY_CATCH_END
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes all keys from the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyspaceRemove (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 1 || ! args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_REMOVE(<name>, <prefix>)");
@@ -1149,17 +1146,16 @@ static void JS_KeyspaceRemove (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_V8_RETURN(hash->keyspaceRemove(isolate));
+  TRI_V8_TRY_CATCH_END
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyGet (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_GET(<name>, <key>)");
@@ -1190,6 +1186,7 @@ static void JS_KeyGet (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1197,9 +1194,8 @@ static void JS_KeyGet (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeySet (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_SET(<name>, <key>, <value>, <replace>)");
@@ -1237,9 +1233,8 @@ static void JS_KeySet (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1247,9 +1242,8 @@ static void JS_KeySet (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeySetCas (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 4 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_SET_CAS(<name>, <key>, <value>, <compare>)");
@@ -1292,9 +1286,8 @@ static void JS_KeySetCas (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (match) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1302,9 +1295,8 @@ static void JS_KeySetCas (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyRemove (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_REMOVE(<name>, <key>)");
@@ -1337,9 +1329,8 @@ static void JS_KeyRemove (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1347,9 +1338,8 @@ static void JS_KeyRemove (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyExists (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_EXISTS(<name>, <key>)");
@@ -1382,9 +1372,8 @@ static void JS_KeyExists (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1392,9 +1381,8 @@ static void JS_KeyExists (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyIncr (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_INCR(<name>, <key>, <value>)");
@@ -1439,6 +1427,7 @@ static void JS_KeyIncr (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(v8::Number::New(isolate, result));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1446,9 +1435,8 @@ static void JS_KeyIncr (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyUpdate (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_UPDATE(<name>, <key>, <object>, <nullMeansRemove>)");
@@ -1479,6 +1467,7 @@ static void JS_KeyUpdate (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   hash->keyMerge(args, key, args[2], nullMeansRemove);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1486,9 +1475,8 @@ static void JS_KeyUpdate (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_KEYS(<name>, <key>)");
@@ -1514,6 +1502,7 @@ static void JS_KeyKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(hash->keyKeys(isolate, key));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1521,9 +1510,8 @@ static void JS_KeyKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyValues (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_VALUES(<name>, <key>)");
@@ -1549,6 +1537,7 @@ static void JS_KeyValues (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(hash->keyValues(isolate, key));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1556,9 +1545,8 @@ static void JS_KeyValues (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyPush (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_PUSH(<name>, <key>, <value>)");
@@ -1590,6 +1578,7 @@ static void JS_KeyPush (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1597,9 +1586,8 @@ static void JS_KeyPush (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyPop (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_POP(<name>, <key>)");
@@ -1625,6 +1613,7 @@ static void JS_KeyPop (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   hash->keyPop(args, key);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1632,9 +1621,8 @@ static void JS_KeyPop (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyTransfer (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_TRANSFER(<name>, <key-from>, <key-to>)");
@@ -1661,6 +1649,7 @@ static void JS_KeyTransfer (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   hash->keyTransfer(args, keyFrom, keyTo);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1668,9 +1657,8 @@ static void JS_KeyTransfer (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyGetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_GET_AT(<name>, <key>, <index>)");
@@ -1697,6 +1685,7 @@ static void JS_KeyGetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   hash->keyGetAt(args, key, offset);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1704,9 +1693,8 @@ static void JS_KeyGetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeySetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 4 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_SET_AT(<name>, <key>, <index>, <value>)");
@@ -1738,6 +1726,7 @@ static void JS_KeySetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1745,9 +1734,8 @@ static void JS_KeySetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyType (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_TYPE(<name>, <key>)");
@@ -1778,6 +1766,7 @@ static void JS_KeyType (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_STRING(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1785,9 +1774,8 @@ static void JS_KeyType (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_KeyCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_COUNT(<name>, <key>)");
@@ -1823,6 +1811,7 @@ static void JS_KeyCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------

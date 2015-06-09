@@ -119,9 +119,9 @@ AQL supports the following functions to operate on document values:
       KEEP(doc, 'firstname', 'name', 'likes')
       KEEP(doc, [ 'firstname', 'name', 'likes' ])
 
-- *PARSE_IDENTIFIER(document-handle)*: Parses the [document handle](../Glossary/README.html#document_handle) specified in 
+- *PARSE_IDENTIFIER(document-handle)*: Parses the [document handle](../Glossary/index.html#document_handle) specified in 
   *document-handle* and returns a the handle's individual parts a separate attributes.
-  This function can be used to easily determine the [collection name](../Glossary/README.html#collection_name) and key from a given document.
+  This function can be used to easily determine the [collection name](../Glossary/index.html#collection_name) and key from a given document.
   The *document-handle* can either be a regular document from a collection, or a document
   identifier string (e.g. *_users/1234*). Passing either a non-string or a non-document or a
   document without an *_id* attribute will result in an error.
