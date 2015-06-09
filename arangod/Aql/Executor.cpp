@@ -207,7 +207,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "GRAPH_TRAVERSAL",             Function("GRAPH_TRAVERSAL",             "AQL_GRAPH_TRAVERSAL", "s,als,s|a", false, true, false) },
   { "TRAVERSAL_TREE",              Function("TRAVERSAL_TREE",              "AQL_TRAVERSAL_TREE", "h,h,s,s,s|a", false, true, false) },
   { "GRAPH_TRAVERSAL_TREE",        Function("GRAPH_TRAVERSAL_TREE",        "AQL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false, true, false) },
-  { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l", false, true, false) },
+  { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l,o", false, true, false) },
   { "GRAPH_EDGES",                 Function("GRAPH_EDGES",                 "AQL_GRAPH_EDGES", "s,als|a", false, true, false) },
   { "GRAPH_VERTICES",              Function("GRAPH_VERTICES",              "AQL_GRAPH_VERTICES", "s,als|a", false, true, false) },
   { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l,a", false, true, false) },

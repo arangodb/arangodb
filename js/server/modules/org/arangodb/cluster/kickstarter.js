@@ -1390,6 +1390,12 @@ Kickstarter.prototype.isHealthy = function() {
   var res;
   for (i = cmds.length-1; i >= 0; i--) {
     cmd = cmds[i];
+    if (runInfo === undefined || ! Array.isArray(runInfo) ||
+        i >= runInfo.length) {
+      return {"error": true,
+              "errorMessage": "runInfo object not found or broken",
+              "results": results};
+    }
     var run = runInfo[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
       if (isHealthyActions.hasOwnProperty(cmd.action)) {

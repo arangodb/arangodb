@@ -1,7 +1,7 @@
 !CHAPTER Fulltext queries 
 
 ArangoDB allows to run queries on text contained in document attributes.  To use
-this, a [fulltext index](../Glossary/README.html#fulltext_index) must be defined for the attribute of the collection that
+this, a [fulltext index](../Glossary/index.html#fulltext_index) must be defined for the attribute of the collection that
 contains the text. Creating the index will parse the text in the specified
 attribute for all documents of the collection. Only documents will be indexed
 that contain a textual value in the indexed attribute.  For such documents, the

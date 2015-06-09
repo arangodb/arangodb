@@ -127,6 +127,11 @@ function deleteQueue(key) {
 }
 
 function registerJobType(name, opts) {
+  // TODO Remove support for function-based job types in 2.7
+  console.warn(
+    "Function-based Foxx Queue job type definitions are deprecated and known to cause issues."
+    + " Please use script-based job types instead. Job type: " + name
+  );
   if (typeof opts === 'function') {
     opts = {execute: opts};
   }
@@ -243,8 +248,14 @@ _.extend(Queue.prototype, {
       throw new Error('Must pass a job type!');
     }
 
+
     var definition;
     if (typeof jobType === 'string') {
+      // TODO Remove support for function-based job types in 2.7
+      console.warn(
+        "Function-based Foxx Queue job type definitions are deprecated and known to cause issues."
+        + " Please use script-based job types instead. Job type: " + jobType
+      );
       var cache = jobTypeCache[db._name()];
       definition = cache && cache[jobType];
     } else {
@@ -261,6 +272,7 @@ _.extend(Queue.prototype, {
         data = definition.preprocess(data);
       }
     } else {
+      // TODO Remove support for function-based job types in 2.7
       var message = 'Unknown job type: ' + jobType;
       if (opts.allowUnknown) {
         console.warn(message);

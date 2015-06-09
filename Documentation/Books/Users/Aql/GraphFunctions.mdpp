@@ -8,7 +8,7 @@ instead.
 
 !SECTION Determining direct connections
 
-- *EDGES(edgecollection, startvertex, direction, edgeexamples)*:
+- *EDGES(edgecollection, startvertex, direction, edgeexamples, options)*:
   Return all edges connected to the vertex *startvertex* as an array. The possible values for
   *direction* are:
   - *outbound*: Return all outbound edges
@@ -20,10 +20,19 @@ instead.
   To not restrict the result to specific connections, *edgeexamples* should be left
   unspecified. 
 
+  Options is a JSON object that can contain the following properties:
+  - *includeVertices*: A boolean value, when set to true the return format will be modified.
+       The function will then return an object with two attributes *edge* and *vertex* containing
+       the respective elements.
+
+  In order to specify only options but no *edgeExamples* set *edgeExamples* to *null*.
+
 *Examples*
  
       EDGES(friendrelations, "friends/john", "outbound")
       EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
+      EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ], {includeVertices: true})
+      EDGES(friendrelations, "friends/john", "any", null, {includeVertices: true})
 
 
 - *NEIGHBORS(vertexcollection, edgecollection, startvertex, direction, edgeexamples, options)*:
@@ -46,9 +55,11 @@ instead.
   * *includeData* is a boolean value to define if the returned documents should be extracted instead
     of returning their ids only. The default is *false*.
 
-  Note: in ArangoDB versions prior to 2.6 *NEIGHBORS* returned the array of neighbor vertices with 
-  all attributes and not just the vertex ids. To return to the same behavior, set the *includeData*
-  option to *true* in 2.6 and above.
+  Note: in ArangoDB versions prior to 2.6 *NEIGHBORS* returned the array of neighbor vertices together
+  with their connecting edges including all attributes and not only the ids. 
+  To include the data and not only the ids set the *includeData* option to *true* in 2.6 and above.
+  To create the result format of 2.5 and earlier please replace the NEIGHBORS function by EDGES
+  with the option *includeVertices* set to true.
 
 *Examples*
 
