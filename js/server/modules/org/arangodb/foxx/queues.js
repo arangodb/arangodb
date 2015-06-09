@@ -63,9 +63,16 @@ function validate(data, schema) {
   return result.value;
 }
 
-function resetQueueControl() {
+function resetQueueDelay() {
   try {
-    global.KEY_SET("queue-control", "skip", 0);
+    global.KEY_SET("queue-control", "delayUntil", db._query(
+      'LET queues = (FOR queue IN _queues RETURN queue.name)'
+        + ' FOR job IN _jobs'
+        + ' FILTER job.status == "pending"'
+        + ' FILTER POSITION(queues, job.queue, false) '
+        + ' SORT job.delayUntil ASC'
+        + ' RETURN job.delayUntil'
+    )[0]);
   } catch (e) {}
 }
 
@@ -96,7 +103,6 @@ function createQueue(key, maxWorkers) {
       db._queues.update(key, {maxWorkers: maxWorkers});
     }
   }
-  resetQueueControl();
   var databaseName = db._name();
   var cache = queueCache[databaseName];
   if (!cache) {
@@ -120,9 +126,6 @@ function deleteQueue(key) {
       }
     }
   });
-  if (result) {
-    resetQueueControl();
-  }
   return result;
 }
 
@@ -228,7 +231,7 @@ _.extend(Job.prototype, {
     db._jobs.update(this.id, {
       status: 'pending'
     });
-    resetQueueControl();
+    resetQueueDelay();
   }
 });
 
@@ -285,9 +288,8 @@ _.extend(Queue.prototype, {
       opts = {};
     }
 
-    resetQueueControl();
     var now = Date.now();
-    return db._jobs.save({
+    var job = db._jobs.save({
       status: 'pending',
       queue: this.name,
       type: jobType,
@@ -300,7 +302,9 @@ _.extend(Queue.prototype, {
       delayUntil: opts.delayUntil || now,
       onSuccess: opts.success ? opts.success.toString() : null,
       onFailure: opts.failure ? opts.failure.toString() : null
-    })._id;
+    });
+    resetQueueDelay();
+    return job._id;
   },
   get: function (id) {
     if (typeof id !== 'string') {
@@ -328,7 +332,6 @@ _.extend(Queue.prototype, {
       action: function () {
         try {
           db._jobs.remove(id);
-          resetQueueControl();
           return true;
         } catch (err) {
           return false;
@@ -357,7 +360,7 @@ createQueue('default');
 
 module.exports = {
   _jobTypes: jobTypeCache,
-  _clearCache: resetQueueControl,
+  _clearCache: resetQueueDelay,
   get: getQueue,
   create: createQueue,
   delete: deleteQueue,

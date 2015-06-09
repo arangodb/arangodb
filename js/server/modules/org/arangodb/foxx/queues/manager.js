@@ -30,100 +30,97 @@
 var _ = require('underscore');
 var tasks = require('org/arangodb/tasks');
 var db = require('org/arangodb').db;
-var skipAttempts = 10;
 var qb = require('aqb');
 
 var runInDatabase = function () {
-  db._executeTransaction({
-    collections: {
-      read: ['_queues', '_jobs'],
-      write: ['_jobs']
-    },
-    action: function () {
-      db._queues.all().toArray().forEach(function (queue) {
-        var numBusy = db._jobs.byExample({
-          queue: queue._key,
-          status: 'progress'
-        }).count();
-        if (numBusy >= queue.maxWorkers) {
-          return;
-        }
-        db._createStatement({
-          query: (
-            qb.for('job').in('_jobs')
-            .filter(
-              qb('pending').eq('job.status')
-              .and(qb.ref('@queue').eq('job.queue'))
-              .and(qb.ref('@now').gte('job.delayUntil'))
-            )
-            .sort('job.delayUntil', 'ASC')
-            .limit('@max')
-            .return('job')
-          ),
-          bindVars: {
-            queue: queue._key,
-            now: Date.now(),
-            max: queue.maxWorkers - numBusy
-          }
-        }).execute().toArray().forEach(function (doc) {
-          db._jobs.update(doc, {status: 'progress'});
-          tasks.register({
-            command: function (job) {
-              require('org/arangodb/foxx/queues/worker').work(job);
-            },
-            params: _.extend({}, doc, {status: 'progress'}),
-            offset: 0
-          });
-        });
-      });
+  var sleep = true;
+  db._queues.all().toArray()
+  .forEach(function (queue) {
+    var numBusy = db._jobs.byExample({
+      queue: queue._key,
+      status: 'progress'
+    }).count();
+    if (numBusy >= queue.maxWorkers) {
+      return;
     }
+    var jobs = db._createStatement({
+      query: (
+        qb.for('job').in('_jobs')
+        .filter(
+          qb('pending').eq('job.status')
+          .and(qb.ref('@queue').eq('job.queue'))
+          .and(qb.ref('@now').gte('job.delayUntil'))
+        )
+        .sort('job.delayUntil', 'ASC')
+        .limit('@max')
+        .return('job')
+      ),
+      bindVars: {
+        queue: queue._key,
+        now: Date.now(),
+        max: queue.maxWorkers - numBusy
+      }
+    }).execute().toArray();
+
+    sleep = sleep && !jobs.length;
+    jobs.forEach(function (doc) {
+      db._jobs.update(doc, {status: 'progress'});
+      tasks.register({
+        command: function (cfg) {
+          var db = require('org/arangodb').db;
+          var initialDatabase = db._name();
+          db._useDatabase(cfg.db);
+          try {
+            require('org/arangodb/foxx/queues/worker').work(cfg.job);
+          } catch(e) {}
+          db._useDatabase(initialDatabase);
+        },
+        offset: 0,
+        isSystem: true,
+        params: {
+          job: _.extend({}, doc, {status: 'progress'}),
+          db: db._name()
+        }
+      });
+    });
   });
+  return sleep;
 };
 
-exports.manage = function (runInSystemOnly) {
+exports.manage = function (systemOnly, sleepDuration) {
   var initialDatabase = db._name();
-
-  var databases = runInSystemOnly ? ['_system'] : db._listDatabases();
+  var databases = systemOnly ? ['_system'] : db._listDatabases();
 
   databases.forEach(function (database) {
     try {
       db._useDatabase(database);
+      global.KEYSPACE_CREATE('queue-control', 2, true);
+      var delayUntil = global.KEY_GET('queue-control', 'delayUntil') || 0;
 
-      global.KEYSPACE_CREATE("queue-control", 1, true);
-
-      var skip = (global.KEY_GET("queue-control", "skip") || 0) - 1;
-
-      if (skip <= 0) {
-        // fetch _queues and _jobs collections
-        var queues = db._collection("_queues");
-
-        if (!queues || !queues.count()) {
-          skip = skipAttempts;
-        }
+      if (delayUntil > Date.now()) {
+        return;
       }
 
-      if (skip <= 0) {
-        var jobs = db._collection("_jobs");
+      var queues = db._collection('_queues');
+      var jobs = db._collection('_jobs');
 
-        if (!jobs || !jobs.count()) {
-          skip = skipAttempts;
-        }
+      if (queues && jobs) {
+        db._executeTransaction({
+          collections: {
+            read: ['_queues', '_jobs'],
+            write: ['_jobs']
+          },
+          action: function () {
+            var sleep = runInDatabase();
+            if (sleep) {
+              global.KEY_SET('queue-control', 'delayUntil', Date.now() + sleepDuration);
+            }
+          }
+        });
+      } else {
+        global.KEY_SET('queue-control', 'delayUntil', Date.now() + sleepDuration);
       }
-
-      // both collections exist and there are documents in them
-
-      if (skip <= 0) {
-        runInDatabase();
-      }
-
-      if (skip < 0) {
-        skip = 1;
-      }
-
-      global.KEY_SET("queue-control", "skip", skip);
-    }
-    catch (e) {
-    }
+    } catch (e) {}
   });
 
   // switch back into previous database
@@ -131,28 +128,45 @@ exports.manage = function (runInSystemOnly) {
 };
 
 exports.run = function () {
-  var options = require("internal").options();
+  var options = require('internal').options();
 
-  // restrict Foxx queues to _system database only?
-  var runInSystemOnly = true;
-  if (options.hasOwnProperty("server.foxx-queues-system-only")) {
-    runInSystemOnly = options["server.foxx-queues-system-only"];
+
+  // disable foxx queues
+  if (options['server.foxx-queues'] === false) {
+    return;
+  }
+
+  // warmup exports
+  if (options['server.foxx-queues-warmup-exports'] !== false) {
+    require('org/arangodb/foxx/manager')._warmupAllExports();
   }
 
   // wakeup/poll interval for Foxx queues
   var period = 1;
-  if (options.hasOwnProperty("server.foxx-queues-poll-interval")) {
-    period = options["server.foxx-queues-poll-interval"];
+  if (options.hasOwnProperty('server.foxx-queues-poll-interval')) {
+    period = options['server.foxx-queues-poll-interval'];
+  }
+
+  // sleep duration when idling
+  var sleepDuration = 5;
+  if (options.hasOwnProperty('server.foxx-queues-poll-sleep-duration')) {
+    sleepDuration = options['server.foxx-queues-poll-sleep-duration'];
+  }
+
+  // only use system database
+  var systemOnly = false;
+  if (options.hasOwnProperty('server.foxx-queues-system-only')) {
+    systemOnly = options['server.foxx-queues-system-only'];
   }
 
   db._jobs.updateByExample({status: 'progress'}, {status: 'pending'});
 
   return tasks.register({
     command: function (params) {
-      require('org/arangodb/foxx/queues/manager').manage(params.runInSystemOnly);
+      require('org/arangodb/foxx/queues/manager').manage(params.systemOnly, params.sleepDuration);
     },
     period: period,
     isSystem: true,
-    params: {runInSystemOnly: runInSystemOnly}
+    params: {systemOnly: systemOnly, sleepDuration: sleepDuration * 1000}
   });
 };

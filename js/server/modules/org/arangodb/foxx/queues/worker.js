@@ -127,12 +127,27 @@ exports.work = function (job) {
       status: 'failed'
     });
   } else {
-    // queue for retry
-    db._jobs.update(job._key, {
-      modified: now,
-      delayUntil: now + getBackOffDelay(job, cfg),
-      failures: job.failures,
-      status: 'pending'
+    db._executeTransaction({
+      collections: {
+        read: ['_jobs'],
+        write: ['_jobs']
+      },
+      action: function () {
+        db._jobs.update(job._key, {
+          modified: now,
+          delayUntil: now + getBackOffDelay(job, cfg),
+          failures: job.failures,
+          status: 'pending'
+        });
+        global.KEY_SET("queue-control", "delayUntil", db._query(
+          'LET queues = (FOR queue IN _queues RETURN queue.name)'
+            + ' FOR job IN _jobs'
+            + ' FILTER job.status == "pending"'
+            + ' FILTER POSITION(queues, job.queue, false) '
+            + ' SORT job.delayUntil ASC'
+            + ' RETURN job.delayUntil'
+        )[0]);
+      }
     });
   }
 
