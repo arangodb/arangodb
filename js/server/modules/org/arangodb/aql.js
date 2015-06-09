@@ -6563,27 +6563,92 @@ function AQL_GRAPH_TRAVERSAL_TREE (graphName,
 function AQL_EDGES (edgeCollection,
                     vertex,
                     direction,
-                    examples) {
+                    examples,
+                    options) {
   'use strict';
 
   var c = COLLECTION(edgeCollection), result;
 
   // validate arguments
   if (direction === "outbound") {
-    result = c.outEdges(vertex);
+    result = FILTER(c.outEdges(vertex), examples);
+    if (options && options.includeVertices) {
+      for (let i = 0; i < result.length; ++i) {
+        try {
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
+        }
+        catch (err) {
+        }
+      }
+    }
   }
   else if (direction === "inbound") {
-    result = c.inEdges(vertex);
+    result = FILTER(c.inEdges(vertex), examples);
+    if (options && options.includeVertices) {
+      for (let i = 0; i < result.length; ++i) {
+        try {
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
+        }
+        catch (err) {
+        }
+      }
+    }
   }
   else if (direction === "any") {
-    result = c.edges(vertex);
+    if (options && options.includeVertices) {
+      if (Array.isArray(vertex)) {
+        result = [];
+        let tmp;
+        for (let h = 0; h < vertex.length; ++h) {
+          tmp = FILTER(c.inEdges(vertex), examples);
+          for (let i = 0; i < tmp.length; ++i) {
+            try {
+              tmp[i] = { edge: CLONE(tmp[i]), vertex: DOCUMENT_HANDLE(tmp[i]._from) };
+            }
+            catch (err) {
+            }
+          }
+          result = result.concat(tmp);
+          tmp = FILTER(c.outEdges(vertex), examples);
+          for (let i = 0; i < tmp.length; ++i) {
+            try {
+              tmp[i] = { edge: CLONE(tmp[i]), vertex: DOCUMENT_HANDLE(tmp[i]._to) };
+            }
+            catch (err) {
+            }
+          }
+          result = result.concat(tmp);
+        }
+      } else {
+        result = [];
+        let tmp = FILTER(c.inEdges(vertex), examples);
+        for (let i = 0; i < tmp.length; ++i) {
+          try {
+            tmp[i] = { edge: CLONE(tmp[i]), vertex: DOCUMENT_HANDLE(tmp[i]._from) };
+          }
+          catch (err) {
+          }
+        }
+        result = result.concat(tmp);
+        tmp = FILTER(c.outEdges(vertex), examples);
+        for (let i = 0; i < tmp.length; ++i) {
+          try {
+            tmp[i] = { edge: CLONE(tmp[i]), vertex: DOCUMENT_HANDLE(tmp[i]._to) };
+          }
+          catch (err) {
+          }
+        }
+        result = result.concat(tmp);
+      }
+    } else {
+      result = FILTER(c.edges(vertex), examples);
+    }
   }
   else {
     WARN("EDGES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
-
-  return FILTER(result, examples);
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

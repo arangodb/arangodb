@@ -462,7 +462,7 @@ is not transactional.
 
 Only a single *REMOVE* statement is allowed per AQL query, and it cannot be combined
 with other data-modification or retrieval operations. A remove operation is
-restricted to a single collection, and the [collection name](../Glossary/README.html#collection_name) must not be dynamic.
+restricted to a single collection, and the [collection name](../Glossary/index.html#collection_name) must not be dynamic.
 
 The syntax for a remove operation is:
 
@@ -472,7 +472,7 @@ REMOVE key-expression IN collection options
 
 *collection* must contain the name of the collection to remove the documents 
 from. *key-expression* must be an expression that contains the document identification.
-This can either be a string (which must then contain the [document key](../Glossary/README.html#document_key)) or a
+This can either be a string (which must then contain the [document key](../Glossary/index.html#document_key)) or a
 document, which must contain a *_key* attribute.
 
 The following queries are thus equivalent:
@@ -883,7 +883,7 @@ FOR i IN 1..100
   INSERT { value: i } IN numbers
 ```
 
-When inserting into an [edge collection](../Glossary/README.html#edge_collection), it is mandatory to specify the attributes
+When inserting into an [edge collection](../Glossary/index.html#edge_collection), it is mandatory to specify the attributes
 *_from* and *_to* in document:
 
 ```

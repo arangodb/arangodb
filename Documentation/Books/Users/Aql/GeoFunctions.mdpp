@@ -1,6 +1,6 @@
 !CHAPTER Geo functions
 
-AQL offers the following functions to filter data based on [geo indexes](../Glossary/README.html#geo_index):
+AQL offers the following functions to filter data based on [geo indexes](../Glossary/index.html#geo_index):
 
 - *NEAR(collection, latitude, longitude, limit, distancename)*: 
   Returns at most *limit* documents from collection *collection* that are near
