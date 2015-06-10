@@ -63,9 +63,29 @@ function validate(data, schema) {
   return result.value;
 }
 
-function resetQueueControl() {
+function updateQueueDelay() {
   try {
-    global.KEY_SET("queue-control", "skip", 0);
+    db._executeTransaction({
+      collections: {
+        read: ['_queues', '_jobs']
+      },
+      action: function () {
+        var delayUntil = db._query(
+          qb.let('queues', qb.for('queue').in('_queues').return('queue._key'))
+          .for('job').in('_jobs')
+          .filter(qb('pending').eq('job.status'))
+          .filter(qb.POSITION('queues', 'job.queue', false))
+          .filter(qb(null).neq('job.delayUntil'))
+          .sort('job.delayUntil', 'ASC')
+          .return('job.delayUntil')
+        ).next();
+        if (typeof delayUntil !== 'number') {
+          delayUntil = -1;
+        }
+        global.KEYSPACE_CREATE('queue-control', 1, true);
+        global.KEY_SET('queue-control', 'delayUntil', delayUntil);
+      }
+    });
   } catch (e) {}
 }
 
@@ -96,7 +116,6 @@ function createQueue(key, maxWorkers) {
       db._queues.update(key, {maxWorkers: maxWorkers});
     }
   }
-  resetQueueControl();
   var databaseName = db._name();
   var cache = queueCache[databaseName];
   if (!cache) {
@@ -120,9 +139,6 @@ function deleteQueue(key) {
       }
     }
   });
-  if (result) {
-    resetQueueControl();
-  }
   return result;
 }
 
@@ -228,7 +244,7 @@ _.extend(Job.prototype, {
     db._jobs.update(this.id, {
       status: 'pending'
     });
-    resetQueueControl();
+    updateQueueDelay();
   }
 });
 
@@ -285,9 +301,8 @@ _.extend(Queue.prototype, {
       opts = {};
     }
 
-    resetQueueControl();
     var now = Date.now();
-    return db._jobs.save({
+    var job = db._jobs.save({
       status: 'pending',
       queue: this.name,
       type: jobType,
@@ -300,7 +315,9 @@ _.extend(Queue.prototype, {
       delayUntil: opts.delayUntil || now,
       onSuccess: opts.success ? opts.success.toString() : null,
       onFailure: opts.failure ? opts.failure.toString() : null
-    })._id;
+    });
+    updateQueueDelay();
+    return job._id;
   },
   get: function (id) {
     if (typeof id !== 'string') {
@@ -328,7 +345,6 @@ _.extend(Queue.prototype, {
       action: function () {
         try {
           db._jobs.remove(id);
-          resetQueueControl();
           return true;
         } catch (err) {
           return false;
@@ -357,7 +373,7 @@ createQueue('default');
 
 module.exports = {
   _jobTypes: jobTypeCache,
-  _clearCache: resetQueueControl,
+  _updateQueueDelay: updateQueueDelay,
   get: getQueue,
   create: createQueue,
   delete: deleteQueue,

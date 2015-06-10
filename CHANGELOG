@@ -526,22 +526,30 @@ v2.6.0 (XXXX-XX-XX)
   up and checking the queues more frequently, which may increase CPU usage of the server. 
   When not using Foxx queues, this value can be raised to save some CPU time.
 
-* added startup option `--server.foxx-queues-system-only`
+* added startup option `--server.foxx-queues-warmup-exports`
 
-  This startup option controls whether the Foxx queue manager will check queue and job entries
-  in the `_system` database only. Restricting the Foxx queue manager to the `_system` database 
-  will lead to the queue manager having to check only the queues collection of a single database,
-  whereas making it check the queues of all databases might result in more work to be done and 
-  more CPU time to be used by the queue manager.
+  This startup option makes sure the exports of all installed Foxx apps are pre-loaded when
+  the server is restarted. This prevents a known issue with function-based Foxx queue job types.
+  It is recommended that you upgrade any existing function-based job types to script-based ones
+  to avoid the issue entirely.
 
-  The default value is `true`, so that the queue manager will only check the queues in the 
-  `_system` database.
+  The default value is `true`. Disabling this feature can reduce memory usage and startup time
+  but may cause issues with function-based job types.
+
+* added startup option `--server.foxx-queues`
+
+  This startup option controls whether the Foxx queue manager will check queue and job entries.
+  Disabling this option can reduce server load but will prevent jobs added to Foxx queues from
+  being processed at all.
+
+  The default value is `true`, enabling the Foxx queues feature.
 
 * make Foxx queues really database-specific.
 
   Foxx queues were and are stored in a database-specific collection `_queues`. However, a global
   cache variable for the queues led to the queue names being treated database-independently, which
   was wrong.
+
   Since 2.6, Foxx queues names are truly database-specific, so the same queue name can be used in
   two different databases for two different queues. Until then, it is advisable to think of queues
   as already being database-specific, and using the database name as a queue name prefix to be
