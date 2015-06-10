@@ -273,13 +273,13 @@ function makeAuthorisationHeaders (options) {
                                                       options.password)}};
 }
 
-function startInstance (protocol, options, addArgs, testname) {
+function startInstance (protocol, options, addArgs, testname, tmpDir) {
   // protocol must be one of ["tcp", "ssl", "unix"]
   var startTime = time();
   var topDir = findTopDir();
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
-  var tmpDataDir = fs.getTempFile();
+  var tmpDataDir = tmpDir || fs.getTempFile();
   var appDir;
 
   instanceInfo.flatTmpDataDir = tmpDataDir;
@@ -705,7 +705,7 @@ function shutdownInstance (instanceInfo, options) {
     }
   }
 
-  cleanupDirectories = cleanupDirectories.concat([instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir]);
+  cleanupDirectories = cleanupDirectories.concat(instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir);
 }
 
 function checkBodyForJsonToParse(request) {
@@ -717,13 +717,13 @@ function checkBodyForJsonToParse(request) {
 
 function cleanupDBDirectories(options) {
   if (options.cleanup) {
-    for (var i in cleanupDirectories) {
-      if (cleanupDirectories.hasOwnProperty(i)) {
-        fs.removeDirectoryRecursive(cleanupDirectories[i], true);
-        // print("deleted " + cleanupDirectories[i]);
+    while (cleanupDirectories.length) {
+      var cleanupDirectory = cleanupDirectories.shift();
+      // Avoid attempting to remove the same directory multiple times
+      if (cleanupDirectories.indexOf(cleanupDirectory) === -1) {
+        fs.removeDirectoryRecursive(cleanupDirectory, true);
       }
     }
-    cleanupDirectories = [];
   }
 }
 
