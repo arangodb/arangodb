@@ -74,7 +74,6 @@ V8Job::V8Job (TRI_vocbase_t* vocbase,
 V8Job::~V8Job () {
   if (_parameters != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
-    _parameters = nullptr;
   }
 }
 
