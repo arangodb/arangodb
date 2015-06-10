@@ -549,22 +549,6 @@ namespace triagens {
         bool _foxxQueuesWarmupExports;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief restrict the Foxx queues to run in the _system database only
-/// @startDocuBlock foxxQueuesSystemOnly
-/// `--server.foxx-queues-system-only flag`
-///
-/// If *true*, the Foxx queues will be handled and jobs in them executed only
-/// for queues and jobs in the _system database. Queues and jobs of all other
-/// databases will be ignored then.
-///
-/// The default is *true*. It should only be changed if Foxx queues are not used
-/// with other databases than *_system*.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-    
-        bool _foxxQueuesSystemOnly;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief poll interval for Foxx queues
 /// @startDocuBlock foxxQueuesPollInterval
 /// `--server.foxx-queues-poll-interval value`
@@ -581,21 +565,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         double _foxxQueuesPollInterval;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief poll sleep duration for Foxx queues
-/// @startDocuBlock foxxQueuesPollSleepDuration
-/// `--server.foxx-queues-poll-sleep-duration value`
-///
-/// The number of seconds the Foxx queues manager will sleep when the queue
-/// is empty. Lower values will mean more immediate job execution.
-///
-/// The default is *5*. If Foxx queues are not used much, then this value
-/// may be increased to make the queues thread wake up less.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-        double _foxxQueuesPollSleep;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests

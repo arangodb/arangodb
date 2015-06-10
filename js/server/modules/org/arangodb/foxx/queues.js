@@ -63,16 +63,29 @@ function validate(data, schema) {
   return result.value;
 }
 
-function resetQueueDelay() {
+function updateQueueDelay() {
   try {
-    global.KEY_SET("queue-control", "delayUntil", db._query(
-      'LET queues = (FOR queue IN _queues RETURN queue.name)'
-        + ' FOR job IN _jobs'
-        + ' FILTER job.status == "pending"'
-        + ' FILTER POSITION(queues, job.queue, false) '
-        + ' SORT job.delayUntil ASC'
-        + ' RETURN job.delayUntil'
-    )[0]);
+    db._executeTransaction({
+      collections: {
+        read: ['_queues', '_jobs']
+      },
+      action: function () {
+        var delayUntil = db._query(
+          qb.let('queues', qb.for('queue').in('_queues').return('queue._key'))
+          .for('job').in('_jobs')
+          .filter(qb('pending').eq('job.status'))
+          .filter(qb.POSITION('queues', 'job.queue', false))
+          .filter(qb(null).neq('job.delayUntil'))
+          .sort('job.delayUntil', 'ASC')
+          .return('job.delayUntil')
+        ).next();
+        if (typeof delayUntil !== 'number') {
+          delayUntil = -1;
+        }
+        global.KEYSPACE_CREATE('queue-control', 1, true);
+        global.KEY_SET('queue-control', 'delayUntil', delayUntil);
+      }
+    });
   } catch (e) {}
 }
 
@@ -231,7 +244,7 @@ _.extend(Job.prototype, {
     db._jobs.update(this.id, {
       status: 'pending'
     });
-    resetQueueDelay();
+    updateQueueDelay();
   }
 });
 
@@ -303,7 +316,7 @@ _.extend(Queue.prototype, {
       onSuccess: opts.success ? opts.success.toString() : null,
       onFailure: opts.failure ? opts.failure.toString() : null
     });
-    resetQueueDelay();
+    updateQueueDelay();
     return job._id;
   },
   get: function (id) {
@@ -360,7 +373,7 @@ createQueue('default');
 
 module.exports = {
   _jobTypes: jobTypeCache,
-  _clearCache: resetQueueDelay,
+  _updateQueueDelay: updateQueueDelay,
   get: getQueue,
   create: createQueue,
   delete: deleteQueue,

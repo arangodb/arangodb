@@ -339,9 +339,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
     _foxxQueues(true),
-    _foxxQueuesSystemOnly(true),
+    _foxxQueuesWarmupExports(true),
     _foxxQueuesPollInterval(1.0),
-    _foxxQueuesPollSleep(5.0),
     _server(nullptr),
     _queryRegistry(nullptr),
     _pairForAql(nullptr),
@@ -621,8 +620,6 @@ void ArangoServer::buildApplicationServer () {
     ("server.foxx-queues", &_foxxQueues, "enable Foxx queues")
     ("server.foxx-queues-warmup-exports", &_foxxQueuesWarmupExports, "enable pre-loading of Foxx exports for Foxx queues")
     ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
-    ("server.foxx-queues-poll-sleep", &_foxxQueuesPollSleep, "Foxx queue manager sleep duration when queue is empty (in seconds)")
-    ("server.foxx-queues-system-only", &_foxxQueuesSystemOnly, "run Foxx queues in _system database only")
     ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")
   ;
 

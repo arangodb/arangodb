@@ -108,7 +108,7 @@ exports.work = function (job) {
       fm.runScript(cfg.name, cfg.mount, [].concat(job.data, job._id));
     }
   } catch (e) {
-    console.error('Job %s failed:\n%s', job._key, e.stack || String(e));
+    console.errorLines('Job %s failed:\n%s', job._key, e.stack || String(e));
     job.failures.push(flatten(e));
     success = false;
   }
@@ -139,14 +139,7 @@ exports.work = function (job) {
           failures: job.failures,
           status: 'pending'
         });
-        global.KEY_SET("queue-control", "delayUntil", db._query(
-          'LET queues = (FOR queue IN _queues RETURN queue.name)'
-            + ' FOR job IN _jobs'
-            + ' FILTER job.status == "pending"'
-            + ' FILTER POSITION(queues, job.queue, false) '
-            + ' SORT job.delayUntil ASC'
-            + ' RETURN job.delayUntil'
-        )[0]);
+        queues._updateQueueDelay();
       }
     });
   }
