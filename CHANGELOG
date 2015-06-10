@@ -1,4 +1,4 @@
-v2.6.0-alpha3 (2015-05-30)
+v2.6.0-alpha4 (2015-06-10)
 -------------------
 
 * fixed issues when switching the database inside tasks and during shutdown of database cursors 

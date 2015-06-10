@@ -16,9 +16,9 @@ content-type: application/json; charset=utf-8
     "[ArangoError 1203: collection not found]", 
     "  at Error (native)", 
     "  at post_api_transaction (js/actions/api-transaction.js:268:16)", 
-    "  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)", 
-    "" 
+    "  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)" 
   ], 
+  "message" : "collection not found", 
   "error" : true, 
   "code" : 404, 
   "errorNum" : 1203, 

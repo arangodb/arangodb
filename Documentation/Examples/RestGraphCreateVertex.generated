@@ -7,13 +7,13 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1336514129
+etag: 1338201153
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1336514129", 
+    "_rev" : "1338201153", 
     "optional1" : "val1" 
   }, 
   "error" : false, 

@@ -10,22 +10,22 @@ content-type: application/json; charset=utf-8
     "lastProcessedContinuousTick" : null, 
     "lastAvailableContinuousTick" : null, 
     "progress" : { 
-      "time" : "2015-05-30T08:59:36Z", 
+      "time" : "2015-06-10T14:17:29Z", 
       "message" : "fetching master state information", 
       "failedConnects" : 1 
     }, 
-    "totalRequests" : 2, 
-    "totalFailedConnects" : 2, 
+    "totalRequests" : 3, 
+    "totalFailedConnects" : 3, 
     "totalEvents" : 0, 
     "totalOperationsExcluded" : 0, 
     "lastError" : { 
       "errorNum" : 0 
     }, 
-    "time" : "2015-05-30T08:59:36Z" 
+    "time" : "2015-06-10T14:17:29Z" 
   }, 
   "server" : { 
-    "version" : "2.6.0-alpha3", 
-    "serverId" : "91597768577260" 
+    "version" : "2.6.0-alpha4", 
+    "serverId" : "203534624790988" 
   }, 
   "endpoint" : "tcp://127.0.0.1:8529", 
   "database" : "_system" 

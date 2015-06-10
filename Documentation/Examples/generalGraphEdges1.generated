@@ -4,5 +4,5 @@ arangosh> db._query("FOR e IN GRAPH_EDGES("
 ........> +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
 ........> ).toArray();
 [ 
-  "internationalHighway/694326865" 
+  "internationalHighway/699159617" 
 ]

@@ -1,4 +1,6 @@
 arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
 arangosh> var graph = examples.loadGraph("routeplanner");
-arangosh> graph._countCommonNeighbors({isCapital : true}, {isCapital : true});
-[ArangoError 1563: array expected as operand to FOR loop (while executing)]
+arangosh> var example = { isCapital: true };
+arangosh> var options = { includeData: true };
+arangosh> graph._countCommonNeighbors(example, example, options, options);
+[ ]
