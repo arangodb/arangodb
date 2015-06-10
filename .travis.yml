@@ -48,3 +48,11 @@ before_script: "bash -c Installation/travisCI/before_script.sh"
 script:
  - "bash -c Installation/travisCI/build.sh"
 after_failure: "bash -c Installation/travisCI/after_failure.sh"
+
+notifications:
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/806d92fa9ae97d241599
+    on_success: change
+    on_failure: always
+    on_start: false
