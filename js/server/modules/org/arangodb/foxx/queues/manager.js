@@ -164,7 +164,7 @@ exports.run = function () {
   db._useDatabase(initialDatabase);
 
   return tasks.register({
-    command: function (params) {
+    command: function () {
       require('org/arangodb/foxx/queues/manager').manage();
     },
     period: period,
