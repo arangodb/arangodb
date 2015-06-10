@@ -1633,7 +1633,6 @@ testFuncs.foxx_manager = function (options) {
 };
 
 testFuncs.queue_legacy = function (options) {
-  // TODO
   var startTime;
   var queueAppMountPath = '/test-queue-legacy'
   print("Testing legacy queue job types");
