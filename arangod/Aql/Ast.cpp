@@ -324,7 +324,7 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
-  node->addMember(createNodeVariable("$OLD", false)); 
+  node->addMember(createNodeVariable(Variable::NAME_OLD, false)); 
 
   return node;
 }
@@ -347,7 +347,7 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
-  node->addMember(createNodeVariable("$NEW", false)); 
+  node->addMember(createNodeVariable(Variable::NAME_NEW, false)); 
   
   return node;
 }
@@ -378,8 +378,8 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
     node->addMember(&NopNode);    
   }
   
-  node->addMember(createNodeVariable("$OLD", false)); 
-  node->addMember(createNodeVariable("$NEW", false)); 
+  node->addMember(createNodeVariable(Variable::NAME_OLD, false)); 
+  node->addMember(createNodeVariable(Variable::NAME_NEW, false)); 
   
   return node;
 }
@@ -410,8 +410,8 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
     node->addMember(&NopNode);    
   }
   
-  node->addMember(createNodeVariable("$OLD", false)); 
-  node->addMember(createNodeVariable("$NEW", false)); 
+  node->addMember(createNodeVariable(Variable::NAME_OLD, false)); 
+  node->addMember(createNodeVariable(Variable::NAME_NEW, false)); 
 
   return node;
 }
@@ -441,8 +441,8 @@ AstNode* Ast::createNodeUpsert (AstNodeType type,
   node->addMember(insertExpression);
   node->addMember(updateExpression);
   
-  node->addMember(createNodeReference("$OLD")); 
-  node->addMember(createNodeVariable("$NEW", false)); 
+  node->addMember(createNodeReference(Variable::NAME_OLD)); 
+  node->addMember(createNodeVariable(Variable::NAME_NEW, false)); 
   
   return node;
 }
@@ -776,15 +776,33 @@ AstNode* Ast::createNodeIndexedAccess (AstNode const* accessed,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST expansion node
+/// @brief create an AST expansion node, without filter
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeExpansion (AstNode const* iterator, 
-                                   AstNode const* expanded) {
+                                   AstNode const* expanded,
+                                   bool multiExpand) {
+  AstNode* node = createNode(NODE_TYPE_EXPANSION);
+  node->setBoolValue(multiExpand);
+
+  node->addMember(iterator);
+  node->addMember(expanded);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST expansion node, with a filter
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeExpansion (AstNode const* iterator, 
+                                   AstNode const* expanded,
+                                   AstNode const* filter) {
   AstNode* node = createNode(NODE_TYPE_EXPANSION);
 
   node->addMember(iterator);
   node->addMember(expanded);
+  node->addMember(filter);
 
   return node;
 }
