@@ -135,7 +135,6 @@ exports.manage = function () {
 exports.run = function () {
   var options = require('internal').options();
 
-
   // disable foxx queues
   if (options['server.foxx-queues'] === false) {
     return;
@@ -164,7 +163,7 @@ exports.run = function () {
   db._useDatabase(initialDatabase);
 
   return tasks.register({
-    command: function (params) {
+    command: function () {
       require('org/arangodb/foxx/queues/manager').manage();
     },
     period: period,

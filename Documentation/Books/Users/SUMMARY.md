@@ -108,7 +108,7 @@
     * [Debugging](Foxx/Develop/Debugging.md)
     * [Source Files](Foxx/Develop/Folder.md)
     * [Controller](Foxx/Develop/Controller.md)
-    * [Setup & Teardown](Foxx/Develop/Scripts.md)
+    * [Scripts](Foxx/Develop/Scripts.md)
     * [Repository](Foxx/Develop/Repository.md)
     * [Model](Foxx/Develop/Model.md)
     * [Queries](Foxx/Develop/Queries.md)
