@@ -1,6 +1,10 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issues when switching the database inside tasks and during shutdown of database cursors 
+
+  These features were added during 2.6 alpha stage so the fixes affect devel/2.6-alpha builds only
+
 * issue #1360: improved foxx-manager help
 
 * added `--enable-tcmalloc` configure option.
