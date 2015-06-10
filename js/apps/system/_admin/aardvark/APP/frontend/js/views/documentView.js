@@ -26,8 +26,7 @@
       "click #deleteDocumentButton" : "deleteDocumentModal",
       "click #confirmDeleteDocument" : "deleteDocument",
       "click #document-from" : "navigateToDocument",
-      "click #document-to" : "navigateToDocument",
-      "dblclick #documentEditor tr" : "addProperty"
+      "click #document-to" : "navigateToDocument"
     },
 
     editor: 0,
@@ -66,8 +65,7 @@
       buttons.push(
         window.modalView.createDeleteButton('Delete', this.deleteDocument.bind(this))
       );
-      window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent, undefined,
-      null);
+      window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent);
     },
 
     deleteDocument: function() {
@@ -156,42 +154,6 @@
       this.editor = new window.jsoneditor.JSONEditor(container, options);
 
       return this;
-    },
-
-    addProperty: function (e) {
-      var node, searchResult;
-      try {
-        node = e.currentTarget.cells[2].childNodes[0].
-          childNodes[0].childNodes[0].childNodes[1].
-          childNodes[0].textContent;
-      } catch (ex) {
-
-      }
-      if (node) {
-        if (node === "object") {
-          if (_.isEmpty(this.editor.get())) {
-            this.editor.set({
-              "": ""
-            });
-            this.editor.node.childs[0].focus("field");
-          } else {
-            this.editor.node.childs[0]._onInsertBefore(undefined, undefined, "auto");
-          }
-          return;
-        }
-        searchResult = this.editor.node.search(node);
-        var breakLoop = false;
-        searchResult.forEach(function (s) {
-          if (breakLoop) {
-            return;
-          }
-          if (s.elem === "field" ) {
-            s.node._onInsertAfter(undefined, undefined, "auto");
-            breakLoop = true;
-          }
-        });
-
-      }
     },
 
     removeReadonlyKeys: function (object) {

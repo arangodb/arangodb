@@ -20,23 +20,27 @@
       "click #createGraph"                        : "addNewGraph",
       "keyup #graphManagementSearchInput"         : "search",
       "click #graphManagementSearchSubmit"        : "search",
-      "click .tile-graph"                         : "loadGraphViewer",
+      "click .tile-graph"                         : "redirectToGraphViewer",
       "click #graphManagementToggle"              : "toggleGraphDropdown",
       "click .css-label"                          : "checkBoxes",
       "change #graphSortDesc"                     : "sorting"
     },
 
-    loadGraphViewer: function(e) {
+    redirectToGraphViewer: function(e) {
       var name = $(e.currentTarget).attr("id");
       name = name.substr(0, name.length - 5);
-      var edgeDefs = this.collection.get(name).get("edgeDefinitions");
+      window.location = window.location + '/' + encodeURIComponent(name);
+    },
+
+    loadGraphViewer: function(graphName) {
+      var edgeDefs = this.collection.get(graphName).get("edgeDefinitions");
       if (!edgeDefs || edgeDefs.length === 0) {
         // User Info
         return;
       }
       var adapterConfig = {
         type: "gharial",
-        graphName: name,
+        graphName: graphName,
         baseUrl: require("internal").arango.databasePrefix("/")
       };
       var width = $("#content").width() - 75;
@@ -52,9 +56,6 @@
 
       }, true);
 
-      //decorate hash. is needed for router url management
-      // do we really need this? what for?
-      //window.location.hash = "#graphdetail";
     },
 
     handleResize: function(w) {
@@ -451,9 +452,11 @@
         if (c.get("isSystem")) {
           return;
         }
-        collList.push(c.id);
         if (c.get('type') === "edge") {
           self.eCollList.push(c.id);
+        }
+        else {
+          collList.push(c.id);
         }
       });
       window.modalView.enableHotKeys = false;
@@ -589,7 +592,7 @@
       );
 
       window.modalView.show(
-        "modalGraphTable.ejs", title, buttons, tableContent, null, this.events
+        "modalGraphTable.ejs", title, buttons, tableContent, undefined, undefined, this.events
       );
 
       if (graph) {

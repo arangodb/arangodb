@@ -1,6 +1,6 @@
 !CHAPTER Fulltext
 
-If a [fulltext index](../Glossary/README.html#fulltext_index) exists, then /_api/simple/fulltext will use this index to execute the specified fulltext query.
+If a [fulltext index](../Glossary/index.html#fulltext_index) exists, then /_api/simple/fulltext will use this index to execute the specified fulltext query.
 
 <!-- js/actions/api-index.js -->
 @startDocuBlock JSF_post_api_index_fulltext

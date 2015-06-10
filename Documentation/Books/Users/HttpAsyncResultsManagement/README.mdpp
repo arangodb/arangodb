@@ -21,7 +21,7 @@ Furthermore, please note that even if the client closes the HTTP
 connection, the request running on the server will still continue until
 it is complete and only then notice that the client no longer listens.
 Thus closing the connection does not help to abort a long running query!
-See below under [Async Execution and later Result Retrieval](#async_execution_and_later_result_retrieval) and [HttpJobPutCancel](../HttpAsyncResultsManagement/README.html#managing_async_results_via_http) for details.
+See below under [Async Execution and later Result Retrieval](#async_execution_and_later_result_retrieval) and [HttpJobPutCancel](../HttpAsyncResultsManagement/index.html#managing_async_results_via_http) for details.
 
 !SUBSUBSECTION Fire and Forget
 
@@ -67,7 +67,7 @@ ready for retrieval, and which are not. Clients can also use the async jobs API 
 retrieve the original results of an already executed async job by passing it the
 originally returned job id. The server will then return the job result as if the job was 
 executed normally. Furthermore, clients can cancel running async jobs by
-their job id, see [HttpJobPutCancel](../HttpAsyncResultsManagement/README.html#managing_async_results_via_http).
+their job id, see [HttpJobPutCancel](../HttpAsyncResultsManagement/index.html#managing_async_results_via_http).
 
 ArangoDB will keep all results of jobs initiated with the *x-arango-async: store* 
 header. Results are removed from the server only if a client explicitly asks the
@@ -88,7 +88,7 @@ lost in case of a crash.
 
 As mentioned above it is possible to cancel an asynchronously running
 job using its job ID. This is done with a PUT request as described in
-[HttpJobPutCancel](../HttpAsyncResultsManagement/README.html#managing_async_results_via_http). 
+[HttpJobPutCancel](../HttpAsyncResultsManagement/index.html#managing_async_results_via_http). 
 
 However, a few words of explanation about what happens behind the
 scenes are in order. Firstly, a running async query can internally be

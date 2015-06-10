@@ -30,7 +30,7 @@ The call expects a JSON object as body with the edge properties:
 Creates an edge in a graph.
 The call expects a JSON object as body with the edge properties:
 
-* _key: The name of the edge (optional, if [edge collection](../Glossary/README.html#edge_collection) allows user defined keys).
+* _key: The name of the edge (optional, if [edge collection](../Glossary/index.html#edge_collection) allows user defined keys).
 * _from: The name of the from vertex.
 * _to: The name of the to vertex.
 * $label: A label for the edge (optional).

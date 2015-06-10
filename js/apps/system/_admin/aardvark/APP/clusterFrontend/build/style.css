@@ -2517,6 +2517,8 @@ div .tile, div .bigtile {
 div .tile {
   height: 100px;
   width: 228px; }
+div .tile-graph .tile-icon:hover {
+  cursor: pointer; }
 div .bigtile {
   height: 309px;
   width: 456px; }
@@ -4560,6 +4562,19 @@ div.headerBar {
   padding-left: 5px;
   padding-right: 5px;
   position: relative; }
+  div.headerBar .infoField {
+    background-color: white;
+    color: black;
+    float: right;
+    font-size: 12px;
+    margin-top: 8px;
+    margin-right: 7px;
+    border-radius: 20px;
+    padding-left: 5px;
+    padding-right: 5px; }
+    div.headerBar .infoField .fa {
+      cursor: pointer;
+      margin-left: 5px; }
   div.headerBar input[type=checkbox].css-checkbox {
     display: none; }
     div.headerBar input[type=checkbox].css-checkbox + label.css-label {
@@ -5099,6 +5114,8 @@ div .tile, div .bigtile {
 div .tile {
   height: 100px;
   width: 228px; }
+div .tile-graph .tile-icon:hover {
+  cursor: pointer; }
 div .bigtile {
   height: 309px;
   width: 456px; }

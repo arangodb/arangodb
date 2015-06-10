@@ -28,7 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shape-accessor.h"
-
 #include "Basics/logging.h"
 #include "Basics/vector.h"
 #include "ShapedJson/json-shaper.h"
@@ -71,6 +70,13 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
 #endif
     return false;
   }
+  
+  // we need at least 3 or 4 entries in the vector to store an accessor
+  TRI_vector_pointer_t ops;
+
+  if (TRI_InitVectorPointer(&ops, TRI_UNKNOWN_MEM_ZONE, 4) != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   // find the attribute path
   TRI_shape_path_t const* path = shaper->lookupAttributePathByPid(shaper, accessor->_pid);
@@ -85,12 +91,6 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
 
   TRI_shape_aid_t const* paids = (TRI_shape_aid_t*) (((char const*) path) + sizeof(TRI_shape_path_t));
 
-  // collect the bytecode
-
-  // we need at least 3 or 4 entries in the vector to store an accessor
-  TRI_vector_pointer_t ops;
-  TRI_InitVectorPointer2(&ops, TRI_UNKNOWN_MEM_ZONE, 4);
-
   // and follow it
   for (size_t i = 0;  i < path->_aidLength;  ++i, ++paids) {
 #ifdef DEBUG_SHAPE_ACCESSOR
@@ -102,39 +102,29 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
 #endif
 
     if (shape->_type == TRI_SHAPE_ARRAY) {
-      TRI_array_shape_t* s;
-      TRI_shape_aid_t const* aids;
-      TRI_shape_sid_t const* sids;
-      TRI_shape_sid_t sid;
-      TRI_shape_size_t const* offsetsF;
-      TRI_shape_size_t f;
-      TRI_shape_size_t n;
-      TRI_shape_size_t v;
-      char const* qtr;
-
-      s = (TRI_array_shape_t*) shape;
-      f = s->_fixedEntries;
-      v = s->_variableEntries;
-      n = f + v;
+      TRI_array_shape_t* s = (TRI_array_shape_t*) shape;
+      TRI_shape_size_t const f = s->_fixedEntries;
+      TRI_shape_size_t const v = s->_variableEntries;
+      TRI_shape_size_t n = f + v;
 
       // find the aid within the shape
-      qtr = (char const*) shape;
+      char const* qtr = (char const*) shape;
       qtr += sizeof(TRI_array_shape_t);
 
-      sids = (TRI_shape_sid_t const*) qtr;
+      TRI_shape_sid_t const* sids = (TRI_shape_sid_t const*) qtr;
       qtr += n * sizeof(TRI_shape_sid_t);
 
-      aids = (TRI_shape_aid_t const*) qtr;
+      TRI_shape_aid_t const* aids = (TRI_shape_aid_t const*) qtr;
       qtr += n * sizeof(TRI_shape_aid_t);
 
-      offsetsF = (TRI_shape_size_t const*) qtr;
+      TRI_shape_size_t const* offsetsF = (TRI_shape_size_t const*) qtr;
 
       size_t j;
 
       // check for fixed size aid
       for (j = 0;  j < f;  ++j, ++sids, ++aids, ++offsetsF) {
         if (*paids == *aids) {
-          sid = *sids;
+          TRI_shape_sid_t const sid = *sids;
 
           LOG_TRACE("found aid '%ld' as fixed entry with sid '%ld' and offset '%ld' - '%ld'",
                     (unsigned long) *paids,
@@ -145,15 +135,16 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
           shape = shaper->lookupShapeId(shaper, sid);
 
           if (shape == nullptr) {
-            LOG_ERROR("unknown shape id '%ld' for attribute id '%ld'",
-                      (unsigned long) accessor->_sid,
-                      (unsigned long) *paids);
+            LOG_ERROR("unknown shape id '%llu' for attribute id '%llu'",
+                      (unsigned long long) accessor->_sid,
+                      (unsigned long long) *paids);
 
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
 
-          int res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_OFFSET_FIX);
+          // reserve a block big enough to hold the following 3 entries plus the final AC_DONE entry
+          int res = TRI_ReserveVectorPointer(&ops, 4);
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_ERROR("out of memory");
@@ -161,22 +152,10 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
             return false;
           }
 
-          res = TRI_PushBackVectorPointer(&ops, (void*) (uintptr_t) (offsetsF[0])); // offset is always smaller than 4 GByte
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("out of memory");
-            TRI_DestroyVectorPointer(&ops);
-            return false;
-          }
-
-          res = TRI_PushBackVectorPointer(&ops, (void*) (uintptr_t) (offsetsF[1])); // offset is always smaller than 4 GByte
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("out of memory");
-            TRI_DestroyVectorPointer(&ops);
-            return false;
-          }
-
+          // this will always succeed as we reserve enough memory before
+          TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_OFFSET_FIX);
+          TRI_PushBackVectorPointer(&ops, (void*) (uintptr_t) (offsetsF[0])); // offset is always smaller than 4 GByte
+          TRI_PushBackVectorPointer(&ops, (void*) (uintptr_t) (offsetsF[1])); // offset is always smaller than 4 GByte
           break;
         }
       }
@@ -188,40 +167,35 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
       // check for variable size aid
       for (j = 0;  j < v;  ++j, ++sids, ++aids) {
         if (*paids == *aids) {
-          sid = *sids;
+          TRI_shape_sid_t const sid = *sids;
 
-          LOG_TRACE("found aid '%ld' as variable entry with sid '%ld'",
-                    (unsigned long) *paids,
-                    (unsigned long) sid);
+          LOG_TRACE("found aid '%llu' as variable entry with sid '%llu'",
+                    (unsigned long long) *paids,
+                    (unsigned long long) sid);
 
           shape = shaper->lookupShapeId(shaper, sid);
 
           if (shape == nullptr) {
-            LOG_ERROR("unknown shape id '%ld' for attribute id '%ld'",
-                      (unsigned long) accessor->_sid,
-                      (unsigned long) *paids);
+            LOG_ERROR("unknown shape id '%llu' for attribute id '%llu'",
+                      (unsigned long long) accessor->_sid,
+                      (unsigned long long) *paids);
 
-            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
 
-          int res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_OFFSET_VAR);
-
+          // reserve a block big enough to hold the following 2 entries plus the final AC_DONE entry
+          int res = TRI_ReserveVectorPointer(&ops, 3);
+          
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
 
-          res = TRI_PushBackVectorPointer(&ops, (void*) j);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("out of memory");
-            TRI_DestroyVectorPointer(&ops);
-            return false;
-          }
-
+          // this will always succeed as we reserved enough memory in the vector before
+          TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_OFFSET_VAR);
+          TRI_PushBackVectorPointer(&ops, (void*) j);
           break;
         }
       }
@@ -230,7 +204,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
         continue;
       }
 
-      LOG_TRACE("unknown attribute id '%ld'", (unsigned long) *paids);
+      LOG_TRACE("unknown attribute id '%llu'", (unsigned long long) *paids);
     }
 
     TRI_DestroyVectorPointer(&ops);
@@ -241,14 +215,9 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
     return true;
   }
 
-  // travel attribute path to the end
-  int res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_DONE);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("out of memory");
-    TRI_DestroyVectorPointer(&ops);
-    return false;
-  }
+  // insert final "done" entry
+  // note that this must always succeed as we reserved enough space before
+  TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_DONE);
 
   // remember resulting sid
   accessor->_resultSid = shape->_sid;

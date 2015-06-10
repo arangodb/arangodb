@@ -29,10 +29,6 @@
 
 var Model = require("org/arangodb/foxx/model").Model,
   _ = require("underscore"),
-  arangodb = require("org/arangodb"),
-  ArangoError = arangodb.ArangoError,
-  ArangoCollection = arangodb.ArangoCollection,
-  errors = arangodb.errors,
   extend = require('extendible'),
   EventEmitter = require('events').EventEmitter,
   util = require('util');
@@ -90,12 +86,6 @@ var EVENTS = [
 ////////////////////////////////////////////////////////////////////////////////
 
 function Repository(collection, opts) {
-  if (! collection instanceof ArangoCollection) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: "Collection parameter has to be of type ArangoCollection"
-    });
-  }
   this.options = opts || {};
 
 // -----------------------------------------------------------------------------
@@ -187,11 +177,19 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   save: function (model) {
+    if (!model.forDB) {
+      model = new this.model(model);
+    }
     this.emit('beforeCreate', model);
     model.emit('beforeCreate');
     this.emit('beforeSave', model);
     model.emit('beforeSave');
-    var id_and_rev = this.collection.save(model.forDB());
+    var id_and_rev;
+    if (this.collection.type() === 3) {
+      id_and_rev = this.collection.save(model.get('_from'), model.get('_to'), model.forDB());
+    } else {
+      id_and_rev = this.collection.save(model.forDB());
+    }
     model.set(id_and_rev);
     this.emit('afterSave', model);
     model.emit('afterSave');

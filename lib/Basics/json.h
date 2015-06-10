@@ -220,103 +220,135 @@ size_t TRI_LengthVectorJson (TRI_json_t const*);
 /// @brief determines whether the JSON passed is of type object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsObjectJson (TRI_json_t const*);
+static inline bool TRI_IsObjectJson (TRI_json_t const* json) {
+  return json != nullptr && json->_type == TRI_JSON_OBJECT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines whether the JSON passed is of type array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsArrayJson (TRI_json_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determines whether the JSON passed is of type string
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsStringJson (TRI_json_t const*);
+static inline bool TRI_IsArrayJson (TRI_json_t const* json) {
+  return json != nullptr && json->_type == TRI_JSON_ARRAY;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines whether the JSON passed is of type number
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsNumberJson (TRI_json_t const*);
+static inline bool TRI_IsNumberJson (TRI_json_t const* json) {
+  return json != nullptr && json->_type == TRI_JSON_NUMBER;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines whether the JSON passed is of type boolean
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsBooleanJson (TRI_json_t const*);
+static inline bool TRI_IsBooleanJson (TRI_json_t const* json) {
+  return json != nullptr && json->_type == TRI_JSON_BOOLEAN;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines whether the JSON passed is of type null
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsNullJson (TRI_json_t const*);
+static inline bool TRI_IsNullJson (TRI_json_t const* json) {
+  return json != nullptr && json->_type == TRI_JSON_NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines whether the JSON passed is of type string
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsStringJson (TRI_json_t const* json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object to an array, copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBackArrayJson (TRI_memory_zone_t*, TRI_json_t* array, TRI_json_t const* object);
+void TRI_PushBackArrayJson (TRI_memory_zone_t*, 
+                            TRI_json_t* array, 
+                            TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object to an array, not copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PushBack2ArrayJson (TRI_json_t* array, TRI_json_t const* object);
+int TRI_PushBack2ArrayJson (TRI_json_t* array, 
+                            TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object, not copying it but freeing the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PushBack3ArrayJson (TRI_memory_zone_t*, TRI_json_t* array, TRI_json_t* object);
+int TRI_PushBack3ArrayJson (TRI_memory_zone_t*, 
+                            TRI_json_t* array, 
+                            TRI_json_t* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a value in a json array
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_LookupArrayJson (TRI_json_t const*, size_t);
+TRI_json_t* TRI_LookupArrayJson (TRI_json_t const*, 
+                                 size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute to an object, using copy
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InsertObjectJson (TRI_memory_zone_t*, TRI_json_t* object, char const* name, TRI_json_t const* subobject);
+void TRI_InsertObjectJson (TRI_memory_zone_t*, 
+                           TRI_json_t* object, 
+                           char const* name, 
+                           TRI_json_t const* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute  to an object, not copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Insert2ObjectJson (TRI_memory_zone_t*, TRI_json_t* object, char const* name, TRI_json_t* subobject);
+void TRI_Insert2ObjectJson (TRI_memory_zone_t*, 
+                            TRI_json_t* object, 
+                            char const* name, 
+                            TRI_json_t const* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute, not copying it but freeing the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Insert3ObjectJson (TRI_memory_zone_t*, TRI_json_t* object, char const* name, TRI_json_t* subobject);
+void TRI_Insert3ObjectJson (TRI_memory_zone_t*, 
+                            TRI_json_t* object, 
+                            char const* name, 
+                            TRI_json_t* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an attribute in a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_LookupObjectJson (TRI_json_t const* object, char const* name);
+TRI_json_t* TRI_LookupObjectJson (TRI_json_t const* object, 
+                                  char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an element from a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DeleteObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char const* name);
+bool TRI_DeleteObjectJson (TRI_memory_zone_t* zone,
+                           TRI_json_t* object, 
+                           char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces an element in a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReplaceObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char const* name, TRI_json_t* replacement);
+bool TRI_ReplaceObjectJson (TRI_memory_zone_t* zone, 
+                            TRI_json_t* object, 
+                            char const* name, 
+                            TRI_json_t const* replacement);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringifies a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StringifyJson (struct TRI_string_buffer_s*, TRI_json_t const* object);
+int TRI_StringifyJson (struct TRI_string_buffer_s*, 
+                       TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringifies a json object skiping the outer braces

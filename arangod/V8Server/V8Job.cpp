@@ -74,7 +74,6 @@ V8Job::V8Job (TRI_vocbase_t* vocbase,
 V8Job::~V8Job () {
   if (_parameters != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
-    _parameters = nullptr;
   }
 }
 
@@ -136,8 +135,8 @@ Job::status_t V8Job::work () {
       fArgs = v8::Undefined(isolate);
     }
 
-    // call the function wihtin a try/catch
-    {
+    // call the function within a try/catch
+    try {
       v8::TryCatch tryCatch;
 
       action->Call(current, 1, &fArgs);
@@ -153,6 +152,15 @@ Job::status_t V8Job::work () {
           LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
         }
       }
+    }
+    catch (triagens::basics::Exception const& ex) {
+      LOG_ERROR("caught exception in V8 job: %s %s", TRI_errno_string(ex.code()), ex.what());
+    }
+    catch (std::bad_alloc const&) {
+      LOG_ERROR("caught exception in V8 job: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    }
+    catch (...) {
+      LOG_ERROR("caught unknown exception in V8 job");
     }
   }
 

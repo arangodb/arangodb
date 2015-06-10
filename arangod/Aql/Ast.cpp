@@ -1150,6 +1150,33 @@ AstNode* Ast::replaceVariables (AstNode* node,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a variable reference in the expression with another 
+/// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter 
+/// becomes `a + b + 1`
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::replaceVariableReference (AstNode* node,
+                                        Variable const* variable,
+                                        AstNode const* expressionNode) {
+  auto visitor = [&](AstNode* node, void*) -> AstNode* {
+    if (node == nullptr) {
+      return nullptr;
+    }
+
+    // reference to a variable
+    if (node->type == NODE_TYPE_REFERENCE &&
+        static_cast<Variable const*>(node->getData()) == variable) {
+      // found the target node. now insert the new node
+      return const_cast<AstNode*>(expressionNode);
+    }
+    
+    return node;
+  };
+
+  return traverseAndModify(node, visitor, nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the AST
 /// this does not only optimize but also performs a few validations after
 /// bind parameter injection. merging this pass with the regular AST 

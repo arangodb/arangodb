@@ -1,6 +1,23 @@
 v2.6.0-alpha3 (2015-05-30)
 -------------------
 
+* fixed issues when switching the database inside tasks and during shutdown of database cursors 
+
+  These features were added during 2.6 alpha stage so the fixes affect devel/2.6-alpha builds only
+
+* issue #1360: improved foxx-manager help
+
+* added `--enable-tcmalloc` configure option.
+
+  When this option is set, arangod and the client tools will be linked against tcmalloc, which replaces
+  the system allocator. When the option is set, a tcmalloc library must be present on the system under
+  one of the names `libtcmalloc`, `libtcmalloc_minimal` or `libtcmalloc_debug`. 
+
+  As this is a configure option, it is supported for manual builds on Linux-like systems only. tcmalloc
+  support is currently experimental.
+
+* issue #1353: Windows: HTTP API - incorrect path in errorMessage
+
 * issue #1347: added option `--create-database` for arangorestore. 
   
   Setting this option to `true` will now create the target database if it does not exist. When creating
@@ -41,6 +58,16 @@ v2.6.0-alpha3 (2015-05-30)
 * web interface: added query explain feature in AQL editor
 
 * web interface: demo page added. only working if demo data is available, hidden otherwise
+
+* web interface: added support for custom app scripts with optional arguments and results
+
+* web interface: mounted apps that need to be configured are now indicated in the app overview
+
+* web interface: added button for running tests to app details
+
+* web interface: added button for configuring app dependencies to app details
+
+* web interface: upgraded API documentation to use Swagger 2
 
 * removed startup option `--log.severity`
 
@@ -343,6 +370,81 @@ v2.6.0-alpha3 (2015-05-30)
 
 * REST Server: fix memory leaks when failing to add jobs
 
+* 'EDGES' AQL Function
+
+  The AQL function EDGES got a new fifth option parameter.
+  Right now only one option is available 'includeVertices' this is a boolean parameter
+  that allows to modify the result of EDGES.
+  Default is 'includeVertices: false' which does not have any effect.
+  'includeVertices: true' modifies the result, such that
+  {vertex: <vertexDocument>, edge: <edgeDocument>} is returned.
+
+* INCOMPATIBLE CHANGE:
+
+  The result format of the AQL function `NEIGHBORS` has been changed.
+  Before it has returned an array of objects containing 'vertex' and 'edge'.
+  Now it will only contain the vertex directly.
+  Also an additional option 'includeData' has been added.
+  This is used to define if only the 'vertex._id' value should be returned (false, default),
+  or if the vertex should be looked up in the collection and the complete JSON should be returned
+  (true).
+  Using only the id values can lead to significantly improved performance if this is the only information
+  required.
+
+  In order to get the old result format prior to ArangoDB 2.6, please use the function EDGES instead.
+  Edges allows for a new option 'includeVertices' which, set to true, returns exactly the format of NEIGHBORS.
+  Example:
+  
+      NEIGHBORS(<vertexCollection>, <edgeCollection>, <vertex>, <direction>, <example>)
+
+  Now achieved by:
+      
+      EDGES(<vertexCollection>, <edgeCollection>, <vertex>, <direction>, <example>, {includeVertices: true})
+
+  If you are nesting several NEIGHBORS steps you can speed up their performance in the following way:
+
+  Old Example:
+
+  FOR va IN NEIGHBORS(Users, relations, 'Users/123', 'outbound') FOR vc IN NEIGHBORS(Products, relations, va.vertex._id, 'outbound') RETURN vc
+
+  Can be achieved by:
+
+  FOR va IN NEIGHBORS(Users, relations, 'Users/123', 'outbound') FOR vc IN NEIGHBORS(Products, relations, va, 'outbound', null, {includeData: true}) RETURN vc
+                                                                                                          ^^^^            ^^^^^^^^^^^^^^^^^^^
+                                                                                           Use intermediate directly     include Data for final
+
+* INCOMPATIBLE CHANGE:
+
+  The AQL function `GRAPH_NEIGHBORS` now provides an additional option `includeData`.
+  This option allows controlling whether the function should return the complete vertices
+  or just their IDs. Returning only the IDs instead of the full vertices can lead to
+  improved performance .
+
+  If provided, `includeData` is set to `true`, all vertices in the result will be returned
+  with all their attributes. The default value of `includeData` is `false`.
+  This makes the default function results incompatible with previous versions of ArangoDB. 
+
+  To get the old result style in ArangoDB 2.6, please set the options as follows in calls
+  to `GRAPH_NEIGHBORS`:
+  
+      GRAPH_NEIGHBORS(<graph>, <vertex>, { includeData: true })
+
+* INCOMPATIBLE CHANGE:
+  
+  The AQL function `GRAPH_COMMON_NEIGHBORS` now provides an additional option `includeData`.
+  This option allows controlling whether the function should return the complete vertices
+  or just their IDs. Returning only the IDs instead of the full vertices can lead to
+  improved performance .
+
+  If provided, `includeData` is set to `true`, all vertices in the result will be returned
+  with all their attributes. The default value of `includeData` is `false`.
+  This makes the default function results incompatible with previous versions of ArangoDB. 
+
+  To get the old result style in ArangoDB 2.6, please set the options as follows in calls
+  to `GRAPH_COMMON_NEIGHBORS`:
+  
+      GRAPH_COMMON_NEIGHBORS(<graph>, <vertexExamples1>, <vertexExamples2>, { includeData: true }, { includeData: true })
+
 * INCOMPATIBLE CHANGE:
 
   The AQL function `GRAPH_SHORTEST_PATH` now provides an additional option `includeData`.
@@ -351,7 +453,8 @@ v2.6.0-alpha3 (2015-05-30)
   can lead to improved performance .
 
   If provided, `includeData` is set to `true`, all vertices and edges in the result will 
-  be fully expanded. There is also an optional parameter `includePath` of type object.
+  be returned with all their attributes. There is also an optional parameter `includePath` of 
+  type object.
   It has two optional sub-attributes `vertices` and `edges`, both of type boolean.
   Both can be set individually and the result will include all vertices on the path if
   `includePath.vertices == true` and all edges if `includePath.edges == true` respectively.
@@ -423,22 +526,30 @@ v2.6.0-alpha3 (2015-05-30)
   up and checking the queues more frequently, which may increase CPU usage of the server. 
   When not using Foxx queues, this value can be raised to save some CPU time.
 
-* added startup option `--server.foxx-queues-system-only`
+* added startup option `--server.foxx-queues-warmup-exports`
 
-  This startup option controls whether the Foxx queue manager will check queue and job entries
-  in the `_system` database only. Restricting the Foxx queue manager to the `_system` database 
-  will lead to the queue manager having to check only the queues collection of a single database,
-  whereas making it check the queues of all databases might result in more work to be done and 
-  more CPU time to be used by the queue manager.
+  This startup option makes sure the exports of all installed Foxx apps are pre-loaded when
+  the server is restarted. This prevents a known issue with function-based Foxx queue job types.
+  It is recommended that you upgrade any existing function-based job types to script-based ones
+  to avoid the issue entirely.
 
-  The default value is `true`, so that the queue manager will only check the queues in the 
-  `_system` database.
+  The default value is `true`. Disabling this feature can reduce memory usage and startup time
+  but may cause issues with function-based job types.
+
+* added startup option `--server.foxx-queues`
+
+  This startup option controls whether the Foxx queue manager will check queue and job entries.
+  Disabling this option can reduce server load but will prevent jobs added to Foxx queues from
+  being processed at all.
+
+  The default value is `true`, enabling the Foxx queues feature.
 
 * make Foxx queues really database-specific.
 
   Foxx queues were and are stored in a database-specific collection `_queues`. However, a global
   cache variable for the queues led to the queue names being treated database-independently, which
   was wrong.
+
   Since 2.6, Foxx queues names are truly database-specific, so the same queue name can be used in
   two different databases for two different queues. Until then, it is advisable to think of queues
   as already being database-specific, and using the database name as a queue name prefix to be
@@ -448,11 +559,21 @@ v2.6.0-alpha3 (2015-05-30)
       var Foxx = require("org/arangodb/foxx");
       Foxx.queues.create(db._name() + ":" + queueName);
 
-* Javascript APIs:
-  * fs.copyFile to copy single files
-  * fs.copyRecursive to copy diretory trees
-  * fs.chmod to set the file permissions (non-windows onnly)
-  * process.env to access the process environment
+* added support for Foxx queue job types defined as app scripts.
+
+  The old job types introduced in 2.4 are still supported but are known to cause issues in 2.5
+  and later when the server is restarted or the job types are not defined in every thread.
+
+  The new job types avoid this issue by storing an explicit mount path and script name rather
+  than an assuming the job type is defined globally. It is strongly recommended to convert your
+  job types to the new script-based system.
+
+* Added the following JavaScript methods for file access:
+  * fs.copyFile() to copy single files
+  * fs.copyRecursive() to copy diretory trees
+  * fs.chmod() to set the file permissions (non-Windows onnly)
+
+* Added process.env for accessing the process environment from JavaScript code
 
 * Cluster: kickstarter shutdown routines will more precisely follow the shutdown of its nodes.
 
@@ -478,13 +599,22 @@ v2.6.0-alpha3 (2015-05-30)
 
 * removed remainders of MRuby integration, removed arangoirb
 
-* simplified `controllers` property in Foxx manifests. You can now specify a filename directly if you only want to use a single file mounted at the base URL of your Foxx app.
+* simplified `controllers` property in Foxx manifests. You can now specify a filename directly
+  if you only want to use a single file mounted at the base URL of your Foxx app.
 
-* simplified `exports` property in Foxx manifests. You can now specify a filename directly if you only want to export variables from a single file in your Foxx app.
+* simplified `exports` property in Foxx manifests. You can now specify a filename directly if
+  you only want to export variables from a single file in your Foxx app.
 
-* added support for node.js-style exports in Foxx exports. Your Foxx exports file can now export arbitrary values using the `module.exports` property instead of adding properties to the `exports` object.
+* added support for node.js-style exports in Foxx exports. Your Foxx exports file can now export
+  arbitrary values using the `module.exports` property instead of adding properties to the
+  `exports` object.
 
-* added `scripts` property to Foxx manifests. You should now specify the `setup` and `teardown` files as properties of the `scripts` object in your manifests.
+* added `scripts` property to Foxx manifests. You should now specify the `setup` and `teardown`
+  files as properties of the `scripts` object in your manifests and can define custom,
+  app-specific scripts that can be executed from the web interface or the CLI.
+
+* added `tests` property to Foxx manifests. You can now define test cases using the `mocha`
+  framework which can then be executed inside ArangoDB.
 
 * updated `joi` package to 6.0.8.
 
@@ -507,7 +637,7 @@ v2.5.4 (2015-05-14)
 
 * cluster fixes
 
-* fix for recursive copy under windows
+* fix for recursive copy under Windows
 
 
 v2.5.3 (2015-04-29)
@@ -650,13 +780,13 @@ v2.5.1 (2015-03-19)
 * added option `--database.slow-query-threshold` for controlling the default AQL slow query
   threshold value on server start
 
-* add system error strings for windows on many places
+* add system error strings for Windows on many places
 
 * rework service startup so we anounce 'RUNNING' only when we're finished starting.
 
-* use the windows eventlog for FATAL and ERROR - log messages
+* use the Windows eventlog for FATAL and ERROR - log messages
 
-* fix service handling in NSIS windows installer, specify human readable name
+* fix service handling in NSIS Windows installer, specify human readable name
 
 * add the ICU_DATA environment variable to the fatal error messages
 
@@ -684,11 +814,11 @@ v2.5.0-beta4 (2015-03-05)
 v2.5.0-beta3 (2015-02-27)
 -------------------------
 
-* fix windows install path calculation in arango
+* fix Windows install path calculation in arango
 
-* fix windows logging of long strings
+* fix Windows logging of long strings
 
-* fix possible undefinedness of const strings in windows
+* fix possible undefinedness of const strings in Windows
 
 
 v2.5.0-beta2 (2015-02-23)
@@ -974,7 +1104,7 @@ v2.5.0-beta2 (2015-02-23)
 
 * Windows: improve process management
 
-* fix ipv6 reverse ip lookups - so far we only did ipv4 addresses.
+* fix IPv6 reverse ip lookups - so far we only did IPv4 addresses.
 
 * improve join documentation, add outer join example
 
@@ -982,7 +1112,7 @@ v2.5.0-beta2 (2015-02-23)
 
 * fix error logging for exceptions - we wouldn't log the exception message itself so far.
 
-* improve error reporting in the http client (windows & *nix)
+* improve error reporting in the http client (Windows & *nix)
 
 * improve error reports in cluster
 
@@ -3264,7 +3394,7 @@ v1.4.5 (2014-01-15)
 
 * defer evaluation of AQL subqueries and logical operators (lazy evaluation)
 
-* Updated font in WebFrontend, it now contains a version that renders properly on windows
+* Updated font in WebFrontend, it now contains a version that renders properly on Windows
 
 * generally allow function return values as call parameters to AQL functions
 
@@ -3423,7 +3553,7 @@ v1.4.2 (2013-11-20)
   case of a unique constraint violation into a collection with multiple secondary
   indexes (with at least one of them unique)
 
-* fixed issue #664: ArangoDB installer on windows requires drive c:
+* fixed issue #664: ArangoDB installer on Windows requires drive c:
 
 * partly fixed issue #662: ArangoDB on Windows hanging
 

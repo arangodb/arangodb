@@ -77,7 +77,7 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
       // we found a sort that we can understand
       std::vector<ExecutionNode*> stack;
       for (auto const& dep : sortNode->getDependencies()) {
-        stack.push_back(dep);
+        stack.emplace_back(dep);
       }
 
       int nodesRelyingOnSort = 0;
@@ -110,27 +110,27 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
                 }
 
                 // remove sort that is a direct predecessor of a sort
-                toUnlink.insert(current);
+                toUnlink.emplace(current);
               }
               break;
             }
 
             case SortInformation::otherLessAccurate: {
-              toUnlink.insert(current);
+              toUnlink.emplace(current);
               break;
             }
 
             case SortInformation::ourselvesLessAccurate: {
               // the sort at the start of the pipeline makes the sort at the end
               // superfluous, so we'll remove it
-              toUnlink.insert(n);
+              toUnlink.emplace(n);
               break;
             }
             
             case SortInformation::allEqual: {
               // the sort at the end of the pipeline makes the sort at the start
               // superfluous, so we'll remove it
-              toUnlink.insert(current);
+              toUnlink.emplace(current);
               break;
             }
           }
@@ -168,7 +168,7 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
         }
       
         for (auto const& dep : deps) {
-          stack.push_back(dep);
+          stack.emplace_back(dep);
         }
       }
 
@@ -176,7 +176,7 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
           sortNode->simplify(plan)) {
         // sort node had only constant expressions. it will make no difference if we execute it or not
         // so we can remove it
-        toUnlink.insert(n);
+        toUnlink.emplace(n);
       }
     }
   }
@@ -239,7 +239,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     if (root->isTrue()) {
       // filter is always true
       // remove filter node and merge with following node
-      toUnlink.insert(n);
+      toUnlink.emplace(n);
       modified = true;
     }
     else if (root->isFalse()) {
@@ -708,7 +708,7 @@ class PropagateConstantAttributesHelper {
 
       if (it2 == (*it).second.end()) {
         // first value for the attribute
-        (*it).second.insert(std::make_pair(name, value));
+        (*it).second.emplace(std::make_pair(name, value));
       }
       else {
         auto previous = (*it2).second;
@@ -935,7 +935,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 
     std::vector<ExecutionNode*> stack;
     for (auto const& dep : n->getDependencies()) {
-      stack.push_back(dep);
+      stack.emplace_back(dep);
     }
 
     while (! stack.empty()) {
@@ -968,7 +968,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
       }
       
       for (auto const& dep : deps) {
-        stack.push_back(dep);
+        stack.emplace_back(dep);
       }
 
       // first, unlink the calculation from the plan
@@ -1015,7 +1015,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
 
     std::vector<ExecutionNode*> stack;
     for (auto const& p : n->getParents()) {
-      stack.push_back(p);
+      stack.emplace_back(p);
     }
       
     bool shouldMove = false;
@@ -1069,7 +1069,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
       }
       
       for (auto const& p : parents) {
-        stack.push_back(p);
+        stack.emplace_back(p);
       }
     }
 
@@ -1089,6 +1089,114 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
   }
   
   opt->addPlan(plan, rule, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fuse calculations in the plan
+/// this rule modifies the plan in place
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::fuseCalculationsRule (Optimizer* opt, 
+                                         ExecutionPlan* plan, 
+                                         Optimizer::Rule const* rule) {
+  std::unordered_set<ExecutionNode*> toUnlink;
+  std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::CALCULATION, true);
+ 
+  for (auto const& n : nodes) {
+    auto nn = static_cast<CalculationNode*>(n);
+    if (nn->expression()->canThrow() || 
+        ! nn->expression()->isDeterministic()) {
+      // we will only fuse calculations of expressions that cannot throw and that are deterministic
+      continue;
+    }
+
+    if (toUnlink.find(n) != toUnlink.end()) {
+      // do not process the same node twice
+      continue;
+    }
+     
+    std::unordered_map<Variable const*, ExecutionNode*> toInsert;
+    for (auto&& it : nn->getVariablesUsedHere()) {
+      if (! n->isVarUsedLater(it)) {
+        toInsert.emplace(it, n);
+      }
+    }
+
+    auto const& deps = n->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+    std::vector<ExecutionNode*> stack{ deps[0] };
+      
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      bool handled = false;
+
+      if (current->getType() == EN::CALCULATION) {
+        auto otherExpression = static_cast<CalculationNode const*>(current)->expression();
+
+        if (otherExpression->isDeterministic() && 
+            ! otherExpression->canThrow() &&
+            otherExpression->canRunOnDBServer() == nn->expression()->canRunOnDBServer()) {
+          // found another calculation node
+          auto&& varsSet = current->getVariablesSetHere();
+          if (varsSet.size() == 1) {
+            // check if it is a calculation for a variable that we are looking for
+            auto it = toInsert.find(varsSet[0]);
+
+            if (it != toInsert.end()) {
+              // remove the variable from the list of search variables
+              toInsert.erase(it);
+
+              // replace the variable reference in the original expression with the expression for that variable 
+              auto expression = nn->expression();
+              TRI_ASSERT(expression != nullptr);
+              expression->replaceVariableReference((*it).first, otherExpression->node());
+
+              toUnlink.emplace(current);
+     
+              // insert the calculations' own referenced variables into the list of search variables
+              for (auto&& it2 : current->getVariablesUsedHere()) {
+                if (! n->isVarUsedLater(it2)) {
+                  toInsert.emplace(it2, n);
+                }
+              }
+
+              handled = true;
+            }
+          }
+        }
+      }
+      
+      if (! handled) {
+        // remove all variables from our list that might be used elsewhere
+        for (auto&& it : current->getVariablesUsedHere()) {
+          toInsert.erase(it);
+        }
+      }
+
+      if (toInsert.empty()) {
+        // done
+        break;
+      }
+
+      auto const& deps = current->getDependencies();
+      if (deps.size() != 1) {
+        break;
+      }
+      
+      stack.emplace_back(deps[0]);
+    }
+  }
+        
+  if (! toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule, ! toUnlink.empty());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1208,16 +1316,15 @@ int triagens::aql::splitFiltersRule (Optimizer* opt,
       continue;
     }
 
-    std::vector<AstNode const*> stack;
-    stack.push_back(expression->node());
+    std::vector<AstNode const*> stack{ expression->node() };
 
     while (! stack.empty()) {
       auto current = stack.back();
       stack.pop_back();
     
       if (current->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-        stack.push_back(current->getMember(0));
-        stack.push_back(current->getMember(1));
+        stack.emplace_back(current->getMember(0));
+        stack.emplace_back(current->getMember(1));
       }
       else {
         modified = true;
@@ -1277,7 +1384,7 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
 
     std::vector<ExecutionNode*> stack;
     for (auto const& dep : n->getDependencies()) {
-      stack.push_back(dep);
+      stack.emplace_back(dep);
     }
 
     while (! stack.empty()) {
@@ -1328,7 +1435,7 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
       }
       
       for (auto const& dep : deps) {
-        stack.push_back(dep);
+        stack.emplace_back(dep);
       }
 
       // first, unlink the filter from the plan
@@ -1605,7 +1712,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
       // The variable whose value is calculated here is not used at
       // all further down the pipeline! We remove the whole
       // calculation node, 
-      toUnlink.insert(n);
+      toUnlink.emplace(n);
     }
   }
 
@@ -1946,7 +2053,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _changesPlaces(changesPlaces),
         _changes(changes) {
 
-      _varIds.insert(var->id);
+      _varIds.emplace(var->id);
     };
 
     ~FilterToEnumCollFinder () {
@@ -2490,23 +2597,22 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   // to doing a cartesian product, which we do recursively. The result will
   // be in the todo variable:
 
-  std::function <void(size_t, size_t, std::vector<size_t>&)> doworkrecursive;
+  std::function <void(size_t, size_t, std::vector<size_t>&)> doworkRecursive;
   std::vector<std::vector<size_t>> todo;
   std::vector<size_t> work;
 
-
-  doworkrecursive = [&doworkrecursive, &changes, &todo] 
+  doworkRecursive = [&doworkRecursive, &changes, &todo] 
                     (size_t index, size_t limit, std::vector<size_t>& v) {
     if (index >= limit) {
       todo.push_back(v);  // intentionally copy vector
     }
     else if (changes[index].second.size() < 2) {
-      doworkrecursive(index+1, limit, v);
+      doworkRecursive(index + 1, limit, v);
     }
     else {
       for (size_t l = 0; l < changes[index].second.size(); l++) {
         v[index] = l;
-        doworkrecursive(index+1, limit, v);
+        doworkRecursive(index + 1, limit, v);
       }
     }
   };
@@ -2517,10 +2623,10 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   try {
     work.reserve(i);
     for (size_t l = 0; l < i; l++) {
-      work.push_back(0);
+      work.emplace_back(0);
     }
 
-    doworkrecursive(0, i, work);
+    doworkRecursive(0, i, work);
   }
   catch (...) {
     cleanupChanges();
@@ -2669,7 +2775,7 @@ public:
     // only remove a node once, otherwise this might cause follow up failures
     if (removedNodes.find(sortNodeID) == removedNodes.end()) {
       newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
-      removedNodes.insert(sortNodeID);
+      removedNodes.emplace(sortNodeID);
     }
   }
 };
@@ -3098,8 +3204,8 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
         for (auto const& it : ranges) {
           for (auto it2 : it) {
             if (condition.isFullyCoveredBy(it2)) {
-              toUnlink.insert(setter);
-              toUnlink.insert(n);
+              toUnlink.emplace(setter);
+              toUnlink.emplace(n);
               break;
             }
           } 
@@ -3148,9 +3254,10 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
 /// tuple is back to the beginning.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool nextPermutationTuple (std::vector<size_t>& data,
+static bool NextPermutationTuple (std::vector<size_t>& data,
                                   std::vector<size_t>& starts) {
   auto begin = data.begin();  // a random access iterator
+
   for (size_t i = starts.size(); i-- != 0; ) {
     std::vector<size_t>::iterator from = begin + starts[i];
     std::vector<size_t>::iterator to;
@@ -3164,6 +3271,7 @@ static bool nextPermutationTuple (std::vector<size_t>& data,
       return true;
     }
   }
+
   return false;
 }
 
@@ -3179,7 +3287,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
   std::unordered_set<ExecutionNode*> nodesSet;
   for (auto const& n : nodes) {
     TRI_ASSERT(nodesSet.find(n) == nodesSet.end());
-    nodesSet.insert(n);
+    nodesSet.emplace(n);
   }
 
   std::vector<ExecutionNode*> nodesToPermute;
@@ -3189,7 +3297,6 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
   // We use that the order of the nodes is such that a node B that is among the
   // recursive dependencies of a node A is later in the vector.
   for (auto const& n : nodes) {
-
     if (nodesSet.find(n) != nodesSet.end()) {
       std::vector<ExecutionNode*> nn{ n };
       nodesSet.erase(n);
@@ -3201,8 +3308,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
         if (deps.size() == 0) {
           break;
         }
-        if (deps[0]->getType() != 
-            EN::ENUMERATE_COLLECTION) {
+        if (deps[0]->getType() != EN::ENUMERATE_COLLECTION) {
           break;
         }
         nwalker = deps[0];
@@ -3213,8 +3319,8 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
         // Move it into the permutation tuple:
         starts.push_back(permTuple.size());
         for (auto const& nnn : nn) {
-          nodesToPermute.push_back(nnn);
-          permTuple.push_back(permTuple.size());
+          nodesToPermute.emplace_back(nnn);
+          permTuple.emplace_back(permTuple.size());
         }
       }
     }
@@ -3227,7 +3333,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
   opt->addPlan(plan, rule, false);
 
   if (! starts.empty()) {
-    nextPermutationTuple(permTuple, starts);  // will never return false
+    NextPermutationTuple(permTuple, starts);  // will never return false
 
     do {
       // Clone the plan:
@@ -3238,7 +3344,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
         // old plan that we want to permute:
         std::vector<ExecutionNode*> newNodes;
         for (size_t j = 0; j < nodesToPermute.size(); j++) {
-          newNodes.push_back(newPlan->getNodeById(nodesToPermute[j]->id()));
+          newNodes.emplace_back(newPlan->getNodeById(nodesToPermute[j]->id()));
         }
 
         // Now get going with the permutations:
@@ -3278,7 +3384,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
       }
 
     } 
-    while (nextPermutationTuple(permTuple, starts));
+    while (NextPermutationTuple(permTuple, starts));
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -3846,8 +3952,8 @@ int triagens::aql::removeUnnecessaryRemoteScatterRule (Optimizer* opt,
     }
 
     if (canOptimize) {
-      toUnlink.insert(n);
-      toUnlink.insert(deps[0]);
+      toUnlink.emplace(n);
+      toUnlink.emplace(deps[0]);
     }
   }
 
@@ -3950,7 +4056,7 @@ class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           return false; // continue . . .
         }
         case EN::REMOTE: {
-          _toUnlink.insert(en);
+          _toUnlink.emplace(en);
           _lastNode = en;
           return false; // continue . . .
         }
@@ -3960,7 +4066,7 @@ class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             break;        // abort . . . 
           }
           _scatter = true;
-          _toUnlink.insert(en);
+          _toUnlink.emplace(en);
           _lastNode = en;
           return false; // continue . . .
         }
@@ -3969,7 +4075,7 @@ class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             break;       // abort . . . 
           }
           _gather = true;
-          _toUnlink.insert(en);
+          _toUnlink.emplace(en);
           _lastNode = en;
           return false; // continue . . .
         }
@@ -4144,7 +4250,7 @@ struct CommonNodeFinder {
           // don't return, must consider the other side of the condition
         } 
         else {
-          possibleNodes.push_back(lhs);
+          possibleNodes.emplace_back(lhs);
         }
       }
       if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
@@ -4161,7 +4267,7 @@ struct CommonNodeFinder {
           return false;
         } 
         else {
-          possibleNodes.push_back(rhs);
+          possibleNodes.emplace_back(rhs);
           return true;
         }
       }
@@ -4213,12 +4319,12 @@ struct OrToInConverter {
       auto rhs = node->getMember(1);
 
       if (canConvertExpressionWalker(rhs) && ! canConvertExpressionWalker(lhs)) {
-        valueNodes.push_back(lhs);
+        valueNodes.emplace_back(lhs);
         return true;
       } 
       
       if (canConvertExpressionWalker(lhs) && ! canConvertExpressionWalker(rhs)) {
-        valueNodes.push_back(rhs);
+        valueNodes.emplace_back(rhs);
         return true;
       } 
       // if canConvertExpressionWalker(lhs) and canConvertExpressionWalker(rhs), then one of

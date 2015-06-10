@@ -347,6 +347,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reset flags in case a node is changed drastically
+////////////////////////////////////////////////////////////////////////////////
+
+        inline void clearFlags () {
+          flags = 0;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set a flag for the node
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -550,7 +558,7 @@ namespace triagens {
           if (i >= members._length) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
           }
-          return static_cast<AstNode*>(members._buffer[i]);
+          return getMemberUnchecked(i);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -558,17 +566,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline AstNode* getMemberUnchecked (size_t i) const throw() {
-          return static_cast<AstNode*>(members._buffer[i]);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return an optional member of the node
-////////////////////////////////////////////////////////////////////////////////
-
-        inline AstNode* getOptionalMember (size_t i) const {
-          if (i >= members._length) {
-            return nullptr;
-          }
           return static_cast<AstNode*>(members._buffer[i]);
         }
 

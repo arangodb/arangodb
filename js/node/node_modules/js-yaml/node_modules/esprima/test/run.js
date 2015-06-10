@@ -36,7 +36,6 @@
 
     suites = [
         'runner',
-        'compat',
         'parselibs'
     ];
 

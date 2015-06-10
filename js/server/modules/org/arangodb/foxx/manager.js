@@ -469,11 +469,13 @@ var executeAppScript = function (scriptName, app, argv) {
         }
       });
     } catch (e) {
-      console.errorLines(
-        "Running script '" + readableName + "' not possible for mount '%s':\n%s",
-        app._mount,
-        e.stack || String(e)
-      );
+      if (!(e.cause || e).statusCode) {
+        console.errorLines(
+          "Running script '" + readableName + "' not possible for mount '%s':\n%s",
+          app._mount,
+          (e.cause || e).stack || String(e.cause || e)
+        );
+      }
       throw e;
     }
   }
@@ -1460,6 +1462,21 @@ var requireApp = function(mount) {
   return exportApp(app);
 };
 
+var warmupExports = function () {
+  var cursor = utils.getStorage().all();
+  while (cursor.hasNext()) {
+    var config = cursor.next();
+    try {
+      requireApp(config.mount);
+    } catch(e) {}
+  }
+};
+
+var warmupAllExports = function() {
+  executeGlobalContextFunction("warmupExports");
+  actions.warmupExports();
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Syncs the apps in ArangoDB with the applications stored on disc
 ////////////////////////////////////////////////////////////////////////////////
@@ -1512,6 +1529,8 @@ exports.configuration = configuration;
 exports.dependencies = dependencies;
 exports.requireApp = requireApp;
 exports._resetCache = resetCache;
+exports._warmupExports = warmupExports;
+exports._warmupAllExports = warmupAllExports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Serverside only API

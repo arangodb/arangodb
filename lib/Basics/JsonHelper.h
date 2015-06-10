@@ -352,27 +352,31 @@ namespace triagens {
 /// @brief internal helper for the generic constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        void make (type_e t, size_t size_hint) {
+        void make (type_e t, size_t sizeHint) {
+          // convert to an actual memory zone
+          TRI_memory_zone_t* zone = TRI_MemoryZone(_zone);
+
           switch (t) {
             case Null:
-              _json = TRI_CreateNullJson(_zone);
+              _json = TRI_CreateNullJson(zone);
               break;
             case Bool:
-              _json = TRI_CreateBooleanJson(_zone, true);
+              _json = TRI_CreateBooleanJson(zone, true);
               break;
             case Number:
-              _json = TRI_CreateNumberJson(_zone, 0.0);
+              _json = TRI_CreateNumberJson(zone, 0.0);
               break;
             case String:
-              _json = TRI_CreateStringCopyJson(_zone, "", 0);
+              _json = TRI_CreateStringCopyJson(zone, "", 0);
               break;
             case Array:
-              _json = TRI_CreateArrayJson(_zone, size_hint);
+              _json = TRI_CreateArrayJson(zone, sizeHint);
               break;
             case Object:
-              _json = TRI_CreateObjectJson(_zone, 2 * size_hint);
+              _json = TRI_CreateObjectJson(zone, 2 * sizeHint);
               break;
           }
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -389,15 +393,21 @@ namespace triagens {
       public:
 
         explicit Json ()
-          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(AUTOFREE) {
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)), 
+            _autofree(AUTOFREE) {
         }
          
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generic constructor for a type_e
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (type_e t, autofree_e autofree = AUTOFREE) 
-          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
+        explicit Json (type_e t, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)), 
+            _autofree(autofree) {
+
           make(t, 0);
         }
 
@@ -405,8 +415,13 @@ namespace triagens {
 /// @brief generic constructor for a memzone and a type_e
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, type_e t, autofree_e autofree = AUTOFREE)
-          : _zone(z), _json(nullptr), _autofree(autofree) {
+        explicit Json (TRI_memory_zone_t* z, 
+                       type_e t, 
+                       autofree_e autofree = AUTOFREE)
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
+
           make(t, 0);
         }
           
@@ -414,28 +429,42 @@ namespace triagens {
 /// @brief generic constructor for a type_e with a size hint
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (type_e t, size_t size_hint, autofree_e autofree = AUTOFREE)
-          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
-          make(t, size_hint);
+        explicit Json (type_e t, 
+                       size_t sizeHint, 
+                       autofree_e autofree = AUTOFREE)
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)), 
+            _autofree(autofree) {
+
+          make(t, sizeHint);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generic constructor for a memzone, a type_e and a size hint
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, type_e t, size_t size_hint, 
-              autofree_e autofree = AUTOFREE)
-          : _zone(z), _json(nullptr), _autofree(autofree) {
-          make(t, size_hint);
+        explicit Json (TRI_memory_zone_t* z, 
+                       type_e t, 
+                       size_t sizeHint, 
+                       autofree_e autofree = AUTOFREE)
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
+
+          make(t, sizeHint);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (bool x, autofree_e autofree = AUTOFREE) 
-          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateBooleanJson(_zone, x);
+        explicit Json (bool x, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, x);
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -446,9 +475,14 @@ namespace triagens {
 /// @brief constructor for a memzone and a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, bool x, autofree_e autofree = AUTOFREE) 
-          : _zone(z), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateBooleanJson(_zone, x);
+        explicit Json (TRI_memory_zone_t* z, 
+                       bool x, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateBooleanJson(z, x);
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -459,9 +493,13 @@ namespace triagens {
 /// @brief constructor for an int32_t
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (int32_t x, autofree_e autofree = AUTOFREE) 
-          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateNumberJson(_zone, static_cast<double>(x));
+        explicit Json (int32_t x, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(x));
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -472,9 +510,14 @@ namespace triagens {
 /// @brief constructor for a memzone and an int32_t
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, int32_t x, autofree_e autofree = AUTOFREE) 
-          : _zone(z), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateNumberJson(_zone, static_cast<double>(x));
+        explicit Json (TRI_memory_zone_t* z, 
+                       int32_t x, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateNumberJson(z, static_cast<double>(x));
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -485,9 +528,13 @@ namespace triagens {
 /// @brief constructor for a double
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (double x, autofree_e autofree = AUTOFREE) 
-          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateNumberJson(_zone, x);
+        explicit Json (double x, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, x);
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -498,9 +545,13 @@ namespace triagens {
 /// @brief constructor for a memzone and a double
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, double x, autofree_e autofree = AUTOFREE) 
-          : _zone(z), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateNumberJson(_zone, x);
+        explicit Json (TRI_memory_zone_t* z, 
+                       double x, autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateNumberJson(z, x);
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -511,9 +562,13 @@ namespace triagens {
 /// @brief constructor for a char const*
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (char const* x, autofree_e autofree = AUTOFREE) 
-          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateStringCopyJson(_zone, x, strlen(x));
+        explicit Json (char const* x, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, x, strlen(x));
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -524,9 +579,14 @@ namespace triagens {
 /// @brief constructor for a char const*
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (char const* x, size_t length, autofree_e autofree = AUTOFREE) 
-          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateStringCopyJson(_zone, x, length);
+        explicit Json (char const* x, 
+                       size_t length, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, x, length);
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -537,9 +597,14 @@ namespace triagens {
 /// @brief constructor for a memzone and a char const*
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, char const* x, autofree_e autofree = AUTOFREE) 
-          : _zone(z), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateStringCopyJson(_zone, x, strlen(x));
+        explicit Json (TRI_memory_zone_t* z, 
+                       char const* x, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateStringCopyJson(z, x, strlen(x));
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -550,9 +615,15 @@ namespace triagens {
 /// @brief constructor for a memzone and a char const*
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, char const* x, size_t length, autofree_e autofree = AUTOFREE) 
-          : _zone(z), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateStringCopyJson(_zone, x, length);
+        explicit Json (TRI_memory_zone_t* z, 
+                       char const* x, 
+                       size_t length, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateStringCopyJson(z, x, length);
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -563,9 +634,13 @@ namespace triagens {
 /// @brief constructor for a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (std::string const& x, autofree_e autofree = AUTOFREE) 
-          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateStringCopyJson(_zone, x.c_str(), x.size());
+        explicit Json (std::string const& x, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, x.c_str(), x.size());
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -576,9 +651,14 @@ namespace triagens {
 /// @brief constructor for a memzone and a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, std::string const& x, autofree_e autofree = AUTOFREE) 
-          : _zone(z), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateStringCopyJson(_zone, x.c_str(), x.size());
+        explicit Json (TRI_memory_zone_t* z, 
+                       std::string const& x, 
+                       autofree_e autofree = AUTOFREE) 
+          : _json(nullptr), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
+
+          _json = TRI_CreateStringCopyJson(z, x.c_str(), x.size());
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -589,16 +669,24 @@ namespace triagens {
 /// @brief constructor for a memzone and a TRI_json_t*
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, TRI_json_t* j, autofree_e autofree = AUTOFREE)
-          : _zone(z), _json(j), _autofree(autofree) {
+        explicit Json (TRI_memory_zone_t* z, 
+                       TRI_json_t* j, 
+                       autofree_e autofree = AUTOFREE)
+          : _json(j), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for a memzone and a const TRI_json_t*
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, TRI_json_t const* j, autofree_e autofree = NOFREE)
-          : _zone(z), _json(const_cast<TRI_json_t*>(j)), _autofree(autofree) {
+        explicit Json (TRI_memory_zone_t* z, 
+                       TRI_json_t const* j, 
+                       autofree_e autofree = NOFREE)
+          : _json(const_cast<TRI_json_t*>(j)), 
+            _zone(TRI_MemoryZoneId(z)), 
+            _autofree(autofree) {
         }
 
         explicit Json (TRI_json_t* j) = delete;
@@ -611,7 +699,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Json (Json& j)
-          : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
+          : _json(j.steal()), 
+            _zone(j._zone), 
+            _autofree(j._autofree) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -621,7 +711,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Json (Json&& j)
-          : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
+          : _json(j.steal()), 
+            _zone(j._zone), 
+            _autofree(j._autofree) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -639,7 +731,7 @@ namespace triagens {
 
         ~Json () throw() {
           if (_json != nullptr && _autofree == AUTOFREE) {
-            TRI_FreeJson(_zone, _json);
+            TRI_FreeJson(TRI_MemoryZone(_zone), _json);
           }
         }
 
@@ -678,7 +770,7 @@ namespace triagens {
 
         Json& operator= (Json& j) {
           if (_json != nullptr && _autofree == AUTOFREE) {
-            TRI_FreeJson(_zone, _json);
+            TRI_FreeJson(TRI_MemoryZone(_zone), _json);
           }
           _zone = j._zone;
           _autofree = j._autofree;
@@ -692,7 +784,7 @@ namespace triagens {
 
         Json& operator= (Json&& j) {
           if (_json != nullptr && _autofree == AUTOFREE) {
-            TRI_FreeJson(_zone, _json);
+            TRI_FreeJson(TRI_MemoryZone(_zone), _json);
           }
           _zone = j._zone;
           _autofree = j._autofree;
@@ -709,7 +801,7 @@ namespace triagens {
           Json c;
           c._zone = _zone;
           if (_json != nullptr) {
-            c._json = TRI_CopyJson(_zone, _json);
+            c._json = TRI_CopyJson(TRI_MemoryZone(_zone), _json);
           }
           else {
             c._json = nullptr;
@@ -730,7 +822,7 @@ namespace triagens {
           if (! TRI_IsObjectJson(_json)) {
             throw JsonException("Json is no object");
           }
-          TRI_Insert3ObjectJson(_zone, _json, name, sub.steal());
+          TRI_Insert3ObjectJson(TRI_MemoryZone(_zone), _json, name, sub.steal());
           return *this;
         }
         
@@ -738,7 +830,7 @@ namespace triagens {
           if (! TRI_IsObjectJson(_json)) {
             throw JsonException("Json is no object");
           }
-          TRI_Insert3ObjectJson(_zone, _json, name.c_str(), sub.steal());
+          TRI_Insert3ObjectJson(TRI_MemoryZone(_zone), _json, name.c_str(), sub.steal());
           return *this;
         }
 
@@ -752,7 +844,7 @@ namespace triagens {
           if (! TRI_IsObjectJson(_json)) {
             throw JsonException("Json is no object");
           }
-          TRI_Insert3ObjectJson(_zone, _json, name, sub);
+          TRI_Insert3ObjectJson(TRI_MemoryZone(_zone), _json, name, sub);
           return *this;
         }
 
@@ -769,7 +861,7 @@ namespace triagens {
           if (! TRI_IsObjectJson(_json)) {
             throw JsonException("Json is no object");
           }
-          return Json(_zone, TRI_LookupObjectJson(_json, name), NOFREE);
+          return Json(TRI_MemoryZone(_zone), TRI_LookupObjectJson(_json, name), NOFREE);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -811,7 +903,7 @@ namespace triagens {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
           }
-          TRI_PushBack3ArrayJson(_zone, _json, sub.steal());
+          TRI_PushBack3ArrayJson(TRI_MemoryZone(_zone), _json, sub.steal());
           return *this;
         }
 
@@ -826,7 +918,7 @@ namespace triagens {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
           }
-          TRI_PushBack3ArrayJson(_zone, _json, sub);
+          TRI_PushBack3ArrayJson(TRI_MemoryZone(_zone), _json, sub);
           return *this;
         }
 
@@ -899,24 +991,24 @@ namespace triagens {
           if (pos >= 0) {
             j = TRI_LookupArrayJson(_json, pos);
             if (j != nullptr) {
-              return Json(_zone, j, NOFREE);
+              return Json(TRI_MemoryZone(_zone), j, NOFREE);
             }
             else {
-              return Json(_zone, Json::Null, AUTOFREE);
+              return Json(TRI_MemoryZone(_zone), Json::Null, AUTOFREE);
             }
           }
           else {
             size_t pos2 = -pos;
             size_t len = TRI_LengthVector(&_json->_value._objects);
             if (pos2 > len) {
-              return Json(_zone, Json::Null, AUTOFREE);
+              return Json(TRI_MemoryZone(_zone), Json::Null, AUTOFREE);
             }
             j = TRI_LookupArrayJson(_json, len-pos2);
             if (j != nullptr) {
-              return Json(_zone, j, NOFREE);
+              return Json(TRI_MemoryZone(_zone), j, NOFREE);
             }
             else {
-              return Json(_zone, Json::Null, AUTOFREE);
+              return Json(TRI_MemoryZone(_zone), Json::Null, AUTOFREE);
             }
           }
         }
@@ -927,7 +1019,7 @@ namespace triagens {
 
         void destroy () {
           if (_json != nullptr) {
-            TRI_FreeJson(_zone, _json);
+            TRI_FreeJson(TRI_MemoryZone(_zone), _json);
             _json = nullptr;
           }
         }
@@ -1045,16 +1137,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief store the memory zone used
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_memory_zone_t* _zone;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual TRI_json_t*
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t* _json;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the memory zone used
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_memory_zone_id_t _zone;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flag, whether we automatically free the TRI_json_t*.
@@ -1065,6 +1157,7 @@ namespace triagens {
 
   }
 }
+
 
 #endif
 

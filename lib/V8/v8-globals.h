@@ -59,6 +59,30 @@ static const uint32_t V8DataSlot = 0;
 #define ISOLATE v8::Isolate* isolate = v8::Isolate::GetCurrent()
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief macro to initiate a try-catch sequence for V8 callbacks
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_TRY_CATCH_BEGIN(isolateVar)                                    \
+  auto isolateVar = args.GetIsolate();                                        \
+  try {  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief macro to terminate a try-catch sequence for V8 callbacks
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_TRY_CATCH_END                                                  \
+  }                                                                           \
+  catch (triagens::basics::Exception const& ex) {                             \
+    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());                     \
+  }                                                                           \
+  catch (std::exception const& ex) {                                          \
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());            \
+  }                                                                           \
+  catch (...) {                                                               \
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);                               \
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for creating a v8 symbol for the specified string
 ///   implicites isolate available.
 /// @param name local string constant to source
@@ -999,7 +1023,7 @@ typedef struct TRI_v8_global_s {
   void* _transactionContext;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query registry
+/// @brief query registry - note: this shouldn't be changed once set
 ////////////////////////////////////////////////////////////////////////////////
 
   void* _queryRegistry;

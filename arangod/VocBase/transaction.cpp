@@ -814,7 +814,7 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
     trx->_type = TRI_TRANSACTION_WRITE;
   }
 
-  TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
+  TRI_InitVectorPointer(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
 
   return trx;
 }

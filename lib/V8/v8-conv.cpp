@@ -1758,7 +1758,7 @@ static int ObjectToJson (v8::Isolate* isolate,
 
     for (uint32_t i = 0; i < n; ++i) {
       // get address of next element
-      TRI_json_t* next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
+      auto next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
       TRI_ASSERT_EXPENSIVE(next != nullptr);
 

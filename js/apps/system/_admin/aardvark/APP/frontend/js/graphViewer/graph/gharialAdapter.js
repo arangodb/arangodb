@@ -244,7 +244,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
     absConfig.prioList = config.prioList;
   }
   absAdapter = new AbstractAdapter(nodes, edges, this, viewer, absConfig);
-
   parseConfig(config);
 
   queries.getAllGraphs = "FOR g IN _graphs"
@@ -267,12 +266,24 @@ function GharialAdapter(nodes, edges, viewer, config) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
 
+  //origin nodes to display, real display may be more (depending on their relations)
+  self.NODES_TO_DISPLAY = 30;
+  self.TOTAL_NODES = 0;
+
+  self.definedNodes = [];
+  self.randomNodes = [];
+
   self.loadRandomNode = function(callback) {
     var collections = _.shuffle(self.getNodeCollections()), i;
     for (i = 0; i < collections.length; ++i) {
-      var list = getNRandom(1, collections[i]);
-      
+
+
+      var list = getNRandom(10, collections[i]);
       if (list.length > 0) {
+        var counter = 0;
+        _.each(list, function(node) {
+          self.randomNodes.push(node);
+        });
         self.loadInitialNode(list[0]._id, callback);
         return;
       }
@@ -287,12 +298,68 @@ function GharialAdapter(nodes, edges, viewer, config) {
     self.loadNode(nodeId, insertInitialCallback(callback));
   };
 
+  self.getRandomNodes = function () {
+    var nodeArray = [];
+    var nodes = [];
+
+    if (self.definedNodes.length > 0) {
+      _.each(self.definedNodes, function(node) {
+        nodes.push(node);
+      });
+    }
+    if (self.randomNodes.length > 0) {
+      _.each(self.randomNodes, function(node) {
+        nodes.push(node);
+      });
+    }
+
+    var counter = 0;
+    _.each(nodes, function(node) {
+      if (counter < self.NODES_TO_DISPLAY) {
+        nodeArray.push({
+          vertex: node,
+          path: {
+            edges: [],
+            vertices: [node]
+          }
+        });
+        counter++;
+      }
+    });
+
+  return nodeArray;
+  };
+
   self.loadNodeFromTreeById = function(nodeId, callback) {
+
     sendQuery(queries.traversal, {
       example: nodeId
     }, function(res) {
-      parseResultOfTraversal(res, callback);
+
+      var nodes = [];
+      nodes = self.getRandomNodes();
+
+      if (nodes.length > 0) {
+        _.each(nodes, function(node) {
+          sendQuery(queries.traversal, {
+            example: node.vertex._id
+          }, function(res2) {
+            _.each(res2[0][0], function(obj) {
+              res[0][0].push(obj);
+            });
+            parseResultOfTraversal(res, callback);
+          });
+        });
+      }
+      else {
+        sendQuery(queries.traversal, {
+          example: nodeId
+        }, function(res) {
+          parseResultOfTraversal(res, callback);
+        });
+      }
     });
+
   };
 
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
@@ -303,6 +370,38 @@ function GharialAdapter(nodes, edges, viewer, config) {
     }, function(res) {
       parseResultOfTraversal(res, callback);
     });
+  };
+
+  self.getNodeExampleFromTreeByAttributeValue = function(attribute, value, callback) {
+    var example = {};
+
+    example[attribute] = value;
+    sendQuery(queries.traversal, {
+      example: example
+    }, function(res) {
+
+      if (res[0][0] === undefined) {
+        throw "No suitable nodes have been found.";
+      }
+      else {
+        _.each(res[0][0], function(node) {
+          if (node.vertex[attribute] === value) {
+            var nodeToAdd = {};
+            nodeToAdd._key = node.vertex._key;
+            nodeToAdd._id = node.vertex._id;
+            nodeToAdd._rev = node.vertex._rev;
+            absAdapter.insertNode(nodeToAdd);
+            callback(nodeToAdd);
+          }
+
+        });
+      }
+    });
+
+  };
+
+  self.loadAdditionalNodeByAttributeValue = function(attribute, value, callback) {
+    self.getNodeExampleFromTreeByAttributeValue(attribute, value, callback);
   };
 
   self.loadInitialNodeByAttributeValue = function(attribute, value, callback) {
@@ -492,7 +591,19 @@ function GharialAdapter(nodes, edges, viewer, config) {
       var collections = _.shuffle(self.getNodeCollections()), i;
       for (i = 0; i < collections.length; ++i) {
         var l = getNRandom(10, collections[i]);
-      
+
+        //count vertices of graph
+        $.ajax({
+          cache: false,
+          type: 'GET',
+          async: false,
+          url: "/_api/collection/" + encodeURIComponent(collections[i]) + "/count",
+          contentType: "application/json",
+          success: function(data) {
+            self.TOTAL_NODES = self.TOTAL_NODES + data.count;
+          }
+        });
+
         if (l.length > 0) {
           ret = ret.concat(_.flatten(
            _.map(l, function(o) {

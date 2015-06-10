@@ -730,7 +730,6 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
       return res;
     }
 
-    uint32_t j = 0;
     QueryResultV8 result(TRI_ERROR_NO_ERROR);
     result.result = v8::Array::New(isolate);
     triagens::basics::Json stats;
@@ -741,6 +740,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
     AqlItemBlock* value = nullptr;
 
     try {
+      uint32_t j = 0;
       while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
         auto doc = value->getDocumentCollection(resultRegister);
 
@@ -809,6 +809,14 @@ QueryResult Query::parse () {
   catch (triagens::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   }
+  catch (std::bad_alloc const&) {
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+  }
+  catch (std::exception const& ex) {
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what());
+  }
   catch (...) {
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
@@ -868,7 +876,7 @@ QueryResult Query::explain () {
       triagens::basics::Json out(Json::Array);
 
       auto plans = opt.getPlans();
-      for (auto it : plans) {
+      for (auto& it : plans) {
         TRI_ASSERT(it != nullptr);
 
         it->findVarUsage();

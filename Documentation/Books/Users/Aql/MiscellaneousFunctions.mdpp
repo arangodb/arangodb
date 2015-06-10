@@ -50,7 +50,7 @@ function categories:
       DOCUMENT([ "users/john", "users/amy" ])
 
 - *SKIPLIST(collection, condition, skip, limit)*: Return all documents 
-  from a [skiplist index](../Glossary/README.html#skiplist_index) on collection *collection* that match the specified *condition*.
+  from a [skiplist index](../Glossary/index.html#skiplist_index) on collection *collection* that match the specified *condition*.
   This is a shortcut method to use a skiplist index for retrieving specific documents in 
   indexed order. The skiplist index supports equality and less than/greater than queries. The
   *skip* and *limit* parameters are optional but can be specified to further limit the

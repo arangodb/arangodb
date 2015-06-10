@@ -52,10 +52,19 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     edgeShaperUI,
     adapterUI,
     slider,
-    searchAttrField,
     searchAttrExampleList,
+    searchAttrExampleList2,
     //mousePointerBox = document.createElement("div"),
     svg,
+
+    makeDisplayInformationDiv = function() {
+      if (graphViewer.adapter.NODES_TO_DISPLAY < graphViewer.adapter.TOTAL_NODES) {
+        $('.headerBar').append(
+          '<div class="infoField">Graph too big. A random section is rendered.<div class="fa fa-info-circle"></div></div>'
+        );
+        $('.infoField .fa-info-circle').attr("title", "You can add additional indices through the context-menu.").tooltip();
+      }
+    },
 
     makeFilterDiv = function() {
       var
@@ -68,6 +77,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         searchValueField = document.createElement("input"),
         searchStart = document.createElement("img"),
         equalsField = document.createElement("span"),
+        searchAttrField,
 
         showSpinner = function() {
           $(background).css("cursor", "progress");
@@ -117,7 +127,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
       searchAttrDiv.className = "pull-left input-append searchByAttribute";
       searchAttrField.id = "attribute";
-      //searchAttrField.className = "input";
       searchAttrField.type = "text";
       searchAttrField.placeholder = "Attribute name";
       searchAttrExampleToggle.id = "attribute_example_toggle";
@@ -161,6 +170,109 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       return div;
     },
 
+    makeNodeDiv = function () {
+      var
+        div2 = document.createElement("div"),
+        innerDiv2 = document.createElement("div"),
+        queryLine2 = document.createElement("div"),
+        searchAttrDiv2 = document.createElement("div"),
+        searchAttrExampleToggle2 = document.createElement("button"),
+        searchAttrExampleCaret2 = document.createElement("span"),
+        searchValueField2 = document.createElement("input"),
+        searchStart2 = document.createElement("img"),
+        equalsField2 = document.createElement("span"),
+        searchAttrField2,
+
+        showSpinner = function() {
+          $(background).css("cursor", "progress");
+        },
+
+        hideSpinner = function() {
+          $(background).css("cursor", "");
+        },
+
+        alertError = function(msg) {
+          window.alert(msg);
+        },
+
+        resultCB2 = function(res) {
+          hideSpinner();
+          if (res && res.errorCode && res.errorCode === 404) {
+            alertError("Sorry could not find a matching node.");
+            return;
+          }
+          return;
+        },
+
+        addCustomNode = function() {
+          showSpinner();
+          if (searchAttrField2.value !== "") {
+            graphViewer.loadGraphWithAdditionalNode(
+              searchAttrField2.value,
+              searchValueField2.value,
+              resultCB2
+            );
+          }
+        };
+
+      div2.id = "nodeDropdown";
+      div2.className = "headerDropdown";
+      innerDiv2.className = "dropdownInner";
+      queryLine2.className = "queryline";
+
+      searchAttrField2 = document.createElement("input");
+      searchAttrExampleList2 = document.createElement("ul");
+
+      searchAttrDiv2.className = "pull-left input-append searchByAttribute";
+      searchAttrField2.id = "attribute";
+      searchAttrField2.type = "text";
+      searchAttrField2.placeholder = "Attribute name";
+      searchAttrExampleToggle2.id = "attribute_example_toggle2";
+      searchAttrExampleToggle2.className = "button-neutral gv_example_toggle";
+      searchAttrExampleCaret2.className = "caret gv_caret";
+      searchAttrExampleList2.className = "gv-dropdown-menu";
+      searchValueField2.id = "value";
+      searchValueField2.className = "searchInput gv_searchInput";
+      //searchValueField.className = "filterValue";
+      searchValueField2.type = "text";
+      searchValueField2.placeholder = "Attribute value";
+      searchStart2.id = "loadnode";
+      searchStart2.className = "gv-search-submit-icon";
+      equalsField2.className = "searchEqualsLabel";
+      equalsField2.appendChild(document.createTextNode("=="));
+
+      innerDiv2.appendChild(queryLine2);
+      queryLine2.appendChild(searchAttrDiv2);
+
+      searchAttrDiv2.appendChild(searchAttrField2);
+      searchAttrDiv2.appendChild(searchAttrExampleToggle2);
+      searchAttrDiv2.appendChild(searchAttrExampleList2);
+      searchAttrExampleToggle2.appendChild(searchAttrExampleCaret2);
+      queryLine2.appendChild(equalsField2);
+      queryLine2.appendChild(searchValueField2);
+      queryLine2.appendChild(searchStart2);
+
+      updateAttributeExamples(searchAttrExampleList2);
+      //searchAttrExampleList2.onclick = function() {
+      //  updateAttributeExamples(searchAttrExampleList2);
+      //};
+
+      searchStart2.onclick = addCustomNode;
+      $(searchValueField2).keypress(function(e) {
+        if (e.keyCode === 13 || e.which === 13) {
+          addCustomNode();
+          return false;
+        }
+      });
+
+      searchAttrExampleToggle2.onclick = function() {
+        $(searchAttrExampleList2).slideToggle(200);
+      };
+
+      div2.appendChild(innerDiv2);
+      return div2;
+    },
+
     makeConfigureDiv = function () {
       var div, innerDiv, nodeList, nodeHeader, colList, colHeader,
           edgeList, edgeHeader;
@@ -196,14 +308,19 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       };
     },
 
-    makeConfigure = function (div, idConf, idFilter) {
-      var ul, liConf, aConf, spanConf, liFilter, aFilter, spanFilter, lists;
+    makeConfigure = function (div, idConf, idFilter, idNode) {
+      var ul, lists,
+      liConf, aConf, spanConf,
+      liNode, aNode, spanNode,
+      liFilter, aFilter, spanFilter;
+
       div.className = "headerButtonBar";
       ul = document.createElement("ul");
       ul.className = "headerButtonList";
 
       div.appendChild(ul);
 
+      //CONF
       liConf = document.createElement("li");
       liConf.className = "enabled";
       aConf = document.createElement("a");
@@ -217,6 +334,21 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       liConf.appendChild(aConf);
       aConf.appendChild(spanConf);
 
+      //NODE
+      liNode = document.createElement("li");
+      liNode.className = "enabled";
+      aNode = document.createElement("a");
+      aNode.id = idNode;
+      aNode.className = "headerButton";
+      spanNode = document.createElement("span");
+      spanNode.className = "fa fa-search-plus";
+      $(spanNode).attr("title", "Show additional nodes");
+
+      ul.appendChild(liNode);
+      liNode.appendChild(aNode);
+      aNode.appendChild(spanNode);
+
+      //FILTER
       liFilter = document.createElement("li");
       liFilter.className = "enabled";
       aFilter = document.createElement("a");
@@ -229,19 +361,35 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       ul.appendChild(liFilter);
       liFilter.appendChild(aFilter);
       aFilter.appendChild(spanFilter);
+
       lists = makeConfigureDiv();
       lists.filter = makeFilterDiv();
+      lists.node = makeNodeDiv();
+
       aConf.onclick = function () {
         $('#filterdropdown').removeClass('activated');
+        $('#nodedropdown').removeClass('activated');
         $('#configuredropdown').toggleClass('activated');
         $(lists.configure).slideToggle(200);
         $(lists.filter).hide();
+        $(lists.node).hide();
+      };
+
+      aNode.onclick = function () {
+        $('#filterdropdown').removeClass('activated');
+        $('#configuredropdown').removeClass('activated');
+        $('#nodedropdown').toggleClass('activated');
+        $(lists.node).slideToggle(200);
+        $(lists.filter).hide();
+        $(lists.configure).hide();
       };
 
       aFilter.onclick = function () {
         $('#configuredropdown').removeClass('activated');
+        $('#nodedropdown').removeClass('activated');
         $('#filterdropdown').toggleClass('activated');
         $(lists.filter).slideToggle(200);
+        $(lists.node).hide();
         $(lists.configure).hide();
       };
 
@@ -330,40 +478,52 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       $("#control_event_expand").click();
     },
 
-    updateAttributeExamples = function() {
-      searchAttrExampleList.innerHTML = "";
+    updateAttributeExamples = function(e) {
+      var element;
+
+      if (e) {
+        element = $(e);
+      }
+      else {
+        element = $(searchAttrExampleList);
+      }
+
+      element.innerHTML = "";
       var throbber = document.createElement("li"),
         throbberImg = document.createElement("img");
-      throbber.appendChild(throbberImg);
+      $(throbber).append(throbberImg);
       throbberImg.className = "gv-throbber";
-      searchAttrExampleList.appendChild(throbber);
+      element.append(throbber);
       graphViewer.adapter.getAttributeExamples(function(res) {
-        searchAttrExampleList.innerHTML = "";
+        $(element).html('');
         _.each(res, function(r) {
           var entry = document.createElement("li"),
             link = document.createElement("a"),
             lbl = document.createElement("label");
-          entry.appendChild(link);
-          link.appendChild(lbl);
-          lbl.appendChild(document.createTextNode(r));
+          $(entry).append(link);
+          $(link).append(lbl);
+          $(lbl).append(document.createTextNode(r));
           lbl.className = "gv_dropdown_label";
-          searchAttrExampleList.appendChild(entry);
+          element.append(entry);
           entry.onclick = function() {
-            searchAttrField.value = r;
-            $(searchAttrExampleList).slideToggle(200);
+            element.value = r;
+            $(element).parent().find('input').val(r);
+            $(element).slideToggle(200);
           };
         });
       });
     },
 
     createMenu = function() {
+
       var transparentHeader = document.createElement("div"),
         buttons = document.createElement("div"),
         title = document.createElement("a"),
         configureLists = makeConfigure(
           buttons,
           "configuredropdown",
-          "filterdropdown"
+          "filterdropdown",
+          "nodedropdown"
         );
 
       nodeShaperUI = new NodeShaperControls(
@@ -398,6 +558,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       menubar.appendChild(transparentHeader);
       menubar.appendChild(configureLists.configure);
       menubar.appendChild(configureLists.filter);
+      menubar.appendChild(configureLists.node);
       transparentHeader.appendChild(buttons);
       transparentHeader.appendChild(title);
 
@@ -445,6 +606,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   createZoomUIWidget();
   createMenu();
   createColourList();
+  makeDisplayInformationDiv();
 
   if (startNode) {
     if (typeof startNode === "string") {

@@ -338,7 +338,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _ignoreDatafileErrors(false),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
-    _foxxQueuesSystemOnly(true),
+    _foxxQueues(true),
+    _foxxQueuesWarmupExports(true),
     _foxxQueuesPollInterval(1.0),
     _server(nullptr),
     _queryRegistry(nullptr),
@@ -616,8 +617,9 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
+    ("server.foxx-queues", &_foxxQueues, "enable Foxx queues")
+    ("server.foxx-queues-warmup-exports", &_foxxQueuesWarmupExports, "enable pre-loading of Foxx exports for Foxx queues")
     ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
-    ("server.foxx-queues-system-only", &_foxxQueuesSystemOnly, "run Foxx queues in _system database only")
     ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")
   ;
 
@@ -1019,8 +1021,8 @@ int ArangoServer::startupServer () {
     switch (_threadAffinity) {
       case 1:
         if (n < ns + nd) {
-          ns = round(1.0 * n * ns / (ns + nd));
-          nd = round(1.0 * n * nd / (ns + nd));
+          ns = static_cast<size_t>(round(1.0 * n * ns / (ns + nd)));
+          nd = static_cast<size_t>(round(1.0 * n * nd / (ns + nd)));
 
           if (ns < 1) { ns = 1; }
           if (nd < 1) { nd = 1; }
@@ -1353,19 +1355,34 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
       }
       else {
         v8::Handle<v8::Value> args[] = { params };
-        v8::Handle<v8::Value> result = main->Call(main, 1, args);
 
-        if (tryCatch.HasCaught()) {
-          if (tryCatch.CanContinue()) {
-            TRI_LogV8Exception(isolate, &tryCatch);
+        try {
+          v8::Handle<v8::Value> result = main->Call(main, 1, args);
+
+          if (tryCatch.HasCaught()) {
+            if (tryCatch.CanContinue()) {
+              TRI_LogV8Exception(isolate, &tryCatch);
+            }
+            else {
+              // will stop, so need for v8g->_canceled = true;
+              TRI_ASSERT(! ok);
+            }
           }
           else {
-            // will stop, so need for v8g->_canceled = true;
-            TRI_ASSERT(! ok);
+            ok = TRI_ObjectToDouble(result) == 0;
           }
         }
-        else {
-          ok = TRI_ObjectToDouble(result) == 0;
+        catch (triagens::basics::Exception const& ex) {
+          LOG_ERROR("caught exception %s: %s", TRI_errno_string(ex.code()), ex.what());
+          ok = false;
+        }
+        catch (std::bad_alloc const&) {
+          LOG_ERROR("caught exception %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+          ok = false;
+        }
+        catch (...) {
+          LOG_ERROR("caught unknown exception");
+          ok = false;
         }
       }
     }

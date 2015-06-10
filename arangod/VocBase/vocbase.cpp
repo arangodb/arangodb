@@ -1475,10 +1475,10 @@ void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyVectorPointer(&vocbase->_collections);
   TRI_DestroyVectorPointer(&vocbase->_deadCollections);
 
-  TRI_DestroySpin(&vocbase->_usage._lock);
-  
   delete static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
   delete static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  
+  TRI_DestroySpin(&vocbase->_usage._lock);
 
   // free name and path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
@@ -2454,10 +2454,8 @@ bool TRI_DropVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsUsedVocBase (TRI_vocbase_t* vocbase) {
-  bool result;
-
   TRI_LockSpin(&vocbase->_usage._lock);
-  result = (vocbase->_usage._refCount > 0);
+  bool result = (vocbase->_usage._refCount > 0);
   TRI_UnlockSpin(&vocbase->_usage._lock);
 
   return result;
@@ -2468,10 +2466,8 @@ bool TRI_IsUsedVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CanRemoveVocBase (TRI_vocbase_t* vocbase) {
-  bool result;
-
   TRI_LockSpin(&vocbase->_usage._lock);
-  result = (vocbase->_usage._isDeleted && vocbase->_usage._refCount == 0);
+  bool result = (vocbase->_usage._isDeleted && vocbase->_usage._refCount == 0);
   TRI_UnlockSpin(&vocbase->_usage._lock);
 
   return result;

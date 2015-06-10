@@ -52,6 +52,7 @@ AttributeAccessor::AttributeAccessor (std::vector<char const*> const& attributeP
     _combinedName(),
     _variable(variable),
     _buffer(TRI_UNKNOWN_MEM_ZONE),
+    _shaper(nullptr),
     _pid(0),
     _nameCache({ "", 0 }),
     _attributeType(ATTRIBUTE_TYPE_REGULAR) {
@@ -78,11 +79,13 @@ AttributeAccessor::AttributeAccessor (std::vector<char const*> const& attributeP
     }
   }
 
-  for (auto const& it : _attributeParts) {
-    if (! _combinedName.empty()) {
-      _combinedName.push_back('.');
+  if (_attributeType == ATTRIBUTE_TYPE_REGULAR) {
+    for (auto const& it : _attributeParts) {
+      if (! _combinedName.empty()) {
+        _combinedName.push_back('.');
+      }
+      _combinedName.append(it);
     }
-    _combinedName.append(it);
   }
 }
 
@@ -117,7 +120,7 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
       if (result.isShaped()) {
         switch (_attributeType) {
           case ATTRIBUTE_TYPE_KEY: {
-            return extractKey(result);
+            return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(result._marker)));
           }
 
           case ATTRIBUTE_TYPE_REV: {
@@ -186,16 +189,6 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the _key attribute from a ShapedJson marker
-////////////////////////////////////////////////////////////////////////////////
-      
-AqlValue AttributeAccessor::extractKey (AqlValue const& src) {
-  auto json = new Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(src._marker));
-
-  return AqlValue(json);
-}
-                                          
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _rev attribute from a ShapedJson marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -223,6 +216,7 @@ AqlValue AttributeAccessor::extractId (AqlValue const& src,
   _buffer.appendText(_nameCache.value);
   _buffer.appendChar('/');
   _buffer.appendText(TRI_EXTRACT_MARKER_KEY(src._marker));
+
   auto json = new Json(TRI_UNKNOWN_MEM_ZONE, _buffer.c_str(), _buffer.length());
 
   return AqlValue(json);
@@ -291,24 +285,25 @@ AqlValue AttributeAccessor::extractTo (AqlValue const& src,
 AqlValue AttributeAccessor::extractRegular (AqlValue const& src,
                                             triagens::arango::AqlTransaction* trx,
                                             TRI_document_collection_t const* document) {
-  auto shaper = document->getShaper();
-
-  if (_pid == 0) {
-    _pid = shaper->lookupAttributePathByName(shaper, _combinedName.c_str());
+  if (_shaper == nullptr) {
+    _shaper = document->getShaper();
+    _pid = _shaper->lookupAttributePathByName(_shaper, _combinedName.c_str());
   }
    
   if (_pid != 0) { 
     // attribute exists
-    TRI_shaped_json_t document;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(document, src._marker);
+    TRI_ASSERT_EXPENSIVE(_shaper != nullptr);
+
+    TRI_shaped_json_t shapedJson;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, src._marker);
 
     TRI_shaped_json_t json;
     TRI_shape_t const* shape;
 
-    bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, _pid, &json, &shape);
+    bool ok = TRI_ExtractShapedJsonVocShaper(_shaper, &shapedJson, 0, _pid, &json, &shape);
 
     if (ok && shape != nullptr) {
-      std::unique_ptr<TRI_json_t> extracted(TRI_JsonShapedJson(shaper, &json));
+      std::unique_ptr<TRI_json_t> extracted(TRI_JsonShapedJson(_shaper, &json));
 
       if (extracted == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

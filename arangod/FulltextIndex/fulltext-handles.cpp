@@ -304,10 +304,13 @@ TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex (TRI_fulltext_handles_t* con
   uint32_t slotNumber;
   uint32_t slotPosition;
 
+  if (handles == nullptr) {
+    return 0;
+  }
+
   handle = handles->_next;
 
-  if (handles == nullptr ||
-      handle == UINT32_MAX - 1) {
+  if (handle == UINT32_MAX - 1) {
     // out of handles
     return 0;
   }

@@ -1,5 +1,6 @@
 'use strict';
 
+/*eslint-disable max-len*/
 
 var common        = require('./common');
 var YAMLException = require('./exception');

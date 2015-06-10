@@ -63,9 +63,29 @@ function validate(data, schema) {
   return result.value;
 }
 
-function resetQueueControl() {
+function updateQueueDelay() {
   try {
-    global.KEY_SET("queue-control", "skip", 0);
+    db._executeTransaction({
+      collections: {
+        read: ['_queues', '_jobs']
+      },
+      action: function () {
+        var delayUntil = db._query(
+          qb.let('queues', qb.for('queue').in('_queues').return('queue._key'))
+          .for('job').in('_jobs')
+          .filter(qb('pending').eq('job.status'))
+          .filter(qb.POSITION('queues', 'job.queue', false))
+          .filter(qb(null).neq('job.delayUntil'))
+          .sort('job.delayUntil', 'ASC')
+          .return('job.delayUntil')
+        ).next();
+        if (typeof delayUntil !== 'number') {
+          delayUntil = -1;
+        }
+        global.KEYSPACE_CREATE('queue-control', 1, true);
+        global.KEY_SET('queue-control', 'delayUntil', delayUntil);
+      }
+    });
   } catch (e) {}
 }
 
@@ -88,7 +108,7 @@ function createQueue(key, maxWorkers) {
   try {
     db._queues.save({_key: key, maxWorkers: maxWorkers || 1});
   } catch (err) {
-    if (!err instanceof arangodb.ArangoError ||
+    if (!(err instanceof arangodb.ArangoError) ||
         err.errorNum !== arangodb.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
       throw err;
     }
@@ -96,7 +116,6 @@ function createQueue(key, maxWorkers) {
       db._queues.update(key, {maxWorkers: maxWorkers});
     }
   }
-  resetQueueControl();
   var databaseName = db._name();
   var cache = queueCache[databaseName];
   if (!cache) {
@@ -120,13 +139,15 @@ function deleteQueue(key) {
       }
     }
   });
-  if (result) {
-    resetQueueControl();
-  }
   return result;
 }
 
 function registerJobType(name, opts) {
+  // TODO Remove support for function-based job types in 2.7
+  console.warn(
+    "Function-based Foxx Queue job type definitions are deprecated and known to cause issues."
+    + " Please use script-based job types instead. Job type: " + name
+  );
   if (typeof opts === 'function') {
     opts = {execute: opts};
   }
@@ -162,7 +183,14 @@ function getJobs(queue, status, type) {
   }
 
   if (type !== undefined) {
-    query = query.filter(qb.ref('@type').eq('job.type'));
+    if (typeof type === 'string') {
+      query = query.filter(qb.ref('@type').eq('job.type'));
+    } else {
+      query = query.filter(
+        qb.ref('@type.name').eq('job.type.name')
+        .and(qb.ref('@type.mount').eq('job.type.mount'))
+      );
+    }
     vars.type = type;
   }
 
@@ -216,7 +244,7 @@ _.extend(Job.prototype, {
     db._jobs.update(this.id, {
       status: 'pending'
     });
-    resetQueueControl();
+    updateQueueDelay();
   }
 });
 
@@ -236,8 +264,14 @@ _.extend(Queue.prototype, {
       throw new Error('Must pass a job type!');
     }
 
+
     var definition;
     if (typeof jobType === 'string') {
+      // TODO Remove support for function-based job types in 2.7
+      console.warn(
+        "Function-based Foxx Queue job type definitions are deprecated and known to cause issues."
+        + " Please use script-based job types instead. Job type: " + jobType
+      );
       var cache = jobTypeCache[db._name()];
       definition = cache && cache[jobType];
     } else {
@@ -254,6 +288,7 @@ _.extend(Queue.prototype, {
         data = definition.preprocess(data);
       }
     } else {
+      // TODO Remove support for function-based job types in 2.7
       var message = 'Unknown job type: ' + jobType;
       if (opts.allowUnknown) {
         console.warn(message);
@@ -266,9 +301,8 @@ _.extend(Queue.prototype, {
       opts = {};
     }
 
-    resetQueueControl();
     var now = Date.now();
-    return db._jobs.save({
+    var job = db._jobs.save({
       status: 'pending',
       queue: this.name,
       type: jobType,
@@ -281,7 +315,9 @@ _.extend(Queue.prototype, {
       delayUntil: opts.delayUntil || now,
       onSuccess: opts.success ? opts.success.toString() : null,
       onFailure: opts.failure ? opts.failure.toString() : null
-    })._id;
+    });
+    updateQueueDelay();
+    return job._id;
   },
   get: function (id) {
     if (typeof id !== 'string') {
@@ -309,7 +345,6 @@ _.extend(Queue.prototype, {
       action: function () {
         try {
           db._jobs.remove(id);
-          resetQueueControl();
           return true;
         } catch (err) {
           return false;
@@ -338,7 +373,7 @@ createQueue('default');
 
 module.exports = {
   _jobTypes: jobTypeCache,
-  _clearCache: resetQueueControl,
+  _updateQueueDelay: updateQueueDelay,
   get: getQueue,
   create: createQueue,
   delete: deleteQueue,

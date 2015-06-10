@@ -228,7 +228,9 @@ int usersOnCoordinator (std::string const& dbname,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/simple/all",
                            body,
                            true,
-                           headers, NULL, 10.0);
+                           headers, 
+                           nullptr, 
+                           10.0);
     delete res;
   }
 
@@ -309,7 +311,11 @@ int revisionOnCoordinator (std::string const& dbname,
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
                            StringUtils::urlEncode(it->first) + "/revision",
-                           0, false, headers, NULL, 300.0);
+                           0, 
+                           false, 
+                           headers, 
+                           nullptr, 
+                           300.0);
     delete res;
   }
 
@@ -392,7 +398,11 @@ int figuresOnCoordinator (string const& dbname,
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
                            StringUtils::urlEncode(it->first) + "/figures",
-                           0, false, headers, NULL, 300.0);
+                           0, 
+                           false, 
+                           headers, 
+                           nullptr, 
+                           300.0);
     delete res;
   }
 
@@ -487,7 +497,11 @@ int countOnCoordinator (
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
                            StringUtils::urlEncode(it->first) + "/count",
-                           0, false, headers, NULL, 300.0);
+                           0, 
+                           false, 
+                           headers, 
+                           nullptr, 
+                           300.0);
     delete res;
   }
   // Now listen to the results:
@@ -736,8 +750,12 @@ int deleteDocumentOnCoordinator (
                            triagens::rest::HttpRequest::HTTP_REQUEST_DELETE,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/" +
                            StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
-                           "?waitForSync=" + (waitForSync ? "true" : "false")+
-                           revstr + policystr, 0, false, headersCopy, NULL, 60.0);
+                           "?waitForSync=" + (waitForSync ? "true" : "false") + revstr + policystr, 
+                           0, 
+                           false, 
+                           headersCopy, 
+                           nullptr, 
+                           60.0);
     delete res;
   }
   // Now listen to the results:
@@ -798,7 +816,11 @@ int truncateCollectionOnCoordinator ( string const& dbname,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                            "/_db/" + StringUtils::urlEncode(dbname) +
                            "/_api/collection/" + it->first + "/truncate",
-                           0, false, headersCopy, NULL, 60.0);
+                           0, 
+                           false, 
+                           headersCopy, 
+                           nullptr, 
+                           60.0);
     delete res;
   }
   // Now listen to the results:
@@ -927,7 +949,12 @@ int getDocumentOnCoordinator (
                            reqType,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/"+
                            StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
-                           revstr, 0, false, headersCopy, NULL, 60.0);
+                           revstr, 
+                           0, 
+                           false, 
+                           headersCopy, 
+                           nullptr, 
+                           60.0);
     delete res;
   }
   // Now listen to the results:
@@ -1199,7 +1226,11 @@ int modifyDocumentOnCoordinator (
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/"+
                            StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
                            "?waitForSync=" + (waitForSync ? "true" : "false") + revstr + policystr,
-                           &body, false, headersCopy, NULL, 60.0);
+                           &body, 
+                           false, 
+                           headersCopy, 
+                           nullptr, 
+                           60.0);
     delete res;
   }
   // Now listen to the results:
@@ -1353,7 +1384,12 @@ int flushWalOnAllDBServers (bool waitForSync, bool waitForCollector) {
 
     res = cc->asyncRequest("", coordTransactionID, "server:" + *it,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                           url, body, true, headers, NULL, 120.0);
+                           url, 
+                           body, 
+                           true, 
+                           headers,
+                           nullptr, 
+                           120.0);
     delete res;
   }
 

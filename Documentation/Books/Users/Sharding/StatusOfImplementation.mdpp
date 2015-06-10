@@ -78,7 +78,7 @@ road map):
     maintenance and scaling of a cluster. However, in version 2.0 the
     cluster layout is static and no redistribution of data between the
     DBservers or moving of shards between servers is possible. 
-  * At this stage the sharding of an [edge collection](../Glossary/README.html#edge_collection) is independent of
+  * At this stage the sharding of an [edge collection](../Glossary/index.html#edge_collection) is independent of
     the sharding of the corresponding vertex collection in a graph.
     For version 2.2 we plan to synchronize the two, to allow for more
     efficient graph traversal functions in large, sharded graphs. We

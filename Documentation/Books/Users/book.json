@@ -2,8 +2,7 @@
   "gitbook": ">=2.0.0",
   "title": "ArangoDB Documentation",
   "language": "en",
-  "theme": "./localtheme",
-  "plugins":["toggle-chapters"],
+  "plugins":["toggle-chapters", "addcssjs"],
   "pdf": {
     "fontSize": 12,
     "toc": true,
@@ -16,5 +15,11 @@
   },
   "styles": {
     "website": "styles/website.css"
+  },
+  "pluginsConfig": {
+    "addcssjs": {
+      "js": ["styles/header.js"],
+      "css": ["styles/header.css"]
+    }
   }
 }

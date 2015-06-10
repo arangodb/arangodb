@@ -185,8 +185,20 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 
   parseConfig(config || {});
 
-  this.start = function() {
+  this.start = function(expand) {
     layouter.stop();
+
+    //expand all wanted nodes
+    if (expand) {
+      _.each(nodes, function(node) {
+        _.each(adapter.randomNodes, function(compare) {
+          if (node._id === compare._id) {
+            node._expanded = true;
+          }
+        });
+      });
+    }
+
     nodeShaper.drawNodes(nodes);
     edgeShaper.drawEdges(edges);
     layouter.start();
@@ -215,6 +227,20 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         return;
       }
       node._expanded = true;
+      self.start(true);
+      if (_.isFunction(callback)) {
+        callback();
+      }
+    });
+  };
+
+  this.loadGraphWithAdditionalNode = function(attribute, value, callback) {
+    adapter.loadAdditionalNodeByAttributeValue(attribute, value, function (node) {
+      if (node.errorCode) {
+        callback(node);
+        return;
+      }
+      node._expanded = true;
       self.start();
       if (_.isFunction(callback)) {
         callback();
@@ -223,12 +249,18 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   };
 
   this.loadGraphWithAttributeValue = function(attribute, value, callback) {
+
+    //clear random and defined nodes
+    adapter.randomNodes = [];
+    adapter.definedNodes = [];
+
     adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
       if (node.errorCode) {
         callback(node);
         return;
       }
       node._expanded = true;
+
       self.start();
       if (_.isFunction(callback)) {
         callback();

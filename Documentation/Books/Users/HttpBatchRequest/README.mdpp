@@ -202,6 +202,6 @@ content-length: 53
 
 Please note that the database used for all part operations of a batch
 request is determined by scanning the original URL (the URL that contains
-*/_api/batch*). It is not possible to override the [database name](../Glossary/README.html#database_name) in
+*/_api/batch*). It is not possible to override the [database name](../Glossary/index.html#database_name) in
 part operations of a batch. When doing so, any other database name used 
 in a batch part will be ignored.

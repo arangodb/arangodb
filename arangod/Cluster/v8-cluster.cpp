@@ -84,7 +84,7 @@ static void CreateAgencyException (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CasAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 3) {
@@ -136,6 +136,7 @@ static void JS_CasAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,9 +144,8 @@ static void JS_CasAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDirectoryAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("createDirectory(<key>)");
@@ -161,6 +161,7 @@ static void JS_CreateDirectoryAgency (const v8::FunctionCallbackInfo<v8::Value>&
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +169,7 @@ static void JS_CreateDirectoryAgency (const v8::FunctionCallbackInfo<v8::Value>&
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsEnabledAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -180,10 +181,8 @@ static void JS_IsEnabledAgency (const v8::FunctionCallbackInfo<v8::Value>& args)
   if (! prefix.empty()) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
-  
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +190,7 @@ static void JS_IsEnabledAgency (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IncreaseVersionAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -206,6 +205,7 @@ static void JS_IncreaseVersionAgency (const v8::FunctionCallbackInfo<v8::Value>&
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +213,7 @@ static void JS_IncreaseVersionAgency (const v8::FunctionCallbackInfo<v8::Value>&
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
@@ -279,6 +279,7 @@ static void JS_GetAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(l);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,7 +287,7 @@ static void JS_GetAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ListAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
@@ -346,6 +347,7 @@ static void JS_ListAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
     TRI_V8_RETURN(l);
   }
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +355,7 @@ static void JS_ListAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LockReadAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
@@ -378,6 +380,7 @@ static void JS_LockReadAgency (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,7 +388,7 @@ static void JS_LockReadAgency (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LockWriteAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
@@ -410,6 +413,7 @@ static void JS_LockWriteAgency (const v8::FunctionCallbackInfo<v8::Value>& args)
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,7 +421,7 @@ static void JS_LockWriteAgency (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnlockReadAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 2) {
@@ -437,6 +441,7 @@ static void JS_UnlockReadAgency (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -444,7 +449,7 @@ static void JS_UnlockReadAgency (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnlockWriteAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 2) {
@@ -464,6 +469,7 @@ static void JS_UnlockWriteAgency (const v8::FunctionCallbackInfo<v8::Value>& arg
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -471,7 +477,7 @@ static void JS_UnlockWriteAgency (const v8::FunctionCallbackInfo<v8::Value>& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
@@ -493,6 +499,7 @@ static void JS_RemoveAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -500,7 +507,7 @@ static void JS_RemoveAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SetAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2) {
@@ -530,6 +537,7 @@ static void JS_SetAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -537,7 +545,7 @@ static void JS_SetAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_WatchAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
@@ -588,6 +596,7 @@ static void JS_WatchAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(l);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -595,7 +604,7 @@ static void JS_WatchAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_EndpointsAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -616,6 +625,7 @@ static void JS_EndpointsAgency (const v8::FunctionCallbackInfo<v8::Value>& args)
   }
 
   TRI_V8_RETURN(l);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -623,7 +633,7 @@ static void JS_EndpointsAgency (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PrefixAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 1) {
@@ -642,6 +652,7 @@ static void JS_PrefixAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN_STD_STRING(prefix);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,7 +660,7 @@ static void JS_PrefixAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SetPrefixAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -662,6 +673,7 @@ static void JS_SetPrefixAgency (const v8::FunctionCallbackInfo<v8::Value>& args)
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -669,7 +681,7 @@ static void JS_SetPrefixAgency (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UniqidAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1 || args.Length() > 3) {
@@ -702,6 +714,7 @@ static void JS_UniqidAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
   const std::string value = StringUtils::itoa(result._index);
 
   TRI_V8_RETURN_STD_STRING(value);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -709,7 +722,7 @@ static void JS_UniqidAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_VersionAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -720,6 +733,7 @@ static void JS_VersionAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
   const std::string version = comm.getVersion();
 
   TRI_V8_RETURN_STD_STRING(version);
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -731,7 +745,7 @@ static void JS_VersionAgency (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DoesDatabaseExistClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -743,9 +757,8 @@ static void JS_DoesDatabaseExistClusterInfo (const v8::FunctionCallbackInfo<v8::
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -753,7 +766,7 @@ static void JS_DoesDatabaseExistClusterInfo (const v8::FunctionCallbackInfo<v8::
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -768,6 +781,7 @@ static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
     a->Set((uint32_t) count++, TRI_V8_STD_STRING((*it)));
   }
   TRI_V8_RETURN(a);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -775,7 +789,7 @@ static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FlushClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -785,6 +799,7 @@ static void JS_FlushClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args
   ClusterInfo::instance()->flush();
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -792,7 +807,7 @@ static void JS_FlushClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 2) {
@@ -842,6 +857,7 @@ static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::
   v8::Handle<v8::Array> indexes = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -849,7 +865,7 @@ static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetCollectionInfoCurrentClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 3) {
@@ -905,6 +921,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo (const v8::FunctionCallbackIn
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -912,7 +929,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo (const v8::FunctionCallbackIn
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetResponsibleServerClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -922,6 +939,7 @@ static void JS_GetResponsibleServerClusterInfo (const v8::FunctionCallbackInfo<v
   std::string const result = ClusterInfo::instance()->getResponsibleServer(TRI_ObjectToString(args[0]));
 
   TRI_V8_RETURN_STD_STRING(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -929,7 +947,7 @@ static void JS_GetResponsibleServerClusterInfo (const v8::FunctionCallbackInfo<v
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetResponsibleShardClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2 || args.Length() > 3) {
@@ -949,7 +967,7 @@ static void JS_GetResponsibleShardClusterInfo (const v8::FunctionCallbackInfo<v8
     documentIsComplete = TRI_ObjectToBoolean(args[2]);
   }
 
-  TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
+  std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[1]));
 
   if (json == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -958,9 +976,7 @@ static void JS_GetResponsibleShardClusterInfo (const v8::FunctionCallbackInfo<v8
   ShardID shardId;
   CollectionID collectionId = TRI_ObjectToString(args[0]);
   bool usesDefaultShardingAttributes;
-  int res = ClusterInfo::instance()->getResponsibleShard(collectionId, json, documentIsComplete, shardId, usesDefaultShardingAttributes);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  int res = ClusterInfo::instance()->getResponsibleShard(collectionId, json.get(), documentIsComplete, shardId, usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -971,6 +987,7 @@ static void JS_GetResponsibleShardClusterInfo (const v8::FunctionCallbackInfo<v8
   result->Set(TRI_V8_ASCII_STRING("usesDefaultShardingAttributes"), v8::Boolean::New(isolate, usesDefaultShardingAttributes));
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -978,7 +995,7 @@ static void JS_GetResponsibleShardClusterInfo (const v8::FunctionCallbackInfo<v8
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetServerEndpointClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -988,6 +1005,7 @@ static void JS_GetServerEndpointClusterInfo (const v8::FunctionCallbackInfo<v8::
   const std::string result = ClusterInfo::instance()->getServerEndpoint(TRI_ObjectToString(args[0]));
 
   TRI_V8_RETURN_STD_STRING(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -995,7 +1013,7 @@ static void JS_GetServerEndpointClusterInfo (const v8::FunctionCallbackInfo<v8::
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetServerNameClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -1005,6 +1023,7 @@ static void JS_GetServerNameClusterInfo (const v8::FunctionCallbackInfo<v8::Valu
   const std::string result = ClusterInfo::instance()->getServerName(TRI_ObjectToString(args[0]));
 
   TRI_V8_RETURN_STD_STRING(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1012,7 +1031,7 @@ static void JS_GetServerNameClusterInfo (const v8::FunctionCallbackInfo<v8::Valu
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetDBServers (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1030,6 +1049,7 @@ static void JS_GetDBServers (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_V8_RETURN(l);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1037,7 +1057,7 @@ static void JS_GetDBServers (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReloadDBServers (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1046,6 +1066,7 @@ static void JS_ReloadDBServers (const v8::FunctionCallbackInfo<v8::Value>& args)
 
   ClusterInfo::instance()->loadCurrentDBServers();
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1053,7 +1074,7 @@ static void JS_ReloadDBServers (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetCoordinators (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1071,6 +1092,7 @@ static void JS_GetCoordinators (const v8::FunctionCallbackInfo<v8::Value>& args)
   }
 
   TRI_V8_RETURN(l);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1078,7 +1100,7 @@ static void JS_GetCoordinators (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UniqidClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 1) {
@@ -1103,6 +1125,7 @@ static void JS_UniqidClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& arg
   const std::string id = StringUtils::itoa(value);
 
   TRI_V8_RETURN_STD_STRING(id);
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------
@@ -1114,7 +1137,7 @@ static void JS_UniqidClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_AddressServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1123,6 +1146,7 @@ static void JS_AddressServerState (const v8::FunctionCallbackInfo<v8::Value>& ar
 
   const std::string address = ServerState::instance()->getAddress();
   TRI_V8_RETURN_STD_STRING(address);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1130,7 +1154,7 @@ static void JS_AddressServerState (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FlushServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1140,6 +1164,7 @@ static void JS_FlushServerState (const v8::FunctionCallbackInfo<v8::Value>& args
   ServerState::instance()->flush();
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1147,7 +1172,7 @@ static void JS_FlushServerState (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LocalInfoServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1156,6 +1181,7 @@ static void JS_LocalInfoServerState (const v8::FunctionCallbackInfo<v8::Value>& 
 
   const std::string li = ServerState::instance()->getLocalInfo();
   TRI_V8_RETURN_STD_STRING(li);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1163,7 +1189,7 @@ static void JS_LocalInfoServerState (const v8::FunctionCallbackInfo<v8::Value>& 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IdServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1172,6 +1198,7 @@ static void JS_IdServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   const std::string id = ServerState::instance()->getId();
   TRI_V8_RETURN_STD_STRING(id);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1179,7 +1206,7 @@ static void JS_IdServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DescriptionServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1188,6 +1215,7 @@ static void JS_DescriptionServerState (const v8::FunctionCallbackInfo<v8::Value>
 
   const std::string description = ServerState::instance()->getDescription();
   TRI_V8_RETURN_STD_STRING(description);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1195,7 +1223,7 @@ static void JS_DescriptionServerState (const v8::FunctionCallbackInfo<v8::Value>
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DataPathServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1204,6 +1232,7 @@ static void JS_DataPathServerState (const v8::FunctionCallbackInfo<v8::Value>& a
 
   const std::string path = ServerState::instance()->getDataPath();
   TRI_V8_RETURN_STD_STRING(path);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1211,7 +1240,7 @@ static void JS_DataPathServerState (const v8::FunctionCallbackInfo<v8::Value>& a
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LogPathServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1220,6 +1249,7 @@ static void JS_LogPathServerState (const v8::FunctionCallbackInfo<v8::Value>& ar
 
   const std::string path = ServerState::instance()->getLogPath();
   TRI_V8_RETURN_STD_STRING(path);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1227,7 +1257,7 @@ static void JS_LogPathServerState (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_AgentPathServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1236,6 +1266,7 @@ static void JS_AgentPathServerState (const v8::FunctionCallbackInfo<v8::Value>& 
 
   const std::string path = ServerState::instance()->getAgentPath();
   TRI_V8_RETURN_STD_STRING(path);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1243,7 +1274,7 @@ static void JS_AgentPathServerState (const v8::FunctionCallbackInfo<v8::Value>& 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ArangodPathServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1252,6 +1283,7 @@ static void JS_ArangodPathServerState (const v8::FunctionCallbackInfo<v8::Value>
 
   const std::string path = ServerState::instance()->getArangodPath();
   TRI_V8_RETURN_STD_STRING(path);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1259,7 +1291,7 @@ static void JS_ArangodPathServerState (const v8::FunctionCallbackInfo<v8::Value>
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_JavaScriptPathServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1268,6 +1300,7 @@ static void JS_JavaScriptPathServerState (const v8::FunctionCallbackInfo<v8::Val
 
   const std::string path = ServerState::instance()->getJavaScriptPath();
   TRI_V8_RETURN_STD_STRING(path);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1275,7 +1308,7 @@ static void JS_JavaScriptPathServerState (const v8::FunctionCallbackInfo<v8::Val
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DBserverConfigServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1284,6 +1317,7 @@ static void JS_DBserverConfigServerState (const v8::FunctionCallbackInfo<v8::Val
 
   const std::string path = ServerState::instance()->getDBserverConfig();
   TRI_V8_RETURN_STD_STRING(path);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1291,7 +1325,7 @@ static void JS_DBserverConfigServerState (const v8::FunctionCallbackInfo<v8::Val
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CoordinatorConfigServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1300,6 +1334,7 @@ static void JS_CoordinatorConfigServerState (const v8::FunctionCallbackInfo<v8::
 
   const std::string path = ServerState::instance()->getCoordinatorConfig();
   TRI_V8_RETURN_STD_STRING(path);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1307,7 +1342,7 @@ static void JS_CoordinatorConfigServerState (const v8::FunctionCallbackInfo<v8::
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DisableDipatcherFrontendServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1317,9 +1352,8 @@ static void JS_DisableDipatcherFrontendServerState (const v8::FunctionCallbackIn
   if (ServerState::instance()->getDisableDispatcherFrontend()) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1327,7 +1361,7 @@ static void JS_DisableDipatcherFrontendServerState (const v8::FunctionCallbackIn
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DisableDipatcherKickstarterServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1337,9 +1371,8 @@ static void JS_DisableDipatcherKickstarterServerState (const v8::FunctionCallbac
   if (ServerState::instance()->getDisableDispatcherKickstarter()) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1347,7 +1380,7 @@ static void JS_DisableDipatcherKickstarterServerState (const v8::FunctionCallbac
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InitialisedServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1357,9 +1390,8 @@ static void JS_InitialisedServerState (const v8::FunctionCallbackInfo<v8::Value>
   if (ServerState::instance()->initialised()) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1367,7 +1399,7 @@ static void JS_InitialisedServerState (const v8::FunctionCallbackInfo<v8::Value>
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsCoordinatorServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1377,9 +1409,8 @@ static void JS_IsCoordinatorServerState (const v8::FunctionCallbackInfo<v8::Valu
   if (ServerState::instance()->getRole() == ServerState::ROLE_COORDINATOR) {
     TRI_V8_RETURN_TRUE();
   }
-  else {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1387,7 +1418,7 @@ static void JS_IsCoordinatorServerState (const v8::FunctionCallbackInfo<v8::Valu
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RoleServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1397,6 +1428,7 @@ static void JS_RoleServerState (const v8::FunctionCallbackInfo<v8::Value>& args)
   const std::string role = ServerState::roleToString(ServerState::instance()->getRole());
 
   TRI_V8_RETURN_STD_STRING(role);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1404,7 +1436,7 @@ static void JS_RoleServerState (const v8::FunctionCallbackInfo<v8::Value>& args)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SetLocalInfoServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -1415,6 +1447,7 @@ static void JS_SetLocalInfoServerState (const v8::FunctionCallbackInfo<v8::Value
   ServerState::instance()->setLocalInfo(li);
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1422,7 +1455,7 @@ static void JS_SetLocalInfoServerState (const v8::FunctionCallbackInfo<v8::Value
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SetIdServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -1433,6 +1466,7 @@ static void JS_SetIdServerState (const v8::FunctionCallbackInfo<v8::Value>& args
   ServerState::instance()->setId(id);
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1440,7 +1474,7 @@ static void JS_SetIdServerState (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SetRoleServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -1457,6 +1491,7 @@ static void JS_SetRoleServerState (const v8::FunctionCallbackInfo<v8::Value>& ar
   ServerState::instance()->setRole(r);
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1464,7 +1499,7 @@ static void JS_SetRoleServerState (const v8::FunctionCallbackInfo<v8::Value>& ar
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StatusServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1474,6 +1509,7 @@ static void JS_StatusServerState (const v8::FunctionCallbackInfo<v8::Value>& arg
   const std::string state = ServerState::stateToString(ServerState::instance()->getState());
 
   TRI_V8_RETURN_STD_STRING(state);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1481,7 +1517,7 @@ static void JS_StatusServerState (const v8::FunctionCallbackInfo<v8::Value>& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetClusterAuthentication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
@@ -1495,6 +1531,7 @@ static void JS_GetClusterAuthentication (const v8::FunctionCallbackInfo<v8::Valu
   }
 
   TRI_V8_RETURN_STD_STRING(auth);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1726,7 +1763,7 @@ static void Return_PrepareClusterCommResultForJS (const v8::FunctionCallbackInfo
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 4 || args.Length() > 7) {
@@ -1778,6 +1815,7 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   Return_PrepareClusterCommResultForJS(args, res);
   delete res;
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1785,7 +1823,7 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 4 || args.Length() > 7) {
@@ -1837,6 +1875,7 @@ static void JS_SyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   Return_PrepareClusterCommResultForJS(args, res);
   delete res;
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1844,7 +1883,7 @@ static void JS_SyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Enquire (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -1875,6 +1914,7 @@ static void JS_Enquire (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   Return_PrepareClusterCommResultForJS(args, res);
   delete res;
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1882,7 +1922,7 @@ static void JS_Enquire (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   if (args.Length() != 1) {
@@ -1904,7 +1944,7 @@ static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   ClusterComm* cc = ClusterComm::instance();
 
-  if (cc == 0) {
+  if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "clustercomm object not found");
   }
@@ -1956,15 +1996,15 @@ static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   Return_PrepareClusterCommResultForJS(args, res);
   delete res;
+  TRI_V8_TRY_CATCH_END
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop the result of an asynchronous request
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Drop (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   if (args.Length() != 1) {
@@ -2022,6 +2062,7 @@ static void JS_Drop (const v8::FunctionCallbackInfo<v8::Value>& args) {
   cc->drop(myclientTransactionID, mycoordTransactionID, myoperationID, myshardID);
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 // -----------------------------------------------------------------------------

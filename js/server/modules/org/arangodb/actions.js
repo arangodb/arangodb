@@ -35,11 +35,13 @@ module.isSystem = true;
 var internal = require("internal");
 
 var fs = require("fs");
+var util = require("util");
 var console = require("console");
 var _ = require("underscore");
 
 var arangodb = require("org/arangodb");
 var foxxManager = require("org/arangodb/foxx/manager");
+var ErrorStackParser = require("error-stack-parser");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -108,9 +110,9 @@ var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ]
 function notImplementedFunction (route, message) {
   'use strict';
 
-  message += "\nThis error was triggered by the following route '" + route.name + "'";
+  message += "\nThis error was triggered by the following route: " + route.name;
 
-  console.errorLines("%s", message);
+  console.errorLines(message);
 
   return function (req, res, options, next) {
     res.responseCode = exports.HTTP_NOT_IMPLEMENTED;
@@ -126,40 +128,28 @@ function notImplementedFunction (route, message) {
 function createCallbackActionCallbackString (callback, foxxModule, route) {
   'use strict';
 
-  var sandbox = {};
-  var key;
-
-  sandbox.module = module.root;
-
-  sandbox.require = function (path) {
-    return foxxModule.require(path);
+  var args = {
+    module: module.root,
+    require: function (path) {
+      return foxxModule.require(path);
+    }
   };
 
-  var content = "(function(__myenv__) {";
+  var keys = Object.keys(args);
+  var content = "return (" + callback + ");";
+  var script = Function.apply(null, keys.concat(content));
+  var fn = internal.executeScript("(" + script + ")", undefined, route);
 
-  for (key in sandbox) {
-    if (sandbox.hasOwnProperty(key)) {
-      content += "var " + key + " = __myenv__['" + key + "'];";
-    }
+  if (fn) {
+    return fn.apply(null, keys.map(function (key) {
+      return args[key];
+    }));
   }
 
-  content += "delete __myenv__;"
-    + "return (" + callback + ")"
-    + "\n});";
-
-  var func = internal.executeScript(content, undefined, route);
-
-  if (func !== undefined) {
-    func = func(sandbox);
-  }
-
-  if (func === undefined) {
-    func = notImplementedFunction(
-      route,
-      "could not generate callback for '" + callback + "'");
-  }
-
-  return func;
+  return notImplementedFunction(route, util.format(
+    "could not generate callback for '%s'",
+    callback
+  ));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,10 +165,10 @@ function lookupCallbackActionCallbackString (route, action, foxxModule) {
     func = createCallbackActionCallbackString(action.callback, foxxModule, route);
   }
   catch (err) {
-    func = errorFunction(
-      route,
-      "an error occurred construction callback for '"
-        + action.callback + "': " + String(err.stack || err));
+    func = errorFunction(route, util.format(
+      "an error occurred constructing callback for '%s': %s",
+      action.callback, String(err.stack || err)
+    ));
   }
 
   return {
@@ -208,10 +198,10 @@ function lookupCallbackActionCallback (route, action, foxxModule) {
   }
 
   return {
-    controller: errorFunction(
-      route,
-      "an error occurred while generating callback '"
-        + action.callback + "': unknown type '" + String(typeof action.callback) + "'"),
+    controller: errorFunction(route, util.format(
+      "an error occurred while generating callback '%s': unknown type '%s'",
+      action.callback, typeof action.callback
+    )),
     options: action.options || {},
     methods: action.methods || ALL_METHODS
   };
@@ -229,16 +219,16 @@ function requireModule (name, route) {
   }
   catch (err) {
     if (err instanceof internal.ArangoError && err.errorNum === internal.errors.ERROR_MODULE_NOT_FOUND.code) {
-      return notImplementedFunction(
-        route,
-        "an error occurred while loading the action module '" + name
-          + "': " + String(err.stack || err));
+      return notImplementedFunction(route, util.format(
+        "an error occurred while loading the action module '%s': %s",
+        name, String(err.stack || err)
+      ));
     }
     else {
-      return errorFunction(
-        route,
-        "an error occurred while loading action module '" + name
-          + "': " + String(err.stack || err));
+      return errorFunction(route, util.format(
+        "an error occurred while loading action module '%s': %s",
+        name, String(err.stack || err)
+      ));
     }
   }
 }
@@ -254,10 +244,10 @@ function moduleFunction (actionModule, name, route) {
   var type = typeof func;
 
   if (type !== 'function') {
-    func = errorFunction(
-      route,
-      "invalid definition ('" + type + "') for '" + name 
-        + "' action in action module '" + actionModule.id + "'");
+    func = errorFunction(route, util.format(
+      "invalid definition ('%s') for '%s' action in action module '%s'",
+      type, name, actionModule.id
+    ));
   }
 
   return func;
@@ -287,16 +277,17 @@ function lookupCallbackActionDo (route, action) {
 
   // module found, extract function
   actionModule = actionModule.module;
-  
+
   var func;
 
   if (actionModule.hasOwnProperty(funcName)) {
     func = moduleFunction(actionModule, funcName, route);
   }
   else {
-    func = notImplementedFunction(
-      route,
-      "could not find action named '" + funcName + "' in module '" + moduleName + "'");
+    func = notImplementedFunction(route, util.format(
+      "could not find action named '%s' in module '%s'",
+      funcName, moduleName
+    ));
   }
 
   return {
@@ -1350,6 +1341,16 @@ function reloadRouting () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief warms up the Foxx exports
+////////////////////////////////////////////////////////////////////////////////
+
+function warmupExports () {
+  'use strict';
+
+  foxxManager._warmupExports();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief loads all actions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1428,7 +1429,7 @@ function defineHttp (options) {
   var callback = options.callback;
 
   if (typeof callback !== "function") {
-    console.error("callback for '%s' must be a function, got '%s'", url, (typeof callback));
+    console.error("callback for '%s' must be a function, got '%s'", url, typeof callback);
     return;
   }
 
@@ -1447,9 +1448,8 @@ function defineHttp (options) {
 
   try {
     internal.defineAction(url, callback, parameter);
-  }
-  catch (err) {
-    console.error("action '%s' encountered error: %s", url, err);
+  } catch (e) {
+    console.errorLines("action '%s' encountered error:\n%s", url, e.stack || String(e));
   }
 }
 
@@ -1639,8 +1639,9 @@ function errorFunction (route, message) {
 function badParameter (req, res, name) {
   'use strict';
 
-  resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD,
-              "invalid value for parameter '" + name + "'");
+  resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD, util.format(
+    "invalid value for parameter '%s'", name
+  ));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1999,29 +2000,19 @@ function resultException (req, res, err, headers, verbose) {
   'use strict';
 
   var code;
-  var msg;
+  var msg = err.message;
   var num;
 
   var info = {};
-  var showTrace = false;
 
-  if (typeof verbose === 'string') {
-    msg = verbose;
+  if (verbose !== false) {
     info.exception = String(err);
-    showTrace = true;
-  }
-  else if (verbose || verbose === undefined) {
-    info.exception = String(err);
-    msg = "An error has occurred during execution: " + info.exception;
-    showTrace = true;
-  }
-  else {
-    msg = String(err);
-  }
-
-  if (showTrace) {
     if (err.stack) {
-      info.stacktrace = String(err.stack).split("\n");
+      err.stack = err.stack.replace(/\n+$/, '');
+      info.stacktrace = err.stack.split('\n');
+    }
+    if (typeof verbose === 'string') {
+      msg = verbose;
     }
   }
 
@@ -2034,10 +2025,10 @@ function resultException (req, res, err, headers, verbose) {
     }
 
     if (err.errorMessage !== "") {
-      if (typeof verbose === 'string') {
+      if (verbose !== false) {
         info.message = err.errorMessage;
       }
-      else {
+      if (typeof verbose !== 'string') {
         msg = err.errorMessage;
       }
     }
@@ -2282,6 +2273,7 @@ exports.getErrorMessage          = getErrorMessage;
 exports.getJsonBody              = getJsonBody;
 exports.errorFunction            = errorFunction;
 exports.reloadRouting            = reloadRouting;
+exports.warmupExports            = warmupExports;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.addCookie                = addCookie;

@@ -142,6 +142,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   }
   catch (...) {
     v8g->_query = old;
+    // bubble up exception
     throw;
   }
 

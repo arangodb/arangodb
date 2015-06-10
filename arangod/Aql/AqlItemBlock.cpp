@@ -72,6 +72,7 @@ AqlItemBlock::AqlItemBlock (size_t nrItems,
 
 AqlItemBlock::AqlItemBlock (Json const& json) {
   bool exhausted = JsonHelper::getBooleanValue(json.json(), "exhausted", false);
+
   if (exhausted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "exhausted must be false");
   }
@@ -265,7 +266,7 @@ void AqlItemBlock::shrink (size_t nrItems) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId> const& toClear) {
-  for (auto reg : toClear) {
+  for (auto const& reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue& a(_data[_nrRegs * i + reg]);
 

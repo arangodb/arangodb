@@ -13,8 +13,10 @@ describe('Model Events', function () {
     collection = createSpyObj('collection', [
       'update',
       'save',
+      'type',
       'remove'
     ]);
+    collection.type.and.returnValue(2);
     instance = new Model({ random: '', beforeCalled: false, afterCalled: false });
     repository = new FoxxRepository(collection, {model: Model});
   });
