@@ -141,7 +141,7 @@ namespace triagens {
               _heap.push_back(v);
               try {
                 _lookup.insert(std::make_pair(k, 
-                               static_cast<ssize_t>(_heap.size()-1 + _popped)));
+                               static_cast<ssize_t>(_heap.size() - 1 + _popped)));
               }
               catch (...) {
                 _heap.pop_back();
@@ -178,10 +178,10 @@ namespace triagens {
             return nullptr;
           }
           if (it->second >= 0) {   // still in the queue
-            return _heap[static_cast<size_t>(it->second) - _popped];
+            return _heap.at(static_cast<size_t>(it->second) - _popped);
           }
           else {  // already in the history
-            return _history[static_cast<size_t>(-it->second) - 1];
+            return _history.at(static_cast<size_t>(-it->second) - 1);
           }
         }
 
@@ -659,7 +659,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
             void run () {
-
               VertexId v;
               Step* s;
               bool b = _myInfo._pq.popMinimal(v, s, true);
@@ -769,6 +768,7 @@ namespace triagens {
                              EdgeWeight weight) {
 
               Step* s = _peerInfo._pq.find(vertex);
+
               if (s == nullptr) {
                 // Not found, nothing more to do
                 return;
@@ -941,7 +941,7 @@ namespace triagens {
           // Insert all vertices and edges at front of vector
           // Do NOT! insert the intermediate vertex
           while (s->_predecessor.key != nullptr &&
-                 strcmp(s->_predecessor.key,"") != 0) {
+                 strcmp(s->_predecessor.key, "") != 0) {
             r_edges.push_front(s->_edge);
             r_vertices.push_front(s->_predecessor);
             s = forward._pq.find(s->_predecessor);
