@@ -230,6 +230,7 @@ pkgdataSERVERdir = $(datadir)/arangodb
 pkgdataSWAGGERdir = $(datadir)/arangodb
 pkgdataCLIENTdir = $(datadir)/arangodb
 pkgdataNODEdir = $(datadir)/arangodb
+pkgdataNODE_JSHINTdir = $(datadir)/arangodb
 pkgdataAPPSdir = $(datadir)/arangodb
 pkgdataAPPSADMINdir = $(datadir)/arangodb
 pkgdataAPPSAPIdir = $(datadir)/arangodb
@@ -242,7 +243,12 @@ nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
 nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name assets -prune -o "(" -name "*.js" -o -name "*.tmpl" ")" -print)
 nobase_pkgdataSWAGGER_DATA = $(shell find @srcdir@/js/server/assets -type f -print)
 nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
-nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" )
+# -o has short cut evaluation, thus the following command filters out
+# files with name .travis.yml and .npmignore
+# Furthermore, we separate jshint out because otherwise a command line
+# becomes too long on some systems.
+nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" | grep -v @srcdir@/js/node/node_modules/jshint )
+nobase_pkgdataNODE_JSHINT_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" | grep @srcdir@/js/node/node_modules/jshint )
 
 # note: we want to exclude node_modules from aardvark because they are only needed by grunt and not to run aardvark
 nobase_pkgdataAPPSADMIN_DATA = $(shell find @srcdir@/js/apps/system/_admin -type f "(" -path "*/node_modules/*" -o -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
