@@ -311,7 +311,7 @@ struct CollectVariableFinder {
         auto const size = stack.size();
 
         if (size >= 3 &&
-            stack[size - 3]->type == NODE_TYPE_EXPAND) {
+            stack[size - 3]->type == NODE_TYPE_EXPANSION) {
           // our variable is used in an expansion, e.g. g[*].attribute
           auto expandNode = stack[size - 3];
           TRI_ASSERT(expandNode->numMembers() == 2);

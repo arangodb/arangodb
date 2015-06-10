@@ -446,11 +446,11 @@ namespace triagens {
                                           AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST expand node
+/// @brief create an AST expansion node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeExpand (AstNode const*,
-                                   AstNode const*);
+        AstNode* createNodeExpansion (AstNode const*,
+                                      AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST iterator node

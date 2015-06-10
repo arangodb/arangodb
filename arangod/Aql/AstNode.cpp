@@ -130,7 +130,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_ATTRIBUTE_ACCESS),         "attribute access" },
   { static_cast<int>(NODE_TYPE_BOUND_ATTRIBUTE_ACCESS),   "bound attribute access" },
   { static_cast<int>(NODE_TYPE_INDEXED_ACCESS),           "indexed access" },
-  { static_cast<int>(NODE_TYPE_EXPAND),                   "expand" },
+  { static_cast<int>(NODE_TYPE_EXPANSION),                "expansion" },
   { static_cast<int>(NODE_TYPE_ITERATOR),                 "iterator" },
   { static_cast<int>(NODE_TYPE_VALUE),                    "value" },
   { static_cast<int>(NODE_TYPE_ARRAY),                    "array" },
@@ -555,7 +555,7 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_SUBQUERY:
     case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
     case NODE_TYPE_INDEXED_ACCESS:
-    case NODE_TYPE_EXPAND:
+    case NODE_TYPE_EXPANSION:
     case NODE_TYPE_ITERATOR:
     case NODE_TYPE_ARRAY:
     case NODE_TYPE_RANGE:
@@ -1687,13 +1687,13 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     buffer->appendChar(')');
     return;
   }
- 
-  if (type == NODE_TYPE_EXPAND) {
+  
+  if (type == NODE_TYPE_EXPANSION) {
     // not used by V8
-    buffer->appendText("_EXPAND(");
-    getMember(1)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(',');
+    buffer->appendText("_EXPANSION(");
     getMember(0)->stringify(buffer, verbose, failIfLong);
+    buffer->appendChar(',');
+    getMember(1)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(')');
     return;
   }

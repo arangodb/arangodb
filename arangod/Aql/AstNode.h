@@ -154,7 +154,7 @@ namespace triagens {
       NODE_TYPE_ATTRIBUTE_ACCESS              = 35,
       NODE_TYPE_BOUND_ATTRIBUTE_ACCESS        = 36,
       NODE_TYPE_INDEXED_ACCESS                = 37,
-      NODE_TYPE_EXPAND                        = 38,
+      NODE_TYPE_EXPANSION                     = 38,
       NODE_TYPE_ITERATOR                      = 39,
       NODE_TYPE_VALUE                         = 40,
       NODE_TYPE_ARRAY                         = 41,
