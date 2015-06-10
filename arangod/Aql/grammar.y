@@ -170,7 +170,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <strval> function_name;
 %type <node> optional_function_call_arguments;
 %type <node> function_arguments_list;
-%type <node> compound_type;
+%type <node> compound_value;
 %type <node> array;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
@@ -181,7 +181,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> object_element;
 %type <strval> object_element_name;
 %type <node> reference;
-%type <node> atomic_value;
+%type <node> simple_value;
 %type <node> value_literal;
 %type <node> collection_name;
 %type <node> in_or_into_collection;
@@ -546,18 +546,18 @@ sort_direction:
   | T_DESC {
       $$ = parser->ast()->createNodeValueBool(false);
     }
-  | atomic_value {
+  | simple_value {
       $$ = $1;
     }
   ;
 
 limit_statement: 
-    T_LIMIT atomic_value {
+    T_LIMIT simple_value {
       auto offset = parser->ast()->createNodeValueInt(0);
       auto node = parser->ast()->createNodeLimit(offset, $2);
       parser->ast()->addOperation(node);
     }
-  | T_LIMIT atomic_value T_COMMA atomic_value {
+  | T_LIMIT simple_value T_COMMA simple_value {
       auto node = parser->ast()->createNodeLimit($2, $4);
       parser->ast()->addOperation(node);
     }
@@ -667,7 +667,7 @@ upsert_statement:
     T_UPSERT { 
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
-      parser->pushStack(parser->ast()->createNodeVariable("$OLD", true));
+      parser->pushStack(parser->ast()->createNodeVariable(Variable::NAME_OLD, true));
     } expression T_INSERT expression update_or_replace expression in_or_into_collection options {
       if (! parser->configureWriteQuery(AQL_QUERY_UPSERT, $8, $9)) {
         YYABORT;
@@ -709,7 +709,7 @@ upsert_statement:
       auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName.c_str()), index));
       parser->ast()->addOperation(firstDoc);
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference("$OLD"), $5, $7, $8, $9);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(Variable::NAME_OLD), $5, $7, $8, $9);
       parser->ast()->addOperation(node);
       parser->setWriteNode(node);
     }
@@ -744,10 +744,10 @@ expression:
   | operator_ternary {
       $$ = $1;
     }
-  | compound_type {
+  | simple_value {
       $$ = $1;
     }
-  | atomic_value {
+  | compound_value {
       $$ = $1;
     }
   | reference {
@@ -898,7 +898,7 @@ function_arguments_list:
     }
   ;
 
-compound_type:
+compound_value:
     array {
       $$ = $1;
     }
@@ -1009,10 +1009,16 @@ reference:
         // variable does not exist
         // now try variable aliases OLD (= $OLD) and NEW (= $NEW)
         if (strcmp($1, "OLD") == 0) {
-          variable = ast->scopes()->getVariable("$OLD");
+          variable = ast->scopes()->getVariable(Variable::NAME_OLD);
         }
         else if (strcmp($1, "NEW") == 0) {
-          variable = ast->scopes()->getVariable("$NEW");
+          variable = ast->scopes()->getVariable(Variable::NAME_NEW);
+        }
+        else if (ast->scopes()->canUseCurrentVariable() && strcmp($1, "CURRENT") == 0) {
+          variable = ast->scopes()->getCurrentVariable();
+        }
+        else if (strcmp($1, Variable::NAME_CURRENT) == 0) {
+          variable = ast->scopes()->getCurrentVariable();
         }
         
         if (variable != nullptr) {
@@ -1079,11 +1085,39 @@ reference:
       std::string const nextName = parser->ast()->variables()->nextName() + "_";
       char const* iteratorName = nextName.c_str();
       auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
-      $$ = parser->ast()->createNodeExpansion(iterator, parser->ast()->createNodeReference(iteratorName));
+      $$ = parser->ast()->createNodeExpansion(iterator, parser->ast()->createNodeReference(iteratorName), false);
+    }
+  | reference T_ARRAY_OPEN T_TIMES T_TIMES T_ARRAY_CLOSE %prec EXPANSION {
+      // variable expansion, e.g. variable[**]
+      // create a temporary iterator variable
+      std::string const nextName = parser->ast()->variables()->nextName() + "_";
+      char const* iteratorName = nextName.c_str();
+      auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
+      $$ = parser->ast()->createNodeExpansion(iterator, parser->ast()->createNodeReference(iteratorName), true);
+    }
+  | reference T_ARRAY_OPEN T_FILTER {
+      // variable expansion, e.g. variable[*]
+      // create a temporary iterator variable
+      std::string const nextName = parser->ast()->variables()->nextName() + "_";
+      char const* iteratorName = nextName.c_str();
+      auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
+      parser->pushStack(iterator);
+
+      auto scopes = parser->ast()->scopes();
+      scopes->stackCurrentVariable(scopes->getVariable(iteratorName));
+    } expression T_ARRAY_CLOSE %prec EXPANSION {
+      auto scopes = parser->ast()->scopes();
+      scopes->unstackCurrentVariable();
+
+      auto iterator = static_cast<AstNode*>(parser->popStack());
+      auto variableNode = iterator->getMember(0);
+      TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
+      auto variable = static_cast<Variable const*>(variableNode->getData());
+      $$ = parser->ast()->createNodeExpansion(iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5);
     }
   ;
 
-atomic_value:
+simple_value:
     value_literal {
       $$ = $1;
     }

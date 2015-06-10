@@ -313,7 +313,12 @@ function processQuery (query, explain) {
     switch (node.type) {
       case "reference": 
         if (references.hasOwnProperty(node.name)) {
-          return buildExpression(references[node.name]) + "[*]";
+          var ref = references[node.name];
+          delete references[node.name];
+          if (Array.isArray(ref)) {
+            return buildExpression(ref[0]) + "[" + keyword("FILTER") + " " + buildExpression(ref[1]) + "]";
+          }
+          return buildExpression(ref) + "[*]";
         }
         return variableName(node);
       case "collection": 
@@ -348,7 +353,14 @@ function processQuery (query, explain) {
         return buildExpression(node.subNodes[0]) + " .. " + buildExpression(node.subNodes[1]) + "   " + annotation("/* range */");
       case "expand":
       case "expansion":
-        references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
+        if (node.subNodes.length > 2) {
+          // [FILTER ...]
+          references[node.subNodes[0].subNodes[0].name] = [ node.subNodes[0].subNodes[1], node.subNodes[2] ]; 
+        }
+        else {
+          // [*]
+          references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
+        }
         return buildExpression(node.subNodes[1]);
       case "verticalizer":
         return buildExpression(node.subNodes[0]);

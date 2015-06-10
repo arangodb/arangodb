@@ -815,13 +815,33 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
 
 void Executor::generateCodeExpansion (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() >= 2);
 
-  _buffer->appendText("(function () { return _AQL.AQL_TO_LIST(");
-  generateCodeNode(node->getMember(0));
-  _buffer->appendText(").map(function (v) { ");
   auto iterator = node->getMember(0);
   auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
+
+  _buffer->appendText("(function () { return _AQL.AQL_TO_LIST(");
+  if (node->getBoolValue()) {
+    _buffer->appendText("_AQL.COMPACT(");
+    generateCodeNode(node->getMember(0));
+    _buffer->appendText(")");
+  }
+  else {
+    generateCodeNode(node->getMember(0));
+  }
+
+  if (node->numMembers() > 2) {
+    // use a filter expression
+    _buffer->appendText(").filter(function (v) { ");
+    _buffer->appendText("vars[\"");
+    _buffer->appendText(variable->name);
+    _buffer->appendText("\"]=v; ");
+    _buffer->appendText("return _AQL.AQL_TO_BOOL(");
+    generateCodeNode(node->getMember(2));
+    _buffer->appendText("); }");
+  }
+
+  _buffer->appendText(").map(function (v) { ");
   _buffer->appendText("vars[\"");
   _buffer->appendText(variable->name);
   _buffer->appendText("\"]=v; ");
@@ -896,11 +916,25 @@ void Executor::generateCodeIndexedAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  _buffer->appendText("_AQL.GET_INDEX(");
-  generateCodeNode(node->getMember(0));
-  _buffer->appendChar(',');
-  generateCodeNode(node->getMember(1));
-  _buffer->appendChar(')');
+  auto index = node->getMember(1);
+  if (index->type == NODE_TYPE_RANGE) {
+    // range access
+    _buffer->appendText("_AQL.GET_RANGE(");
+    generateCodeNode(node->getMember(0));
+    _buffer->appendChar(',');
+    generateCodeNode(index->getMember(0));
+    _buffer->appendChar(',');
+    generateCodeNode(index->getMember(1));
+    _buffer->appendChar(')');
+  }
+  else {
+    // indexed access
+    _buffer->appendText("_AQL.GET_INDEX(");
+    generateCodeNode(node->getMember(0));
+    _buffer->appendChar(',');
+    generateCodeNode(index);
+    _buffer->appendChar(')');
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

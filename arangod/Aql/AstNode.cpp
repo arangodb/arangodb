@@ -1694,6 +1694,10 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(1)->stringify(buffer, verbose, failIfLong);
+    if (numMembers() > 2) {
+      buffer->appendChar(',');
+      getMember(2)->stringify(buffer, verbose, failIfLong);
+    }
     buffer->appendChar(')');
     return;
   }
