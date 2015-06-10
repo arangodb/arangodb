@@ -261,8 +261,8 @@ function makeTestingArgsClient (options) {
   var topDir = findTopDir();
   return { "configuration":                  "none",
            "javascript.startup-directory":   fs.join(topDir, "js"),
-           "no-colors":                      "true",
-           "quiet":                          "true",
+           "no-colors":                      true,
+           "quiet":                          true,
            "server.username":                options.username,
            "server.password":                options.password };
 }
@@ -953,11 +953,14 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
 }
 
-function runArangoshCmd (options, instanceInfo, cmds) {
+function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
   var args = makeTestingArgsClient(options);
   args["server.endpoint"] = instanceInfo.endpoint;
+  if (addArgs !== undefined) {
+    args = _.extend(args, addArgs);
+  }
   var argv = toArgv(args).concat(cmds);
-  var arangosh = fs.join("bin","arangosh");
+  var arangosh = fs.join("bin", "arangosh");
   return executeAndWait(arangosh, argv);
 }
 
@@ -1476,7 +1479,7 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
   args = _.extend(args, cmds);
 
   if (!args.hasOwnProperty('verbose')) {
-    args.quiet = "true";
+    args.quiet = true;
   }
   var exe = fs.join("bin","arangob");
   return executeAndWait(exe, toArgv(args));
@@ -1610,14 +1613,12 @@ testFuncs.foxx_manager = function (options) {
   }
 
   results.update = runArangoshCmd(options, instanceInfo,
-                                  ["--configuration",
-                                   "etc/relative/foxx-manager.conf",
-                                   "update"]);
+                                  {"configuration": "etc/relative/foxx-manager.conf"},
+                                  ["update"]);
   if (results.update.status === true || options.force) {
     results.search = runArangoshCmd(options, instanceInfo,
-                                    ["--configuration",
-                                     "etc/relative/foxx-manager.conf",
-                                     "search","itzpapalotl"]);
+                                    {"configuration": "etc/relative/foxx-manager.conf"},
+                                    ["search","itzpapalotl"]);
   }
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
