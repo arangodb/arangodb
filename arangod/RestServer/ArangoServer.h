@@ -520,20 +520,33 @@ namespace triagens {
         bool _disableQueryTracking;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief restrict the Foxx queues to run in the _system database only
-/// @startDocuBlock foxxQueuesSystemOnly
-/// `--server.foxx-queues-system-only flag`
+/// @brief enable or disable the Foxx queues feature
+/// @startDocuBlock foxxQueues
+/// `--server.foxx-queues flag`
 ///
-/// If *true*, the Foxx queues will be handled and jobs in them executed only
-/// for queues and jobs in the _system database. Queues and jobs of all other
-/// databases will be ignored then.
+/// If *true*, the Foxx queues will be available and jobs in the queues will
+/// be executed asynchronously.
 ///
-/// The default is *true*. It should only be changed if Foxx queues are used
-/// with other databases than *_system*.
+/// The default is *true*. It should only be changed if Foxx queues are not
+/// used at all
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
     
-        bool _foxxQueuesSystemOnly;
+        bool _foxxQueues;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enable or disable the Foxx exports warmup for queues
+/// @startDocuBlock queuesWarmupExports
+/// `--server.foxx-queues-warmup-exports flag`
+///
+/// If *true*, the exports of all Foxx apps will be loaded on server start.
+///
+/// The default is *true*. Disabling this will cause issues with function-based
+/// job types of jobs persisted throughout a server restart.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+    
+        bool _foxxQueuesWarmupExports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief poll interval for Foxx queues
@@ -546,7 +559,7 @@ namespace triagens {
 /// queues more often. When set to a low value, the queue thread might cause
 /// CPU load.
 ///
-/// The default is *1* second. If Foxx queues are not used, then this value
+/// The default is *1* second. If Foxx queues are not used much, then this value
 /// may be increased to make the queues thread wake up less.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

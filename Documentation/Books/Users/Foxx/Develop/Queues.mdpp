@@ -4,17 +4,15 @@ If you have never built a Foxx App, then you can make your own [first Foxx App](
 
 Foxx allows defining job queues that let you perform slow or expensive actions asynchronously. These queues can be used to send e-mails, call external APIs or perform other actions that you do not want to perform directly or want to retry on failure.
 
+This feature can be disabled by setting the startup option `--server.foxx-queues` to `false`. This will disable the queue manager and prevent any jobs from being processed, which may improve CPU load if you do not plan to use Foxx queues at all.
+
 Please note that Foxx job queues are database-specific. Queues and jobs are always relative to the database in which they are created or accessed.
 
-By default only jobs from queues in the `_system` database will be processed automatically by the Foxx queue manager. To automatically process the queues of other databases than `_system`, you have to start ArangoDB with the option `--server.foxx-queues-system-only false`.
-
-Restricting the Foxx queue manager to the `_system` database will lead to the queue manager only having to check the queues of a single database. Checking the queues of *all* databases might result in more work and more CPU time used by the queue manager.
-
-By default the Foxx queue manager will be checking the queues once every second. This value can be changed by setting the startup option `--server.foxx-manager-poll-interval`. Lowering this value will result in the queue manager waking up and checking the queues more frequently, which may increase CPU usage of the server.
+By default the Foxx queue manager will be checking the queues once every second. This value can be changed by setting the startup option `--server.foxx-queues-poll-interval`. Lowering this value will result in the queue manager waking up and checking the queues more frequently, which may increase CPU usage of the server.
 
 For the low-level functionality see [the chapter on the **Task Management** module](../../ModuleTasks/).
 
-As of ArangoDB 2.6, Foxx queue job types are defined as regular Foxx scripts. To learn more about Foxx scripts, see [the chapter on Foxx scripts](./Scripts.html).
+As of ArangoDB 2.6, Foxx queue job types are defined as regular Foxx scripts. To learn more about Foxx scripts, see [the chapter on Foxx scripts](./Scripts.html). Function-based job types are still supported in 2.6 but will be removed in 2.7.
 
 For an example of re-usable job types see the various mailer apps available in the Foxx app store.
 

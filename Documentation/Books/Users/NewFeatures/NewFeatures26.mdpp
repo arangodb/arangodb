@@ -315,7 +315,7 @@ http://jsteemann.github.io/blog/2015/04/14/updating-documents-with-arangoimp/
   up and checking the queues more frequently, which may increase CPU usage of the server. 
   When not using Foxx queues, this value can be raised to save some CPU time.
 
-* Added configuration option `--server.foxx-queues-system-only`
+* Added configuration option `--server.foxx-queues`
 
   This startup option controls whether the Foxx queue manager will check queue and job entries
   in the `_system` database only. Restricting the Foxx queue manager to the `_system` database 
@@ -323,3 +323,10 @@ http://jsteemann.github.io/blog/2015/04/14/updating-documents-with-arangoimp/
   whereas making it check the queues of all databases might result in more work to be done and 
   more CPU time to be used by the queue manager.
 
+
+* added startup option `--server.foxx-queues-warmup-exports`
+
+  This startup option makes sure the exports of all installed Foxx apps are pre-loaded when
+  the server is restarted. This prevents a known issue with function-based Foxx queue job types.
+  It is recommended that you upgrade any existing function-based job types to script-based ones
+  to avoid the issue entirely.
