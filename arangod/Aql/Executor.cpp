@@ -813,22 +813,22 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
 /// @brief generate JavaScript code for an expansion (i.e. [*] operator)
 ////////////////////////////////////////////////////////////////////////////////
 
-void Executor::generateCodeExpand (AstNode const* node) {
+void Executor::generateCodeExpansion (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  _buffer->appendText("(function () { var r = []; _AQL.AQL_TO_LIST(");
+  _buffer->appendText("(function () { return _AQL.AQL_TO_LIST(");
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(").forEach(function (v) { ");
+  _buffer->appendText(").map(function (v) { ");
   auto iterator = node->getMember(0);
   auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
   _buffer->appendText("vars[\"");
   _buffer->appendText(variable->name);
   _buffer->appendText("\"]=v; ");
 
-  _buffer->appendText("r.push(");
+  _buffer->appendText("return ");
   generateCodeNode(node->getMember(1));
-  _buffer->appendText("); }); return r; })()");
+  _buffer->appendText("; }); })()");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -967,8 +967,8 @@ void Executor::generateCodeNode (AstNode const* node) {
       generateCodeUserFunctionCall(node);
       break;
     
-    case NODE_TYPE_EXPAND:
-      generateCodeExpand(node);
+    case NODE_TYPE_EXPANSION:
+      generateCodeExpansion(node);
       break;
 
     case NODE_TYPE_ITERATOR:

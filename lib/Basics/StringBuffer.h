@@ -492,7 +492,7 @@ namespace triagens {
 /// @brief appends as json-encoded
 ////////////////////////////////////////////////////////////////////////////////
 
-        StringBuffer& appendJsonEncoded (const char * str) {
+        StringBuffer& appendJsonEncoded (char const* str) {
           TRI_AppendJsonEncodedStringStringBuffer(&_buffer, str, true);
           return *this;
         }
@@ -501,7 +501,7 @@ namespace triagens {
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
 
-        StringBuffer& appendText (const char * str, size_t len) {
+        StringBuffer& appendText (char const* str, size_t len) {
           TRI_AppendString2StringBuffer(&_buffer, str, len);
           return *this;
         }
@@ -510,8 +510,8 @@ namespace triagens {
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
 
-        StringBuffer& appendText (const char * str) {
-          TRI_AppendStringStringBuffer(&_buffer, str);
+        StringBuffer& appendText (char const* str) {
+          TRI_AppendString2StringBuffer(&_buffer, str, strlen(str));
           return *this;
         }
 

@@ -207,7 +207,7 @@ namespace triagens {
 /// @brief generate JavaScript code for an expansion (i.e. [*] operator)
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCodeExpand (AstNode const*);
+        void generateCodeExpansion (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for an expansion iterator

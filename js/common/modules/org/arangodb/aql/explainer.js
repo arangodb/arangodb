@@ -346,8 +346,11 @@ function processQuery (query, explain) {
       case "range":
         return buildExpression(node.subNodes[0]) + " .. " + buildExpression(node.subNodes[1]) + "   " + annotation("/* range */");
       case "expand":
+      case "expansion":
         references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
         return buildExpression(node.subNodes[1]);
+      case "verticalizer":
+        return buildExpression(node.subNodes[0]);
       case "user function call":
         return func(node.name) + "(" + ((node.subNodes && node.subNodes[0].subNodes) || [ ]).map(buildExpression).join(", ") + ")" + "   " + annotation("/* user-defined function */");
       case "function call":

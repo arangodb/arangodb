@@ -776,15 +776,15 @@ AstNode* Ast::createNodeIndexedAccess (AstNode const* accessed,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST expand node
+/// @brief create an AST expansion node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeExpand (AstNode const* iterator,
-                                AstNode const* expansion) {
-  AstNode* node = createNode(NODE_TYPE_EXPAND);
+AstNode* Ast::createNodeExpansion (AstNode const* iterator, 
+                                   AstNode const* expanded) {
+  AstNode* node = createNode(NODE_TYPE_EXPANSION);
 
   node->addMember(iterator);
-  node->addMember(expansion);
+  node->addMember(expanded);
 
   return node;
 }

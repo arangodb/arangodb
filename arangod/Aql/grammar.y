@@ -108,7 +108,6 @@ void Aqlerror (YYLTYPE* locp,
 %token T_TIMES "* operator"
 %token T_DIV "/ operator"
 %token T_MOD "% operator"
-%token T_EXPAND "[*] operator"
 
 %token T_QUESTION "?"
 %token T_COLON ":"
@@ -141,7 +140,7 @@ void Aqlerror (YYLTYPE* locp,
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
 %right UMINUS UPLUS T_NOT
-%left T_EXPAND
+%left EXPANSION
 %left FUNCCALL
 %left REFERENCE
 %left INDEXED
@@ -182,8 +181,6 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> object_element;
 %type <strval> object_element_name;
 %type <node> reference;
-%type <node> single_reference;
-%type <node> expansion;
 %type <node> atomic_value;
 %type <node> value_literal;
 %type <node> collection_name;
@@ -997,34 +994,6 @@ object_element:
   ;
 
 reference:
-    single_reference {
-      // start of reference (collection or variable name)
-      $$ = $1;
-    }
-  | reference {
-      // expanded variable access, e.g. variable[*]
-
-      // create a temporary iterator variable
-      std::string const nextName = parser->ast()->variables()->nextName() + "_";
-      char const* iteratorName = nextName.c_str();
-      auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
-
-      parser->pushStack(iterator);
-      parser->pushStack(parser->ast()->createNodeReference(iteratorName));
-    } T_EXPAND expansion {
-      // return from the "expansion" subrule
-
-      // push the expand node into the statement list
-      auto iterator = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeExpand(iterator, $4);
-
-      if ($$ == nullptr) {
-        ABORT_OOM
-      }
-    }
-  ;
-
-single_reference:
     T_STRING {
       // variable or collection
       auto ast = parser->ast();
@@ -1068,47 +1037,49 @@ single_reference:
         ABORT_OOM
       }
     }
-  | single_reference '.' T_STRING %prec REFERENCE {
+  | reference '.' T_STRING %prec REFERENCE {
       // named variable access, e.g. variable.reference
-      $$ = parser->ast()->createNodeAttributeAccess($1, $3);
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        // if left operand is an expansion already...
+        // patch the existing expansion
+        $1->changeMember(1, parser->ast()->createNodeAttributeAccess($1->getMember(1), $3));
+        $$ = $1;
+      }
+      else {
+        $$ = parser->ast()->createNodeAttributeAccess($1, $3);
+      }
     }
-  | single_reference '.' bind_parameter %prec REFERENCE {
+  | reference '.' bind_parameter %prec REFERENCE {
       // named variable access, e.g. variable.@reference
-      $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        // if left operand is an expansion already...
+        // patch the existing expansion
+        $1->changeMember(1, parser->ast()->createNodeBoundAttributeAccess($1->getMember(1), $3));
+        $$ = $1;
+      }
+      else {
+        $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
+      }
     }
-  | single_reference T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
+  | reference T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
       // indexed variable access, e.g. variable[index]
-      $$ = parser->ast()->createNodeIndexedAccess($1, $3);
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        // if left operand is an expansion already...
+        // patch the existing expansion
+        $1->changeMember(1, parser->ast()->createNodeIndexedAccess($1->getMember(1), $3));
+        $$ = $1;
+      }
+      else {
+        $$ = parser->ast()->createNodeIndexedAccess($1, $3);
+      }
     }
-  ;
-
-expansion:
-    '.' T_STRING %prec REFERENCE {
-      // named variable access, continuation from * expansion, e.g. [*].variable.reference
-      auto node = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeAttributeAccess(node, $2);
-    }
-  | '.' bind_parameter %prec REFERENCE {
-      // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.@reference
-      auto node = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeBoundAttributeAccess(node, $2);
-    }
-  | T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
-      // indexed variable access, continuation from * expansion, e.g. [*].variable[index]
-      auto node = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeIndexedAccess(node, $2);
-    }
-  | expansion '.' T_STRING %prec REFERENCE {
-      // named variable access, continuation from * expansion, e.g. [*].variable.xx.reference
-      $$ = parser->ast()->createNodeAttributeAccess($1, $3);
-    }
-  | expansion '.' bind_parameter %prec REFERENCE {
-      // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.xx.@reference
-      $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
-    }
-  | expansion T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
-      // indexed variable access, continuation from * expansion, e.g. [*].variable.xx.[index]
-      $$ = parser->ast()->createNodeIndexedAccess($1, $3);
+  | reference T_ARRAY_OPEN T_TIMES T_ARRAY_CLOSE %prec EXPANSION {
+      // variable expansion, e.g. variable[*]
+      // create a temporary iterator variable
+      std::string const nextName = parser->ast()->variables()->nextName() + "_";
+      char const* iteratorName = nextName.c_str();
+      auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
+      $$ = parser->ast()->createNodeExpansion(iterator, parser->ast()->createNodeReference(iteratorName));
     }
   ;
 
