@@ -56,7 +56,7 @@ V8TimerTask::V8TimerTask (string const& id,
                           double offset,
                           string const& command,
                           TRI_json_t* parameters,
-                          bool _allowUseDatabase)
+                          bool allowUseDatabase)
   : Task(id, name),
     TimerTask(id, (offset <= 0.0 ? 0.00001 : offset)), // offset must be (at least slightly) greater than zero, otherwise
                                                        // the timertask will not execute the task at all
@@ -65,7 +65,8 @@ V8TimerTask::V8TimerTask (string const& id,
     _dispatcher(dispatcher),
     _command(command),
     _parameters(parameters),
-    _created(TRI_microtime()) {
+    _created(TRI_microtime()),
+    _allowUseDatabase(allowUseDatabase) {
 
   TRI_ASSERT(vocbase != nullptr);
 
