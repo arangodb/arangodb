@@ -149,7 +149,8 @@ var allTests =
     "importing",
     "upgrade",
     "authentication",
-    "authentication_parameters"
+    "authentication_parameters",
+    "queue_legacy"
   ];
 
 
@@ -1628,6 +1629,108 @@ testFuncs.foxx_manager = function (options) {
       Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
+  return results;
+};
+
+testFuncs.queue_legacy = function (options) {
+  // TODO
+  var startTime;
+  var queueAppMountPath = '/test-queue-legacy'
+  print("Testing legacy queue job types");
+  var instanceInfo = startInstance("tcp", options, [], "queue_legacy");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
+  var data = {
+    naive: {_key: 'potato', hello: 'world'},
+    forced: {_key: 'tomato', hello: 'world'},
+    plain: {_key: 'banana', hello: 'world'}
+  };
+  var results = {};
+  results.install = runArangoshCmd(options, instanceInfo, {"configuration": "etc/relative/foxx-manager.conf"}, [
+    "install",
+    "js/common/test-data/apps/queue-legacy-test",
+    queueAppMountPath
+  ]);
+
+  print("Restarting without foxx-queues-warmup-exports...");
+  shutdownInstance(instanceInfo, options);
+  instanceInfo = startInstance("tcp", options, {
+    "server.foxx-queues-warmup-exports": "false"
+  }, "queue_legacy", instanceInfo.flatTmpDataDir);
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to restart server!"};
+  }
+  print("done.");
+
+  var res, body;
+  startTime = time();
+  try {
+    res = download(instanceInfo.url + queueAppMountPath + '/', JSON.stringify(data.naive), {method: 'POST'});
+    body = JSON.parse(res.body);
+    results.naive = {status: body.success === false, message: JSON.stringify({body: res.body, code: res.code})};
+  } catch (e) {
+    results.naive = {status: true, message: JSON.stringify({body: res.body, code: res.code})};
+  }
+  results.naive.duration = time() - startTime;
+
+  startTime = time();
+  try {
+    res = download(instanceInfo.url + queueAppMountPath + '/?allowUnknown=true', JSON.stringify(data.forced), {method: 'POST'});
+    body = JSON.parse(res.body);
+    results.forced = body.success ? {status: true} : {status: false, message: body.error, stacktrace: body.stacktrace};
+  } catch (e) {
+    results.forced = {status: false, message: JSON.stringify({body: res.body, code: res.code})};
+  }
+  results.forced.duration = time() - startTime;
+
+  print("Restarting with foxx-queues-warmup-exports...");
+  shutdownInstance(instanceInfo, options);
+  instanceInfo = startInstance("tcp", options, {
+    "server.foxx-queues-warmup-exports": "true"
+  }, "queue_legacy", instanceInfo.flatTmpDataDir);
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to restart server!"};
+  }
+  print("done.");
+
+  startTime = time();
+  try {
+    res = download(instanceInfo.url + queueAppMountPath + '/', JSON.stringify(data.plain), {method: 'POST'});
+    body = JSON.parse(res.body);
+    results.plain = body.success ? {status: true} : {status: false, message: JSON.stringify({body: res.body, code: res.code})};
+  } catch (e) {
+    results.plain = {status: false, message: JSON.stringify({body: res.body, code: res.code})};
+  }
+  results.plain.duration = time() - startTime;
+
+  startTime = time();
+  try {
+    for (var i = 0; i < 60; i++) {
+      wait(1);
+      res = download(instanceInfo.url + queueAppMountPath + '/');
+      body = JSON.parse(res.body);
+      if (body.length === 2) {
+        break;
+      }
+    }
+    results.final = (
+      body.length === 2 && body[0]._key === data.forced._key && body[1]._key === data.plain._key
+      ? {status: true}
+      : {status: false, message: JSON.stringify({body: res.body, code: res.code})}
+    );
+  } catch (e) {
+    results.final = {status: false, message: JSON.stringify({body: res.body, code: res.code})};
+  }
+  results.final.duration = time() - startTime;
+
+  results.uninstall = runArangoshCmd(options, instanceInfo, {"configuration": "etc/relative/foxx-manager.conf"}, [
+    "uninstall",
+    queueAppMountPath
+  ]);
+  print("Shutting down...");
+  shutdownInstance(instanceInfo, options);
+  print("done.");
   return results;
 };
 
