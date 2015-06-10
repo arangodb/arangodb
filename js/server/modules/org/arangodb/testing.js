@@ -1634,7 +1634,7 @@ testFuncs.foxx_manager = function (options) {
 
 testFuncs.queue_legacy = function (options) {
   var startTime;
-  var queueAppMountPath = '/test-queue-legacy'
+  var queueAppMountPath = '/test-queue-legacy';
   print("Testing legacy queue job types");
   var instanceInfo = startInstance("tcp", options, [], "queue_legacy");
   if (instanceInfo === false) {
@@ -1646,7 +1646,9 @@ testFuncs.queue_legacy = function (options) {
     plain: {_key: 'banana', hello: 'world'}
   };
   var results = {};
-  results.install = runArangoshCmd(options, instanceInfo, {"configuration": "etc/relative/foxx-manager.conf"}, [
+  results.install = runArangoshCmd(options, instanceInfo, {
+    "configuration": "etc/relative/foxx-manager.conf"
+  }, [
     "install",
     "js/common/test-data/apps/queue-legacy-test",
     queueAppMountPath
@@ -1665,7 +1667,11 @@ testFuncs.queue_legacy = function (options) {
   var res, body;
   startTime = time();
   try {
-    res = download(instanceInfo.url + queueAppMountPath + '/', JSON.stringify(data.naive), {method: 'POST'});
+    res = download(
+      instanceInfo.url + queueAppMountPath + '/',
+      JSON.stringify(data.naive),
+      {method: 'POST'}
+    );
     body = JSON.parse(res.body);
     results.naive = {status: body.success === false, message: JSON.stringify({body: res.body, code: res.code})};
   } catch (e) {
@@ -1675,9 +1681,17 @@ testFuncs.queue_legacy = function (options) {
 
   startTime = time();
   try {
-    res = download(instanceInfo.url + queueAppMountPath + '/?allowUnknown=true', JSON.stringify(data.forced), {method: 'POST'});
+    res = download(
+      instanceInfo.url + queueAppMountPath + '/?allowUnknown=true',
+      JSON.stringify(data.forced),
+      {method: 'POST'}
+    );
     body = JSON.parse(res.body);
-    results.forced = body.success ? {status: true} : {status: false, message: body.error, stacktrace: body.stacktrace};
+    results.forced = (
+      body.success
+      ? {status: true}
+      : {status: false, message: body.error, stacktrace: body.stacktrace}
+     );
   } catch (e) {
     results.forced = {status: false, message: JSON.stringify({body: res.body, code: res.code})};
   }
@@ -1697,7 +1711,11 @@ testFuncs.queue_legacy = function (options) {
   try {
     res = download(instanceInfo.url + queueAppMountPath + '/', JSON.stringify(data.plain), {method: 'POST'});
     body = JSON.parse(res.body);
-    results.plain = body.success ? {status: true} : {status: false, message: JSON.stringify({body: res.body, code: res.code})};
+    results.plain = (
+      body.success
+      ? {status: true}
+      : {status: false, message: JSON.stringify({body: res.body, code: res.code})}
+    );
   } catch (e) {
     results.plain = {status: false, message: JSON.stringify({body: res.body, code: res.code})};
   }
@@ -1723,7 +1741,9 @@ testFuncs.queue_legacy = function (options) {
   }
   results.final.duration = time() - startTime;
 
-  results.uninstall = runArangoshCmd(options, instanceInfo, {"configuration": "etc/relative/foxx-manager.conf"}, [
+  results.uninstall = runArangoshCmd(options, instanceInfo, {
+    "configuration": "etc/relative/foxx-manager.conf"
+  }, [
     "uninstall",
     queueAppMountPath
   ]);
