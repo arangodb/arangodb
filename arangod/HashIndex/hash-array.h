@@ -60,8 +60,7 @@ typedef struct TRI_hash_array_s {
   uint64_t _nrAlloc; // the size of the table
   uint64_t _nrUsed;  // the number of used entries
 
-  struct TRI_hash_index_element_s* _table; // the table itself, aligned to a cache line boundary
-  struct TRI_hash_index_element_s* _tablePtr; // the table itself
+  struct TRI_hash_index_element_s** _table; // the table itself
 }
 TRI_hash_array_t;
 
