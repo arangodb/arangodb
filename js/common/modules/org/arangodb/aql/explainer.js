@@ -48,11 +48,6 @@ function setColors (useSystemColors) {
 
 /* colorizer and output helper functions */ 
 
-function passthru (v) {
-  'use strict';
-  return v;
-}
-
 function attributeUncolored (v) {
   'use strict';
   return "`" + v + "`";
