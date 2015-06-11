@@ -262,10 +262,10 @@ function makeTestingArgsClient (options) {
   var topDir = findTopDir();
   return { "configuration":                  "none",
            "javascript.startup-directory":   fs.join(topDir, "js"),
-           "no-colors":                      true,
-           "quiet":                          true,
            "server.username":                options.username,
-           "server.password":                options.password };
+           "server.password":                options.password,
+           "flatCommands": ["--no-colors", "--quiet"]
+ };
 }
 
 function makeAuthorisationHeaders (options) {
