@@ -795,11 +795,17 @@ exports.toArgv = function (structure, longOptsEqual) {
           vec.push('--' + key + '=' + structure[key]);
         }
         else {
+          vec.push('--' + key);
           if (structure[key] !== false) {
-            vec.push('--' + key);
             if (structure[key] !== true) {
               vec.push(structure[key]);
             }
+            else {
+              vec.push("true");
+            }
+          }
+          else {
+            vec.push("false");
           }
         }
       }
