@@ -716,26 +716,7 @@ upsert_statement:
   ;
 
 expression:
-    T_OPEN expression T_CLOSE {
-      $$ = $2;
-    }
-  | T_OPEN {
-      if (parser->isModificationQuery()) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
-      }
-      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
-      parser->ast()->startSubQuery();
-    } query T_CLOSE {
-      AstNode* node = parser->ast()->endSubQuery();
-      parser->ast()->scopes()->endCurrent();
-
-      std::string const variableName = parser->ast()->variables()->nextName();
-      auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), node, false);
-      parser->ast()->addOperation(subQuery);
-
-      $$ = parser->ast()->createNodeReference(variableName.c_str());
-    } 
-  | operator_unary {
+    operator_unary {
       $$ = $1;
     }
   | operator_binary {
@@ -745,9 +726,6 @@ expression:
       $$ = $1;
     }
   | simple_value {
-      $$ = $1;
-    }
-  | compound_value {
       $$ = $1;
     }
   | reference {
@@ -1036,6 +1014,9 @@ reference:
 
       $$ = node;
     }
+  | compound_value {
+      $$ = $1;
+    }
   | function_call {
       $$ = $1;
       
@@ -1043,6 +1024,25 @@ reference:
         ABORT_OOM
       }
     }
+  | T_OPEN expression T_CLOSE {
+      $$ = $2;
+    }
+  | T_OPEN {
+      if (parser->isModificationQuery()) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
+      }
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->startSubQuery();
+    } query T_CLOSE {
+      AstNode* node = parser->ast()->endSubQuery();
+      parser->ast()->scopes()->endCurrent();
+
+      std::string const variableName = parser->ast()->variables()->nextName();
+      auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), node, false);
+      parser->ast()->addOperation(subQuery);
+
+      $$ = parser->ast()->createNodeReference(variableName.c_str());
+    } 
   | reference '.' T_STRING %prec REFERENCE {
       // named variable access, e.g. variable.reference
       if ($1->type == NODE_TYPE_EXPANSION) {
