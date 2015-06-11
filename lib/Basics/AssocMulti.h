@@ -805,7 +805,8 @@ namespace triagens {
             nrCollisions += b._nrCollisions;
           }
           return nrUsed > 0 ?
-                 (nrUsed - nrCollisions) / nrUsed :
+                 static_cast<double>(nrUsed - nrCollisions) 
+                 / static_cast<double>(nrUsed) :
                  1.0;
         }
 
