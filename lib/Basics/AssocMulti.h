@@ -868,6 +868,7 @@ namespace triagens {
           }
 
           b._nrUsed = 0;
+          b._nrCollisions = 0;
 #ifdef TRI_INTERNAL_STATS
           _nrResizes++;
 #endif
