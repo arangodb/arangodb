@@ -114,16 +114,16 @@ function EdgeIndexSuite () {
     testIndexSelectivityDuplicateDocs : function () {
       var i, c, edgeIndex, expectedSelectivity;
 
-      for (i = 0; i < 2000; ++i) {
+      for (i = 0; i < 1000; ++i) {
         edge.save(v1, v2, { });
         edgeIndex = edge.getIndexes()[1];
-        expectedSelectivity = 1 / edge.count();
+        expectedSelectivity = 1 / (i + 1);
         // allow for some floating-point deviations
         assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
       }
 
       var n = edge.count();
-      assertEqual(2000, n);
+      assertEqual(1000, n);
 
       for (i = 0; i < n; ++i) {
         var doc = edge.any();
@@ -131,7 +131,7 @@ function EdgeIndexSuite () {
         edge.remove(doc._key);
 
         edgeIndex = edge.getIndexes()[1];
-        c = edge.count();
+        c = 1000 - (i + 1);
         expectedSelectivity = (c === 0 ? 1 : 1 / c);
         // allow for some floating-point deviations
         assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
@@ -143,7 +143,7 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSelectivityUniqueDocs : function () {
-      for (var i = 0; i < 2000; ++i) {
+      for (var i = 0; i < 1000; ++i) {
         edge.save(vn + "/from" + i, vn + "/to" + i, { });
         var edgeIndex = edge.getIndexes()[1];
         assertTrue(1, edgeIndex.selectivityEstimate);
@@ -155,7 +155,7 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSelectivityUniqueDocsFrom : function () {
-      for (var i = 0; i < 2000; ++i) {
+      for (var i = 0; i < 1000; ++i) {
         edge.save(vn + "/from" + i, vn + "/1", { });
         var edgeIndex = edge.getIndexes()[1];
         var expectedSelectivity = (1 + (1 / (i + 1))) * 0.5; 
@@ -168,7 +168,7 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSelectivityRepeatingDocs : function () {
-      for (var i = 0; i < 2000; ++i) {
+      for (var i = 0; i < 1000; ++i) {
         if (i > 0) {
           var edgeIndex = edge.getIndexes()[1];
           var expectedSelectivity = (1 + (Math.min(i, 20) / i)) * 0.5; 
