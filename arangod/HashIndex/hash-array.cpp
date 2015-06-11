@@ -51,7 +51,6 @@ static void DestroyElement (TRI_hash_array_t* array,
                             TRI_hash_index_element_t* element) {
   TRI_ASSERT_EXPENSIVE(element != nullptr);
   TRI_ASSERT_EXPENSIVE(element->_document != nullptr);
-  TRI_ASSERT_EXPENSIVE(element->_subObjects != nullptr);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 }
@@ -161,8 +160,6 @@ static inline size_t TableEntrySize () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate memory for the hash table
-///
-/// the hash table memory will be aligned on a cache line boundary
 ////////////////////////////////////////////////////////////////////////////////
 
 static int AllocateTable (TRI_hash_array_t* array,
