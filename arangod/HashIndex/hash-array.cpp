@@ -53,9 +53,7 @@ static void DestroyElement (TRI_hash_array_t* array,
   TRI_ASSERT_EXPENSIVE(element->_document != nullptr);
   TRI_ASSERT_EXPENSIVE(element->_subObjects != nullptr);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
-  element->_document = nullptr;
-  element->_subObjects = nullptr;
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +156,7 @@ static inline uint64_t InitialSize () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline size_t TableEntrySize () {
-  return sizeof(TRI_hash_index_element_t);
+  return sizeof(TRI_hash_index_element_t*);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,16 +167,15 @@ static inline size_t TableEntrySize () {
 
 static int AllocateTable (TRI_hash_array_t* array,
                           uint64_t numElements) {
-  size_t const size = (size_t) (TableEntrySize() * numElements + 64);
+  size_t const size = (size_t) (TableEntrySize() * numElements);
 
-  TRI_hash_index_element_t* table = static_cast<TRI_hash_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, true));
+  auto table = static_cast<TRI_hash_index_element_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, true));
 
   if (table == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  array->_tablePtr = table;
-  array->_table    = static_cast<TRI_hash_index_element_t*>(TRI_Align64(table));
+  array->_table    = table;
   array->_nrAlloc  = numElements;
 
   return TRI_ERROR_NO_ERROR;
@@ -206,8 +203,7 @@ static int ResizeHashArray (triagens::arango::HashIndex* hashIndex,
                (unsigned long long) targetSize);
   }
 
-  TRI_hash_index_element_t* oldTable    = array->_table;
-  TRI_hash_index_element_t* oldTablePtr = array->_tablePtr;
+  TRI_hash_index_element_t** oldTable    = array->_table;
   uint64_t oldAlloc = array->_nrAlloc;
 
   TRI_ASSERT(targetSize > 0);
@@ -222,15 +218,15 @@ static int ResizeHashArray (triagens::arango::HashIndex* hashIndex,
     uint64_t const n = array->_nrAlloc;
 
     for (uint64_t j = 0; j < oldAlloc; j++) {
-      TRI_hash_index_element_t* element = &oldTable[j];
+      TRI_hash_index_element_t* element = oldTable[j];
 
       if (element->_document != nullptr) {
         uint64_t i, k;
         i = k = HashElement(array, element) % n;
 
-        for (; i < n && array->_table[i]._document != nullptr; ++i);
+        for (; i < n && array->_table[i]->_document != nullptr; ++i);
         if (i == n) {
-          for (i = 0; i < k && array->_table[i]._document != nullptr; ++i);
+          for (i = 0; i < k && array->_table[i]->_document != nullptr; ++i);
         }
 
         TRI_ASSERT_EXPENSIVE(i < n);
@@ -240,12 +236,12 @@ static int ResizeHashArray (triagens::arango::HashIndex* hashIndex,
         // memcpy ok here since are simply moving array items internally
         // ...........................................................................
 
-        memcpy(&array->_table[i], element, TableEntrySize());
+        array->_table[i] = element;
       }
     }
   }
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTablePtr);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
   
   LOG_TIMER((TRI_microtime() - start),
             "index-resize %s, target size: %llu", 
@@ -286,7 +282,6 @@ int TRI_InitHashArray (TRI_hash_array_t* array,
   TRI_ASSERT(numFields > 0);
 
   array->_numFields = numFields;
-  array->_tablePtr  = nullptr;
   array->_table     = nullptr;
   array->_nrUsed    = 0;
   array->_nrAlloc   = 0;
@@ -309,19 +304,19 @@ void TRI_DestroyHashArray (TRI_hash_array_t* array) {
 
   // array->_table might be NULL if array initialisation fails
   if (array->_table != nullptr) {
-    TRI_hash_index_element_t* p;
-    TRI_hash_index_element_t* e;
+    TRI_hash_index_element_t** p;
+    TRI_hash_index_element_t** e;
 
     p = array->_table;
     e = p + array->_nrAlloc;
 
     for (;  p < e;  ++p) {
       if (p->_document != nullptr) {
-        DestroyElement(array, p);
+        DestroyElement(array, *p);
       }
     }
 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_tablePtr);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_table);
   }
 }
 
@@ -338,8 +333,8 @@ size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const* array) {
     return 0;
   }
 
-  size_t tableSize  = (size_t) (array->_nrAlloc * TableEntrySize() + 64);
-  size_t memberSize = (size_t) (array->_nrUsed * array->_numFields * sizeof(TRI_shaped_sub_t));
+  size_t tableSize  = (size_t) (array->_nrAlloc * TableEntrySize());
+  size_t memberSize = (size_t) (array->_nrUsed * (sizeof(TRI_hash_index_entry) + array->_numFields * sizeof(TRI_shaped_sub_t));
 
   return (size_t) (tableSize + memberSize);
 }
@@ -365,9 +360,9 @@ TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t const* arra
 
   i = k = HashKey(array, key) % n;
 
-  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
+  for (; i < n && array->_table[i]->_document != nullptr && ! IsEqualKeyElement(array, key, array->_table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
+    for (i = 0; i < k && array->_table[i]->_document != nullptr && ! IsEqualKeyElement(array, key, array->_table[i]); ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
@@ -376,7 +371,7 @@ TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t const* arra
   // return whatever we found
   // ...........................................................................
 
-  return &array->_table[i];
+  return array->_table[i];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,7 +415,7 @@ int TRI_InsertKeyHashArray (triagens::arango::HashIndex* hashIndex,
 
   i = k = HashKey(array, key) % n;
 
-  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
+  for (; i < n && array->_table[i]->_document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
   if (i == n) {
     for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
   }
