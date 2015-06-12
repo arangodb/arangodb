@@ -251,6 +251,13 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false) }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum number of array members / object attributes for considering
+/// an array / object literal "big" and pulling it out of the expression
+////////////////////////////////////////////////////////////////////////////////
+
+size_t const Executor::BigObjectThreshold = 32;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -260,7 +267,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 ////////////////////////////////////////////////////////////////////////////////
 
 Executor::Executor () :
-  _buffer(nullptr) {
+  _buffer(nullptr),
+  _constantRegisters() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,12 +288,23 @@ Executor::~Executor () {
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Expression* Executor::generateExpression (AstNode const* node) {
-  generateCodeExpression(node);
-  
   // std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
   ISOLATE;
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
+ 
+  _constantRegisters.clear();
+  detectConstantValues(node);
+
+  generateCodeExpression(node);
+
+  v8::Handle<v8::Object> constantValues = v8::Object::New(isolate);
+  for (auto& it : _constantRegisters) {
+    std::string name = "r";
+    name.append(std::to_string(it.second));
+
+    constantValues->ForceSet(TRI_V8_STD_STRING(name), toV8(isolate, it.first));
+  }
 
   // compile the expression
   v8::Handle<v8::Value> func(compileExpression());
@@ -307,7 +326,7 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
   //   whole expression is considered simple
   bool isSimple = (! node->canThrow());
 
-  return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func), isSimple);
+  return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func), constantValues, isSimple);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,8 +337,11 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
 
 TRI_json_t* Executor::executeExpression (Query* query,
                                          AstNode const* node) {
-  generateCodeExpression(node);
   ISOLATE;
+
+  _constantRegisters.clear();
+  generateCodeExpression(node);
+
   // std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
@@ -381,6 +403,74 @@ Function const* Executor::getFunctionByName (std::string const& name) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse the expression and note all (big) array/object literals
+////////////////////////////////////////////////////////////////////////////////
+
+void Executor::detectConstantValues (AstNode const* node) {
+  if (node == nullptr) {
+    return;
+  }
+
+  size_t const n = node->numMembers();
+  
+  if ((node->type == NODE_TYPE_ARRAY ||
+       node->type == NODE_TYPE_OBJECT) &&
+      n >= BigObjectThreshold &&
+      node->isConstant()) {
+    _constantRegisters.emplace(node, _constantRegisters.size());
+    return;
+  }
+  
+  for (size_t i = 0; i < n; ++i) {
+    detectConstantValues(node->getMember(i));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert an AST node to a V8 object
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> Executor::toV8 (v8::Isolate* isolate,
+                                      AstNode const* node) const {
+  if (node->type == NODE_TYPE_ARRAY) {
+    size_t const n = node->numMembers();
+    
+    v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
+    for (size_t i = 0; i < n; ++i) {
+      result->Set(static_cast<uint32_t>(i), toV8(isolate, node->getMember(i)));
+    }
+    return result;
+  }
+
+  if (node->type == NODE_TYPE_OBJECT) {
+    size_t const n = node->numMembers();
+    
+    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+    for (size_t i = 0; i < n; ++i) {
+      auto sub = node->getMember(i);
+      result->ForceSet(TRI_V8_STRING(sub->getStringValue()), toV8(isolate, sub->getMember(0)));
+    }
+    return result;
+  }
+
+  if (node->type == NODE_TYPE_VALUE) {
+    switch (node->value.type) {
+      case VALUE_TYPE_NULL:
+        return v8::Null(isolate);
+      case VALUE_TYPE_BOOL:
+        return v8::Boolean::New(isolate, node->value.value._bool);
+      case VALUE_TYPE_INT:
+        return v8::Number::New(isolate, static_cast<double>(node->value.value._int));
+      case VALUE_TYPE_DOUBLE:
+        return v8::Number::New(isolate, static_cast<double>(node->value.value._double));
+      case VALUE_TYPE_STRING:
+        return TRI_V8_STRING(node->value.value._string);
+    }
+  }
+  return v8::Null(isolate);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a V8 exception has occurred and throws an appropriate C++ 
@@ -470,7 +560,7 @@ void Executor::generateCodeExpression (AstNode const* node) {
 
   // write prologue
   // this checks if global variable _AQL is set and populates if it not
-  _buffer->appendText("(function (vars) { if (_AQL === undefined) { _AQL = require(\"org/arangodb/aql\"); } return ");
+  _buffer->appendText("(function (vars, consts) { if (_AQL === undefined) { _AQL = require(\"org/arangodb/aql\"); } return ");
 
   generateCodeNode(node);
 
@@ -508,6 +598,19 @@ void Executor::generateCodeArray (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   size_t const n = node->numMembers();
+
+  if (n >= BigObjectThreshold &&
+      node->isConstant()) {
+
+    auto it = _constantRegisters.find(node);
+
+    if (it != _constantRegisters.end()) {
+      _buffer->appendText("consts.r");
+      _buffer->appendInteger((*it).second);
+      return;
+    }
+  }
+
   // very conservative minimum bound
   _buffer->reserve(2 + n * 3); 
 
@@ -574,7 +677,22 @@ void Executor::generateCodeDynamicObject (AstNode const* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Executor::generateCodeRegularObject (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
   size_t const n = node->numMembers();
+  
+  if (n >= BigObjectThreshold &&
+      node->isConstant()) {
+
+    auto it = _constantRegisters.find(node);
+
+    if (it != _constantRegisters.end()) {
+      _buffer->appendText("consts.r");
+      _buffer->appendInteger((*it).second);
+      return;
+    }
+  }
+
   // very conservative minimum bound
   _buffer->reserve(2 + n * 6);
 

@@ -33,10 +33,20 @@
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Basics/json.h"
+#include "Basics/json-utilities.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 
 using namespace triagens::aql;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash function for V8 objects
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
+ 
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -48,12 +58,15 @@ using namespace triagens::aql;
 
 V8Expression::V8Expression (v8::Isolate* isolate,
                             v8::Handle<v8::Function> func,
+                            v8::Handle<v8::Object> constantValues,
                             bool isSimple)
   : isolate(isolate),
     _func(),
+    _constantValues(),
     _isSimple(isSimple) {
 
   _func.Reset(isolate, func);
+  _constantValues.Reset(isolate, constantValues);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,6 +74,7 @@ V8Expression::V8Expression (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Expression::~V8Expression () {
+  _constantValues.Reset();
   _func.Reset();
 }
 
@@ -117,6 +131,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
 
   TRI_ASSERT(query != nullptr);
 
+
   TRI_GET_GLOBALS();
     
   v8::Handle<v8::Value> result;
@@ -128,13 +143,38 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
     TRI_ASSERT(v8g->_query != nullptr);
 
     // set function arguments
-    v8::Handle<v8::Value> args[] = { values };
+    auto constantValues = v8::Local<v8::Object>::New(isolate, _constantValues);
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
+    // a hash function for hashing V8 object contents
+    auto hasher = [] (v8::Isolate* isolate,
+                      v8::Handle<v8::Value> const obj) -> uint64_t {
+      std::unique_ptr<TRI_json_t>json(TRI_ObjectToJson(isolate, obj));
+
+      if (json == nullptr) {
+        return 0;
+      }
+
+      return TRI_FastHashJson(json.get()); 
+    };
+
+    // hash the constant values that we pass into V8
+    uint64_t const hash = hasher(isolate, constantValues);
+#endif
+
+    v8::Handle<v8::Value> args[] = { values, constantValues };
 
     // execute the function
     v8::TryCatch tryCatch;
 
     auto func = v8::Local<v8::Function>::New(isolate, _func);
-    result = func->Call(func, 1, args);
+    result = func->Call(func, 2, args);
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
+    // now that the V8 function call is finished, check that our 
+    // constants actually were not modified
+    TRI_ASSERT(hasher(isolate, constantValues) == hash);
+#endif
 
     v8g->_query = old;
   
