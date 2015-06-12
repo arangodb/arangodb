@@ -644,6 +644,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdataAPPSSYSTEMdir)" \
 	"$(DESTDIR)$(pkgdataCLIENTdir)" \
 	"$(DESTDIR)$(pkgdataCOMMONdir)" "$(DESTDIR)$(pkgdataNODEdir)" \
+	"$(DESTDIR)$(pkgdataNODE_JSHINTdir)" \
 	"$(DESTDIR)$(pkgdataSERVERdir)" \
 	"$(DESTDIR)$(pkgdataSWAGGERdir)"
 @ENABLE_MAINTAINER_MODE_TRUE@am__EXEEXT_1 =  \
@@ -845,8 +846,8 @@ DATA = $(arangosysconf_DATA) $(nobase_pkgdata_DATA) \
 	$(nobase_pkgdataACTIONS_DATA) $(nobase_pkgdataAPPSADMIN_DATA) \
 	$(nobase_pkgdataAPPSAPI_DATA) $(nobase_pkgdataAPPSSYSTEM_DATA) \
 	$(nobase_pkgdataCLIENT_DATA) $(nobase_pkgdataCOMMON_DATA) \
-	$(nobase_pkgdataNODE_DATA) $(nobase_pkgdataSERVER_DATA) \
-	$(nobase_pkgdataSWAGGER_DATA)
+	$(nobase_pkgdataNODE_DATA) $(nobase_pkgdataNODE_JSHINT_DATA) \
+	$(nobase_pkgdataSERVER_DATA) $(nobase_pkgdataSWAGGER_DATA)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -1275,6 +1276,7 @@ pkgdataSERVERdir = $(datadir)/arangodb
 pkgdataSWAGGERdir = $(datadir)/arangodb
 pkgdataCLIENTdir = $(datadir)/arangodb
 pkgdataNODEdir = $(datadir)/arangodb
+pkgdataNODE_JSHINTdir = $(datadir)/arangodb
 pkgdataAPPSdir = $(datadir)/arangodb
 pkgdataAPPSADMINdir = $(datadir)/arangodb
 pkgdataAPPSAPIdir = $(datadir)/arangodb
@@ -1285,7 +1287,12 @@ nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
 nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name assets -prune -o "(" -name "*.js" -o -name "*.tmpl" ")" -print)
 nobase_pkgdataSWAGGER_DATA = $(shell find @srcdir@/js/server/assets -type f -print)
 nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
-nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" )
+# -o has short cut evaluation, thus the following command filters out
+# files with name .travis.yml and .npmignore
+# Furthermore, we separate jshint out because otherwise a command line
+# becomes too long on some systems.
+nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" | grep -v @srcdir@/js/node/node_modules/jshint )
+nobase_pkgdataNODE_JSHINT_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" | grep @srcdir@/js/node/node_modules/jshint )
 
 # note: we want to exclude node_modules from aardvark because they are only needed by grunt and not to run aardvark
 nobase_pkgdataAPPSADMIN_DATA = $(shell find @srcdir@/js/apps/system/_admin -type f "(" -path "*/node_modules/*" -o -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
@@ -1793,6 +1800,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
+               @top_srcdir@/js/common/tests/shell-edge-index-noncluster.js \
                @top_srcdir@/js/common/tests/shell-errors.js \
                @top_srcdir@/js/common/tests/shell-fs.js \
                @top_srcdir@/js/common/tests/shell-env.js \
@@ -8114,6 +8122,30 @@ uninstall-nobase_pkgdataNODEDATA:
 	@list='$(nobase_pkgdataNODE_DATA)'; test -n "$(pkgdataNODEdir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
 	dir='$(DESTDIR)$(pkgdataNODEdir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataNODE_JSHINTDATA: $(nobase_pkgdataNODE_JSHINT_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(nobase_pkgdataNODE_JSHINT_DATA)'; test -n "$(pkgdataNODE_JSHINTdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataNODE_JSHINTdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataNODE_JSHINTdir)" || exit 1; \
+	fi; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataNODE_JSHINTdir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataNODE_JSHINTdir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataNODE_JSHINTdir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataNODE_JSHINTdir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_pkgdataNODE_JSHINTDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_pkgdataNODE_JSHINT_DATA)'; test -n "$(pkgdataNODE_JSHINTdir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	dir='$(DESTDIR)$(pkgdataNODE_JSHINTdir)'; $(am__uninstall_files_from_dir)
 install-nobase_pkgdataSERVERDATA: $(nobase_pkgdataSERVER_DATA)
 	@$(NORMAL_INSTALL)
 	@list='$(nobase_pkgdataSERVER_DATA)'; test -n "$(pkgdataSERVERdir)" || list=; \
@@ -8385,7 +8417,7 @@ check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataACTIONSdir)" "$(DESTDIR)$(pkgdataAPPSADMINdir)" "$(DESTDIR)$(pkgdataAPPSAPIdir)" "$(DESTDIR)$(pkgdataAPPSSYSTEMdir)" "$(DESTDIR)$(pkgdataCLIENTdir)" "$(DESTDIR)$(pkgdataCOMMONdir)" "$(DESTDIR)$(pkgdataNODEdir)" "$(DESTDIR)$(pkgdataSERVERdir)" "$(DESTDIR)$(pkgdataSWAGGERdir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataACTIONSdir)" "$(DESTDIR)$(pkgdataAPPSADMINdir)" "$(DESTDIR)$(pkgdataAPPSAPIdir)" "$(DESTDIR)$(pkgdataAPPSSYSTEMdir)" "$(DESTDIR)$(pkgdataCLIENTdir)" "$(DESTDIR)$(pkgdataCOMMONdir)" "$(DESTDIR)$(pkgdataNODEdir)" "$(DESTDIR)$(pkgdataNODE_JSHINTdir)" "$(DESTDIR)$(pkgdataSERVERdir)" "$(DESTDIR)$(pkgdataSWAGGERdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -8531,6 +8563,7 @@ install-data-am: install-arangosysconfDATA install-data-local \
 	install-nobase_pkgdataCLIENTDATA \
 	install-nobase_pkgdataCOMMONDATA install-nobase_pkgdataDATA \
 	install-nobase_pkgdataNODEDATA \
+	install-nobase_pkgdataNODE_JSHINTDATA \
 	install-nobase_pkgdataSERVERDATA \
 	install-nobase_pkgdataSWAGGERDATA
 	@$(NORMAL_INSTALL)
@@ -8591,6 +8624,7 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-nobase_pkgdataCLIENTDATA \
 	uninstall-nobase_pkgdataCOMMONDATA \
 	uninstall-nobase_pkgdataDATA uninstall-nobase_pkgdataNODEDATA \
+	uninstall-nobase_pkgdataNODE_JSHINTDATA \
 	uninstall-nobase_pkgdataSERVERDATA \
 	uninstall-nobase_pkgdataSWAGGERDATA \
 	uninstall-pkglibexecSCRIPTS uninstall-sbinPROGRAMS
@@ -8621,6 +8655,7 @@ uninstall-man: uninstall-man1 uninstall-man8
 	install-nobase_pkgdataCLIENTDATA \
 	install-nobase_pkgdataCOMMONDATA install-nobase_pkgdataDATA \
 	install-nobase_pkgdataNODEDATA \
+	install-nobase_pkgdataNODE_JSHINTDATA \
 	install-nobase_pkgdataSERVERDATA \
 	install-nobase_pkgdataSWAGGERDATA install-pdf install-pdf-am \
 	install-pkglibexecSCRIPTS install-ps install-ps-am \
@@ -8637,6 +8672,7 @@ uninstall-man: uninstall-man1 uninstall-man8
 	uninstall-nobase_pkgdataCLIENTDATA \
 	uninstall-nobase_pkgdataCOMMONDATA \
 	uninstall-nobase_pkgdataDATA uninstall-nobase_pkgdataNODEDATA \
+	uninstall-nobase_pkgdataNODE_JSHINTDATA \
 	uninstall-nobase_pkgdataSERVERDATA \
 	uninstall-nobase_pkgdataSWAGGERDATA \
 	uninstall-pkglibexecSCRIPTS uninstall-sbinPROGRAMS
@@ -9752,74 +9788,74 @@ clean-libev:
 ################################################################################
 
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export LDFLAGS="-march=armv6" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	  && $(MAKE) \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		LDFLAGS="-march=armv6" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC="$(CC)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export LDFLAGS="-march=armv6" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		LDFLAGS="-march=armv6" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 
 ################################################################################
 ################################################################################
 
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export LDFLAGS="-march=armv7" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	  && $(MAKE) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		LDFLAGS="-march=armv7" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export LDFLAGS="-march=armv7" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		LDFLAGS="-march=armv7" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 ################################################################################
 ################################################################################
 
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export LDFLAGS="-lc++" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	  && $(MAKE) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		LDFLAGS="-lc++" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		GYPFLAGS="-Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
@@ -9827,43 +9863,43 @@ clean-libev:
 ################################################################################
 
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export LDFLAGS="-lc++" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@          export CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS="-Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		LDFLAGS="-lc++" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@                CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		GYPFLAGS="-Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 ################################################################################
 ################################################################################
 
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	  export CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	  export CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	  && $(MAKE) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		GYPFLAGS="-Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	  export CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	  export CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS="-Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		GYPFLAGS="-Dstandalone_static_library=1" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 	touch @srcdir@/.v8-build-@TRI_BITS@
