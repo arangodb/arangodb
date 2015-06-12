@@ -1038,7 +1038,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
             auto res = cc->syncRequest("", coordTransactionID,
                "shard:" + shardId,  
                triagens::rest::HttpRequest::HTTP_REQUEST_PUT, url, 
-                 "{\"code\": 0}", headers, 30.0);
+                 "{\"code\": 0}", headers, 120.0);
             // Ignore result, we need to try to remove all.
             // However, log the incident if we have an errormessage.
             if (res->errorMessage.length() > 0) {

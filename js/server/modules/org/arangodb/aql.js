@@ -4309,6 +4309,34 @@ function AQL_PASSTHRU (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test helper function
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_TEST_MODIFY (test, what) {
+  'use strict';
+  if (test === 'MODIFY_ARRAY') {
+    what[0] = 1; 
+    what[1] = 42; 
+    what[2] = [ 1, 2 ]; 
+    what[3].push([ 1, 2 ]); 
+    what[4] = { a: 9, b: 2 };
+    what.push("foo");
+    what.push("bar");
+    what.pop();
+  }
+  else if (test === 'MODIFY_OBJECT') {
+    what.a = 1; 
+    what.b = 3; 
+    what.c = [ 1, 2 ]; 
+    what.d.push([ 1, 2 ]); 
+    what.e.f = { a: 1, b: 2 };
+    delete what.f; 
+    what.g = "foo";
+  }
+  return what; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sleep
 ///
 /// sleep for the specified duration
@@ -5126,7 +5154,7 @@ function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
 function TO_ID (vertex, collection) {
   'use strict';
 
-  if (typeof vertex === 'object' && vertex.hasOwnProperty('_id')) {
+  if (typeof vertex === 'object' && vertex !== null && vertex.hasOwnProperty('_id')) {
     return vertex._id;
   }
 
@@ -5998,7 +6026,6 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
     e = underscore.filter(e, function(x) {
       return x.edges.length > 0;
     });
-    require("console").log("Result", e);
     result = result.concat(e);
   });
   return result;
@@ -6071,6 +6098,11 @@ function IS_EXAMPLE_SET (example) {
 ///   is used as length.
 ///   If no default is supplied the default would be positive Infinity so the path could
 ///   not be calculated.
+///   * *stopAtFirstMatch*                 : Only useful if targetVertices is an example that matches 
+///                                          to more than one vertex. If so only the shortest path to
+///                                          the closest of these target vertices is returned.
+///                                          This flag is of special use if you have target pattern and
+///                                          you want to know which vertex with this pattern is matched first.
 ///   * *includeData*                      : Triggers if only *_id*'s are returned (*false*, default)
 ///                                          or if data is included for all objects as well (*true*)
 ///                                          This will modify the content of *vertex*, *path.vertices*
@@ -6144,7 +6176,19 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
         RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options, "GRAPH_SHORTEST_PATH"),
         options);
     }
-    return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(graphName, options);
+    let tmp = CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(graphName, options);
+    if (options.stopAtFirstMatch && options.stopAtFirstMatch === true && tmp.length > 0) {
+      let tmpDist = Infinity;
+      let tmpRes = {};
+      for (let i = 0; i < tmp.length; ++i) {
+        if (tmp[i].distance < tmpDist) {
+          tmpDist = tmp[i].distance;
+          tmpRes = tmp[i];
+        }
+      }
+      return [tmpRes];
+    }
+    return tmp;
   }
 
   let graph_module = require("org/arangodb/general-graph");
@@ -6189,7 +6233,6 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
 
   let res = [];
   // Compute all shortest_path pairs.
-  // Needs improvement!
   for (let i = 0; i < startVertices.length; ++i) {
     for (let j = 0; j < endVertices.length; ++j) {
       if (startVertices[i] !== endVertices[j]) {
@@ -6201,6 +6244,17 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
         }
       }
     }
+  }
+  if (options.stopAtFirstMatch && options.stopAtFirstMatch === true && res.length > 0) {
+    let tmpDist = Infinity;
+    let tmpRes = {};
+    for (let i = 0; i < res.length; ++i) {
+      if (res[i].distance < tmpDist) {
+        tmpDist = res[i].distance;
+        tmpRes = res[i];
+      }
+    }
+    return [tmpRes];
   }
   return res;
 }
@@ -6460,6 +6514,9 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 
   if (! options) {
     options = {};
+  }
+  else {
+    options = CLONE(options);
   }
   options.includeData = false;
   if (! options.algorithm) {
@@ -7007,6 +7064,9 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 ///   * *maxIterations*: the maximum number of iterations that the traversal is
 ///      allowed to perform. It is sensible to set this number so unbounded traversals
 ///      will terminate.
+///   * *includeData*: Defines if the result should contain only ids (false) or if all documents
+///     should be fully extracted (true). By default this parameter is set to false, so only ids
+///     will be returned.
 ///
 /// @EXAMPLES
 ///
@@ -7032,6 +7092,17 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 /// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
+/// Including the data:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges3}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | db._query("FOR e IN GRAPH_EDGES("
+/// | + "'routeplanner', 'germanCity/Hamburg', {direction : 'outbound',"
+/// | + "maxDepth : 2, includeData: true}) RETURN e"
+/// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7056,7 +7127,7 @@ function AQL_GRAPH_EDGES (graphName,
   params = TRAVERSAL_PARAMS();
   params.paths = true;
   params.uniqueness = {
-    vertices: "path",
+    vertices: "none",
     edges: "global"
   };
   params.minDepth = 1; // Make sure we exclude from depth 1
@@ -8468,6 +8539,7 @@ exports.AQL_MERGE_RECURSIVE = AQL_MERGE_RECURSIVE;
 exports.AQL_TRANSLATE = AQL_TRANSLATE;
 exports.AQL_MATCHES = AQL_MATCHES;
 exports.AQL_PASSTHRU = AQL_PASSTHRU;
+exports.AQL_TEST_MODIFY = AQL_TEST_MODIFY;
 exports.AQL_SLEEP = AQL_SLEEP;
 exports.AQL_CURRENT_DATABASE = AQL_CURRENT_DATABASE;
 exports.AQL_CURRENT_USER = AQL_CURRENT_USER;
