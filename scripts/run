@@ -13,7 +13,9 @@ fi
 if test -n "$ORIGINAL_PATH"; then
 # running in cygwin...
     PS='\'
+    export EXT=".exe"
 else
+    export EXT=""
     PS='/'
 fi;
 
@@ -38,7 +40,7 @@ echo Database has its data in data-$PID
 echo Logfile is in log-$PID
 $VG bin/arangod \
     --configuration none \
-    --cluster.agent-path bin${PS}etcd-arango \
+    --cluster.agent-path bin${PS}etcd-arango${EXT} \
     --cluster.arangod-path bin${PS}arangod \
     --cluster.coordinator-config etc${PS}relative${PS}arangod-coordinator.conf \
     --cluster.dbserver-config etc${PS}relative${PS}arangod-dbserver.conf \

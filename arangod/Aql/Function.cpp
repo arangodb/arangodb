@@ -46,6 +46,7 @@ Function::Function (std::string const& externalName,
                     bool isDeterministic,
                     bool canThrow,
                     bool canRunOnDBServer,
+                    bool canPassArgumentsByReference,
                     FunctionImplementation implementation)
   : internalName(internalName),
     externalName(externalName),
@@ -53,6 +54,7 @@ Function::Function (std::string const& externalName,
     isDeterministic(isDeterministic),
     canThrow(canThrow),
     canRunOnDBServer(canRunOnDBServer),
+    canPassArgumentsByReference(canPassArgumentsByReference),
     implementation(implementation),
     conversions() {
 

@@ -65,9 +65,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class StringBuffer {
+
       private:
-        StringBuffer (StringBuffer const&);
-        StringBuffer& operator= (StringBuffer const&);
+
+        StringBuffer () = delete;
+        StringBuffer (StringBuffer const&) = delete;
+        StringBuffer& operator= (StringBuffer const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

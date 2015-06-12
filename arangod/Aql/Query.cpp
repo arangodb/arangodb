@@ -923,7 +923,7 @@ QueryResult Query::explain () {
 Executor* Query::executor () {
   if (_executor == nullptr) {
     // the executor is a singleton per query
-    _executor = new Executor;
+    _executor = new Executor(literalSizeThreshold());
   }
 
   TRI_ASSERT(_executor != nullptr);

@@ -112,7 +112,7 @@ publicController.get("/index.html", function(req, res) {
 
   res.status(302);
   res.set("Location", prefix + (
-    cluster.dispatcherDisabled()
+    cluster.dispatcherFrontendDisabled()
     ? "/standalone.html"
     : "/cluster.html"
   ));
