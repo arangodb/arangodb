@@ -64,10 +64,10 @@
   });
 
   controller.get("/amIDispatcher", function(req, res) {
-    res.json(!cluster.dispatcherDisabled());
+    res.json(!cluster.dispatcherKickstarterDisabled());
   });
 
-  if (!cluster.dispatcherDisabled()) {
+  if (!cluster.dispatcherKickstarterDisabled()) {
     var Plans = require("./repositories/plans.js"),
       plans = new Plans.Repository(
         require("internal").db._collection(
