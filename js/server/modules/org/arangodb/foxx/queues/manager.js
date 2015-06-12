@@ -135,7 +135,6 @@ exports.manage = function () {
 exports.run = function () {
   var options = require('internal').options();
 
-
   // disable foxx queues
   if (options['server.foxx-queues'] === false) {
     return;

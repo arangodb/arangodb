@@ -264,7 +264,6 @@ _.extend(Queue.prototype, {
       throw new Error('Must pass a job type!');
     }
 
-
     var definition;
     if (typeof jobType === 'string') {
       // TODO Remove support for function-based job types in 2.7

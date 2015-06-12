@@ -3921,8 +3921,6 @@ Graph.prototype._betweenness = function(options) {
   return result;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_radius
 /// @brief Get the

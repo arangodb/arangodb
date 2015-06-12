@@ -796,7 +796,17 @@ exports.toArgv = function (structure, longOptsEqual) {
         }
         else {
           vec.push('--' + key);
-          vec.push(structure[key]);
+          if (structure[key] !== false) {
+            if (structure[key] !== true) {
+              vec.push(structure[key]);
+            }
+            else {
+              vec.push("true");
+            }
+          }
+          else {
+            vec.push("false");
+          }
         }
       }
     }

@@ -221,7 +221,17 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
     contentFilter = _logContentFilter.c_str();
   }
 
-  // requests log (must come before the regular logs)
+#ifdef TRI_ENABLE_SYSLOG
+  if (! _logFacility.empty()) {
+    TRI_CreateLogAppenderSyslog(_logApplicationName.c_str(),
+                                _logFacility.c_str(),
+                                contentFilter,
+                                TRI_LOG_SEVERITY_UNKNOWN,
+                                false);
+  }
+#endif
+
+  // requests log (must come before the regular logs because it will consume the messages)
   if (! _logRequestsFile.empty()) {
     string filename = _logRequestsFile;
 
@@ -281,16 +291,6 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
       LOG_FATAL_AND_EXIT("failed to create logfile '%s'. Please check the path and permissions.", filename.c_str());
     }
   }
-
-#ifdef TRI_ENABLE_SYSLOG
-  if (! _logFacility.empty()) {
-    TRI_CreateLogAppenderSyslog(_logApplicationName.c_str(),
-                                _logFacility.c_str(),
-                                contentFilter,
-                                TRI_LOG_SEVERITY_UNKNOWN,
-                                false);
-  }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -802,13 +802,13 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
     ("log.line-number", "always log file and line number")
     ("log.performance", "log performance indicators")
     ("log.prefix", &_logPrefix, "prefix log")
-    ("log.thread", "log the thread identifier for severity 'human'")
+    ("log.thread", "log the thread identifier")
     ("log.use-local-time", "use local dates and times in log messages")
     ("log.tty", &_logTty, "additional log file if started on tty")
   ;
 
   options["Hidden Options"]
-    ("log", &_logLevel, "log level for severity 'human'")
+    ("log", &_logLevel, "log level")
     ("log.syslog", &DeprecatedParameter, "use syslog facility (deprecated)")
     ("log.hostname", &DeprecatedParameter, "host name for syslog")
     ("log.severity", &DeprecatedParameter, "log severities")

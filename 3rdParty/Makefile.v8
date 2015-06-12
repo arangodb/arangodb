@@ -36,30 +36,30 @@ V8DIR=@V8_DIR@
 if ENABLE_ARMV6
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
+	  export CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	  export CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	  export LDFLAGS="-march=armv6" \
+	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 	  && $(MAKE) \
-		CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-		LDFLAGS="-march=armv6" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-		GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
+	  export CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+	  export CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+	  export LDFLAGS="-march=armv6" \
+	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 	  && $(MAKE) \
-		CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-		LDFLAGS="-march=armv6" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-		GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 endif
 else # ! ENABLE_ARM6
@@ -71,30 +71,30 @@ else # ! ENABLE_ARM6
 if ENABLE_ARMV7
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
+	  export CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	  export CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	  export LDFLAGS="-march=armv7" \
+	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 	  && $(MAKE) \
-		CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-		LDFLAGS="-march=armv7" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-		GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
+	  export CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+	  export CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+	  export LDFLAGS="-march=armv7" \
+	  export GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1" \
 	  && $(MAKE) \
-		CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-		LDFLAGS="-march=armv7" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-		GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif
 
@@ -106,16 +106,16 @@ else # ! ENABLE_ARM7
 if ENABLE_DARWIN
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
+	  export LDFLAGS="-lc++" \
+	  export CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	  export CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	  export GYPFLAGS="-Dstandalone_static_library=1" \
 	  && $(MAKE) \
-		LDFLAGS="-lc++" \
-		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-		GYPFLAGS="-Dstandalone_static_library=1" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
@@ -125,16 +125,16 @@ if ENABLE_V8_DEBUG
 
 else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
+	  export LDFLAGS="-lc++" \
+          export CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+	  export CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+	  export GYPFLAGS="-Dstandalone_static_library=1" \
 	  && $(MAKE) \
-		LDFLAGS="-lc++" \
-                CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-		GYPFLAGS="-Dstandalone_static_library=1" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif # ENABLE_V8_DEBUG
 
@@ -145,28 +145,28 @@ endif # ENABLE_V8_DEBUG
 else # ! ENABLE_DARWIN
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
+	  export CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	  export CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	  export GYPFLAGS="-Dstandalone_static_library=1" \
 	  && $(MAKE) \
-		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-		GYPFLAGS="-Dstandalone_static_library=1" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
+	  export CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+	  export CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+	  export GYPFLAGS="-Dstandalone_static_library=1" \
 	  && $(MAKE) \
-		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
-		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-		GYPFLAGS="-Dstandalone_static_library=1" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif # ENABLE_V8_DEBUG
 endif # ENABLE_DARWIN

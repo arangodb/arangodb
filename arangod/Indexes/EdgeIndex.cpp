@@ -365,7 +365,9 @@ EdgeIndex::~EdgeIndex () {
 
 double EdgeIndex::selectivityEstimate () const {  
   // return average selectivity of the two index parts
-  return (_edgesFrom->selectivity() + _edgesTo->selectivity()) * 0.5;
+  double estimate = (_edgesFrom->selectivity() + _edgesTo->selectivity()) * 0.5;
+  TRI_ASSERT(estimate >= 0.0 && estimate <= 1.00001); // floating-point tolerance 
+  return estimate;
 }
  
 size_t EdgeIndex::memory () const {
