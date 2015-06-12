@@ -1376,18 +1376,23 @@ function require (path) {
     }
 
     var keys = Object.keys(args);
-    var script;
 
-    try {
-      script = Function.apply(null, keys.concat(content));
-    } catch (e) {
-      throw extend(new internal.ArangoError({
-        errorNum: internal.errors.ERROR_MODULE_BAD_WRAPPER.code,
-        errorMessage: internal.errors.ERROR_MODULE_BAD_WRAPPER.message
-        + "\nFile: " + filename
-        + "\nContext variables: " + JSON.stringify(Object.keys(args))
-      }), {cause: e});
-    }
+    // script = Function.apply(null, keys.concat(content));
+    // do not use Function constructor here... this is because the following code 
+    //
+    //     f = new Function("a", "b", "return 1");
+    // 
+    // will create the following function code in current V8:
+    //
+    //     function anonymous(a,b
+    //     /**/) {
+    //     return 1
+    //     }
+    // 
+    // Though the function code is correct, the line numbers in the generated code
+    // will be off by two lines due to V8 inserting two line breaks above the function body.
+    // Generating the function as follows will avoid that:
+    var script = "function (" + keys.join(", ") + ") { " + content + "\n }"; 
 
     var fn;
 

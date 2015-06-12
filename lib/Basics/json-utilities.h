@@ -63,32 +63,7 @@ bool TRI_CheckSameValueJson (TRI_json_t const*,
                              TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a json value is contained in a json list
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckInArrayJson (TRI_json_t const*, 
-                          TRI_json_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the elements of a list that are between the specified bounds
-///
-/// lower and upper are the bounds values. if both lower and upper have a value,
-/// then each list element is checked against the range (lower ... uppper).
-/// if either lower or upper are null, then the comparison is done as either
-/// (-inf ... upper) or (lower ... +inf).
-///
-/// using the boolean flags includeLower and includeUpper it can be specified
-/// whether the bounds values are part of the range (true) or not (false)
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_BetweenArrayJson (TRI_json_t const*,
-                                 TRI_json_t const*,
-                                 bool,
-                                 TRI_json_t const*,
-                                 bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uniquify a sorted json list into a new list
+/// @brief uniquify a sorted json list into a new array
 ///
 /// it is a prerequisite that the input list is already sorted.
 /// otherwise the result is unpredictable.
@@ -97,29 +72,7 @@ TRI_json_t* TRI_BetweenArrayJson (TRI_json_t const*,
 TRI_json_t* TRI_UniquifyArrayJson (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the union of two sorted json lists into a new list
-///
-/// the result list can be made unique or non-unique. it is a prerequisite that
-/// both input lists are already sorted. otherwise the result is unpredictable.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_UnionizeListsJson (TRI_json_t const*,
-                                   TRI_json_t const*,
-                                   bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the intersection of two sorted json lists into a new list
-///
-/// the result list can be made unique or non-unique. it is a prerequisite that
-/// both input lists are already sorted. otherwise the result is unpredictable.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_IntersectListsJson (TRI_json_t const*,
-                                    TRI_json_t const*,
-                                    bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sorts a json list in place
+/// @brief sorts a json array in place
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_SortArrayJson (TRI_json_t*);

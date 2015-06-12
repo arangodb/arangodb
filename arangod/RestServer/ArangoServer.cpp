@@ -338,7 +338,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _ignoreDatafileErrors(false),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
-    _foxxQueuesSystemOnly(true),
+    _foxxQueues(true),
+    _foxxQueuesWarmupExports(true),
     _foxxQueuesPollInterval(1.0),
     _server(nullptr),
     _queryRegistry(nullptr),
@@ -616,8 +617,9 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
+    ("server.foxx-queues", &_foxxQueues, "enable Foxx queues")
+    ("server.foxx-queues-warmup-exports", &_foxxQueuesWarmupExports, "enable pre-loading of Foxx exports for Foxx queues")
     ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
-    ("server.foxx-queues-system-only", &_foxxQueuesSystemOnly, "run Foxx queues in _system database only")
     ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")
   ;
 

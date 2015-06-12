@@ -3254,9 +3254,10 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
 /// tuple is back to the beginning.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool nextPermutationTuple (std::vector<size_t>& data,
+static bool NextPermutationTuple (std::vector<size_t>& data,
                                   std::vector<size_t>& starts) {
   auto begin = data.begin();  // a random access iterator
+
   for (size_t i = starts.size(); i-- != 0; ) {
     std::vector<size_t>::iterator from = begin + starts[i];
     std::vector<size_t>::iterator to;
@@ -3270,6 +3271,7 @@ static bool nextPermutationTuple (std::vector<size_t>& data,
       return true;
     }
   }
+
   return false;
 }
 
@@ -3331,7 +3333,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
   opt->addPlan(plan, rule, false);
 
   if (! starts.empty()) {
-    nextPermutationTuple(permTuple, starts);  // will never return false
+    NextPermutationTuple(permTuple, starts);  // will never return false
 
     do {
       // Clone the plan:
@@ -3382,7 +3384,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
       }
 
     } 
-    while (nextPermutationTuple(permTuple, starts));
+    while (NextPermutationTuple(permTuple, starts));
   }
 
   return TRI_ERROR_NO_ERROR;

@@ -108,6 +108,13 @@ std::string const GlobalContextMethods::CodeBootstrapCoordinator
     "require('internal').loadStartup('server/bootstrap/routing.js').startup();";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief warmup the exports
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const GlobalContextMethods::CodeWarmupExports 
+  = "require(\"org/arangodb/actions\").warmupExports()";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief we'll store deprecated config option values in here
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -345,7 +352,7 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
-                                                       TRI_vocbase_s* vocbase,
+                                                       TRI_vocbase_t* vocbase,
                                                        bool allowUseDatabase) {
   CONDITION_LOCKER(guard, _contextCondition);
 
@@ -385,15 +392,17 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
     TRI_ASSERT(v8::Locker::IsLocked(isolate));
     TRI_GET_GLOBALS();
 
-    // set the current database
+    // initialize the context data
+    v8g->_query              = nullptr;
+    v8g->_vocbase            = vocbase;
+    v8g->_allowUseDatabase   = allowUseDatabase;
   
-    v8g->_vocbase = vocbase;
-    v8g->_allowUseDatabase = allowUseDatabase;
-    v8g->_query = nullptr;
+    TRI_UseVocBase(vocbase);
 
     LOG_TRACE("entering V8 context %d", (int) context->_id);
     context->handleGlobalContextMethods();
   }
+
   return context;
 }
 
@@ -422,10 +431,13 @@ void ApplicationV8::exitContext (V8Context* context) {
   context->_hasDeadObjects = v8g->_hasDeadObjects;
   ++context->_numExecutions;
 
+  TRI_ASSERT(v8g->_vocbase != nullptr);
+  // release last recently used vocbase
+  TRI_ReleaseVocBase(static_cast<TRI_vocbase_t*>(v8g->_vocbase));
+
   // check for cancelation requests
   bool const canceled = v8g->_canceled;
   v8g->_canceled = false;
-  v8g->_query = nullptr;
 
   // exit the context
   {
@@ -545,6 +557,11 @@ void ApplicationV8::exitContext (V8Context* context) {
     context->_locker = nullptr;
     _freeContexts[name].push_back(context);
   }
+  
+  // reset the context data. garbage collection should be able to run without it
+  v8g->_query              = nullptr;
+  v8g->_vocbase            = nullptr;
+  v8g->_allowUseDatabase   = false;
 
   LOG_TRACE("returned dirty V8 context");
 }
