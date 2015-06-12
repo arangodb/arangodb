@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_EXECUTOR_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
 #include "V8/v8-globals.h"
@@ -64,7 +65,7 @@ namespace triagens {
 /// @brief create the executor
 ////////////////////////////////////////////////////////////////////////////////
 
-        Executor ();
+        explicit Executor (int64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the executor
@@ -115,7 +116,8 @@ namespace triagens {
 /// @brief traverse the expression and note all (big) array/object literals
 ////////////////////////////////////////////////////////////////////////////////
 
-        void detectConstantValues (AstNode const*);
+        void detectConstantValues (AstNode const*,
+                                   AstNodeType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an AST node to a V8 object
@@ -289,6 +291,12 @@ namespace triagens {
         std::unordered_map<AstNode const*, size_t> _constantRegisters;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief local value for literal object size threshold
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t const _literalSizeThreshold;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL internal function names
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -305,7 +313,7 @@ namespace triagens {
 /// an array / object literal "big" and pulling it out of the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        static size_t const BigObjectThreshold;
+        static size_t const DefaultLiteralSizeThreshold;
     };
 
   }
