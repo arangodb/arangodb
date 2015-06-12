@@ -5994,7 +5994,6 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
     e = underscore.filter(e, function(x) {
       return x.edges.length > 0;
     });
-    require("console").log("Result", e);
     result = result.concat(e);
   });
   return result;
@@ -6067,6 +6066,11 @@ function IS_EXAMPLE_SET (example) {
 ///   is used as length.
 ///   If no default is supplied the default would be positive Infinity so the path could
 ///   not be calculated.
+///   * *stopAtFirstMatch*                 : Only useful if targetVertices is an example that matches 
+///                                          to more than one vertex. If so only the shortest path to
+///                                          the closest of these target vertices is returned.
+///                                          This flag is of special use if you have target pattern and
+///                                          you want to know which vertex with this pattern is matched first.
 ///   * *includeData*                      : Triggers if only *_id*'s are returned (*false*, default)
 ///                                          or if data is included for all objects as well (*true*)
 ///                                          This will modify the content of *vertex*, *path.vertices*
@@ -6140,7 +6144,19 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
         RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options, "GRAPH_SHORTEST_PATH"),
         options);
     }
-    return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(graphName, options);
+    let tmp = CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(graphName, options);
+    if (options.stopAtFirstMatch && options.stopAtFirstMatch === true && tmp.length > 0) {
+      let tmpDist = Infinity;
+      let tmpRes = {};
+      for (let i = 0; i < tmp.length; ++i) {
+        if (tmp[i].distance < tmpDist) {
+          tmpDist = tmp[i].distance;
+          tmpRes = tmp[i];
+        }
+      }
+      return [tmpRes];
+    }
+    return tmp;
   }
 
   let graph_module = require("org/arangodb/general-graph");
@@ -6185,7 +6201,6 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
 
   let res = [];
   // Compute all shortest_path pairs.
-  // Needs improvement!
   for (let i = 0; i < startVertices.length; ++i) {
     for (let j = 0; j < endVertices.length; ++j) {
       if (startVertices[i] !== endVertices[j]) {
@@ -6197,6 +6212,17 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
         }
       }
     }
+  }
+  if (options.stopAtFirstMatch && options.stopAtFirstMatch === true && res.length > 0) {
+    let tmpDist = Infinity;
+    let tmpRes = {};
+    for (let i = 0; i < res.length; ++i) {
+      if (res[i].distance < tmpDist) {
+        tmpDist = res[i].distance;
+        tmpRes = res[i];
+      }
+    }
+    return [tmpRes];
   }
   return res;
 }
