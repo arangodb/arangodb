@@ -5126,7 +5126,7 @@ function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
 function TO_ID (vertex, collection) {
   'use strict';
 
-  if (typeof vertex === 'object' && vertex.hasOwnProperty('_id')) {
+  if (typeof vertex === 'object' && vertex !== null && vertex.hasOwnProperty('_id')) {
     return vertex._id;
   }
 
@@ -7002,6 +7002,9 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 ///   * *maxIterations*: the maximum number of iterations that the traversal is
 ///      allowed to perform. It is sensible to set this number so unbounded traversals
 ///      will terminate.
+///   * *includeData*: Defines if the result should contain only ids (false) or if all documents
+///     should be fully extracted (true). By default this parameter is set to false, so only ids
+///     will be returned.
 ///
 /// @EXAMPLES
 ///
@@ -7027,6 +7030,17 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 /// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
+/// Including the data:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges3}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | db._query("FOR e IN GRAPH_EDGES("
+/// | + "'routeplanner', 'germanCity/Hamburg', {direction : 'outbound',"
+/// | + "maxDepth : 2, includeData: true}) RETURN e"
+/// ).toArray();
+/// ~ examples.dropGraph("routeplanner");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7053,7 +7067,7 @@ function AQL_GRAPH_EDGES (graphName,
   params = TRAVERSAL_PARAMS();
   params.paths = true;
   params.uniqueness = {
-    vertices: "path",
+    vertices: "none",
     edges: "global"
   };
   params.minDepth = 1; // Make sure we exclude from depth 1
