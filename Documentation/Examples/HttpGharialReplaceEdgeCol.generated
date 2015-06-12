@@ -16,7 +16,7 @@ EOF
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 1593900324
+etag: 1600905792
 
 { 
   "error" : false, 
@@ -40,6 +40,6 @@ etag: 1593900324
     ], 
     "orphanCollections" : [ ], 
     "_id" : "_graphs/social", 
-    "_rev" : "1593900324" 
+    "_rev" : "1600905792" 
   } 
 }

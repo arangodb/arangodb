@@ -1,17 +1,17 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/1663237412?rev=1663565092 <<EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/1670373952?rev=1670701632 <<EOF
 {"other":"content"}
 EOF
 
 HTTP/1.1 412 Precondition Failed
 content-type: application/json; charset=utf-8
-etag: "1663237412"
+etag: "1670373952"
 
 { 
   "error" : true, 
   "code" : 412, 
   "errorNum" : 1200, 
   "errorMessage" : "precondition failed", 
-  "_id" : "products/1663237412", 
-  "_rev" : "1663237412", 
-  "_key" : "1663237412" 
+  "_id" : "products/1670373952", 
+  "_rev" : "1670373952", 
+  "_key" : "1670373952" 
 }
