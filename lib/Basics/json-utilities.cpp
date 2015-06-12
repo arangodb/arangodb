@@ -202,9 +202,11 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
   }
 
   // lhs and rhs have equal weights
-  if (lhs == nullptr) {
-    // both lhs and rhs are NULL, so they are equal
-    TRI_ASSERT(rhs == nullptr);
+
+  if (lhs == nullptr || rhs == nullptr) {
+    // either lhs or rhs is a nullptr. we cannot be sure here that both are nullptrs.
+    // there can also exist the situation that lhs is a nullptr and rhs is a JSON null value
+    // (or vice versa). Anyway, the compare value is the same for both,
     return 0;
   }
 

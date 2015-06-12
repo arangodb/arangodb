@@ -69,7 +69,18 @@ v2.6.0 (XXXX-XX-XX)
 
 * web interface: upgraded API documentation to use Swagger 2
 
-* removed startup option `--log.severity`
+* INCOMPATIBLE CHANGE
+
+  removed startup option `--log.severity`
+
+  The docs for `--log.severity` mentioned lots of severities (e.g. `exception`, `technical`, `functional`, `development`) 
+  but only a few severities (e.g. `all`, `human`) were actually used, with `human` being the default and `all` enabling the 
+  additional logging of requests. So the option pretended to control a lot of things which it actually didn't. Additionally,
+  the option `--log.requests-file` was around for a long time already, also controlling request logging. 
+
+  Because the `--log.severity` option effectively did not control that much, it was removed. A side effect of removing the
+  option is that 2.5 installations which used `--log.severity all` will not log requests after the upgrade to 2.6. This can
+  be adjusted by setting the `--log.requests-file` option.
 
 * add backtrace to fatal log events
 

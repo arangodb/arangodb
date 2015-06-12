@@ -49,9 +49,9 @@ function setColors (useSystemColors) {
 
 /* colorizer and output helper functions */ 
 
-function passthru (v) {
+function attributeUncolored (v) {
   'use strict';
-  return v;
+  return "`" + v + "`";
 }
   
 function keyword (v) {
@@ -104,6 +104,10 @@ function section (v) {
 
 function pad (n) {
   'use strict';
+  if (n < 0) {
+    // value seems invalid...
+    n = 0;
+  }
   return new Array(n).join(" ");
 }
 
@@ -186,8 +190,7 @@ function printIndexes (indexes) {
   if (indexes.length === 0) {
     stringBuilder.appendLine(" " + value("none"));
   }
-
-  if (indexes.length > 0) {
+  else {
     var maxIdLen = String("Id").length;
     var maxCollectionLen = String("Collection").length;
     var maxUniqueLen = String("Unique").length;
@@ -204,7 +207,7 @@ function printIndexes (indexes) {
       if (l > maxTypeLen) {
         maxTypeLen = l;
       }
-      l = index.fields.map(passthru).join(", ").length;
+      l = index.fields.map(attributeUncolored).join(", ").length;
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
@@ -228,7 +231,7 @@ function printIndexes (indexes) {
       var uniqueness = (indexes[i].unique ? "true" : "false");
       var sparsity = (indexes[i].hasOwnProperty("sparse") ? (indexes[i].sparse ? "true" : "false") : "n/a");
       var fields = indexes[i].fields.map(attribute).join(", ");
-      var fieldsLen = indexes[i].fields.map(passthru).join(", ").length;
+      var fieldsLen = indexes[i].fields.map(attributeUncolored).join(", ").length;
       var ranges = "[ " + indexes[i].ranges + " ]";
       var selectivity = (indexes[i].hasOwnProperty("selectivityEstimate") ?
         (indexes[i].selectivityEstimate * 100).toFixed(2) + " %" :
