@@ -1019,8 +1019,10 @@ function GET_RANGE (value, low, high) {
     else {
       ++high; 
     }
-    for (position = low; position < high; ++position) {
-      result.push(value[position]);
+    if (low <= high) {
+      for (position = low; position < high; ++position) {
+        result.push(value[position]);
+      }
     }
   }
   else {

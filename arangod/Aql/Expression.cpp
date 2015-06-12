@@ -556,11 +556,13 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
               // increase by one so we include the last specified element
               ++high;
             }
-            array->reserve(static_cast<size_t>(high - low));
-            // forward iteration 
-            for (int64_t position = low; position < high; ++position) {
-              auto j = result.extractArrayMember(trx, myCollection, position, true);
-              array->add(j);
+            if (low <= high) {
+              array->reserve(static_cast<size_t>(high - low));
+              // forward iteration 
+              for (int64_t position = low; position < high; ++position) {
+                auto j = result.extractArrayMember(trx, myCollection, position, true);
+                array->add(j);
+              }
             }
           }
           else {
