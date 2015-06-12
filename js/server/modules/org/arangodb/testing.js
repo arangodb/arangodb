@@ -64,6 +64,7 @@ var optionsDocumentation = [
   '   - `skipSsl`: ommit the ssl_server rspec tests.',
   '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
   '   - `skipConfig`: ommit the noisy configuration tests',
+  '   - `skipFoxQueues`: ommit the test for the fox queues',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -1633,6 +1634,10 @@ testFuncs.foxx_manager = function (options) {
 };
 
 testFuncs.queue_legacy = function (options) {
+  if (options.skipFoxQueues) {
+    print("skipping test of legacy queue job types");
+    return {};
+  }
   var startTime;
   var queueAppMountPath = '/test-queue-legacy';
   print("Testing legacy queue job types");

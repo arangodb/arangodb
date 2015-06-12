@@ -198,6 +198,7 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
         if (_ast->query()->verboseErrors()) {
           ex.addToMessage(" while evaluating expression ");
           auto json = _node->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+
           if (json != nullptr) {
             ex.addToMessage(triagens::basics::JsonHelper::toString(json));
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);

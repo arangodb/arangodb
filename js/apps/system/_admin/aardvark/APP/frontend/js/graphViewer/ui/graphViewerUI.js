@@ -62,7 +62,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         $('.headerBar').append(
           '<div class="infoField">Graph too big. A random section is rendered.<div class="fa fa-info-circle"></div></div>'
         );
-        $('.infoField .fa-info-circle').attr("title", "You can add additional indices through the context-menu.").tooltip();
+        $('.infoField .fa-info-circle').attr("title", "You can display additional/other vertices by using the toolbar buttons.").tooltip();
       }
     },
 
@@ -342,7 +342,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       aNode.className = "headerButton";
       spanNode = document.createElement("span");
       spanNode.className = "fa fa-search-plus";
-      $(spanNode).attr("title", "Show additional nodes");
+      $(spanNode).attr("title", "Show additional vertices");
 
       ul.appendChild(liNode);
       liNode.appendChild(aNode);

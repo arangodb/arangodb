@@ -365,11 +365,11 @@ visitor functions is as follows:
 ```js
 var config = {
   ...
-  visitor: function (config, result, vertex, path, connections) { ... }
+  visitor: function (config, result, vertex, path, connected) { ... }
 };
 ```
 
-Note: the *connections* parameter value will only be set if the traversal order is
+Note: the *connected* parameter value will only be set if the traversal order is
 set to *preorder-expander*. Otherwise, this parameter won't be set by the traverser.
 
 Visitor functions are not expected to return any values. Instead, they can modify the
@@ -397,7 +397,7 @@ To write a visitor that increments a counter each time a vertex is visited,
 we could write the following custom visitor:
 
 ```js
-config.visitor = function (config, result, vertex, path, connections) {
+config.visitor = function (config, result, vertex, path, connected) {
   if (! result) { 
     result = { };
   }
@@ -420,7 +420,7 @@ Another example of a visitor is one that collects the `_id` values of all vertic
 visited:
 
 ```js
-config.visitor = function (config, result, vertex, path, connections) {
+config.visitor = function (config, result, vertex, path, connected) {
   if (! result) {
     result = { }; 
   }
@@ -442,8 +442,8 @@ For example, the following visitor can be used to print only leaf nodes (that
 do not have any further connected edges):
 
 ```js
-config.visitor = function (config, result, vertex, path, connections) {
-  if (connections && connections.length === 0) {
+config.visitor = function (config, result, vertex, path, connected) {
+  if (connected && connected.length === 0) {
     require("internal").print("found a leaf-node: ", vertex);
   }
 }
@@ -588,14 +588,14 @@ connected edges):
 var config = {
   ...
   expander: function (config, vertex, path) {
-    var connections = [ ];
+    var connected = [ ];
     var datasource = config.datasource;
     datasource.getInEdges(vertex._id).forEach(function (edge) {
       if (Math.random() >= 0.5) {
-        connections.push({ edge: edge, vertex: (edge._from) });
+        connected.push({ edge: edge, vertex: (edge._from) });
       }
     });
-    return connections;
+    return connected;
   } 
 };
 ```
