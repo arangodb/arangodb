@@ -725,7 +725,7 @@ expression:
   | operator_ternary {
       $$ = $1;
     }
-  | simple_value {
+  | value_literal {
       $$ = $1;
     }
   | reference {
@@ -1015,6 +1015,9 @@ reference:
       $$ = node;
     }
   | compound_value {
+      $$ = $1;
+    }
+  | bind_parameter {
       $$ = $1;
     }
   | function_call {

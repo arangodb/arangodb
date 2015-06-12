@@ -2,7 +2,7 @@
 /*global assertEqual, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, attribute accesses
+/// @brief tests for query language, array accesses
 ///
 /// @file
 ///
@@ -34,7 +34,7 @@ var jsunity = require("jsunity");
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function attributeAccessTestSuite () {
+function arrayAccessTestSuite () {
   var values = [
     { name: "sir alfred", age: 60, loves: [ "lettuce", "flowers" ] }, 
     { person: { name: "gadgetto", age: 50, loves: "gadgets" } }, 
@@ -60,85 +60,116 @@ function attributeAccessTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test direct access
+/// @brief test non-array access
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDirectAccess : function () {
-      var result = AQL_EXECUTE("RETURN " + JSON.stringify(values[0]) + ".name").json;
-      assertEqual([ "sir alfred" ], result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test direct access
-////////////////////////////////////////////////////////////////////////////////
-
-    testDirectAccessBind : function () {
-      var result = AQL_EXECUTE("RETURN @value.name", { value: values[0] }).json;
-      assertEqual([ "sir alfred" ], result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test non-existing attribute
-////////////////////////////////////////////////////////////////////////////////
-
-    testNonExistingAttribute : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN value.broken", { values: values }).json;
-      assertEqual([ null, null, null, null, null ], result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test partially existing attribute
-////////////////////////////////////////////////////////////////////////////////
-
-    testPartiallyExistingAttribute : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN value.name", { values: values }).json;
-      assertEqual([ "sir alfred", null, "everybody", "judge", null ], result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test partially existing sub-attribute
-////////////////////////////////////////////////////////////////////////////////
-
-    testPartiallyExistingSubAttribute : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN value.person.name", { values: values }).json;
-      assertEqual([ null, "gadgetto", null, null, null ], result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test function call result attribute
-////////////////////////////////////////////////////////////////////////////////
-
-    testFunctionCallResultAttribute : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN NOOPT(PASSTHRU(value.age))", { values: values }).json;
-      assertEqual([ 60, null, null, null, null ], result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test function call result sub-attribute
-////////////////////////////////////////////////////////////////////////////////
-
-    testFunctionCallResultAttribute1 : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN NOOPT(PASSTHRU(value.person.name))", { values: values }).json;
-      assertEqual([ null, "gadgetto", null, null, null ], result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test function call result sub-attribute
-////////////////////////////////////////////////////////////////////////////////
-
-    testFunctionCallResultAttribute2 : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN NOOPT(PASSTHRU(value).person).name", { values: values }).json;
-      assertEqual([ null, "gadgetto", null, null, null ], result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery result attribute
-////////////////////////////////////////////////////////////////////////////////
-
-    testSubqueryResultAttribute : function () {
-      // won't work (accessing an attribute of an array)
-      var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value).name", { values: values }).json;
+    testNonArray1 : function () {
+      var result = AQL_EXECUTE("RETURN { foo: 'bar' }[0]").json;
       assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-array access
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonArray2 : function () {
+      var result = AQL_EXECUTE("RETURN { foo: 'bar' }[99]").json;
+      assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-array access
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonArray3 : function () {
+      var result = AQL_EXECUTE("RETURN { foo: 'bar' }[-1]").json;
+      assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-array access
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonArray4 : function () {
+      var result = AQL_EXECUTE("RETURN NOOPT(PASSTHRU({ foo: 'bar' }))[-1]").json;
+      assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-array access
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonArray5 : function () {
+      var result = AQL_EXECUTE("RETURN NOOPT(PASSTHRU(null))[-1]").json;
+      assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-array access
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonArray6 : function () {
+      var result = AQL_EXECUTE("RETURN NOOPT(PASSTHRU('foobar'))[2]").json;
+      assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-array access
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonArrayRange1 : function () {
+      var result = AQL_EXECUTE("RETURN { foo: 'bar' }[0..1]").json;
+      assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-array access
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonArrayRange2 : function () {
+      var result = AQL_EXECUTE("RETURN { foo: 'bar' }[-2..-1]").json;
+      assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery result
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryResult : function () {
+      for (var i = 0; i < values.length; ++i) {
+        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[" + i + "]", { values: values }).json;
+        assertEqual([ values[i] ], result);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery result
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryResultRangeForward1 : function () {
+      for (var to = 0; to < 10; ++to) {
+        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[0.." + to + "]", { values: values }).json;
+        var expected = [ ];
+        for (var i = 0; i < Math.min(to + 1, values.length); ++i) {
+          expected.push(values[i]);
+        }
+        assertEqual([ expected ], result);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery result
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryResultRangeForward2 : function () {
+      for (var from = 0; from < 10; ++from) {
+        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[" + from + "..99]", { values: values }).json;
+        var expected = [ ];
+        for (var i = Math.min(from, values.length); i < values.length; ++i) {
+          expected.push(values[i]);
+        }
+        assertEqual([ expected ], result);
+      }
     }
 
   };
@@ -148,7 +179,7 @@ function attributeAccessTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(attributeAccessTestSuite);
+jsunity.run(arrayAccessTestSuite);
 
 return jsunity.done();
 

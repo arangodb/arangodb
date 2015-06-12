@@ -554,6 +554,7 @@ unittests-shell-server-only:
 ################################################################################
 
 SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
+			@top_srcdir@/js/server/tests/aql-array-access.js \
 			@top_srcdir@/js/server/tests/aql-attribute-access.js \
 			@top_srcdir@/js/server/tests/aql-bind.js \
 			@top_srcdir@/js/server/tests/aql-call-apply.js \
