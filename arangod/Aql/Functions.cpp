@@ -993,6 +993,10 @@ AqlValue Functions::Unique (triagens::aql::Query* query,
                             triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
                             AqlValue const parameters) {
+  if (parameters.arraySize() != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE");
+  }
+
   Json value(parameters.extractArrayMember(trx, collection, 0, false));
 
   if (! value.isArray()) {
@@ -1045,16 +1049,20 @@ AqlValue Functions::Union (triagens::aql::Query* query,
                            triagens::arango::AqlTransaction* trx,
                            TRI_document_collection_t const* collection,
                            AqlValue const parameters) {
-  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 16));
-
   size_t const n = parameters.arraySize();
+
+  if (parameters.arraySize() < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION");
+  }
+
+  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 16));
 
   for (size_t i = 0; i < n; ++i) {
     Json value(parameters.extractArrayMember(trx, collection, i, false));
 
     if (! value.isArray()) {
       // not an array
-      RegisterWarning(query, "UNION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      RegisterInvalidArgumentWarning(query, "UNION");
       return AqlValue(new Json(Json::Null));
     }
 
@@ -1102,6 +1110,10 @@ AqlValue Functions::UnionDistinct (triagens::aql::Query* query,
                                    triagens::arango::AqlTransaction* trx,
                                    TRI_document_collection_t const* collection,
                                    AqlValue const parameters) {
+  if (parameters.arraySize() < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION_DISTINCT");
+  }
+
   std::unordered_set<TRI_json_t*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
     512, 
     triagens::basics::JsonHash(), 
@@ -1124,7 +1136,7 @@ AqlValue Functions::UnionDistinct (triagens::aql::Query* query,
       if (! value.isArray()) {
         // not an array
         freeValues();
-        RegisterWarning(query, "UNION_DISTINCT", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+        RegisterInvalidArgumentWarning(query, "UNION_DISTINCT");
         return AqlValue(new Json(Json::Null));
       }
 
@@ -1188,6 +1200,12 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
                                   triagens::arango::AqlTransaction* trx,
                                   TRI_document_collection_t const* collection,
                                   AqlValue const parameters) {
+  size_t const n = parameters.arraySize();
+
+  if (parameters.arraySize() < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "INTERSECTION");
+  }
+
   std::unordered_map<TRI_json_t*, size_t, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
     512, 
     triagens::basics::JsonHash(), 
@@ -1202,7 +1220,6 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
   };
 
   std::unique_ptr<TRI_json_t> result;
-  size_t const n = parameters.arraySize();
 
   try {
     for (size_t i = 0; i < n; ++i) {

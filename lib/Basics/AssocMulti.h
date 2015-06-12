@@ -805,7 +805,8 @@ namespace triagens {
             nrCollisions += b._nrCollisions;
           }
           return nrUsed > 0 ?
-                 (nrUsed - nrCollisions) / nrUsed :
+                 static_cast<double>(nrUsed - nrCollisions) 
+                 / static_cast<double>(nrUsed) :
                  1.0;
         }
 
@@ -867,6 +868,7 @@ namespace triagens {
           }
 
           b._nrUsed = 0;
+          b._nrCollisions = 0;
 #ifdef TRI_INTERNAL_STATS
           _nrResizes++;
 #endif

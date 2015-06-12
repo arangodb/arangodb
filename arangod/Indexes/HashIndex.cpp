@@ -302,7 +302,9 @@ double HashIndex::selectivityEstimate () const {
     return 1.0; 
   }
 
-  return TRI_SelectivityHashArrayMulti(&_hashArrayMulti);
+  double estimate = TRI_SelectivityHashArrayMulti(&_hashArrayMulti);
+  TRI_ASSERT(estimate >= 0.0 && estimate <= 1.00001); // floating-point tolerance 
+  return estimate;
 }
         
 size_t HashIndex::memory () const {

@@ -80,7 +80,9 @@ function getBackOffDelay(job, cfg) {
 }
 
 exports.work = function (job) {
-  var cfg = typeof job.type === 'string' ? queues._jobTypes[job.type] : job.type;
+  var databaseName = db._name();
+  var cache = queues._jobTypes[databaseName];
+  var cfg = typeof job.type === 'string' ? (cache && cache[job.type]) : job.type;
   var now = Date.now();
 
   if (!cfg) {

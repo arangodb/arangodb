@@ -378,7 +378,7 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
   catch (triagens::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   }
-  catch (std::bad_alloc const& ex) {
+  catch (std::bad_alloc const&) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   catch (std::exception const& ex) {
