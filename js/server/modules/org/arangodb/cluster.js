@@ -955,11 +955,19 @@ var handlePlanChange = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcherDisabled
+/// @brief dispatcherFrontendDisabled
 ////////////////////////////////////////////////////////////////////////////////
 
-var dispatcherDisabled = function () {
+var dispatcherFrontendDisabled = function () {
   return global.ArangoServerState.disableDispatcherFrontend();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dispatcherKickstarterDisabled
+////////////////////////////////////////////////////////////////////////////////
+
+var dispatcherKickstarterDisabled = function () {
+  return global.ArangoServerState.disableDispatcherKickstarter();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1029,17 +1037,18 @@ var bootstrapDbServers = function (isRelaunch) {
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
-exports.bootstrapDbServers     = bootstrapDbServers;
-exports.coordinatorId          = coordinatorId;
-exports.dispatcherDisabled     = dispatcherDisabled;
-exports.handlePlanChange       = handlePlanChange;
-exports.isCluster              = isCluster;
-exports.isCoordinator          = isCoordinator;
-exports.isCoordinatorRequest   = isCoordinatorRequest;
-exports.role                   = role;
-exports.shardList              = shardList;
-exports.status                 = status;
-exports.wait                   = wait;
+exports.bootstrapDbServers            = bootstrapDbServers;
+exports.coordinatorId                 = coordinatorId;
+exports.dispatcherFrontendDisabled    = dispatcherFrontendDisabled;
+exports.dispatcherKickstarterDisabled = dispatcherKickstarterDisabled;
+exports.handlePlanChange              = handlePlanChange;
+exports.isCluster                     = isCluster;
+exports.isCoordinator                 = isCoordinator;
+exports.isCoordinatorRequest          = isCoordinatorRequest;
+exports.role                          = role;
+exports.shardList                     = shardList;
+exports.status                        = status;
+exports.wait                          = wait;
 
 exports.Kickstarter = Kickstarter;
 exports.Planner = Planner;

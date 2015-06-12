@@ -90,165 +90,169 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   // r = regex (a string with a special format). note: the regex type is mutually exclusive with all other types
 
   // type check functions
-  { "IS_NULL",                     Function("IS_NULL",                     "AQL_IS_NULL", ".", true, false, true, &Functions::IsNull) },
-  { "IS_BOOL",                     Function("IS_BOOL",                     "AQL_IS_BOOL", ".", true, false, true, &Functions::IsBool) },
-  { "IS_NUMBER",                   Function("IS_NUMBER",                   "AQL_IS_NUMBER", ".", true, false, true, &Functions::IsNumber) },
-  { "IS_STRING",                   Function("IS_STRING",                   "AQL_IS_STRING", ".", true, false, true, &Functions::IsString) },
-  { "IS_ARRAY",                    Function("IS_ARRAY",                    "AQL_IS_ARRAY", ".", true, false, true, &Functions::IsArray) },
+  { "IS_NULL",                     Function("IS_NULL",                     "AQL_IS_NULL", ".", true, false, true, true, &Functions::IsNull) },
+  { "IS_BOOL",                     Function("IS_BOOL",                     "AQL_IS_BOOL", ".", true, false, true, true, &Functions::IsBool) },
+  { "IS_NUMBER",                   Function("IS_NUMBER",                   "AQL_IS_NUMBER", ".", true, false, true, true, &Functions::IsNumber) },
+  { "IS_STRING",                   Function("IS_STRING",                   "AQL_IS_STRING", ".", true, false, true, true, &Functions::IsString) },
+  { "IS_ARRAY",                    Function("IS_ARRAY",                    "AQL_IS_ARRAY", ".", true, false, true, true, &Functions::IsArray) },
   // IS_LIST is an alias for IS_ARRAY
-  { "IS_LIST",                     Function("IS_LIST",                     "AQL_IS_LIST", ".", true, false, true, &Functions::IsArray) },
-  { "IS_OBJECT",                   Function("IS_OBJECT",                   "AQL_IS_OBJECT", ".", true, false, true, &Functions::IsObject) },
+  { "IS_LIST",                     Function("IS_LIST",                     "AQL_IS_LIST", ".", true, false, true, true, &Functions::IsArray) },
+  { "IS_OBJECT",                   Function("IS_OBJECT",                   "AQL_IS_OBJECT", ".", true, false, true, true, &Functions::IsObject) },
   // IS_DOCUMENT is an alias for IS_OBJECT
-  { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "AQL_IS_DOCUMENT", ".", true, false, true, &Functions::IsObject) }, 
+  { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "AQL_IS_DOCUMENT", ".", true, false, true, true, &Functions::IsObject) }, 
   
   // type cast functions
-  { "TO_NUMBER",                   Function("TO_NUMBER",                   "AQL_TO_NUMBER", ".", true, false, true) },
-  { "TO_STRING",                   Function("TO_STRING",                   "AQL_TO_STRING", ".", true, false, true) },
-  { "TO_BOOL",                     Function("TO_BOOL",                     "AQL_TO_BOOL", ".", true, false, true) },
-  { "TO_ARRAY",                    Function("TO_ARRAY",                    "AQL_TO_ARRAY", ".", true, false, true) },
+  { "TO_NUMBER",                   Function("TO_NUMBER",                   "AQL_TO_NUMBER", ".", true, false, true, true) },
+  { "TO_STRING",                   Function("TO_STRING",                   "AQL_TO_STRING", ".", true, false, true, true) },
+  { "TO_BOOL",                     Function("TO_BOOL",                     "AQL_TO_BOOL", ".", true, false, true, true) },
+  { "TO_ARRAY",                    Function("TO_ARRAY",                    "AQL_TO_ARRAY", ".", true, false, true, true) },
   // TO_LIST is an alias for TO_ARRAY
-  { "TO_LIST",                     Function("TO_LIST",                     "AQL_TO_LIST", ".", true, false, true) },
+  { "TO_LIST",                     Function("TO_LIST",                     "AQL_TO_LIST", ".", true, false, true, true) },
   
   // string functions
-  { "CONCAT",                      Function("CONCAT",                      "AQL_CONCAT", "szl|+", true, false, true, &Functions::Concat) },
-  { "CONCAT_SEPARATOR",            Function("CONCAT_SEPARATOR",            "AQL_CONCAT_SEPARATOR", "s,szl|+", true, false, true) },
-  { "CHAR_LENGTH",                 Function("CHAR_LENGTH",                 "AQL_CHAR_LENGTH", "s", true, false, true) },
-  { "LOWER",                       Function("LOWER",                       "AQL_LOWER", "s", true, false, true) },
-  { "UPPER",                       Function("UPPER",                       "AQL_UPPER", "s", true, false, true) },
-  { "SUBSTRING",                   Function("SUBSTRING",                   "AQL_SUBSTRING", "s,n|n", true, false, true) },
-  { "CONTAINS",                    Function("CONTAINS",                    "AQL_CONTAINS", "s,s|b", true, false, true) },
-  { "LIKE",                        Function("LIKE",                        "AQL_LIKE", "s,r|b", true, false, true) },
-  { "LEFT",                        Function("LEFT",                        "AQL_LEFT", "s,n", true, false, true) },
-  { "RIGHT",                       Function("RIGHT",                       "AQL_RIGHT", "s,n", true, false, true) },
-  { "TRIM",                        Function("TRIM",                        "AQL_TRIM", "s|ns", true, false, true) },
-  { "LTRIM",                       Function("LTRIM",                       "AQL_LTRIM", "s|s", true, false, true) },
-  { "RTRIM",                       Function("RTRIM",                       "AQL_RTRIM", "s|s", true, false, true) },
-  { "FIND_FIRST",                  Function("FIND_FIRST",                  "AQL_FIND_FIRST", "s,s|zn,zn", true, false, true) },
-  { "FIND_LAST",                   Function("FIND_LAST",                   "AQL_FIND_LAST", "s,s|zn,zn", true, false, true) },
-  { "SPLIT",                       Function("SPLIT",                       "AQL_SPLIT", "s|sl,n", true, false, true) },
-  { "SUBSTITUTE",                  Function("SUBSTITUTE",                  "AQL_SUBSTITUTE", "s,las|lsn,n", true, false, true) },
-  { "MD5",                         Function("MD5",                         "AQL_MD5", "s", true, false, true, &Functions::Md5) },
-  { "SHA1",                        Function("SHA1",                        "AQL_SHA1", "s", true, false, true, &Functions::Sha1) },
-  { "RANDOM_TOKEN",                Function("RANDOM_TOKEN",                "AQL_RANDOM_TOKEN", "n", false, true, true) },
+  { "CONCAT",                      Function("CONCAT",                      "AQL_CONCAT", "szl|+", true, false, true, true, &Functions::Concat) },
+  { "CONCAT_SEPARATOR",            Function("CONCAT_SEPARATOR",            "AQL_CONCAT_SEPARATOR", "s,szl|+", true, false, true, true) },
+  { "CHAR_LENGTH",                 Function("CHAR_LENGTH",                 "AQL_CHAR_LENGTH", "s", true, false, true, true) },
+  { "LOWER",                       Function("LOWER",                       "AQL_LOWER", "s", true, false, true, true) },
+  { "UPPER",                       Function("UPPER",                       "AQL_UPPER", "s", true, false, true, true) },
+  { "SUBSTRING",                   Function("SUBSTRING",                   "AQL_SUBSTRING", "s,n|n", true, false, true, true) },
+  { "CONTAINS",                    Function("CONTAINS",                    "AQL_CONTAINS", "s,s|b", true, false, true, true) },
+  { "LIKE",                        Function("LIKE",                        "AQL_LIKE", "s,r|b", true, false, true, true) },
+  { "LEFT",                        Function("LEFT",                        "AQL_LEFT", "s,n", true, false, true, true) },
+  { "RIGHT",                       Function("RIGHT",                       "AQL_RIGHT", "s,n", true, false, true, true) },
+  { "TRIM",                        Function("TRIM",                        "AQL_TRIM", "s|ns", true, false, true, true) },
+  { "LTRIM",                       Function("LTRIM",                       "AQL_LTRIM", "s|s", true, false, true, true) },
+  { "RTRIM",                       Function("RTRIM",                       "AQL_RTRIM", "s|s", true, false, true, true) },
+  { "FIND_FIRST",                  Function("FIND_FIRST",                  "AQL_FIND_FIRST", "s,s|zn,zn", true, false, true, true) },
+  { "FIND_LAST",                   Function("FIND_LAST",                   "AQL_FIND_LAST", "s,s|zn,zn", true, false, true, true) },
+  { "SPLIT",                       Function("SPLIT",                       "AQL_SPLIT", "s|sl,n", true, false, true, true) },
+  { "SUBSTITUTE",                  Function("SUBSTITUTE",                  "AQL_SUBSTITUTE", "s,las|lsn,n", true, false, true, true) },
+  { "MD5",                         Function("MD5",                         "AQL_MD5", "s", true, false, true, true, &Functions::Md5) },
+  { "SHA1",                        Function("SHA1",                        "AQL_SHA1", "s", true, false, true, true, &Functions::Sha1) },
+  { "RANDOM_TOKEN",                Function("RANDOM_TOKEN",                "AQL_RANDOM_TOKEN", "n", false, true, true, true) },
 
   // numeric functions
-  { "FLOOR",                       Function("FLOOR",                       "AQL_FLOOR", "n", true, false, true) },
-  { "CEIL",                        Function("CEIL",                        "AQL_CEIL", "n", true, false, true) },
-  { "ROUND",                       Function("ROUND",                       "AQL_ROUND", "n", true, false, true) },
-  { "ABS",                         Function("ABS",                         "AQL_ABS", "n", true, false, true) },
-  { "RAND",                        Function("RAND",                        "AQL_RAND", "", false, false, true) },
-  { "SQRT",                        Function("SQRT",                        "AQL_SQRT", "n", true, false, true) },
+  { "FLOOR",                       Function("FLOOR",                       "AQL_FLOOR", "n", true, false, true, true) },
+  { "CEIL",                        Function("CEIL",                        "AQL_CEIL", "n", true, false, true, true) },
+  { "ROUND",                       Function("ROUND",                       "AQL_ROUND", "n", true, false, true, true) },
+  { "ABS",                         Function("ABS",                         "AQL_ABS", "n", true, false, true, true) },
+  { "RAND",                        Function("RAND",                        "AQL_RAND", "", false, false, true, true) },
+  { "SQRT",                        Function("SQRT",                        "AQL_SQRT", "n", true, false, true, true) },
   
   // list functions
-  { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, false, true) },
-  { "UNION",                       Function("UNION",                       "AQL_UNION", "l,l|+",true, false, true, &Functions::Union) },
-  { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "AQL_UNION_DISTINCT", "l,l|+", true, false, true, &Functions::UnionDistinct) },
-  { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, false, true) },
-  { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, false, true, &Functions::Intersection) },
-  { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, false, true) },
-  { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, false, true, &Functions::Length) },
-  { "MIN",                         Function("MIN",                         "AQL_MIN", "l", true, false, true, &Functions::Min) },
-  { "MAX",                         Function("MAX",                         "AQL_MAX", "l", true, false, true, &Functions::Max) },
-  { "SUM",                         Function("SUM",                         "AQL_SUM", "l", true, false, true, &Functions::Sum) },
-  { "MEDIAN",                      Function("MEDIAN",                      "AQL_MEDIAN", "l", true, false, true) }, 
-  { "PERCENTILE",                  Function("PERCENTILE",                  "AQL_PERCENTILE", "l,n|s", true, false, true) }, 
-  { "AVERAGE",                     Function("AVERAGE",                     "AQL_AVERAGE", "l", true, false, true, &Functions::Average) },
-  { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, false, true) },
-  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, false, true) },
-  { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE",               "AQL_STDDEV_SAMPLE", "l", true, false, true) },
-  { "STDDEV_POPULATION",           Function("STDDEV_POPULATION",           "AQL_STDDEV_POPULATION", "l", true, false, true) },
-  { "UNIQUE",                      Function("UNIQUE",                      "AQL_UNIQUE", "l", true, false, true, &Functions::Unique) },
-  { "SLICE",                       Function("SLICE",                       "AQL_SLICE", "l,n|n", true, false, true) },
-  { "REVERSE",                     Function("REVERSE",                     "AQL_REVERSE", "ls", true, false, true) },    // note: REVERSE() can be applied on strings, too
-  { "FIRST",                       Function("FIRST",                       "AQL_FIRST", "l", true, false, true) },
-  { "LAST",                        Function("LAST",                        "AQL_LAST", "l", true, false, true) },
-  { "NTH",                         Function("NTH",                         "AQL_NTH", "l,n", true, false, true) },
-  { "POSITION",                    Function("POSITION",                    "AQL_POSITION", "l,.|b", true, false, true) },
-  { "CALL",                        Function("CALL",                        "AQL_CALL", "s|.+", false, true, false) },
-  { "APPLY",                       Function("APPLY",                       "AQL_APPLY", "s|l", false, true, false) },
-  { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, false, true) },
-  { "APPEND",                      Function("APPEND",                      "AQL_APPEND", "l,lz|b", true, false, true) },
-  { "POP",                         Function("POP",                         "AQL_POP", "l", true, false, true) },
-  { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, false, true) },
-  { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, false, true) },
-  { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, false, true) },
-  { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, false, true) },
-  { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, false, true) },
+  { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, false, true, true) },
+  { "UNION",                       Function("UNION",                       "AQL_UNION", "l,l|+",true, false, true, true, &Functions::Union) },
+  { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "AQL_UNION_DISTINCT", "l,l|+", true, false, true, true, &Functions::UnionDistinct) },
+  { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, false, true, true) },
+  { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, false, true, true, &Functions::Intersection) },
+  { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, false, true, true) },
+  { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, false, true, true, &Functions::Length) },
+  { "MIN",                         Function("MIN",                         "AQL_MIN", "l", true, false, true, true, &Functions::Min) },
+  { "MAX",                         Function("MAX",                         "AQL_MAX", "l", true, false, true, true, &Functions::Max) },
+  { "SUM",                         Function("SUM",                         "AQL_SUM", "l", true, false, true, true, &Functions::Sum) },
+  { "MEDIAN",                      Function("MEDIAN",                      "AQL_MEDIAN", "l", true, false, true, true) }, 
+  { "PERCENTILE",                  Function("PERCENTILE",                  "AQL_PERCENTILE", "l,n|s", true, false, true, true) }, 
+  { "AVERAGE",                     Function("AVERAGE",                     "AQL_AVERAGE", "l", true, false, true, true, &Functions::Average) },
+  { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, false, true, true) },
+  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, false, true, true) },
+  { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE",               "AQL_STDDEV_SAMPLE", "l", true, false, true, true) },
+  { "STDDEV_POPULATION",           Function("STDDEV_POPULATION",           "AQL_STDDEV_POPULATION", "l", true, false, true, true) },
+  { "UNIQUE",                      Function("UNIQUE",                      "AQL_UNIQUE", "l", true, false, true, true, &Functions::Unique) },
+  { "SLICE",                       Function("SLICE",                       "AQL_SLICE", "l,n|n", true, false, true, true) },
+  { "REVERSE",                     Function("REVERSE",                     "AQL_REVERSE", "ls", true, false, true, true) },    // note: REVERSE() can be applied on strings, too
+  { "FIRST",                       Function("FIRST",                       "AQL_FIRST", "l", true, false, true, true) },
+  { "LAST",                        Function("LAST",                        "AQL_LAST", "l", true, false, true, true) },
+  { "NTH",                         Function("NTH",                         "AQL_NTH", "l,n", true, false, true, true) },
+  { "POSITION",                    Function("POSITION",                    "AQL_POSITION", "l,.|b", true, false, true, true) },
+  { "CALL",                        Function("CALL",                        "AQL_CALL", "s|.+", false, true, false, true) },
+  { "APPLY",                       Function("APPLY",                       "AQL_APPLY", "s|l", false, true, false, false) },
+  { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, false, true, false) },
+  { "APPEND",                      Function("APPEND",                      "AQL_APPEND", "l,lz|b", true, false, true, true) },
+  { "POP",                         Function("POP",                         "AQL_POP", "l", true, false, true, true) },
+  { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, false, true, true) },
+  { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, false, true, true) },
+  { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, false, true, true) },
+  { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, false, true, true) },
+  { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, false, true, true) },
 
   // document functions
-  { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, false, true, &Functions::Has) },
-  { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "AQL_ATTRIBUTES", "a|b,b", true, false, true, &Functions::Attributes) },
-  { "VALUES",                      Function("VALUES",                      "AQL_VALUES", "a|b", true, false, true, &Functions::Values) },
-  { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "a,a|+", true, false, true, &Functions::Merge) },
-  { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, false, true) },
-  { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, true, false) },
-  { "MATCHES",                     Function("MATCHES",                     "AQL_MATCHES", ".,l|b", true, false, true) },
-  { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, false, true, &Functions::Unset) },
-  { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, false, true, &Functions::Keep) },
-  { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, false, true) },
-  { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, false, true) },
+  { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, false, true, true, &Functions::Has) },
+  { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "AQL_ATTRIBUTES", "a|b,b", true, false, true, true, &Functions::Attributes) },
+  { "VALUES",                      Function("VALUES",                      "AQL_VALUES", "a|b", true, false, true, true, &Functions::Values) },
+  { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "a,a|+", true, false, true, true, &Functions::Merge) },
+  { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, false, true, true) },
+  { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, true, false, true) },
+  { "MATCHES",                     Function("MATCHES",                     "AQL_MATCHES", ".,l|b", true, false, true, true) },
+  { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, false, true, true, &Functions::Unset) },
+  { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, false, true, true, &Functions::Keep) },
+  { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, false, true, true) },
+  { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, false, true, true) },
 
   // geo functions
-  { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", false, true, false) },
-  { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "h,n,n,n|s", false, true, false) },
-  { "WITHIN_RECTANGLE",            Function("WITHIN_RECTANGLE",            "AQL_WITHIN_RECTANGLE", "h,d,d,d,d", false, true, false) },
-  { "IS_IN_POLYGON",               Function("IS_IN_POLYGON",               "AQL_IS_IN_POLYGON", "l,ln|nb", true, false, true) },
+  { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", false, true, false, true) },
+  { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "h,n,n,n|s", false, true, false, true) },
+  { "WITHIN_RECTANGLE",            Function("WITHIN_RECTANGLE",            "AQL_WITHIN_RECTANGLE", "h,d,d,d,d", false, true, false, true) },
+  { "IS_IN_POLYGON",               Function("IS_IN_POLYGON",               "AQL_IS_IN_POLYGON", "l,ln|nb", true, false, true, true) },
 
   // fulltext functions
-  { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s|n", false, true, false) },
+  { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s|n", false, true, false, true) },
 
   // graph functions
-  { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,ba", false, true, false) },
-  { "GRAPH_PATHS",                 Function("GRAPH_PATHS",                 "AQL_GRAPH_PATHS", "s|a", false, true, false) },
-  { "SHORTEST_PATH",               Function("SHORTEST_PATH",               "AQL_SHORTEST_PATH", "h,h,s,s,s|a", false, true, false) },
-  { "GRAPH_SHORTEST_PATH",         Function("GRAPH_SHORTEST_PATH",         "AQL_GRAPH_SHORTEST_PATH", "s,als,als|a", false, true, false) },
-  { "GRAPH_DISTANCE_TO",           Function("GRAPH_DISTANCE_TO",           "AQL_GRAPH_DISTANCE_TO", "s,als,als|a", false, true, false) },
-  { "TRAVERSAL",                   Function("TRAVERSAL",                   "AQL_TRAVERSAL", "h,h,s,s|a", false, true, false) },
-  { "GRAPH_TRAVERSAL",             Function("GRAPH_TRAVERSAL",             "AQL_GRAPH_TRAVERSAL", "s,als,s|a", false, true, false) },
-  { "TRAVERSAL_TREE",              Function("TRAVERSAL_TREE",              "AQL_TRAVERSAL_TREE", "h,h,s,s,s|a", false, true, false) },
-  { "GRAPH_TRAVERSAL_TREE",        Function("GRAPH_TRAVERSAL_TREE",        "AQL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false, true, false) },
-  { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l,o", false, true, false) },
-  { "GRAPH_EDGES",                 Function("GRAPH_EDGES",                 "AQL_GRAPH_EDGES", "s,als|a", false, true, false) },
-  { "GRAPH_VERTICES",              Function("GRAPH_VERTICES",              "AQL_GRAPH_VERTICES", "s,als|a", false, true, false) },
-  { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l,a", false, true, false) },
-  { "GRAPH_NEIGHBORS",             Function("GRAPH_NEIGHBORS",             "AQL_GRAPH_NEIGHBORS", "s,als|a", false, true, false) },
-  { "GRAPH_COMMON_NEIGHBORS",      Function("GRAPH_COMMON_NEIGHBORS",      "AQL_GRAPH_COMMON_NEIGHBORS", "s,als,als|a,a", false, true, false) },
-  { "GRAPH_COMMON_PROPERTIES",     Function("GRAPH_COMMON_PROPERTIES",     "AQL_GRAPH_COMMON_PROPERTIES", "s,als,als|a", false, true, false) },
-  { "GRAPH_ECCENTRICITY",          Function("GRAPH_ECCENTRICITY",          "AQL_GRAPH_ECCENTRICITY", "s|a", false, true, false) },
-  { "GRAPH_BETWEENNESS",           Function("GRAPH_BETWEENNESS",           "AQL_GRAPH_BETWEENNESS", "s|a", false, true, false) },
-  { "GRAPH_CLOSENESS",             Function("GRAPH_CLOSENESS",             "AQL_GRAPH_CLOSENESS", "s|a", false, true, false) },
-  { "GRAPH_ABSOLUTE_ECCENTRICITY", Function("GRAPH_ABSOLUTE_ECCENTRICITY", "AQL_GRAPH_ABSOLUTE_ECCENTRICITY", "s,als|a", false, true, false) },
-  { "GRAPH_ABSOLUTE_BETWEENNESS",  Function("GRAPH_ABSOLUTE_BETWEENNESS",  "AQL_GRAPH_ABSOLUTE_BETWEENNESS", "s,als|a", false, true, false) },
-  { "GRAPH_ABSOLUTE_CLOSENESS",    Function("GRAPH_ABSOLUTE_CLOSENESS",    "AQL_GRAPH_ABSOLUTE_CLOSENESS", "s,als|a", false, true, false) },
-  { "GRAPH_DIAMETER",              Function("GRAPH_DIAMETER",              "AQL_GRAPH_DIAMETER", "s|a", false, true, false) },
-  { "GRAPH_RADIUS",                Function("GRAPH_RADIUS",                "AQL_GRAPH_RADIUS", "s|a", false, true, false) },
+  { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,ba", false, true, false, false) },
+  { "GRAPH_PATHS",                 Function("GRAPH_PATHS",                 "AQL_GRAPH_PATHS", "s|a", false, true, false, false) },
+  { "SHORTEST_PATH",               Function("SHORTEST_PATH",               "AQL_SHORTEST_PATH", "h,h,s,s,s|a", false, true, false, false) },
+  { "GRAPH_SHORTEST_PATH",         Function("GRAPH_SHORTEST_PATH",         "AQL_GRAPH_SHORTEST_PATH", "s,als,als|a", false, true, false, false) },
+  { "GRAPH_DISTANCE_TO",           Function("GRAPH_DISTANCE_TO",           "AQL_GRAPH_DISTANCE_TO", "s,als,als|a", false, true, false, false) },
+  { "TRAVERSAL",                   Function("TRAVERSAL",                   "AQL_TRAVERSAL", "h,h,s,s|a", false, true, false, false) },
+  { "GRAPH_TRAVERSAL",             Function("GRAPH_TRAVERSAL",             "AQL_GRAPH_TRAVERSAL", "s,als,s|a", false, true, false, false) },
+  { "TRAVERSAL_TREE",              Function("TRAVERSAL_TREE",              "AQL_TRAVERSAL_TREE", "h,h,s,s,s|a", false, true, false, false) },
+  { "GRAPH_TRAVERSAL_TREE",        Function("GRAPH_TRAVERSAL_TREE",        "AQL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false, true, false, false) },
+  { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l,o", false, true, false, false) },
+  { "GRAPH_EDGES",                 Function("GRAPH_EDGES",                 "AQL_GRAPH_EDGES", "s,als|a", false, true, false, false) },
+  { "GRAPH_VERTICES",              Function("GRAPH_VERTICES",              "AQL_GRAPH_VERTICES", "s,als|a", false, true, false, false) },
+  { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l,a", false, true, false, false) },
+  { "GRAPH_NEIGHBORS",             Function("GRAPH_NEIGHBORS",             "AQL_GRAPH_NEIGHBORS", "s,als|a", false, true, false, false) },
+  { "GRAPH_COMMON_NEIGHBORS",      Function("GRAPH_COMMON_NEIGHBORS",      "AQL_GRAPH_COMMON_NEIGHBORS", "s,als,als|a,a", false, true, false, false) },
+  { "GRAPH_COMMON_PROPERTIES",     Function("GRAPH_COMMON_PROPERTIES",     "AQL_GRAPH_COMMON_PROPERTIES", "s,als,als|a", false, true, false, false) },
+  { "GRAPH_ECCENTRICITY",          Function("GRAPH_ECCENTRICITY",          "AQL_GRAPH_ECCENTRICITY", "s|a", false, true, false, false) },
+  { "GRAPH_BETWEENNESS",           Function("GRAPH_BETWEENNESS",           "AQL_GRAPH_BETWEENNESS", "s|a", false, true, false, false) },
+  { "GRAPH_CLOSENESS",             Function("GRAPH_CLOSENESS",             "AQL_GRAPH_CLOSENESS", "s|a", false, true, false, false) },
+  { "GRAPH_ABSOLUTE_ECCENTRICITY", Function("GRAPH_ABSOLUTE_ECCENTRICITY", "AQL_GRAPH_ABSOLUTE_ECCENTRICITY", "s,als|a", false, true, false, false) },
+  { "GRAPH_ABSOLUTE_BETWEENNESS",  Function("GRAPH_ABSOLUTE_BETWEENNESS",  "AQL_GRAPH_ABSOLUTE_BETWEENNESS", "s,als|a", false, true, false, false) },
+  { "GRAPH_ABSOLUTE_CLOSENESS",    Function("GRAPH_ABSOLUTE_CLOSENESS",    "AQL_GRAPH_ABSOLUTE_CLOSENESS", "s,als|a", false, true, false, false) },
+  { "GRAPH_DIAMETER",              Function("GRAPH_DIAMETER",              "AQL_GRAPH_DIAMETER", "s|a", false, true, false, false) },
+  { "GRAPH_RADIUS",                Function("GRAPH_RADIUS",                "AQL_GRAPH_RADIUS", "s|a", false, true, false, false) },
 
   // date functions
-  { "DATE_NOW",                    Function("DATE_NOW",                    "AQL_DATE_NOW", "", false, false, true) },
-  { "DATE_TIMESTAMP",              Function("DATE_TIMESTAMP",              "AQL_DATE_TIMESTAMP", "ns|ns,ns,ns,ns,ns,ns", true, false, true) },
-  { "DATE_ISO8601",                Function("DATE_ISO8601",                "AQL_DATE_ISO8601", "ns|ns,ns,ns,ns,ns,ns", true, false, true) },
-  { "DATE_DAYOFWEEK",              Function("DATE_DAYOFWEEK",              "AQL_DATE_DAYOFWEEK", "ns", true, false, true) },
-  { "DATE_YEAR",                   Function("DATE_YEAR",                   "AQL_DATE_YEAR", "ns", true, false, true) },
-  { "DATE_MONTH",                  Function("DATE_MONTH",                  "AQL_DATE_MONTH", "ns", true, false, true) },
-  { "DATE_DAY",                    Function("DATE_DAY",                    "AQL_DATE_DAY", "ns", true, false, true) },
-  { "DATE_HOUR",                   Function("DATE_HOUR",                   "AQL_DATE_HOUR", "ns", true, false, true) },
-  { "DATE_MINUTE",                 Function("DATE_MINUTE",                 "AQL_DATE_MINUTE", "ns", true, false, true) },
-  { "DATE_SECOND",                 Function("DATE_SECOND",                 "AQL_DATE_SECOND", "ns", true, false, true) },
-  { "DATE_MILLISECOND",            Function("DATE_MILLISECOND",            "AQL_DATE_MILLISECOND", "ns", true, false, true) },
+  { "DATE_NOW",                    Function("DATE_NOW",                    "AQL_DATE_NOW", "", false, false, true, true) },
+  { "DATE_TIMESTAMP",              Function("DATE_TIMESTAMP",              "AQL_DATE_TIMESTAMP", "ns|ns,ns,ns,ns,ns,ns", true, false, true, true) },
+  { "DATE_ISO8601",                Function("DATE_ISO8601",                "AQL_DATE_ISO8601", "ns|ns,ns,ns,ns,ns,ns", true, false, true, true) },
+  { "DATE_DAYOFWEEK",              Function("DATE_DAYOFWEEK",              "AQL_DATE_DAYOFWEEK", "ns", true, false, true, true) },
+  { "DATE_YEAR",                   Function("DATE_YEAR",                   "AQL_DATE_YEAR", "ns", true, false, true, true) },
+  { "DATE_MONTH",                  Function("DATE_MONTH",                  "AQL_DATE_MONTH", "ns", true, false, true, true) },
+  { "DATE_DAY",                    Function("DATE_DAY",                    "AQL_DATE_DAY", "ns", true, false, true, true) },
+  { "DATE_HOUR",                   Function("DATE_HOUR",                   "AQL_DATE_HOUR", "ns", true, false, true, true) },
+  { "DATE_MINUTE",                 Function("DATE_MINUTE",                 "AQL_DATE_MINUTE", "ns", true, false, true, true) },
+  { "DATE_SECOND",                 Function("DATE_SECOND",                 "AQL_DATE_SECOND", "ns", true, false, true, true) },
+  { "DATE_MILLISECOND",            Function("DATE_MILLISECOND",            "AQL_DATE_MILLISECOND", "ns", true, false, true, true) },
 
   // misc functions
-  { "FAIL",                        Function("FAIL",                        "AQL_FAIL", "|s", false, true, true) },
-  { "PASSTHRU",                    Function("PASSTHRU",                    "AQL_PASSTHRU", ".", false, false, true, &Functions::Passthru ) },
-  { "NOOPT",                       Function("NOOPT",                       "AQL_PASSTHRU", ".", false, false, true, &Functions::Passthru ) },
-  { "SLEEP",                       Function("SLEEP",                       "AQL_SLEEP", "n", false, true, true) },
-  { "COLLECTIONS",                 Function("COLLECTIONS",                 "AQL_COLLECTIONS", "", false, true, false) },
-  { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, false, true) },
-  { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, false, true) },
-  { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, false, true) },
-  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, false, true) },
-  { "SKIPLIST",                    Function("SKIPLIST",                    "AQL_SKIPLIST", "h,a|n,n", false, true, false) },
-  { "CURRENT_USER",                Function("CURRENT_USER",                "AQL_CURRENT_USER", "", false, false, false) },
-  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false) }
+  { "FAIL",                        Function("FAIL",                        "AQL_FAIL", "|s", false, true, true, true) },
+  { "PASSTHRU",                    Function("PASSTHRU",                    "AQL_PASSTHRU", ".", false, false, true, true, &Functions::Passthru ) },
+  { "NOOPT",                       Function("NOOPT",                       "AQL_PASSTHRU", ".", false, false, true, true, &Functions::Passthru ) },
+  { "V8",                          Function("V8",                          "AQL_PASSTHRU", ".", false, false, true, true) },
+#ifdef TRI_ENABLE_FAILURE_TESTS
+  { "TEST_MODIFY",                 Function("TEST_MODIFY",                 "AQL_TEST_MODIFY", "s,.", false, false, true, false) },
+#endif
+  { "SLEEP",                       Function("SLEEP",                       "AQL_SLEEP", "n", false, true, true, true) },
+  { "COLLECTIONS",                 Function("COLLECTIONS",                 "AQL_COLLECTIONS", "", false, true, false, true) },
+  { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, false, true, true) },
+  { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, false, true, true) },
+  { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, false, true, true) },
+  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, false, true, true) },
+  { "SKIPLIST",                    Function("SKIPLIST",                    "AQL_SKIPLIST", "h,a|n,n", false, true, false, true) },
+  { "CURRENT_USER",                Function("CURRENT_USER",                "AQL_CURRENT_USER", "", false, false, false, true) },
+  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, true) }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,7 +260,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 /// an array / object literal "big" and pulling it out of the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t const Executor::BigObjectThreshold = 32;
+size_t const Executor::DefaultLiteralSizeThreshold = 32;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -266,9 +270,11 @@ size_t const Executor::BigObjectThreshold = 32;
 /// @brief creates an executor
 ////////////////////////////////////////////////////////////////////////////////
 
-Executor::Executor () :
-  _buffer(nullptr),
-  _constantRegisters() {
+Executor::Executor (int64_t literalSizeThreshold) 
+  : _buffer(nullptr),
+    _constantRegisters(),
+    _literalSizeThreshold(literalSizeThreshold >= 0 ? static_cast<size_t>(literalSizeThreshold) : DefaultLiteralSizeThreshold) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,16 +294,16 @@ Executor::~Executor () {
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Expression* Executor::generateExpression (AstNode const* node) {
-  // std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
   ISOLATE;
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
- 
+
   _constantRegisters.clear();
-  detectConstantValues(node);
+  detectConstantValues(node, node->type);
 
   generateCodeExpression(node);
 
+  // std::cout << "Executor::generateExpression: " << std::string(_buffer->c_str(), _buffer->length()) << "\n";
   v8::Handle<v8::Object> constantValues = v8::Object::New(isolate);
   for (auto& it : _constantRegisters) {
     std::string name = "r";
@@ -342,7 +348,7 @@ TRI_json_t* Executor::executeExpression (Query* query,
   _constantRegisters.clear();
   generateCodeExpression(node);
 
-  // std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
+  // std::cout << "Executor::ExecuteExpression: " << std::string(_buffer->c_str(), _buffer->length()) << "\n";
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
 
@@ -408,23 +414,54 @@ Function const* Executor::getFunctionByName (std::string const& name) {
 /// @brief traverse the expression and note all (big) array/object literals
 ////////////////////////////////////////////////////////////////////////////////
 
-void Executor::detectConstantValues (AstNode const* node) {
+void Executor::detectConstantValues (AstNode const* node,
+                                     AstNodeType previous) {
   if (node == nullptr) {
     return;
   }
 
   size_t const n = node->numMembers();
-  
-  if ((node->type == NODE_TYPE_ARRAY ||
-       node->type == NODE_TYPE_OBJECT) &&
-      n >= BigObjectThreshold &&
-      node->isConstant()) {
-    _constantRegisters.emplace(node, _constantRegisters.size());
-    return;
+ 
+  if (previous != NODE_TYPE_FCALL &&
+      previous != NODE_TYPE_FCALL_USER) {
+    // FCALL has an ARRAY node as its immediate child
+    // however, we do not want to constify this whole array, but its
+    // individual memb 
+    // just its individual members
+    // otherwise, only the ARRAY node will be marked as constant but not
+    // its members. When the code is generated for the function call,
+    // the ARRAY node will be ignored because only its individual members
+    // (not being marked as const), will be emitted regularly, which would
+    // disable the const optimizations if all function call arguments are
+    // constants
+    if ((node->type == NODE_TYPE_ARRAY ||
+         node->type == NODE_TYPE_OBJECT) &&
+        n >= _literalSizeThreshold &&
+        node->isConstant()) {
+      _constantRegisters.emplace(node, _constantRegisters.size());
+      return;
+    }
   }
-  
+
+  auto nextType = node->type;
+  if (previous == NODE_TYPE_FCALL_USER) {
+    // FCALL_USER is sticky, so its arguments will not be constified
+    nextType = NODE_TYPE_FCALL_USER;
+  }
+  else if (nextType == NODE_TYPE_FCALL) {
+    auto func = static_cast<Function*>(node->getData());
+
+    if (! func->canPassArgumentsByReference) {
+      // function should not retrieve its arguments by reference,
+      // so we pretend here that it is a user-defined function
+      // (user-defined functions will not get their arguments by
+      // reference)
+      nextType = NODE_TYPE_FCALL_USER;
+    }
+  }
+
   for (size_t i = 0; i < n; ++i) {
-    detectConstantValues(node->getMember(i));
+    detectConstantValues(node->getMemberUnchecked(i), nextType);
   }
 }
 
@@ -599,7 +636,7 @@ void Executor::generateCodeArray (AstNode const* node) {
 
   size_t const n = node->numMembers();
 
-  if (n >= BigObjectThreshold &&
+  if (n >= _literalSizeThreshold &&
       node->isConstant()) {
 
     auto it = _constantRegisters.find(node);
@@ -681,7 +718,7 @@ void Executor::generateCodeRegularObject (AstNode const* node) {
 
   size_t const n = node->numMembers();
   
-  if (n >= BigObjectThreshold &&
+  if (n >= _literalSizeThreshold &&
       node->isConstant()) {
 
     auto it = _constantRegisters.find(node);
@@ -694,7 +731,7 @@ void Executor::generateCodeRegularObject (AstNode const* node) {
   }
 
   // very conservative minimum bound
-  _buffer->reserve(2 + n * 6);
+  _buffer->reserve(2 + n * 7);
 
   _buffer->appendChar('{');
   for (size_t i = 0; i < n; ++i) {
@@ -914,17 +951,10 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
 
   _buffer->appendText("_AQL.FCALL_USER(");
   generateCodeString(name);
-  _buffer->appendText(",[", 2);
+  _buffer->appendText(",", 1);
 
-  size_t const n = args->numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    if (i > 0) {
-      _buffer->appendChar(',');
-    }
-
-    generateCodeNode(args->getMember(i));
-  }
-  _buffer->appendText("])", 2);
+  generateCodeNode(args);
+  _buffer->appendText(")", 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
