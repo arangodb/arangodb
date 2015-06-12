@@ -1750,6 +1750,11 @@ testFuncs.queue_legacy = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
+  if ((!options.skipLogAnalysis) &&
+      instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return results;
 };
 
