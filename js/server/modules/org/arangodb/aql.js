@@ -5596,6 +5596,9 @@ function SHORTEST_PATH_PARAMS (params) {
   if (params === undefined) {
     params = { };
   }
+  else {
+    params = CLONE(params);
+  }
 
   params.strategy = "dijkstra";
   params.itemorder = "forward";
@@ -5876,6 +5879,7 @@ function TRAVERSAL_PARAMS (params, defaultVisitor) {
   if (params === undefined) {
     params = { };
   }
+  params = CLONE(params);
 
   // add user-defined visitor, if specified
   if (params.hasOwnProperty("visitor")) {
@@ -6350,6 +6354,9 @@ function TRAVERSAL_TREE_PARAMS (params, connectName, func) {
   if (params === undefined) {
     params = { };
   }
+  else {
+    params = CLONE(params);
+  }
 
   // add user-defined visitor, if specified
   if (typeof params.visitor === "string") {
@@ -6704,7 +6711,7 @@ function AQL_NEIGHBORS (vertexCollection,
   'use strict';
 
   vertex = TO_ID(vertex, vertexCollection);
-  options = options || {};
+  options = CLONE(options) || {};
   if (isCoordinator) {
     // Fallback to JS if we are in the cluster
     let edges = AQL_EDGES(edgeCollection, vertex, direction);
@@ -6808,9 +6815,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
                               vertexExample,
                               options) {
   'use strict';
-  if (! options) {
-    options = { };
-  }
+  options = CLONE(options) || {};
   if (! options.hasOwnProperty("direction")) {
     options.direction =  'any';
   }
@@ -7034,9 +7039,7 @@ function AQL_GRAPH_EDGES (graphName,
                           vertexExample,
                           options) {
   'use strict';
-  if (! options) {
-    options = { };
-  }
+  options = CLONE(options) || {};
   if (! options.hasOwnProperty("direction")) {
     options.direction =  'any';
   }
@@ -7171,9 +7174,7 @@ function AQL_GRAPH_VERTICES (graphName,
                              options) {
   'use strict';
 
-  if (! options) {
-    options = {  };
-  }
+  options = CLONE(options) || {};
   if (! options.direction) {
     options.direction =  'any';
   }
@@ -7372,9 +7373,7 @@ function AQL_GRAPH_COMMON_PROPERTIES (graphName,
                                       options) {
   'use strict';
 
-  if (! options) {
-    options = { };
-  }
+  options = CLONE(options) || {};
   options.fromVertexExample = vertex1Examples;
   options.toVertexExample = vertex2Examples;
   options.direction =  'any';
@@ -7567,9 +7566,7 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 
 function AQL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
   'use strict';
-  if (! options) {
-    options = {};
-  }
+  options = CLONE(options) || {};
   if (! options.direction) {
     options.direction =  'any';
   }
@@ -7595,7 +7592,7 @@ function AQL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
 
 function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
   'use strict';
-  if(path.edges.length > 0) {
+  if (path.edges.length > 0) {
     result.current = Math.min(1 / node.dist, result.current || 1);
   }
 }
@@ -7656,9 +7653,7 @@ function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
 function AQL_GRAPH_ECCENTRICITY (graphName, options) {
   'use strict';
 
-  if (! options) {
-    options = {  };
-  }
+  options = CLONE(options) || {};
   if (! options.direction) {
     options.direction =  'any';
   }
@@ -7836,9 +7831,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 
 function AQL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
   'use strict';
-  if (! options) {
-    options = {};
-  }
+  options = CLONE(options) || {};
   if (! options.direction) {
     options.direction =  'any';
   }
@@ -7936,9 +7929,7 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 function AQL_GRAPH_CLOSENESS (graphName, options) {
   'use strict';
 
-  if (! options) {
-    options = {  };
-  }
+  options = CLONE(options) || {};
   if (! options.direction) {
     options.direction =  'any';
   }
@@ -8041,9 +8032,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
   'use strict';
 
-  if (! options) {
-    options = {  };
-  }
+  options = CLONE(options) || {};
   if (! options.direction) {
     options.direction =  'any';
   }
@@ -8139,9 +8128,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 function AQL_GRAPH_BETWEENNESS (graphName, options) {
   'use strict';
 
-  if (! options) {
-    options = {  };
-  }
+  options = CLONE(options) || {};
 
   var result = AQL_GRAPH_ABSOLUTE_BETWEENNESS(graphName, options),  max = 0;
   Object.keys(result).forEach(function (r) {
@@ -8224,9 +8211,7 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 function AQL_GRAPH_RADIUS (graphName, options) {
   'use strict';
 
-  if (! options) {
-    options = {  };
-  }
+  options = CLONE(options) || {};
   if (! options.direction) {
     options.direction =  'any';
   }
@@ -8315,9 +8300,7 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 function AQL_GRAPH_DIAMETER (graphName, options) {
   'use strict';
 
-  if (! options) {
-    options = {  };
-  }
+  options = CLONE(options) || {};
   if (! options.direction) {
     options.direction =  'any';
   }

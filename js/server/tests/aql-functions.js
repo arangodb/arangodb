@@ -383,9 +383,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnique2 : function () {
-      var expected = [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, false, true, null, "fox", "FOX", "Fox", "FoX", [0], [1], { "the fox" : "jumped" } ] ];
+      var expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, false, true, null, "fox", "FOX", "Fox", "FoX", [0], [1], { "the fox" : "jumped" } ];
       var actual = getQueryResults("RETURN UNIQUE([ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, false, true, null, \"fox\", \"FOX\", \"Fox\", \"FoX\", [ 0 ], [ 1 ], { \"the fox\" : \"jumped\" } ])");
-      assertEqual(expected, actual);
+      assertEqual(expected.sort(), actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,9 +393,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnique3 : function () {
-      var expected = [ [ 1, 2, 3, 4, 5, 7, 9, 42, -1, -33 ] ];
+      var expected = [ 1, 2, 3, 4, 5, 7, 9, 42, -1, -33 ];
       var actual = getQueryResults("RETURN UNIQUE([ 1, -1, 1, 2, 3, -1, 2, 3, 4, 5, 1, 3, 9, 2, -1, 9, -33, 42, 7 ])");
-      assertEqual(expected, actual);
+      assertEqual(expected.sort(), actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -403,9 +403,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnique4 : function () {
-      var expected = [ [ [1, 2, 3], [3, 2, 1], [2, 1, 3], [2, 3, 1], [1, 3, 2], [3, 1, 2] ] ];
+      var expected = [ [1, 2, 3], [3, 2, 1], [2, 1, 3], [2, 3, 1], [1, 3, 2], [3, 1, 2] ];
       var actual = getQueryResults("RETURN UNIQUE([ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 2, 1, 3 ], [ 2, 3, 1 ], [ 1, 2, 3 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 3, 1, 2 ], [ 2 , 1, 3 ] ])");
-      assertEqual(expected, actual);
+      assertEqual(expected.sort(), actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,10 +413,10 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnique5 : function () {
-      var expected = [ [ { "the fox" : "jumped" }, { "the fox" : "jumped over" }, { "over" : "the dog", "the fox" : "jumped" }]];
+      var expected = [ { "the fox" : "jumped" }, { "the fox" : "jumped over" }, { "over" : "the dog", "the fox" : "jumped" } ];
 
       var actual = getQueryResults("RETURN UNIQUE([ { \"the fox\" : \"jumped\" }, { \"the fox\" : \"jumped over\" }, { \"the fox\" : \"jumped\", \"over\" : \"the dog\" }, { \"over\" : \"the dog\", \"the fox\" : \"jumped\" } ])");
-      assertEqual(expected, actual);
+      assertEqual(expected.sort(), actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1148,9 +1148,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnionDistinct1 : function () {
-      var expected = [ [ 1, 2, 3 ] ];
+      var expected = [ 1, 2, 3 ];
       var actual = getQueryResults("RETURN UNION_DISTINCT([ 1, 2, 3 ], [ 1, 2, 3 ])");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1158,9 +1158,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnionDistinct2 : function () {
-      var expected = [ [ 1, 2, 3 ] ];
+      var expected = [ 1, 2, 3 ];
       var actual = getQueryResults("RETURN UNION_DISTINCT([ 1, 2, 3 ], [ 3, 2, 1 ])");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1170,7 +1170,7 @@ function ahuacatlFunctionsTestSuite () {
     testUnionDistinct3 : function () {
       var expected = [ "Fred", "John", "Amy" ];
       var actual = getQueryResults("FOR u IN UNION_DISTINCT([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]) RETURN u");
-      assertEqual(expected, actual);
+      assertEqual(expected.sort(), actual.sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1178,9 +1178,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnionDistinct4 : function () {
-      var expected = [ [ 1, 2, 3, 4, 5, 6 ] ];
+      var expected = [ 1, 2, 3, 4, 5, 6 ];
       var actual = getQueryResults("RETURN UNION_DISTINCT([ 1, 2, 3 ], [ 3, 2, 1 ], [ 4 ], [ 5, 6, 1 ])");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1198,9 +1198,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnionDistinct6 : function () {
-      var expected = [ [ false, true ] ];
+      var expected = [ false, true ];
       var actual = getQueryResults("RETURN UNION_DISTINCT([ ], [ false ], [ ], [ true ])");
-      assertEqual(expected, actual);
+      assertEqual(expected.sort(), actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1264,21 +1264,21 @@ function ahuacatlFunctionsTestSuite () {
     testUnionCxxInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION())"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION([ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION([ ], [ ], { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION(null, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION(true, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION(3, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION(\"yes\", [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION({ }, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION(null, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION(true, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION(3, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION(\"yes\", [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION({ }, [ ]))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1378,21 +1378,21 @@ function ahuacatlFunctionsTestSuite () {
     testUnionDistinctCxxInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT())"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT(null, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT(true, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT(3, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT(\"yes\", [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(UNION_DISTINCT({ }, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT(null, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT(true, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT(3, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT(\"yes\", [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT({ }, [ ]))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
