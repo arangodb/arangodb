@@ -278,8 +278,90 @@ void Expression::invalidate () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a range from an array
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Expression::extractRange (AqlValue const& result, 
+                                   AqlValue const& indexResult, 
+                                   TRI_document_collection_t const* collection, 
+                                   triagens::arango::AqlTransaction* trx) const {
+  TRI_ASSERT(result.isArray());
+
+  size_t const length = result.arraySize();
+
+  if (length == 0) {
+    // cannot extract anything from an empty array
+    return AqlValue(new Json(Json::Array));
+  }
+
+  int64_t low  = indexResult.getRange()->_low; 
+  int64_t high = indexResult.getRange()->_high; 
+
+  // negative positions are translated into their positive counterparts
+  if (low < 0) {
+    low = static_cast<int64_t>(length) + low;
+  }
+  if (high < 0) {
+    high = static_cast<int64_t>(length) + high;
+  }
+   
+  std::unique_ptr<Json> array(new Json(Json::Array));
+
+  if (low <= high) {
+    // forward iteration
+    // adjust bounds
+    if (low < 0) {
+      low = 0;
+    }
+    if (high >= static_cast<int64_t>(length)) {
+      high = static_cast<int64_t>(length);
+    }
+    else {
+      // increase by one so we include the last specified element
+      ++high;
+    }
+    if (low <= high) {
+      array->reserve(static_cast<size_t>(high - low));
+      // forward iteration 
+      for (int64_t position = low; position < high; ++position) {
+        auto j = result.extractArrayMember(trx, collection, position, true);
+        array->add(j);
+      }
+    }
+  }
+  else {
+    // backward iteration
+    // swap low and high
+    int64_t tmp = low;
+    low = high;
+    high = tmp;
+
+    // backward iteration
+    if (low < 0) {
+      low = 0;
+    }
+    if (high < 0) {
+      high = 0;
+    }
+    else if (high >= static_cast<int64_t>(length)) {
+      high = static_cast<int64_t>(length) - 1;
+    }
+
+    if (high >= low) { 
+      array->reserve(static_cast<size_t>(high - low + 1));
+      for (int64_t position = high; position >= low; --position) {
+        auto j = result.extractArrayMember(trx, collection, position, true);
+        array->add(j);
+      }
+    }
+  }
+       
+  return AqlValue(array.release());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find a value in an AQL list node
@@ -520,79 +602,15 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
           // no number found. 
         }
       }
-      else if (indexResult.isRange()) {
-        size_t const length = result.arraySize();
-
-        if (length == 0) {
-          // cannot extract anything from an empty array
+      else if (indexResult.isRange()) { 
+        try {
+          auto range = extractRange(result, indexResult, myCollection, trx);
+          indexResult.destroy();
           result.destroy();
-          return AqlValue(new Json(Json::Array));
-        }
-
-        int64_t low  = indexResult.getRange()->_low; 
-        int64_t high = indexResult.getRange()->_high; 
-        indexResult.destroy();
-
-        // negative positions are translated into their positive counterparts
-        if (low < 0) {
-          low = static_cast<int64_t>(length) + low;
-        }
-        if (high < 0) {
-          high = static_cast<int64_t>(length) + high;
-        }
-   
-        try { 
-          std::unique_ptr<Json> array(new Json(Json::Array));
-
-          if (low <= high) {
-            // adjust bounds
-            if (low < 0) {
-              low = 0;
-            }
-            if (high >= static_cast<int64_t>(length)) {
-              high = static_cast<int64_t>(length);
-            }
-            else {
-              // increase by one so we include the last specified element
-              ++high;
-            }
-            if (low <= high) {
-              array->reserve(static_cast<size_t>(high - low));
-              // forward iteration 
-              for (int64_t position = low; position < high; ++position) {
-                auto j = result.extractArrayMember(trx, myCollection, position, true);
-                array->add(j);
-              }
-            }
-          }
-          else {
-            // swap
-            int64_t tmp = low;
-            low = high;
-            high = tmp;
-
-            // backward iteration
-            if (low < 0) {
-              low = 0;
-            }
-            if (high < 0) {
-              high = 0;
-            }
-            else if (high >= static_cast<int64_t>(length)) {
-              high = static_cast<int64_t>(length) - 1;
-            }
-
-            array->reserve(static_cast<size_t>(high - low + 1));
-            for (int64_t position = high; position >= low; --position) {
-              auto j = result.extractArrayMember(trx, myCollection, position, true);
-              array->add(j);
-            }
-          }
-          result.destroy();
-         
-          return AqlValue(array.release());
+          return range;
         }
         catch (...) {
+          indexResult.destroy();
           result.destroy();
           throw;
         }

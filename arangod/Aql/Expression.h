@@ -291,10 +291,19 @@ namespace triagens {
         void invalidate ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a range from an array
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue extractRange (AqlValue const&, 
+                               AqlValue const&, 
+                               TRI_document_collection_t const*, 
+                               triagens::arango::AqlTransaction*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find a value in an array

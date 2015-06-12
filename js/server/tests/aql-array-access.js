@@ -132,6 +132,24 @@ function arrayAccessTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-array access
+////////////////////////////////////////////////////////////////////////////////
+
+    testV8NonArrayRange1 : function () {
+      var result = AQL_EXECUTE("RETURN NOOPT(V8({ foo: 'bar' }))[0..1]").json;
+      assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-array access
+////////////////////////////////////////////////////////////////////////////////
+
+    testV8NonArrayRange2 : function () {
+      var result = AQL_EXECUTE("RETURN NOOPT(V8({ foo: 'bar' }))[-2..-1]").json;
+      assertEqual([ null ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test subquery result
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -143,7 +161,7 @@ function arrayAccessTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery result
+/// @brief test range result
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryResultRangeForward1 : function () {
@@ -158,7 +176,7 @@ function arrayAccessTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery result
+/// @brief test range result
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryResultRangeForward2 : function () {
@@ -166,6 +184,96 @@ function arrayAccessTestSuite () {
         var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[" + from + "..99]", { values: values }).json;
         var expected = [ ];
         for (var i = Math.min(from, values.length); i < values.length; ++i) {
+          expected.push(values[i]);
+        }
+        assertEqual([ expected ], result);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range result
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryResultRangeBackward1 : function () {
+      for (var to = 0; to < 10; ++to) {
+        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[10.." + to + "]", { values: values }).json;
+        var expected = [ ];
+        for (var i = Math.min(10, values.length - 1); i >= to; --i) {
+          expected.push(values[i]);
+        }
+        assertEqual([ expected ], result);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range result
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryResultRangeBackward2 : function () {
+      for (var from = 0; from < 10; ++from) {
+        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[" + from + "..0]", { values: values }).json;
+        var expected = [ ];
+        for (var i = Math.min(from, values.length - 1); i >= 0; --i) {
+          expected.push(values[i]);
+        }
+        assertEqual([ expected ], result);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range result
+////////////////////////////////////////////////////////////////////////////////
+
+    testV8SubqueryResultRangeForward1 : function () {
+      for (var to = 0; to < 10; ++to) {
+        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[0.." + to + "]", { values: values }).json;
+        var expected = [ ];
+        for (var i = 0; i < Math.min(to + 1, values.length); ++i) {
+          expected.push(values[i]);
+        }
+        assertEqual([ expected ], result);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range result
+////////////////////////////////////////////////////////////////////////////////
+
+    testV8SubqueryResultRangeForward2 : function () {
+      for (var from = 0; from < 10; ++from) {
+        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[" + from + "..99]", { values: values }).json;
+        var expected = [ ];
+        for (var i = Math.min(from, values.length); i < values.length; ++i) {
+          expected.push(values[i]);
+        }
+        assertEqual([ expected ], result);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range result
+////////////////////////////////////////////////////////////////////////////////
+
+    testV8SubqueryResultRangeBackward1 : function () {
+      for (var to = 0; to < 10; ++to) {
+        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[10.." + to + "]", { values: values }).json;
+        var expected = [ ];
+        for (var i = Math.min(10, values.length - 1); i >= to; --i) {
+          expected.push(values[i]);
+        }
+        assertEqual([ expected ], result);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range result
+////////////////////////////////////////////////////////////////////////////////
+
+    testV8SubqueryResultRangeBackward2 : function () {
+      for (var from = 0; from < 10; ++from) {
+        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[" + from + "..0]", { values: values }).json;
+        var expected = [ ];
+        for (var i = Math.min(from, values.length - 1); i >= 0; --i) {
           expected.push(values[i]);
         }
         assertEqual([ expected ], result);

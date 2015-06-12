@@ -994,7 +994,7 @@ function GET_RANGE (value, low, high) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    return [ ];
+    return null;
   }
 
   low  = parseInt(low, 10);
@@ -1039,8 +1039,10 @@ function GET_RANGE (value, low, high) {
     else if (high >= value.length) {
       high = value.length - 1;
     }
-    for (position = high; position >= low; --position) {
-      result.push(value[position]);
+    if (high >= low) {
+      for (position = high; position >= low; --position) {
+        result.push(value[position]);
+      }
     }
   }
 
