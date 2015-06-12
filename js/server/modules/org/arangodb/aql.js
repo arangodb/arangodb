@@ -4390,6 +4390,34 @@ function AQL_PASSTHRU (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test helper function
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_TEST_MODIFY (test, what) {
+  'use strict';
+  if (test === 'MODIFY_ARRAY') {
+    what[0] = 1; 
+    what[1] = 42; 
+    what[2] = [ 1, 2 ]; 
+    what[3].push([ 1, 2 ]); 
+    what[4] = { a: 9, b: 2 };
+    what.push("foo");
+    what.push("bar");
+    what.pop();
+  }
+  else if (test === 'MODIFY_OBJECT') {
+    what.a = 1; 
+    what.b = 3; 
+    what.c = [ 1, 2 ]; 
+    what.d.push([ 1, 2 ]); 
+    what.e.f = { a: 1, b: 2 };
+    delete what.f; 
+    what.g = "foo";
+  }
+  return what; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sleep
 ///
 /// sleep for the specified duration
@@ -6542,6 +6570,9 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
   if (! options) {
     options = {};
   }
+  else {
+    options = CLONE(options);
+  }
   options.includeData = false;
   if (! options.algorithm) {
     options.algorithm = "dijkstra";
@@ -8551,6 +8582,7 @@ exports.AQL_MERGE_RECURSIVE = AQL_MERGE_RECURSIVE;
 exports.AQL_TRANSLATE = AQL_TRANSLATE;
 exports.AQL_MATCHES = AQL_MATCHES;
 exports.AQL_PASSTHRU = AQL_PASSTHRU;
+exports.AQL_TEST_MODIFY = AQL_TEST_MODIFY;
 exports.AQL_SLEEP = AQL_SLEEP;
 exports.AQL_CURRENT_DATABASE = AQL_CURRENT_DATABASE;
 exports.AQL_CURRENT_USER = AQL_CURRENT_USER;
