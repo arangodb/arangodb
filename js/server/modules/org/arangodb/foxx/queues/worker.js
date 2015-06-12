@@ -80,7 +80,9 @@ function getBackOffDelay(job, cfg) {
 }
 
 exports.work = function (job) {
-  var cfg = typeof job.type === 'string' ? queues._jobTypes[job.type] : job.type;
+  var databaseName = db._name();
+  var cache = queues._jobTypes[databaseName];
+  var cfg = typeof job.type === 'string' ? (cache && cache[job.type]) : job.type;
   var now = Date.now();
 
   if (!cfg) {
@@ -108,7 +110,7 @@ exports.work = function (job) {
       fm.runScript(cfg.name, cfg.mount, [].concat(job.data, job._id));
     }
   } catch (e) {
-    console.error('Job %s failed:\n%s', job._key, e.stack || String(e));
+    console.errorLines('Job %s failed:\n%s', job._key, e.stack || String(e));
     job.failures.push(flatten(e));
     success = false;
   }
@@ -127,12 +129,20 @@ exports.work = function (job) {
       status: 'failed'
     });
   } else {
-    // queue for retry
-    db._jobs.update(job._key, {
-      modified: now,
-      delayUntil: now + getBackOffDelay(job, cfg),
-      failures: job.failures,
-      status: 'pending'
+    db._executeTransaction({
+      collections: {
+        read: ['_jobs'],
+        write: ['_jobs']
+      },
+      action: function () {
+        db._jobs.update(job._key, {
+          modified: now,
+          delayUntil: now + getBackOffDelay(job, cfg),
+          failures: job.failures,
+          status: 'pending'
+        });
+        queues._updateQueueDelay();
+      }
     });
   }
 

@@ -378,7 +378,7 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
   catch (triagens::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   }
-  catch (std::bad_alloc const& ex) {
+  catch (std::bad_alloc const&) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   catch (std::exception const& ex) {
@@ -2740,7 +2740,7 @@ static void JS_UseDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  string const name = TRI_ObjectToString(args[0]);
+  string&& name = TRI_ObjectToString(args[0]);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
@@ -2761,21 +2761,19 @@ static void JS_UseDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
     vocbase = TRI_UseDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), name.c_str());
   }
 
-  if (vocbase != nullptr) {
-    // switch databases
-    void* orig = v8g->_vocbase;
-    TRI_ASSERT(orig != nullptr);
-
-    v8g->_vocbase = vocbase;
-
-    if (orig != vocbase) {
-      TRI_ReleaseDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), (TRI_vocbase_t*) orig);
-    }
-
-    TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  // switch databases
+  void* orig = v8g->_vocbase;
+  TRI_ASSERT(orig != nullptr);
+
+  v8g->_vocbase = vocbase;
+  TRI_ASSERT(orig != vocbase);
+  TRI_ReleaseDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), static_cast<TRI_vocbase_t*>(orig));
+
+  TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3306,6 +3304,9 @@ static void JS_DropDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
   
   // clear local sid cache for the database
   triagens::arango::VocbaseContext::clearSid(name);
+
+  // run the garbage collection in case the database held some objects which can now be freed
+  TRI_RunGarbageCollectionV8(isolate, 0.25);
 
   TRI_V8ReloadRouting(isolate);
 

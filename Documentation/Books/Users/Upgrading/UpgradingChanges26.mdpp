@@ -3,6 +3,23 @@
 It is recommended to check the following list of incompatible changes **before** 
 upgrading to ArangoDB 2.6, and adjust any client programs if necessary.
 
+!SECTION Foxx changes
+
+!SUBSECTION Foxx Queues
+
+Foxx Queue job type definitions were previously based on functions and had to be registered before use. Due to changes in 2.5 this resulted in problems when restarting the server or defining job types incorrectly.
+
+Function-based job types have been deprecated in 2.6 and will be removed entirely in 2.7.
+
+In order to convert existing function-based job types to the new script-based job types, create custom scripts in your Foxx app and reference them by their name and the mount point of the app they are defined in. Official job types from the Foxx app store can be upgraded by upgrading from the 1.x version to the 2.x version of the same app.
+
+In order to upgrade queued jobs to the new job types, you need to update the `type` property of the affected jobs in the database's `_jobs` system collection. In order to see the collection in the web interface you need to enable the collection type "System" in the collection list options.
+
+Example:
+
+Before: `"type": "mailer.postmark"`
+
+After: `"type": {"name": "mailer", "mount": "/my-postmark-mailer"}`
 
 !SECTION Changed behavior
 

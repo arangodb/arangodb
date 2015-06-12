@@ -2619,10 +2619,7 @@ TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name));
 
   if (vocbase != nullptr) {
-    bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
-
-    // if we got here, no one else can have deleted the database
-    TRI_ASSERT(result == true);
+    TRI_UseVocBase(vocbase);
   }
 
   return vocbase;
@@ -2640,10 +2637,7 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_databases, name));
 
   if (vocbase != nullptr) {
-    bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
-
-    // if we got here, no one else can have deleted the database
-    TRI_ASSERT(result == true);
+    TRI_UseVocBase(vocbase);
   }
 
   return vocbase;
@@ -2703,10 +2697,7 @@ TRI_vocbase_t* TRI_UseDatabaseByIdServer (TRI_server_t* server,
     TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
 
     if (vocbase != nullptr && vocbase->_id == id) {
-      bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
-
-      // if we got here, no one else can have deleted the database
-      TRI_ASSERT(result == true);
+      TRI_UseVocBase(vocbase);
       return vocbase;
     }
   }

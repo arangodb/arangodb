@@ -31,6 +31,7 @@
 #define ARANGODB_BASICS_TRAVERSER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
 
 #include <mutex>
@@ -141,7 +142,7 @@ namespace triagens {
               _heap.push_back(v);
               try {
                 _lookup.insert(std::make_pair(k, 
-                               static_cast<ssize_t>(_heap.size()-1 + _popped)));
+                               static_cast<ssize_t>(_heap.size() - 1 + _popped)));
               }
               catch (...) {
                 _heap.pop_back();
@@ -174,14 +175,16 @@ namespace triagens {
 
         Value* find (Key const& k) {
           auto it = _lookup.find(k);
+
           if (it == _lookup.end()) {
             return nullptr;
           }
+
           if (it->second >= 0) {   // still in the queue
-            return _heap[static_cast<size_t>(it->second) - _popped];
+            return _heap.at(static_cast<size_t>(it->second) - _popped);
           }
           else {  // already in the history
-            return _history[static_cast<size_t>(-it->second) - 1];
+            return _history.at(static_cast<size_t>(-it->second) - 1);
           }
         }
 
@@ -659,34 +662,48 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
             void run () {
-
-              VertexId v;
-              Step* s;
-              bool b = _myInfo._pq.popMinimal(v, s, true);
-              
-              std::vector<Step*> neighbors;
-
-              // Iterate while no bingo found and
-              // there still is a vertex on the stack.
-              while (!_pathFinder->_bingo && b) {
-                neighbors.clear();
-                _expander(v, neighbors);
-                for (auto* neighbor : neighbors) {
-                  insertNeighbor(neighbor, s->weight() + neighbor->weight());
+              try {
+                VertexId v;
+                Step* s;
+                bool b;
+                {
+                  std::lock_guard<std::mutex> guard(_myInfo._mutex);
+                  b = _myInfo._pq.popMinimal(v, s, true);
                 }
-                lookupPeer(v, s->weight());
+                
+                std::vector<Step*> neighbors;
 
-                std::lock_guard<std::mutex> guard(_myInfo._mutex);
-                Step* s2 = _myInfo._pq.find(v);
-                s2->_done = true;
-                b = _myInfo._pq.popMinimal(v, s, true);
+                // Iterate while no bingo found and
+                // there still is a vertex on the stack.
+                while (! _pathFinder->_bingo && b) {
+                  neighbors.clear();
+                  _expander(v, neighbors);
+                  for (auto* neighbor : neighbors) {
+                    insertNeighbor(neighbor, s->weight() + neighbor->weight());
+                  }
+                  lookupPeer(v, s->weight());
+
+                  std::lock_guard<std::mutex> guard(_myInfo._mutex);
+                  Step* s2 = _myInfo._pq.find(v);
+                  s2->_done = true;
+                  b = _myInfo._pq.popMinimal(v, s, true);
+                }
+                // We can leave this loop only under 2 conditions:
+                // 1) already bingo==true => bingo = true no effect
+                // 2) This queue is empty => if there would be a
+                //    path we would have found it here
+                //    => No path possible. Set bingo, intermediate is empty.
+                _pathFinder->_bingo = true;
               }
-              // We can leave this loop only under 2 conditions:
-              // 1) already bingo==true => bingo = true no effect
-              // 2) This queue is empty => if there would be a
-              //    path we would have found it here
-              //    => No path possible. Set bingo, intermediate is empty.
-              _pathFinder->_bingo = true;
+              catch (triagens::basics::Exception const& ex) {
+                _pathFinder->_resultCode = ex.code();
+              }
+              catch (std::bad_alloc const&) {
+                _pathFinder->_resultCode = TRI_ERROR_OUT_OF_MEMORY;
+              }
+              catch (...) {
+                _pathFinder->_resultCode = TRI_ERROR_INTERNAL;
+              }
             }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -769,6 +786,7 @@ namespace triagens {
                              EdgeWeight weight) {
 
               Step* s = _peerInfo._pq.find(vertex);
+
               if (s == nullptr) {
                 // Not found, nothing more to do
                 return;
@@ -855,16 +873,21 @@ namespace triagens {
 // --SECTION--                          PathFinder: constructors and destructors
 // -----------------------------------------------------------------------------
 
+        PathFinder (PathFinder const&) = delete;
+        PathFinder& operator= (PathFinder const&) = delete;
+        PathFinder () = delete;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
         PathFinder (ExpanderFunction forwardExpander,
-                   ExpanderFunction backwardExpander,
-                   bool bidirectional = true) 
+                    ExpanderFunction backwardExpander,
+                    bool bidirectional = true) 
           : _highscoreSet(false),
             _highscore(0),
             _bingo(false),
+            _resultCode(TRI_ERROR_NO_ERROR),
             _intermediateSet(false),
             _intermediate(),
             _forwardExpander(forwardExpander),
@@ -941,7 +964,7 @@ namespace triagens {
           // Insert all vertices and edges at front of vector
           // Do NOT! insert the intermediate vertex
           while (s->_predecessor.key != nullptr &&
-                 strcmp(s->_predecessor.key,"") != 0) {
+                 strcmp(s->_predecessor.key, "") != 0) {
             r_edges.push_front(s->_edge);
             r_vertices.push_front(s->_predecessor);
             s = forward._pq.find(s->_predecessor);
@@ -1008,7 +1031,15 @@ namespace triagens {
             backwardSearcher->join();
           }
 
-          if (!_bingo || _intermediateSet == false) {
+          // check error code returned by the threads
+          int res =_resultCode.load();
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            // one of the threads caught an exception
+            THROW_ARANGO_EXCEPTION(res);
+          }
+
+          if (! _bingo || _intermediateSet == false) {
             return nullptr;
           }
 
@@ -1130,6 +1161,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::atomic<bool> _bingo;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief result code. this is used to transport errors from sub-threads to
+/// the caller thread
+////////////////////////////////////////////////////////////////////////////////
+
+        std::atomic<int> _resultCode;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _resultMutex, this is used to protect access to the result data

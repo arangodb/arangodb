@@ -51,7 +51,7 @@ using namespace triagens::arango;
 /// to explicitly allow move semantics.
 ////////////////////////////////////////////////////////////////////////////////
 
-static VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
+static VertexId ExtractFromId (TRI_doc_mptr_copy_t const& ptr) {
   return VertexId(TRI_EXTRACT_MARKER_FROM_CID(&ptr),
                   TRI_EXTRACT_MARKER_FROM_KEY(&ptr));
 };
@@ -61,11 +61,10 @@ static VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
 /// to explicitly allow move semantics.
 ////////////////////////////////////////////////////////////////////////////////
 
-static VertexId extractToId(TRI_doc_mptr_copy_t& ptr) {
+static VertexId ExtractToId (TRI_doc_mptr_copy_t const& ptr) {
   return VertexId(TRI_EXTRACT_MARKER_TO_CID(&ptr),
                   TRI_EXTRACT_MARKER_TO_KEY(&ptr));
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for Multiple edge collections
@@ -123,11 +122,11 @@ class MultiCollectionEdgeExpander {
         unordered_map<VertexId, size_t> candidates;
         for (size_t j = 0;  j < edges.size(); ++j) {
           EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
-          if (!_isAllowed(edgeId, &edges[j])) {
+          if (! _isAllowed(edgeId, &edges[j])) {
             continue;
           }
-          VertexId from = extractFromId(edges[j]);
-          VertexId to = extractToId(edges[j]);
+          VertexId from = ExtractFromId(edges[j]);
+          VertexId to = ExtractToId(edges[j]);
           double currentWeight = edgeCollection->weightEdge(edges[j]);
           auto inserter = [&](VertexId& s, VertexId& t) {
             if (_isAllowedVertex(t)) {
@@ -137,7 +136,8 @@ class MultiCollectionEdgeExpander {
                 result.push_back(new ArangoDBPathFinder::Step(t, s, currentWeight,
                                  edgeId));
                 candidates.emplace(t, result.size() - 1);
-              } else {
+              } 
+              else {
                 // Compare weight
                 auto oldWeight = result[cand->second]->weight();
                 if (currentWeight < oldWeight) {
@@ -146,10 +146,10 @@ class MultiCollectionEdgeExpander {
               }
             }
           };
-          if (!eq(from, source)) {
+          if (! eq(from, source)) {
             inserter(to, from);
           } 
-          else if (!eq(to, source)) {
+          else if (! eq(to, source)) {
             inserter(from, to);
           }
         }
@@ -188,8 +188,8 @@ class SimpleEdgeExpander {
       equal_to<VertexId> eq;
       unordered_map<VertexId, size_t> candidates;
       for (size_t j = 0;  j < edges.size(); ++j) {
-        VertexId from = extractFromId(edges[j]);
-        VertexId to = extractToId(edges[j]);
+        VertexId from = ExtractFromId(edges[j]);
+        VertexId to = ExtractToId(edges[j]);
         double currentWeight = _edgeCollection->weightEdge(edges[j]);
         auto inserter = [&](VertexId& s, VertexId& t) {
           auto cand = candidates.find(t);
@@ -198,7 +198,8 @@ class SimpleEdgeExpander {
             result.push_back(new ArangoDBPathFinder::Step(t, s, currentWeight, 
                              _edgeCollection->extractEdgeId(edges[j])));
             candidates.emplace(t, result.size() - 1);
-          } else {
+          } 
+          else {
             // Compare weight
             auto oldWeight = result[cand->second]->weight();
             if (currentWeight < oldWeight) {
@@ -206,10 +207,10 @@ class SimpleEdgeExpander {
             }
           }
         };
-        if (!eq(from, source)) {
+        if (! eq(from, source)) {
           inserter(to, from);
         } 
-        else if (!eq(to, source)) {
+        else if (! eq(to, source)) {
           inserter(from, to);
         }
       }
@@ -402,11 +403,11 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
     backward = TRI_EDGE_ANY;
   }
 
-  auto edgeFilterClosure = [&opts](EdgeId& e, TRI_doc_mptr_copy_t* edge) -> bool { 
+  auto edgeFilterClosure = [&opts] (EdgeId& e, TRI_doc_mptr_copy_t* edge) -> bool { 
     return opts.matchesEdge(e, edge); 
   };
 
-  auto vertexFilterClosure = [&opts](VertexId& v) -> bool { 
+  auto vertexFilterClosure = [&opts] (VertexId& v) -> bool { 
     return opts.matchesVertex(v); 
   };
 
@@ -448,7 +449,7 @@ static void InboundNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
         EdgeId edgeId = col->extractEdgeId(edges[j]);
 
         if (opts.matchesEdge(edgeId, &edges[j])) {
-          VertexId v = extractFromId(edges[j]);
+          VertexId v = ExtractFromId(edges[j]);
           if (visited.find(v) != visited.end()) {
             // We have already visited this vertex
             continue;
@@ -497,7 +498,7 @@ static void OutboundNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
       for (size_t j = 0;  j < edges.size(); ++j) {
         EdgeId edgeId = col->extractEdgeId(edges[j]);
         if (opts.matchesEdge(edgeId, &edges[j])) {
-          VertexId v = extractToId(edges[j]);
+          VertexId v = ExtractToId(edges[j]);
           if (visited.find(v) != visited.end()) {
             // We have already visited this vertex
             continue;
@@ -545,7 +546,7 @@ static void AnyNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
       for (size_t j = 0;  j < edges.size(); ++j) {
         EdgeId edgeId = col->extractEdgeId(edges[j]);
         if (opts.matchesEdge(edgeId, &edges[j])) {
-          VertexId v = extractToId(edges[j]);
+          VertexId v = ExtractToId(edges[j]);
           if (visited.find(v) != visited.end()) {
             // We have already visited this vertex
             continue;
@@ -569,7 +570,7 @@ static void AnyNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
       for (size_t j = 0;  j < edges.size(); ++j) {
         EdgeId edgeId = col->extractEdgeId(edges[j]);
         if (opts.matchesEdge(edgeId, &edges[j])) {
-          VertexId v = extractFromId(edges[j]);
+          VertexId v = ExtractFromId(edges[j]);
           if (visited.find(v) != visited.end()) {
             // We have already visited this vertex
             continue;

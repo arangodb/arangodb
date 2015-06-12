@@ -718,7 +718,7 @@ void TRI_InsertObjectJson (TRI_memory_zone_t* zone,
 void TRI_Insert2ObjectJson (TRI_memory_zone_t* zone,
                            TRI_json_t* object,
                            char const* name,
-                           TRI_json_t* subobject) {
+                           TRI_json_t const* subobject) {
   TRI_ASSERT(object->_type == TRI_JSON_OBJECT);
 
   if (subobject == nullptr) {
@@ -858,7 +858,10 @@ bool TRI_DeleteObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
 /// @brief replaces an element in a json array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReplaceObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char const* name, TRI_json_t* replacement) {
+bool TRI_ReplaceObjectJson (TRI_memory_zone_t* zone, 
+                            TRI_json_t* object, 
+                            char const* name, 
+                            TRI_json_t const* replacement) {
   TRI_ASSERT(object->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(name != nullptr);
 

@@ -1,6 +1,10 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issues when switching the database inside tasks and during shutdown of database cursors 
+
+  These features were added during 2.6 alpha stage so the fixes affect devel/2.6-alpha builds only
+
 * issue #1360: improved foxx-manager help
 
 * added `--enable-tcmalloc` configure option.
@@ -55,7 +59,28 @@ v2.6.0 (XXXX-XX-XX)
 
 * web interface: demo page added. only working if demo data is available, hidden otherwise
 
-* removed startup option `--log.severity`
+* web interface: added support for custom app scripts with optional arguments and results
+
+* web interface: mounted apps that need to be configured are now indicated in the app overview
+
+* web interface: added button for running tests to app details
+
+* web interface: added button for configuring app dependencies to app details
+
+* web interface: upgraded API documentation to use Swagger 2
+
+* INCOMPATIBLE CHANGE
+
+  removed startup option `--log.severity`
+
+  The docs for `--log.severity` mentioned lots of severities (e.g. `exception`, `technical`, `functional`, `development`) 
+  but only a few severities (e.g. `all`, `human`) were actually used, with `human` being the default and `all` enabling the 
+  additional logging of requests. So the option pretended to control a lot of things which it actually didn't. Additionally,
+  the option `--log.requests-file` was around for a long time already, also controlling request logging. 
+
+  Because the `--log.severity` option effectively did not control that much, it was removed. A side effect of removing the
+  option is that 2.5 installations which used `--log.severity all` will not log requests after the upgrade to 2.6. This can
+  be adjusted by setting the `--log.requests-file` option.
 
 * add backtrace to fatal log events
 
@@ -512,22 +537,30 @@ v2.6.0 (XXXX-XX-XX)
   up and checking the queues more frequently, which may increase CPU usage of the server. 
   When not using Foxx queues, this value can be raised to save some CPU time.
 
-* added startup option `--server.foxx-queues-system-only`
+* added startup option `--server.foxx-queues-warmup-exports`
 
-  This startup option controls whether the Foxx queue manager will check queue and job entries
-  in the `_system` database only. Restricting the Foxx queue manager to the `_system` database 
-  will lead to the queue manager having to check only the queues collection of a single database,
-  whereas making it check the queues of all databases might result in more work to be done and 
-  more CPU time to be used by the queue manager.
+  This startup option makes sure the exports of all installed Foxx apps are pre-loaded when
+  the server is restarted. This prevents a known issue with function-based Foxx queue job types.
+  It is recommended that you upgrade any existing function-based job types to script-based ones
+  to avoid the issue entirely.
 
-  The default value is `true`, so that the queue manager will only check the queues in the 
-  `_system` database.
+  The default value is `true`. Disabling this feature can reduce memory usage and startup time
+  but may cause issues with function-based job types.
+
+* added startup option `--server.foxx-queues`
+
+  This startup option controls whether the Foxx queue manager will check queue and job entries.
+  Disabling this option can reduce server load but will prevent jobs added to Foxx queues from
+  being processed at all.
+
+  The default value is `true`, enabling the Foxx queues feature.
 
 * make Foxx queues really database-specific.
 
   Foxx queues were and are stored in a database-specific collection `_queues`. However, a global
   cache variable for the queues led to the queue names being treated database-independently, which
   was wrong.
+
   Since 2.6, Foxx queues names are truly database-specific, so the same queue name can be used in
   two different databases for two different queues. Until then, it is advisable to think of queues
   as already being database-specific, and using the database name as a queue name prefix to be
@@ -536,6 +569,15 @@ v2.6.0 (XXXX-XX-XX)
       var queueName = "myQueue";
       var Foxx = require("org/arangodb/foxx");
       Foxx.queues.create(db._name() + ":" + queueName);
+
+* added support for Foxx queue job types defined as app scripts.
+
+  The old job types introduced in 2.4 are still supported but are known to cause issues in 2.5
+  and later when the server is restarted or the job types are not defined in every thread.
+
+  The new job types avoid this issue by storing an explicit mount path and script name rather
+  than an assuming the job type is defined globally. It is strongly recommended to convert your
+  job types to the new script-based system.
 
 * Added the following JavaScript methods for file access:
   * fs.copyFile() to copy single files
@@ -568,13 +610,22 @@ v2.6.0 (XXXX-XX-XX)
 
 * removed remainders of MRuby integration, removed arangoirb
 
-* simplified `controllers` property in Foxx manifests. You can now specify a filename directly if you only want to use a single file mounted at the base URL of your Foxx app.
+* simplified `controllers` property in Foxx manifests. You can now specify a filename directly
+  if you only want to use a single file mounted at the base URL of your Foxx app.
 
-* simplified `exports` property in Foxx manifests. You can now specify a filename directly if you only want to export variables from a single file in your Foxx app.
+* simplified `exports` property in Foxx manifests. You can now specify a filename directly if
+  you only want to export variables from a single file in your Foxx app.
 
-* added support for node.js-style exports in Foxx exports. Your Foxx exports file can now export arbitrary values using the `module.exports` property instead of adding properties to the `exports` object.
+* added support for node.js-style exports in Foxx exports. Your Foxx exports file can now export
+  arbitrary values using the `module.exports` property instead of adding properties to the
+  `exports` object.
 
-* added `scripts` property to Foxx manifests. You should now specify the `setup` and `teardown` files as properties of the `scripts` object in your manifests.
+* added `scripts` property to Foxx manifests. You should now specify the `setup` and `teardown`
+  files as properties of the `scripts` object in your manifests and can define custom,
+  app-specific scripts that can be executed from the web interface or the CLI.
+
+* added `tests` property to Foxx manifests. You can now define test cases using the `mocha`
+  framework which can then be executed inside ArangoDB.
 
 * updated `joi` package to 6.0.8.
 
