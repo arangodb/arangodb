@@ -194,30 +194,113 @@ function arrayAccessTestSuite () {
 /// @brief test range result
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryResultRangeBackward1 : function () {
-      for (var to = 0; to < 10; ++to) {
-        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[10.." + to + "]", { values: values }).json;
-        var expected = [ ];
-        for (var i = Math.min(10, values.length - 1); i >= to; --i) {
-          expected.push(values[i]);
-        }
+    testSubqueryResultRangeForwardMisc : function () {
+      var test = function (from, to, v) {
+        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[" + from + ".." + to + "]", { values: values }).json;
+        var expected = v.map(function(v) { return values[v]; });
         assertEqual([ expected ], result);
-      }
-    },
+      };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range result
-////////////////////////////////////////////////////////////////////////////////
+      test(0, 0, [ 0 ]);
+      test(0, 1, [ 0, 1 ]);
+      test(0, 2, [ 0, 1, 2 ]);
+      test(0, 3, [ 0, 1, 2, 3 ]);
+      test(0, 4, [ 0, 1, 2, 3, 4 ]);
+      test(0, 5, [ 0, 1, 2, 3, 4 ]);
+      test(0, 6, [ 0, 1, 2, 3, 4 ]);
+      test(0, 99, [ 0, 1, 2, 3, 4 ]);
 
-    testSubqueryResultRangeBackward2 : function () {
-      for (var from = 0; from < 10; ++from) {
-        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[" + from + "..0]", { values: values }).json;
-        var expected = [ ];
-        for (var i = Math.min(from, values.length - 1); i >= 0; --i) {
-          expected.push(values[i]);
-        }
-        assertEqual([ expected ], result);
-      }
+      test(1, 1, [ 1 ]);
+      test(1, 2, [ 1, 2 ]);
+      test(1, 3, [ 1, 2, 3 ]);
+      test(1, 4, [ 1, 2, 3, 4 ]);
+      test(1, 5, [ 1, 2, 3, 4 ]);
+
+      test(2, 2, [ 2 ]);
+      test(2, 3, [ 2, 3 ]);
+
+      test(4, 4, [ 4 ]);
+      test(4, 5, [ 4 ]);
+
+      test(5, 5, [ ]);
+      test(5, 6, [ ]);
+      test(1000, 1000, [ ]);
+      test(1000000, 1000000, [ ]);
+      
+      test(0, -1, [ 0, 1, 2, 3, 4 ]);
+      test(0, -2, [ 0, 1, 2, 3 ]);
+      test(0, -3, [ 0, 1, 2 ]);
+      test(0, -4, [ 0, 1 ]);
+      test(0, -5, [ 0 ]);
+      test(0, -6, [ 0 ]);
+      test(0, -7, [ 0 ]);
+
+      test(1, 0, [ 1, 0 ]);
+      test(1, -1, [ 1, 2, 3, 4 ]);
+      test(1, -2, [ 1, 2, 3 ]);
+      test(1, -3, [ 1, 2 ]);
+      test(1, -4, [ 1 ]);
+      test(1, -5, [ 1, 0 ]);
+      test(1, -6, [ 1, 0 ]);
+      test(1, -7, [ 1, 0 ]);
+
+      test(2, 0, [ 2, 1, 0 ]);
+      test(2, 1, [ 2, 1 ]);
+      test(2, -1, [ 2, 3, 4 ]);
+      test(2, -2, [ 2, 3 ]);
+      test(2, -3, [ 2 ]);
+      test(2, -4, [ 2, 1 ]);
+      test(2, -5, [ 2, 1, 0 ]);
+      test(2, -6, [ 2, 1, 0 ]);
+      test(2, -7, [ 2, 1, 0 ]);
+
+      test(3, 0, [ 3, 2, 1, 0 ]);
+      test(3, 1, [ 3, 2, 1 ]);
+      test(3, 2, [ 3, 2 ]);
+      test(3, -1, [ 3, 4 ]);
+      test(3, -2, [ 3 ]);
+      test(3, -3, [ 3, 2 ]);
+      test(3, -4, [ 3, 2, 1 ]);
+      test(3, -5, [ 3, 2, 1, 0 ]);
+      test(3, -6, [ 3, 2, 1, 0 ]);
+
+      test(4, 0, [ 4, 3, 2, 1, 0 ]);
+      test(4, 1, [ 4, 3, 2, 1 ]);
+      test(4, 2, [ 4, 3, 2 ]);
+      test(4, 3, [ 4, 3 ]);
+      test(4, -1, [ 4 ]);
+      test(4, -2, [ 4, 3 ]);
+      test(4, -3, [ 4, 3, 2 ]);
+      test(4, -4, [ 4, 3, 2, 1 ]);
+      test(4, -5, [ 4, 3, 2, 1, 0 ]);
+      test(4, -6, [ 4, 3, 2, 1, 0 ]);
+
+      test(5, 0, [ 4, 3, 2, 1, 0 ]);
+      test(5, 1, [ 4, 3, 2, 1 ]);
+      test(5, 2, [ 4, 3, 2 ]);
+      test(5, 3, [ 4, 3 ]);
+      test(5, -1, [ 4 ]);
+      test(5, -2, [ 4, 3 ]);
+      test(5, -3, [ 4, 3, 2 ]);
+      test(5, -4, [ 4, 3, 2, 1 ]);
+      test(5, -5, [ 4, 3, 2, 1, 0 ]);
+      test(5, -6, [ 4, 3, 2, 1, 0 ]);
+      
+      test(6, 6, [ ]);
+      test(6, 7, [ ]);
+      test(7, 6, [ ]);
+      test(10, 10, [ ]);
+      test(100, 100, [ ]);
+      test(100, 1000, [ ]);
+      test(1000, 100, [ ]);
+
+      test(-6, -6, [ ]);
+      test(-6, -7, [ ]);
+      test(-7, -6, [ ]);
+      test(-10, -10, [ ]);
+      test(-100, -100, [ ]);
+      test(-100, -1000, [ ]);
+      test(-1000, -100, [ ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,30 +337,113 @@ function arrayAccessTestSuite () {
 /// @brief test range result
 ////////////////////////////////////////////////////////////////////////////////
 
-    testV8SubqueryResultRangeBackward1 : function () {
-      for (var to = 0; to < 10; ++to) {
-        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[10.." + to + "]", { values: values }).json;
-        var expected = [ ];
-        for (var i = Math.min(10, values.length - 1); i >= to; --i) {
-          expected.push(values[i]);
-        }
+    testV8SubqueryResultRangeForwardMisc : function () {
+      var test = function (from, to, v) {
+        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[" + from + ".." + to + "]", { values: values }).json;
+        var expected = v.map(function(v) { return values[v]; });
         assertEqual([ expected ], result);
-      }
-    },
+      };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range result
-////////////////////////////////////////////////////////////////////////////////
+      test(0, 0, [ 0 ]);
+      test(0, 1, [ 0, 1 ]);
+      test(0, 2, [ 0, 1, 2 ]);
+      test(0, 3, [ 0, 1, 2, 3 ]);
+      test(0, 4, [ 0, 1, 2, 3, 4 ]);
+      test(0, 5, [ 0, 1, 2, 3, 4 ]);
+      test(0, 6, [ 0, 1, 2, 3, 4 ]);
+      test(0, 99, [ 0, 1, 2, 3, 4 ]);
 
-    testV8SubqueryResultRangeBackward2 : function () {
-      for (var from = 0; from < 10; ++from) {
-        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[" + from + "..0]", { values: values }).json;
-        var expected = [ ];
-        for (var i = Math.min(from, values.length - 1); i >= 0; --i) {
-          expected.push(values[i]);
-        }
-        assertEqual([ expected ], result);
-      }
+      test(1, 1, [ 1 ]);
+      test(1, 2, [ 1, 2 ]);
+      test(1, 3, [ 1, 2, 3 ]);
+      test(1, 4, [ 1, 2, 3, 4 ]);
+      test(1, 5, [ 1, 2, 3, 4 ]);
+
+      test(2, 2, [ 2 ]);
+      test(2, 3, [ 2, 3 ]);
+
+      test(4, 4, [ 4 ]);
+      test(4, 5, [ 4 ]);
+
+      test(5, 5, [ ]);
+      test(5, 6, [ ]);
+      test(1000, 1000, [ ]);
+      test(1000000, 1000000, [ ]);
+      
+      test(0, -1, [ 0, 1, 2, 3, 4 ]);
+      test(0, -2, [ 0, 1, 2, 3 ]);
+      test(0, -3, [ 0, 1, 2 ]);
+      test(0, -4, [ 0, 1 ]);
+      test(0, -5, [ 0 ]);
+      test(0, -6, [ 0 ]);
+      test(0, -7, [ 0 ]);
+
+      test(1, 0, [ 1, 0 ]);
+      test(1, -1, [ 1, 2, 3, 4 ]);
+      test(1, -2, [ 1, 2, 3 ]);
+      test(1, -3, [ 1, 2 ]);
+      test(1, -4, [ 1 ]);
+      test(1, -5, [ 1, 0 ]);
+      test(1, -6, [ 1, 0 ]);
+      test(1, -7, [ 1, 0 ]);
+
+      test(2, 0, [ 2, 1, 0 ]);
+      test(2, 1, [ 2, 1 ]);
+      test(2, -1, [ 2, 3, 4 ]);
+      test(2, -2, [ 2, 3 ]);
+      test(2, -3, [ 2 ]);
+      test(2, -4, [ 2, 1 ]);
+      test(2, -5, [ 2, 1, 0 ]);
+      test(2, -6, [ 2, 1, 0 ]);
+      test(2, -7, [ 2, 1, 0 ]);
+
+      test(3, 0, [ 3, 2, 1, 0 ]);
+      test(3, 1, [ 3, 2, 1 ]);
+      test(3, 2, [ 3, 2 ]);
+      test(3, -1, [ 3, 4 ]);
+      test(3, -2, [ 3 ]);
+      test(3, -3, [ 3, 2 ]);
+      test(3, -4, [ 3, 2, 1 ]);
+      test(3, -5, [ 3, 2, 1, 0 ]);
+      test(3, -6, [ 3, 2, 1, 0 ]);
+
+      test(4, 0, [ 4, 3, 2, 1, 0 ]);
+      test(4, 1, [ 4, 3, 2, 1 ]);
+      test(4, 2, [ 4, 3, 2 ]);
+      test(4, 3, [ 4, 3 ]);
+      test(4, -1, [ 4 ]);
+      test(4, -2, [ 4, 3 ]);
+      test(4, -3, [ 4, 3, 2 ]);
+      test(4, -4, [ 4, 3, 2, 1 ]);
+      test(4, -5, [ 4, 3, 2, 1, 0 ]);
+      test(4, -6, [ 4, 3, 2, 1, 0 ]);
+
+      test(5, 0, [ 4, 3, 2, 1, 0 ]);
+      test(5, 1, [ 4, 3, 2, 1 ]);
+      test(5, 2, [ 4, 3, 2 ]);
+      test(5, 3, [ 4, 3 ]);
+      test(5, -1, [ 4 ]);
+      test(5, -2, [ 4, 3 ]);
+      test(5, -3, [ 4, 3, 2 ]);
+      test(5, -4, [ 4, 3, 2, 1 ]);
+      test(5, -5, [ 4, 3, 2, 1, 0 ]);
+      test(5, -6, [ 4, 3, 2, 1, 0 ]);
+      
+      test(6, 6, [ ]);
+      test(6, 7, [ ]);
+      test(7, 6, [ ]);
+      test(10, 10, [ ]);
+      test(100, 100, [ ]);
+      test(100, 1000, [ ]);
+      test(1000, 100, [ ]);
+
+      test(-6, -6, [ ]);
+      test(-6, -7, [ ]);
+      test(-7, -6, [ ]);
+      test(-10, -10, [ ]);
+      test(-100, -100, [ ]);
+      test(-100, -1000, [ ]);
+      test(-1000, -100, [ ]);
     }
 
   };

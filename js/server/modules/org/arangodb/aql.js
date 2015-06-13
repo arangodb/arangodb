@@ -1010,37 +1010,31 @@ function GET_RANGE (value, low, high) {
   }
 
   if (low <= high) {
-    if (low < 0) {
-      low = 0;
-    }
-    if (high > value.length) {
-      high = value.length;
-    }
-    else {
-      ++high; 
-    }
-    if (low <= high) {
-      for (position = low; position < high; ++position) {
-        result.push(value[position]);
+    ++high;
+    if (low < high) {  
+      if (low < 0) {
+        low = 0;
+      }
+      if (high >= value.length) {
+        high = value.length;
+      }
+      if (low < high) {
+        for (position = low; position < high; ++position) {
+          result.push(value[position]);
+        }
       }
     }
   }
   else {
-    var tmp = low;
-    low = high;
-    high = tmp;
-
-    if (low < 0) {
-      low = 0;
+    --high;
+    if (low >= value.length) {
+      low = value.length - 1;
     }
-    if (high < 0) {
-      high = 0;
+    if (high < -1) {
+      high = -1;
     }
-    else if (high >= value.length) {
-      high = value.length - 1;
-    }
-    if (high >= low) {
-      for (position = high; position >= low; --position) {
+    if (low - high > 0) {
+      for (position = low; position > high; --position) {
         result.push(value[position]);
       }
     }
