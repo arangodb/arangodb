@@ -308,52 +308,42 @@ AqlValue Expression::extractRange (AqlValue const& result,
   if (high < 0) {
     high = static_cast<int64_t>(length) + high;
   }
-   
+
   std::unique_ptr<Json> array(new Json(Json::Array));
 
   if (low <= high) {
     // forward iteration
-    // adjust bounds
-    if (low < 0) {
-      low = 0;
-    }
-    if (high >= static_cast<int64_t>(length)) {
-      high = static_cast<int64_t>(length);
-    }
-    else {
-      // increase by one so we include the last specified element
-      ++high;
-    }
-    if (low <= high) {
-      array->reserve(static_cast<size_t>(high - low));
-      // forward iteration 
-      for (int64_t position = low; position < high; ++position) {
-        auto j = result.extractArrayMember(trx, collection, position, true);
-        array->add(j);
+    ++high;
+    if (low < high) {
+      if (low < 0) {
+        low = 0;
+      }
+      if (high >= static_cast<int64_t>(length)) {
+        high = static_cast<int64_t>(length);
+      }
+      if (low < high) {
+        array->reserve(static_cast<size_t>(high - low));
+        for (int64_t position = low; position < high; ++position) {
+          auto j = result.extractArrayMember(trx, collection, position, true);
+          array->add(j);
+        }
       }
     }
   }
   else {
     // backward iteration
-    // swap low and high
-    int64_t tmp = low;
-    low = high;
-    high = tmp;
-
-    // backward iteration
-    if (low < 0) {
-      low = 0;
+    --high;
+    if (low >= static_cast<int64_t>(length)) {
+      low = static_cast<int64_t>(length) - 1;
     }
-    if (high < 0) {
-      high = 0;
+    if (high < -1) {
+      high = -1;
     }
-    else if (high >= static_cast<int64_t>(length)) {
-      high = static_cast<int64_t>(length) - 1;
-    }
-
-    if (high >= low) { 
-      array->reserve(static_cast<size_t>(high - low + 1));
-      for (int64_t position = high; position >= low; --position) {
+ 
+    if (low - high > 0) {
+      array->reserve(static_cast<size_t>(low - high));
+      // array->reserve(static_cast<size_t>(high - low + 1));
+      for (int64_t position = low; position > high; --position) {
         auto j = result.extractArrayMember(trx, collection, position, true);
         array->add(j);
       }
