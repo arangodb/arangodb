@@ -2168,8 +2168,6 @@ window.StatisticsCollection = Backbone.Collection.extend({
         {async: true}
       ).done(
         function (d) {
-          console.log(url + urlParams);
-          console.log(d);
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d);
