@@ -144,6 +144,13 @@ FOR u IN users
   SORT u.lastName, u.firstName, u.id DESC
   RETURN u
 ```
+
+Note that constant *SORT* expressions can be used to indicate that no particular
+sort order is desired. Constant *SORT* expressions will be optimized away by the AQL
+optimizer during optimization, but specifying them explicitly may enable further
+optimizations if the optimizer does not need to take into account any particular
+sort order.
+
 !SUBSECTION LIMIT
 
 The *LIMIT* statement allows slicing the result array using an
@@ -420,7 +427,14 @@ added in front of the *COLLECT*. This is because the *hash* variant of *COLLECT*
 sorted input. Instead, a *SORT* statement will be added after the *COLLECT* to sort its output. 
 This *SORT* statement may be optimized away again in later stages. 
 If the sort order of the *COLLECT* is irrelevant to the user, adding the extra instruction *SORT null* 
-after the *COLLECT* will allow the optimizer to remove the sorts altogether.
+after the *COLLECT* will allow the optimizer to remove the sorts altogether:
+
+```
+FOR u IN users
+  COLLECT age = u.age
+  SORT null  /* note: will be optimized away */
+  RETURN age
+```
   
 Which *COLLECT* variant is used by the optimizer depends on the optimizer's cost estimations. The 
 created plans with the different *COLLECT* variants will be shipped through the regular optimization 
