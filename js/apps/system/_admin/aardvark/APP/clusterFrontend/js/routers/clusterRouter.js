@@ -170,8 +170,13 @@ arangoDatabase, btoa, _*/
 
       server.addAuth = this.addAuth.bind(this);
       this.dashboardView = new window.ServerDashboardView({
-          dygraphConfig: this.dygraphConfig,
-          serverToShow : this.serverToShow
+        dygraphConfig: this.dygraphConfig,
+        serverToShow : this.serverToShow,
+        database: {
+          hasSystemAccess: function() {
+            return true;
+          }
+        }
       });
       this.dashboardView.render();
     },

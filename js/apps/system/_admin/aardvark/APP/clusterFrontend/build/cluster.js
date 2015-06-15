@@ -1895,10 +1895,12 @@ window.StatisticsCollection = Backbone.Collection.extend({
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
 
-      this.server = this.options.serverToShow;
+      this.serverInfo = this.options.serverToShow;
 
-      if (! this.server) {
+      if (! this.serverInfo) {
         this.server = "-local-";
+      } else {
+        this.server = this.serverInfo.target;
       }
 
       this.history[this.server] = {};
@@ -2153,8 +2155,8 @@ window.StatisticsCollection = Backbone.Collection.extend({
       }
 
       if (self.server !== "-local-") {
-        url = self.server.endpoint + "/_admin/aardvark/statistics/cluster";
-        urlParams += "&type=short&DBserver=" + self.server.target;
+        url = self.serverInfo.endpoint + "/_admin/aardvark/statistics/cluster";
+        urlParams += "&type=short&DBserver=" + self.serverInfo.target;
 
         if (! self.history.hasOwnProperty(self.server)) {
           self.history[self.server] = {};
@@ -2166,6 +2168,8 @@ window.StatisticsCollection = Backbone.Collection.extend({
         {async: true}
       ).done(
         function (d) {
+          console.log(url + urlParams);
+          console.log(d);
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d);
@@ -4786,8 +4790,13 @@ arangoDatabase, btoa, _*/
 
       server.addAuth = this.addAuth.bind(this);
       this.dashboardView = new window.ServerDashboardView({
-          dygraphConfig: this.dygraphConfig,
-          serverToShow : this.serverToShow
+        dygraphConfig: this.dygraphConfig,
+        serverToShow : this.serverToShow,
+        database: {
+          hasSystemAccess: function() {
+            return true;
+          }
+        }
       });
       this.dashboardView.render();
     },
