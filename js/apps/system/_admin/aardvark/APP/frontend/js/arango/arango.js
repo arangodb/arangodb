@@ -54,6 +54,14 @@
       };
     },
 
+    calculateCenterDivHeight: function() {
+      var navigation = $('.navbar').height();
+      var footer = $('.footer').height();
+      var windowHeight = $(window).height();
+
+      return windowHeight - footer - navigation - 110;
+    },
+
     fixTooltips: function (selector, placement) {
       $(selector).tooltip({
         placement: placement,
