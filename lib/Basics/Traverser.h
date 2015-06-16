@@ -944,6 +944,11 @@ namespace triagens {
             backwardSearcher.reset(new Searcher(this, backward, forward, target,
                                                 _backwardExpander, "Backward"));
           }
+
+          TRI_IF_FAILURE("TraversalOOMInitialize") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
           while (! _bingo) {
             if (! forwardSearcher.oneStep()) {
               break;
@@ -980,6 +985,11 @@ namespace triagens {
             r_vertices.push_back(s->_predecessor);
             s = backward._pq.find(s->_predecessor);
           }
+
+          TRI_IF_FAILURE("TraversalOOMPath") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
           return new Path(r_vertices, r_edges, _highscore);
         }
 
@@ -1022,6 +1032,11 @@ namespace triagens {
                                                           target, _backwardExpander, 
                                                           "Backward"));
           }
+
+          TRI_IF_FAILURE("TraversalOOMInitialize") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
           forwardSearcher.start();
           if (_bidirectional) {
             backwardSearcher->start();
@@ -1066,6 +1081,11 @@ namespace triagens {
             r_vertices.push_back(s->_predecessor);
             s = backward._pq.find(s->_predecessor);
           }
+
+          TRI_IF_FAILURE("TraversalOOMPath") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
           return new Path(r_vertices, r_edges, _highscore);
         }
 
