@@ -1,14 +1,14 @@
 arangosh> a1 = db.example.insert({ a : 1 });
 { 
-  "_id" : "example/486609312", 
-  "_rev" : "486609312", 
-  "_key" : "486609312" 
+  "_id" : "example/486046833", 
+  "_rev" : "486046833", 
+  "_key" : "486046833" 
 }
 arangosh> a2 = db._replace(a1, { a : 2 });
 { 
-  "_id" : "example/486609312", 
-  "_rev" : "486805920", 
-  "_key" : "486609312" 
+  "_id" : "example/486046833", 
+  "_rev" : "486243441", 
+  "_key" : "486046833" 
 }
 arangosh> db._remove(a1);
 [ArangoError 1200: precondition failed]

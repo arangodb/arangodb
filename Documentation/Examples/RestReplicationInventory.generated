@@ -9,7 +9,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "7147936", 
+        "cid" : "7175281", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -20,7 +20,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "7410080", 
+          "id" : "7437425", 
           "type" : "hash", 
           "fields" : [ 
             "mount" 
@@ -35,7 +35,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "4395424", 
+        "cid" : "4422769", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -50,7 +50,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2036128", 
+        "cid" : "2063473", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -65,7 +65,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2167200", 
+        "cid" : "2194545", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -80,7 +80,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2298272", 
+        "cid" : "2325617", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -95,7 +95,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "15536544", 
+        "cid" : "15563889", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -110,7 +110,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "16257440", 
+        "cid" : "16284785", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -125,7 +125,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "201120", 
+        "cid" : "228465", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -136,7 +136,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "528800", 
+          "id" : "556145", 
           "type" : "hash", 
           "fields" : [ 
             "user" 
@@ -151,7 +151,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1259147680", 
+        "cid" : "1258388593", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -166,7 +166,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1258230176", 
+        "cid" : "1257471089", 
         "indexBuckets" : 1, 
         "deleted" : false, 
         "doCompact" : true, 
@@ -180,9 +180,9 @@ content-type: application/json; charset=utf-8
   ], 
   "state" : { 
     "running" : true, 
-    "lastLogTick" : "1694634400", 
+    "lastLogTick" : "1693285489", 
     "totalEvents" : 10378, 
-    "time" : "2015-06-16T13:02:56Z" 
+    "time" : "2015-06-16T21:59:42Z" 
   }, 
-  "tick" : "1694634400" 
+  "tick" : "1693285489" 
 }

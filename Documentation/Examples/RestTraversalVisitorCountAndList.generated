@@ -12,25 +12,25 @@ content-type: application/json; charset=utf-8
       { 
         "_id" : "persons/alice", 
         "_key" : "alice", 
-        "_rev" : "1492324768", 
+        "_rev" : "1490648177", 
         "name" : "Alice" 
       }, 
       { 
         "_id" : "persons/bob", 
         "_key" : "bob", 
-        "_rev" : "1492521376", 
+        "_rev" : "1490844785", 
         "name" : "Bob" 
       }, 
       { 
         "_id" : "persons/charlie", 
         "_key" : "charlie", 
-        "_rev" : "1492783520", 
+        "_rev" : "1491106929", 
         "name" : "Charlie" 
       }, 
       { 
         "_id" : "persons/dave", 
         "_key" : "dave", 
-        "_rev" : "1492980128", 
+        "_rev" : "1491303537", 
         "name" : "Dave" 
       } 
     ] 

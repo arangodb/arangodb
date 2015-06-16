@@ -2,7 +2,7 @@ shell> curl --dump - http://localhost:8529/_api/gharial/myGraph
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 1568870816
+etag: 1567652977
 
 { 
   "error" : false, 
@@ -22,6 +22,6 @@ etag: 1568870816
     ], 
     "orphanCollections" : [ ], 
     "_id" : "_graphs/myGraph", 
-    "_rev" : "1568870816" 
+    "_rev" : "1567652977" 
   } 
 }

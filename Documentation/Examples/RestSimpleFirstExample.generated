@@ -7,13 +7,13 @@ content-type: application/json; charset=utf-8
 
 { 
   "document" : { 
-    "_id" : "products/1432555936", 
-    "_key" : "1432555936", 
-    "_rev" : "1432555936", 
+    "_id" : "products/1430092913", 
+    "_key" : "1430092913", 
+    "_rev" : "1430092913", 
     "i" : 1, 
     "a" : { 
-      "k" : 2, 
-      "j" : 2 
+      "k" : 1, 
+      "j" : 1 
     } 
   }, 
   "error" : false, 

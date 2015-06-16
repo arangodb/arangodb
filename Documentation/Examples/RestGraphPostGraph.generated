@@ -8,13 +8,13 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1334841760
+etag: 1333361777
 
 { 
   "graph" : { 
     "_id" : "_graphs/graph", 
     "_key" : "graph", 
-    "_rev" : "1334841760", 
+    "_rev" : "1333361777", 
     "edgeDefinitions" : [ 
       { 
         "collection" : "edges", 
