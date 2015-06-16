@@ -54,6 +54,14 @@
       };
     },
 
+    calculateCenterDivHeight: function() {
+      var navigation = $('.navbar').height();
+      var footer = $('.footer').height();
+      var windowHeight = $(window).height();
+
+      return windowHeight - footer - navigation - 110;
+    },
+
     fixTooltips: function (selector, placement) {
       $(selector).tooltip({
         placement: placement,
@@ -2168,8 +2176,6 @@ window.StatisticsCollection = Backbone.Collection.extend({
         {async: true}
       ).done(
         function (d) {
-          console.log(url + urlParams);
-          console.log(d);
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d);
