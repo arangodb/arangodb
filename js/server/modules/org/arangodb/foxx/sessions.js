@@ -50,10 +50,10 @@ function decorateController(auth, controller) {
           secret: cfg.cookie.secret,
           algorithm: cfg.cookie.algorithm
         }
-      });
+      } : undefined);
     }
-    if (cfg.header) {
-      sid = sid || req.headers[cfg.header.toLowerCase()];
+    if (!sid && cfg.header) {
+      sid = req.headers[cfg.header.toLowerCase()];
     }
     if (sid) {
       if (cfg.jwt) {

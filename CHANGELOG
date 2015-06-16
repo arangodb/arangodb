@@ -537,16 +537,6 @@ v2.6.0-beta3 (2015-06-16)
   up and checking the queues more frequently, which may increase CPU usage of the server. 
   When not using Foxx queues, this value can be raised to save some CPU time.
 
-* added startup option `--server.foxx-queues-warmup-exports`
-
-  This startup option makes sure the exports of all installed Foxx apps are pre-loaded when
-  the server is restarted. This prevents a known issue with function-based Foxx queue job types.
-  It is recommended that you upgrade any existing function-based job types to script-based ones
-  to avoid the issue entirely.
-
-  The default value is `true`. Disabling this feature can reduce memory usage and startup time
-  but may cause issues with function-based job types.
-
 * added startup option `--server.foxx-queues`
 
   This startup option controls whether the Foxx queue manager will check queue and job entries.

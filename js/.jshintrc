@@ -2,11 +2,14 @@
   "bitwise": true,
   "curly": true,
   "eqeqeq": true,
+  "esnext": true,
   "forin": true,
   "freeze": true,
   "globalstrict": true,
   "immed": true,
+  "indent": 2,
   "laxbreak": true,
+  "maxlen": 120,
   "newcap": true,
   "noarg": true,
   "node": true,
@@ -15,7 +18,5 @@
   "nonew": true,
   "strict": true,
   "undef": true,
-  "unused": true,
-  "indent": 2,
-  "maxlen": 120
+  "unused": true
 }
