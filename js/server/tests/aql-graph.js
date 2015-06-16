@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -30,7 +30,8 @@
 
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
-var errors = require("internal").errors;
+var internal = require("internal");
+var errors = internal.errors;
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
@@ -1654,6 +1655,209 @@ function ahuacatlQueryTraversalTreeTestSuite () {
 }  
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for Neighbors with intentional failures
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryNeighborsErrorsSuite () {
+  var vn = "UnitTestsTraversalVertices";
+  var en = "UnitTestsTraversalEdges";
+  var vertexCollection;
+  var edgeCollection;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(vn);
+      db._drop(en);
+      internal.debugClearFailAt();
+
+      vertexCollection = db._create(vn);
+      edgeCollection = db._createEdgeCollection(en);
+
+      [ "A", "B", "C", "D" ].forEach(function (item) {
+        vertexCollection.save({ _key: item, name: item });
+      });
+
+      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "C" ], [ "C", "A" ] ].forEach(function (item) {
+        var l = item[0];
+        var r = item[1];
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(vn);
+      db._drop(en);
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks error handling in NEIGHBORS()
+////////////////////////////////////////////////////////////////////////////////
+
+    testNeighborsNoVocbase : function () {
+      var v1 = vn + "/A";
+      var v2 = vn + "/B";
+
+      var queryStart = "FOR n IN NEIGHBORS(" + vn + " , " + en + ", '";
+      var queryEnd = "', 'outbound', [{_id: '" + en + "/AB'}]) SORT n RETURN n";
+
+      var actual = getQueryResults(queryStart + v1 + queryEnd);
+      // Positive Check
+      assertEqual(actual, [ v2 ]);
+
+      internal.debugSetFailAt("ExampleNoContextVocbase");
+
+      // Negative Check
+      try {
+        actual = getQueryResults(queryStart + v1 + queryEnd);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code);
+      }
+    },
+
+    testNeighborsDitchesOOM : function () {
+      var v1 = vn + "/A";
+      var v2 = vn + "/B";
+      var v3 = vn + "/D";
+
+      var queryStart = "FOR n IN NEIGHBORS(" + vn + " , " + en + ", '";
+      var queryEnd = "', 'outbound') SORT n RETURN n";
+
+      var actual = getQueryResults(queryStart + v1 + queryEnd);
+      // Positive Check
+      assertEqual(actual, [ v2, v3 ]);
+
+      internal.debugClearFailAt();
+      internal.debugSetFailAt("VertexCollectionDitchOOM");
+
+      // Negative Check
+      try {
+        actual = getQueryResults(queryStart + v1 + queryEnd);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
+      }
+
+      internal.debugClearFailAt();
+      internal.debugSetFailAt("EdgeCollectionDitchOOM");
+
+      // Negative Check
+      try {
+        actual = getQueryResults(queryStart + v1 + queryEnd);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
+      }
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for ShortestPath with intentional failures
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryShortestpathErrorsSuite () {
+  var vn = "UnitTestsTraversalVertices";
+  var en = "UnitTestsTraversalEdges";
+  var vertexCollection;
+  var edgeCollection;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(vn);
+      db._drop(en);
+      internal.debugClearFailAt();
+
+      vertexCollection = db._create(vn);
+      edgeCollection = db._createEdgeCollection(en);
+
+      [ "A", "B", "C", "D" ].forEach(function (item) {
+        vertexCollection.save({ _key: item, name: item });
+      });
+
+      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "C" ], [ "C", "A" ] ].forEach(function (item) {
+        var l = item[0];
+        var r = item[1];
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(vn);
+      db._drop(en);
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks error handling in SHORTEST_PATH()
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathOOM : function () {
+      var s = vn + "/A";
+      var m = vn + "/B";
+      var t = vn + "/C";
+
+      var query = "RETURN SHORTEST_PATH(" + vn + " , " + en + ", '"
+                + s + "', '" + t + "', 'outbound')";
+
+      var actual = getQueryResults(query)[0];
+      // Positive Check
+      assertEqual(actual.vertices, [s, m, t]);
+      assertEqual(actual.distance, 2);
+
+      internal.debugSetFailAt("TraversalOOMInitialize");
+
+      // Negative Check
+      try {
+        actual = getQueryResults(query);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
+      }
+
+      internal.debugClearFailAt();
+
+      // Redo the positive check. Make sure the former fail is gone
+      actual = getQueryResults(query)[0];
+      assertEqual(actual.vertices, [s, m, t]);
+      assertEqual(actual.distance, 2);
+
+      internal.debugSetFailAt("TraversalOOMPath");
+      // Negative Check
+      try {
+        actual = getQueryResults(query);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
+      }
+
+    }
+
+  };
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1663,6 +1867,10 @@ jsunity.run(ahuacatlQueryShortestPathTestSuite);
 jsunity.run(ahuacatlQueryTraversalFilterTestSuite);
 jsunity.run(ahuacatlQueryTraversalTestSuite);
 jsunity.run(ahuacatlQueryTraversalTreeTestSuite);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(ahuacatlQueryNeighborsErrorsSuite);
+  jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
+}
 
 return jsunity.done();
 

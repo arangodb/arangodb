@@ -154,17 +154,25 @@ void DispatcherThread::run () {
 
         status = Job::status_t(Job::JOB_FAILED);
       }
-      catch (std::exception const& ex) {
+      catch (std::bad_alloc const& ex) {
         try {
-          Exception ex2(TRI_ERROR_INTERNAL, string("job failed with unknown in work: ") + ex.what(), __FILE__, __LINE__);
+          Exception ex2(TRI_ERROR_OUT_OF_MEMORY, string("job failed with unknown error in work(): ") + ex.what(), __FILE__, __LINE__);
 
           job->handleError(ex2);
+          LOG_WARNING("caught exception in work(): %s", ex2.what());
         }
-        catch (Exception const& ex) {
-          LOG_WARNING("caught error while handling error: %s", ex.what());
+        catch (...) {
+          LOG_WARNING("caught error while handling error!");
         }
-        catch (std::exception const& ex) {
-          LOG_WARNING("caught error while handling error: %s", ex.what());
+
+        status = Job::status_t(Job::JOB_FAILED);
+      }
+      catch (std::exception const& ex) {
+        try {
+          Exception ex2(TRI_ERROR_INTERNAL, string("job failed with unknown error in work(): ") + ex.what(), __FILE__, __LINE__);
+
+          job->handleError(ex2);
+          LOG_WARNING("caught exception in work(): %s", ex2.what());
         }
         catch (...) {
           LOG_WARNING("caught error while handling error!");
@@ -181,15 +189,10 @@ void DispatcherThread::run () {
 #endif
 
         try {
-          Exception ex(TRI_ERROR_INTERNAL, "job failed with unknown error in work", __FILE__, __LINE__);
+          Exception ex(TRI_ERROR_INTERNAL, "job failed with unknown error in work()", __FILE__, __LINE__);
 
           job->handleError(ex);
-        }
-        catch (Exception const& ex) {
-          LOG_WARNING("caught error while handling error: %s", DIAGNOSTIC_INFORMATION(ex));
-        }
-        catch (std::exception const& ex) {
-          LOG_WARNING("caught error while handling error: %s", ex.what());
+          LOG_WARNING("caught unknown exception in work()");
         }
         catch (...) {
           LOG_WARNING("caught error while handling error!");

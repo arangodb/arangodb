@@ -2291,6 +2291,9 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       colObj,
       HopWeightCalculator()
     ));
+    TRI_IF_FAILURE("EdgeCollectionDitchOOM") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
 
   for (auto it : vertexCollectionNames) {
@@ -2302,6 +2305,9 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     ));
     // Explicitly allow all collections.
     opts.addCollectionRestriction(cid);
+    TRI_IF_FAILURE("VertexCollectionDitchOOM") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
 
   unordered_set<VertexId> distinctNeighbors;

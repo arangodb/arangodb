@@ -4104,7 +4104,6 @@ svg.graph-viewer {
     pointer-events: none; }
 
 div.gv-background {
-  height: 685px;
   position: relative; }
 
 .link > line {

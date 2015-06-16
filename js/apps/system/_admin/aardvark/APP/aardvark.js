@@ -49,7 +49,6 @@ var FoxxManager = require("org/arangodb/foxx/manager");
 var UnauthorizedError = require("http-errors").Unauthorized;
 
 publicController.activateSessions({
-  type: "cookie",
   autoCreateSession: false,
   cookie: {name: "arango_sid_" + db._name()}
 });
@@ -119,7 +118,6 @@ publicController.get("/index.html", function(req, res) {
 });
 
 controller.activateSessions({
-  type: "cookie",
   autoCreateSession: false,
   cookie: {name: "arango_sid_" + db._name()}
 });

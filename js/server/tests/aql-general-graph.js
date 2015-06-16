@@ -1698,6 +1698,22 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       );
     },
 
+    testGRAPH_SHOTEST_PATH_with_stopAtFirstMatch: function () {
+      var actual;
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Frankfurter/Fritz', " +
+        " {gender: 'female'}, {direction : 'inbound', stopAtFirstMatch: true}) RETURN e");
+
+      // Find only one match, ignore the second one.
+      assertEqual(actual.length, 1);
+      // Find the right match
+      var path = actual[0];
+      assertEqual(path.distance, 3);
+      assertEqual(path.vertices, [
+        vertexIds.Fritz, vertexIds.Emil, vertexIds.Dieter, vertexIds.Gerda
+      ]);
+    },
+
     testGRAPH_CLOSENESS: function () {
       var actual;
 
