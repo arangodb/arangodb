@@ -299,7 +299,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
       triagens::basics::Json toJson (triagens::arango::AqlTransaction*,
-                                     TRI_document_collection_t const*) const;
+                                     TRI_document_collection_t const*,
+                                     bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a hash value for the AqlValue
