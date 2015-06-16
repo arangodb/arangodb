@@ -296,7 +296,7 @@
           currentValue,
           obj.description,
           defaultValue,
-          true,
+          obj.required !== false,
           checks
         );
       });
