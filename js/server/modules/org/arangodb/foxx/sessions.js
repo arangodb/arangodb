@@ -27,8 +27,8 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Foxx = require('org/arangodb/foxx'),
-  crypto = require('org/arangodb/crypto');
+var Foxx = require('org/arangodb/foxx');
+var crypto = require('org/arangodb/crypto');
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -44,15 +44,16 @@ function decorateController(auth, controller) {
   controller.before('/*', function (req) {
     var sessions = auth.getSessionStorage();
     var sid;
-    if (cfg.type === 'cookie') {
+    if (cfg.cookie) {
       sid = req.cookie(cfg.cookie.name, cfg.cookie.secret ? {
         signed: {
           secret: cfg.cookie.secret,
           algorithm: cfg.cookie.algorithm
         }
-      } : undefined);
-    } else if (cfg.type === 'header') {
-      sid = req.headers[cfg.header.toLowerCase()];
+      });
+    }
+    if (cfg.header) {
+      sid = sid || req.headers[cfg.header.toLowerCase()];
     }
     if (sid) {
       if (cfg.jwt) {
@@ -73,11 +74,11 @@ function decorateController(auth, controller) {
 
   controller.after('/*', function (req, res) {
     if (req.session) {
-      var sid = req.session.get('_key');
+      var sid = req.session.forClient();
       if (cfg.jwt) {
         sid = crypto.jwtEncode(cfg.jwt.secret, sid, cfg.jwt.algorithm);
       }
-      if (cfg.type === 'cookie') {
+      if (cfg.cookie) {
         res.cookie(cfg.cookie.name, sid, {
           ttl: req.session.getTTL() / 1000,
           signed: cfg.cookie.secret ? {
@@ -85,7 +86,8 @@ function decorateController(auth, controller) {
             algorithm: cfg.cookie.algorithm
           } : undefined
         });
-      } else if (cfg.type === 'header') {
+      }
+      if (cfg.header) {
         res.set(cfg.header, sid);
       }
     }
@@ -113,13 +115,13 @@ function createDestroySessionHandler(auth, opts) {
     if (typeof opts.before === 'function') {
       opts.before(req, res, injected);
     }
-    if (req.session) {
+    if (req.session && typeof req.session.delete === 'function') {
       req.session.delete();
     }
     if (cfg.autoCreateSession) {
       req.session = auth.getSessionStorage().create();
     } else {
-      if (cfg.type === 'cookie') {
+      if (cfg.cookie) {
         res.cookie(cfg.cookie.name, '', {
           ttl: -(7 * 24 * 60 * 60),
           sign: cfg.cookie.secret ? {
@@ -154,11 +156,24 @@ function Sessions(opts) {
   if (!opts) {
     opts = {};
   }
-  if (!opts.type) {
-    opts.type = 'cookie';
+
+  if (opts.type) {
+    console.warn(
+      'The Foxx session option "type" is deprecated and will be removed.'
+      + ' Use the options "cookie" and/or "header" instead.'
+    );
+    if (opts.type === 'cookie') {
+      delete opts.header;
+      opts.cookie = opts.cookie || true;
+    } else if (opts.type === 'header') {
+      delete opts.cookie;
+      opts.header = opts.header || true;
+    } else {
+      throw new Error('Only the following session types are supported at this time: ' + sessionTypes.join(', '));
+    }
   }
 
-  if (opts.type === 'cookie') {
+  if (opts.cookie) {
     if (opts.cookie === true) {
       opts.cookie = {};
     } else if (typeof opts.cookie === 'string') {
@@ -174,17 +189,19 @@ function Sessions(opts) {
     if (opts.cookie.secret && typeof opts.cookie.secret !== 'string') {
       throw new Error('Cookie secret must be a string or empty.');
     }
-  } else if (opts.type === 'header') {
-    if (opts.header && typeof opts.header !== 'string') {
-      throw new Error('Header name must be a string or empty.');
-    }
-    if (!opts.header) {
+  }
+  if (opts.header) {
+    if (opts.header === true) {
       opts.header = 'X-Session-Id';
+    } else if (typeof opts.header !== 'string') {
+      throw new Error('Header name must be true, a string or empty.');
     }
-  } else {
-    throw new Error('Only the following session types are supported at this time: ' + sessionTypes.join(', '));
   }
   if (opts.jwt) {
+    console.warn(
+      'The Foxx session option "jwt" is deprecated and will be removed.'
+      + ' Please use the session-jwt app instead.'
+    );
     if (opts.jwt === true) {
       opts.jwt = {};
     } else if (typeof opts.jwt === 'string') {
