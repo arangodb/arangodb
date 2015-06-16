@@ -1,15 +1,15 @@
 arangosh> a1 = db.example.insert({ a : 1 });
 { 
-  "_id" : "example/478274112", 
-  "_rev" : "478274112", 
-  "_key" : "478274112" 
+  "_id" : "example/474405474", 
+  "_rev" : "474405474", 
+  "_key" : "474405474" 
 }
 arangosh> db.example.document(a1);
 { 
   "a" : 1, 
-  "_id" : "example/478274112", 
-  "_rev" : "478274112", 
-  "_key" : "478274112" 
+  "_id" : "example/474405474", 
+  "_rev" : "474405474", 
+  "_key" : "474405474" 
 }
 arangosh> db.example.remove(a1);
 true

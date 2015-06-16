@@ -10,61 +10,61 @@ arangosh> db.example.documents(keys);
     { 
       "value" : 0, 
       "_id" : "example/test0", 
-      "_rev" : "464446016", 
+      "_rev" : "460577378", 
       "_key" : "test0" 
     }, 
     { 
       "value" : 1, 
       "_id" : "example/test1", 
-      "_rev" : "464642624", 
+      "_rev" : "460773986", 
       "_key" : "test1" 
     }, 
     { 
       "value" : 2, 
       "_id" : "example/test2", 
-      "_rev" : "464839232", 
+      "_rev" : "460970594", 
       "_key" : "test2" 
     }, 
     { 
       "value" : 3, 
       "_id" : "example/test3", 
-      "_rev" : "465035840", 
+      "_rev" : "461167202", 
       "_key" : "test3" 
     }, 
     { 
       "value" : 4, 
       "_id" : "example/test4", 
-      "_rev" : "465232448", 
+      "_rev" : "461363810", 
       "_key" : "test4" 
     }, 
     { 
       "value" : 5, 
       "_id" : "example/test5", 
-      "_rev" : "465429056", 
+      "_rev" : "461560418", 
       "_key" : "test5" 
     }, 
     { 
       "value" : 6, 
       "_id" : "example/test6", 
-      "_rev" : "465625664", 
+      "_rev" : "461757026", 
       "_key" : "test6" 
     }, 
     { 
       "value" : 7, 
       "_id" : "example/test7", 
-      "_rev" : "465822272", 
+      "_rev" : "461953634", 
       "_key" : "test7" 
     }, 
     { 
       "value" : 8, 
       "_id" : "example/test8", 
-      "_rev" : "466018880", 
+      "_rev" : "462150242", 
       "_key" : "test8" 
     }, 
     { 
       "value" : 9, 
       "_id" : "example/test9", 
-      "_rev" : "466215488", 
+      "_rev" : "462346850", 
       "_key" : "test9" 
     } 
   ] 

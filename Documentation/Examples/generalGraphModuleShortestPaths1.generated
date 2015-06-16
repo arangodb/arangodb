@@ -10,7 +10,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Hamburg" 
       ], 
       "edges" : [ 
-        "germanHighway/1101062720" 
+        "germanHighway/1101126242" 
       ], 
       "distance" : 1 
     }, 
@@ -20,7 +20,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Cologne" 
       ], 
       "edges" : [ 
-        "germanHighway/1100866112" 
+        "germanHighway/1100929634" 
       ], 
       "distance" : 1 
     }, 
@@ -30,7 +30,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Paris" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102111296" 
+        "internationalHighway/1102174818" 
       ], 
       "distance" : 1 
     }, 
@@ -40,7 +40,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Lyon" 
       ], 
       "edges" : [ 
-        "internationalHighway/1101914688" 
+        "internationalHighway/1101978210" 
       ], 
       "distance" : 1 
     }, 
@@ -50,7 +50,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Berlin" 
       ], 
       "edges" : [ 
-        "germanHighway/1101062720" 
+        "germanHighway/1101126242" 
       ], 
       "distance" : 1 
     }, 
@@ -60,7 +60,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Cologne" 
       ], 
       "edges" : [ 
-        "germanHighway/1101259328" 
+        "germanHighway/1101322850" 
       ], 
       "distance" : 1 
     }, 
@@ -70,7 +70,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Paris" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102307904" 
+        "internationalHighway/1102371426" 
       ], 
       "distance" : 1 
     }, 
@@ -80,7 +80,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Lyon" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102504512" 
+        "internationalHighway/1102568034" 
       ], 
       "distance" : 1 
     }, 
@@ -90,7 +90,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Berlin" 
       ], 
       "edges" : [ 
-        "germanHighway/1100866112" 
+        "germanHighway/1100929634" 
       ], 
       "distance" : 1 
     }, 
@@ -100,7 +100,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Hamburg" 
       ], 
       "edges" : [ 
-        "germanHighway/1101259328" 
+        "germanHighway/1101322850" 
       ], 
       "distance" : 1 
     }, 
@@ -110,7 +110,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Paris" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102897728" 
+        "internationalHighway/1102961250" 
       ], 
       "distance" : 1 
     }, 
@@ -120,7 +120,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Lyon" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102701120" 
+        "internationalHighway/1102764642" 
       ], 
       "distance" : 1 
     }, 
@@ -130,7 +130,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Berlin" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102111296" 
+        "internationalHighway/1102174818" 
       ], 
       "distance" : 1 
     }, 
@@ -140,7 +140,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Hamburg" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102307904" 
+        "internationalHighway/1102371426" 
       ], 
       "distance" : 1 
     }, 
@@ -150,7 +150,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Cologne" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102897728" 
+        "internationalHighway/1102961250" 
       ], 
       "distance" : 1 
     }, 
@@ -160,7 +160,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Lyon" 
       ], 
       "edges" : [ 
-        "frenchHighway/1101587008" 
+        "frenchHighway/1101650530" 
       ], 
       "distance" : 1 
     }, 
@@ -170,7 +170,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Berlin" 
       ], 
       "edges" : [ 
-        "internationalHighway/1101914688" 
+        "internationalHighway/1101978210" 
       ], 
       "distance" : 1 
     }, 
@@ -180,7 +180,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Hamburg" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102504512" 
+        "internationalHighway/1102568034" 
       ], 
       "distance" : 1 
     }, 
@@ -190,7 +190,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "germanCity/Cologne" 
       ], 
       "edges" : [ 
-        "internationalHighway/1102701120" 
+        "internationalHighway/1102764642" 
       ], 
       "distance" : 1 
     }, 
@@ -200,7 +200,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Paris" 
       ], 
       "edges" : [ 
-        "frenchHighway/1101587008" 
+        "frenchHighway/1101650530" 
       ], 
       "distance" : 1 
     } 

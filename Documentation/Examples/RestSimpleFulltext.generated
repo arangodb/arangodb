@@ -8,15 +8,15 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1426055744", 
-      "_key" : "1426055744", 
-      "_rev" : "1426055744", 
+      "_id" : "products/1424546402", 
+      "_key" : "1424546402", 
+      "_rev" : "1424546402", 
       "text" : "this text contains word" 
     }, 
     { 
-      "_id" : "products/1426252352", 
-      "_key" : "1426252352", 
-      "_rev" : "1426252352", 
+      "_id" : "products/1424743010", 
+      "_key" : "1424743010", 
+      "_rev" : "1424743010", 
       "text" : "this text also has a word" 
     } 
   ], 

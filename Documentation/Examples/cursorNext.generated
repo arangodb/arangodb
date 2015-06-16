@@ -1,7 +1,7 @@
 arangosh> db.five.all().next();
 { 
-  "_id" : "five/477225536", 
-  "_key" : "477225536", 
-  "_rev" : "477225536", 
-  "name" : "three" 
+  "_id" : "five/472963682", 
+  "_key" : "472963682", 
+  "_rev" : "472963682", 
+  "name" : "one" 
 }

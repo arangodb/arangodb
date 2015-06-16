@@ -1,4 +1,4 @@
-v2.6.0-beta1 (2015-06-12)
+v2.6.0-beta2 (2015-06-16)
 -------------------
 
 * fixed issues when switching the database inside tasks and during shutdown of database cursors 

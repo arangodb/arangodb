@@ -4,12 +4,12 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1660543552"
-location: /_db/_system/_api/document/products/1660543552
+etag: "1658903138"
+location: /_db/_system/_api/document/products/1658903138
 
 { 
   "error" : false, 
-  "_id" : "products/1660543552", 
-  "_rev" : "1660543552", 
-  "_key" : "1660543552" 
+  "_id" : "products/1658903138", 
+  "_rev" : "1658903138", 
+  "_key" : "1658903138" 
 }

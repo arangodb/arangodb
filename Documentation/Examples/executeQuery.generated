@@ -1,22 +1,22 @@
 arangosh> result = db.users.all().toArray();
 [ 
   { 
-    "_id" : "users/503702080", 
-    "_key" : "503702080", 
-    "_rev" : "503702080", 
-    "name" : "Angela" 
-  }, 
-  { 
-    "_id" : "users/503505472", 
-    "_key" : "503505472", 
-    "_rev" : "503505472", 
+    "_id" : "users/503044706", 
+    "_key" : "503044706", 
+    "_rev" : "503044706", 
     "name" : "Helmut" 
   }, 
   { 
-    "_id" : "users/503243328", 
-    "_key" : "503243328", 
-    "_rev" : "503243328", 
+    "_id" : "users/502782562", 
+    "_key" : "502782562", 
+    "_rev" : "502782562", 
     "name" : "Gerhard" 
+  }, 
+  { 
+    "_id" : "users/503241314", 
+    "_key" : "503241314", 
+    "_rev" : "503241314", 
+    "name" : "Angela" 
   } 
 ]
 arangosh> q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
