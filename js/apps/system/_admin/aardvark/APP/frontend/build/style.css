@@ -5506,6 +5506,9 @@ pre.gv-object-view {
 .queryImport {
   margin-bottom: 10px; }
 
+.tab-content {
+  width: 100%; }
+
 svg.explain-tree {
   width: 100%; }
   svg.explain-tree .node text {
