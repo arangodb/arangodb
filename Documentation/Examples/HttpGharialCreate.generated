@@ -17,7 +17,7 @@ EOF
 
 HTTP/1.1 201 Created
 content-type: application/json
-etag: 1567939170
+etag: 1567232416
 
 { 
   "error" : false, 
@@ -37,6 +37,6 @@ etag: 1567939170
     ], 
     "orphanCollections" : [ ], 
     "_id" : "_graphs/myGraph", 
-    "_rev" : "1567939170" 
+    "_rev" : "1567232416" 
   } 
 }

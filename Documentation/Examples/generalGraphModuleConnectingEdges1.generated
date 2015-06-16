@@ -2,11 +2,11 @@ arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js")
 arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._getConnectingEdges({isCapital : true}, {isCapital : true});
 [ 
-  "germanHighway/997710434", 
-  "germanHighway/997907042", 
-  "internationalHighway/998759010", 
-  "internationalHighway/998955618", 
-  "frenchHighway/998431330", 
-  "internationalHighway/999742050", 
-  "internationalHighway/999152226" 
+  "germanHighway/1000804768", 
+  "germanHighway/1001001376", 
+  "internationalHighway/1001853344", 
+  "internationalHighway/1002049952", 
+  "frenchHighway/1001525664", 
+  "internationalHighway/1002836384", 
+  "internationalHighway/1002246560" 
 ]

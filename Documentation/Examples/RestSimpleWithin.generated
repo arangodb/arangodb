@@ -8,9 +8,9 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1416944226", 
-      "_key" : "1416944226", 
-      "_rev" : "1416944226", 
+      "_id" : "products/1416696224", 
+      "_key" : "1416696224", 
+      "_rev" : "1416696224", 
       "name" : "Name/0.002/", 
       "loc" : [ 
         0.002, 
@@ -18,9 +18,9 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     { 
-      "_id" : "products/1416551010", 
-      "_key" : "1416551010", 
-      "_rev" : "1416551010", 
+      "_id" : "products/1416303008", 
+      "_key" : "1416303008", 
+      "_rev" : "1416303008", 
       "name" : "Name/-0.002/", 
       "loc" : [ 
         -0.002, 

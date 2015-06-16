@@ -9,17 +9,8 @@ content-type: application/json; charset=utf-8
     "name" : "statistics-gc", 
     "type" : "periodic", 
     "period" : 450, 
-    "created" : 1434458412.402693, 
+    "created" : 1434459738.905407, 
     "command" : "require('org/arangodb/statistics').garbageCollector();", 
-    "database" : "_system" 
-  }, 
-  { 
-    "id" : "18930274", 
-    "name" : "user-defined task", 
-    "type" : "periodic", 
-    "period" : 1, 
-    "created" : 1434458412.860284, 
-    "command" : "(function () {\n      require('org/arangodb/foxx/queues/manager').manage();\n    })(params)", 
     "database" : "_system" 
   }, 
   { 
@@ -27,8 +18,17 @@ content-type: application/json; charset=utf-8
     "name" : "statistics-average-collector", 
     "type" : "periodic", 
     "period" : 900, 
-    "created" : 1434458412.40222, 
+    "created" : 1434459738.90479, 
     "command" : "require('org/arangodb/statistics').historianAverage();", 
+    "database" : "_system" 
+  }, 
+  { 
+    "id" : "18485664", 
+    "name" : "user-defined task", 
+    "type" : "periodic", 
+    "period" : 1, 
+    "created" : 1434459739.249143, 
+    "command" : "(function () {\n      require('org/arangodb/foxx/queues/manager').manage();\n    })(params)", 
     "database" : "_system" 
   }, 
   { 
@@ -36,7 +36,7 @@ content-type: application/json; charset=utf-8
     "name" : "statistics-collector", 
     "type" : "periodic", 
     "period" : 10, 
-    "created" : 1434458412.402141, 
+    "created" : 1434459738.904624, 
     "command" : "require('org/arangodb/statistics').historian();", 
     "database" : "_system" 
   } 

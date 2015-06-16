@@ -2,7 +2,7 @@ shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social/vertex/
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 1585109602
+etag: 1584402848
 
 { 
   "error" : false, 
@@ -24,6 +24,6 @@ etag: 1585109602
     ], 
     "orphanCollections" : [ ], 
     "_id" : "_graphs/social", 
-    "_rev" : "1585109602" 
+    "_rev" : "1584402848" 
   } 
 }

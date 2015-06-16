@@ -6,7 +6,7 @@ EOF
 
 HTTP/1.1 201 Created
 content-type: application/json
-etag: 1578490466
+etag: 1577783712
 
 { 
   "error" : false, 
@@ -30,6 +30,6 @@ etag: 1578490466
       "otherVertices" 
     ], 
     "_id" : "_graphs/social", 
-    "_rev" : "1578490466" 
+    "_rev" : "1577783712" 
   } 
 }
