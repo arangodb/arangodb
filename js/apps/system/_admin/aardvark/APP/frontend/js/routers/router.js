@@ -23,6 +23,7 @@
       "applications/:mount": "applicationDetail",
       "application/documentation/:mount": "appDocumentation",
       "graph": "graphManagement",
+      "graph2": "graph2",
       "graph/:name": "showGraph",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
@@ -297,6 +298,15 @@
         });
       }
       this.dashboardView.render();
+    },
+
+    graph2: function () {
+      if (!this.checkUser()) {
+        return;
+      }
+      this.graphTestView = new window.GraphTestView();
+      this.graphTestView.render();
+      this.naviView.selectMenuItem('graphviewer-menu');
     },
 
     graphManagement: function () {

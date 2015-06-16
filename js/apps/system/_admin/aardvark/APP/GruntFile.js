@@ -39,6 +39,7 @@
             "frontend/js/lib/nv.d3.js",
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/dygraph-combined.js",
+            "frontend/js/lib/vivagraph.js",
             "frontend/js/lib/d3.fisheye.js",
             "frontend/js/lib/bootstrap-pagination.js",
             "frontend/js/lib/jqconsole.min.js",

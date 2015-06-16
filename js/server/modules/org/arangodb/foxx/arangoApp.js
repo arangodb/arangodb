@@ -35,6 +35,7 @@
 var fs = require("fs");
 var internal = require("internal");
 var db = internal.db;
+var joi = require("joi");
 var _= require("underscore");
 var utils = require("org/arangodb/foxx/manager-utils");
 var console = require("console");
@@ -48,12 +49,15 @@ var throwFileNotFound = arangodb.throwFileNotFound;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-function applyDefaultConfig(config) {
+function applyDefaultConfig(config, parse) {
   var res = {};
   if (config !== undefined) {
-    Object.keys(config).forEach(function (attr) {
-      if (config[attr].default !== undefined) {
-        res[attr] = config[attr].default;
+    Object.keys(config).forEach(function (key) {
+      if (config[key].default !== undefined) {
+        res[key] = config[key].default;
+        if (!parse && config[key].type === 'json') {
+          res[key] = JSON.stringify(res[key]);
+        }
       }
     });
   }
@@ -78,7 +82,7 @@ function AppContext(app) {
   this.mount = app._mount;
   this.collectionPrefix = app._collectionPrefix;
   this.options = app._options;
-  this.configuration = app._options.configuration;
+  this.configuration = app._configuration;
   this.dependencies = app._dependencies;
   this.basePath = prefix;
   this.baseUrl = '/_db/' + encodeURIComponent(db._name()) + app._mount;
@@ -178,6 +182,7 @@ function ArangoApp(config) {
   // Apply the default configuration and ignore all missing options
   var cfg = config.options.configuration;
   this._options.configuration = applyDefaultConfig(this._manifest.configuration);
+  this._configuration = applyDefaultConfig(this._manifest.configuration, true);
   this.configure(cfg);
 
   var deps = config.options.dependencies;
@@ -309,16 +314,41 @@ ArangoApp.prototype.configure = function(config) {
   var invalid = [];
   this._options.configuration = this._options.configuration || {};
 
-  _.each(config, function (value, name) {
+  _.each(config, function (rawValue, name) {
     if (!expected[name]) {
       invalid.push("Unexpected Option " + name);
     } else {
+      var value = rawValue;
       var type = expected[name].type;
-      var result = utils.parameterTypes[type].validate(value);
-      if (result.error) {
-        invalid.push(result.error.message.replace(/^"value"/, '"' + name + '"'));
+      var schema = utils.parameterTypes[type];
+      var error;
+      var result;
+      if (expected[name].required !== false) {
+        result = joi.any().required().validate(value);
+        if (result.error) {
+          error = result.error.message.replace(/^"value"/, '"' + name + '"');
+        }
+      }
+      if (!error) {
+        if (schema.isJoi) {
+          result = schema.optional().allow(null).validate(value);
+          if (result.error) {
+            error = result.error.message.replace(/^"value"/, '"' + name + '"');
+          }
+          value = result.value;
+        } else {
+          try {
+            value = schema(value);
+          } catch (e) {
+            error = '"' + name + '": ' + e.message;
+          }
+        }
+      }
+      if (error) {
+        invalid.push(error);
       } else {
-        this._options.configuration[name] = result.value;
+        this._options.configuration[name] = rawValue;
+        this._configuration[name] = value;
       }
     }
   }, this);
