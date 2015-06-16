@@ -40,6 +40,10 @@
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register warning
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,6 +208,10 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             AQL function bindings
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function IS_NULL
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +219,7 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
 AqlValue Functions::IsNull (triagens::aql::Query*, 
                             triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
-                            AqlValue const parameters) {
+                            FunctionParameters parameters) {
   Json j(parameters.extractArrayMember(trx, collection, 0, false));
   return AqlValue(new Json(j.isNull()));
 }
@@ -223,7 +231,7 @@ AqlValue Functions::IsNull (triagens::aql::Query*,
 AqlValue Functions::IsBool (triagens::aql::Query*,
                             triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
-                            AqlValue const parameters) {
+                            FunctionParameters parameters) {
   Json j(parameters.extractArrayMember(trx, collection, 0, false));
   return AqlValue(new Json(j.isBoolean()));
 }
@@ -235,7 +243,7 @@ AqlValue Functions::IsBool (triagens::aql::Query*,
 AqlValue Functions::IsNumber (triagens::aql::Query*,
                               triagens::arango::AqlTransaction* trx,
                               TRI_document_collection_t const* collection,
-                              AqlValue const parameters) {
+                              FunctionParameters parameters) {
   Json j(parameters.extractArrayMember(trx, collection, 0, false));
   return AqlValue(new Json(j.isNumber()));
 }
@@ -247,7 +255,7 @@ AqlValue Functions::IsNumber (triagens::aql::Query*,
 AqlValue Functions::IsString (triagens::aql::Query*,
                               triagens::arango::AqlTransaction* trx,
                               TRI_document_collection_t const* collection,
-                              AqlValue const parameters) {
+                              FunctionParameters parameters) {
   Json j(parameters.extractArrayMember(trx, collection, 0, false));
   return AqlValue(new Json(j.isString()));
 }
@@ -259,7 +267,7 @@ AqlValue Functions::IsString (triagens::aql::Query*,
 AqlValue Functions::IsArray (triagens::aql::Query*,
                              triagens::arango::AqlTransaction* trx,
                              TRI_document_collection_t const* collection,
-                             AqlValue const parameters) {
+                             FunctionParameters parameters) {
   Json j(parameters.extractArrayMember(trx, collection, 0, false));
   return AqlValue(new Json(j.isArray()));
 }
@@ -271,7 +279,7 @@ AqlValue Functions::IsArray (triagens::aql::Query*,
 AqlValue Functions::IsObject (triagens::aql::Query*,
                               triagens::arango::AqlTransaction* trx,
                               TRI_document_collection_t const* collection,
-                              AqlValue const parameters) {
+                              FunctionParameters parameters) {
   Json j(parameters.extractArrayMember(trx, collection, 0, false));
   return AqlValue(new Json(j.isObject()));
 }
@@ -283,7 +291,7 @@ AqlValue Functions::IsObject (triagens::aql::Query*,
 AqlValue Functions::Length (triagens::aql::Query*,
                             triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
-                            AqlValue const parameters) {
+                            FunctionParameters parameters) {
   Json j(parameters.extractArrayMember(trx, collection, 0, false));
 
   TRI_json_t const* json = j.json();
@@ -347,7 +355,7 @@ AqlValue Functions::Length (triagens::aql::Query*,
 AqlValue Functions::Concat (triagens::aql::Query*,
                             triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
-                            AqlValue const parameters) {
+                            FunctionParameters parameters) {
   triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
 
   size_t const n = parameters.arraySize();
@@ -398,7 +406,7 @@ AqlValue Functions::Concat (triagens::aql::Query*,
 AqlValue Functions::Passthru (triagens::aql::Query*,
                               triagens::arango::AqlTransaction* trx,
                               TRI_document_collection_t const* collection,
-                              AqlValue const parameters) {
+                              FunctionParameters parameters) {
 
   Json j(parameters.extractArrayMember(trx, collection, 0, true));
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.json());
@@ -413,7 +421,7 @@ AqlValue Functions::Passthru (triagens::aql::Query*,
 AqlValue Functions::Unset (triagens::aql::Query* query,
                            triagens::arango::AqlTransaction* trx,
                            TRI_document_collection_t const* collection,
-                           AqlValue const parameters) {
+                           FunctionParameters parameters) {
   Json value(parameters.extractArrayMember(trx, collection, 0, false));
 
   if (! value.isObject()) {
@@ -471,7 +479,7 @@ AqlValue Functions::Unset (triagens::aql::Query* query,
 AqlValue Functions::Keep (triagens::aql::Query* query,
                           triagens::arango::AqlTransaction* trx,
                           TRI_document_collection_t const* collection,
-                          AqlValue const parameters) {
+                          FunctionParameters parameters) {
   Json value(parameters.extractArrayMember(trx, collection, 0, false));
 
   if (! value.isObject()) {
@@ -521,7 +529,7 @@ AqlValue Functions::Keep (triagens::aql::Query* query,
 AqlValue Functions::Merge (triagens::aql::Query* query,
                            triagens::arango::AqlTransaction* trx,
                            TRI_document_collection_t const* collection,
-                           AqlValue const parameters) {
+                           FunctionParameters parameters) {
   size_t const n = parameters.arraySize();
 
   if (n == 0) {
@@ -569,7 +577,7 @@ AqlValue Functions::Merge (triagens::aql::Query* query,
 AqlValue Functions::Has (triagens::aql::Query* query,
                          triagens::arango::AqlTransaction* trx,
                          TRI_document_collection_t const* collection,
-                         AqlValue const parameters) {
+                         FunctionParameters parameters) {
   size_t const n = parameters.arraySize();
 
   if (n < 2) {
@@ -609,7 +617,7 @@ AqlValue Functions::Has (triagens::aql::Query* query,
 AqlValue Functions::Attributes (triagens::aql::Query* query,
                                 triagens::arango::AqlTransaction* trx,
                                 TRI_document_collection_t const* collection,
-                                AqlValue const parameters) {
+                                FunctionParameters parameters) {
   size_t const n = parameters.arraySize();
 
   if (n < 1) {
@@ -686,7 +694,7 @@ AqlValue Functions::Attributes (triagens::aql::Query* query,
 AqlValue Functions::Values (triagens::aql::Query* query,
                             triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
-                            AqlValue const parameters) {
+                            FunctionParameters parameters) {
   size_t const n = parameters.arraySize();
 
   if (n < 1) {
@@ -745,7 +753,7 @@ AqlValue Functions::Values (triagens::aql::Query* query,
 AqlValue Functions::Min (triagens::aql::Query* query,
                          triagens::arango::AqlTransaction* trx,
                          TRI_document_collection_t const* collection,
-                         AqlValue const parameters) {
+                         FunctionParameters parameters) {
   Json value(parameters.extractArrayMember(trx, collection, 0, false));
 
   if (! value.isArray()) {
@@ -791,7 +799,7 @@ AqlValue Functions::Min (triagens::aql::Query* query,
 AqlValue Functions::Max (triagens::aql::Query* query,
                          triagens::arango::AqlTransaction* trx,
                          TRI_document_collection_t const* collection,
-                         AqlValue const parameters) {
+                         FunctionParameters parameters) {
   Json value(parameters.extractArrayMember(trx, collection, 0, false));
 
   if (! value.isArray()) {
@@ -837,7 +845,7 @@ AqlValue Functions::Max (triagens::aql::Query* query,
 AqlValue Functions::Sum (triagens::aql::Query* query,
                          triagens::arango::AqlTransaction* trx,
                          TRI_document_collection_t const* collection,
-                         AqlValue const parameters) {
+                         FunctionParameters parameters) {
   Json value(parameters.extractArrayMember(trx, collection, 0, false));
 
   if (! value.isArray()) {
@@ -884,7 +892,7 @@ AqlValue Functions::Sum (triagens::aql::Query* query,
 AqlValue Functions::Average (triagens::aql::Query* query,
                              triagens::arango::AqlTransaction* trx,
                              TRI_document_collection_t const* collection,
-                             AqlValue const parameters) {
+                             FunctionParameters parameters) {
   Json value(parameters.extractArrayMember(trx, collection, 0, false));
 
   if (! value.isArray()) {
@@ -934,7 +942,7 @@ AqlValue Functions::Average (triagens::aql::Query* query,
 AqlValue Functions::Md5 (triagens::aql::Query* query,
                          triagens::arango::AqlTransaction* trx,
                          TRI_document_collection_t const* collection,
-                         AqlValue const parameters) {
+                         FunctionParameters parameters) {
   Json value(parameters.extractArrayMember(trx, collection, 0, false));
     
   triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
@@ -963,7 +971,7 @@ AqlValue Functions::Md5 (triagens::aql::Query* query,
 AqlValue Functions::Sha1 (triagens::aql::Query* query,
                           triagens::arango::AqlTransaction* trx,
                           TRI_document_collection_t const* collection,
-                          AqlValue const parameters) {
+                          FunctionParameters parameters) {
   Json value(parameters.extractArrayMember(trx, collection, 0, false));
     
   triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
@@ -992,7 +1000,7 @@ AqlValue Functions::Sha1 (triagens::aql::Query* query,
 AqlValue Functions::Unique (triagens::aql::Query* query,
                             triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
-                            AqlValue const parameters) {
+                            FunctionParameters parameters) {
   if (parameters.arraySize() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE");
   }
@@ -1048,7 +1056,7 @@ AqlValue Functions::Unique (triagens::aql::Query* query,
 AqlValue Functions::Union (triagens::aql::Query* query,
                            triagens::arango::AqlTransaction* trx,
                            TRI_document_collection_t const* collection,
-                           AqlValue const parameters) {
+                           FunctionParameters parameters) {
   size_t const n = parameters.arraySize();
 
   if (parameters.arraySize() < 2) {
@@ -1109,7 +1117,7 @@ AqlValue Functions::Union (triagens::aql::Query* query,
 AqlValue Functions::UnionDistinct (triagens::aql::Query* query,
                                    triagens::arango::AqlTransaction* trx,
                                    TRI_document_collection_t const* collection,
-                                   AqlValue const parameters) {
+                                   FunctionParameters parameters) {
   if (parameters.arraySize() < 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION_DISTINCT");
   }
@@ -1199,7 +1207,7 @@ AqlValue Functions::UnionDistinct (triagens::aql::Query* query,
 AqlValue Functions::Intersection (triagens::aql::Query* query,
                                   triagens::arango::AqlTransaction* trx,
                                   TRI_document_collection_t const* collection,
-                                  AqlValue const parameters) {
+                                  FunctionParameters parameters) {
   size_t const n = parameters.arraySize();
 
   if (parameters.arraySize() < 2) {
