@@ -314,7 +314,11 @@ ArangoApp.prototype.configure = function(config) {
       invalid.push("Unexpected Option " + name);
     } else {
       var type = expected[name].type;
-      var result = utils.parameterTypes[type].validate(value);
+      var schema = utils.parameterTypes[type];
+      if (!expected[name].required) {
+        schema = schema.optional();
+      }
+      var result = schema.validate(value);
       if (result.error) {
         invalid.push(result.error.message.replace(/^"value"/, '"' + name + '"'));
       } else {
