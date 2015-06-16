@@ -94,7 +94,8 @@ var manifestSchema = {
           joi.only(Object.keys(utils.parameterTypes))
           .default("string")
         ),
-        description: joi.string().optional()
+        description: joi.string().optional(),
+        required: joi.boolean().default(true)
       })
     ))
   ),
