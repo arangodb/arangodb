@@ -94,7 +94,8 @@ var manifestSchema = {
           joi.only(Object.keys(utils.parameterTypes))
           .default("string")
         ),
-        description: joi.string().optional()
+        description: joi.string().optional(),
+        required: joi.boolean().default(true)
       })
     ))
   ),
@@ -1462,21 +1463,6 @@ var requireApp = function(mount) {
   return exportApp(app);
 };
 
-var warmupExports = function () {
-  var cursor = utils.getStorage().all();
-  while (cursor.hasNext()) {
-    var config = cursor.next();
-    try {
-      requireApp(config.mount);
-    } catch(e) {}
-  }
-};
-
-var warmupAllExports = function() {
-  executeGlobalContextFunction("warmupExports");
-  actions.warmupExports();
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Syncs the apps in ArangoDB with the applications stored on disc
 ////////////////////////////////////////////////////////////////////////////////
@@ -1529,8 +1515,6 @@ exports.configuration = configuration;
 exports.dependencies = dependencies;
 exports.requireApp = requireApp;
 exports._resetCache = resetCache;
-exports._warmupExports = warmupExports;
-exports._warmupAllExports = warmupAllExports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Serverside only API

@@ -74,7 +74,7 @@
 
     needsConfiguration: function () {
       return _.any(this.get('config'), function (cfg) {
-        return cfg.current === undefined;
+        return cfg.current === undefined && cfg.required !== false;
       });
     },
 

@@ -1367,6 +1367,19 @@ if (list.length > 0) {
 
 </script>
 
+<script id="graphTestView.ejs" type="text/template">
+  <div class="headerBar">
+    <div class="pull-left">
+      <a class="arangoHeader">Graphs</a>
+    </div>
+  </div>
+
+  <div class="contentDiv" id="graphTest">
+    <div id="graphContainer" style="height: 100px"></div>
+</div>
+
+</script>
+
 <script id="graphViewGroupByEntry.ejs" type="text/template">
 <div class="control-group">
   <label for="<%=type %>_<%=id%>" class="control-label">Attribute <%=id%></label>
@@ -2784,7 +2797,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1434374115506"></script>
+<script src="app.js?version=1434465978974"></script>
 
   </body>
 </html>
