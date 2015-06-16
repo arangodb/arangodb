@@ -140,12 +140,6 @@ exports.run = function () {
     return;
   }
 
-  // warmup exports
-  // TODO remove this feature along with function-based job types in 2.7
-  if (options['server.foxx-queues-warmup-exports'] !== false) {
-    require('org/arangodb/foxx/manager')._warmupAllExports();
-  }
-
   // wakeup/poll interval for Foxx queues
   var period = 1;
   if (options.hasOwnProperty('server.foxx-queues-poll-interval')) {
