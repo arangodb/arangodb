@@ -1737,6 +1737,7 @@ function ahuacatlQueryNeighborsErrorsSuite () {
       // Positive Check
       assertEqual(actual, [ v2, v3 ]);
 
+      internal.debugClearFailAt();
       internal.debugSetFailAt("VertexCollectionDitchOOM");
 
       // Negative Check
@@ -1763,6 +1764,100 @@ function ahuacatlQueryNeighborsErrorsSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for ShortestPath with intentional failures
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryShortestpathErrorsSuite () {
+  var vn = "UnitTestsTraversalVertices";
+  var en = "UnitTestsTraversalEdges";
+  var vertexCollection;
+  var edgeCollection;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(vn);
+      db._drop(en);
+      internal.debugClearFailAt();
+
+      vertexCollection = db._create(vn);
+      edgeCollection = db._createEdgeCollection(en);
+
+      [ "A", "B", "C", "D" ].forEach(function (item) {
+        vertexCollection.save({ _key: item, name: item });
+      });
+
+      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "C" ], [ "C", "A" ] ].forEach(function (item) {
+        var l = item[0];
+        var r = item[1];
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(vn);
+      db._drop(en);
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks error handling in SHORTEST_PATH()
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathOOM : function () {
+      var s = vn + "/A";
+      var m = vn + "/B";
+      var t = vn + "/C";
+
+      var query = "RETURN SHORTEST_PATH(" + vn + " , " + en + ", '"
+                + s + "', '" + t + "', 'outbound')";
+
+      var actual = getQueryResults(query)[0];
+      // Positive Check
+      assertEqual(actual.vertices, [s, m, t]);
+      assertEqual(actual.distance, 2);
+
+      internal.debugSetFailAt("TraversalOOMInitialize");
+
+      // Negative Check
+      try {
+        actual = getQueryResults(query);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
+      }
+
+      internal.debugClearFailAt();
+
+      // Redo the positive check. Make sure the former fail is gone
+      actual = getQueryResults(query)[0];
+      assertEqual(actual.vertices, [s, m, t]);
+      assertEqual(actual.distance, 2);
+
+      internal.debugSetFailAt("TraversalOOMPath");
+      // Negative Check
+      try {
+        actual = getQueryResults(query);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
+      }
+
+    }
+
+  };
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1774,6 +1869,7 @@ jsunity.run(ahuacatlQueryTraversalTestSuite);
 jsunity.run(ahuacatlQueryTraversalTreeTestSuite);
 if (internal.debugCanUseFailAt()) {
   jsunity.run(ahuacatlQueryNeighborsErrorsSuite);
+  jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 
 return jsunity.done();
