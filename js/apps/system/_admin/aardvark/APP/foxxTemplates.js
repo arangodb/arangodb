@@ -38,7 +38,6 @@
       FoxxManager = require("org/arangodb/foxx/manager");
 
   controller.activateSessions({
-    type: "cookie",
     autoCreateSession: false,
     cookie: {name: "arango_sid_" + db._name()}
   });
