@@ -82,6 +82,10 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
           else {
             // We need a Collection Name Resolver here now!
             TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+            TRI_IF_FAILURE("ExampleNoContextVocbase") {
+              // Explicitly delete the vocbase
+              vocbase = nullptr;
+            }
             if (vocbase == nullptr) {
               // This should never be thrown as we are already in a transaction
               TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
