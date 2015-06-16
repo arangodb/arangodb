@@ -21,6 +21,16 @@ Before: `"type": "mailer.postmark"`
 
 After: `"type": {"name": "mailer", "mount": "/my-postmark-mailer"}`
 
+!SUBSECTION Foxx Sessions
+
+The options `jwt` and `type` of the controller method `controller.activateSessions` have been deprecated in 2.6 and will be removed entirely in 2.7.
+
+If you want to use pure JWT sessions, you can use the `sessions-jwt` Foxx app from the Foxx app store.
+
+If you want to use your own JWT-based sessions, you can use the JWT functions in the `crypto` module directly.
+
+Instead of using the `type` option you can just use the `cookie` and `header` options on their own, which both now accept the value `true` to enable them with their default configurations.
+
 !SECTION Changed behavior
 
 !SUBSECTION AQL Graphs

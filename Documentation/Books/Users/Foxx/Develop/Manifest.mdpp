@@ -136,8 +136,9 @@ The **configuration** object maps names to configuration parameters:
 The parameter definition can have the following properties:
 
 * **description**: a human readable description of the parameter.
-* **type**: the type of the configuration parameter. Default: *string*.
+* **type**: the type of the configuration parameter. Default: `"string"`.
 * **default**: the default value of the configuration parameter.
+* **required**: whether the parameter is required. Default: `true`
 
 The **type** can be any of the following:
 
