@@ -55,7 +55,6 @@
   var defaultThumb = require("/lib/defaultThumbnail").defaultThumb;
 
   controller.activateSessions({
-    type: "cookie",
     autoCreateSession: false,
     cookie: {name: "arango_sid_" + db._name()}
   });
