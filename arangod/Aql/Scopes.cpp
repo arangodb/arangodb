@@ -268,7 +268,9 @@ Variable const* Scopes::getCurrentVariable () const {
   if (_currentVariables.empty()) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, Variable::NAME_CURRENT);
   }
-  return _currentVariables.back();
+  auto result = _currentVariables.back();
+  TRI_ASSERT(result != nullptr);
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

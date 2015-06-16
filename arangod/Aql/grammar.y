@@ -140,10 +140,10 @@ void Aqlerror (YYLTYPE* locp,
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
 %right UMINUS UPLUS T_NOT
-%left EXPANSION
 %left FUNCCALL
 %left REFERENCE
 %left INDEXED
+%left EXPANSION
 %left T_SCOPE
 
 /* define token return types */
@@ -180,6 +180,10 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> object_elements_list;
 %type <node> object_element;
 %type <strval> object_element_name;
+%type <intval> array_filter_operator;
+%type <node> optional_array_filter;
+%type <node> optional_array_limit;
+%type <node> optional_array_return;
 %type <node> reference;
 %type <node> simple_value;
 %type <node> value_literal;
@@ -971,6 +975,45 @@ object_element:
     }
   ;
 
+array_filter_operator:
+    T_TIMES {
+      $$ = 1;
+    }
+  | array_filter_operator T_TIMES {
+      $$ = $1 + 1;
+    } 
+  ;
+
+optional_array_filter:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_FILTER expression {
+      $$ = $2;
+    }
+  ;
+
+optional_array_limit:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_LIMIT expression {
+      $$ = parser->ast()->createNodeArrayLimit(nullptr, $2);
+    }
+  | T_LIMIT expression T_COMMA expression {
+      $$ = parser->ast()->createNodeArrayLimit($2, $4);
+    }
+  ;
+
+optional_array_return:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_RETURN expression {
+      $$ = $2;
+    }
+  ;
+
 reference:
     T_STRING {
       // variable or collection
@@ -1028,7 +1071,14 @@ reference:
       }
     }
   | T_OPEN expression T_CLOSE {
-      $$ = $2;
+      if ($2->type == NODE_TYPE_EXPANSION) {
+        // create a dummy passthru node that reduces and evaluates the expansion first
+        // and the expansion on top of the stack won't be chained with any other expansions
+        $$ = parser->ast()->createNodePassthru($2);
+      }
+      else {
+        $$ = $2;
+      }
     }
   | T_OPEN {
       if (parser->isModificationQuery()) {
@@ -1050,8 +1100,11 @@ reference:
       // named variable access, e.g. variable.reference
       if ($1->type == NODE_TYPE_EXPANSION) {
         // if left operand is an expansion already...
-        // patch the existing expansion
-        $1->changeMember(1, parser->ast()->createNodeAttributeAccess($1->getMember(1), $3));
+        // dive into the expansion's right-hand child nodes for further expansion and
+        // patch the bottom-most one
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode($1));
+        TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
+        current->changeMember(1, parser->ast()->createNodeAttributeAccess(current->getMember(1), $3));
         $$ = $1;
       }
       else {
@@ -1063,7 +1116,9 @@ reference:
       if ($1->type == NODE_TYPE_EXPANSION) {
         // if left operand is an expansion already...
         // patch the existing expansion
-        $1->changeMember(1, parser->ast()->createNodeBoundAttributeAccess($1->getMember(1), $3));
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode($1));
+        TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
+        current->changeMember(1, parser->ast()->createNodeBoundAttributeAccess(current->getMember(1), $3));
         $$ = $1;
       }
       else {
@@ -1075,48 +1130,62 @@ reference:
       if ($1->type == NODE_TYPE_EXPANSION) {
         // if left operand is an expansion already...
         // patch the existing expansion
-        $1->changeMember(1, parser->ast()->createNodeIndexedAccess($1->getMember(1), $3));
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode($1));
+        TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
+        current->changeMember(1, parser->ast()->createNodeIndexedAccess(current->getMember(1), $3));
         $$ = $1;
       }
       else {
         $$ = parser->ast()->createNodeIndexedAccess($1, $3);
       }
     }
-  | reference T_ARRAY_OPEN T_TIMES T_ARRAY_CLOSE %prec EXPANSION {
-      // variable expansion, e.g. variable[*]
+  | reference T_ARRAY_OPEN array_filter_operator {
+      // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and RETURN clauses
+      if ($3 > 1 && $1->type == NODE_TYPE_EXPANSION) {
+        // create a dummy passthru node that reduces and evaluates the expansion first
+        // and the expansion on top of the stack won't be chained with any other expansions
+        $1 = parser->ast()->createNodePassthru($1);
+      }
+
       // create a temporary iterator variable
       std::string const nextName = parser->ast()->variables()->nextName() + "_";
       char const* iteratorName = nextName.c_str();
-      auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
-      $$ = parser->ast()->createNodeExpansion(iterator, parser->ast()->createNodeReference(iteratorName), false);
-    }
-  | reference T_ARRAY_OPEN T_TIMES T_TIMES T_ARRAY_CLOSE %prec EXPANSION {
-      // variable expansion, e.g. variable[**]
-      // create a temporary iterator variable
-      std::string const nextName = parser->ast()->variables()->nextName() + "_";
-      char const* iteratorName = nextName.c_str();
-      auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
-      $$ = parser->ast()->createNodeExpansion(iterator, parser->ast()->createNodeReference(iteratorName), true);
-    }
-  | reference T_ARRAY_OPEN T_FILTER {
-      // variable expansion, e.g. variable[*]
-      // create a temporary iterator variable
-      std::string const nextName = parser->ast()->variables()->nextName() + "_";
-      char const* iteratorName = nextName.c_str();
-      auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
-      parser->pushStack(iterator);
+
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        auto iterator = parser->ast()->createNodeIterator(iteratorName, $1->getMember(1));
+        parser->pushStack(iterator);
+      }
+      else {
+        auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
+        parser->pushStack(iterator);
+      }
 
       auto scopes = parser->ast()->scopes();
       scopes->stackCurrentVariable(scopes->getVariable(iteratorName));
-    } expression T_ARRAY_CLOSE %prec EXPANSION {
+    } optional_array_filter optional_array_limit optional_array_return T_ARRAY_CLOSE %prec EXPANSION {
       auto scopes = parser->ast()->scopes();
       scopes->unstackCurrentVariable();
 
-      auto iterator = static_cast<AstNode*>(parser->popStack());
+      auto iterator = static_cast<AstNode const*>(parser->popStack());
       auto variableNode = iterator->getMember(0);
       TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
       auto variable = static_cast<Variable const*>(variableNode->getData());
-      $$ = parser->ast()->createNodeExpansion(iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5);
+
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
+        $1->changeMember(1, expand);
+        $$ = $1;
+/*
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode($1));
+        TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
+        auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
+        current->changeMember(1, expand);
+        $$ = $1;
+*/
+      }
+      else {
+        $$ = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
+      }
     }
   ;
 

@@ -35,13 +35,58 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function arrayAccessTestSuite () {
-  var values = [
+  var persons = [
     { name: "sir alfred", age: 60, loves: [ "lettuce", "flowers" ] }, 
     { person: { name: "gadgetto", age: 50, loves: "gadgets" } }, 
     { name: "everybody", loves: "sunshine" }, 
     { name: "judge", loves: [ "order", "policing", "weapons" ] },
-    "someone"
+    "something"
+  ];
+
+  var continents = [
+    { 
+      name: "Europe", countries: [ 
+        { id: "UK", capital: "London" }, 
+        { id: "FR", capital: "Paris" }, 
+        { id: "IT", capital: "Rome" } 
+      ] 
+    },
+    { 
+      name: "Asia", countries: [ 
+        { id: "JP", capital: "Tokyo" }, 
+        { id: "CN", capital: "Beijing" }, 
+        { id: "KR", capital: "Seoul" }, 
+        { id: "IN", capital: "Delhi" } 
+      ] 
+    }
+  ];
+  
+  var tags = [ 
+    { 
+      values: [ 
+        { name: "javascript", count: 2, payload: [ { name: "foo" }, { name: "bar" } ] }, 
+        { name: "cpp", count: 4, payload: [ { name: "baz" }, { name: "qux" } ] }, 
+        { name: "php", count: 2, payload: [ ] }, 
+        { name: "ruby", count: 5, payload: [ { name: "test" }, { name: 23 } ] },
+        { name: "python", count: 3, payload: [ { name: "one" }, { name: "two" }, { name: "three" }, { name: "four" } ] }
+      ]
+    }
   ]; 
+
+  var arrayOfArrays = [
+    [  
+      [ "one", "two", "three" ],
+      [ "four", "five" ],
+      [ "six" ]
+    ],
+    [  
+      [ "seven", "eight" ]
+    ],
+    [
+      [ "nine", "ten" ],
+      [ "eleven", "twelve" ]
+    ]
+  ];
 
   return {
 
@@ -154,296 +199,512 @@ function arrayAccessTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryResult : function () {
-      for (var i = 0; i < values.length; ++i) {
-        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[" + i + "]", { values: values }).json;
-        assertEqual([ values[i] ], result);
+      for (var i = 0; i < persons.length; ++i) {
+        var result = AQL_EXECUTE("RETURN (FOR value IN @persons RETURN value)[" + i + "]", { persons: persons }).json;
+        assertEqual([ persons[i] ], result);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range result
-////////////////////////////////////////////////////////////////////////////////
-
-    testSubqueryResultRangeForward1 : function () {
-      for (var to = 0; to < 10; ++to) {
-        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[0.." + to + "]", { values: values }).json;
-        var expected = [ ];
-        for (var i = 0; i < Math.min(to + 1, values.length); ++i) {
-          expected.push(values[i]);
-        }
-        assertEqual([ expected ], result);
-      }
+    testStarExtractScalar : function () {
+      var expected = [ "Europe", "Asia" ];
+      var result = AQL_EXECUTE("RETURN @value[*].name", { value : continents }).json;
+      assertEqual([ expected ], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range result
-////////////////////////////////////////////////////////////////////////////////
-
-    testSubqueryResultRangeForward2 : function () {
-      for (var from = 0; from < 10; ++from) {
-        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[" + from + "..99]", { values: values }).json;
-        var expected = [ ];
-        for (var i = Math.min(from, values.length); i < values.length; ++i) {
-          expected.push(values[i]);
-        }
-        assertEqual([ expected ], result);
-      }
+    testStarExtractScalarUndefinedAttribute : function () {
+      var expected = [ null, null ];
+      var result = AQL_EXECUTE("RETURN @value[*].foobar", { value : continents }).json;
+      assertEqual([ expected ], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range result
-////////////////////////////////////////////////////////////////////////////////
-
-    testSubqueryResultRangeForwardMisc : function () {
-      var test = function (from, to, v) {
-        var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value)[" + from + ".." + to + "]", { values: values }).json;
-        var expected = v.map(function(v) { return values[v]; });
-        assertEqual([ expected ], result);
-      };
-
-      test(0, 0, [ 0 ]);
-      test(0, 1, [ 0, 1 ]);
-      test(0, 2, [ 0, 1, 2 ]);
-      test(0, 3, [ 0, 1, 2, 3 ]);
-      test(0, 4, [ 0, 1, 2, 3, 4 ]);
-      test(0, 5, [ 0, 1, 2, 3, 4 ]);
-      test(0, 6, [ 0, 1, 2, 3, 4 ]);
-      test(0, 99, [ 0, 1, 2, 3, 4 ]);
-
-      test(1, 1, [ 1 ]);
-      test(1, 2, [ 1, 2 ]);
-      test(1, 3, [ 1, 2, 3 ]);
-      test(1, 4, [ 1, 2, 3, 4 ]);
-      test(1, 5, [ 1, 2, 3, 4 ]);
-
-      test(2, 2, [ 2 ]);
-      test(2, 3, [ 2, 3 ]);
-
-      test(4, 4, [ 4 ]);
-      test(4, 5, [ 4 ]);
-
-      test(5, 5, [ ]);
-      test(5, 6, [ ]);
-      test(1000, 1000, [ ]);
-      test(1000000, 1000000, [ ]);
-      
-      test(0, -1, [ 0, 1, 2, 3, 4 ]);
-      test(0, -2, [ 0, 1, 2, 3 ]);
-      test(0, -3, [ 0, 1, 2 ]);
-      test(0, -4, [ 0, 1 ]);
-      test(0, -5, [ 0 ]);
-      test(0, -6, [ 0 ]);
-      test(0, -7, [ 0 ]);
-
-      test(1, 0, [ 1, 0 ]);
-      test(1, -1, [ 1, 2, 3, 4 ]);
-      test(1, -2, [ 1, 2, 3 ]);
-      test(1, -3, [ 1, 2 ]);
-      test(1, -4, [ 1 ]);
-      test(1, -5, [ 1, 0 ]);
-      test(1, -6, [ 1, 0 ]);
-      test(1, -7, [ 1, 0 ]);
-
-      test(2, 0, [ 2, 1, 0 ]);
-      test(2, 1, [ 2, 1 ]);
-      test(2, -1, [ 2, 3, 4 ]);
-      test(2, -2, [ 2, 3 ]);
-      test(2, -3, [ 2 ]);
-      test(2, -4, [ 2, 1 ]);
-      test(2, -5, [ 2, 1, 0 ]);
-      test(2, -6, [ 2, 1, 0 ]);
-      test(2, -7, [ 2, 1, 0 ]);
-
-      test(3, 0, [ 3, 2, 1, 0 ]);
-      test(3, 1, [ 3, 2, 1 ]);
-      test(3, 2, [ 3, 2 ]);
-      test(3, -1, [ 3, 4 ]);
-      test(3, -2, [ 3 ]);
-      test(3, -3, [ 3, 2 ]);
-      test(3, -4, [ 3, 2, 1 ]);
-      test(3, -5, [ 3, 2, 1, 0 ]);
-      test(3, -6, [ 3, 2, 1, 0 ]);
-
-      test(4, 0, [ 4, 3, 2, 1, 0 ]);
-      test(4, 1, [ 4, 3, 2, 1 ]);
-      test(4, 2, [ 4, 3, 2 ]);
-      test(4, 3, [ 4, 3 ]);
-      test(4, -1, [ 4 ]);
-      test(4, -2, [ 4, 3 ]);
-      test(4, -3, [ 4, 3, 2 ]);
-      test(4, -4, [ 4, 3, 2, 1 ]);
-      test(4, -5, [ 4, 3, 2, 1, 0 ]);
-      test(4, -6, [ 4, 3, 2, 1, 0 ]);
-
-      test(5, 0, [ 4, 3, 2, 1, 0 ]);
-      test(5, 1, [ 4, 3, 2, 1 ]);
-      test(5, 2, [ 4, 3, 2 ]);
-      test(5, 3, [ 4, 3 ]);
-      test(5, -1, [ 4 ]);
-      test(5, -2, [ 4, 3 ]);
-      test(5, -3, [ 4, 3, 2 ]);
-      test(5, -4, [ 4, 3, 2, 1 ]);
-      test(5, -5, [ 4, 3, 2, 1, 0 ]);
-      test(5, -6, [ 4, 3, 2, 1, 0 ]);
-      
-      test(6, 6, [ ]);
-      test(6, 7, [ ]);
-      test(7, 6, [ ]);
-      test(10, 10, [ ]);
-      test(100, 100, [ ]);
-      test(100, 1000, [ ]);
-      test(1000, 100, [ ]);
-
-      test(-6, -6, [ ]);
-      test(-6, -7, [ ]);
-      test(-7, -6, [ ]);
-      test(-10, -10, [ ]);
-      test(-100, -100, [ ]);
-      test(-100, -1000, [ ]);
-      test(-1000, -100, [ ]);
+    testStarExtractScalarWithFilter : function () {
+      var expected = [ "Europe" ];
+      var result = AQL_EXECUTE("RETURN @value[* FILTER CURRENT.name == 'Europe'].name", { value : continents }).json;
+      assertEqual([ expected ], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range result
-////////////////////////////////////////////////////////////////////////////////
-
-    testV8SubqueryResultRangeForward1 : function () {
-      for (var to = 0; to < 10; ++to) {
-        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[0.." + to + "]", { values: values }).json;
-        var expected = [ ];
-        for (var i = 0; i < Math.min(to + 1, values.length); ++i) {
-          expected.push(values[i]);
-        }
-        assertEqual([ expected ], result);
-      }
+    testStarExtractScalarWithNonMatchingFilter : function () {
+      var expected = [ ];
+      var result = AQL_EXECUTE("RETURN @value[* FILTER CURRENT.name == 'foobar'].name", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
+    
+    testStarExtractArray : function () {
+      var expected = [ 
+        [
+          { id: "UK", capital: "London" }, 
+          { id: "FR", capital: "Paris" }, 
+          { id: "IT", capital: "Rome" } 
+        ],
+        [
+          { id: "JP", capital: "Tokyo" }, 
+          { id: "CN", capital: "Beijing" }, 
+          { id: "KR", capital: "Seoul" }, 
+          { id: "IN", capital: "Delhi" }
+        ]
+      ];
+ 
+      var result = AQL_EXECUTE("RETURN @value[*].countries", { value : continents }).json;
+      assertEqual([ expected ], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range result
-////////////////////////////////////////////////////////////////////////////////
-
-    testV8SubqueryResultRangeForward2 : function () {
-      for (var from = 0; from < 10; ++from) {
-        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[" + from + "..99]", { values: values }).json;
-        var expected = [ ];
-        for (var i = Math.min(from, values.length); i < values.length; ++i) {
-          expected.push(values[i]);
-        }
-        assertEqual([ expected ], result);
-      }
+    testStarExtractArrayWithFilter : function () {
+      var expected = [ continents[0].countries ];
+      var result = AQL_EXECUTE("RETURN @value[* FILTER CURRENT.name == 'Europe'].countries", { value : continents }).json;
+      assertEqual([ expected ], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range result
-////////////////////////////////////////////////////////////////////////////////
+    testStarExtractSubArrayIndexed1 : function () {
+      var expected = [ 
+        { id: "UK", capital: "London" }, 
+        { id: "JP", capital: "Tokyo" } 
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[0]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-    testV8SubqueryResultRangeForwardMisc : function () {
-      var test = function (from, to, v) {
-        var result = AQL_EXECUTE("RETURN NOOPT(V8(FOR value IN @values RETURN value))[" + from + ".." + to + "]", { values: values }).json;
-        var expected = v.map(function(v) { return values[v]; });
-        assertEqual([ expected ], result);
-      };
+    testStarExtractSubArrayIndexed2 : function () {
+      var expected = [ 
+        { id: "IT", capital: "Rome" }, 
+        { id: "IN", capital: "Delhi" }
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[-1]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(0, 0, [ 0 ]);
-      test(0, 1, [ 0, 1 ]);
-      test(0, 2, [ 0, 1, 2 ]);
-      test(0, 3, [ 0, 1, 2, 3 ]);
-      test(0, 4, [ 0, 1, 2, 3, 4 ]);
-      test(0, 5, [ 0, 1, 2, 3, 4 ]);
-      test(0, 6, [ 0, 1, 2, 3, 4 ]);
-      test(0, 99, [ 0, 1, 2, 3, 4 ]);
+    testStarExtractSubArrayIndexed3 : function () {
+      var expected = [ 
+        null,
+        null
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[99]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(1, 1, [ 1 ]);
-      test(1, 2, [ 1, 2 ]);
-      test(1, 3, [ 1, 2, 3 ]);
-      test(1, 4, [ 1, 2, 3, 4 ]);
-      test(1, 5, [ 1, 2, 3, 4 ]);
+    testStarExtractSubArrayIndexedTotal1 : function () {
+      var expected = [ 
+        { id: "UK", capital: "London" }, 
+        { id: "FR", capital: "Paris" }, 
+        { id: "IT", capital: "Rome" } 
+      ];
+      var result = AQL_EXECUTE("RETURN (@value[*].countries)[0]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(2, 2, [ 2 ]);
-      test(2, 3, [ 2, 3 ]);
+    testStarExtractSubArrayIndexedTotal2 : function () {
+      var expected = [ 
+        { id: "JP", capital: "Tokyo" }, 
+        { id: "CN", capital: "Beijing" }, 
+        { id: "KR", capital: "Seoul" }, 
+        { id: "IN", capital: "Delhi" }
+      ];
+      var result = AQL_EXECUTE("RETURN (@value[*].countries)[-1]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(4, 4, [ 4 ]);
-      test(4, 5, [ 4 ]);
+    testStarExtractSubAttribute1 : function () {
+      var expected = [ 
+        [ "UK", "FR", "IT" ],
+        [ "JP", "CN", "KR", "IN" ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[*].id", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(5, 5, [ ]);
-      test(5, 6, [ ]);
-      test(1000, 1000, [ ]);
-      test(1000000, 1000000, [ ]);
-      
-      test(0, -1, [ 0, 1, 2, 3, 4 ]);
-      test(0, -2, [ 0, 1, 2, 3 ]);
-      test(0, -3, [ 0, 1, 2 ]);
-      test(0, -4, [ 0, 1 ]);
-      test(0, -5, [ 0 ]);
-      test(0, -6, [ 0 ]);
-      test(0, -7, [ 0 ]);
+    testStarExtractSubAttribute2 : function () {
+      var expected = [ 
+        [ "London", "Paris", "Rome" ],
+        [ "Tokyo", "Beijing", "Seoul", "Delhi" ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[*].capital", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(1, 0, [ 1, 0 ]);
-      test(1, -1, [ 1, 2, 3, 4 ]);
-      test(1, -2, [ 1, 2, 3 ]);
-      test(1, -3, [ 1, 2 ]);
-      test(1, -4, [ 1 ]);
-      test(1, -5, [ 1, 0 ]);
-      test(1, -6, [ 1, 0 ]);
-      test(1, -7, [ 1, 0 ]);
+    testStarExtractSubAttributeExtraOperator1 : function () {
+      var expected = [ 
+        [ "UK", "FR", "IT" ],
+        [ "JP", "CN", "KR", "IN" ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[*].id[*]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(2, 0, [ 2, 1, 0 ]);
-      test(2, 1, [ 2, 1 ]);
-      test(2, -1, [ 2, 3, 4 ]);
-      test(2, -2, [ 2, 3 ]);
-      test(2, -3, [ 2 ]);
-      test(2, -4, [ 2, 1 ]);
-      test(2, -5, [ 2, 1, 0 ]);
-      test(2, -6, [ 2, 1, 0 ]);
-      test(2, -7, [ 2, 1, 0 ]);
+    testStarExtractSubAttributeExtraOperator2 : function () {
+      var expected = [ 
+        [ "London", "Paris", "Rome" ],
+        [ "Tokyo", "Beijing", "Seoul", "Delhi" ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[*].capital[*]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(3, 0, [ 3, 2, 1, 0 ]);
-      test(3, 1, [ 3, 2, 1 ]);
-      test(3, 2, [ 3, 2 ]);
-      test(3, -1, [ 3, 4 ]);
-      test(3, -2, [ 3 ]);
-      test(3, -3, [ 3, 2 ]);
-      test(3, -4, [ 3, 2, 1 ]);
-      test(3, -5, [ 3, 2, 1, 0 ]);
-      test(3, -6, [ 3, 2, 1, 0 ]);
+    testStarExtractSubAttribute1Combine : function () {
+      var expected = [ 
+        "UK", "FR", "IT", "JP", "CN", "KR", "IN"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[**].id", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(4, 0, [ 4, 3, 2, 1, 0 ]);
-      test(4, 1, [ 4, 3, 2, 1 ]);
-      test(4, 2, [ 4, 3, 2 ]);
-      test(4, 3, [ 4, 3 ]);
-      test(4, -1, [ 4 ]);
-      test(4, -2, [ 4, 3 ]);
-      test(4, -3, [ 4, 3, 2 ]);
-      test(4, -4, [ 4, 3, 2, 1 ]);
-      test(4, -5, [ 4, 3, 2, 1, 0 ]);
-      test(4, -6, [ 4, 3, 2, 1, 0 ]);
+    testStarExtractSubAttribute2Combine : function () {
+      var expected = [ 
+        "London", "Paris", "Rome", "Tokyo", "Beijing", "Seoul", "Delhi"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[**].capital", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(5, 0, [ 4, 3, 2, 1, 0 ]);
-      test(5, 1, [ 4, 3, 2, 1 ]);
-      test(5, 2, [ 4, 3, 2 ]);
-      test(5, 3, [ 4, 3 ]);
-      test(5, -1, [ 4 ]);
-      test(5, -2, [ 4, 3 ]);
-      test(5, -3, [ 4, 3, 2 ]);
-      test(5, -4, [ 4, 3, 2, 1 ]);
-      test(5, -5, [ 4, 3, 2, 1, 0 ]);
-      test(5, -6, [ 4, 3, 2, 1, 0 ]);
-      
-      test(6, 6, [ ]);
-      test(6, 7, [ ]);
-      test(7, 6, [ ]);
-      test(10, 10, [ ]);
-      test(100, 100, [ ]);
-      test(100, 1000, [ ]);
-      test(1000, 100, [ ]);
+    testStarExtractSubAttribute3Combine : function () {
+      var expected = [ 
+        "London", "Paris", "Rome", "Tokyo", "Beijing", "Seoul", "Delhi"
+      ];
+      // more than 2 asterisks won't change the result
+      var result = AQL_EXECUTE("RETURN @value[*].countries[****].capital", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
 
-      test(-6, -6, [ ]);
-      test(-6, -7, [ ]);
-      test(-7, -6, [ ]);
-      test(-10, -10, [ ]);
-      test(-100, -100, [ ]);
-      test(-100, -1000, [ ]);
-      test(-1000, -100, [ ]);
+    testStarExtractSubAttributeNonExisting : function () {
+      var expected = [ 
+        [ null, null, null ],
+        [ null, null, null, null ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[*].id.foobar", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractSubAttributeIndexed1 : function () {
+      var expected = [ 
+        [ null, null, null ],
+        [ null, null, null, null ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[*].id[0]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractSubAttributeIndexed2 : function () {
+      var expected = [ 
+        [ null, null, null ],
+        [ null, null, null, null ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].countries[*].id[1]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractSubAttributeIndexedTotal1 : function () {
+      var expected = [ 
+        "UK", "FR", "IT"
+      ];
+      var result = AQL_EXECUTE("RETURN (@value[*].countries[*].id)[0]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractSubAttributeIndexedTotal2 : function () {
+      var expected = [ 
+        "JP", "CN", "KR", "IN"
+      ];
+      var result = AQL_EXECUTE("RETURN (@value[*].countries[*].id)[1]", { value : continents }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered1 : function () {
+      var expected = [ 
+        "javascript", "php"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER CURRENT.count == 2].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered2 : function () {
+      var expected = [ 
+        "cpp", "ruby", "python"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER CURRENT.count != 2].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered3 : function () {
+      var expected = [ 
+        "ruby"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER CURRENT.count != 2 && CURRENT.name == 'ruby'].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered4 : function () {
+      var expected = [ 
+        3
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER LENGTH(CURRENT.payload) == 4].count", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered5 : function () {
+      var expected = [ 
+        "php", "ruby", "python"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER CURRENT.name IN [ 'php', 'python', 'ruby' ]].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered6 : function () {
+      var expected = [ 
+        [ "javascript", "php" ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].values[* FILTER CURRENT.count == 2].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered7 : function () {
+      var expected = [ 
+        [ "cpp", "ruby", "python" ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].values[* FILTER CURRENT.count != 2].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered8 : function () {
+      var expected = [ 
+        [ "ruby" ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].values[* FILTER CURRENT.count != 2 && CURRENT.name == 'ruby'].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered9 : function () {
+      var expected = [ 
+        [ 3 ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].values[* FILTER LENGTH(CURRENT.payload) == 4].count", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractFiltered10 : function () {
+      var expected = [ 
+        [ "php", "ruby", "python" ]
+      ];
+      var result = AQL_EXECUTE("RETURN @value[*].values[* FILTER CURRENT.name IN [ 'php', 'python', 'ruby' ]].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractProject1 : function () {
+      var expected = [ 
+        2, 2, 0, 2, 4
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* RETURN LENGTH(CURRENT.payload)][**]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractProject2 : function () {
+      var expected = [ 
+        "x-javascript", "x-cpp", "x-php", "x-ruby", "x-python"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[* RETURN CONCAT('x-', CURRENT)][**]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractProjectFilter : function () {
+      var expected = [ 
+        "x-cpp", "x-ruby", "x-python"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER CURRENT.count >= 3].name[* RETURN CONCAT('x-', CURRENT)][**]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimitEmpty1 : function () {
+      var expected = [ 
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[** LIMIT 0]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimitEmpty2 : function () {
+      var expected = [ 
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* LIMIT 0].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimitEmpty3 : function () {
+      var expected = [ 
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* LIMIT -10, 1].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimit0 : function () {
+      var expected = [ 
+        "javascript"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* LIMIT 1].name", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimit1 : function () {
+      var expected = [ 
+        "javascript"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[** LIMIT 1]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimit2 : function () {
+      var expected = [ 
+        "javascript"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[** LIMIT 0, 1]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimit3 : function () {
+      var expected = [ 
+        "javascript", "cpp", "php", "ruby", "python"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[** LIMIT 0, 10]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimit4 : function () {
+      var expected = [ 
+        "javascript", "cpp", "php", "ruby"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[** LIMIT 0, 4]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimit5 : function () {
+      var expected = [ 
+        "javascript", "cpp"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[** LIMIT 0, 2]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimit6 : function () {
+      var expected = [ 
+        "cpp", "php", "ruby", "python"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[** LIMIT 1, 4]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimit7 : function () {
+      var expected = [ 
+        "ruby", "python"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[** LIMIT 3, 4]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimit8 : function () {
+      var expected = [ 
+        "javascript", "cpp"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER CURRENT.name IN [ 'javascript', 'php', 'cpp' ] LIMIT 0, 2].name[**]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimitProject1 : function () {
+      var expected = [ 
+        "javascript-x", "cpp-x"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[** LIMIT 0, 2 RETURN CONCAT(CURRENT.name, '-x')]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testStarExtractLimitProject2 : function () {
+      var expected = [ 
+        "javascript", "cpp"
+      ];
+      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER CURRENT.name IN [ 'javascript', 'php', 'cpp' ] LIMIT 0, 2 RETURN CURRENT.name]", { value : tags }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapse1 : function () {
+      var expected = arrayOfArrays;
+      var result = AQL_EXECUTE("RETURN @value[*]", { value : arrayOfArrays }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapse2 : function () {
+      var expected = [ [ "one", "two", "three" ], [ "four", "five" ], [ "six" ], [ "seven", "eight" ], [ "nine", "ten" ], [ "eleven", "twelve" ] ];
+      var result = AQL_EXECUTE("RETURN @value[**]", { value : arrayOfArrays }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapse3 : function () {
+      var expected = [ "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve" ];
+      var result = AQL_EXECUTE("RETURN @value[***]", { value : arrayOfArrays }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseUnmodified : function () {
+      var data = [ [ [ [ 1, 2 ] ], [ 3, 4 ], 5, [ 6, 7 ] ], [ 8 ] ];
+      var expected = data;
+      var result = AQL_EXECUTE("RETURN @value", { value : data }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseMixed1 : function () {
+      var data = [ [ [ [ 1, 2 ] ], [ 3, 4 ], 5, [ 6, 7 ] ], [ 8 ] ];
+      var expected = data;
+      var result = AQL_EXECUTE("RETURN @value[*]", { value : data }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseMixed2 : function () {
+      var data = [ [ [ [ 1, 2 ] ], [ 3, 4 ], 5, [ 6, 7 ] ], [ 8 ] ];
+      var expected = [ [ [ 1, 2 ] ], [ 3, 4 ], 5, [ 6, 7 ], 8 ];
+      var result = AQL_EXECUTE("RETURN @value[**]", { value : data }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseMixed3 : function () {
+      var data = [ [ [ [ 1, 2 ] ], [ 3, 4 ], 5, [ 6, 7 ] ], [ 8 ] ];
+      var expected = [ [ 1, 2 ], 3, 4, 5, 6, 7, 8 ];
+      var result = AQL_EXECUTE("RETURN @value[***]", { value : data }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseMixed4 : function () {
+      var data = [ [ [ [ 1, 2 ] ], [ 3, 4 ], 5, [ 6, 7 ] ], [ 8 ] ];
+      var expected = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
+      var result = AQL_EXECUTE("RETURN @value[****]", { value : data }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseMixed5 : function () {
+      var data = [ [ [ [ 1, 2 ] ], [ 3, 4 ], 5, [ 6, 7 ] ], [ 8 ] ];
+      var expected = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
+      var result = AQL_EXECUTE("RETURN @value[*****]", { value : data }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseFilter : function () {
+      var data = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
+      var expected = [ 1, 3, 5, 7 ];
+      var result = AQL_EXECUTE("RETURN @value[**** FILTER CURRENT % 2 != 0]", { value : data }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseProject : function () {
+      var data = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
+      var expected = [ 2, 4, 6, 8, 10, 12, 14, 16 ];
+      var result = AQL_EXECUTE("RETURN @value[**** RETURN CURRENT * 2]", { value : data }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseFilterProject : function () {
+      var data = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
+      var expected = [ 4, 8, 12, 16 ];
+      var result = AQL_EXECUTE("RETURN @value[**** FILTER CURRENT % 2 == 0 RETURN CURRENT * 2]", { value : data }).json;
+      assertEqual([ expected ], result);
+    },
+
+    testCollapseFilterProjectLimit : function () {
+      var data = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
+      var expected = [ 4, 8, 12 ];
+      var result = AQL_EXECUTE("RETURN @value[**** FILTER CURRENT % 2 == 0 LIMIT 3 RETURN CURRENT * 2]", { value : data }).json;
+      assertEqual([ expected ], result);
     }
 
   };

@@ -1611,6 +1611,7 @@ int triagens::aql::removeRedundantCalculationsRule (Optimizer* opt,
           auto target = outvars[0];
           while (target != nullptr) {
             auto it = replacements.find(target->id);
+
             if (it != replacements.end()) {
               target = (*it).second;
             }
@@ -1656,7 +1657,6 @@ int triagens::aql::removeRedundantCalculationsRule (Optimizer* opt,
 
   if (! replacements.empty()) {
     // finally replace the variables
-
     RedundantCalculationsReplacer finder(replacements);
     plan->root()->walk(&finder);
     plan->findVarUsage();

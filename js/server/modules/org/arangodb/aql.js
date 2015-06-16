@@ -987,85 +987,6 @@ function GET_INDEX (value, index) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get an indexed value from an array or document (e.g. users[3])
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_RANGE (value, low, high) {
-  'use strict';
-
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    return null;
-  }
-
-  low  = parseInt(low, 10);
-  high = parseInt(high, 10);
-
-  var result = [ ], position;
-
-  if (low < 0) {
-    low = value.length + low;
-  }
-  if (high < 0) {
-    high = value.length + high;
-  }
-
-  if (low <= high) {
-    ++high;
-    if (low < high) {  
-      if (low < 0) {
-        low = 0;
-      }
-      if (high >= value.length) {
-        high = value.length;
-      }
-      if (low < high) {
-        for (position = low; position < high; ++position) {
-          result.push(value[position]);
-        }
-      }
-    }
-  }
-  else {
-    --high;
-    if (low >= value.length) {
-      low = value.length - 1;
-    }
-    if (high < -1) {
-      high = -1;
-    }
-    if (low - high > 0) {
-      for (position = low; position > high; --position) {
-        result.push(value[position]);
-      }
-    }
-  }
-
-  return result;
-}
-
-function COMPACT (value) {
-  'use strict';
-
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    return [ ];
-  }
-
-  var result = [ ];
-  for (var i = 0; i < value.length; ++i) {
-    var v = value[i];
-    if (TYPEWEIGHT(v) === TYPEWEIGHT_ARRAY) {
-      for (var j = 0; j < v.length; ++j) {
-        result.push(v[j]);
-      }
-    }
-    else {
-      result.push(v);
-    }
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a value for comparison, sorting etc.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3187,7 +3108,7 @@ function AQL_SHIFT (list) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a slice from a list
+/// @brief extract a slice from an array
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_SLICE (value, from, to) {
@@ -8435,7 +8356,6 @@ function AQL_GRAPH_DIAMETER (graphName, options) {
 exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
-exports.GET_RANGE = GET_RANGE;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
 exports.GET_DOCUMENTS = GET_DOCUMENTS;
 exports.TERNARY_OPERATOR = TERNARY_OPERATOR;
@@ -8458,7 +8378,6 @@ exports.ARITHMETIC_MINUS = ARITHMETIC_MINUS;
 exports.ARITHMETIC_TIMES = ARITHMETIC_TIMES;
 exports.ARITHMETIC_DIVIDE = ARITHMETIC_DIVIDE;
 exports.ARITHMETIC_MODULUS = ARITHMETIC_MODULUS;
-exports.COMPACT = COMPACT;
 
 exports.AQL_DOCUMENT = AQL_DOCUMENT;
 exports.AQL_COLLECTIONS = AQL_COLLECTIONS;
