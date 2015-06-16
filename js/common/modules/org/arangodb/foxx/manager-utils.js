@@ -456,10 +456,11 @@ function updateApp (mount, update) {
 /// @brief define validators for parameter types
 ////////////////////////////////////////////////////////////////////////////////
 var parameterTypes = {
-  integer: joi.number().integer().required(),
-  boolean: joi.boolean().required(),
-  string: joi.string().required(),
-  number: joi.number().required()
+  integer: joi.number().integer(),
+  boolean: joi.boolean(),
+  string: joi.string(),
+  number: joi.number(),
+  json: function (v) {return v && JSON.parse(v);}
 };
 parameterTypes.int = parameterTypes.integer;
 parameterTypes.bool = parameterTypes.boolean;
