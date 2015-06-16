@@ -146,7 +146,9 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_COLLECT_COUNT),            "collect count" },
   { static_cast<int>(NODE_TYPE_COLLECT_EXPRESSION),       "collect expression" },
   { static_cast<int>(NODE_TYPE_CALCULATED_OBJECT_ELEMENT),"calculated object element" },
-  { static_cast<int>(NODE_TYPE_EXAMPLE),                  "example" }
+  { static_cast<int>(NODE_TYPE_EXAMPLE),                  "example" },
+  { static_cast<int>(NODE_TYPE_PASSTHRU),                 "passthru" },
+  { static_cast<int>(NODE_TYPE_ARRAY_LIMIT),              "array limit" }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -515,6 +517,10 @@ AstNode::AstNode (Ast* ast,
       setStringValue(query->registerString(JsonHelper::getStringValue(json.json(), "name", ""), false));
       break;
     }
+    case NODE_TYPE_EXPANSION: {
+      setIntValue(JsonHelper::checkAndGetNumericValue<int64_t>(json.json(), "levels"));
+      break;
+    }
     case NODE_TYPE_OBJECT:
     case NODE_TYPE_ROOT:
     case NODE_TYPE_FOR:
@@ -555,13 +561,14 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_SUBQUERY:
     case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
     case NODE_TYPE_INDEXED_ACCESS:
-    case NODE_TYPE_EXPANSION:
     case NODE_TYPE_ITERATOR:
     case NODE_TYPE_ARRAY:
     case NODE_TYPE_RANGE:
     case NODE_TYPE_NOP:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
     case NODE_TYPE_EXAMPLE:
+    case NODE_TYPE_PASSTHRU:
+    case NODE_TYPE_ARRAY_LIMIT:
       break;
   }
 
@@ -732,7 +739,7 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
     }
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = getMember(i);
+      auto member = getMemberUnchecked(i);
 
       if (member != nullptr) {
         TRI_json_t* j = member->toJsonValue(zone);
@@ -750,7 +757,7 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
     TRI_json_t* object = TRI_CreateObjectJson(zone, n);
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = getMember(i);
+      auto member = getMemberUnchecked(i);
 
       if (member != nullptr) {
         TRI_json_t* j = member->getMember(0)->toJsonValue(zone);
@@ -862,9 +869,13 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
     TRI_Insert3ObjectJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str(), variable->name.size()));
     TRI_Insert3ObjectJson(zone, node, "id", TRI_CreateNumberJson(zone, static_cast<double>(variable->id)));
   }
+
+  if (type == NODE_TYPE_EXPANSION) {
+    TRI_Insert3ObjectJson(zone, node, "levels", TRI_CreateNumberJson(zone, static_cast<double>(getIntValue(true))));
+  }
   
   // dump sub-nodes 
-  size_t const n = members._length;
+  size_t const n = TRI_LengthVectorPointer(&members);
 
   if (n > 0) {
     TRI_json_t* subNodes = TRI_CreateArrayJson(zone, n);
@@ -876,8 +887,8 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
 
     try {
       for (size_t i = 0; i < n; ++i) {
-        AstNode* member = getMember(i);
-        if (member != nullptr && member->type != NODE_TYPE_NOP) {
+        AstNode* member = getMemberUnchecked(i);
+        if (member != nullptr) {
           member->toJson(subNodes, zone, verbose);
         }
       }
@@ -1266,7 +1277,8 @@ bool AstNode::isSimple () const {
       type == NODE_TYPE_OPERATOR_BINARY_IN ||
       type == NODE_TYPE_OPERATOR_BINARY_NIN ||
       type == NODE_TYPE_RANGE ||
-      type == NODE_TYPE_INDEXED_ACCESS) {
+      type == NODE_TYPE_INDEXED_ACCESS ||
+      type == NODE_TYPE_PASSTHRU) {
     // a logical operator is simple if its operands are simple
     // a comparison operator is simple if both bounds are simple
     // a range is simple if both bounds are simple
@@ -1687,6 +1699,16 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     buffer->appendChar(')');
     return;
   }
+
+  if (type == NODE_TYPE_ARRAY_LIMIT) {
+    // not used by V8
+    buffer->appendText("_LIMIT(");
+    getMember(0)->stringify(buffer, verbose, failIfLong);
+    buffer->appendChar(',');
+    getMember(1)->stringify(buffer, verbose, failIfLong);
+    buffer->appendChar(')');
+    return;
+  }
   
   if (type == NODE_TYPE_EXPANSION) {
     // not used by V8
@@ -1694,10 +1716,27 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(1)->stringify(buffer, verbose, failIfLong);
-    if (numMembers() > 2) {
-      buffer->appendChar(',');
-      getMember(2)->stringify(buffer, verbose, failIfLong);
+    // filter
+    buffer->appendChar(',');
+
+    auto filterNode = getMember(2);
+    if (filterNode != nullptr) {
+      buffer->appendText(" FILTER ");
+      filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
+    auto limitNode = getMember(3);
+    if (limitNode != nullptr) {
+      buffer->appendText(" LIMIT ");
+      limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
+      buffer->appendChar(',');
+      limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
+    }
+    auto returnNode = getMember(4);
+    if (returnNode != nullptr) {
+      buffer->appendText(" RETURN ");
+      returnNode->getMember(0)->stringify(buffer, verbose, failIfLong);
+    }
+    
     buffer->appendChar(')');
     return;
   }
