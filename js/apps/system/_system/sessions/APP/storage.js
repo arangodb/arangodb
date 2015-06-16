@@ -1,6 +1,4 @@
-/*global applicationContext */
 'use strict';
-
 const _ = require('underscore');
 const joi = require('joi');
 const internal = require('internal');
