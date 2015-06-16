@@ -535,20 +535,6 @@ namespace triagens {
         bool _foxxQueues;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enable or disable the Foxx exports warmup for queues
-/// @startDocuBlock queuesWarmupExports
-/// `--server.foxx-queues-warmup-exports flag`
-///
-/// If *true*, the exports of all Foxx apps will be loaded on server start.
-///
-/// The default is *true*. Disabling this will cause issues with function-based
-/// job types of jobs persisted throughout a server restart.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-    
-        bool _foxxQueuesWarmupExports;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief poll interval for Foxx queues
 /// @startDocuBlock foxxQueuesPollInterval
 /// `--server.foxx-queues-poll-interval value`

@@ -322,11 +322,3 @@ http://jsteemann.github.io/blog/2015/04/14/updating-documents-with-arangoimp/
   will lead to the queue manager having to check only the queues collection of a single database,
   whereas making it check the queues of all databases might result in more work to be done and 
   more CPU time to be used by the queue manager.
-
-
-* added startup option `--server.foxx-queues-warmup-exports`
-
-  This startup option makes sure the exports of all installed Foxx apps are pre-loaded when
-  the server is restarted. This prevents a known issue with function-based Foxx queue job types.
-  It is recommended that you upgrade any existing function-based job types to script-based ones
-  to avoid the issue entirely.
