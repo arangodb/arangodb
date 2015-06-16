@@ -141,7 +141,7 @@ global.tutorial = require("org/arangodb/tutorial");
 /// @brief prints help
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
+var initHelp = function() {
   var internal = require("internal");
 
   if (internal.db) {
@@ -158,10 +158,15 @@ global.tutorial = require("org/arangodb/tutorial");
       internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");
     }
   }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read rc file
 ////////////////////////////////////////////////////////////////////////////////
+
+if (typeof window === 'undefined') {
+  // We're in arangosh
+  initHelp();
 
   // these variables are not defined in the browser context
   if (
@@ -194,7 +199,7 @@ global.tutorial = require("org/arangodb/tutorial");
     delete global.IS_UNIT_TESTS;
     delete global.IS_JS_LINT;
   } catch (e) {}
-}());
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
