@@ -30,18 +30,5 @@
     "setup": "setup.js"
   },
 
-  "tests": "test/**",
-
-  "configuration": {
-    "sidTimestamp": {
-      "description": "Append a timestamp to the session id.",
-      "type": "boolean",
-      "default": false
-    },
-    "sidLength": {
-      "description": "Length of the random part of the session id",
-      "type": "integer",
-      "default": 20
-    }
-  }
+  "tests": "test/**"
 }
