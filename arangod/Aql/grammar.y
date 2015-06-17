@@ -1175,13 +1175,6 @@ reference:
         auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
         $1->changeMember(1, expand);
         $$ = $1;
-/*
-        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode($1));
-        TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
-        auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
-        current->changeMember(1, expand);
-        $$ = $1;
-*/
       }
       else {
         $$ = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
