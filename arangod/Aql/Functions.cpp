@@ -1007,22 +1007,22 @@ AqlValue Functions::Unique (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE");
   }
 
-  auto value = ExtractFunctionParameter(trx, parameters, 0, false);
+  auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
   if (! value.isArray()) {
     // not an array
     RegisterWarning(query, "UNIQUE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(new Json(Json::Null));
   }
-
-  TRI_json_t const* valueJson = value.json();
-  size_t const n = TRI_LengthArrayJson(valueJson);
-
+  
   std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
     512, 
     triagens::basics::JsonHash(), 
     triagens::basics::JsonEqual()
   );
+
+  TRI_json_t const* valueJson = value.json();
+  size_t const n = TRI_LengthArrayJson(valueJson);
 
   for (size_t i = 0; i < n; ++i) {
     auto value = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, i));
