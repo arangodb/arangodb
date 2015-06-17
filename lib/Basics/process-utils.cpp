@@ -739,14 +739,13 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
 #ifdef TRI_HAVE_LINUX_PROC
 
 TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
-  char fn[1024];
-  int fd;
   TRI_process_info_t result;
-
   memset(&result, 0, sizeof(result));
 
+  char fn[1024];
   snprintf(fn, sizeof(fn), "/proc/%d/stat", pid);
-  fd = open(fn, O_RDONLY);
+
+  int fd = open(fn, O_RDONLY);
 
   if (fd >= 0) {
     char str[1024];
@@ -761,6 +760,33 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
     if (n == 0) {
       return result;
     }
+
+    // fix process name in buffer. sadly, the process name might contain whitespace
+    // and the sscanf format '%s' will not honor that
+    char* p = &str[0];
+    char* e = p + n;
+    // first skip over the process id at the start of the string
+    while (*p != '\0' && p < e && *p != ' ') {
+      ++p;
+    }
+    // skip space
+    if (p < e && *p == ' ') {
+      ++p;
+    }
+    // check if filename is contained in parentheses
+    if (p  < e && *p == '(') {
+      // yes
+      ++p;
+      // now replace all whitespace within the process name with underscores
+      // otherwise the sscanf below will happily parse the string incorrectly
+      while (p < e && *p != '0' && *p != ')') {
+        if (*p == ' ') {
+          *p = '_';
+        }
+        ++p;
+      }
+    }
+
     sscanf(str, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %ld %llu %lu %ld",
            &st.pid, (char*) &st.comm, &st.state, &st.ppid, &st.pgrp, &st.session, &st.tty_nr, &st.tpgid,
            &st.flags, &st.minflt, &st.cminflt, &st.majflt, &st.cmajflt, &st.utime, &st.stime,
