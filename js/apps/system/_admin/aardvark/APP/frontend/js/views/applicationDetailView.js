@@ -219,21 +219,26 @@
       var cfg = {};
       _.each(this.model.get('config'), function(opt, key) {
         var $el = $('#app_config_' + key);
-        var val = window.arangoHelper.escapeHtml($el.val());
+        var val = $el.val();
         if (opt.type === 'boolean' || opt.type === 'bool') {
           cfg[key] = $el.is(':checked');
           return;
         }
         if (val === '' && opt.hasOwnProperty('default')) {
           cfg[key] = opt.default;
+          if (opt.type === 'json') {
+            cfg[key] = JSON.stringify(opt.default);
+          }
           return;
         }
         if (opt.type === 'number') {
           cfg[key] = parseFloat(val);
         } else if (opt.type === 'integer' || opt.type === 'int') {
           cfg[key] = parseInt(val, 10);
+        } else if (opt.type === 'json') {
+          cfg[key] = val && JSON.stringify(JSON.parse(val));
         } else {
-          cfg[key] = val;
+          cfg[key] = window.arangoHelper.escapeHtml(val);
           return;
         }
       });
@@ -257,9 +262,36 @@
             obj.current || false
           );
         }
-        var defaultValue;
-        var currentValue;
+        var defaultValue = obj.default === undefined ? '' : String(obj.default);
+        var currentValue = obj.current === undefined ? '' : String(obj.current);
+        var mandatory = false;
         var checks = [];
+        if (obj.default === undefined && obj.required !== false) {
+          mandatory = true;
+          checks.push({
+            rule: Joi.any().required(),
+            msg: 'No default found. Has to be added'
+          });
+        }
+        if (obj.type === 'json') {
+          defaultValue = obj.default === undefined ? '' : JSON.stringify(obj.default);
+          currentValue = obj.current === undefined ? '' : obj.current;
+          checks.push({
+            rule: function (v) {
+              return v && JSON.parse(v);
+            },
+            msg: 'Must be well-formed JSON or empty.'
+          });
+          return window.modalView.createBlobEntry(
+            'app_config_' + name,
+            name,
+            currentValue,
+            obj.description,
+            defaultValue,
+            mandatory,
+            checks
+          );
+        }
         if (obj.type === 'integer' || obj.type === 'int') {
           checks.push({
             rule: Joi.number().integer().optional().allow(''),
@@ -276,27 +308,13 @@
             msg: 'Has to be a string.'
           });
         }
-        if (obj.default !== undefined) {
-          defaultValue = String(obj.default);
-        } else {
-          defaultValue = '';
-          checks.push({
-            rule: Joi.string().required(),
-            msg: 'No default found. Has to be added'
-          });
-        }
-        if (obj.current !== undefined) {
-          currentValue = String(obj.current);
-        } else {
-          currentValue = '';
-        }
         return window.modalView.createTextEntry(
           'app_config_' + name,
           name,
           currentValue,
           obj.description,
           defaultValue,
-          obj.required !== false,
+          mandatory,
           checks
         );
       });

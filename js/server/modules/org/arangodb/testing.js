@@ -150,8 +150,7 @@ var allTests =
     "importing",
     "upgrade",
     "authentication",
-    "authentication_parameters",
-    "queue_legacy"
+    "authentication_parameters"
   ];
 
 

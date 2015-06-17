@@ -1399,7 +1399,7 @@ function require (path) {
     try {
       fn = internal.executeScript("(" + script + ")", undefined, filename);
     } catch (e) {
-      require('console').errorLines(e);
+      require('console').errorLines(e.stack || String(e));
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
         errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
@@ -1416,7 +1416,7 @@ function require (path) {
         return args[key];
       }));
     } catch (e) {
-      require('console').errorLines(e);
+      require('console').errorLines(e.stack || String(e));
       throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
         errorMessage: internal.errors.ERROR_MODULE_FAILURE.message
