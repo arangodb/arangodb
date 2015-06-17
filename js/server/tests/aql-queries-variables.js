@@ -163,7 +163,7 @@ function ahuacatlQueryVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testListExpansion6 : function () {
-      var query = "FOR a IN " + JSON.stringify(airports) + " RETURN a.continent.countries[*].airports[*][0].name";
+      var query = "FOR a IN " + JSON.stringify(airports) + " RETURN a.continent.countries[*].airports[0].name";
       var expected = [["CGN", "LHR", "CDG"], ["LGA", "YTO", "BOG"], ["NRT"]];
 
       var actual = getQueryResults(query);
@@ -175,7 +175,7 @@ function ahuacatlQueryVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testListExpansion7 : function () {
-      var query = "FOR a IN " + JSON.stringify(airports) + " RETURN a.continent.countries[*].airports[*][1].name";
+      var query = "FOR a IN " + JSON.stringify(airports) + " RETURN a.continent.countries[*].airports[1].name";
       var expected = [["DTM", "LGW", "ORY"], ["JFK", "YVR", null], ["HND"]];
 
       var actual = getQueryResults(query);

@@ -154,7 +154,7 @@ namespace triagens {
       NODE_TYPE_ATTRIBUTE_ACCESS              = 35,
       NODE_TYPE_BOUND_ATTRIBUTE_ACCESS        = 36,
       NODE_TYPE_INDEXED_ACCESS                = 37,
-      NODE_TYPE_EXPAND                        = 38,
+      NODE_TYPE_EXPANSION                     = 38,
       NODE_TYPE_ITERATOR                      = 39,
       NODE_TYPE_VALUE                         = 40,
       NODE_TYPE_ARRAY                         = 41,
@@ -171,7 +171,9 @@ namespace triagens {
       NODE_TYPE_COLLECT_EXPRESSION            = 52,
       NODE_TYPE_CALCULATED_OBJECT_ELEMENT     = 53,
       NODE_TYPE_UPSERT                        = 54,
-      NODE_TYPE_EXAMPLE                       = 55
+      NODE_TYPE_EXAMPLE                       = 55,
+      NODE_TYPE_PASSTHRU                      = 56,
+      NODE_TYPE_ARRAY_LIMIT                   = 57
     };
 
     static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types");
@@ -509,7 +511,7 @@ namespace triagens {
 /// @brief return the number of members
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline size_t numMembers () const {
+        inline size_t numMembers () const throw() {
           return members._length;
         }
 

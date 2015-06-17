@@ -169,6 +169,34 @@ void Ast::addOperation (AstNode* node) {
 
   _root->addMember(node);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the bottom-most expansion subnodes (if any)
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const* Ast::findExpansionSubNode (AstNode const* current) const {
+  while (true) {
+    TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
+
+    if (current->getMember(1)->type != NODE_TYPE_EXPANSION) {
+      return current;
+    }
+    current = current->getMember(1);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST passhthru node
+/// note: this type of node is only used during parsing and optimized away later
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodePassthru (AstNode const* what) {
+  AstNode* node = createNode(NODE_TYPE_PASSTHRU);
+
+  node->addMember(what);
+
+  return node;
+}
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST example node
@@ -324,7 +352,7 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
-  node->addMember(createNodeVariable("$OLD", false)); 
+  node->addMember(createNodeVariable(Variable::NAME_OLD, false)); 
 
   return node;
 }
@@ -347,7 +375,7 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
-  node->addMember(createNodeVariable("$NEW", false)); 
+  node->addMember(createNodeVariable(Variable::NAME_NEW, false)); 
   
   return node;
 }
@@ -378,8 +406,8 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
     node->addMember(&NopNode);    
   }
   
-  node->addMember(createNodeVariable("$OLD", false)); 
-  node->addMember(createNodeVariable("$NEW", false)); 
+  node->addMember(createNodeVariable(Variable::NAME_OLD, false)); 
+  node->addMember(createNodeVariable(Variable::NAME_NEW, false)); 
   
   return node;
 }
@@ -410,8 +438,8 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
     node->addMember(&NopNode);    
   }
   
-  node->addMember(createNodeVariable("$OLD", false)); 
-  node->addMember(createNodeVariable("$NEW", false)); 
+  node->addMember(createNodeVariable(Variable::NAME_OLD, false)); 
+  node->addMember(createNodeVariable(Variable::NAME_NEW, false)); 
 
   return node;
 }
@@ -441,8 +469,8 @@ AstNode* Ast::createNodeUpsert (AstNodeType type,
   node->addMember(insertExpression);
   node->addMember(updateExpression);
   
-  node->addMember(createNodeReference("$OLD")); 
-  node->addMember(createNodeVariable("$NEW", false)); 
+  node->addMember(createNodeReference(Variable::NAME_OLD)); 
+  node->addMember(createNodeVariable(Variable::NAME_NEW, false)); 
   
   return node;
 }
@@ -776,15 +804,61 @@ AstNode* Ast::createNodeIndexedAccess (AstNode const* accessed,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST expand node
+/// @brief create an AST array limit node (offset, count)
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeExpand (AstNode const* iterator,
-                                AstNode const* expansion) {
-  AstNode* node = createNode(NODE_TYPE_EXPAND);
+AstNode* Ast::createNodeArrayLimit (AstNode const* offset,
+                                    AstNode const* count) {
+  AstNode* node = createNode(NODE_TYPE_ARRAY_LIMIT);
+
+  if (offset == nullptr) {
+    offset = createNodeValueInt(0);
+  }
+  node->addMember(offset);
+  node->addMember(count);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST expansion node, with or without a filter
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeExpansion (int64_t levels,
+                                   AstNode const* iterator, 
+                                   AstNode const* expanded,
+                                   AstNode const* filter,
+                                   AstNode const* limit,
+                                   AstNode const* projection) {
+  AstNode* node = createNode(NODE_TYPE_EXPANSION);
+  node->setIntValue(levels);
 
   node->addMember(iterator);
-  node->addMember(expansion);
+  node->addMember(expanded);
+
+  if (filter == nullptr) {
+    node->addMember(createNodeNop());
+  }
+  else {
+    node->addMember(filter);
+  }
+
+  if (limit == nullptr) {
+    node->addMember(createNodeNop());
+  }
+  else {
+    TRI_ASSERT(limit->type == NODE_TYPE_ARRAY_LIMIT);
+    node->addMember(limit);
+  }
+
+  if (projection == nullptr) {
+    node->addMember(createNodeNop());
+  }
+  else {
+    node->addMember(projection);
+  }
+
+  TRI_ASSERT(node->numMembers() == 5);
 
   return node;
 }
@@ -1135,6 +1209,7 @@ AstNode* Ast::replaceVariables (AstNode* node,
 
       if (variable != nullptr) {
         auto it = replacements.find(variable->id);
+
         if (it != replacements.end()) {
           // overwrite the node in place
           node->setData((*it).second);
@@ -1276,6 +1351,12 @@ void Ast::validateAndOptimize () {
     // ternary operator
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
       return this->optimizeTernaryOperator(node);
+    }
+
+    // passthru node
+    if (node->type == NODE_TYPE_PASSTHRU) {
+      // optimize away passthru node. this type of node is only used during parsing
+      return node->getMember(0);
     }
 
     // call to built-in function

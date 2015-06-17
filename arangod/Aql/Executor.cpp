@@ -262,6 +262,12 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 
 size_t const Executor::DefaultLiteralSizeThreshold = 32;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maxmium number of array members created from range accesses
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t const Executor::MaxRangeAccessArraySize = 1024 * 1024 * 32;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -305,7 +311,7 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
 
   // std::cout << "Executor::generateExpression: " << std::string(_buffer->c_str(), _buffer->length()) << "\n";
   v8::Handle<v8::Object> constantValues = v8::Object::New(isolate);
-  for (auto& it : _constantRegisters) {
+  for (auto const& it : _constantRegisters) {
     std::string name = "r";
     name.append(std::to_string(it.second));
 
@@ -657,9 +663,54 @@ void Executor::generateCodeArray (AstNode const* node) {
       _buffer->appendChar(',');
     }
 
-    generateCodeNode(node->getMember(i));
+    generateCodeNode(node->getMemberUnchecked(i));
   }
   _buffer->appendChar(']');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an array
+////////////////////////////////////////////////////////////////////////////////
+
+void Executor::generateCodeForcedArray (AstNode const* node,
+                                        int64_t levels) {
+  TRI_ASSERT(node != nullptr);
+
+  if (levels > 1) {
+    _buffer->appendText("_AQL.AQL_FLATTEN(");
+  }
+
+  bool castToArray = true;
+  if (node->type == NODE_TYPE_ARRAY) {
+    // value is an array already
+    castToArray = false;
+  }
+  else if (node->type == NODE_TYPE_EXPANSION && 
+           node->getMember(0)->type == NODE_TYPE_ARRAY) {
+    // value is an expansion over an array
+    castToArray = false;
+  }
+  else if (node->type == NODE_TYPE_ITERATOR && 
+           node->getMember(1)->type == NODE_TYPE_ARRAY) {
+    castToArray = false;
+  }
+
+  if (castToArray) {
+    // force the value to be an array
+    _buffer->appendText("_AQL.AQL_TO_ARRAY(");
+    generateCodeNode(node);
+    _buffer->appendChar(')');
+  } 
+  else {
+    // value already is an array 
+    generateCodeNode(node);
+  }
+
+  if (levels > 1) {
+    _buffer->appendChar(',');
+    _buffer->appendInteger(levels - 1);
+    _buffer->appendChar(')');
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -689,7 +740,7 @@ void Executor::generateCodeDynamicObject (AstNode const* node) {
 
   _buffer->appendText("(function() { var o={};");
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
       _buffer->appendText("o[", 2);
@@ -961,29 +1012,68 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
 /// @brief generate JavaScript code for an expansion (i.e. [*] operator)
 ////////////////////////////////////////////////////////////////////////////////
 
-void Executor::generateCodeExpand (AstNode const* node) {
+void Executor::generateCodeExpansion (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->numMembers() == 2);
 
-  _buffer->appendText("(function () { var r = []; _AQL.AQL_TO_LIST(");
-  generateCodeNode(node->getMember(0));
-  _buffer->appendText(").forEach(function (v) { ");
+  TRI_ASSERT(node->numMembers() == 5);
+
+  auto levels = node->getIntValue(true);
+
   auto iterator = node->getMember(0);
   auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
+
+  // start LIMIT 
+  auto limitNode = node->getMember(3);
+
+  if (limitNode->type != NODE_TYPE_NOP) {
+    _buffer->appendText("_AQL.AQL_SLICE(");
+  }
+
+  generateCodeForcedArray(node->getMember(0), levels);
+
+  // FILTER
+  auto filterNode = node->getMember(2);
+
+  if (filterNode->type != NODE_TYPE_NOP) {
+    _buffer->appendText(".filter(function (v) { ");
+    _buffer->appendText("vars[\"");
+    _buffer->appendText(variable->name);
+    _buffer->appendText("\"]=v; ");
+    _buffer->appendText("return _AQL.AQL_TO_BOOL(");
+    generateCodeNode(filterNode);
+    _buffer->appendText("); })");
+  }
+
+  // finish LIMIT
+  if (limitNode->type != NODE_TYPE_NOP) {
+    _buffer->appendChar(',');
+    generateCodeNode(limitNode->getMember(0));
+    _buffer->appendChar(',');
+    generateCodeNode(limitNode->getMember(1));
+    _buffer->appendChar(')');
+  }
+
+  // RETURN
+  _buffer->appendText(".map(function (v) { ");
   _buffer->appendText("vars[\"");
   _buffer->appendText(variable->name);
   _buffer->appendText("\"]=v; ");
 
-  _buffer->appendText("r.push(");
-  generateCodeNode(node->getMember(1));
-  _buffer->appendText("); }); return r; })()");
+  _buffer->appendText("return ");
+  if (node->getMember(4)->type != NODE_TYPE_NOP) {
+    generateCodeNode(node->getMember(4));
+  }
+  else {
+    generateCodeNode(node->getMember(1));
+  }
+  _buffer->appendText("; })");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for an expansion iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-void Executor::generateCodeExpandIterator (AstNode const* node) {
+void Executor::generateCodeExpansionIterator (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -1044,6 +1134,7 @@ void Executor::generateCodeIndexedAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
+  // indexed access
   _buffer->appendText("_AQL.GET_INDEX(");
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
@@ -1114,13 +1205,13 @@ void Executor::generateCodeNode (AstNode const* node) {
     case NODE_TYPE_FCALL_USER:
       generateCodeUserFunctionCall(node);
       break;
-    
-    case NODE_TYPE_EXPAND:
-      generateCodeExpand(node);
+
+    case NODE_TYPE_EXPANSION:
+      generateCodeExpansion(node);
       break;
 
     case NODE_TYPE_ITERATOR:
-      generateCodeExpandIterator(node);
+      generateCodeExpansionIterator(node);
       break;
     
     case NODE_TYPE_RANGE:
@@ -1141,11 +1232,13 @@ void Executor::generateCodeNode (AstNode const* node) {
 
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PASSTHRU:
+    case NODE_TYPE_ARRAY_LIMIT:
       // we're not expecting these types here
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type in code generator");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type in generateCodeNode");
 
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented in generateCodeNode");
   }
 }
 
@@ -1161,7 +1254,7 @@ triagens::basics::StringBuffer* Executor::initializeBuffer () {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    _buffer->reserve(256);
+    _buffer->reserve(512);
   }
   else {
     _buffer->clear();
