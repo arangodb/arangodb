@@ -26,6 +26,7 @@ ArangoDB and shouldn't be used if possible.
 * Foxx: Function-based Foxx Queue job types are deprecated and known to cause issues, they will raise a warning if you use them. Please use the new script-based job types instead.
 * Foxx: the Foxx sessions option `jwt` is deprecated, it will raise a warning if you use it. Please use the `sesssions-jwt` app from the Foxx app store or use the `crypto` module's JWT functions directly.
 * Foxx: the Foxx sessions option `type` is deprecated, it will raise a warning if you use it. Please use the options `cookie` and `header` instead.
+* Foxx: the Foxx sessions option `sessionStorageApp` is deprecated, it will raise a warning if you use it. Please use the option `sessionStorage` instead.
 
 
 ## 2.7
@@ -34,6 +35,7 @@ ArangoDB and shouldn't be used if possible.
 * Foxx: Function-based Foxx Queue job types have been removed entirely. Please use the new script-based job types instead.
 * Foxx: the Foxx sessions option `jwt` has been removed entirely. Please use the `sesssions-jwt` app from the Foxx app store or use the `crypto` module's JWT functions directly.
 * Foxx: the Foxx sessions option `type` has been removed entirely. Please use the options `cookie` and `header` instead.
+* Foxx: the Foxx sessions option `sessionStorageApp` has been removed entirely. Please use the option `sessionStorage` instead.
 * The module `org/arangodb/extend` is deprecated. Please use the module `extendible` instead.
 
 

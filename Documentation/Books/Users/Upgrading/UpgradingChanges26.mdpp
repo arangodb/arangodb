@@ -31,6 +31,8 @@ If you want to use your own JWT-based sessions, you can use the JWT functions in
 
 Instead of using the `type` option you can just use the `cookie` and `header` options on their own, which both now accept the value `true` to enable them with their default configurations.
 
+The option `sessionStorageApp` has been renamed to `sessionStorage` and now also accepts session storages directly. The old option `sessionStorageApp` will be removed entirely in 2.7.
+
 !SECTION Changed behavior
 
 !SUBSECTION AQL Graphs
