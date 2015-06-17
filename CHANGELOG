@@ -1,5 +1,14 @@
 v2.6.0-beta4 (2015-06-16)
--------------------
+-------------------------
+
+* deprecated now-obsolete AQL `SKIPLIST` function
+
+  The function was introduced in older versions of ArangoDB with a less powerful query optimizer to
+  retrieve data from a skiplist index using a `LIMIT` clause.
+
+  Since 2.3 the same goal can be achieved by using regular AQL constructs, e.g. 
+
+      FOR doc IN collection FILTER doc.value >= @value SORT doc.value DESC LIMIT 1 RETURN doc
 
 * fixed issues when switching the database inside tasks and during shutdown of database cursors 
 

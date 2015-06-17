@@ -66,6 +66,11 @@ function categories:
   as in the index. 
   If no suitable skiplist index is found, an error will be raised and the query will be aborted.
 
+  Note that the AQL *SKIPLIST* function is deprecated from 2.6 on. It will be removed in future versions
+  of ArangoDB. Please use regular AQL constructs instead, e.g. 
+
+      FOR doc IN test FILTER doc.created >= 0 SORT doc.value LIMIT 0, 100 RETURN doc
+
 - *CALL(function, arg1, ..., argn)*: Dynamically calls the function with name *function* 
   with the arguments specified. Both built-in and user-defined functions can be called. 
   Arguments are passed as seperate parameters to the called function.
