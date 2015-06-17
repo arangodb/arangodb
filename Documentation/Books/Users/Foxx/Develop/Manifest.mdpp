@@ -146,6 +146,7 @@ The **type** can be any of the following:
 * **boolean** or **bool**: `true` or `false`.
 * **number**: any finite decimal or integer number.
 * **string**: any string value.
+* **json**: any well-formed JSON value.
 
 If the configuration has parameters that do not specify a default value,
 you need to configure the app before it becomes active.
