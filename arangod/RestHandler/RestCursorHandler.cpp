@@ -159,7 +159,7 @@ bool RestCursorHandler::wasCancelled () {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) {
+triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) const {
   auto getAttribute = [&json] (char const* name) {
     return TRI_LookupObjectJson(json, name);
   };
@@ -216,7 +216,7 @@ triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) 
 /// several values
 ////////////////////////////////////////////////////////////////////////////////
       
-triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult& queryResult) {
+triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult& queryResult) const {
   // build "extra" attribute
   triagens::basics::Json extra(triagens::basics::Json::Object); 
  
