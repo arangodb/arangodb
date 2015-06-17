@@ -27,6 +27,7 @@ ArangoDB and shouldn't be used if possible.
 * Foxx: the Foxx sessions option `jwt` is deprecated, it will raise a warning if you use it. Please use the `sesssions-jwt` app from the Foxx app store or use the `crypto` module's JWT functions directly.
 * Foxx: the Foxx sessions option `type` is deprecated, it will raise a warning if you use it. Please use the options `cookie` and `header` instead.
 * Foxx: the Foxx sessions option `sessionStorageApp` is deprecated, it will raise a warning if you use it. Please use the option `sessionStorage` instead.
+* AQL: the AQL function `SKIPLIST` is deprecated. It will be removed in a future version of ArangoDB. Please use regular AQL constructs instead (e.g. `FOR doc IN collection FILTER doc.value >= @value SORT doc.value DESC LIMIT 1 RETURN doc`).
 
 
 ## 2.7
@@ -37,6 +38,7 @@ ArangoDB and shouldn't be used if possible.
 * Foxx: the Foxx sessions option `type` has been removed entirely. Please use the options `cookie` and `header` instead.
 * Foxx: the Foxx sessions option `sessionStorageApp` has been removed entirely. Please use the option `sessionStorage` instead.
 * The module `org/arangodb/extend` is deprecated. Please use the module `extendible` instead.
+* AQL: the AQL function `SKIPLIST` has been removed.
 
 
 ## 2.8
