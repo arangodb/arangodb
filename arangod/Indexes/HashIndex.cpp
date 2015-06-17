@@ -504,7 +504,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
 
   std::vector<TRI_hash_index_element_t*>* results = nullptr;
 
-  if (next != nullptr) {
+  if (next == nullptr) {
     try {
       results = _multi._hashArray->lookupByKey(searchValue, batchSize);
     }
@@ -522,17 +522,25 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
   }
 
   if (results != nullptr) {
-    next = results->back();  // for continuation the next time
-    try {
-      for (size_t i = 0; i < results->size(); i++) {
-        documents.emplace_back(*((*results)[i]->_document));
+    if (results->size() > 0) {
+      next = results->back();  // for continuation the next time
+      try {
+        for (size_t i = 0; i < results->size(); i++) {
+          documents.emplace_back(*((*results)[i]->_document));
+        }
       }
-      delete results;
+      catch (...) {
+        delete results;
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
     }
-    catch (...) {
-      delete results;
-      return TRI_ERROR_OUT_OF_MEMORY;
+    else {
+      next = nullptr;
     }
+    delete results;
+  }
+  else {
+    next = nullptr;
   }
   return TRI_ERROR_NO_ERROR;
 }
