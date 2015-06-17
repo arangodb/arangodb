@@ -569,6 +569,8 @@ v2.6.0 (XXXX-XX-XX)
   than an assuming the job type is defined globally. It is strongly recommended to convert your
   job types to the new script-based system.
 
+* renamed Foxx sessions option "sessionStorageApp" to "sessionStorage". The option now also accepts session storages directly.
+
 * Added the following JavaScript methods for file access:
   * fs.copyFile() to copy single files
   * fs.copyRecursive() to copy diretory trees

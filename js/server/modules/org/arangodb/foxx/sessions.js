@@ -198,6 +198,7 @@ function Sessions(opts) {
     }
   }
   if (opts.jwt) {
+    // TODO Remove this in 2.7
     console.warn(
       'The Foxx session option "jwt" is deprecated and will be removed.'
       + ' Please use the session-jwt app instead.'
@@ -233,8 +234,17 @@ function Sessions(opts) {
   if (opts.autoCreateSession !== false) {
     opts.autoCreateSession = true;
   }
-  if (!opts.sessionStorageApp) {
-    opts.sessionStorageApp = '/_system/sessions';
+  if (!opts.sessionStorage) {
+    if (opts.sessionStorageApp) {
+      // TODO Remove this in 2.7
+      console.warn(
+        'The Foxx session option "sessionStorageApp" has been renamed to "sessionStorage".'
+        + ' Use the option "sessionStorage" instead.'
+      );
+      opts.sessionStorage = opts.sessionStorageApp;
+    } else {
+      opts.sessionStorage = '/_system/sessions';
+    }
   }
   this.configuration = opts;
 }
@@ -248,7 +258,10 @@ function Sessions(opts) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.getSessionStorage = function () {
-  return Foxx.requireApp(this.configuration.sessionStorageApp).sessionStorage;
+  if (typeof this.configuration.sessionStorage !== 'string') {
+    return this.configuration.sessionStorage;
+  }
+  return Foxx.requireApp(this.configuration.sessionStorage).sessionStorage;
 };
 
 // -----------------------------------------------------------------------------

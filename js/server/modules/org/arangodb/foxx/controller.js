@@ -728,7 +728,7 @@ extend(Controller.prototype, {
 /// * *cookieName*: A string used as the name of the cookie. Defaults to *"sid"*.
 /// * *cookieSecret*: A secret string used to sign the cookie (as "*cookieName*_sig"). Optional.
 /// * *autoCreateSession*: Whether to always create a session if none exists. Defaults to *true*.
-/// * *sessionStorageApp*: Mount path of the app to use for sessions. Defaults to */_system/sessions*
+/// * *sessionStorage*: Mount path of the app to use for sessions. Defaults to */_system/sessions*
 ///
 ///
 /// @EXAMPLES
@@ -738,7 +738,7 @@ extend(Controller.prototype, {
 ///   type: "cookie",
 ///   cookieName: "my_cookie",
 ///   autoCreateSession: true,
-///   sessionStorageApp: "/my-sessions"
+///   sessionStorage: "/my-sessions"
 /// });
 /// ```
 ///
