@@ -101,7 +101,7 @@ function validateOrThrow(raw, schema, allowInvalid) {
   }
   var result = joi.validate(raw, schema);
   if (result.error && !allowInvalid) {
-    throw new BadRequest(result.error.message);
+    throw new BadRequest(result.error.message.replace(/^"value"/, 'Request body'));
   }
   return result.value;
 }
@@ -516,13 +516,14 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_notes
 ///
-/// `FoxxController#notes(description)`
+/// `FoxxController#notes(...description)`
 ///
 /// Set the notes for this route in the documentation
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  notes: function (notes) {
+  notes: function () {
+    var notes = Array.prototype.join.call(arguments, '\n');
     this.docs.addNotes(notes);
     return this;
   },
