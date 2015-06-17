@@ -104,13 +104,6 @@ int TRI_ResizeHashArray (triagens::arango::HashIndex*,
                          size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_hash_index_element_s* TRI_LookupByKeyHashArray (TRI_hash_array_t const*,
-                                                           struct TRI_index_search_value_s* key);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an element given a key, returns NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,7 +117,7 @@ struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t const*
 int TRI_InsertKeyHashArray (triagens::arango::HashIndex*,
                             TRI_hash_array_t*,
                             struct TRI_index_search_value_s const* key,
-                            struct TRI_hash_index_element_s const* element,
+                            struct TRI_hash_index_element_s* element,
                             bool isRollback);
 
 ////////////////////////////////////////////////////////////////////////////////

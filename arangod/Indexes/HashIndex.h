@@ -153,9 +153,9 @@ namespace triagens {
 
         int insertMulti (struct TRI_doc_mptr_t const*, bool);
         
-        int removeUnique (struct TRI_doc_mptr_t const*);
+        int removeUnique (struct TRI_doc_mptr_t const*, bool);
 
-        int removeMulti (struct TRI_doc_mptr_t const*);
+        int removeMulti (struct TRI_doc_mptr_t const*, bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes
