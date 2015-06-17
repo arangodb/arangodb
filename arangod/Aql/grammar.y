@@ -108,7 +108,6 @@ void Aqlerror (YYLTYPE* locp,
 %token T_TIMES "* operator"
 %token T_DIV "/ operator"
 %token T_MOD "% operator"
-%token T_EXPAND "[*] operator"
 
 %token T_QUESTION "?"
 %token T_COLON ":"
@@ -141,10 +140,10 @@ void Aqlerror (YYLTYPE* locp,
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
 %right UMINUS UPLUS T_NOT
-%left T_EXPAND
 %left FUNCCALL
 %left REFERENCE
 %left INDEXED
+%left EXPANSION
 %left T_SCOPE
 
 /* define token return types */
@@ -171,7 +170,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <strval> function_name;
 %type <node> optional_function_call_arguments;
 %type <node> function_arguments_list;
-%type <node> compound_type;
+%type <node> compound_value;
 %type <node> array;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
@@ -181,10 +180,12 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> object_elements_list;
 %type <node> object_element;
 %type <strval> object_element_name;
+%type <intval> array_filter_operator;
+%type <node> optional_array_filter;
+%type <node> optional_array_limit;
+%type <node> optional_array_return;
 %type <node> reference;
-%type <node> single_reference;
-%type <node> expansion;
-%type <node> atomic_value;
+%type <node> simple_value;
 %type <node> value_literal;
 %type <node> collection_name;
 %type <node> in_or_into_collection;
@@ -549,18 +550,18 @@ sort_direction:
   | T_DESC {
       $$ = parser->ast()->createNodeValueBool(false);
     }
-  | atomic_value {
+  | simple_value {
       $$ = $1;
     }
   ;
 
 limit_statement: 
-    T_LIMIT atomic_value {
+    T_LIMIT simple_value {
       auto offset = parser->ast()->createNodeValueInt(0);
       auto node = parser->ast()->createNodeLimit(offset, $2);
       parser->ast()->addOperation(node);
     }
-  | T_LIMIT atomic_value T_COMMA atomic_value {
+  | T_LIMIT simple_value T_COMMA simple_value {
       auto node = parser->ast()->createNodeLimit($2, $4);
       parser->ast()->addOperation(node);
     }
@@ -670,7 +671,7 @@ upsert_statement:
     T_UPSERT { 
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
-      parser->pushStack(parser->ast()->createNodeVariable("$OLD", true));
+      parser->pushStack(parser->ast()->createNodeVariable(Variable::NAME_OLD, true));
     } expression T_INSERT expression update_or_replace expression in_or_into_collection options {
       if (! parser->configureWriteQuery(AQL_QUERY_UPSERT, $8, $9)) {
         YYABORT;
@@ -712,33 +713,14 @@ upsert_statement:
       auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName.c_str()), index));
       parser->ast()->addOperation(firstDoc);
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference("$OLD"), $5, $7, $8, $9);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(Variable::NAME_OLD), $5, $7, $8, $9);
       parser->ast()->addOperation(node);
       parser->setWriteNode(node);
     }
   ;
 
 expression:
-    T_OPEN expression T_CLOSE {
-      $$ = $2;
-    }
-  | T_OPEN {
-      if (parser->isModificationQuery()) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
-      }
-      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
-      parser->ast()->startSubQuery();
-    } query T_CLOSE {
-      AstNode* node = parser->ast()->endSubQuery();
-      parser->ast()->scopes()->endCurrent();
-
-      std::string const variableName = parser->ast()->variables()->nextName();
-      auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), node, false);
-      parser->ast()->addOperation(subQuery);
-
-      $$ = parser->ast()->createNodeReference(variableName.c_str());
-    } 
-  | operator_unary {
+    operator_unary {
       $$ = $1;
     }
   | operator_binary {
@@ -747,10 +729,7 @@ expression:
   | operator_ternary {
       $$ = $1;
     }
-  | compound_type {
-      $$ = $1;
-    }
-  | atomic_value {
+  | value_literal {
       $$ = $1;
     }
   | reference {
@@ -901,7 +880,7 @@ function_arguments_list:
     }
   ;
 
-compound_type:
+compound_value:
     array {
       $$ = $1;
     }
@@ -996,35 +975,46 @@ object_element:
     }
   ;
 
-reference:
-    single_reference {
-      // start of reference (collection or variable name)
-      $$ = $1;
+array_filter_operator:
+    T_TIMES {
+      $$ = 1;
     }
-  | reference {
-      // expanded variable access, e.g. variable[*]
+  | array_filter_operator T_TIMES {
+      $$ = $1 + 1;
+    } 
+  ;
 
-      // create a temporary iterator variable
-      std::string const nextName = parser->ast()->variables()->nextName() + "_";
-      char const* iteratorName = nextName.c_str();
-      auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
-
-      parser->pushStack(iterator);
-      parser->pushStack(parser->ast()->createNodeReference(iteratorName));
-    } T_EXPAND expansion {
-      // return from the "expansion" subrule
-
-      // push the expand node into the statement list
-      auto iterator = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeExpand(iterator, $4);
-
-      if ($$ == nullptr) {
-        ABORT_OOM
-      }
+optional_array_filter:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_FILTER expression {
+      $$ = $2;
     }
   ;
 
-single_reference:
+optional_array_limit:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_LIMIT expression {
+      $$ = parser->ast()->createNodeArrayLimit(nullptr, $2);
+    }
+  | T_LIMIT expression T_COMMA expression {
+      $$ = parser->ast()->createNodeArrayLimit($2, $4);
+    }
+  ;
+
+optional_array_return:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_RETURN expression {
+      $$ = $2;
+    }
+  ;
+
+reference:
     T_STRING {
       // variable or collection
       auto ast = parser->ast();
@@ -1040,10 +1030,16 @@ single_reference:
         // variable does not exist
         // now try variable aliases OLD (= $OLD) and NEW (= $NEW)
         if (strcmp($1, "OLD") == 0) {
-          variable = ast->scopes()->getVariable("$OLD");
+          variable = ast->scopes()->getVariable(Variable::NAME_OLD);
         }
         else if (strcmp($1, "NEW") == 0) {
-          variable = ast->scopes()->getVariable("$NEW");
+          variable = ast->scopes()->getVariable(Variable::NAME_NEW);
+        }
+        else if (ast->scopes()->canUseCurrentVariable() && strcmp($1, "CURRENT") == 0) {
+          variable = ast->scopes()->getCurrentVariable();
+        }
+        else if (strcmp($1, Variable::NAME_CURRENT) == 0) {
+          variable = ast->scopes()->getCurrentVariable();
         }
         
         if (variable != nullptr) {
@@ -1061,6 +1057,12 @@ single_reference:
 
       $$ = node;
     }
+  | compound_value {
+      $$ = $1;
+    }
+  | bind_parameter {
+      $$ = $1;
+    }
   | function_call {
       $$ = $1;
       
@@ -1068,51 +1070,126 @@ single_reference:
         ABORT_OOM
       }
     }
-  | single_reference '.' T_STRING %prec REFERENCE {
+  | T_OPEN expression T_CLOSE {
+      if ($2->type == NODE_TYPE_EXPANSION) {
+        // create a dummy passthru node that reduces and evaluates the expansion first
+        // and the expansion on top of the stack won't be chained with any other expansions
+        $$ = parser->ast()->createNodePassthru($2);
+      }
+      else {
+        $$ = $2;
+      }
+    }
+  | T_OPEN {
+      if (parser->isModificationQuery()) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
+      }
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->startSubQuery();
+    } query T_CLOSE {
+      AstNode* node = parser->ast()->endSubQuery();
+      parser->ast()->scopes()->endCurrent();
+
+      std::string const variableName = parser->ast()->variables()->nextName();
+      auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), node, false);
+      parser->ast()->addOperation(subQuery);
+
+      $$ = parser->ast()->createNodeReference(variableName.c_str());
+    } 
+  | reference '.' T_STRING %prec REFERENCE {
       // named variable access, e.g. variable.reference
-      $$ = parser->ast()->createNodeAttributeAccess($1, $3);
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        // if left operand is an expansion already...
+        // dive into the expansion's right-hand child nodes for further expansion and
+        // patch the bottom-most one
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode($1));
+        TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
+        current->changeMember(1, parser->ast()->createNodeAttributeAccess(current->getMember(1), $3));
+        $$ = $1;
+      }
+      else {
+        $$ = parser->ast()->createNodeAttributeAccess($1, $3);
+      }
     }
-  | single_reference '.' bind_parameter %prec REFERENCE {
+  | reference '.' bind_parameter %prec REFERENCE {
       // named variable access, e.g. variable.@reference
-      $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        // if left operand is an expansion already...
+        // patch the existing expansion
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode($1));
+        TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
+        current->changeMember(1, parser->ast()->createNodeBoundAttributeAccess(current->getMember(1), $3));
+        $$ = $1;
+      }
+      else {
+        $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
+      }
     }
-  | single_reference T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
+  | reference T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
       // indexed variable access, e.g. variable[index]
-      $$ = parser->ast()->createNodeIndexedAccess($1, $3);
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        // if left operand is an expansion already...
+        // patch the existing expansion
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode($1));
+        TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
+        current->changeMember(1, parser->ast()->createNodeIndexedAccess(current->getMember(1), $3));
+        $$ = $1;
+      }
+      else {
+        $$ = parser->ast()->createNodeIndexedAccess($1, $3);
+      }
+    }
+  | reference T_ARRAY_OPEN array_filter_operator {
+      // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and RETURN clauses
+      if ($3 > 1 && $1->type == NODE_TYPE_EXPANSION) {
+        // create a dummy passthru node that reduces and evaluates the expansion first
+        // and the expansion on top of the stack won't be chained with any other expansions
+        $1 = parser->ast()->createNodePassthru($1);
+      }
+
+      // create a temporary iterator variable
+      std::string const nextName = parser->ast()->variables()->nextName() + "_";
+      char const* iteratorName = nextName.c_str();
+
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        auto iterator = parser->ast()->createNodeIterator(iteratorName, $1->getMember(1));
+        parser->pushStack(iterator);
+      }
+      else {
+        auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
+        parser->pushStack(iterator);
+      }
+
+      auto scopes = parser->ast()->scopes();
+      scopes->stackCurrentVariable(scopes->getVariable(iteratorName));
+    } optional_array_filter optional_array_limit optional_array_return T_ARRAY_CLOSE %prec EXPANSION {
+      auto scopes = parser->ast()->scopes();
+      scopes->unstackCurrentVariable();
+
+      auto iterator = static_cast<AstNode const*>(parser->popStack());
+      auto variableNode = iterator->getMember(0);
+      TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
+      auto variable = static_cast<Variable const*>(variableNode->getData());
+
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
+        $1->changeMember(1, expand);
+        $$ = $1;
+/*
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode($1));
+        TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
+        auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
+        current->changeMember(1, expand);
+        $$ = $1;
+*/
+      }
+      else {
+        $$ = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
+      }
     }
   ;
 
-expansion:
-    '.' T_STRING %prec REFERENCE {
-      // named variable access, continuation from * expansion, e.g. [*].variable.reference
-      auto node = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeAttributeAccess(node, $2);
-    }
-  | '.' bind_parameter %prec REFERENCE {
-      // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.@reference
-      auto node = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeBoundAttributeAccess(node, $2);
-    }
-  | T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
-      // indexed variable access, continuation from * expansion, e.g. [*].variable[index]
-      auto node = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeIndexedAccess(node, $2);
-    }
-  | expansion '.' T_STRING %prec REFERENCE {
-      // named variable access, continuation from * expansion, e.g. [*].variable.xx.reference
-      $$ = parser->ast()->createNodeAttributeAccess($1, $3);
-    }
-  | expansion '.' bind_parameter %prec REFERENCE {
-      // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.xx.@reference
-      $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
-    }
-  | expansion T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
-      // indexed variable access, continuation from * expansion, e.g. [*].variable.xx.[index]
-      $$ = parser->ast()->createNodeIndexedAccess($1, $3);
-    }
-  ;
-
-atomic_value:
+simple_value:
     value_literal {
       $$ = $1;
     }

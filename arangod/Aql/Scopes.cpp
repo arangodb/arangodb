@@ -103,7 +103,7 @@ bool Scope::existsVariable (std::string const& name) const {
 /// @brief returns a variable
 ////////////////////////////////////////////////////////////////////////////////
 
-Variable* Scope::getVariable (char const* name) const {
+Variable const* Scope::getVariable (char const* name) const {
   std::string const varname(name);
 
   auto it = _variables.find(varname);
@@ -119,7 +119,7 @@ Variable* Scope::getVariable (char const* name) const {
 /// @brief returns a variable
 ////////////////////////////////////////////////////////////////////////////////
 
-Variable* Scope::getVariable (std::string const& name) const {
+Variable const* Scope::getVariable (std::string const& name) const {
   auto it = _variables.find(name);
 
   if (it == _variables.end()) {
@@ -138,7 +138,9 @@ Variable* Scope::getVariable (std::string const& name) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 Scopes::Scopes () 
-  : _activeScopes() {
+  : _activeScopes(),
+    _currentVariables() {
+
   _activeScopes.reserve(4);
 }
 
@@ -147,8 +149,8 @@ Scopes::Scopes ()
 ////////////////////////////////////////////////////////////////////////////////
 
 Scopes::~Scopes () {
-  for (auto it = _activeScopes.begin(); it != _activeScopes.end(); ++it) {
-    delete (*it);
+  for (auto& it : _activeScopes) {
+    delete it;
   }
 }
 
@@ -161,14 +163,10 @@ Scopes::~Scopes () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scopes::start (ScopeType type) {
-  auto scope = new Scope(type);
-  try {
-    _activeScopes.emplace_back(scope);
-  }
-  catch (...) {
-    delete scope;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  std::unique_ptr<Scope> scope(new Scope(type));
+
+  _activeScopes.emplace_back(scope.get());
+  scope.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +246,7 @@ bool Scopes::existsVariable (char const* name) const {
 /// @brief return a variable by name - this respects the current scopes
 ////////////////////////////////////////////////////////////////////////////////
         
-Variable* Scopes::getVariable (char const* name) const {
+Variable const* Scopes::getVariable (char const* name) const {
   TRI_ASSERT(! _activeScopes.empty());
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
@@ -260,6 +258,37 @@ Variable* Scopes::getVariable (char const* name) const {
   }
 
   return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the $CURRENT variable
+////////////////////////////////////////////////////////////////////////////////
+
+Variable const* Scopes::getCurrentVariable () const {
+  if (_currentVariables.empty()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, Variable::NAME_CURRENT);
+  }
+  auto result = _currentVariables.back();
+  TRI_ASSERT(result != nullptr);
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stack a $CURRENT variable from the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void Scopes::stackCurrentVariable (Variable const* variable) {
+  _currentVariables.emplace_back(variable);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister the $CURRENT variable from the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void Scopes::unstackCurrentVariable () {
+  TRI_ASSERT(! _currentVariables.empty());
+
+  _currentVariables.pop_back();
 }
 
 // -----------------------------------------------------------------------------

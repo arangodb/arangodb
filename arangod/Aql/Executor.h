@@ -151,6 +151,13 @@ namespace triagens {
         void generateCodeArray (AstNode const*); 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a forced array
+////////////////////////////////////////////////////////////////////////////////
+
+        void generateCodeForcedArray (AstNode const*,
+                                      int64_t); 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for an object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -222,13 +229,13 @@ namespace triagens {
 /// @brief generate JavaScript code for an expansion (i.e. [*] operator)
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCodeExpand (AstNode const*);
+        void generateCodeExpansion (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for an expansion iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCodeExpandIterator (AstNode const*);
+        void generateCodeExpansionIterator (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for a range (i.e. 1..10)
@@ -308,12 +315,24 @@ namespace triagens {
 
         static std::unordered_map<std::string, Function const> const FunctionNames;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                           public static variables
+// -----------------------------------------------------------------------------
+
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum number of array members / object attributes for considering
 /// an array / object literal "big" and pulling it out of the expression
 ////////////////////////////////////////////////////////////////////////////////
 
         static size_t const DefaultLiteralSizeThreshold;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maxmium number of array members created from range accesses
+////////////////////////////////////////////////////////////////////////////////
+
+        static int64_t const MaxRangeAccessArraySize;
     };
 
   }
