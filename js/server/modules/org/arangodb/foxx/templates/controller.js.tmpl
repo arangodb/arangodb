@@ -5,63 +5,61 @@ var Foxx = require('org/arangodb/foxx');
 var ArangoError = require('org/arangodb').ArangoError;
 var <%= repository %> = require('<%= repositoryPath %>');
 var <%= model %> = require('<%= modelPath %>');
+var controller = new Foxx.Controller(applicationContext);
 
 var <%= modelInstance %>IdSchema = joi.string().required()
 .description('The id of the <%= modelInstance %>')
 .meta({allowMultiple: false});
-
-var controller = new Foxx.Controller(applicationContext);
 
 var <%= repositoryInstance %> = new <%= repository %>(
   applicationContext.collection('<%= collectionName %>'),
   {model: <%= model %>}
 );
 
-/** Lists of all <%= collectionName %>.
- *
- * This function simply returns the list of all <%= model %>.
- */
+
 controller.get('/', function (req, res) {
   res.json(_.map(<%= repositoryInstance %>.all(), function (model) {
     return model.forClient();
   }));
-});
+})
+.summary('Lists of all <%= collectionName %>.')
+.notes('This function simply returns the list of all <%= model %>.');
 
-/** Creates a new <%= modelInstance %>.
- *
- * Creates a new <%= modelInstance %>. The information has to be in the
- * requestBody.
- */
+
 controller.post('/', function (req, res) {
   var <%= modelInstance %> = req.parameters.<%= modelInstance %>;
   res.json(<%= repositoryInstance %>.save(<%= modelInstance %>).forClient());
 })
+.summary('Creates a new <%= modelInstance %>.')
+.notes(
+  'Creates a new <%= modelInstance %>.',
+  'The information has to be in the requestBody.'
+)
 .bodyParam('<%= modelInstance %>', {
   description: 'The <%= modelInstance %> you want to create',
   type: <%= model %>
 });
 
-/** Reads a <%= modelInstance %>.
- *
- * Reads a <%= modelInstance %>.
- */
+
 controller.get('/:id', function (req, res) {
   var id = req.urlParameters.id;
   res.json(<%= repositoryInstance %>.byId(id).forClient());
 })
+.summary('Reads a <%= modelInstance %>.')
 .pathParam('id', <%= modelInstance %>IdSchema)
 .errorResponse(ArangoError, 404, 'The <%= modelInstance %> could not be found');
 
-/** Replaces a <%= modelInstance %>.
- *
- * Changes a <%= modelInstance %>. The information has to be in the
- * requestBody.
- */
+
 controller.put('/:id', function (req, res) {
   var id = req.urlParameters.id;
   var <%= modelInstance %> = req.parameters.<%= modelInstance %>;
-  res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>).forClient());
+  res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>));
 })
+.summary('Replaces a <%= modelInstance %>.')
+.notes(
+  'Changes a <%= modelInstance %>.',
+  'The information has to be in the requestBody.'
+)
 .pathParam('id', <%= modelInstance %>IdSchema)
 .bodyParam('<%= modelInstance %>', {
   description: 'The <%= modelInstance %> you want your old one to be replaced with',
@@ -69,16 +67,17 @@ controller.put('/:id', function (req, res) {
 })
 .errorResponse(ArangoError, 404, 'The <%= modelInstance %> could not be found');
 
-/** Updates a <%= modelInstance %>.
- *
- * Changes a <%= modelInstance %>. The information has to be in the
- * requestBody.
- */
+
 controller.patch('/:id', function (req, res) {
   var id = req.urlParameters.id;
   var patchData = req.parameters.patch;
-  res.json(<%= repositoryInstance %>.updateById(id, patchData).forClient());
+  res.json(<%= repositoryInstance %>.updateById(id, patchData));
 })
+.summary('Updates a <%= modelInstance %>.')
+.notes(
+  'Changes a <%= modelInstance %>.',
+  'The information has to be in the requestBody.'
+)
 .pathParam('id', <%= modelInstance %>IdSchema)
 .bodyParam('patch', {
   description: 'The patch data you want your <%= modelInstance %> to be updated with',
@@ -86,14 +85,12 @@ controller.patch('/:id', function (req, res) {
 })
 .errorResponse(ArangoError, 404, 'The <%= modelInstance %> could not be found');
 
-/** Removes a <%= modelInstance %>.
- *
- * Removes a <%= modelInstance %>.
- */
+
 controller.delete('/:id', function (req, res) {
   var id = req.urlParameters.id;
   <%= repositoryInstance %>.removeById(id);
   res.json({success: true});
 })
+.summary('Removes a <%= modelInstance %>.')
 .pathParam('id', <%= modelInstance %>IdSchema)
 .errorResponse(ArangoError, 404, 'The <%= modelInstance %> could not be found');
