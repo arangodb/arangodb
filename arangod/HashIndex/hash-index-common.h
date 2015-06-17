@@ -41,6 +41,12 @@
 struct TRI_doc_mptr_t;
 struct TRI_shaped_sub_s;
 
+namespace triagens {
+  namespace arango {
+    class HashIndex;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        HASH INDEX
 // -----------------------------------------------------------------------------
@@ -60,6 +66,22 @@ typedef struct TRI_hash_index_element_s {
   struct TRI_shaped_sub_s*                _subObjects;
 }
 TRI_hash_index_element_t;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           helpers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allocates space for hash index element
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_hash_index_element_t* AllocateHashIndexElement (class triagens::arango::HashIndex const* hashIndex);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an element, removing any allocated memory
+////////////////////////////////////////////////////////////////////////////////
+
+void DestroyHashIndexElement (TRI_hash_index_element_t* element);
 
 #endif
 
