@@ -100,10 +100,10 @@ extern int Aqldebug;
     T_NIN = 309,
     UMINUS = 310,
     UPLUS = 311,
-    EXPANSION = 312,
-    FUNCCALL = 313,
-    REFERENCE = 314,
-    INDEXED = 315
+    FUNCCALL = 312,
+    REFERENCE = 313,
+    INDEXED = 314,
+    EXPANSION = 315
   };
 #endif
 
