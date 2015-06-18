@@ -122,6 +122,7 @@ void DispatcherThread::run () {
 
       // set running job
       _queue->_runningJobs.insert(job);
+      LOG_DEBUG("Starting to run job: %s", job->getName().c_str());
 
       // now release the queue lock (initialise is inside the lock, work outside)
       _queue->_accessQueue.unlock();
