@@ -40,7 +40,7 @@
     'v8_enable_i18n_support%': 1,
     'v8_deprecation_warnings': 1,
     'msvs_multi_core_compile%': '1',
-    'mac_deployment_target%': '10.5',
+    'mac_deployment_target%': '10.7',
     'variables': {
       'variables': {
         'variables': {
