@@ -29,6 +29,7 @@ ArangoDB and shouldn't be used if possible.
 * Foxx: the Foxx sessions option `sessionStorageApp` is deprecated, it will raise a warning if you use it. Please use the option `sessionStorage` instead.
 * AQL: the AQL function `SKIPLIST` is deprecated. It will be removed in a future version of ArangoDB. Please use regular AQL constructs instead (e.g. `FOR doc IN collection FILTER doc.value >= @value SORT doc.value DESC LIMIT 1 RETURN doc`).
 * Simple queries: the following simple query functions are now deprecated: collection.near(), collection.within(), collection.geo(), collection.fulltext(), collection.range(), collection.closedRange(). It is recommended to replace calls to these functions with equivalent AQL queries, which are more flexible.
+* Simple queries: using negative values for SimpleQuery.skip() is deprecated. This functionality will be removed in future versions of ArangoDB.
 
 
 ## 2.7
@@ -41,6 +42,7 @@ ArangoDB and shouldn't be used if possible.
 * The module `org/arangodb/extend` is deprecated. Please use the module `extendible` instead.
 * AQL: the AQL function `SKIPLIST` has been removed.
 * Simple queries: the following simple query functions are now deprecated: collection.near(), collection.within(), collection.geo(), collection.fulltext(), collection.range(), collection.closedRange(). It is recommended to replace calls to these functions with equivalent AQL queries, which are more flexible.
+* Simple queries: using negative values for SimpleQuery.skip() is not supported any longer.
 
 
 ## 2.8

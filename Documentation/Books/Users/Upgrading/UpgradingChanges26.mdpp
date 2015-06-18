@@ -277,6 +277,9 @@ which are more flexible because they can be combined with other operations:
 The above simple query functions and REST API methods may be removed in future versions 
 of ArangoDB.
 
+Using negative values for `SimpleQuery.skip()` is also deprecated. 
+This functionality will be removed in future versions of ArangoDB.
+
 !SUBSECTION AQL functions
 
 The AQL `SKIPLIST` function has been deprecated because it is obsolete.
