@@ -93,6 +93,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestQueryHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestSimpleHandler.cpp \
+	arangod/RestHandler/RestSimpleQueryHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \

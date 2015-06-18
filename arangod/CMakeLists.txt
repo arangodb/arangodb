@@ -120,6 +120,7 @@ add_executable(
     RestHandler/RestQueryHandler.cpp
     RestHandler/RestReplicationHandler.cpp
     RestHandler/RestSimpleHandler.cpp
+    RestHandler/RestSimpleQueryHandler.cpp
     RestHandler/RestUploadHandler.cpp
     RestHandler/RestVocbaseBaseHandler.cpp
     RestServer/ArangoServer.cpp
