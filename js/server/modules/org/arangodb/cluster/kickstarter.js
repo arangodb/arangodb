@@ -234,12 +234,9 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 
   var clusterUrl = "http://" + clusterEndPoint;
   var agencyUrl =  "http://" + extBind;
-  require("internal").print("snaotehusnoatehusaonuteh");
   if (require("internal").platform.substr(0,3) === 'win') {
-    require("internal").print("agentDataDir: " + agentDataDir);
     agentDataDir = agentDataDir.split("\\").join("/");
   }
-  require("internal").print("agentDataDir: " + agentDataDir);
 
   var args = {
       "data-dir":               agentDataDir,
@@ -271,8 +268,6 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     return {"error":true, "isStartAgent": true,
             "errorMessage": "agency binary not found at '" + agentPath + "'"};
   }
-
-  require("internal").print(JSON.stringify(toArgv(args)));
 
   var pid = executeExternal(agentPath, toArgv(args));
   var res;
@@ -481,12 +476,12 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
   var result;
   var url = coordinators[0] + "/_admin/cluster/bootstrapDbServers";
   var body = '{"isRelaunch": ' + (isRelaunch ? "true" : "false") + '}';
-  while (retryCount < 10) {
+  while (retryCount < timeout) {
 
     result = download(url, body, options);
 
     if ((result.code === 503) && (retryCount < 3)) {
-      wait(timeout);
+      wait(1);
       retryCount+=1;
       continue;
     }

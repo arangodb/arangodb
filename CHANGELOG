@@ -1,6 +1,45 @@
 v2.6.0-beta4 (2015-06-16)
 -------------------------
 
+* using negative values for `SimpleQuery.skip()` is deprecated. 
+  This functionality will be removed in future versions of ArangoDB.
+
+* The following simple query functions are now deprecated:
+
+  * collection.near
+  * collection.within 
+  * collection.geo 
+  * collection.fulltext
+  * collection.range 
+  * collection.closedRange 
+
+  This also lead to the following REST API methods being deprecated from now on:
+
+  * PUT /_api/simple/near
+  * PUT /_api/simple/within
+  * PUT /_api/simple/fulltext
+  * PUT /_api/simple/range
+
+  It is recommended to replace calls to these functions or APIs with equivalent AQL queries, 
+  which are more flexible because they can be combined with other operations:
+
+      FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
+        RETURN doc
+
+      FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
+        RETURN doc
+
+      FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
+        RETURN doc
+  
+      FOR doc IN @@collection 
+        FILTER doc.value >= @left && doc.value < @right 
+        LIMIT @skip, @limit 
+        RETURN doc`
+  
+  The above simple query functions and REST API methods may be removed in future versions 
+  of ArangoDB.
+
 * deprecated now-obsolete AQL `SKIPLIST` function
 
   The function was introduced in older versions of ArangoDB with a less powerful query optimizer to

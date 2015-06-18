@@ -61,11 +61,19 @@ boolean value:
 
 In 2.6 the graph functions did undergo a performance lifting.
 During this process we had to adopt the result format and the options for some of them.
-In general all graph functions now have an option `includeData` which allows to trigger
+Many graph functions now have an option `includeData` which allows to trigger
 if the result of this function should contain fully extracted documents `includeData: true`
 or only the `_id` values `includeData: false`.
 In most use cases the `_id` is sufficient to continue and the extraction of data is an unnecessary
 operation.
+The AQL functions supporting this additional option are:
+
+* SHORTEST_PATH
+* NEIGHBORS
+* GRAPH_SHORTEST_PATH
+* GRAPH_NEIGHBORS
+* GRAPH_EDGES
+
 Furthermore the result `SHORTEST_PATH` has changed. The old format returned a list of all vertices on the path.
 Optionally it could include each sub-path for these vertices.
 All of the documents were fully extracted.
@@ -228,6 +236,65 @@ of the index attribute were ignored when fulltext indexing.
 Now, if the index attribute value is an object, the object's values will each be included in the
 fulltext index if they are strings. If the index attribute value is an array, the array's values
 will each be included in the fulltext index if they are strings.
+
+!SECTION Deprecated server functionality
+
+!SUBSECTION Simple queries
+
+The following simple query functions are now deprecated:
+
+* collection.near
+* collection.within 
+* collection.geo 
+* collection.fulltext
+* collection.range 
+* collection.closedRange 
+
+This also lead to the following REST API methods being deprecated from now on:
+
+* PUT /_api/simple/near
+* PUT /_api/simple/within
+* PUT /_api/simple/fulltext
+* PUT /_api/simple/range
+
+It is recommended to replace calls to these functions or APIs with equivalent AQL queries, 
+which are more flexible because they can be combined with other operations:
+
+    FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
+      RETURN doc
+
+    FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
+      RETURN doc
+
+    FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
+      RETURN doc
+  
+    FOR doc IN @@collection 
+      FILTER doc.value >= @left && doc.value < @right 
+      LIMIT @skip, @limit 
+      RETURN doc`
+  
+The above simple query functions and REST API methods may be removed in future versions 
+of ArangoDB.
+
+Using negative values for `SimpleQuery.skip()` is also deprecated. 
+This functionality will be removed in future versions of ArangoDB.
+
+!SUBSECTION AQL functions
+
+The AQL `SKIPLIST` function has been deprecated because it is obsolete.
+
+The function was introduced in older versions of ArangoDB with a less powerful query optimizer to
+retrieve data from a skiplist index using a `LIMIT` clause.
+
+Since 2.3 the same goal can be achieved by using regular AQL constructs, e.g. 
+
+    FOR doc IN @@collection 
+      FILTER doc.value >= @value 
+      SORT doc.value
+      LIMIT 1 
+      RETURN doc
+
 
 !SECTION Startup option changes
 

@@ -6472,8 +6472,6 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 /// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#graph_shortest_path).
 /// It does not return the actual path but only the distance between two vertices.
 /// 
-/// NOTE: Since version 2.6 we have included a new optional parameter *includeData*.
-///       See documentation for [GRAPH\_SHORTEST\_PATH](#graph_shortest_path).
 /// @EXAMPLES
 ///
 /// A route planner example, distance from all french to all german cities:
@@ -6498,7 +6496,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 /// | db._query("FOR e IN GRAPH_DISTANCE_TO("
 /// | + "'routeplanner', [{_id: 'germanCity/Cologne'},{_id: 'germanCity/Hamburg'}], " +
 /// | "'frenchCity/Lyon', " +
-/// | "{weight : 'distance', includeData: true}) RETURN [e.startVertex, e.vertex, e.distance]"
+/// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex, e.distance]"
 /// ).toArray();
 /// ~ examples.dropGraph("routeplanner");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -8379,7 +8377,8 @@ function AQL_GRAPH_DIAMETER (graphName, options) {
     options.algorithm = "Floyd-Warshall";
   }
 
-  var result = AQL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), max = 0;
+  var result = AQL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options),
+      max = 0;
   Object.keys(result).forEach(function (r) {
     if (result[r] > max) {
       max = result[r];
