@@ -57,7 +57,7 @@
 #include "V8Server/v8-wrapshapedjson.h"
 #include "V8Server/V8Traverser.h"
 #include "VocBase/auth.h"
-#include "VocBase/key-generator.h"
+#include "VocBase/KeyGenerator.h"
 #include "Wal/LogfileManager.h"
 
 #include <unicode/timezone.h>
