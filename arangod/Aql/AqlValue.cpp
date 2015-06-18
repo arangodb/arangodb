@@ -445,6 +445,31 @@ int64_t AqlValue::toInt64 () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the numeric value of an AqlValue
+////////////////////////////////////////////////////////////////////////////////
+
+double AqlValue::toNumber () const {
+  switch (_type) {
+    case JSON: 
+      return TRI_ToDoubleJson(_json->json());
+    case RANGE: {
+      size_t rangeSize = _range->size();
+      if (rangeSize == 1) {  
+        return _range->at(0);
+      }
+      return 0.0;
+    }
+    case DOCVEC: 
+    case SHAPED: 
+    case EMPTY: 
+      // cannot convert these types
+      return 0.0;
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
 ////////////////////////////////////////////////////////////////////////////////
 
