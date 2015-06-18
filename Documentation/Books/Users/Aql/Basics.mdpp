@@ -324,12 +324,12 @@ query.
 Using bind parameters, the meaning of an existing query cannot be changed. Bind
 parameters can be used everywhere in a query where literals can be used.
 
-The syntax for bind parameters is *@nameparameter* where *nameparameter* is the
+The syntax for bind parameters is *@name* where *name* is the
 actual parameter name. The bind parameter values need to be passed along with
 the query when it is executed, but not as part of the query text itself.
 
     FOR u IN users
-      FILTER u.id == @id && u.name == @nameparameter
+      FILTER u.id == @id && u.name == @name
       RETURN u
 
 Bind parameter names must start with any of the letters *a* to *z* (both in

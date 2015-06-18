@@ -17,7 +17,7 @@ If *cookie* sessions are used, the session cookie will be updated after every ro
 *Parameter*
 
 * *options* (optional): an object with any of the following properties:
-  * *sessionStorageApp* (optional): mount point of the session storage app to use. Default: `"/_system/sessions"`.
+  * *sessionStorage* (optional): mount point of the session storage app to use. Alternatively can be passed a session storage implementation directly. Default: `"/_system/sessions"` (the built-in session storage used by system apps).
   * *cookie* (optional): an object with the following properties:
     * *name*: name of the session cookie if using cookie sessions. Default: `"sid"`.
     * *secret* (optional): secret string to sign session cookies with if using cookie sessions.
@@ -38,7 +38,7 @@ Example configuration for using signed cookies:
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
+  sessionStorage: '/_system/sessions',
   cookie: {secret: 'keep-this-string-secret'}
 });
 ```
@@ -48,7 +48,7 @@ Example configuration for using a header:
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
+  sessionStorage: '/_system/sessions',
   header: true
 });
 ```
@@ -58,7 +58,7 @@ Example configuration for using a header with a custom name:
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
+  sessionStorage: '/_system/sessions',
   header: 'X-My-Session-Token'
 });
 ```
@@ -68,7 +68,7 @@ Example configuration for using unsigned cookies:
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
+  sessionStorage: '/_system/sessions',
   cookie: true
 });
 ```
@@ -78,7 +78,7 @@ Example configuration for using unsigned cookies and a header:
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
+  sessionStorage: '/_system/sessions',
   cookie: true,
   header: true
 });
