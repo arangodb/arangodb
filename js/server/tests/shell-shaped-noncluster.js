@@ -404,6 +404,72 @@ function DocumentShapedJsonSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check deletion of special attribute _id
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeletionShapedKeyId : function () {
+      for (var i = 0; i < 100; ++i) {
+        var doc = c.document("test" + i);
+
+        // initial state
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("values"));
+
+        // delete special attribute _id
+        delete doc._id;
+        assertFalse(doc.hasOwnProperty("_id"));
+        assertUndefined(doc._id);
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("values"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check deletion of special attributes from shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeletionShapedKeyRev : function () {
+      for (var i = 0; i < 100; ++i) {
+        var doc = c.document("test" + i);
+
+        // initial state
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("values"));
+
+        // delete special attribute _key
+        delete doc._key;
+        assertFalse(doc.hasOwnProperty("_key"));
+        assertUndefined(doc._key);
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("values"));
+        
+        // delete special attribute _rev
+        delete doc._rev;
+        assertFalse(doc.hasOwnProperty("_rev"));
+        assertFalse(doc.hasOwnProperty("_key"));
+        assertUndefined(doc._rev);
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("values"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check deletion of keys from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -443,6 +509,55 @@ function DocumentShapedJsonSuite () {
         delete doc._id;
         assertFalse(doc.hasOwnProperty("_id"));
         assertUndefined(doc._id);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check deletion after deletion
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeletionDeletion : function () {
+      for (var i = 0; i < 100; ++i) {
+        var doc = c.document("test" + i);
+
+        // initial state
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("one"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("values"));
+
+        assertEqual([ "_id", "_key", "_rev", "one", "text", "value", "values" ], Object.keys(doc).sort());
+
+        // delete _key
+        delete doc._key;
+        assertEqual([ "_id", "_rev", "one", "text", "value", "values" ], Object.keys(doc).sort());
+        
+        // delete text
+        delete doc.text;
+        assertEqual([ "_id", "_rev", "one", "value", "values" ], Object.keys(doc).sort());
+
+        // delete _id
+        delete doc._id;
+        assertEqual([ "_rev", "one", "value", "values" ], Object.keys(doc).sort());
+
+        // delete value
+        delete doc.value;
+        assertEqual([ "_rev", "one", "values" ], Object.keys(doc).sort());
+
+        // delete _rev
+        delete doc._rev;
+        assertEqual([ "one", "values" ], Object.keys(doc).sort());
+
+        // delete values
+        delete doc.values;
+        assertEqual([ "one" ], Object.keys(doc).sort());
+
+        // delete one
+        delete doc.one;
+        assertEqual([ ], Object.keys(doc).sort());
       }
     },
 
@@ -677,6 +792,9 @@ function EdgeShapedJsonSuite () {
         var doc = c.document("test" + i);
 
         // initial state
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
         assertTrue(doc.hasOwnProperty("_from"));
         assertTrue(doc.hasOwnProperty("_to"));
 
@@ -686,6 +804,16 @@ function EdgeShapedJsonSuite () {
         
         delete doc._to;
         assertFalse(doc.hasOwnProperty("_to"));
+
+        delete doc._key;
+        assertFalse(doc.hasOwnProperty("_key"));
+        
+        delete doc._rev;
+        assertFalse(doc.hasOwnProperty("_rev"));
+        
+        delete doc._id;
+        assertFalse(doc.hasOwnProperty("_id"));
+        
       }
     },
 
@@ -718,6 +846,50 @@ function EdgeShapedJsonSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check deletion of special attributes from shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeletionShapedKeyRev : function () {
+      for (var i = 0; i < 100; ++i) {
+        var doc = c.document("test" + i);
+
+        // initial state
+        assertTrue(doc.hasOwnProperty("_from"));
+        assertTrue(doc.hasOwnProperty("_to"));
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("values"));
+
+        // delete special attribute _key
+        delete doc._key;
+        assertFalse(doc.hasOwnProperty("_key"));
+        assertUndefined(doc._key);
+        assertTrue(doc.hasOwnProperty("_from"));
+        assertTrue(doc.hasOwnProperty("_to"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("values"));
+        
+        // delete special attribute _rev
+        delete doc._rev;
+        assertFalse(doc.hasOwnProperty("_rev"));
+        assertFalse(doc.hasOwnProperty("_key"));
+        assertUndefined(doc._rev);
+        assertTrue(doc.hasOwnProperty("_from"));
+        assertTrue(doc.hasOwnProperty("_to"));
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("values"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check deletion of keys from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -741,6 +913,66 @@ function EdgeShapedJsonSuite () {
 
         assertFalse(doc.hasOwnProperty("_from"));
         assertFalse(doc.hasOwnProperty("_to"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check deletion after deletion
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeletionDeletion : function () {
+      for (var i = 0; i < 100; ++i) {
+        var doc = c.document("test" + i);
+
+        // initial state
+        assertTrue(doc.hasOwnProperty("_from"));
+        assertTrue(doc.hasOwnProperty("_to"));
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("one"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("values"));
+
+        var keys = Object.keys(doc).sort();
+        assertEqual([ "_from", "_id", "_key", "_rev", "_to", "one", "text", "value", "values" ], keys);
+
+        // delete _from
+        delete doc._from;
+        assertEqual([ "_id", "_key", "_rev", "_to", "one", "text", "value", "values" ], Object.keys(doc).sort());
+
+        // delete _to
+        delete doc._to;
+        assertEqual([ "_id", "_key", "_rev", "one", "text", "value", "values" ], Object.keys(doc).sort());
+
+        // delete _key
+        delete doc._key;
+        assertEqual([ "_id", "_rev", "one", "text", "value", "values" ], Object.keys(doc).sort());
+        
+        // delete text
+        delete doc.text;
+        assertEqual([ "_id", "_rev", "one", "value", "values" ], Object.keys(doc).sort());
+
+        // delete _id
+        delete doc._id;
+        assertEqual([ "_rev", "one", "value", "values" ], Object.keys(doc).sort());
+
+        // delete value
+        delete doc.value;
+        assertEqual([ "_rev", "one", "values" ], Object.keys(doc).sort());
+
+        // delete _rev
+        delete doc._rev;
+        assertEqual([ "one", "values" ], Object.keys(doc).sort());
+
+        // delete values
+        delete doc.values;
+        assertEqual([ "one" ], Object.keys(doc).sort());
+
+        // delete one
+        delete doc.one;
+        assertEqual([ ], Object.keys(doc).sort());
       }
     }
 
