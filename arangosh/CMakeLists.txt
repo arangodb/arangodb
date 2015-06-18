@@ -97,16 +97,13 @@ add_executable(
     ${BIN_ARANGOIMP}
     ArangoShell/ArangoClient.cpp
     V8Client/ImportHelper.cpp
-    V8Client/V8ClientConnection.cpp
     V8Client/arangoimp.cpp
 )
 
 target_link_libraries(
     ${BIN_ARANGOIMP}
-    ${LIB_ARANGO_V8}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${V8_LIBS}
     ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
