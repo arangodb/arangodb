@@ -6,6 +6,7 @@ module.define("org/arangodb/mimetypes", function(exports, module) {
          vars: true,
          white: true,
          plusplus: true */
+/*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from mimetypes.dat
