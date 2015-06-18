@@ -1,0 +1,13 @@
+Name: libcxx
+Short Name: libc++
+URL: http://libcxx.llvm.org/
+Version: 1.0
+License: MIT, University of Illinois/NCSA Open Source License
+License File: trunk/LICENSE.TXT
+Security Critical: no
+
+Description:
+
+libc++ for Chromium.
+This is intended for instrumented builds, not for release.
+There was no security review for this library.
