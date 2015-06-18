@@ -43,16 +43,14 @@
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/HttpResponse.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "V8Client/V8ClientConnection.h"
-
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::rest;
-using namespace triagens::v8client;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
@@ -64,12 +62,6 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoClient BaseClient("arangoimp");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the initial default connection
-////////////////////////////////////////////////////////////////////////////////
-
-V8ClientConnection* ClientConnection = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief max size body size (used for imports)
@@ -254,6 +246,23 @@ static void arangoimpExitFunction(int exitCode, void* data) {
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request location rewriter (injects database name)
+////////////////////////////////////////////////////////////////////////////////
+
+static string RewriteLocation (void* data, const std::string& location) {
+  if (location.substr(0, 5) == "/_db/") {
+    // location already contains /_db/
+    return location;
+  }
+
+  if (location[0] == '/') {
+    return "/_db/" + BaseClient.databaseName() + location;
+  }
+  else {
+    return "/_db/" + BaseClient.databaseName() + "/" + location;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main
@@ -288,166 +297,181 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
-  ClientConnection = new V8ClientConnection(BaseClient.endpointServer(),
-                                            BaseClient.databaseName(),
-                                            BaseClient.username(),
-                                            BaseClient.password(),
-                                            BaseClient.requestTimeout(),
-                                            BaseClient.connectTimeout(),
-                                            ArangoClient::DEFAULT_RETRIES,
-                                            BaseClient.sslProtocol(),
-                                            false);
-
-  if (! ClientConnection->isConnected() ||
-      ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {
-    cerr << "Could not connect to endpoint '" << BaseClient.endpointServer()->getSpecification()
-         << "', database: '" << BaseClient.databaseName() << "'" << endl;
-    cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-
-  // successfully connected
-  cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-       << "', version " << ClientConnection->getVersion() << ", database: '"
-       << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
-
-  cout << "----------------------------------------" << endl;
-  cout << "database:         " << BaseClient.databaseName() << endl;
-  cout << "collection:       " << CollectionName << endl;
-  cout << "create:           " << (CreateCollection ? "yes" : "no") << endl;
-  cout << "file:             " << FileName << endl;
-  cout << "type:             " << TypeImport << endl;
-
-  if (TypeImport == "csv") {
-    cout << "quote:            " << Quote << endl;
-    cout << "separator:        " << Separator << endl;
-  }
-
-  cout << "connect timeout:  " << BaseClient.connectTimeout() << endl;
-  cout << "request timeout:  " << BaseClient.requestTimeout() << endl;
-  cout << "----------------------------------------" << endl;
-
-  ImportHelper ih(ClientConnection->getHttpClient(), ChunkSize);
-
-  // create colletion
-  if (CreateCollection) {
-    ih.setCreateCollection(true);
-  }
-
-  ih.setOverwrite(Overwrite);
-  ih.useBackslash(UseBackslash);
-
-  // quote
-  if (Quote.length() <= 1) {
-    ih.setQuote(Quote);
-  }
-  else {
-    cerr << "Wrong length of quote character." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-
-  // separator
-  if (Separator.length() == 1) {
-    ih.setSeparator(Separator);
-  }
-  else {
-    cerr << "Separator must be exactly one character." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-
-  // collection name
-  if (CollectionName == "") {
-    cerr << "Collection name is missing." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-
-  // filename
-  if (FileName == "") {
-    cerr << "File name is missing." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-
-  if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {
-    if (! FileUtils::exists(FileName)) {
-      cerr << "Cannot open file '" << FileName << "'. File not found." << endl;
-    }
-    else if (FileUtils::isDirectory(FileName)) {
-      cerr << "Specified file '" << FileName << "' is a directory. Please use a regular file." << endl;
-    }
-    else {
-      cerr << "Cannot open '" << FileName << "'. Invalid file type." << endl;
-    }
-
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-
-  // progress
-  if (Progress) {
-    ih.setProgress(true);
-  }
-
-  if (OnDuplicateAction != "error" &&
-      OnDuplicateAction != "update" &&
-      OnDuplicateAction != "replace" &&
-      OnDuplicateAction != "ignore") {
-    cerr << "Invalid value for '--on-duplicate'. Possible values: 'error', 'update', 'replace', 'ignore'." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-
-  ih.setOnDuplicateAction(OnDuplicateAction);
-
-  try {
-    bool ok = false;
-
-    // import type
-    if (TypeImport == "csv") {
-      cout << "Starting CSV import..." << endl;
-      ok = ih.importDelimited(CollectionName, FileName, ImportHelper::CSV);
-    }
-
-    else if (TypeImport == "tsv") {
-      cout << "Starting TSV import..." << endl;
-      ih.setQuote("");
-      ih.setSeparator("\\t");
-      ok = ih.importDelimited(CollectionName, FileName, ImportHelper::TSV);
-    }
-
-    else if (TypeImport == "json") {
-      cout << "Starting JSON import..." << endl;
-      ok = ih.importJson(CollectionName, FileName);
-    }
-
-    else {
-      cerr << "Wrong type '" << TypeImport << "'." << endl;
+  // create a connection 
+  { 
+    std::unique_ptr<triagens::httpclient::GeneralClientConnection> connection;
+    
+    connection.reset(GeneralClientConnection::factory(BaseClient.endpointServer(),
+                                                      BaseClient.requestTimeout(),
+                                                      BaseClient.connectTimeout(),
+                                                      ArangoClient::DEFAULT_RETRIES,
+                                                      BaseClient.sslProtocol()));
+    
+    if (connection == nullptr) {
+      cerr << "out of memory" << endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
-    cout << endl;
+    // simple http client is only valid inside this scope 
+    { 
+      SimpleHttpClient client(connection.get(), BaseClient.requestTimeout(), false);
+      
+      client.setLocationRewriter(nullptr, &RewriteLocation);
+      client.setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
-    // give information about import
-    if (ok) {
-      cout << "created:          " << ih.getNumberCreated() << endl;
-      cout << "warnings/errors:  " << ih.getNumberErrors() << endl;
-      cout << "updated/replaced: " << ih.getNumberUpdated() << endl;
-      cout << "ignored:          " << ih.getNumberIgnored() << endl;
+      std::string const versionString = client.getServerVersion();
 
-      if (TypeImport == "csv" || TypeImport == "csv") {
-        cout << "lines read:       " << ih.getReadLines() << endl;
+      if (! connection->isConnected()) {
+        cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
+            << "', database: '" << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
+        cerr << "Error message: '" << client.getErrorMessage() << "'" << endl;
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
+      // successfully connected
+      cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
+          << "', version " << client.getServerVersion() << ", database: '"
+          << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
+
+      cout << "----------------------------------------" << endl;
+      cout << "database:         " << BaseClient.databaseName() << endl;
+      cout << "collection:       " << CollectionName << endl;
+      cout << "create:           " << (CreateCollection ? "yes" : "no") << endl;
+      cout << "file:             " << FileName << endl;
+      cout << "type:             " << TypeImport << endl;
+
+      if (TypeImport == "csv") {
+        cout << "quote:            " << Quote << endl;
+        cout << "separator:        " << Separator << endl;
+      }
+
+      cout << "connect timeout:  " << BaseClient.connectTimeout() << endl;
+      cout << "request timeout:  " << BaseClient.requestTimeout() << endl;
+      cout << "----------------------------------------" << endl;
+
+      triagens::v8client::ImportHelper ih(&client, ChunkSize);
+
+      // create colletion
+      if (CreateCollection) {
+        ih.setCreateCollection(true);
+      }
+
+      ih.setOverwrite(Overwrite);
+      ih.useBackslash(UseBackslash);
+
+      // quote
+      if (Quote.length() <= 1) {
+        ih.setQuote(Quote);
+      }
+      else {
+        cerr << "Wrong length of quote character." << endl;
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+      }
+
+      // separator
+      if (Separator.length() == 1) {
+        ih.setSeparator(Separator);
+      }
+      else {
+        cerr << "Separator must be exactly one character." << endl;
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+      }
+
+      // collection name
+      if (CollectionName == "") {
+        cerr << "Collection name is missing." << endl;
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+      }
+
+      // filename
+      if (FileName == "") {
+        cerr << "File name is missing." << endl;
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+      }
+
+      if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {
+        if (! FileUtils::exists(FileName)) {
+          cerr << "Cannot open file '" << FileName << "'. File not found." << endl;
+        }
+        else if (FileUtils::isDirectory(FileName)) {
+          cerr << "Specified file '" << FileName << "' is a directory. Please use a regular file." << endl;
+        }
+        else {
+          cerr << "Cannot open '" << FileName << "'. Invalid file type." << endl;
+        }
+
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+      }
+
+      // progress
+      if (Progress) {
+        ih.setProgress(true);
+      }
+
+      if (OnDuplicateAction != "error" &&
+          OnDuplicateAction != "update" &&
+          OnDuplicateAction != "replace" &&
+          OnDuplicateAction != "ignore") {
+        cerr << "Invalid value for '--on-duplicate'. Possible values: 'error', 'update', 'replace', 'ignore'." << endl;
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+      }
+
+      ih.setOnDuplicateAction(OnDuplicateAction);
+
+      try {
+        bool ok = false;
+
+        // import type
+        if (TypeImport == "csv") {
+          cout << "Starting CSV import..." << endl;
+          ok = ih.importDelimited(CollectionName, FileName, triagens::v8client::ImportHelper::CSV);
+        }
+
+        else if (TypeImport == "tsv") {
+          cout << "Starting TSV import..." << endl;
+          ih.setQuote("");
+          ih.setSeparator("\\t");
+          ok = ih.importDelimited(CollectionName, FileName, triagens::v8client::ImportHelper::TSV);
+        }
+
+        else if (TypeImport == "json") {
+          cout << "Starting JSON import..." << endl;
+          ok = ih.importJson(CollectionName, FileName);
+        }
+
+        else {
+          cerr << "Wrong type '" << TypeImport << "'." << endl;
+          TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+        }
+
+        cout << endl;
+
+        // give information about import
+        if (ok) {
+          cout << "created:          " << ih.getNumberCreated() << endl;
+          cout << "warnings/errors:  " << ih.getNumberErrors() << endl;
+          cout << "updated/replaced: " << ih.getNumberUpdated() << endl;
+          cout << "ignored:          " << ih.getNumberIgnored() << endl;
+
+          if (TypeImport == "csv" || TypeImport == "csv") {
+            cout << "lines read:       " << ih.getReadLines() << endl;
+          }
+
+        }
+        else {
+          cerr << "error message:    " << ih.getErrorMessage() << endl;
+        }
+      }
+      catch (std::exception const& ex) {
+        cerr << "Caught exception " << ex.what() << " during import" << endl;
+      }
+      catch (...) {
+        cerr << "Got an unknown exception during import" << endl;
+      }
     }
-    else {
-      cerr << "error message:    " << ih.getErrorMessage() << endl;
-    }
-  }
-  catch (std::exception const& ex) {
-    cerr << "Caught exception " << ex.what() << " during import" << endl;
-  }
-  catch (...) {
-    cerr << "Got an unknown exception during import" << endl;
+
   }
 
-  delete ClientConnection;
 
   TRIAGENS_REST_SHUTDOWN;
 
