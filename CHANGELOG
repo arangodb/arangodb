@@ -708,6 +708,9 @@ v2.6.0-beta4 (2015-06-16)
   This is controlled by the `indexBuckets` attribute in the `properties`
   of the collection.
 
+* fix a cluster deadlock bug in larger clusters by marking a thread waiting
+  for a lock on a DBserver as blocked
+
 
 v2.5.4 (2015-05-14)
 -------------------
