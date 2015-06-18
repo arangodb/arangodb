@@ -38,7 +38,6 @@
 #include "V8Server/v8-vocindex.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/key-generator.h"
 #include <v8.h>
 
 using namespace std;

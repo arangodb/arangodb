@@ -52,7 +52,7 @@
 #include "VocBase/Ditch.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
-#include "VocBase/key-generator.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"

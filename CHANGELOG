@@ -1,3 +1,32 @@
+v2.7.0 (XXXX-XX-XX)
+-------------------
+
+* upgraded V8 version to 4.3.61
+
+* removed deprecated AQL `SKIPLIST` function.
+
+  This function was introduced in older versions of ArangoDB with a less powerful query optimizer to
+  retrieve data from a skiplist index using a `LIMIT` clause. It was marked as deprecated in ArangoDB
+  2.6.
+
+  Since ArangoDB 2.3 the behavior of the `SKIPLIST` function can be emulated using regular AQL 
+  constructs, e.g. 
+
+      FOR doc IN @@collection 
+        FILTER doc.value >= @value 
+        SORT doc.value DESC 
+        LIMIT 1 
+        RETURN doc
+
+* the `skip()` function for simple queries does not accept negative input any longer. 
+  This feature was deprecated in 2.6.0.
+ 
+* based REST API method PUT `/_api/simple/all` on the cursor API and make its use AQL internally.
+
+  The change speeds up this REST API method and will lead to additional query information being
+  returned by the REST API. Clients can use this extra information or ignore it.
+ 
+
 v2.6.0-beta4 (2015-06-16)
 -------------------------
 
