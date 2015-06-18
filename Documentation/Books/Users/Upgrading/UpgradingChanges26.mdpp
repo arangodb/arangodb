@@ -239,6 +239,8 @@ will each be included in the fulltext index if they are strings.
 
 !SECTION Deprecated server functionality
 
+!SUBSECTION Simple queries
+
 The following simple query functions are now deprecated:
 
 * collection.near
@@ -274,6 +276,21 @@ which are more flexible because they can be combined with other operations:
   
 The above simple query functions and REST API methods may be removed in future versions 
 of ArangoDB.
+
+!SUBSECTION AQL functions
+
+The AQL `SKIPLIST` function has been deprecated because it is obsolete.
+
+The function was introduced in older versions of ArangoDB with a less powerful query optimizer to
+retrieve data from a skiplist index using a `LIMIT` clause.
+
+Since 2.3 the same goal can be achieved by using regular AQL constructs, e.g. 
+
+    FOR doc IN @@collection 
+      FILTER doc.value >= @value 
+      SORT doc.value
+      LIMIT 1 
+      RETURN doc
 
 !SECTION Startup option changes
 
