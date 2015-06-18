@@ -44,7 +44,7 @@
 #include "Wal/LogfileManager.h"
 
 #include "VocBase/auth.h"
-#include "VocBase/key-generator.h"
+#include "VocBase/KeyGenerator.h"
 
 #include "Cluster/ClusterMethods.h"
 

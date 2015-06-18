@@ -1183,7 +1183,7 @@ void IndexRangeBlock::buildExpressions () {
           a.destroy();  // the TRI_json_t* of a._json has been stolen
         } 
         else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
-          bound = a.toJson(_trx, myCollection);
+          bound = a.toJson(_trx, myCollection, true);
           a.destroy();  // the TRI_json_t* of a._json has been stolen
         } 
         else {
@@ -1253,7 +1253,7 @@ void IndexRangeBlock::buildExpressions () {
             a.destroy();  // the TRI_json_t* of a._json has been stolen
           } 
           else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
-            bound = a.toJson(_trx, myCollection);
+            bound = a.toJson(_trx, myCollection, true);
             a.destroy();  // the TRI_json_t* of a._json has been stolen
           } 
           else {
@@ -3620,7 +3620,7 @@ void SortedAggregateBlock::emitGroup (AqlItemBlock const* cur,
       // that a group might theoretically consist of multiple documents, from different collections. but there
       // is only one collection pointer per output register
       auto document = cur->getDocumentCollection((*it).second);
-      res->setValue(row, (*it).first, AqlValue(new Json(_currentGroup.groupValues[i].toJson(_trx, document))));
+      res->setValue(row, (*it).first, AqlValue(new Json(_currentGroup.groupValues[i].toJson(_trx, document, true))));
     }
     else {
       res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
@@ -4806,7 +4806,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
         TRI_doc_mptr_copy_t mptr;
-        auto json = a.toJson(_trx, document);
+        auto json = a.toJson(_trx, document, false);
 
         if (isEdgeCollection) {
           // edge
@@ -4937,7 +4937,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
         TRI_doc_mptr_copy_t mptr;
-        auto json = a.toJson(_trx, document);
+        auto json = a.toJson(_trx, document, true);
 
         // read old document
         TRI_doc_mptr_copy_t oldDocument;
@@ -5116,8 +5116,8 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           AqlValue updateDoc = res->getValue(i, updateRegisterId);
 
           if (updateDoc.isObject()) {
-            auto updateJson = updateDoc.toJson(_trx, updateDocument);
-            auto searchJson = a.toJson(_trx, keyDocument);
+            auto const updateJson = updateDoc.toJson(_trx, updateDocument, false);
+            auto searchJson = a.toJson(_trx, keyDocument, true);
 
             if (! searchJson.isObject()) {
               errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -5212,7 +5212,7 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
 
           if (errorCode == TRI_ERROR_NO_ERROR) {
-            auto insertJson = insertDoc.toJson(_trx, insertDocument);
+            auto const insertJson = insertDoc.toJson(_trx, insertDocument, true);
 
             // use default value
             errorCode = TRI_ERROR_OUT_OF_MEMORY;
@@ -5369,7 +5369,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
         TRI_doc_mptr_copy_t mptr;
-        auto json = a.toJson(_trx, document);
+        auto const json = a.toJson(_trx, document, true);
           
         // all exceptions are caught in _trx->update()
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);

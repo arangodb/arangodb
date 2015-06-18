@@ -283,136 +283,6 @@ setupIndexQueries();
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSA_put_api_simple_all
-/// @brief returns all documents of a collection
-///
-/// @RESTHEADER{PUT /_api/simple/all, Return all documents}
-///
-/// @RESTBODYPARAM{query,string,required}
-/// Contains the query.
-///
-/// @RESTDESCRIPTION
-///
-/// Returns all documents of a collections. The call expects a JSON object
-/// as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *skip*: The number of documents to skip in the query (optional).
-///
-/// - *limit*: The maximal amount of documents to return. The *skip*
-///   is applied before the *limit* restriction. (optional)
-///
-/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{201}
-/// is returned if the query was executed successfully.
-///
-/// @RESTRETURNCODE{400}
-/// is returned if the body does not contain a valid JSON representation of a
-/// query. The response body contains an error document in this case.
-///
-/// @RESTRETURNCODE{404}
-/// is returned if the collection specified by *collection* is unknown.  The
-/// response body contains an error document in this case.
-///
-/// @EXAMPLES
-///
-/// Limit the amount of documents using *limit*
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestSimpleAllSkipLimit}
-///     var cn = "products";
-///     db._drop(cn);
-///     var collection = db._create(cn);
-///     collection.save({"Hello1" : "World1" });
-///     collection.save({"Hello2" : "World2" });
-///     collection.save({"Hello3" : "World3" });
-///     collection.save({"Hello4" : "World4" });
-///     collection.save({"Hello5" : "World5" });
-///
-///     var url = "/_api/simple/all";
-///     var body = '{ "collection": "products", "skip": 2, "limit" : 2 }';
-///
-///     var response = logCurlRequest('PUT', url, body);
-///
-///     assert(response.code === 201);
-///
-///     logJsonResponse(response);
-///     db._drop(cn);
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// Using a *batchSize* value
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestSimpleAllBatch}
-///     var cn = "products";
-///     db._drop(cn);
-///     var collection = db._create(cn);
-///     collection.save({"Hello1" : "World1" });
-///     collection.save({"Hello2" : "World2" });
-///     collection.save({"Hello3" : "World3" });
-///     collection.save({"Hello4" : "World4" });
-///     collection.save({"Hello5" : "World5" });
-///
-///     var url = "/_api/simple/all";
-///     var body = '{ "collection": "products", "batchSize" : 3 }';
-///
-///     var response = logCurlRequest('PUT', url, body);
-///
-///     assert(response.code === 201);
-///
-///     logJsonResponse(response);
-///     db._drop(cn);
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: API + "all",
-
-  callback : function (req, res) {
-    try {
-      var body = actions.getJsonBody(req, res);
-
-      if (body === undefined) {
-        return;
-      }
-
-      if (req.requestType !== actions.PUT) {
-        actions.resultUnsupported(req, res);
-      }
-      else {
-        var limit = body.limit;
-        var skip = body.skip;
-        var name = body.collection;
-        var collection = db._collection(name);
-
-        if (collection === null) {
-          actions.collectionNotFound(req, res, name);
-        }
-        else {
-          var result = collection.all();
-
-          if (skip !== null && skip !== undefined) {
-            result = result.skip(skip);
-          }
-
-          if (limit !== null && limit !== undefined) {
-            result = result.limit(limit);
-          }
-
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
-        }
-      }
-    }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_any
 /// @brief returns a random document from a collection
 ///
@@ -509,7 +379,7 @@ actions.defineHttp({
 /// @startDocuBlock JSA_put_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
-/// @RESTHEADER{PUT /_api/simple/near, Find documents near a coordinate}
+/// @RESTHEADER{PUT /_api/simple/near, Returns documents near a coordinate}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -545,6 +415,14 @@ actions.defineHttp({
 /// - *geo*: If given, the identifier of the geo-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+///
+/// Note: the *near* simple query is **deprecated** as of ArangoDB 2.6. 
+/// This API may be removed in future versions of ArangoDB. The preferred
+/// way for retrieving documents from a collection using the near operator is
+/// to issue an [AQL query](../Aql/GeoFunctions.md) using the *NEAR* function as follows: 
+///
+///     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
+///       RETURN doc`
 ///
 /// @RESTRETURNCODES
 ///
@@ -726,6 +604,14 @@ actions.defineHttp({
 /// - *geo*: If given, the identifier of the geo-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+///
+/// Note: the *within* simple query is **deprecated** as of ArangoDB 2.6. 
+/// This API may be removed in future versions of ArangoDB. The preferred
+/// way for retrieving documents from a collection using the near operator is
+/// to issue an [AQL query](../Aql/GeoFunctions.md) using the *WITHIN* function as follows: 
+///
+///     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
+///       RETURN doc`
 ///
 /// @RESTRETURNCODES
 ///
@@ -1049,6 +935,15 @@ actions.defineHttp({
 /// - *index*: The identifier of the fulltext-index to use.
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+///
+/// Note: the *fulltext* simple query is **deprecated** as of ArangoDB 2.6. 
+/// This API may be removed in future versions of ArangoDB. The preferred
+/// way for retrieving documents from a collection using the near operator is
+/// to issue an AQL query using the *FULLTEXT* [AQL function](../Aql/FulltextFunctions.md) 
+/// as follows:
+///
+///     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
+///       RETURN doc
 ///
 /// @RESTRETURNCODES
 ///
@@ -1691,6 +1586,16 @@ actions.defineHttp({
 ///   is applied before the *limit* restriction. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+///
+/// Note: the *range* simple query is **deprecated** as of ArangoDB 2.6. 
+/// The function may be removed in future versions of ArangoDB. The preferred
+/// way for retrieving documents from a collection within a specific range
+/// is to use an AQL query as follows: 
+///
+///     FOR doc IN @@collection 
+///       FILTER doc.value >= @left && doc.value < @right 
+///       LIMIT @skip, @limit 
+///       RETURN doc`
 ///
 /// @RESTRETURNCODES
 ///

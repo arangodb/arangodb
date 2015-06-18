@@ -549,12 +549,13 @@ ArangoCollection.prototype.last = function (count) {
 /// `collection.firstExample(example)`
 ///
 /// Returns the first document of a collection that matches the specified
-/// example or *null*. The example must be specified as paths and values.
+/// example. If no such document exists, *null* will be returned. 
+/// The example must be specified as paths and values.
 /// See *byExample* for details.
 ///
 /// `collection.firstExample(path1, value1, ...)`
 ///
-/// As alternative you can supply a list of paths and values.
+/// As alternative you can supply an array of paths and values.
 ///
 /// @EXAMPLES
 ///

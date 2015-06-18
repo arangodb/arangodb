@@ -120,6 +120,7 @@ add_executable(
     RestHandler/RestQueryHandler.cpp
     RestHandler/RestReplicationHandler.cpp
     RestHandler/RestSimpleHandler.cpp
+    RestHandler/RestSimpleQueryHandler.cpp
     RestHandler/RestUploadHandler.cpp
     RestHandler/RestVocbaseBaseHandler.cpp
     RestServer/ArangoServer.cpp
@@ -164,7 +165,7 @@ add_executable(
     VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp
     VocBase/headers.cpp
-    VocBase/key-generator.cpp
+    VocBase/KeyGenerator.cpp
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
     VocBase/replication-dump.cpp
