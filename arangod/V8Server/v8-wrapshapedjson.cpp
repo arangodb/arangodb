@@ -32,7 +32,7 @@
 
 #include "Basics/conversions.h"
 #include "V8/v8-conv.h"
-#include "VocBase/key-generator.h"
+#include "VocBase/KeyGenerator.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 
@@ -694,24 +694,14 @@ static void MapDeleteNamedShapedJson (v8::Local<v8::String> name,
       TRI_V8_RETURN(v8::Handle<v8::Boolean>());
     }
     
-    // copy all attributes from the shaped json into the object
-    CopyAttributes(isolate, self, marker);
-    
     // remove pointer to marker, so the object becomes stand-alone
     self->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nullptr));
 
-    if (marker == nullptr) {
-      TRI_V8_RETURN(v8::Handle<v8::Boolean>());
-    }
-  
     // copy all attributes from the shaped json into the object
     // but the to-be-deleted attribute
     std::string&& nameString = TRI_ObjectToString(name);
     CopyAttributes(isolate, self, marker, nameString.c_str());
   
-    // remove pointer to marker, so the object becomes stand-alone
-    self->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nullptr));
-
     TRI_V8_RETURN(v8::Handle<v8::Boolean>());
   }
   catch (...) {

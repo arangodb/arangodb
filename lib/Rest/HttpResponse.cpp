@@ -211,6 +211,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: 
     case TRI_ERROR_TYPE_ERROR: 
+    case TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE:
       return BAD;
     
     case TRI_ERROR_ARANGO_READ_ONLY:

@@ -27,7 +27,7 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "key-generator.h"
+#include "KeyGenerator.h"
 
 #include "Basics/conversions.h"
 #include "Basics/json.h"

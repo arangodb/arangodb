@@ -597,7 +597,7 @@ Json AqlItemBlock::toJson (triagens::arango::AqlTransaction* trx) const {
         else {
           auto it = table.find(a);
           if (it == table.end()) {
-            raw(a.toJson(trx, _docColls[column]));
+            raw(a.toJson(trx, _docColls[column], true));
             data(Json(1.0));
             table.emplace(std::make_pair(a, pos++));
           }

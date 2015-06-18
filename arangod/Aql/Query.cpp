@@ -667,7 +667,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
           auto val = value->getValueReference(i, resultRegister);
 
           if (! val.isEmpty()) {
-            jsonResult.add(val.toJson(_trx, doc)); 
+            jsonResult.add(val.toJson(_trx, doc, true)); 
           }
         }
         delete value;

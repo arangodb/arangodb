@@ -47,6 +47,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
+#include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -358,7 +359,15 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
 
   while (_freeContexts[name].empty() && ! _stopping) {
     LOG_DEBUG("waiting for unused V8 context");
+    auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
+
+    if (currentThread != nullptr) {
+      triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+    }
     guard.wait();
+    if (currentThread != nullptr) {
+      triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+    }
   }
 
   // in case we are in the shutdown phase, do not enter a context!

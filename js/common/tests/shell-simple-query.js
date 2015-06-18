@@ -642,15 +642,6 @@ function SimpleQueryAllSkipLimitSuite () {
 
       n = collection.all().limit(9).skip(1).limit(7).toArray().map(num);
       assertEqual(n, numbers.slice(1, 8));
-
-      n = collection.all().skip(-5).limit(3).toArray().map(num);
-      assertEqual(n, numbers.slice(5, 8));
-
-      n = collection.all().skip(-8).limit(7).skip(1).limit(4).toArray().map(num);
-      assertEqual(n, numbers.slice(3, 7));
-
-      n = collection.all().skip(-10).limit(9).skip(1).limit(7).toArray().map(num);
-      assertEqual(n, numbers.slice(1, 8));
     }
   };
 }
