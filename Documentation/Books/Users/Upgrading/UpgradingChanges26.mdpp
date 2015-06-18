@@ -61,11 +61,19 @@ boolean value:
 
 In 2.6 the graph functions did undergo a performance lifting.
 During this process we had to adopt the result format and the options for some of them.
-In general all graph functions now have an option `includeData` which allows to trigger
+Many graph functions now have an option `includeData` which allows to trigger
 if the result of this function should contain fully extracted documents `includeData: true`
 or only the `_id` values `includeData: false`.
 In most use cases the `_id` is sufficient to continue and the extraction of data is an unnecessary
 operation.
+The AQL functions supporting this additional option are:
+
+* SHORTEST_PATH
+* NEIGHBORS
+* GRAPH_SHORTEST_PATH
+* GRAPH_NEIGHBORS
+* GRAPH_EDGES
+
 Furthermore the result `SHORTEST_PATH` has changed. The old format returned a list of all vertices on the path.
 Optionally it could include each sub-path for these vertices.
 All of the documents were fully extracted.
@@ -174,6 +182,9 @@ Example:
   "vertex/2"
 ]
 ```
+
+!SUBSECTION Graph measurements functions
+
 
 !SECTION Function and API changes
 
