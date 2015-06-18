@@ -1,5 +1,5 @@
 
-V8=V8-4.2.77.1
+V8=V8-4.3.61
 
 .PHONY: all install
 
@@ -45,5 +45,5 @@ install_bits:
 	cp $(V8)/third_party/icu/source/data/in/icudtl.dat ../WindowsLibraries/$(BITS)/icudtl.dat
 
 	for f in common i18n io; do \
-	  cp -a V8-4.2.77.1/third_party/icu/source/$${f}/unicode/* ../WindowsLibraries/$(BITS)/include/unicode/; \
+	  cp -a $(V8)/third_party/icu/source/$${f}/unicode/* ../WindowsLibraries/$(BITS)/include/unicode/; \
 	done
