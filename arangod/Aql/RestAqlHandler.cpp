@@ -32,6 +32,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
+#include "Dispatcher/DispatcherThread.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/HttpRequest.h"
@@ -694,15 +695,27 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
   Json answerBody(Json::Object, 3);
 
   if (operation == "lock") {
+    // Mark current thread as potentially blocking:
+    auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
+
+    if (currentThread != nullptr) {
+      triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+    }
     int res = TRI_ERROR_INTERNAL;
     try {
       res = query->trx()->lockCollections();
     }
     catch (...) {
       LOG_ERROR("lock lead to an exception");
+      if (currentThread != nullptr) {
+        triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+      }
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "lock lead to an exception");
       return;
+    }
+    if (currentThread != nullptr) {
+      triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
     }
     answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
               ("code", Json(static_cast<double>(res)));
