@@ -3,12 +3,6 @@
 It is recommended to check the following list of incompatible changes **before** 
 upgrading to ArangoDB 2.6, and adjust any client programs if necessary.
 
-!SECTION Requirements
-
-ArangoDB's built-in web interface now uses cookies for session management.
-Session information ids are stored in cookies, so clients using the web interface must 
-accept cookies in order to log in and use it.
-
 !SECTION Foxx changes
 
 !SUBSECTION Foxx Queues
@@ -37,27 +31,9 @@ If you want to use your own JWT-based sessions, you can use the JWT functions in
 
 Instead of using the `type` option you can just use the `cookie` and `header` options on their own, which both now accept the value `true` to enable them with their default configurations.
 
-The option `sessionStorageApp` has been renamed to `sessionStorage` and now also accepts session storages directly. The old option `sessionStorageApp` will be removed entirely in 2.7.
+!SECTION Changed behavior
 
-!SUBSECTION Libraries
-
-The bundled version of the `joi` library used in Foxx was upgraded to version 6.0.8.
-This may affect Foxx applications that depend on the library.
-
-!SECTION AQL changes
-
-!SUBSECTION AQL LENGTH function
-
-The return value of the AQL `LENGTH` function was changed if `LENGTH` is applied on `null` or a
-boolean value:
-
-* `LENGTH(null)` now returns `0`. In previous versions of ArangoDB, this returned `4`.
-
-* `LENGTH(false)` now returns `0`. In previous versions of ArangoDB, the return value was `5`.
-
-* `LENGTH(true)` now returns `1`. In previous versions of ArangoDB, the return value was `4`.
-
-!SUBSECTION AQL graph functions
+!SUBSECTION AQL Graphs
 
 In 2.6 the graph functions did undergo a performance lifting.
 During this process we had to adopt the result format and the options for some of them.
@@ -165,9 +141,7 @@ Example:
 ]
 ```
 With 2.6 it will only return the vertex directly, again using `includeData: true`.
-By default it will return a distinct set of neighbors, using the option `distinct: false` 
-will include the same vertex for each edge pointing to it.
-
+By default it will return a distinct set of neighbors, using the option `distinct: false` will include the same vertex for each edge pointing to it.
 Example:
 ```
 [
@@ -175,6 +149,7 @@ Example:
 ]
 ```
 
+<<<<<<< HEAD
 !SECTION Function and API changes
 
 !SUBSECTION Graph measurements functions
@@ -201,91 +176,3 @@ returned by the function instead of the previous array value.
 
 A batchSize value `0` is now disallowed when calling the cursor API via HTTP 
 `POST /_api/cursor`.
-
-The HTTP REST API `POST /_api/cursor` does not accept a `batchSize` parameter value of 
-`0` any longer. A batch size of 0 never made much sense, but previous versions of ArangoDB
-did not check for this value. Now creating a cursor using a `batchSize` value 0 will
-result in an HTTP 400 error response.
-
-!SUBSECTION Document URLs returned
-
-The REST API method GET `/_api/document?collection=...` (that method will return partial URLs 
-to all documents in the collection) will now properly prefix document address URLs with the 
-current database name.
-
-Previous versions of ArangoDB returned the URLs starting with `/_api/` but without the current 
-database name, e.g. `/_api/document/mycollection/mykey`. Starting with 2.6, the response URLs
-will include the database name as well, e.g. `/_db/_system/_api/document/mycollection/mykey`.
-
-!SUBSECTION Fulltext indexing
-
-Fulltext indexes will now also index text values contained in direct sub-objects of the indexed 
-attribute.
-
-Previous versions of ArangoDB only indexed the attribute value if it was a string. Sub-attributes
-of the index attribute were ignored when fulltext indexing.
-
-Now, if the index attribute value is an object, the object's values will each be included in the
-fulltext index if they are strings. If the index attribute value is an array, the array's values
-will each be included in the fulltext index if they are strings.
-
-!SECTION Startup option changes
-
-!SUBSECTION Options added
-
-The following configuration options have been added in 2.6:
-
-* `--server.session-timeout`: allows controlling the timeout of user sessions in the web interface.
-  The value is specified in seconds.
-
-* `--server.foxx-queues`: controls whether the Foxx queue manager will check queue and job entries.
-  Disabling this option can reduce server load but will prevent jobs added to Foxx queues from
-  being processed at all.
-
-  The default value is `true`, enabling the Foxx queues feature.
-
-* `--server.foxx-queues-poll-interval`: allows adjusting the frequency with which the Foxx queues 
-  manager is checking the queue (or queues) for jobs to be executed.
-
-  The default value is `1` second. Lowering this value will result in the queue manager waking
-  up and checking the queues more frequently, which may increase CPU usage of the server. 
-  
-  Note: this option only has an effect when `--server.foxx-queues` is not set to `false`.
-
-!SUBSECTION Options removed
-
-The following configuration options have been removed in 2.6.:
-
-* `--log.severity`: the docs for `--log.severity` mentioned lots of severities (e.g. 
-  `exception`, `technical`, `functional`, `development`) but only a few severities (e.g. 
-  `all`, `human`) were actually used, with `human` being the default and `all` enabling the 
-  additional logging of incoming requests. 
-  
-  The option pretended to control a lot of things which it actually didn't. Additionally,
-  the option `--log.requests-file` was around for a long time already, also controlling 
-  request logging. 
-
-  Because the `--log.severity` option effectively did not control that much, it was removed. 
-  A side effect of removing the option is that 2.5 installations started with option
-  `--log.severity all` will not log requests after the upgrade to 2.6. This can be adjusted 
-  by setting the `--log.requests-file` option instead.
-
-!SUBSECTION Default values changed
-
-The default values for the following options have changed in 2.6:
-
-* `--database.ignore-datafile-errors`: the default value for this option was changed from `true` 
-  to `false`.
-
-  If the new default value of `false` is used, then arangod will refuse loading collections that 
-  contain datafiles with CRC mismatches or other errors. A collection with datafile errors will 
-  then become unavailable. This prevents follow up errors from happening.
-  
-  The only way to access such collection is to use the datafile debugger (arango-dfdb) and try to 
-  repair or truncate the datafile with it.
-
-* `--server.request-timeout`: the default value was increased from 300 to 1200 seconds for all
-  client tools (arangosh, arangoimp, arangodump, arangorestore).
-
-* `--server.connect-timeout`: the default value was increased from 3 to 5 seconds for all client 
-  tools (arangosh, arangoimp, arangodump, arangorestore).
