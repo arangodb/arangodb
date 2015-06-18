@@ -1,6 +1,12 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* AQL functon call arguments optimization
+
+  This will lead to arguments in function calls inside AQL queries will not be copied but passed
+  by reference. This may speed up calls to functions with bigger argument values or queries that
+  calls functions a lot of times.
+
 * upgraded V8 version to 4.3.61
 
 * removed deprecated AQL `SKIPLIST` function.
@@ -707,6 +713,9 @@ v2.6.0-beta4 (2015-06-16)
 * allow to split an edge index into buckets which are resized individually.
   This is controlled by the `indexBuckets` attribute in the `properties`
   of the collection.
+
+* fix a cluster deadlock bug in larger clusters by marking a thread waiting
+  for a lock on a DBserver as blocked
 
 
 v2.5.4 (2015-05-14)

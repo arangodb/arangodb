@@ -165,7 +165,7 @@ add_executable(
     VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp
     VocBase/headers.cpp
-    VocBase/key-generator.cpp
+    VocBase/KeyGenerator.cpp
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
     VocBase/replication-dump.cpp

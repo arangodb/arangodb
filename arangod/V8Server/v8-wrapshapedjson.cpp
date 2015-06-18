@@ -32,7 +32,7 @@
 
 #include "Basics/conversions.h"
 #include "V8/v8-conv.h"
-#include "VocBase/key-generator.h"
+#include "VocBase/KeyGenerator.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 
