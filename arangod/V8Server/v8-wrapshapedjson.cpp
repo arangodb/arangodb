@@ -691,8 +691,7 @@ static void MapDeleteNamedShapedJson (v8::Local<v8::String> name,
     void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
     if (marker == nullptr) {
-      self->ForceDelete(name);
-      TRI_V8_RETURN_TRUE();
+      TRI_V8_RETURN(v8::Handle<v8::Boolean>());
     }
     
     // copy all attributes from the shaped json into the object
