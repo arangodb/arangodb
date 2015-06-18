@@ -361,7 +361,7 @@ triagens::basics::Json AqlValue::at (triagens::arango::AqlTransaction* trx,
         size_t const n = current->size();
         if (offset + i < n) {
           auto vecCollection = current->getDocumentCollection(0);
-          return current->getValue(i - offset, 0).toJson(trx, vecCollection);
+          return current->getValue(i - offset, 0).toJson(trx, vecCollection, true);
         }
         offset += (*it)->size();
       }
@@ -587,7 +587,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (v8::Isolate* isolate,
         size_t const n = current->size();
         auto vecCollection = current->getDocumentCollection(0);
         for (size_t i = 0; i < n; ++i) {
-          result->Set(j++, current->getValue(i, 0).toV8(isolate, trx, vecCollection));
+          result->Set(j++, current->getValueReference(i, 0).toV8(isolate, trx, vecCollection));
         }
       }
       return result;
@@ -622,10 +622,14 @@ v8::Handle<v8::Value> AqlValue::toV8 (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
       
 Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
-                       TRI_document_collection_t const* document) const {
+                       TRI_document_collection_t const* document, 
+                       bool copy) const {
   switch (_type) {
     case JSON: {
-      return _json->copy();
+      if (copy) {
+        return _json->copy();
+      }
+      return Json(_json->zone(), _json->json(), Json::NOFREE);
     }
 
     case SHAPED: {
@@ -682,7 +686,7 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
         size_t const n = current->size();
         auto vecCollection = current->getDocumentCollection(0);
         for (size_t i = 0; i < n; ++i) {
-          json.add(current->getValue(i, 0).toJson(trx, vecCollection));
+          json.add(current->getValueReference(i, 0).toJson(trx, vecCollection, true));
         }
       }
 
@@ -777,7 +781,7 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
         size_t const n = current->size();
         auto vecCollection = current->getDocumentCollection(0);
         for (size_t i = 0; i < n; ++i) {
-          json.add(current->getValue(i, 0).toJson(trx, vecCollection));
+          json.add(current->getValue(i, 0).toJson(trx, vecCollection, false));
         }
       }
 
@@ -989,7 +993,7 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
         if (p < totalSize + (*it)->size()) {
           // found the correct vector
           auto vecCollection = (*it)->getDocumentCollection(0);
-          return (*it)->getValue(p - totalSize, 0).toJson(trx, vecCollection);
+          return (*it)->getValue(p - totalSize, 0).toJson(trx, vecCollection, copy);
         }
         totalSize += (*it)->size();
       }
@@ -1037,7 +1041,7 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
 
       // only enumerate the registers that are left
       for (auto const& reg : registers) {
-        values.set(variableNames[reg.first], current->getValueReference(i, reg.first).toJson(trx, reg.second));
+        values.set(variableNames[reg.first], current->getValueReference(i, reg.first).toJson(trx, reg.second, true));
       }
 
       json->add(values);
@@ -1067,7 +1071,7 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
     auto document = current->getDocumentCollection(expressionRegister); 
 
     for (size_t i = 0; i < current->size(); ++i) {
-      json->add(current->getValueReference(i, expressionRegister).toJson(trx, document));
+      json->add(current->getValueReference(i, expressionRegister).toJson(trx, document, true));
     }
   }
 
@@ -1098,48 +1102,48 @@ int AqlValue::Compare (triagens::arango::AqlTransaction* trx,
         (right._type == AqlValue::SHAPED ||
          right._type == AqlValue::RANGE ||
          right._type == AqlValue::DOCVEC)) {
-        triagens::basics::Json rjson = right.toJson(trx, rightcoll);
+        triagens::basics::Json rjson = right.toJson(trx, rightcoll, false);
       return TRI_CompareValuesJson(left._json->json(), rjson.json(), compareUtf8);
     }
     
     // SHAPED against x
     if (left._type == AqlValue::SHAPED) {
-      triagens::basics::Json ljson = left.toJson(trx, leftcoll);
+      triagens::basics::Json ljson = left.toJson(trx, leftcoll, false);
 
       if (right._type == AqlValue::JSON) {
         return TRI_CompareValuesJson(ljson.json(), right._json->json(), compareUtf8);
       }
       else if (right._type == AqlValue::RANGE ||
                right._type == AqlValue::DOCVEC) {
-        triagens::basics::Json rjson = right.toJson(trx, rightcoll);
+        triagens::basics::Json rjson = right.toJson(trx, rightcoll, false);
         return TRI_CompareValuesJson(ljson.json(), rjson.json(), compareUtf8);
       }
     }
 
     // RANGE against x
     if (left._type == AqlValue::RANGE) {
-      triagens::basics::Json ljson = left.toJson(trx, leftcoll);
+      triagens::basics::Json ljson = left.toJson(trx, leftcoll, false);
 
       if (right._type == AqlValue::JSON) {
         return TRI_CompareValuesJson(ljson.json(), right._json->json(), compareUtf8);
       }
       else if (right._type == AqlValue::SHAPED ||
                right._type == AqlValue::DOCVEC) {
-        triagens::basics::Json rjson = right.toJson(trx, rightcoll);
+        triagens::basics::Json rjson = right.toJson(trx, rightcoll, false);
         return TRI_CompareValuesJson(ljson.json(), rjson.json(), compareUtf8);
       }
     }
     
     // DOCVEC against x
     if (left._type == AqlValue::DOCVEC) {
-      triagens::basics::Json ljson = left.toJson(trx, leftcoll);
+      triagens::basics::Json ljson = left.toJson(trx, leftcoll, false);
 
       if (right._type == AqlValue::JSON) {
         return TRI_CompareValuesJson(ljson.json(), right._json->json(), compareUtf8);
       }
       else if (right._type == AqlValue::SHAPED ||
                right._type == AqlValue::RANGE) {
-        triagens::basics::Json rjson = right.toJson(trx, rightcoll);
+        triagens::basics::Json rjson = right.toJson(trx, rightcoll, false);
         return TRI_CompareValuesJson(ljson.json(), rjson.json(), compareUtf8);
       }
     }
