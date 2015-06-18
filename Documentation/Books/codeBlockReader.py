@@ -5,7 +5,7 @@ import inspect
 import cgi
 
 validExtensions = (".cpp", ".h", ".js")
-searchPaths = ["arangod/", "lib/", "js/"]
+searchPaths = ["arangod/", "lib/", "js/actions","js/client","js/apps/databases","js/apps/system/cerberus","js/apps/system/gharial","js/common","js/server"]
 fullSuccess = True
 
 def file_content(filepath):
