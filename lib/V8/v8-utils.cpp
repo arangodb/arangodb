@@ -350,7 +350,7 @@ static void JS_Options (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto result = TRI_ObjectJson(isolate, json);
 
     // remove this variable
-    result->ToObject()->ForceDelete(TRI_V8_STRING("server.password"));
+    result->ToObject()->Delete(TRI_V8_STRING("server.password"));
 
     TRI_V8_RETURN(result);
   }
@@ -1816,7 +1816,7 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
       current->ForceSet(TRI_V8_ASCII_STRING("__filename"), oldFilename);
     }
     if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
-      current->ForceDelete(TRI_V8_ASCII_STRING("__dirname"));
+      current->Delete(TRI_V8_ASCII_STRING("__dirname"));
     }
     else {
       current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), oldDirname);

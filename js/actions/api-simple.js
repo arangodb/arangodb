@@ -379,7 +379,7 @@ actions.defineHttp({
 /// @startDocuBlock JSA_put_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
-/// @RESTHEADER{PUT /_api/simple/near, Find documents near a coordinate}
+/// @RESTHEADER{PUT /_api/simple/near, Returns documents near a coordinate}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -415,6 +415,14 @@ actions.defineHttp({
 /// - *geo*: If given, the identifier of the geo-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+///
+/// Note: the *near* simple query is **deprecated** as of ArangoDB 2.6. 
+/// This API may be removed in future versions of ArangoDB. The preferred
+/// way for retrieving documents from a collection using the near operator is
+/// to issue an [AQL query](../Aql/GeoFunctions.md) using the *NEAR* function as follows: 
+///
+///     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
+///       RETURN doc`
 ///
 /// @RESTRETURNCODES
 ///
@@ -596,6 +604,14 @@ actions.defineHttp({
 /// - *geo*: If given, the identifier of the geo-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+///
+/// Note: the *within* simple query is **deprecated** as of ArangoDB 2.6. 
+/// This API may be removed in future versions of ArangoDB. The preferred
+/// way for retrieving documents from a collection using the near operator is
+/// to issue an [AQL query](../Aql/GeoFunctions.md) using the *WITHIN* function as follows: 
+///
+///     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
+///       RETURN doc`
 ///
 /// @RESTRETURNCODES
 ///
@@ -919,6 +935,15 @@ actions.defineHttp({
 /// - *index*: The identifier of the fulltext-index to use.
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+///
+/// Note: the *fulltext* simple query is **deprecated** as of ArangoDB 2.6. 
+/// This API may be removed in future versions of ArangoDB. The preferred
+/// way for retrieving documents from a collection using the near operator is
+/// to issue an AQL query using the *FULLTEXT* [AQL function](../Aql/FulltextFunctions.md) 
+/// as follows:
+///
+///     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
+///       RETURN doc
 ///
 /// @RESTRETURNCODES
 ///
@@ -1561,6 +1586,16 @@ actions.defineHttp({
 ///   is applied before the *limit* restriction. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+///
+/// Note: the *range* simple query is **deprecated** as of ArangoDB 2.6. 
+/// The function may be removed in future versions of ArangoDB. The preferred
+/// way for retrieving documents from a collection within a specific range
+/// is to use an AQL query as follows: 
+///
+///     FOR doc IN @@collection 
+///       FILTER doc.value >= @left && doc.value < @right 
+///       LIMIT @skip, @limit 
+///       RETURN doc`
 ///
 /// @RESTRETURNCODES
 ///
