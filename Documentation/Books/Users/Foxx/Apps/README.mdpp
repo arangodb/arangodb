@@ -1,0 +1,15 @@
+!Chapter Apps
+
+This chapter is dedicated to featured, general-usage User-defined Foxx apps.
+All of them are freely available in the ArangoDB Store and can be reused in your own Application.
+All credits go to their respective creators.
+
+At first we would like to introduce the [Session Storage](Sessions.md) a Foxx to manage session information across requests.
+This is an essential feature for most Applications.
+
+Next we would like to introduce the [User Storage](Users.md) a Foxx to define access patterns and different user groups.
+You can then make sure that your Foxx is only using a specific set of users, grant them access to your data via your own fully-controlled Foxx without them having any access to ArangoDB in general.
+
+Then we would like to introduce a [Simple Authentication App](SimpleAuth.md) Foxx.
+This allows you to make sure your Foxx is secured and allows to easily define login and register endpoints.
+It also supports several authentication methods like http-basic auth and oauth2.
