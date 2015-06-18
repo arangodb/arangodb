@@ -520,8 +520,7 @@ exports.historian = function () {
     }
   }
   catch (err) {
-    // we don't want this error to appear every x seconds
-    // require("console").warn("catch error in historian: %s", err);
+    require("console").warn("catch error in historian: %s", err);
   }
 };
 
