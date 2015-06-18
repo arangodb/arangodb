@@ -5,7 +5,9 @@ import inspect
 import cgi
 
 validExtensions = (".cpp", ".h", ".js")
-searchPaths = ["arangod/", "lib/", "js/actions","js/client","js/apps/databases","js/apps/system/cerberus","js/apps/system/gharial","js/common","js/server"]
+# specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
+# and that path also contains copies of some files present in js/ anyway.
+searchPaths = ["arangod/", "lib/", "js/actions", "js/client", "js/apps/system/cerberus", "js/apps/system/gharial", "js/common", "js/server"]
 fullSuccess = True
 
 def file_content(filepath):
