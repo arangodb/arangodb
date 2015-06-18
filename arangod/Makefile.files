@@ -93,6 +93,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestQueryHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestSimpleHandler.cpp \
+	arangod/RestHandler/RestSimpleQueryHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
@@ -137,7 +138,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/ExampleMatcher.cpp \
 	arangod/VocBase/edge-collection.cpp \
 	arangod/VocBase/headers.cpp \
-	arangod/VocBase/key-generator.cpp \
+	arangod/VocBase/KeyGenerator.cpp \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \
 	arangod/VocBase/replication-dump.cpp \

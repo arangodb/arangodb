@@ -1,6 +1,6 @@
 #!/bin/bash
 
-V8_VERSION=3.31.74.1
+V8_VERSION=4.3.61
 
 tar cvzf precompiled-libraries.tar.gz \
   .v8-build-64 \
