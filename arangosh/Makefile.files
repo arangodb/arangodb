@@ -47,16 +47,13 @@ bin_arangoimp_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangoimp_LDADD = \
-	lib/libarango_v8.a \
 	lib/libarango_client.a \
 	lib/libarango.a \
-	$(LIBS) \
-	@V8_LIBS@
+	$(LIBS) 
 
 bin_arangoimp_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/V8Client/ImportHelper.cpp \
-	arangosh/V8Client/V8ClientConnection.cpp \
 	arangosh/V8Client/arangoimp.cpp
 
 ################################################################################
