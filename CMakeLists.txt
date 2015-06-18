@@ -39,7 +39,7 @@ set(BIN_ARANGOSH      arangosh)
 set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 
-set(V8_VERSION        4.2.77.1)
+set(V8_VERSION        4.3.61)
 
 ################################################################################
 ### @brief BUILD_PACKAGE
