@@ -63,13 +63,11 @@ describe ArangoDB do
         body = "{ \"collection\" : \"#{@cn}\", \"skip\" : -100 }"
         doc = ArangoDB.log_put("#{prefix}-all-negative-limit", cmd, :body => body)
 
-        doc.code.should eq(201)
+        doc.code.should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(100)
-        doc.parsed_response['count'].should eq(100)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1504)
       end
 
       it "get all documents with skip" do
