@@ -319,7 +319,18 @@ function processQuery (query, explain) {
           var ref = references[node.name];
           delete references[node.name];
           if (Array.isArray(ref)) {
-            return buildExpression(ref[0]) + "[" + keyword("FILTER") + " " + buildExpression(ref[1]) + "]";
+            var out = buildExpression(ref[1]) + "[" + Array(ref[0] + 1).join('*');
+            if (ref[2].type !== "no-op") {
+              out += " " + keyword("FILTER") + " " + buildExpression(ref[2]);
+            }
+            if (ref[3].type !== "no-op") {
+              out += " " + keyword("LIMIT ") + " " + buildExpression(ref[3]);
+            }
+            if (ref[4].type !== "no-op") {
+              out += " " + keyword("RETURN ") + " " + buildExpression(ref[4]);
+            }
+            out += "]";
+            return out;
           }
           return buildExpression(ref) + "[*]";
         }
@@ -348,6 +359,8 @@ function processQuery (query, explain) {
         return "+ " + buildExpression(node.subNodes[0]);
       case "unary minus":
         return "- " + buildExpression(node.subNodes[0]);
+      case "array limit":
+        return buildExpression(node.subNodes[0]) + ", " + buildExpression(node.subNodes[1]);
       case "attribute access":
         return buildExpression(node.subNodes[0]) + "." + attribute(node.name);
       case "indexed access":
@@ -358,7 +371,7 @@ function processQuery (query, explain) {
       case "expansion":
         if (node.subNodes.length > 2) {
           // [FILTER ...]
-          references[node.subNodes[0].subNodes[0].name] = [ node.subNodes[0].subNodes[1], node.subNodes[2] ]; 
+          references[node.subNodes[0].subNodes[0].name] = [ node.levels, node.subNodes[0].subNodes[1], node.subNodes[2], node.subNodes[3], node.subNodes[4] ]; 
         }
         else {
           // [*]
