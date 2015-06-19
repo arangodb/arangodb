@@ -102,12 +102,12 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "AQL_IS_DOCUMENT", ".", true, false, true, true, &Functions::IsObject) }, 
   
   // type cast functions
-  { "TO_NUMBER",                   Function("TO_NUMBER",                   "AQL_TO_NUMBER", ".", true, false, true, true) },
-  { "TO_STRING",                   Function("TO_STRING",                   "AQL_TO_STRING", ".", true, false, true, true) },
-  { "TO_BOOL",                     Function("TO_BOOL",                     "AQL_TO_BOOL", ".", true, false, true, true) },
-  { "TO_ARRAY",                    Function("TO_ARRAY",                    "AQL_TO_ARRAY", ".", true, false, true, true) },
+  { "TO_NUMBER",                   Function("TO_NUMBER",                   "AQL_TO_NUMBER", ".", true, false, true, true, &Functions::ToNumber) },
+  { "TO_STRING",                   Function("TO_STRING",                   "AQL_TO_STRING", ".", true, false, true, true, &Functions::ToString) },
+  { "TO_BOOL",                     Function("TO_BOOL",                     "AQL_TO_BOOL", ".", true, false, true, true, &Functions::ToBool) },
+  { "TO_ARRAY",                    Function("TO_ARRAY",                    "AQL_TO_ARRAY", ".", true, false, true, true, &Functions::ToArray) },
   // TO_LIST is an alias for TO_ARRAY
-  { "TO_LIST",                     Function("TO_LIST",                     "AQL_TO_LIST", ".", true, false, true, true) },
+  { "TO_LIST",                     Function("TO_LIST",                     "AQL_TO_LIST", ".", true, false, true, true, &Functions::ToArray) },
   
   // string functions
   { "CONCAT",                      Function("CONCAT",                      "AQL_CONCAT", "szl|+", true, false, true, true, &Functions::Concat) },
