@@ -3043,7 +3043,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
       // initial subquery execution or subquery is not constant
 
       // execute the subquery
-      subqueryResults = executeSubquery(); 
+      subqueryResults = executeSubquery();
       TRI_ASSERT(subqueryResults != nullptr);
 
       try {
@@ -3371,13 +3371,20 @@ SortedAggregateBlock::SortedAggregateBlock (ExecutionEngine* engine,
     for (size_t i = 0; i < registerPlan.size(); ++i) {
       _variableNames.emplace_back(""); // initialize with some default value
     }
-
+            
     // iterate over all our variables
     if (en->_keepVariables.empty()) {
+      auto&& usedVariableIds = en->getVariableIdsUsedHere();
+
       for (auto const& vi : registerPlan) {
         if (vi.second.depth > 0 || en->getDepth() == 1) {
           // Do not keep variables from depth 0, unless we are depth 1 ourselves
           // (which means no FOR in which we are contained)
+
+          if (usedVariableIds.find(vi.first) == usedVariableIds.end()) {
+            // variable is not visible to the AggregateBlock
+            continue;
+          }
 
           // find variable in the global variable map
           auto itVar = en->_variableMap.find(vi.first);
@@ -3391,6 +3398,7 @@ SortedAggregateBlock::SortedAggregateBlock (ExecutionEngine* engine,
     else {
       for (auto const& x : en->_keepVariables) {
         auto it = registerPlan.find(x->id);
+
         if (it != registerPlan.end()) {
           _variableNames[(*it).second.registerId] = x->name;
         }
