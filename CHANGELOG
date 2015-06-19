@@ -1,6 +1,8 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* do not link arangoimp against V8
+
 * AQL functon call arguments optimization
 
   This will lead to arguments in function calls inside AQL queries will not be copied but passed
