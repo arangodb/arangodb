@@ -61,6 +61,7 @@ var optionsDocumentation = [
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipMemoryIntense`: tests using lots of resources will be skippet.',
+  '   - `skipAuth : testing authentication will be skipped.',
   '   - `skipSsl`: ommit the ssl_server rspec tests.',
   '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
   '   - `skipConfig`: ommit the noisy configuration tests',
@@ -1883,6 +1884,11 @@ testFuncs.arangob = function (options) {
 };
 
 testFuncs.authentication = function (options) {
+  if (options.skipAuth === true) {
+    print("skipping Authentication tests!");
+    return {};
+  }
+
   print("Authentication tests...");
   var instanceInfo = startInstance("tcp", options,
                                    {"server.disable-authentication": "false"},
@@ -1932,6 +1938,10 @@ var authTestExpectRC = [
 ];
 
 testFuncs.authentication_parameters = function (options) {
+  if (options.skipAuth === true) {
+    print("skipping Authentication with parameters tests!");
+    return {};
+  }
   print("Authentication with parameters tests...");
   var results = {};
 
