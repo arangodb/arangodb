@@ -318,7 +318,7 @@ function processQuery (query, explain) {
           var ref = references[node.name];
           delete references[node.name];
           if (Array.isArray(ref)) {
-            var out = buildExpression(ref[1]) + "[" + Array(ref[0] + 1).join('*');
+            var out = buildExpression(ref[1]) + "[" + (new Array(ref[0] + 1).join('*'));
             if (ref[2].type !== "no-op") {
               out += " " + keyword("FILTER") + " " + buildExpression(ref[2]);
             }
