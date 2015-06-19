@@ -520,6 +520,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
           // no number found. 
         }
       }
+      else {
+        indexResult.destroy();
+      }
+        
       // fall-through to returning null
     }
     else if (result.isObject()) {
@@ -541,6 +545,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
+      else {
+        indexResult.destroy();
+      }
+
       // fall-through to returning null
     }
     result.destroy();
