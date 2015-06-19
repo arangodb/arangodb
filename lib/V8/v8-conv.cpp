@@ -1446,8 +1446,7 @@ static v8::Handle<v8::Value> JsonShapeData (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> ObjectJsonNull (v8::Isolate* isolate, TRI_json_t const* json) {
-  v8::EscapableHandleScope scope(isolate);
-  return scope.Escape<v8::Value>(v8::Null(isolate)); 
+  return v8::Null(isolate); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1455,8 +1454,7 @@ static inline v8::Handle<v8::Value> ObjectJsonNull (v8::Isolate* isolate, TRI_js
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> ObjectJsonBoolean (v8::Isolate* isolate, TRI_json_t const* json) {
-  v8::EscapableHandleScope scope(isolate);
-  return scope.Escape<v8::Value>(v8::Boolean::New(isolate, json->_value._boolean));
+  return v8::Boolean::New(isolate, json->_value._boolean);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1464,8 +1462,7 @@ static inline v8::Handle<v8::Value> ObjectJsonBoolean (v8::Isolate* isolate, TRI
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> ObjectJsonNumber (v8::Isolate* isolate, TRI_json_t const* json) {
-  v8::EscapableHandleScope scope(isolate);
-  return scope.Escape<v8::Value>(v8::Number::New(isolate, json->_value._number));
+  return v8::Number::New(isolate, json->_value._number);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1473,8 +1470,7 @@ static inline v8::Handle<v8::Value> ObjectJsonNumber (v8::Isolate* isolate, TRI_
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> ObjectJsonString (v8::Isolate* isolate, TRI_json_t const* json) {
-  v8::EscapableHandleScope scope(isolate);
-  return scope.Escape<v8::Value>(TRI_V8_PAIR_STRING(json->_value._string.data, json->_value._string.length - 1));
+  return TRI_V8_PAIR_STRING(json->_value._string.data, json->_value._string.length - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1482,8 +1478,11 @@ static inline v8::Handle<v8::Value> ObjectJsonString (v8::Isolate* isolate, TRI_
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, TRI_json_t const* json) {
-  v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Object> object = v8::Object::New(isolate);
+  
+  if (object.IsEmpty()) {
+    return v8::Undefined(isolate);
+  }
 
   size_t const n = TRI_LengthVector(&json->_value._objects);
 
@@ -1495,10 +1494,17 @@ static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, TRI_json_t 
     }
 
     TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i + 1));
-    object->ForceSet(TRI_V8_PAIR_STRING(key->_value._string.data, key->_value._string.length - 1), TRI_ObjectJson(isolate, element));
+
+    auto val = TRI_ObjectJson(isolate, element);
+    if (! val.IsEmpty()) {
+      auto k = TRI_V8_PAIR_STRING(key->_value._string.data, key->_value._string.length - 1);
+      if (! k.IsEmpty()) {
+        object->ForceSet(TRI_V8_PAIR_STRING(key->_value._string.data, key->_value._string.length - 1), val);
+      }
+    }
   }
 
-  return scope.Escape<v8::Value>(object);
+  return object;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1506,19 +1512,25 @@ static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, TRI_json_t 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectJsonArray (v8::Isolate* isolate, TRI_json_t const* json) {
-  v8::EscapableHandleScope scope(isolate);
   uint32_t const n = static_cast<uint32_t>(TRI_LengthArrayJson(json));
 
   v8::Handle<v8::Array> object = v8::Array::New(isolate, static_cast<int>(n));
 
+  if (object.IsEmpty()) {
+    return v8::Undefined(isolate);
+  }
+
+  uint32_t j = 0;
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));
     v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, element);
 
-    object->Set(i, val);
+    if (! val.IsEmpty()) {
+      object->Set(j++, val);
+    }
   }
 
-  return scope.Escape<v8::Value>(object);
+  return object;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
