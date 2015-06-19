@@ -720,6 +720,29 @@ v2.6.0-beta4 (2015-06-16)
   for a lock on a DBserver as blocked
 
 
+v2.5.6 (XXXX-XX-XX)
+-------------------
+
+* potentially fixed issue #1313: Wrong metric calculation at dashboard
+
+  Escape whitespace in process name when scanning /proc/pid/stats
+    
+  This fixes statistics values read from that file
+
+* Fixed variable naming in AQL `COLLECT INTO` results in case the COLLECT is placed 
+  in a subquery which itself is followed by other constructs that require variables
+
+
+v2.5.5 (2015-05-29)
+-------------------
+
+* fixed vulnerability in JWT implementation.
+
+* fixed format string for reading /proc/pid/stat
+
+* take into account barriers used in different V8 contexts
+
+
 v2.5.4 (2015-05-14)
 -------------------
 
