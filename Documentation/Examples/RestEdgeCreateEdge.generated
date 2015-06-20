@@ -6,26 +6,26 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1675983985"
-location: /_db/_system/_api/edge/edges/1675983985
+etag: "1679076884"
+location: /_db/_system/_api/edge/edges/1679076884
 
 { 
   "error" : false, 
-  "_id" : "edges/1675983985", 
-  "_rev" : "1675983985", 
-  "_key" : "1675983985" 
+  "_id" : "edges/1679076884", 
+  "_rev" : "1679076884", 
+  "_key" : "1679076884" 
 }
-shell> curl --dump - http://localhost:8529/_api/edge/edges/1675983985
+shell> curl --dump - http://localhost:8529/_api/edge/edges/1679076884
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1675983985"
+etag: "1679076884"
 
 { 
   "name" : "Emil", 
-  "_id" : "edges/1675983985", 
-  "_rev" : "1675983985", 
-  "_key" : "1675983985", 
+  "_id" : "edges/1679076884", 
+  "_rev" : "1679076884", 
+  "_key" : "1679076884", 
   "_from" : "vertices/1", 
   "_to" : "vertices/2" 
 }

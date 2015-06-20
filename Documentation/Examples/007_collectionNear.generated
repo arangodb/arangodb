@@ -1,6 +1,6 @@
 arangosh> db.geo.ensureGeoIndex("loc");
 { 
-  "id" : "geo/32930929", 
+  "id" : "geo/29535764", 
   "type" : "geo1", 
   "fields" : [ 
     "loc" 
@@ -14,12 +14,12 @@ arangosh> db.geo.ensureGeoIndex("loc");
   "code" : 201 
 }
 arangosh> for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
-arangosh> db.geo.near(0,0).limit(2).toArray();
+arangosh> db.geo.near(0, 0).limit(2).toArray();
 [ 
   { 
-    "_id" : "geo/102333553", 
-    "_key" : "102333553", 
-    "_rev" : "102333553", 
+    "_id" : "geo/98938388", 
+    "_key" : "98938388", 
+    "_rev" : "98938388", 
     "name" : "Name/0/0", 
     "loc" : [ 
       0, 
@@ -27,9 +27,9 @@ arangosh> db.geo.near(0,0).limit(2).toArray();
     ] 
   }, 
   { 
-    "_id" : "geo/95059057", 
-    "_key" : "95059057", 
-    "_rev" : "95059057", 
+    "_id" : "geo/91663892", 
+    "_key" : "91663892", 
+    "_rev" : "91663892", 
     "name" : "Name/-10/0", 
     "loc" : [ 
       -10, 

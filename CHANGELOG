@@ -1,5 +1,5 @@
-v2.6.0-beta4 (2015-06-16)
--------------------------
+v2.6.0 (2015-06-20)
+-------------------
 
 * using negative values for `SimpleQuery.skip()` is deprecated. 
   This functionality will be removed in future versions of ArangoDB.

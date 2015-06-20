@@ -6,15 +6,15 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json
-etag: 1641118833
+etag: 1644211732
 
 { 
   "error" : false, 
   "code" : 202, 
   "edge" : { 
     "_id" : "relation/aliceAndBob", 
-    "_rev" : "1641118833", 
-    "_oldRev" : "1640004721", 
+    "_rev" : "1644211732", 
+    "_oldRev" : "1643097620", 
     "_key" : "aliceAndBob" 
   } 
 }
