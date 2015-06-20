@@ -305,10 +305,10 @@ bool Expression::findInArray (AqlValue const& left,
     while (true) {
       // determine midpoint
       size_t m = l + ((r - l) / 2);
-      auto listItem = right.extractArrayMember(trx, rightCollection, m, false);
-      AqlValue listItemValue(&listItem);
+      auto arrayItem = right.extractArrayMember(trx, rightCollection, m, false);
+      AqlValue arrayItemValue(&arrayItem);
 
-      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr, false);
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, arrayItemValue, nullptr, false);
 
       if (compareResult == 0) {
         // item found in the list
@@ -334,10 +334,10 @@ bool Expression::findInArray (AqlValue const& left,
     // use linear search
     for (size_t i = 0; i < n; ++i) {
       // do not copy the list element we're looking at
-      auto listItem = right.extractArrayMember(trx, rightCollection, i, false);
-      AqlValue listItemValue(&listItem);
+      auto arrayItem = right.extractArrayMember(trx, rightCollection, i, false);
+      AqlValue arrayItemValue(&arrayItem);
 
-      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr, false);
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, arrayItemValue, nullptr, false);
 
       if (compareResult == 0) {
         // item found in the list
@@ -627,6 +627,15 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   else if (node->type == NODE_TYPE_REFERENCE) {
     auto v = static_cast<Variable const*>(node->getData());
 
+    {
+      auto it = _variables.find(v);
+      if (it != _variables.end()) {
+        *collection = nullptr;
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (*it).second))); //, Json::NOFREE));
+      }
+    }
+
+
     size_t i = 0;
     for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
       if ((*it)->name == v->name) {
@@ -634,6 +643,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
         // save the collection info
         *collection = argv->getDocumentCollection(regs[i]); 
+
         if (doCopy) {
           return argv->getValueReference(startPos, regs[i]).clone();
         }
@@ -820,8 +830,63 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     // return false part  
     return executeSimpleExpression(node->getMember(2), &myCollection, trx, argv, startPos, vars, regs, true);
   }
+
+  else if (node->type == NODE_TYPE_EXPANSION) { 
+    TRI_ASSERT(node->numMembers() == 5);
+    auto iterator = node->getMember(0);
+    auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
+    // TODO: implement flatten!
+    auto levels = node->getIntValue(true);
+
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue value = executeSimpleExpression(node->getMember(0), &myCollection, trx, argv, startPos, vars, regs, false);
+
+    if (! value.isArray()) {
+      value.destroy();
+      return AqlValue(new triagens::basics::Json(triagens::basics::Json::Array));
+    }
+
+    size_t const n = value.arraySize();
+    std::unique_ptr<Json> array(new Json(Json::Array, n));
+  
+    size_t projectionNode = 1;
+    if (node->getMember(4)->type != NODE_TYPE_NOP) {
+      projectionNode = 4;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+      // TODO: check why we must copy the array member. will crash without copying!
+      auto arrayItem = value.extractArrayMember(trx, myCollection, i, true);
+      
+      setVariable(variable, arrayItem.json());
  
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
+      TRI_document_collection_t const* subCollection = nullptr;
+      AqlValue sub = executeSimpleExpression(node->getMember(projectionNode), &subCollection, trx, argv, startPos, vars, regs, true);
+      array->add(sub.toJson(trx, subCollection, true));
+
+      clearVariable(variable);
+
+      arrayItem.destroy();
+    }
+
+    value.destroy();
+    return AqlValue(array.release());
+  }
+
+  else if (node->type == NODE_TYPE_ITERATOR) { 
+    TRI_ASSERT(node != nullptr);
+    TRI_ASSERT(node->numMembers() == 2);
+
+    // intentionally do not stringify node 0
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue value = executeSimpleExpression(node->getMember(1), &myCollection, trx, argv, startPos, vars, regs, true);
+    return value;
+  }
+
+  std::string msg("unhandled type '");
+  msg.append(node->getTypeString()); 
+  msg.append("' in executeSimpleExpression()");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
