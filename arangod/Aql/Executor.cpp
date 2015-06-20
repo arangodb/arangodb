@@ -1050,7 +1050,7 @@ void Executor::generateCodeExpansion (AstNode const* node) {
     generateCodeNode(limitNode->getMember(0));
     _buffer->appendChar(',');
     generateCodeNode(limitNode->getMember(1));
-    _buffer->appendChar(')');
+    _buffer->appendText(",true)");
   }
 
   // RETURN
