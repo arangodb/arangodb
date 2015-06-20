@@ -1201,16 +1201,23 @@ bool AstNode::isSimple () const {
   }
 
   if (type == NODE_TYPE_REFERENCE ||
-      type == NODE_TYPE_VALUE) {
+      type == NODE_TYPE_VALUE ||
+      type == NODE_TYPE_VARIABLE ||
+      type == NODE_TYPE_NOP) {
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
 
   if (type == NODE_TYPE_ARRAY ||
-      type == NODE_TYPE_OBJECT) {
+      type == NODE_TYPE_OBJECT ||
+      type == NODE_TYPE_EXPANSION ||
+      type == NODE_TYPE_ITERATOR ||
+      type == NODE_TYPE_ARRAY_LIMIT) {
     size_t const n = numMembers();
+
     for (size_t i = 0; i < n; ++i) {
-      auto member = getMember(i);
+      auto member = getMemberUnchecked(i);
+
       if (! member->isSimple()) {
         setFlag(DETERMINED_SIMPLE);
         return false;
