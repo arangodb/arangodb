@@ -3951,56 +3951,6 @@ function AQL_PARSE_IDENTIFIER (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query a skiplist index
-///
-/// returns a documents from a skiplist index on the specified collection. Only
-/// documents that match the specified condition will be returned.
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_SKIPLIST (collection, condition, skip, limit) {
-  'use strict';
-
-  var keys = [ ], key, idx;
-
-  for (key in condition) {
-    if (condition.hasOwnProperty(key)) {
-      keys.push(key);
-    }
-  }
-
-  var c = COLLECTION(collection);
-
-  if (c === null) {
-    THROW("SKIPLIST", INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, collection);
-  }
-
-  idx = c.lookupSkiplist.apply(c, keys);
-
-  if (idx === null) {
-    THROW("SKIPLIST", INTERNAL.errors.ERROR_ARANGO_NO_INDEX);
-  }
-
-  if (skip === undefined || skip === null) {
-    skip = 0;
-  }
-
-  if (limit === undefined || limit === null) {
-    limit = null;
-  }
-
-  try {
-    if (isCoordinator) {
-      return c.byConditionSkiplist(idx.id, condition).skip(skip).limit(limit).toArray();
-    }
-
-    return c.BY_CONDITION_SKIPLIST(idx.id, condition, skip, limit).documents;
-  }
-  catch (err) {
-    THROW("SKIPLIST", INTERNAL.errors.ERROR_ARANGO_NO_INDEX);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a document has a specific attribute
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8526,7 +8476,6 @@ exports.AQL_NOT_NULL = AQL_NOT_NULL;
 exports.AQL_FIRST_LIST = AQL_FIRST_LIST;
 exports.AQL_FIRST_DOCUMENT = AQL_FIRST_DOCUMENT;
 exports.AQL_PARSE_IDENTIFIER = AQL_PARSE_IDENTIFIER;
-exports.AQL_SKIPLIST = AQL_SKIPLIST;
 exports.AQL_HAS = AQL_HAS;
 exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
 exports.AQL_VALUES = AQL_VALUES;
