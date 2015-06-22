@@ -33,7 +33,13 @@ v2.7.0 (XXXX-XX-XX)
 
   The change speeds up this REST API method and will lead to additional query information being
   returned by the REST API. Clients can use this extra information or ignore it.
- 
+
+* Foxx Queue job success/failure handlers arguments have changed from `(jobId, jobData, result, jobFailures)` to `(result, jobData, job)`.
+
+* added Foxx Queue job options `repeatTimes`, `repeatUntil` and `repeatDelay`.
+
+* added Foxx manifest configuration type `password`.
+
 
 v2.6.0-beta4 (2015-06-16)
 -------------------------
