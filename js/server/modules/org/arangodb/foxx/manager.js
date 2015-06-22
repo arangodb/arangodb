@@ -315,32 +315,32 @@ var checkManifest = function(filename, manifest) {
     }
   });
 
-  // TODO Emit deprecation warnings in 2.7
+  // TODO Remove in 2.8
 
   if (manifest.setup) {
-    // console.warn(
-    //   "Manifest '%s' contains deprecated attribute 'setup', use 'scripts.setup' instead.",
-    //   filename
-    // );
+    console.warn(
+      "Manifest '%s' contains deprecated attribute 'setup', use 'scripts.setup' instead.",
+      filename
+    );
     manifest.scripts.setup = manifest.setup;
     delete manifest.setup;
   }
 
   if (manifest.teardown) {
-    // console.warn(
-    //   "Manifest '%s' contains deprecated attribute 'teardown', use 'scripts.teardown' instead.",
-    //   filename
-    // );
+    console.warn(
+      "Manifest '%s' contains deprecated attribute 'teardown', use 'scripts.teardown' instead.",
+      filename
+    );
     manifest.scripts.teardown = manifest.teardown;
     delete manifest.teardown;
   }
 
-  // if (manifest.assets) {
-  //   console.warn(
-  //     "Manifest '%s' contains deprecated attribute 'assets', use 'files' and an external build tool instead.",
-  //     filename
-  //   );
-  // }
+  if (manifest.assets) {
+    console.warn(
+      "Manifest '%s' contains deprecated attribute 'assets', use 'files' and an external build tool instead.",
+      filename
+    );
+  }
 
   Object.keys(manifest).forEach(function (key) {
     if (!manifestSchema[key]) {
