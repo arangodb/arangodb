@@ -147,6 +147,7 @@ The **type** can be any of the following:
 * **number**: any finite decimal or integer number.
 * **string**: any string value.
 * **json**: any well-formed JSON value.
+* **password**: like *string* but will be displayed as a masked input field in the web frontend.
 
 If the configuration has parameters that do not specify a default value,
 you need to configure the app before it becomes active.
