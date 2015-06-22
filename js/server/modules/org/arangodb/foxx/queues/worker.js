@@ -37,7 +37,7 @@ var fm = require('org/arangodb/foxx/manager');
 var util = require('util');
 var internal = require('internal');
 
-function getBackOffDelay(job, cfg) {
+function getBackOffDelay(job) {
   var n = job.failures.length - 1;
   if (typeof job.backOff === 'string') {
     try {
@@ -52,9 +52,9 @@ function getBackOffDelay(job, cfg) {
   } else if (typeof job.backOff === 'number' && job.backOff >= 0 && job.backOff < Infinity) {
     return exponentialBackOff(n, job.backOff);
   }
-  if (typeof cfg.backOff === 'function') {
+  if (typeof job.type.backOff === 'function') {
     try {
-      return cfg.backOff(n);
+      return job.type.backOff(n);
     } catch (e) {
       console.errorLines(
         'Failed to call backOff function of job type %s:\n%s',
@@ -62,9 +62,9 @@ function getBackOffDelay(job, cfg) {
         e.stack || String(e)
       );
     }
-  } else if (typeof cfg.backOff === 'string') {
+  } else if (typeof job.type.backOff === 'string') {
     try {
-      return eval('(' + cfg.backOff + ')(' + n + ')');
+      return eval('(' + job.type.backOff + ')(' + n + ')');
     } catch (e) {
       console.errorLines(
         'Failed to call backOff function of job type %s:\n%s',
@@ -73,42 +73,29 @@ function getBackOffDelay(job, cfg) {
       );
     }
   }
-  if (typeof cfg.backOff === 'number' && cfg.backOff >= 0 && cfg.backOff < Infinity) {
-    return exponentialBackOff(n, cfg.backOff);
+  if (typeof job.type.backOff === 'number' && job.type.backOff >= 0 && job.type.backOff < Infinity) {
+    return exponentialBackOff(n, job.type.backOff);
   }
   return exponentialBackOff(n, 1000);
 }
 
 exports.work = function (job) {
-  var databaseName = db._name();
-  var cache = queues._jobTypes[databaseName];
-  var cfg = typeof job.type === 'string' ? (cache && cache[job.type]) : job.type;
   var now = Date.now();
-
-  if (!cfg) {
-    console.warn('Unknown job type for job %s in %s: %s', job._key, db._name(), job.type);
-    db._jobs.update(job._key, {status: 'pending'});
-    return;
-  }
+  var success = true;
+  var result;
 
   var maxFailures = (
     typeof job.maxFailures === 'number' || job.maxFailures === false
     ? job.maxFailures
     : (
-      typeof cfg.maxFailures === 'number' || cfg.maxFailures === false
-      ? cfg.maxFailures
-      : 0
+      typeof job.type.maxFailures === 'number' || job.type.maxFailures === false
+      ? job.type.maxFailures
+      : false
     )
   );
 
-  var result;
-  var success = true;
   try {
-    if (cfg.execute) {
-      result = cfg.execute(job.data, job._id);
-    } else {
-      fm.runScript(cfg.name, cfg.mount, [].concat(job.data, job._id));
-    }
+    fm.runScript(job.type.name, job.type.mount, [].concat(job.data, job._id));
   } catch (e) {
     console.errorLines('Job %s failed:\n%s', job._key, e.stack || String(e));
     job.failures.push(flatten(e));
@@ -116,35 +103,35 @@ exports.work = function (job) {
   }
 
   var callback;
-  if (success) {
-    // mark complete
-    callback = job.onSuccess;
-    db._jobs.update(job._key, {modified: Date.now(), status: 'complete'});
-  } else if (maxFailures === false || job.failures.length > maxFailures) {
-    // mark failed
-    callback = job.onFailure;
-    db._jobs.update(job._key, {
-      modified: now,
-      failures: job.failures,
-      status: 'failed'
-    });
-  } else {
-    db._executeTransaction({
-      collections: {
-        read: ['_jobs'],
-        write: ['_jobs']
-      },
-      action: function () {
-        db._jobs.update(job._key, {
-          modified: now,
-          delayUntil: now + getBackOffDelay(job, cfg),
-          failures: job.failures,
-          status: 'pending'
-        });
+  db._executeTransaction({
+    collections: {
+      read: ['_jobs'],
+      write: ['_jobs']
+    },
+    action: function () {
+      var data = {modified: now};
+      if (!success) {
+        data.failures = job.failures;
+      }
+      if (success) {
+        // mark complete
+        callback = job.onSuccess;
+        data.status = 'complete';
+      } else if (maxFailures === false || job.failures.length > maxFailures) {
+        // mark failed
+        callback = job.onFailure;
+        data.status = 'failed';
+        data.failures = job.failures;
+      } else {
+        data.delayUntil = now + getBackOffDelay(job);
+        data.status = 'pending';
+      }
+      db._jobs.update(job._key, data);
+      if (data.status === 'pending') {
         queues._updateQueueDelay();
       }
-    });
-  }
+    }
+  });
 
   if (callback) {
     var cbType = success ? 'success' : 'failure';

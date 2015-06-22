@@ -30,14 +30,12 @@
 var _ = require('underscore');
 var flatten = require('internal').flatten;
 var arangodb = require('org/arangodb');
-var console = require('console');
 var joi = require('joi');
 var qb = require('aqb');
 var db = arangodb.db;
 
 var queueCache = {};
 var jobCache = {};
-var jobTypeCache = {};
 
 function validate(data, schema) {
   if (!schema) {
@@ -142,32 +140,6 @@ function deleteQueue(key) {
   return result;
 }
 
-function registerJobType(name, opts) {
-  // TODO Remove support for function-based job types in 2.7
-  console.warn(
-    "Function-based Foxx Queue job type definitions are deprecated and known to cause issues."
-    + " Please use script-based job types instead. Job type: " + name
-  );
-  if (typeof opts === 'function') {
-    opts = {execute: opts};
-  }
-  if (typeof opts.execute !== 'function') {
-    throw new Error('Must provide a function to execute!');
-  }
-  if (opts.schema && typeof opts.schema.validate !== 'function') {
-    throw new Error('Schema must be a joi schema!');
-  }
-  var cfg = _.extend({}, opts);
-
-  // _jobTypes are database-specific
-  var databaseName = db._name();
-  var cache = jobTypeCache[databaseName];
-  if (!cache) {
-    cache = jobTypeCache[databaseName] = {};
-  }
-  cache[name] = cfg;
-}
-
 function getJobs(queue, status, type) {
   var query = qb.for('job').in('_jobs');
   var vars = {};
@@ -183,15 +155,11 @@ function getJobs(queue, status, type) {
   }
 
   if (type !== undefined) {
-    if (typeof type === 'string') {
-      query = query.filter(qb.ref('@type').eq('job.type'));
-    } else {
-      query = query.filter(
-        qb.ref('@type.name').eq('job.type.name')
-        .and(qb.ref('@type.mount').eq('job.type.mount'))
-      );
-    }
-    vars.type = type;
+    query = query.filter(
+      qb.ref('@type.name').eq('job.type.name')
+      .and(qb.ref('@type.mount').eq('job.type.mount'))
+    );
+    vars.type = {name: type.name, mount: type.mount};
   }
 
   return db._createStatement({
@@ -264,36 +232,14 @@ _.extend(Queue.prototype, {
       throw new Error('Must pass a job type!');
     }
 
-    var definition;
-    if (typeof jobType === 'string') {
-      // TODO Remove support for function-based job types in 2.7
-      console.warn(
-        "Function-based Foxx Queue job type definitions are deprecated and known to cause issues."
-        + " Please use script-based job types instead. Job type: " + jobType
-      );
-      var cache = jobTypeCache[db._name()];
-      definition = cache && cache[jobType];
-    } else {
-      definition = jobType;
-      jobType = _.extend({}, jobType);
+    jobType = _.extend({}, jobType);
+
+    if (jobType.schema) {
+      data = validate(data, jobType.schema);
       delete jobType.schema;
     }
-
-    if (definition) {
-      if (definition.schema) {
-        data = validate(data, definition.schema);
-      }
-      if (definition.preprocess) {
-        data = definition.preprocess(data);
-      }
-    } else {
-      // TODO Remove support for function-based job types in 2.7
-      var message = 'Unknown job type: ' + jobType;
-      if (opts.allowUnknown) {
-        console.warn(message);
-      } else {
-        throw new Error(message);
-      }
+    if (jobType.preprocess) {
+      data = jobType.preprocess(data);
     }
 
     if (!opts) {
@@ -371,12 +317,10 @@ _.extend(Queue.prototype, {
 createQueue('default');
 
 module.exports = {
-  _jobTypes: jobTypeCache,
   _updateQueueDelay: updateQueueDelay,
   get: getQueue,
   create: createQueue,
-  delete: deleteQueue,
-  registerJobType: registerJobType
+  delete: deleteQueue
 };
 
 // -----------------------------------------------------------------------------
