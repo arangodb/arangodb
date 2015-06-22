@@ -26,5 +26,7 @@
 
   "lib": ".",
 
-  "setup": "setup.js"
+  "scripts": {
+    "setup": "setup.js"
+  }
 }
