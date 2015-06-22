@@ -129,7 +129,7 @@
       if (this.model.isDevelopment()) {
         warning += (
           '<p><strong>WARNING:</strong> This app is running in <strong>development mode</strong>.'
-          + ' If any of the tests access the app"s HTTP API they may become non-deterministic.</p>'
+          + ' If any of the tests access the app\'s HTTP API they may become non-deterministic.</p>'
         );
       }
       var buttons = [
@@ -194,7 +194,7 @@
           'app_delete_run_teardown',
           'Run teardown?',
           true,
-          'Should this app"s teardown script be executed before removing the app?',
+          'Should this app\'s teardown script be executed before removing the app?',
           true
         )
       ];
@@ -253,27 +253,18 @@
         return;
       }
       var tableContent = _.map(this.model.get('config'), function(obj, name) {
-        if (obj.type === 'boolean' || obj.type === 'bool') {
-          return window.modalView.createCheckboxEntry(
-            'app_config_' + name,
-            name,
-            obj.current || false,
-            obj.description,
-            obj.current || false
-          );
-        }
         var defaultValue = obj.default === undefined ? '' : String(obj.default);
         var currentValue = obj.current === undefined ? '' : String(obj.current);
+        var methodName = 'createTextEntry';
         var mandatory = false;
         var checks = [];
-        if (obj.default === undefined && obj.required !== false) {
-          mandatory = true;
-          checks.push({
-            rule: Joi.any().required(),
-            msg: 'No default found. Has to be added'
-          });
-        }
-        if (obj.type === 'json') {
+        if (obj.type === 'boolean' || obj.type === 'bool') {
+          methodName = 'createCheckboxEntry';
+          obj.default = obj.default || false;
+          defaultValue = obj.default || false;
+          currentValue = obj.current || false;
+        } else if (obj.type === 'json') {
+          methodName = 'createBlobEntry';
           defaultValue = obj.default === undefined ? '' : JSON.stringify(obj.default);
           currentValue = obj.current === undefined ? '' : obj.current;
           checks.push({
@@ -282,17 +273,7 @@
             },
             msg: 'Must be well-formed JSON or empty.'
           });
-          return window.modalView.createBlobEntry(
-            'app_config_' + name,
-            name,
-            currentValue,
-            obj.description,
-            defaultValue,
-            mandatory,
-            checks
-          );
-        }
-        if (obj.type === 'integer' || obj.type === 'int') {
+        } else if (obj.type === 'integer' || obj.type === 'int') {
           checks.push({
             rule: Joi.number().integer().optional().allow(''),
             msg: 'Has to be an integer.'
@@ -303,12 +284,22 @@
             msg: 'Has to be a number.'
           });
         } else {
+          if (obj.type === 'password') {
+            methodName = 'createPasswordEntry';
+          }
           checks.push({
             rule: Joi.string().optional().allow(''),
             msg: 'Has to be a string.'
           });
         }
-        return window.modalView.createTextEntry(
+        if (obj.default === undefined && obj.required !== false) {
+          mandatory = true;
+          checks.unshift({
+            rule: Joi.any().required(),
+            msg: 'This field is required.'
+          });
+        }
+        return window.modalView[methodName](
           'app_config_' + name,
           name,
           currentValue,

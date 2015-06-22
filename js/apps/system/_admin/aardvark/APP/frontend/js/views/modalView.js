@@ -202,8 +202,8 @@
       return obj;
     },
 
-    createPasswordEntry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory);
+    createPasswordEntry: function(id, label, value, info, placeholder, mandatory, regexp) {
+      var obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory, regexp);
       obj.id = id;
       return obj;
     },
