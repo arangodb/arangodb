@@ -28,6 +28,7 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var _ = require('underscore');
 var db = require('org/arangodb').db;
 var flatten = require('internal').flatten;
 var exponentialBackOff = require('internal').exponentialBackOff;
@@ -38,7 +39,7 @@ var util = require('util');
 var internal = require('internal');
 
 function getBackOffDelay(job) {
-  var n = job.failures.length - 1;
+  var n = job.runFailures - 1;
   if (typeof job.backOff === 'string') {
     try {
       return eval('(' + job.backOff + ')(' + n + ')');
@@ -80,10 +81,6 @@ function getBackOffDelay(job) {
 }
 
 exports.work = function (job) {
-  var now = Date.now();
-  var success = true;
-  var result;
-
   var maxFailures = (
     typeof job.maxFailures === 'number' || job.maxFailures === false
     ? job.maxFailures
@@ -94,10 +91,34 @@ exports.work = function (job) {
     )
   );
 
+  if (!job.runFailures) {
+    job.runFailures = 0;
+  }
+
+  if (!job.runs) {
+    job.runs = 0;
+  }
+
+  var repeatDelay = job.repeatDelay || job.type.repeatDelay || 0;
+  var repeatTimes = job.repeatTimes || job.type.repeatTimes || 0;
+  var repeatUntil = job.repeatUntil || job.type.repeatUntil || -1;
+  var now = Date.now();
+  var success = true;
+  var result;
+
+  if (repeatTimes < 0) {
+    repeatTimes = Infinity;
+  }
+
+  if (repeatUntil < 0) {
+    repeatUntil = Infinity;
+  }
+
   try {
     fm.runScript(job.type.name, job.type.mount, [].concat(job.data, job._id));
   } catch (e) {
     console.errorLines('Job %s failed:\n%s', job._key, e.stack || String(e));
+    job.runFailures += 1;
     job.failures.push(flatten(e));
     success = false;
   }
@@ -109,7 +130,11 @@ exports.work = function (job) {
       write: ['_jobs']
     },
     action: function () {
-      var data = {modified: now};
+      var data = {
+        modified: now,
+        runs: job.runs,
+        runFailures: job.runFailures
+      };
       if (!success) {
         data.failures = job.failures;
       }
@@ -117,7 +142,7 @@ exports.work = function (job) {
         // mark complete
         callback = job.onSuccess;
         data.status = 'complete';
-      } else if (maxFailures === false || job.failures.length > maxFailures) {
+      } else if (maxFailures === false || job.runFailures > maxFailures) {
         // mark failed
         callback = job.onFailure;
         data.status = 'failed';
@@ -126,7 +151,13 @@ exports.work = function (job) {
         data.delayUntil = now + getBackOffDelay(job);
         data.status = 'pending';
       }
+      if (data.status !== 'pending' && job.runs < repeatTimes && now <= repeatUntil) {
+        data.status = 'pending';
+        data.delayUntil = now + repeatDelay;
+        data.runFailures = 0;
+      }
       db._jobs.update(job._key, data);
+      job = _.extend(job, data);
       if (data.status === 'pending') {
         queues._updateQueueDelay();
       }
@@ -143,7 +174,7 @@ exports.work = function (job) {
         db._name()
       );
       var fn = internal.executeScript('(' + callback + ')', undefined, filename);
-      fn(job._id, job.data, result, job.failures);
+      fn(result, job.data, job);
     } catch (e) {
       console.errorLines(
         'Failed to execute %s callback for job %s in %s:\n%s',
