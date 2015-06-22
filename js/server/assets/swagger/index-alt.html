@@ -31,7 +31,6 @@
         dom_id: "swagger-ui-container",
         supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
         onComplete: function(swaggerApi, swaggerUi){
-          $('#resources').children().addClass('active').find('.endpoints').show();
           $('pre code').each(function(i, e) {
             hljs.highlightBlock(e)
           });
@@ -39,7 +38,7 @@
         onFailure: function(data) {
           log("Unable to Load SwaggerUI");
         },
-        docExpansion: "none",
+        docExpansion: "list",
         sorter : "alpha"
       });
 

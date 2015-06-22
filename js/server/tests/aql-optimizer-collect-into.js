@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE */
+/*global assertEqual, assertTrue, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ INTO var = expr
@@ -142,6 +142,66 @@ function optimizerCollectExpressionTestSuite () {
       assertEqual(f, results.json[0].names);
       assertEqual("m", results.json[1].gender);
       assertEqual(m, results.json[1].names);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test expression
+////////////////////////////////////////////////////////////////////////////////
+
+    testIntoWithGrouping : function () {
+      var query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO g RETURN { gender: gender, ages: g[*].i.age }";
+      
+      var i;
+      var results = AQL_EXECUTE(query);
+      assertEqual(2, results.json.length);
+      assertEqual("f", results.json[0].gender);
+      for (i = 0; i < 500; ++i) {
+        assertTrue(typeof results.json[0].ages[i] === 'number');
+      }
+      assertEqual("m", results.json[1].gender);
+      for (i = 0; i < 500; ++i) {
+        assertTrue(typeof results.json[1].ages[i] === 'number');
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test expression
+////////////////////////////////////////////////////////////////////////////////
+
+    testIntoWithGroupingInSubquery : function () {
+      var query = "LET values = (FOR i IN " + c.name() + " COLLECT gender = i.gender INTO g RETURN { gender: gender, ages: g[*].i.age }) RETURN values";
+      
+      var i;
+      var results = AQL_EXECUTE(query);
+      assertEqual(2, results.json[0].length);
+      assertEqual("f", results.json[0][0].gender);
+      for (i = 0; i < 500; ++i) {
+        assertTrue(typeof results.json[0][0].ages[i] === 'number');
+      }
+      assertEqual("m", results.json[0][1].gender);
+      for (i = 0; i < 500; ++i) {
+        assertTrue(typeof results.json[0][1].ages[i] === 'number');
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test expression
+////////////////////////////////////////////////////////////////////////////////
+
+    testIntoWithGroupingInSupportFollowingFor : function () {
+      var query = "LET values = (FOR i IN " + c.name() + " COLLECT gender = i.gender INTO g RETURN { gender: gender, ages: g[*].i.age }) FOR i IN values RETURN i";
+      
+      var i;
+      var results = AQL_EXECUTE(query);
+      assertEqual(2, results.json.length);
+      assertEqual("f", results.json[0].gender);
+      for (i = 0; i < 500; ++i) {
+        assertTrue(typeof results.json[0].ages[i] === 'number');
+      }
+      assertEqual("m", results.json[1].gender);
+      for (i = 0; i < 500; ++i) {
+        assertTrue(typeof results.json[1].ages[i] === 'number');
+      }
     }
 
   };

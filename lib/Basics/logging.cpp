@@ -133,6 +133,7 @@ struct TRI_log_appender_t {
   virtual void closeLog () = 0;
   virtual char* details () = 0;
   virtual TRI_log_appender_type_e type () = 0;
+  virtual char const* typeName () = 0;
 
   char*                     _contentFilter;   // an optional content filter for log messages
   TRI_log_severity_e        _severityFilter;  // appender will care only about message with a specific severity. set to TRI_LOG_SEVERITY_UNKNOWN to catch all
@@ -854,14 +855,16 @@ static void LogThread (char const* func,
     }
     else 
 #endif
-    {
+    try {
       std::string message("format string is corrupt: [");
       message += fmt + std::string("] - GenerateMessage failed");
       TRI_GetBacktrace(message);
       DisarmFormatString(message);
       TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, message.c_str());
-      return;
     }
+    catch (...) {
+    }
+    return;
   }
   if (n < (int) (sizeof(buffer) - len)) {
     // static buffer was big enough
@@ -901,11 +904,15 @@ static void LogThread (char const* func,
 #endif
       {      
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
-        std::string message("format string is corrupt: [");
-        message += fmt + std::string("] ");
-        TRI_GetBacktrace(message);
-        DisarmFormatString(message);
-        TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, message.c_str());
+        try {
+          std::string message("format string is corrupt: [");
+          message += fmt + std::string("] ");
+          TRI_GetBacktrace(message);
+          DisarmFormatString(message);
+          TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, message.c_str());
+        }
+        catch (...) {
+        }
         return;
       }
     }
@@ -1327,6 +1334,10 @@ struct log_appender_file_t : public TRI_log_appender_t {
       return APPENDER_TYPE_FILE;
     }
 
+    char const* typeName () override final {
+      return "file";
+    }
+
   private: 
     void writeLogFile (int, char const*, ssize_t);
 
@@ -1612,6 +1623,10 @@ struct log_appender_syslog_t : public TRI_log_appender_t {
   
     TRI_log_appender_type_e type () override final {
       return APPENDER_TYPE_SYSLOG;
+    }
+    
+    char const* typeName () override final {
+      return "syslog";
     }
  
   private:
@@ -1932,7 +1947,13 @@ void TRI_ReopenLogging () {
   MUTEX_LOCKER(AppendersLock);
 
   for (auto& it : Appenders) {
-    it->reopenLog();
+    try {
+      it->reopenLog();
+    }
+    catch (...) {
+      // silently catch this error (we shouldn't try to log an error about a
+      // logging error as this will get us into trouble with mutexes etc.)
+    }
   }
 }
 

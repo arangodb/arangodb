@@ -233,10 +233,6 @@ namespace triagens {
   return T_COLON;
 }
 
-"[*]" {
-  return T_EXPAND;
-}
-
 ".." {
   return T_RANGE; 
 }

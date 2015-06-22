@@ -667,7 +667,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
           auto val = value->getValueReference(i, resultRegister);
 
           if (! val.isEmpty()) {
-            jsonResult.add(val.toJson(_trx, doc)); 
+            jsonResult.add(val.toJson(_trx, doc, true)); 
           }
         }
         delete value;
@@ -923,7 +923,7 @@ QueryResult Query::explain () {
 Executor* Query::executor () {
   if (_executor == nullptr) {
     // the executor is a singleton per query
-    _executor = new Executor;
+    _executor = new Executor(literalSizeThreshold());
   }
 
   TRI_ASSERT(_executor != nullptr);

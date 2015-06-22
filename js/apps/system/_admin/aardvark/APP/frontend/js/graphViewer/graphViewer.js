@@ -188,17 +188,24 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   this.start = function(expand) {
     layouter.stop();
 
-    //expand all wanted nodes
     if (expand) {
-      _.each(nodes, function(node) {
-        _.each(adapter.randomNodes, function(compare) {
-          if (node._id === compare._id) {
-            node._expanded = true;
-          }
+      if ($('.infoField').text() !== '') {
+        _.each(nodes, function(node) {
+          _.each(adapter.randomNodes, function(compare) {
+            if (node._id === compare._id) {
+              node._expanded = true;
+            }
+          });
         });
-      });
+      }
+      else {
+        _.each(nodes, function(node) {
+          node._expanded = true;
+        });
+      }
     }
 
+    //expand all wanted nodes
     nodeShaper.drawNodes(nodes);
     edgeShaper.drawEdges(edges);
     layouter.start();

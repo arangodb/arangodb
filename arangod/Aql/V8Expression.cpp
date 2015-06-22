@@ -39,15 +39,6 @@
 
 using namespace triagens::aql;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hash function for V8 objects
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FAILURE_TESTS
- 
-
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -142,7 +133,14 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
     v8g->_query = static_cast<void*>(query);
     TRI_ASSERT(v8g->_query != nullptr);
 
-    // set function arguments
+    // set constant function arguments
+    // note: constants are passed by reference so we can save re-creating them
+    // on every invocation. this however means that these constants must not be
+    // modified by the called function. there is a hash check in place below to
+    // verify that constants don't get modified by the called function. 
+    // note: user-defined AQL functions are always called without constants
+    // because they are opaque to the optimizer and the assumption that they
+    // won't modify their arguments is unsafe
     auto constantValues = v8::Local<v8::Object>::New(isolate, _constantValues);
 
 #ifdef TRI_ENABLE_FAILURE_TESTS

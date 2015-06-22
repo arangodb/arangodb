@@ -84,7 +84,7 @@ function notFound (req, res, code, message) {
 ///
 /// - *filter* (optional, default is to include all nodes):
 ///     body (JavaScript code) of custom filter function
-///     function signature: (config, vertex, path) -> mixed
+///     function signature: *(config, vertex, path) -> mixed*
 ///     can return four different string values:
 ///     - *"exclude"* -> this vertex will not be visited.
 ///     - *"prune"* -> the edges of this vertex will not be followed.
@@ -100,26 +100,29 @@ function notFound (req, res, code, message) {
 ///     visits only nodes in at most the given depth
 ///
 /// - *visitor* (optional): body (JavaScript) code of custom visitor function
-///     function signature: (config, result, vertex, path) -> void
-///     visitor function can do anything, but its return value is ignored. To
-///     populate a result, use the *result* variable by reference
+///     function signature: *(config, result, vertex, path, connected) -> void*
+///     The visitor function can do anything, but its return value is ignored. To
+///     populate a result, use the *result* variable by reference. Note that the
+///     *connected* argument is only populated when the *order* attribute is set
+///     to *"preorder-expander"* .
 ///
 /// - *direction* (optional): direction for traversal
 ///   - *if set*, must be either *"outbound"*, *"inbound"*, or *"any"*
 ///   - *if not set*, the *expander* attribute must be specified
 ///
 /// - *init* (optional): body (JavaScript) code of custom result initialisation function
-///     function signature: (config, result) -> void
+///     function signature: *(config, result) -> void*
 ///     initialise any values in result with what is required
 ///
 /// - *expander* (optional): body (JavaScript) code of custom expander function
 ///      *must* be set if *direction* attribute is **not** set
-///      function signature: (config, vertex, path) -> array
+///      function signature: *(config, vertex, path) -> array*
 ///      expander must return an array of the connections for *vertex*
 ///      each connection is an object with the attributes *edge* and *vertex*
+///
 /// - *sort* (optional): body (JavaScript) code of a custom comparison function
 ///      for the edges. The signature of this function is
-///      (l, r) -> integer (where l and r are edges) and must
+///      *(l, r) -> integer* (where l and r are edges) and must
 ///      return -1 if l is smaller than, +1 if l is greater than,
 ///      and 0 if l and r are equal. The reason for this is the
 ///      following: The order of edges returned for a certain
@@ -138,7 +141,7 @@ function notFound (req, res, code, message) {
 ///      can be *"depthfirst"* or *"breadthfirst"*
 ///
 /// - *order* (optional): traversal order
-///      can be *"preorder"* or *"postorder"*
+///      can be *"preorder"*, *"postorder"* or *"preorder-expander"*
 ///
 /// - *itemOrder* (optional): item iteration order
 ///     can be *"forward"* or *"backward"*

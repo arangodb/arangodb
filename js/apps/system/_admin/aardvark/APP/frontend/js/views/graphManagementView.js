@@ -45,7 +45,10 @@
       };
       var width = $("#content").width() - 75;
       $("#content").html("");
-      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, 680, {
+
+      var height = arangoHelper.calculateCenterDivHeight();
+
+      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, height, {
         nodeShaper: {
           label: "_key",
           color: {
@@ -55,6 +58,8 @@
         }
 
       }, true);
+
+      $('.contentDiv').height(height);
 
     },
 

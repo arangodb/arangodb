@@ -44,7 +44,7 @@
 #include "Wal/LogfileManager.h"
 
 #include "VocBase/auth.h"
-#include "VocBase/key-generator.h"
+#include "VocBase/KeyGenerator.h"
 
 #include "Cluster/ClusterMethods.h"
 
@@ -156,7 +156,7 @@ static int ExtractDocumentKey (v8::Isolate* isolate,
   v8::Local<v8::Object> obj = arg->ToObject();
 
   TRI_GET_GLOBAL_STRING(_KeyKey);
-  if (obj->HasRealNamedProperty(_KeyKey)) {
+  if (obj->Has(_KeyKey)) {
     v8::Handle<v8::Value> v = obj->Get(_KeyKey);
 
     if (v->IsString()) {

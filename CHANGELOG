@@ -1,5 +1,90 @@
-v2.6.0 (XXXX-XX-XX)
+v2.7.0 (XXXX-XX-XX)
 -------------------
+
+* do not link arangoimp against V8
+
+* AQL functon call arguments optimization
+
+  This will lead to arguments in function calls inside AQL queries will not be copied but passed
+  by reference. This may speed up calls to functions with bigger argument values or queries that
+  calls functions a lot of times.
+
+* upgraded V8 version to 4.3.61
+
+* removed deprecated AQL `SKIPLIST` function.
+
+  This function was introduced in older versions of ArangoDB with a less powerful query optimizer to
+  retrieve data from a skiplist index using a `LIMIT` clause. It was marked as deprecated in ArangoDB
+  2.6.
+
+  Since ArangoDB 2.3 the behavior of the `SKIPLIST` function can be emulated using regular AQL 
+  constructs, e.g. 
+
+      FOR doc IN @@collection 
+        FILTER doc.value >= @value 
+        SORT doc.value DESC 
+        LIMIT 1 
+        RETURN doc
+
+* the `skip()` function for simple queries does not accept negative input any longer. 
+  This feature was deprecated in 2.6.0.
+ 
+* based REST API method PUT `/_api/simple/all` on the cursor API and make its use AQL internally.
+
+  The change speeds up this REST API method and will lead to additional query information being
+  returned by the REST API. Clients can use this extra information or ignore it.
+ 
+
+v2.6.0-beta4 (2015-06-16)
+-------------------------
+
+* using negative values for `SimpleQuery.skip()` is deprecated. 
+  This functionality will be removed in future versions of ArangoDB.
+
+* The following simple query functions are now deprecated:
+
+  * collection.near
+  * collection.within 
+  * collection.geo 
+  * collection.fulltext
+  * collection.range 
+  * collection.closedRange 
+
+  This also lead to the following REST API methods being deprecated from now on:
+
+  * PUT /_api/simple/near
+  * PUT /_api/simple/within
+  * PUT /_api/simple/fulltext
+  * PUT /_api/simple/range
+
+  It is recommended to replace calls to these functions or APIs with equivalent AQL queries, 
+  which are more flexible because they can be combined with other operations:
+
+      FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
+        RETURN doc
+
+      FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
+        RETURN doc
+
+      FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
+        RETURN doc
+  
+      FOR doc IN @@collection 
+        FILTER doc.value >= @left && doc.value < @right 
+        LIMIT @skip, @limit 
+        RETURN doc`
+  
+  The above simple query functions and REST API methods may be removed in future versions 
+  of ArangoDB.
+
+* deprecated now-obsolete AQL `SKIPLIST` function
+
+  The function was introduced in older versions of ArangoDB with a less powerful query optimizer to
+  retrieve data from a skiplist index using a `LIMIT` clause.
+
+  Since 2.3 the same goal can be achieved by using regular AQL constructs, e.g. 
+
+      FOR doc IN collection FILTER doc.value >= @value SORT doc.value DESC LIMIT 1 RETURN doc
 
 * fixed issues when switching the database inside tasks and during shutdown of database cursors 
 
@@ -375,7 +460,7 @@ v2.6.0 (XXXX-XX-XX)
 * Disallow batchSize value 0 in HTTP `POST /_api/cursor`:
 
   The HTTP REST API `POST /_api/cursor` does not accept a `batchSize` parameter value of 
-  `0` any longer. A batch size of 0 newer made much sense, but previous versions of ArangoDB
+  `0` any longer. A batch size of 0 never made much sense, but previous versions of ArangoDB
   did not check for this value. Now creating a cursor using a `batchSize` value 0 will
   result in an HTTP 400 error response
 
@@ -384,8 +469,8 @@ v2.6.0 (XXXX-XX-XX)
 * 'EDGES' AQL Function
 
   The AQL function EDGES got a new fifth option parameter.
-  Right now only one option is available 'includeVertices' this is a boolean parameter
-  that allows to modify the result of EDGES.
+  Right now only one option is available: 'includeVertices'. This is a boolean parameter
+  that allows to modify the result of the `EDGES` function.
   Default is 'includeVertices: false' which does not have any effect.
   'includeVertices: true' modifies the result, such that
   {vertex: <vertexDocument>, edge: <edgeDocument>} is returned.
@@ -408,7 +493,7 @@ v2.6.0 (XXXX-XX-XX)
   
       NEIGHBORS(<vertexCollection>, <edgeCollection>, <vertex>, <direction>, <example>)
 
-  Now achieved by:
+  This can now be achieved by:
       
       EDGES(<vertexCollection>, <edgeCollection>, <vertex>, <direction>, <example>, {includeVertices: true})
 
@@ -418,7 +503,7 @@ v2.6.0 (XXXX-XX-XX)
 
   FOR va IN NEIGHBORS(Users, relations, 'Users/123', 'outbound') FOR vc IN NEIGHBORS(Products, relations, va.vertex._id, 'outbound') RETURN vc
 
-  Can be achieved by:
+  This can now be achieved by:
 
   FOR va IN NEIGHBORS(Users, relations, 'Users/123', 'outbound') FOR vc IN NEIGHBORS(Products, relations, va, 'outbound', null, {includeData: true}) RETURN vc
                                                                                                           ^^^^            ^^^^^^^^^^^^^^^^^^^
@@ -506,7 +591,7 @@ v2.6.0 (XXXX-XX-XX)
   If the `_graphs` collection still has its `waitForSync` value set to `true`, then the HTTP status
   code will not change.
 
-* Upgrade ICU to version 54; this increases performance on many places.
+* Upgraded ICU to version 54; this increases performance in many places.
   based on https://code.google.com/p/chromium/issues/detail?id=428145
 
 * added support for HTTP push aka chunked encoding
@@ -536,16 +621,6 @@ v2.6.0 (XXXX-XX-XX)
   The default value is `1` second. Lowering this value will result in the queue manager waking
   up and checking the queues more frequently, which may increase CPU usage of the server. 
   When not using Foxx queues, this value can be raised to save some CPU time.
-
-* added startup option `--server.foxx-queues-warmup-exports`
-
-  This startup option makes sure the exports of all installed Foxx apps are pre-loaded when
-  the server is restarted. This prevents a known issue with function-based Foxx queue job types.
-  It is recommended that you upgrade any existing function-based job types to script-based ones
-  to avoid the issue entirely.
-
-  The default value is `true`. Disabling this feature can reduce memory usage and startup time
-  but may cause issues with function-based job types.
 
 * added startup option `--server.foxx-queues`
 
@@ -578,6 +653,8 @@ v2.6.0 (XXXX-XX-XX)
   The new job types avoid this issue by storing an explicit mount path and script name rather
   than an assuming the job type is defined globally. It is strongly recommended to convert your
   job types to the new script-based system.
+
+* renamed Foxx sessions option "sessionStorageApp" to "sessionStorage". The option now also accepts session storages directly.
 
 * Added the following JavaScript methods for file access:
   * fs.copyFile() to copy single files
@@ -638,6 +715,32 @@ v2.6.0 (XXXX-XX-XX)
 * allow to split an edge index into buckets which are resized individually.
   This is controlled by the `indexBuckets` attribute in the `properties`
   of the collection.
+
+* fix a cluster deadlock bug in larger clusters by marking a thread waiting
+  for a lock on a DBserver as blocked
+
+
+v2.5.6 (XXXX-XX-XX)
+-------------------
+
+* potentially fixed issue #1313: Wrong metric calculation at dashboard
+
+  Escape whitespace in process name when scanning /proc/pid/stats
+    
+  This fixes statistics values read from that file
+
+* Fixed variable naming in AQL `COLLECT INTO` results in case the COLLECT is placed 
+  in a subquery which itself is followed by other constructs that require variables
+
+
+v2.5.5 (2015-05-29)
+-------------------
+
+* fixed vulnerability in JWT implementation.
+
+* fixed format string for reading /proc/pid/stat
+
+* take into account barriers used in different V8 contexts
 
 
 v2.5.4 (2015-05-14)

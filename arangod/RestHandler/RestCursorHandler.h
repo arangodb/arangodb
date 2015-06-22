@@ -35,6 +35,8 @@
 #include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+struct TRI_json_t;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class RestCursorHandler
 // -----------------------------------------------------------------------------
@@ -78,13 +80,26 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_t execute () override;
+        virtual status_t execute () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
         bool cancel (bool running) override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief processes the query and returns the results/cursor
+/// this method is also used by derived classes
+////////////////////////////////////////////////////////////////////////////////
+
+        void processQuery (struct TRI_json_t const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -120,7 +135,7 @@ namespace triagens {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json buildOptions (TRI_json_t const*);
+        triagens::basics::Json buildOptions (TRI_json_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the "extra" attribute values from the result.
@@ -128,7 +143,7 @@ namespace triagens {
 /// several values
 ////////////////////////////////////////////////////////////////////////////////
       
-        triagens::basics::Json buildExtra (triagens::aql::QueryResult&);
+        triagens::basics::Json buildExtra (triagens::aql::QueryResult&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the contents of the cursor into the response body

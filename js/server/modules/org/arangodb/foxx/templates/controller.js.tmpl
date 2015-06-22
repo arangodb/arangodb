@@ -5,12 +5,11 @@ var Foxx = require('org/arangodb/foxx');
 var ArangoError = require('org/arangodb').ArangoError;
 var <%= repository %> = require('<%= repositoryPath %>');
 var <%= model %> = require('<%= modelPath %>');
+var controller = new Foxx.Controller(applicationContext);
 
 var <%= modelInstance %>IdSchema = joi.string().required()
 .description('The id of the <%= modelInstance %>')
 .meta({allowMultiple: false});
-
-var controller = new Foxx.Controller(applicationContext);
 
 var <%= repositoryInstance %> = new <%= repository %>(
   applicationContext.collection('<%= collectionName %>'),
@@ -60,7 +59,7 @@ controller.get('/:id', function (req, res) {
 controller.put('/:id', function (req, res) {
   var id = req.urlParameters.id;
   var <%= modelInstance %> = req.parameters.<%= modelInstance %>;
-  res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>).forClient());
+  res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>));
 })
 .pathParam('id', <%= modelInstance %>IdSchema)
 .bodyParam('<%= modelInstance %>', {
@@ -77,7 +76,7 @@ controller.put('/:id', function (req, res) {
 controller.patch('/:id', function (req, res) {
   var id = req.urlParameters.id;
   var patchData = req.parameters.patch;
-  res.json(<%= repositoryInstance %>.updateById(id, patchData).forClient());
+  res.json(<%= repositoryInstance %>.updateById(id, patchData));
 })
 .pathParam('id', <%= modelInstance %>IdSchema)
 .bodyParam('patch', {

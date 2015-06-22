@@ -41,7 +41,6 @@
     _ = require("underscore");
 
   controller.activateSessions({
-    type: "cookie",
     autoCreateSession: false,
     cookie: {name: "arango_sid_" + db._name()}
   });
@@ -64,10 +63,10 @@
   });
 
   controller.get("/amIDispatcher", function(req, res) {
-    res.json(!cluster.dispatcherDisabled());
+    res.json(!cluster.dispatcherKickstarterDisabled());
   });
 
-  if (!cluster.dispatcherDisabled()) {
+  if (!cluster.dispatcherKickstarterDisabled()) {
     var Plans = require("./repositories/plans.js"),
       plans = new Plans.Repository(
         require("internal").db._collection(

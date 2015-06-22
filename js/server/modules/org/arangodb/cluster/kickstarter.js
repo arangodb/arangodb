@@ -234,6 +234,9 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 
   var clusterUrl = "http://" + clusterEndPoint;
   var agencyUrl =  "http://" + extBind;
+  if (require("internal").platform.substr(0,3) === 'win') {
+    agentDataDir = agentDataDir.split("\\").join("/");
+  }
 
   var args = {
       "data-dir":               agentDataDir,
@@ -265,6 +268,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     return {"error":true, "isStartAgent": true,
             "errorMessage": "agency binary not found at '" + agentPath + "'"};
   }
+
   var pid = executeExternal(agentPath, toArgv(args));
   var res;
   var count = 0;
@@ -382,8 +386,6 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
       }
     }
     var datadir = fs.join(dataPath,"data-"+cmd.agency.agencyPrefix+"-"+id);
-    args.push("--database.directory");
-    args.push(datadir);
     if (!isRelaunch) {
       if (!fs.exists(dataPath)) {
         fs.makeDirectoryRecursive(dataPath);
@@ -393,6 +395,8 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
       }
       fs.makeDirectory(datadir);
     }
+    args.push("--database.directory");
+    args.push(datadir);
     args = args.concat(dispatchers[cmd.dispatcher].arangodExtraArgs);
     var arangodPath = fs.makeAbsolute(cmd.arangodPath);
     if (arangodPath !== cmd.arangodPath) {
@@ -468,17 +472,26 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
   };
 
   // execute bootstrap command on first server
+  var retryCount = 0;
+  var result;
   var url = coordinators[0] + "/_admin/cluster/bootstrapDbServers";
   var body = '{"isRelaunch": ' + (isRelaunch ? "true" : "false") + '}';
+  while (retryCount < timeout) {
 
-  var result = download(url, body, options);
+    result = download(url, body, options);
 
-  if (result.code !== 200) {
-    var err1 = "bootstrapping DB servers failed: " + extractErrorMessage(result);
-    console.error("%s", err1);
-    return {"error": true, "bootstrapServers": true, "errorMessage": err1};
+    if ((result.code === 503) && (retryCount < 3)) {
+      wait(1);
+      retryCount+=1;
+      continue;
+    }
+    if (result.code !== 200) {
+      var err1 = "bootstrapping DB servers failed: " + extractErrorMessage(result);
+      console.error("%s", err1);
+      return {"error": true, "bootstrapServers": true, "errorMessage": err1};
+    }
+    break;
   }
-
   // execute cluster database upgrade
   url = coordinators[0] + "/_admin/cluster/upgradeClusterDatabase";
 

@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_EXECUTOR_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
 #include "V8/v8-globals.h"
@@ -64,7 +65,7 @@ namespace triagens {
 /// @brief create the executor
 ////////////////////////////////////////////////////////////////////////////////
 
-        Executor ();
+        explicit Executor (int64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the executor
@@ -115,7 +116,8 @@ namespace triagens {
 /// @brief traverse the expression and note all (big) array/object literals
 ////////////////////////////////////////////////////////////////////////////////
 
-        void detectConstantValues (AstNode const*);
+        void detectConstantValues (AstNode const*,
+                                   AstNodeType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an AST node to a V8 object
@@ -147,6 +149,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void generateCodeArray (AstNode const*); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a forced array
+////////////////////////////////////////////////////////////////////////////////
+
+        void generateCodeForcedArray (AstNode const*,
+                                      int64_t); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for an object
@@ -220,13 +229,13 @@ namespace triagens {
 /// @brief generate JavaScript code for an expansion (i.e. [*] operator)
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCodeExpand (AstNode const*);
+        void generateCodeExpansion (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for an expansion iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCodeExpandIterator (AstNode const*);
+        void generateCodeExpansionIterator (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for a range (i.e. 1..10)
@@ -289,6 +298,12 @@ namespace triagens {
         std::unordered_map<AstNode const*, size_t> _constantRegisters;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief local value for literal object size threshold
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t const _literalSizeThreshold;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL internal function names
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -300,12 +315,24 @@ namespace triagens {
 
         static std::unordered_map<std::string, Function const> const FunctionNames;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                           public static variables
+// -----------------------------------------------------------------------------
+
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum number of array members / object attributes for considering
 /// an array / object literal "big" and pulling it out of the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        static size_t const BigObjectThreshold;
+        static size_t const DefaultLiteralSizeThreshold;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maxmium number of array members created from range accesses
+////////////////////////////////////////////////////////////////////////////////
+
+        static int64_t const MaxRangeAccessArraySize;
     };
 
   }

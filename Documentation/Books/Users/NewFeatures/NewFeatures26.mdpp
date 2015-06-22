@@ -36,6 +36,18 @@ http://jsteemann.github.io/blog/2015/04/04/more-efficient-data-exports/
 
 !SECTION AQL improvements
 
+!SUBSECTION EDGES AQL Function
+
+The AQL function EDGES got a new fifth optional parameter, which must be an 
+object if specified. Right now only one option is available for it: 
+
+* `includeVertices` this is a boolean parameter that allows to modify the result of 
+  `EDGES()`. The default value for `includeVertices` is `false`, which does not have 
+  any effect. Setting it to `true` will modify the result, such that also the connected
+  vertices are returned along with the edges:
+
+      { vertex: <vertexDocument>, edge: <edgeDocument> } 
+
 !SUBSECTION Subquery optimizations for AQL queries
 
 This optimization avoids copying intermediate results into subqueries that are not required
@@ -132,7 +144,7 @@ If no document matches the example, the *insert* part of the `UPSERT` statement 
 executed. If there is a match, the *update* / *replace* part will be carried out:
 
 ```
-UPSERT { page: 'index.html' }                 /* search example */
+UPSERT { page: 'index.html' }               /* search example */
 INSERT { page: 'index.html', pageViews: 1 } /* insert part */
 UPDATE { pageViews: OLD.pageViews + 1 }     /* update part */
 IN pageViews
@@ -149,7 +161,7 @@ document was found, `found` will contain a value of `null`. The `updated` result
 contain the inserted / updated document:
 
 ```
-UPSERT { page: 'index.html' }                 /* search example */
+UPSERT { page: 'index.html' }               /* search example */
 INSERT { page: 'index.html', pageViews: 1 } /* insert part */
 UPDATE { pageViews: OLD.pageViews + 1 }     /* update part */
 IN pageViews
@@ -167,7 +179,10 @@ easier.
 
 !SECTION Web Admin Interface
 
-ArangoDB's built-in web interface now uses sessions. Session information is stored in cookies, so clients using the web interface must accept cookies in order to use it.
+ArangoDB's built-in web interface now uses sessions. Session information is stored in cookies, so clients 
+using the web interface must accept cookies in order to use it.
+
+The new startup option `--server.session-timeout` can be used for adjusting the session lifetime.
 
 The AQL editor in the web interface now provides an *explain* functionality, which can be used for inspecting and performance-tuning AQL queries.
 The query execution time is now also displayed in the AQL editor.
@@ -271,6 +286,10 @@ http://jsteemann.github.io/blog/2015/04/14/updating-documents-with-arangoimp/
 
 !SECTION Miscellaneous changes
 
+* Some Linux-based ArangoDB packages are now using tcmalloc for memory allocator.
+
+* Upgraded ICU library to version 54. This increases performance in many places.
+
 * Allow to split an edge index into buckets which are resized individually. The default value is `1`,
   resembling the pre-2.6 behavior. Using multiple buckets will lead to the index entries being 
   distributed to the individual buckets, with each bucket being responsible only for a fraction of
@@ -322,11 +341,3 @@ http://jsteemann.github.io/blog/2015/04/14/updating-documents-with-arangoimp/
   will lead to the queue manager having to check only the queues collection of a single database,
   whereas making it check the queues of all databases might result in more work to be done and 
   more CPU time to be used by the queue manager.
-
-
-* added startup option `--server.foxx-queues-warmup-exports`
-
-  This startup option makes sure the exports of all installed Foxx apps are pre-loaded when
-  the server is restarted. This prevents a known issue with function-based Foxx queue job types.
-  It is recommended that you upgrade any existing function-based job types to script-based ones
-  to avoid the issue entirely.

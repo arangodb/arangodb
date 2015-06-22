@@ -12,32 +12,24 @@ Once sessions have been activated, a *session* property will be added to the *re
 
 If the option *autoCreateSession* has not explicitly been set to *false*, a new session will be created for users that do not yet have an active session.
 
-If *type* is set to *"cookie"*, the session cookie will be updated after every route.
+If *cookie* sessions are used, the session cookie will be updated after every route.
 
 *Parameter*
 
 * *options* (optional): an object with any of the following properties:
-  * *sessionStorageApp* (optional): mount point of the session storage app to use. Default: *"/_system/sessions"*.
-  * *type* (optional): sessions type, currently only *"cookie"* and *"header"* are supported. Default: *"cookie"*.
+  * *sessionStorage* (optional): mount point of the session storage app to use. Alternatively can be passed a session storage implementation directly. Default: `"/_system/sessions"` (the built-in session storage used by system apps).
   * *cookie* (optional): an object with the following properties:
-    * *name*: name of the session cookie if using cookie sessions. Default: *"sid"*.
+    * *name*: name of the session cookie if using cookie sessions. Default: `"sid"`.
     * *secret* (optional): secret string to sign session cookies with if using cookie sessions.
-    * *algorithm* (optional): algorithm to sign session cookies with if using cookie sessions. Default: *"sha256"*.
-  * *header* (optional): name of the session header if using header sessions. Default: *"X-Session-Id"*.
-  * *jwt* (optional): whether the session ID should be wrapped in a JSON Web Token. Default: *false*.
-  * *autoCreateSession* (optional): whether a session should always be created if none exists. Default: *true*.
+    * *algorithm* (optional): algorithm to sign session cookies with if using cookie sessions. Default: `"sha256"`.
+  * *header* (optional): name of the session header if using header sessions. Default: `"X-Session-Id"`.
+  * *autoCreateSession* (optional): whether a session should always be created if none exists. Default: `true`.
 
 If *cookie* is set to a string, its value will be used as the *cookie.name* instead.
 
-Optionally *jwt* can be an object with any of the following values:
+If *cookie* is set to `true`, unsigned cookies will be used with the default algorithm and cookie name.
 
-* *secret* (optional): secret string to sign session JSON Web Tokens with.
-* *algorithm* (optional): algorithm to sign session JSON Web Tokens with. Default: *"HS256"* if a *secret* is provided, *"none"* otherwise.
-* *verify* (optional): whether incoming session JSON Web Tokens should be verified. Default: *true*.
-
-If *jwt* is set to a string, its value will be used as the *jwt.secret* instead.
-
-Note that if the *jwt.algorithm* is explicitly set to any algorithm other than *"none"*, not providing a *jwt.secret* will raise an exception.
+If *header* is set to `true`, it will be used with the default header name.
 
 *Examples*
 
@@ -46,12 +38,8 @@ Example configuration for using signed cookies:
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
-  cookie: {
-    name: 'sid',
-    secret: 'secret'
-  },
-  type: 'cookie'
+  sessionStorage: '/_system/sessions',
+  cookie: {secret: 'keep-this-string-secret'}
 });
 ```
 
@@ -60,62 +48,18 @@ Example configuration for using a header:
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
-  header: 'X-Session-Token',
-  type: 'header'
+  sessionStorage: '/_system/sessions',
+  header: true
 });
 ```
 
-Example configuration for using a JWT header:
+Example configuration for using a header with a custom name:
 
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
-  header: 'X-Web-Token',
-  jwt: 'keyboardcat',
-  type: 'header'
-});
-```
-
-Example configuration for using a JWT header with signature algorithm "none" (and no secret):
-
-```js
-var controller = new FoxxController(applicationContext);
-controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
-  header: 'X-Web-Token',
-  jwt: true,
-  type: 'header'
-});
-```
-
-Example configuration for using a JWT header with signature verification disabled:
-
-```js
-var controller = new FoxxController(applicationContext);
-controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
-  header: 'X-Web-Token',
-  jwt: {
-    verify: false
-  },
-  type: 'header'
-});
-```
-
-Example configuration for using signed JWT cookies:
-
-```js
-var controller = new FoxxController(applicationContext);
-controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
-  cookie: {
-    name: 'token',
-    secret: 'secret'
-  },
-  jwt: 'keyboardcat',
-  type: 'cookie'
+  sessionStorage: '/_system/sessions',
+  header: 'X-My-Session-Token'
 });
 ```
 
@@ -124,9 +68,19 @@ Example configuration for using unsigned cookies:
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_system/sessions',
-  cookie: 'sid',
-  type: 'cookie'
+  sessionStorage: '/_system/sessions',
+  cookie: true
+});
+```
+
+Example configuration for using unsigned cookies and a header:
+
+```js
+var controller = new FoxxController(applicationContext);
+controller.activateSessions({
+  sessionStorage: '/_system/sessions',
+  cookie: true,
+  header: true
 });
 ```
 
@@ -144,6 +98,6 @@ When using cookie sessions, this function will clear the session cookie (if *aut
 
 * *path*: route path as passed to *controller.get*, *controller.post*, etc.
 * *options* (optional): an object with any of the following properties:
-  * *method* (optional): HTTP method to handle. Default: *"post"*.
+  * *method* (optional): HTTP method to handle. Default: `"post"`.
   * *before* (optional): function to execute before the session is destroyed. Receives the same arguments as a regular route handler.
   * *after* (optional): function to execute after the session is destroyed. Receives the same arguments as a regular route handler. Default: a function that sends a *{"message": "logged out"}* JSON response.
