@@ -103,7 +103,7 @@ function optimizerRuleTestSuite () {
                        "whether the execution of '" + query +
                        "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                        " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                       "' but is: " + JSON.stringify(allresults.results[j]) + "'"
                       );
           }
         }
@@ -136,7 +136,7 @@ function optimizerRuleTestSuite () {
                        "whether the execution of '" + query +
                        "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                        " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                       "' but is: " + JSON.stringify(allresults.results[j]) + "'"
                       );
         }
       });
@@ -173,7 +173,7 @@ function optimizerRuleTestSuite () {
                    "whether the execution of '" + query +
                    "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                    " Should be: '" + JSON.stringify(allresults.results[0]) +
-                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                   "' but is: " + JSON.stringify(allresults.results[j]) + "'"
                   );
       }
     },
@@ -215,7 +215,7 @@ function optimizerRuleTestSuite () {
                        "whether the execution of '" + query[0] +
                        "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                        " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                       "' but is: " + JSON.stringify(allresults.results[j]) + "'"
                       );
         }
       });

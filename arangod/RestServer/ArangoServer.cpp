@@ -71,6 +71,7 @@
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestReplicationHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
+#include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
@@ -160,6 +161,11 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/replication" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
                             RestHandlerCreator<RestReplicationHandler>::createNoData);
+  
+  // add "/simple/all" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
+                            RestHandlerCreator<RestSimpleQueryHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+                            _pairForAql);
   
   // add "/simple/lookup-by-key" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
@@ -339,7 +345,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
     _foxxQueues(true),
-    _foxxQueuesWarmupExports(true),
     _foxxQueuesPollInterval(1.0),
     _server(nullptr),
     _queryRegistry(nullptr),
@@ -618,7 +623,6 @@ void ArangoServer::buildApplicationServer () {
     ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
     ("server.foxx-queues", &_foxxQueues, "enable Foxx queues")
-    ("server.foxx-queues-warmup-exports", &_foxxQueuesWarmupExports, "enable pre-loading of Foxx exports for Foxx queues")
     ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
     ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")
   ;

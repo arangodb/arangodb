@@ -278,7 +278,7 @@ void Expression::invalidate () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,6 +520,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
           // no number found. 
         }
       }
+      else {
+        indexResult.destroy();
+      }
+        
       // fall-through to returning null
     }
     else if (result.isObject()) {
@@ -541,6 +545,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
+      else {
+        indexResult.destroy();
+      }
+
       // fall-through to returning null
     }
     result.destroy();
@@ -568,7 +576,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       TRI_document_collection_t const* myCollection = nullptr;
 
       AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs, false);
-      array->add(result.toJson(trx, myCollection));
+      array->add(result.toJson(trx, myCollection, true));
       result.destroy();
     }
 
@@ -599,7 +607,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       member = member->getMember(0);
 
       AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs, false);
-      object->set(key, result.toJson(trx, myCollection));
+      object->set(key, result.toJson(trx, myCollection, true));
       result.destroy();
     }
     return AqlValue(object.release());
@@ -644,20 +652,32 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto func = static_cast<Function*>(node->getData());
     TRI_ASSERT(func->implementation != nullptr);
 
-    TRI_document_collection_t const* myCollection = nullptr;
     auto member = node->getMemberUnchecked(0);
     TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs, false);
-       
+    size_t const n = member->numMembers();
+    FunctionParameters parameters;
+    parameters.reserve(n);
+
     try { 
-      auto res2 = func->implementation(_ast->query(), trx, myCollection, result);
-      result.destroy();
+      for (size_t i = 0; i < n; ++i) {
+        TRI_document_collection_t const* myCollection = nullptr;
+        auto value = executeSimpleExpression(member->getMemberUnchecked(i), &myCollection, trx, argv, startPos, vars, regs, false);
+        parameters.emplace_back(std::make_pair(value, myCollection));
+      }
+
+      auto res2 = func->implementation(_ast->query(), trx, parameters);
+
+      for (auto& it : parameters) {
+        it.first.destroy();
+      }
       return res2;
     }
     catch (...) {
       // prevent leak and rethrow error
-      result.destroy();
+      for (auto& it : parameters) {
+        it.first.destroy();
+      }
       throw; 
     }
   }

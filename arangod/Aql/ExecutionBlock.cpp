@@ -1183,7 +1183,7 @@ void IndexRangeBlock::buildExpressions () {
           a.destroy();  // the TRI_json_t* of a._json has been stolen
         } 
         else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
-          bound = a.toJson(_trx, myCollection);
+          bound = a.toJson(_trx, myCollection, true);
           a.destroy();  // the TRI_json_t* of a._json has been stolen
         } 
         else {
@@ -1253,7 +1253,7 @@ void IndexRangeBlock::buildExpressions () {
             a.destroy();  // the TRI_json_t* of a._json has been stolen
           } 
           else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
-            bound = a.toJson(_trx, myCollection);
+            bound = a.toJson(_trx, myCollection, true);
             a.destroy();  // the TRI_json_t* of a._json has been stolen
           } 
           else {
@@ -3043,7 +3043,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
       // initial subquery execution or subquery is not constant
 
       // execute the subquery
-      subqueryResults = executeSubquery(); 
+      subqueryResults = executeSubquery();
       TRI_ASSERT(subqueryResults != nullptr);
 
       try {
@@ -3371,13 +3371,20 @@ SortedAggregateBlock::SortedAggregateBlock (ExecutionEngine* engine,
     for (size_t i = 0; i < registerPlan.size(); ++i) {
       _variableNames.emplace_back(""); // initialize with some default value
     }
-
+            
     // iterate over all our variables
     if (en->_keepVariables.empty()) {
+      auto&& usedVariableIds = en->getVariableIdsUsedHere();
+
       for (auto const& vi : registerPlan) {
         if (vi.second.depth > 0 || en->getDepth() == 1) {
           // Do not keep variables from depth 0, unless we are depth 1 ourselves
           // (which means no FOR in which we are contained)
+
+          if (usedVariableIds.find(vi.first) == usedVariableIds.end()) {
+            // variable is not visible to the AggregateBlock
+            continue;
+          }
 
           // find variable in the global variable map
           auto itVar = en->_variableMap.find(vi.first);
@@ -3391,6 +3398,7 @@ SortedAggregateBlock::SortedAggregateBlock (ExecutionEngine* engine,
     else {
       for (auto const& x : en->_keepVariables) {
         auto it = registerPlan.find(x->id);
+
         if (it != registerPlan.end()) {
           _variableNames[(*it).second.registerId] = x->name;
         }
@@ -3620,7 +3628,7 @@ void SortedAggregateBlock::emitGroup (AqlItemBlock const* cur,
       // that a group might theoretically consist of multiple documents, from different collections. but there
       // is only one collection pointer per output register
       auto document = cur->getDocumentCollection((*it).second);
-      res->setValue(row, (*it).first, AqlValue(new Json(_currentGroup.groupValues[i].toJson(_trx, document))));
+      res->setValue(row, (*it).first, AqlValue(new Json(_currentGroup.groupValues[i].toJson(_trx, document, true))));
     }
     else {
       res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
@@ -4806,7 +4814,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
         TRI_doc_mptr_copy_t mptr;
-        auto json = a.toJson(_trx, document);
+        auto json = a.toJson(_trx, document, false);
 
         if (isEdgeCollection) {
           // edge
@@ -4937,7 +4945,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
         TRI_doc_mptr_copy_t mptr;
-        auto json = a.toJson(_trx, document);
+        auto json = a.toJson(_trx, document, true);
 
         // read old document
         TRI_doc_mptr_copy_t oldDocument;
@@ -5116,8 +5124,8 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           AqlValue updateDoc = res->getValue(i, updateRegisterId);
 
           if (updateDoc.isObject()) {
-            auto updateJson = updateDoc.toJson(_trx, updateDocument);
-            auto searchJson = a.toJson(_trx, keyDocument);
+            auto const updateJson = updateDoc.toJson(_trx, updateDocument, false);
+            auto searchJson = a.toJson(_trx, keyDocument, true);
 
             if (! searchJson.isObject()) {
               errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -5212,7 +5220,7 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
 
           if (errorCode == TRI_ERROR_NO_ERROR) {
-            auto insertJson = insertDoc.toJson(_trx, insertDocument);
+            auto const insertJson = insertDoc.toJson(_trx, insertDocument, true);
 
             // use default value
             errorCode = TRI_ERROR_OUT_OF_MEMORY;
@@ -5369,7 +5377,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
         TRI_doc_mptr_copy_t mptr;
-        auto json = a.toJson(_trx, document);
+        auto const json = a.toJson(_trx, document, true);
           
         // all exceptions are caught in _trx->update()
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);

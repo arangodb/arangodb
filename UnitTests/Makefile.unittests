@@ -554,6 +554,8 @@ unittests-shell-server-only:
 ################################################################################
 
 SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
+			@top_srcdir@/js/server/tests/aql-array-access.js \
+			@top_srcdir@/js/server/tests/aql-attribute-access.js \
 			@top_srcdir@/js/server/tests/aql-bind.js \
 			@top_srcdir@/js/server/tests/aql-call-apply.js \
 			@top_srcdir@/js/server/tests/aql-complex.js \
@@ -571,6 +573,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-functions-numeric.js \
 			@top_srcdir@/js/server/tests/aql-functions-string.js \
 			@top_srcdir@/js/server/tests/aql-functions-types.js \
+			@top_srcdir@/js/server/tests/aql-functions-types-cxx.js \
 			@top_srcdir@/js/server/tests/aql-general-graph.js \
 			@top_srcdir@/js/server/tests/aql-graph.js \
 			@top_srcdir@/js/server/tests/aql-graph-visitors.js \
@@ -605,6 +608,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-range.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-for-sort.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-stats-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-v8.js \
 			@top_srcdir@/js/server/tests/aql-parse.js \
 			@top_srcdir@/js/server/tests/aql-primary-index-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-collection.js \

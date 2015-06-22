@@ -1,4 +1,4 @@
-/*jshint strict: false, unused: false */
+/*jshint strict: false, unused: false, esnext: true */
 /*global JSON_CURSOR */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1101,16 +1101,17 @@ function buildRouting (dbname) {
   // compute all routes
   var routes = [];
   var routing = arangodb.db._collection("_routing");
+  if (routing !== null) {
+    let i = routing.all();
 
-  var i = routing.all();
+    while (i.hasNext()) {
+      var n = i.next();
+      var c = _.clone(n);
+      
+      c.name = '_routing.document("' + c._key + '")';
 
-  while (i.hasNext()) {
-    var n = i.next();
-    var c = _.clone(n);
-    
-    c.name = '_routing.document("' + c._key + '")';
-
-    routes.push(c);
+      routes.push(c);
+    }
   }
 
   // allow the collection to unload
@@ -1119,7 +1120,7 @@ function buildRouting (dbname) {
   // install the foxx routes
   var foxxes = foxxManager.mountPoints();
 
-  for (i = 0;  i < foxxes.length;  ++i) {
+  for (let i = 0;  i < foxxes.length;  ++i) {
     var foxx = foxxes[i];
 
     routes.push({
@@ -1338,16 +1339,6 @@ function reloadRouting () {
   RoutingTree = {};
   RoutingList = {};
   foxxManager._resetCache();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief warms up the Foxx exports
-////////////////////////////////////////////////////////////////////////////////
-
-function warmupExports () {
-  'use strict';
-
-  foxxManager._warmupExports();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2273,7 +2264,6 @@ exports.getErrorMessage          = getErrorMessage;
 exports.getJsonBody              = getJsonBody;
 exports.errorFunction            = errorFunction;
 exports.reloadRouting            = reloadRouting;
-exports.warmupExports            = warmupExports;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.addCookie                = addCookie;

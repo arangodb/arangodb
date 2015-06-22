@@ -336,13 +336,14 @@ void Dispatcher::reportStatus () {
 #ifdef TRI_ENABLE_LOGGER
       string const& name = i->first;
 
-      LOG_DEBUG("dispatcher queue '%s': threads = %d, started: %d, running = %d, waiting = %d, stopped = %d, special = %d, monopolistic = %s",
+      LOG_DEBUG("dispatcher queue '%s': threads = %d, started: %d, running = %d, waiting = %d, stopped = %d, blocked = %d, special = %d, monopolistic = %s",
                 name.c_str(),
                 (int) q->_nrThreads,
                 (int) q->_nrStarted,
                 (int) q->_nrRunning,
                 (int) q->_nrWaiting,
                 (int) q->_nrStopped,
+                (int) q->_nrBlocked,
                 (int) q->_nrSpecial,
                 (q->_monopolizer ? "yes" : "no"));
 #endif

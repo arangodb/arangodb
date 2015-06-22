@@ -29,10 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleHttpClient.h"
-
-#include "Basics/StringUtils.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
-
+#include "Basics/StringUtils.h"
 #include "GeneralClientConnection.h"
 #include "SimpleHttpResult.h"
 
@@ -768,6 +767,79 @@ namespace triagens {
         processChunkedHeader();
       }
     }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract an error message from a response
+////////////////////////////////////////////////////////////////////////////////
+
+    std::string SimpleHttpClient::getHttpErrorMessage (SimpleHttpResult* result) {
+      triagens::basics::StringBuffer const& body = result->getBody();
+      std::string details;
+
+      std::unique_ptr<TRI_json_t> json(triagens::basics::JsonHelper::fromString(body.c_str(), body.length()));
+
+      if (json != nullptr) {
+        std::string const errorMessage = triagens::basics::JsonHelper::getStringValue(json.get(), "errorMessage", "");
+        int errorNum = triagens::basics::JsonHelper::getNumericValue<int>(json.get(), "errorNum", 0);
+
+        if (errorMessage != "" && errorNum > 0) {
+          details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
+        }
+      }
+
+      return "got error from server: HTTP " +
+            triagens::basics::StringUtils::itoa(result->getHttpReturnCode()) +
+            " (" + result->getHttpReturnMessage() + ")" +
+            details;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the version from the server
+////////////////////////////////////////////////////////////////////////////////
+
+    std::string SimpleHttpClient::getServerVersion () {
+      std::map<string, string> headers;
+
+      std::unique_ptr<SimpleHttpResult> response(request(HttpRequest::HTTP_REQUEST_GET,
+                                                          "/_api/version",
+                                                          nullptr,
+                                                          0,
+                                                          headers));
+
+      if (response == nullptr || ! response->isComplete()) {
+        return "";
+      }
+
+      std::string version;
+
+      if (response->getHttpReturnCode() == HttpResponse::OK) {
+        // default value
+        version = "arango";
+
+        // convert response body to json
+        std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
+
+        if (json != nullptr) {
+          // look up "server" value
+          std::string const server = triagens::basics::JsonHelper::getStringValue(json.get(), "server", "");
+
+          // "server" value is a string and content is "arango"
+          if (server == "arango") {
+            // look up "version" value
+            version = triagens::basics::JsonHelper::getStringValue(json.get(), "version", "");
+          }
+        }
+      }
+      else {
+        if (response->wasHttpError()) {
+          setErrorMessage(getHttpErrorMessage(response.get()), false);
+        }
+        _connection->disconnect();
+      }
+
+      return version;
+    }
+
   }
 }
 

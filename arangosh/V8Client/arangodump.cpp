@@ -304,7 +304,7 @@ static string GetArangoVersion () {
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                "/_api/version",
-                                               0,
+                                               nullptr,
                                                0,
                                                headers);
 
