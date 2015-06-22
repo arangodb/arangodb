@@ -35,12 +35,6 @@
   },
 
   "assets": {
-    "documentation.html": {
-      "files": [
-        "frontend/html/documentation.html"
-      ]
-    },
-
     "documentation.js": {
       "files": [
         "frontend/js/lib/jquery-2.1.0.min.js",
@@ -55,42 +49,6 @@
         "frontend/js/bootstrap/module-internal.js",
         "frontend/js/client/bootstrap/module-internal.js",
         "frontend/js/documentation/documentation.js"
-      ]
-    },
-
-    "standalone.html": {
-      "files": [
-        "frontend/build/standalone.html"
-      ]
-    },
-
-    "cluster.html": {
-      "files": [
-        "clusterFrontend/build/cluster.html"
-      ]
-    },
-
-    "cluster.js": {
-      "files": [
-        "clusterFrontend/build/cluster.js"
-      ]
-    },
-
-    "ace.js": {
-      "files": [
-        "frontend/src/ace.js"
-      ]
-    },
-
-    "sharedLibs.js": {
-      "files": [
-        "build/sharedLibs.js"
-      ]
-    },
-
-    "app.js": {
-      "files": [
-        "frontend/build/app.js"
       ]
     },
 
@@ -124,12 +82,6 @@
       ]
     },
 
-    "css/sass.css": {
-      "files": [
-        "frontend/build/style.css"
-      ]
-    },
-
     "css/style.css": {
       "files": [
         "frontend/css/swagger/hightlight.default.css",
@@ -155,6 +107,14 @@
   },
 
   "files": {
+    "/documentation.html": "frontend/html/documentation.html",
+    "/standalone.html": "frontend/build/standalone.html",
+    "/cluster.html": "frontend/build/cluster.html",
+    "/css/sass.css": "frontend/build/style.css",
+    "/cluster.js": "clusterFrontend/build/cluster.js",
+    "/ace.js": "frontend/src/ace.js",
+    "/sharedLibs.js": "build/sharedLibs.js",
+    "/app.js": "frontend/build/app.js",
     "/favicon.ico" : "favicon.ico",
     "/api-docs.json": "api-docs.json",
     "/api-docs": "api-docs",
