@@ -980,6 +980,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         TRI_document_collection_t const* subCollection = nullptr;
         AqlValue sub = executeSimpleExpression(projectionNode, &subCollection, trx, argv, startPos, vars, regs, true);
         array->add(sub.toJson(trx, subCollection, true));
+        sub.destroy();
       }
 
       clearVariable(variable);
