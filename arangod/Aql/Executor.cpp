@@ -1049,7 +1049,7 @@ void Executor::generateCodeExpansion (AstNode const* node) {
     generateCodeNode(limitNode->getMember(0));
     _buffer->appendChar(',');
     generateCodeNode(limitNode->getMember(1));
-    _buffer->appendChar(')');
+    _buffer->appendText(",true)");
   }
 
   // RETURN
@@ -1058,13 +1058,13 @@ void Executor::generateCodeExpansion (AstNode const* node) {
   _buffer->appendText(variable->name);
   _buffer->appendText("\"]=v; ");
 
-  _buffer->appendText("return ");
+  size_t projectionNode = 1;
   if (node->getMember(4)->type != NODE_TYPE_NOP) {
-    generateCodeNode(node->getMember(4));
+    projectionNode = 4;
   }
-  else {
-    generateCodeNode(node->getMember(1));
-  }
+
+  _buffer->appendText("return ");
+  generateCodeNode(node->getMember(projectionNode));
   _buffer->appendText("; })");
 }
 
