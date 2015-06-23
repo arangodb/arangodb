@@ -152,8 +152,8 @@ if ENABLE_V8_DEBUG
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libibc++" \
+	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libibc++" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else # ! ENABLE_V8_DEBUG
@@ -165,8 +165,8 @@ else # ! ENABLE_V8_DEBUG
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+	        CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libibc++" \
+	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libibc++" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif # ENABLE_V8_DEBUG
 endif # ENABLE_DARWIN
