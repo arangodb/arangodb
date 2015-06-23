@@ -176,8 +176,8 @@ namespace triagens {
       NODE_TYPE_ARRAY_LIMIT                   = 57
     };
 
-    static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types");
-    static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types");
+    static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY,  "incorrect node types order");
+    static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    struct AstNode

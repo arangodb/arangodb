@@ -1406,6 +1406,7 @@ void Ast::validateAndOptimize () {
       if (static_cast<TraversalContext*>(data)->hasSeenWriteNode) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
+      return node;
     }
 
     // example

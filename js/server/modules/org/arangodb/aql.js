@@ -3111,7 +3111,7 @@ function AQL_SHIFT (list) {
 /// @brief extract a slice from an array
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_SLICE (value, from, to) {
+function AQL_SLICE (value, from, to, nonNegative) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
@@ -3121,6 +3121,10 @@ function AQL_SLICE (value, from, to) {
 
   from = AQL_TO_NUMBER(from);
   to   = AQL_TO_NUMBER(to);
+
+  if (nonNegative && (from < 0 || to < 0)) {
+    return [ ];
+  }
 
   if (TYPEWEIGHT(to) === TYPEWEIGHT_NULL) {
     to = undefined;
