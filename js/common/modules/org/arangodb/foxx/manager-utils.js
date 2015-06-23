@@ -462,6 +462,7 @@ var parameterTypes = {
   number: joi.number(),
   json: function (v) {return v && JSON.parse(v);}
 };
+parameterTypes.password = parameterTypes.string;
 parameterTypes.int = parameterTypes.integer;
 parameterTypes.bool = parameterTypes.boolean;
 
