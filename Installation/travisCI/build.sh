@@ -6,6 +6,7 @@ echo '$0: loading precompiled libraries'
 
 wget -q -O - "https://www.arangodb.com/support-files/travisCI/precompiled-libraries.tar.gz" | tar xzvf - 
 
+pwd
 ls -la 
 
 echo
