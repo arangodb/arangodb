@@ -347,7 +347,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                          "useSSLonCoordinators"   : protocol === "ssl",
                          "valgrind"               : runInValgrind,
                          "valgrindopts"           : toArgv(valgrindopts, true),
-                         "valgrindXmlFileBase"    : '_cluster' + valgrindXmlFileBase,
+                         "valgrindXmlFileBase"    : valgrindXmlFileBase + '_cluster',
                          "valgrindTestname"       : testname,
                          "valgrindHosts"          : valgrindHosts
                         });
