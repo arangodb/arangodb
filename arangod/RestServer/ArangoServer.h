@@ -402,6 +402,22 @@ namespace triagens {
         std::string _databasePath;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to enable the AQL query cache
+/// @startDocuBlock enableQueryCache
+/// `--database.query-cache-mode`
+///
+/// Toggles the AQL query cache behavior. Possible values are:
+///
+/// * `off`: do not use query cache
+/// * `on`: always use query cache
+/// * `demand`: use query cache only for queries that have the `cache` option
+///   set
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _queryCacheMode;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock databaseMaximalJournalSize
 /// 
 /// `--database.maximal-journal-size size`

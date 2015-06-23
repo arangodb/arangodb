@@ -29,6 +29,7 @@
 
 #include "Aql/BindParameters.h"
 #include "Basics/json.h"
+#include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
@@ -58,11 +59,23 @@ BindParameters::~BindParameters () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a hash value for the bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t BindParameters::hash () const {
+  if (_json == nullptr) {
+    return 0x12345678abcdef;
+  }
+
+  return TRI_FastHashJson(_json);
+}
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +119,6 @@ void BindParameters::process () {
   
   _processed = true;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

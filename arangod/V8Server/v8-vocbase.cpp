@@ -29,6 +29,7 @@
 
 #include "v8-vocbaseprivate.h"
 #include "Aql/Query.h"
+#include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/conversions.h"
@@ -1391,11 +1392,9 @@ static void JS_QueriesCurrentAql (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   
-  
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CURRENT()");
   }
-  
 
   auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
@@ -1443,7 +1442,6 @@ static void JS_QueriesSlowAql (const v8::FunctionCallbackInfo<v8::Value>& args) 
   
   auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
-
   
   if (args.Length() == 1) {
     queryList->clearSlow();
@@ -1527,6 +1525,56 @@ static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configures the AQL query cache
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryCacheConfigAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (args.Length() != 1 || ! args[0]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_CONFIG(<options>)");
+  }
+
+  auto obj = args[0]->ToObject();
+  
+  if (obj->Has(TRI_V8_ASCII_STRING("mode"))) {
+    auto mode = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("mode")));
+
+    triagens::aql::QueryCache::instance()->mode(mode);
+  }
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates the AQL query cache
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryCacheInvalidateAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_INVALIDATE()");
+  }
+
+  triagens::aql::QueryCache::instance()->invalidate(vocbase);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3705,6 +3753,8 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_KILL"), JS_QueriesKillAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_SLEEP"), JS_QuerySleepAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_IS_KILLED"), JS_QueryIsKilledAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_CONFIG"), JS_QueryCacheConfigAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_INVALIDATE"), JS_QueryCacheInvalidateAql, true);
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_SHORTEST_PATH"), JS_QueryShortestPath, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_NEIGHBORS"), JS_QueryNeighbors, true);

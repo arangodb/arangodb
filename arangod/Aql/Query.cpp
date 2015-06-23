@@ -34,8 +34,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
+#include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/ShortStringStorage.h"
+#include "Basics/fasthash.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
@@ -45,6 +47,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
+#include "V8/v8-conv.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 
@@ -177,7 +180,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
               TRI_json_t* bindParameters,
               TRI_json_t* options,
               QueryPart part)
-  : _id(TRI_NextQueryIdVocBase(vocbase)),
+  : _id(0),
     _applicationV8(applicationV8),
     _vocbase(vocbase),
     _executor(nullptr),
@@ -206,13 +209,6 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " << queryString << "\n";
 
   TRI_ASSERT(_vocbase != nullptr);
-
-  _profile = new Profile(this);
-  enterState(INITIALIZATION);
-  
-  _ast = new Ast(this);
-  _nodes.reserve(32);
-  _strings.reserve(32);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,7 +221,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
               triagens::basics::Json queryStruct,
               TRI_json_t* options,
               QueryPart part)
-  : _id(TRI_NextQueryIdVocBase(vocbase)),
+  : _id(0),
     _applicationV8(applicationV8),
     _vocbase(vocbase),
     _executor(nullptr),
@@ -254,13 +250,6 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR (JSON): " << _queryJson.toString() << "\n";
 
   TRI_ASSERT(_vocbase != nullptr);
-
-  _profile = new Profile(this);
-  enterState(INITIALIZATION);
-
-  _ast = new Ast(this);
-  _nodes.reserve(32);
-  _strings.reserve(32);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -508,11 +497,12 @@ void Query::registerWarning (int code,
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::prepare (QueryRegistry* registry) {
-  enterState(PARSING);
-
   try {
+    enterState(PARSING);
+
     std::unique_ptr<Parser> parser(new Parser(this));
     std::unique_ptr<ExecutionPlan> plan;
+    
 
     if (_queryString != nullptr) {
       parser->parse(false);
@@ -639,8 +629,8 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute (QueryRegistry* registry) {
-  // Now start the execution:
   try {
+    init();
     QueryResult res = prepare(registry);
 
     if (res.code != TRI_ERROR_NO_ERROR) {
@@ -721,13 +711,39 @@ QueryResult Query::execute (QueryRegistry* registry) {
 /// may only be called with an active V8 handle scope
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
+QueryResultV8 Query::executeV8 (v8::Isolate* isolate, 
+                                QueryRegistry* registry) {
+  auto queryCacheMode = QueryCache::instance()->mode(); 
+  bool useQueryCache = (_queryString != nullptr &&
+                        (queryCacheMode == CACHE_ALWAYS_ON ||
+                         (queryCacheMode == CACHE_ON_DEMAND && getBooleanOption("cache", false))));
+  uint64_t queryStringHash = 0;
 
-  // Now start the execution:
   try {
+    if (useQueryCache) {
+      // hash the query
+      queryStringHash = hash();
+
+      // check the query cache for an existing result
+      auto cacheResult = QueryCache::instance()->lookup(_vocbase, queryStringHash, _queryString, _queryLength);
+
+      if (cacheResult != nullptr) {
+        // got a result from the query cache
+        QueryResultV8 res(TRI_ERROR_NO_ERROR);
+        res.result = v8::Handle<v8::Array>::Cast(TRI_ObjectJson(isolate, cacheResult.get()->queryResult));
+        return res;
+      } 
+    }
+
+    init();
     QueryResultV8 res = prepare(registry);
+
     if (res.code != TRI_ERROR_NO_ERROR) {
       return res;
+    }
+
+    if (! _ast->root()->isDeterministic()) {
+      useQueryCache = false;
     }
 
     QueryResultV8 result(TRI_ERROR_NO_ERROR);
@@ -736,25 +752,55 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
     
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
-
     AqlItemBlock* value = nullptr;
 
     try {
-      uint32_t j = 0;
-      while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
-        auto doc = value->getDocumentCollection(resultRegister);
+      if (useQueryCache) {
+        // iterate over result, return it and store it in query cache
+        std::unique_ptr<TRI_json_t> cacheResult(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
 
-        size_t const n = value->size();
-        
-        for (size_t i = 0; i < n; ++i) {
-          auto val = value->getValueReference(i, resultRegister);
+        uint32_t j = 0;
+        while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+          auto doc = value->getDocumentCollection(resultRegister);
 
-          if (! val.isEmpty()) {
-            result.result->Set(j++, val.toV8(isolate, _trx, doc)); 
+          size_t const n = value->size();
+          
+          for (size_t i = 0; i < n; ++i) {
+            auto val = value->getValueReference(i, resultRegister);
+
+            if (! val.isEmpty()) {
+              result.result->Set(j++, val.toV8(isolate, _trx, doc));
+
+              auto json = val.toJson(_trx, doc, true);
+              TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, cacheResult.get(), json.steal());
+            }
           }
+          delete value;
+          value = nullptr;
         }
-        delete value;
-        value = nullptr;
+
+        // finally store the generated result in the query cache
+        QueryCache::instance()->store(_vocbase, queryStringHash, _queryString, _queryLength, cacheResult.get(), std::vector<std::string>());
+        cacheResult.release();
+      }
+      else {
+        // iterate over result and return it
+        uint32_t j = 0;
+        while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+          auto doc = value->getDocumentCollection(resultRegister);
+
+          size_t const n = value->size();
+          
+          for (size_t i = 0; i < n; ++i) {
+            auto val = value->getValueReference(i, resultRegister);
+
+            if (! val.isEmpty()) {
+              result.result->Set(j++, val.toV8(isolate, _trx, doc));
+            }
+          }
+          delete value;
+          value = nullptr;
+        }
       }
     }
     catch (...) {
@@ -803,6 +849,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
 
 QueryResult Query::parse () {
   try {
+    init();
     Parser parser(this);
     return parser.parse(true);
   }
@@ -827,9 +874,10 @@ QueryResult Query::parse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::explain () {
-  enterState(PARSING);
-
   try {
+    init();
+    enterState(PARSING);
+
     Parser parser(this);
 
     parser.parse(true);
@@ -1095,6 +1143,32 @@ TRI_json_t* Query::warningsToJson (TRI_memory_zone_t* zone) const {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes the query
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::init () { 
+  TRI_ASSERT(_id == 0);
+ 
+  _id = TRI_NextQueryIdVocBase(_vocbase);
+
+  _profile = new Profile(this);
+  enterState(INITIALIZATION);
+  
+  _ast = new Ast(this);
+  _nodes.reserve(32);
+  _strings.reserve(32);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate a hash value for the query and bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t Query::hash () const {
+  TRI_ASSERT(_queryString !=  nullptr);
+  return fasthash64(_queryString, _queryLength, 0x123456789) ^ _bindParameters.hash();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a numeric value from the options
