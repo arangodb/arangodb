@@ -1,10 +1,12 @@
-#!/bin/bash
+#!/bin/bash -x
 set -e
 
 echo
 echo '$0: loading precompiled libraries'
 
 wget -q -O - "https://www.arangodb.com/support-files/travisCI/precompiled-libraries.tar.gz" | tar xzvf - 
+
+ls -la 
 
 echo
 echo '$0: setup make-system'
