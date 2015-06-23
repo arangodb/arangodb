@@ -21,26 +21,11 @@
   "controllers": {
     "/": "cerberus.js"
   },
-  "assets": {
-    "changePassword.html": {
-      "files": [
-        "html/changePassword.html"
-      ]
-    },
-    "confirmed.html": {
-      "files": [
-        "html/confirmed.html"
-      ]
-    },
-    "invalid.html": {
-      "files": [
-        "html/invalid.html"
-      ]
-    },
-    "style.css": {
-      "files": [
-        "css/style.css"
-      ]
-    }
+
+  "files": {
+    "changePassword.html": "html/changePassword.html",
+    "confirmed.html": "html/confirmed.html",
+    "invalid.html": "html/invalid.html",
+    "style.css": "css/style.css"
   }
 }

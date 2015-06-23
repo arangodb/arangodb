@@ -33,7 +33,13 @@ v2.7.0 (XXXX-XX-XX)
 
   The change speeds up this REST API method and will lead to additional query information being
   returned by the REST API. Clients can use this extra information or ignore it.
- 
+
+* Foxx Queue job success/failure handlers arguments have changed from `(jobId, jobData, result, jobFailures)` to `(result, jobData, job)`.
+
+* added Foxx Queue job options `repeatTimes`, `repeatUntil` and `repeatDelay`.
+
+* added Foxx manifest configuration type `password`.
+
 
 v2.6.0-beta4 (2015-06-16)
 -------------------------
@@ -495,7 +501,7 @@ v2.6.0-beta4 (2015-06-16)
 
   This can now be achieved by:
       
-      EDGES(<vertexCollection>, <edgeCollection>, <vertex>, <direction>, <example>, {includeVertices: true})
+      EDGES(<edgeCollection>, <vertex>, <direction>, <example>, {includeVertices: true})
 
   If you are nesting several NEIGHBORS steps you can speed up their performance in the following way:
 
@@ -506,8 +512,8 @@ v2.6.0-beta4 (2015-06-16)
   This can now be achieved by:
 
   FOR va IN NEIGHBORS(Users, relations, 'Users/123', 'outbound') FOR vc IN NEIGHBORS(Products, relations, va, 'outbound', null, {includeData: true}) RETURN vc
-                                                                                                          ^^^^            ^^^^^^^^^^^^^^^^^^^
-                                                                                           Use intermediate directly     include Data for final
+                                                                                                          ^^^^                  ^^^^^^^^^^^^^^^^^^^
+                                                                                                  Use intermediate directly     include Data for final
 
 * INCOMPATIBLE CHANGE:
 
