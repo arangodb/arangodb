@@ -629,12 +629,41 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute (QueryRegistry* registry) {
+  auto queryCacheMode = QueryCache::instance()->mode(); 
+  bool useQueryCache = (_queryString != nullptr &&
+                        (queryCacheMode == CACHE_ALWAYS_ON ||
+                         (queryCacheMode == CACHE_ON_DEMAND && getBooleanOption("cache", false))));
+  uint64_t queryStringHash = 0;
+
   try {
+    if (useQueryCache) {
+      // hash the query
+      queryStringHash = hash();
+
+      // check the query cache for an existing result
+      auto cacheResult = QueryCache::instance()->lookup(_vocbase, queryStringHash, _queryString, _queryLength);
+
+      if (cacheResult != nullptr) {
+        // got a result from the query cache
+        QueryResult res(TRI_ERROR_NO_ERROR);
+        res.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
+        res.json     = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheResult.get()->queryResult);
+        res.stats    = nullptr;
+
+        return res;
+      } 
+    }
+
     init();
+
     QueryResult res = prepare(registry);
 
     if (res.code != TRI_ERROR_NO_ERROR) {
       return res;
+    }
+
+    if (useQueryCache && ! _ast->root()->isDeterministic()) {
+      useQueryCache = false;
     }
 
     triagens::basics::Json jsonResult(triagens::basics::Json::Array, 16);
@@ -646,22 +675,48 @@ QueryResult Query::execute (QueryRegistry* registry) {
     AqlItemBlock* value = nullptr;
 
     try {
-      while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
-        auto doc = value->getDocumentCollection(resultRegister);
+      if (useQueryCache) {
+        // iterate over result, return it and store it in query cache
+        while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+          auto doc = value->getDocumentCollection(resultRegister);
 
-        size_t const n = value->size();
-        // reserve space for n additional results at once
-        jsonResult.reserve(n);
+          size_t const n = value->size();
+          // reserve space for n additional results at once
+          jsonResult.reserve(n);
 
-        for (size_t i = 0; i < n; ++i) {
-          auto val = value->getValueReference(i, resultRegister);
+          for (size_t i = 0; i < n; ++i) {
+            auto val = value->getValueReference(i, resultRegister);
 
-          if (! val.isEmpty()) {
-            jsonResult.add(val.toJson(_trx, doc, true)); 
+            if (! val.isEmpty()) {
+              jsonResult.add(val.toJson(_trx, doc, true)); 
+            }
           }
+          delete value;
+          value = nullptr;
         }
-        delete value;
-        value = nullptr;
+
+        // finally store the generated result in the query cache
+        QueryCache::instance()->store(_vocbase, queryStringHash, _queryString, _queryLength, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()), std::vector<std::string>());
+      }
+      else {
+        // iterate over result and return it
+        while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+          auto doc = value->getDocumentCollection(resultRegister);
+
+          size_t const n = value->size();
+          // reserve space for n additional results at once
+          jsonResult.reserve(n);
+
+          for (size_t i = 0; i < n; ++i) {
+            auto val = value->getValueReference(i, resultRegister);
+
+            if (! val.isEmpty()) {
+              jsonResult.add(val.toJson(_trx, doc, true)); 
+            }
+          }
+          delete value;
+          value = nullptr;
+        }
       }
     }
     catch (...) {
@@ -742,7 +797,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       return res;
     }
 
-    if (! _ast->root()->isDeterministic()) {
+    if (useQueryCache && ! _ast->root()->isDeterministic()) {
       useQueryCache = false;
     }
 
