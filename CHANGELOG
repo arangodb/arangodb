@@ -501,7 +501,7 @@ v2.6.0-beta4 (2015-06-16)
 
   This can now be achieved by:
       
-      EDGES(<vertexCollection>, <edgeCollection>, <vertex>, <direction>, <example>, {includeVertices: true})
+      EDGES(<edgeCollection>, <vertex>, <direction>, <example>, {includeVertices: true})
 
   If you are nesting several NEIGHBORS steps you can speed up their performance in the following way:
 
@@ -512,8 +512,8 @@ v2.6.0-beta4 (2015-06-16)
   This can now be achieved by:
 
   FOR va IN NEIGHBORS(Users, relations, 'Users/123', 'outbound') FOR vc IN NEIGHBORS(Products, relations, va, 'outbound', null, {includeData: true}) RETURN vc
-                                                                                                          ^^^^            ^^^^^^^^^^^^^^^^^^^
-                                                                                           Use intermediate directly     include Data for final
+                                                                                                          ^^^^                  ^^^^^^^^^^^^^^^^^^^
+                                                                                                  Use intermediate directly     include Data for final
 
 * INCOMPATIBLE CHANGE:
 
