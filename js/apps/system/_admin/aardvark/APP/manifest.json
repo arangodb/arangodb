@@ -109,7 +109,7 @@
   "files": {
     "/documentation.html": "frontend/html/documentation.html",
     "/standalone.html": "frontend/build/standalone.html",
-    "/cluster.html": "frontend/build/cluster.html",
+    "/cluster.html": "clusterFrontend/build/cluster.html",
     "/css/sass.css": "frontend/build/style.css",
     "/cluster.js": "clusterFrontend/build/cluster.js",
     "/ace.js": "frontend/src/ace.js",
