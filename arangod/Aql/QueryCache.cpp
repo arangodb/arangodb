@@ -117,6 +117,7 @@ std::shared_ptr<QueryCacheResultEntry> QueryCacheDatabaseEntry::lookup (uint64_t
 
   if (queryStringLength != (*it).second->queryStringLength) {
     // found something, but obviously the result of a different query with the same hash
+    return std::shared_ptr<QueryCacheResultEntry>();
   }
 
   return (*it).second;
