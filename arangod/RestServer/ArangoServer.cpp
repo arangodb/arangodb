@@ -37,6 +37,7 @@
 #include "Admin/RestHandlerCreator.h"
 #include "Admin/RestShutdownHandler.h"
 #include "Aql/Query.h"
+#include "Aql/QueryCache.h"
 #include "Aql/RestAqlHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
@@ -103,12 +104,13 @@ bool IGNORE_DATAFILE_ERRORS;
 /// @brief converts list of size_t to string
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename A> string to_string (vector<A> v) {
-  string result = "";
-  string sep = "[";
+template<typename T> 
+static std::string ToString (std::vector<T> const& v) {
+  std::string result = "";
+  std::string sep = "[";
 
-  for (auto e : v) {
-    result += sep + to_string(e);
+  for (auto const& e : v) {
+    result += sep + std::to_string(e);
     sep = ",";
   }
 
@@ -338,6 +340,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _v8Contexts(8),
     _indexThreads(2),
     _databasePath(),
+    _queryCacheMode("demand"),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
@@ -590,6 +593,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
     ("database.ignore-datafile-errors", &_ignoreDatafileErrors, "load collections even if datafiles may contain errors")
     ("database.disable-query-tracking", &_disableQueryTracking, "turn off AQL query tracking by default")
+    ("database.query-cache-mode", &_queryCacheMode, "mode for the AQL query cache (on, off, demand)")
     ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
   ;
 
@@ -744,6 +748,9 @@ void ArangoServer::buildApplicationServer () {
   
   // set global query tracking flag
   triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);
+
+  // configure the query cache
+  triagens::aql::QueryCache::instance()->mode(_queryCacheMode);
 
 
   // .............................................................................
@@ -1016,7 +1023,7 @@ int ArangoServer::startupServer () {
 
     if (ns != 0 && nd != 0) {
       LOG_INFO("the server has %d (hyper) cores, using %d scheduler threads, %d dispatcher threads",
-               (int) n, (int) ns, (int) nd);
+          (int) n, (int) ns, (int) nd);
     }
     else {
       _threadAffinity = 0;
@@ -1052,22 +1059,22 @@ int ArangoServer::startupServer () {
         break;
 
       case 3:
-	if (n < ns) {
-	  ns = n;
-	}
+        if (n < ns) {
+          ns = n;
+        }
 
-	nd = 0;
+        nd = 0;
 
-	break;
+        break;
 
       case 4:
-	if (n < nd) {
-	  nd = n;
-	}
+        if (n < nd) {
+          nd = n;
+        }
 
-	ns = 0;
+        ns = 0;
 
-	break;
+        break;
 
       default:
         _threadAffinity = 0;
@@ -1090,22 +1097,18 @@ int ArangoServer::startupServer () {
       }
 
       if (0 < ns) {
-	_applicationScheduler->setProcessorAffinity(ps);
+        _applicationScheduler->setProcessorAffinity(ps);
       }
 
       if (0 < nd) {
-	_applicationDispatcher->setProcessorAffinity(pd);
+        _applicationDispatcher->setProcessorAffinity(pd);
       }
 
-      if (0 < ns && 0 < nd) {
-	LOG_INFO("scheduler cores: %s, dispatcher cores: %s",
-		 to_string(ps).c_str(), to_string(pd).c_str());
+      if (0 < ns) {
+        LOG_INFO("scheduler cores: %s", ToString(ps).c_str());
       }
-      else if (0 < ns) {
-	LOG_INFO("scheduler cores: %s", to_string(ps).c_str());
-      }
-      else if (0 < nd) {
-	LOG_INFO("dispatcher cores: %s", to_string(pd).c_str());
+      if (0 < nd) {
+        LOG_INFO("dispatcher cores: %s", ToString(pd).c_str());
       }
     }
     else {

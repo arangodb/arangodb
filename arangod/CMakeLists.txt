@@ -67,6 +67,7 @@ add_executable(
     Aql/OptimizerRules.cpp
     Aql/Parser.cpp
     Aql/Query.cpp
+    Aql/QueryCache.cpp
     Aql/QueryList.cpp
     Aql/QueryRegistry.cpp
     Aql/RangeInfo.cpp
