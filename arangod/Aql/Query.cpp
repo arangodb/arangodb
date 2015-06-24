@@ -204,7 +204,8 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _warnings(),
     _part(part),
     _contextOwnedByExterior(contextOwnedByExterior),
-    _killed(false) {
+    _killed(false),
+    _isModificationQuery(false) {
 
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " << queryString << "\n";
 
@@ -245,7 +246,8 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _warnings(),
     _part(part),
     _contextOwnedByExterior(contextOwnedByExterior),
-    _killed(false) {
+    _killed(false),
+    _isModificationQuery(false) {
 
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR (JSON): " << _queryJson.toString() << "\n";
 
@@ -503,16 +505,16 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     std::unique_ptr<Parser> parser(new Parser(this));
     std::unique_ptr<ExecutionPlan> plan;
     
-
     if (_queryString != nullptr) {
       parser->parse(false);
       // put in bind parameters
       parser->ast()->injectBindParameters(_bindParameters);
     }
+      
+    _isModificationQuery = parser->isModificationQuery();
 
     // create the transaction object, but do not start it yet
-    auto trx = new triagens::arango::AqlTransaction(createTransactionContext(), _vocbase, _collections.collections(), _part == PART_MAIN);
-    _trx = trx;   // Save the transaction in our object
+    _trx = new triagens::arango::AqlTransaction(createTransactionContext(), _vocbase, _collections.collections(), _part == PART_MAIN);
 
     bool planRegisters;
 
@@ -629,10 +631,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute (QueryRegistry* registry) {
-  auto queryCacheMode = QueryCache::instance()->mode(); 
-  bool useQueryCache = (_queryString != nullptr &&
-                        (queryCacheMode == CACHE_ALWAYS_ON ||
-                         (queryCacheMode == CACHE_ON_DEMAND && getBooleanOption("cache", false))));
+  bool useQueryCache = canUseQueryCache();
   uint64_t queryStringHash = 0;
 
   try {
@@ -647,7 +646,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
         // got a result from the query cache
         QueryResult res(TRI_ERROR_NO_ERROR);
         res.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
-        res.json     = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheResult.get()->queryResult);
+        res.json     = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheResult.get()->_queryResult);
         res.stats    = nullptr;
 
         return res;
@@ -662,7 +661,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
       return res;
     }
 
-    if (useQueryCache && ! _ast->root()->isDeterministic()) {
+    if (useQueryCache && (_isModificationQuery || ! _ast->root()->isDeterministic())) {
       useQueryCache = false;
     }
 
@@ -768,10 +767,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
 QueryResultV8 Query::executeV8 (v8::Isolate* isolate, 
                                 QueryRegistry* registry) {
-  auto queryCacheMode = QueryCache::instance()->mode(); 
-  bool useQueryCache = (_queryString != nullptr &&
-                        (queryCacheMode == CACHE_ALWAYS_ON ||
-                         (queryCacheMode == CACHE_ON_DEMAND && getBooleanOption("cache", false))));
+  bool useQueryCache = canUseQueryCache();
   uint64_t queryStringHash = 0;
 
   try {
@@ -785,7 +781,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       if (cacheResult != nullptr) {
         // got a result from the query cache
         QueryResultV8 res(TRI_ERROR_NO_ERROR);
-        res.result = v8::Handle<v8::Array>::Cast(TRI_ObjectJson(isolate, cacheResult.get()->queryResult));
+        res.result = v8::Handle<v8::Array>::Cast(TRI_ObjectJson(isolate, cacheResult.get()->_queryResult));
         return res;
       } 
     }
@@ -797,7 +793,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       return res;
     }
 
-    if (useQueryCache && ! _ast->root()->isDeterministic()) {
+    if (useQueryCache && (_isModificationQuery || ! _ast->root()->isDeterministic())) {
       useQueryCache = false;
     }
 
@@ -945,8 +941,7 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    auto trx = new triagens::arango::AqlTransaction(createTransactionContext(), _vocbase, _collections.collections(), true);
-    _trx = trx;  // save the pointer in this
+    _trx = new triagens::arango::AqlTransaction(createTransactionContext(), _vocbase, _collections.collections(), true);
 
     // we have an AST
     int res = _trx->begin();
@@ -1222,7 +1217,58 @@ void Query::init () {
 
 uint64_t Query::hash () const {
   TRI_ASSERT(_queryString !=  nullptr);
-  return fasthash64(_queryString, _queryLength, 0x123456789) ^ _bindParameters.hash();
+
+  // hash the query string first
+  uint64_t hash = fasthash64(_queryString, _queryLength, 0x123456789);
+
+  // handle "fullCount" option. if this option is set, the query result will
+  // be different to when it is not set! 
+  if (getBooleanOption("fullcount", false)) {
+    hash = fasthash64("fullcount:true", strlen("fullcount:true"), hash);
+  }
+  else {
+    hash = fasthash64("fullcount:false", strlen("fullcount:false"), hash);
+  }
+
+  // handle "count" option
+  if (getBooleanOption("count", false)) {
+    hash = fasthash64("count:true", strlen("count:true"), hash);
+  }
+  else {
+    hash = fasthash64("count:false", strlen("count:false"), hash);
+  }
+
+  // blend query hash with bind parameters
+  return hash ^ _bindParameters.hash(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query cache can be used for the query
+////////////////////////////////////////////////////////////////////////////////
+
+bool Query::canUseQueryCache () const {
+  if (_queryString == nullptr || _queryLength < 8) {
+    return false;
+  }
+
+  auto queryCacheMode = QueryCache::instance()->mode(); 
+
+  if (queryCacheMode == CACHE_ALWAYS_ON && getBooleanOption("cache", true)) {
+    // cache mode is set to always on... query can still be excluded from cache by 
+    // setting `cache` attribute to false.
+
+    // cannot use query cache on a coordinator at the moment
+    return ! triagens::arango::ServerState::instance()->isCoordinator();
+  }
+  else if (queryCacheMode == CACHE_ON_DEMAND && getBooleanOption("cache", false)) {
+    // cache mode is set to demand... query will only be cached if `cache`
+    // attribute is set to false
+    
+    // cannot use query cache on a coordinator at the moment
+    return ! triagens::arango::ServerState::instance()->isCoordinator();
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
