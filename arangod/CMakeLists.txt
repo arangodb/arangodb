@@ -235,7 +235,7 @@ install_config(arango-dfdb)
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/server ${PROJECT_SOURCE_DIR}/js/actions
   DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js" PATTERN "*.tmpl"
+  FILES_MATCHING PATTERN "*.js" PATTERN "*.tmpl" PATTERN "*.html" PATTERN "*.css" PATTERN "droid*" PATTERN "*png"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
   REGEX "^.*/server/tests$" EXCLUDE)
