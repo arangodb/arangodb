@@ -62,12 +62,15 @@ namespace triagens {
 
       QueryCacheResultEntry (char const*,
                              size_t, 
-                             struct TRI_json_t*);
+                             struct TRI_json_t*,
+                             std::vector<std::string> const&);
 
       ~QueryCacheResultEntry ();
 
-      size_t               queryStringLength;
-      struct TRI_json_t*   queryResult;
+      char*                    _queryString;
+      size_t                   _queryStringLength;
+      struct TRI_json_t*       _queryResult;
+      std::vector<std::string> _collections;
     };
 
 // -----------------------------------------------------------------------------
@@ -113,27 +116,31 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void store (uint64_t,
-                  char const*,
-                  size_t,
-                  struct TRI_json_t*,
-                  std::vector<std::string> const&);
+                  std::shared_ptr<QueryCacheResultEntry>&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate all entries for the given collections in the 
+/// database-specific cache
+////////////////////////////////////////////////////////////////////////////////
+
+      void invalidate (std::vector<char const*> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all entries for a collection in the database-specific 
 /// cache
 ////////////////////////////////////////////////////////////////////////////////
 
-      void invalidate (std::string const&);
+      void invalidate (char const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-      struct TRI_vocbase_s* vocbase;
+      struct TRI_vocbase_s* _vocbase;
 
-      std::unordered_map<uint64_t, std::shared_ptr<QueryCacheResultEntry>> entriesByHash;
+      std::unordered_map<uint64_t, std::shared_ptr<QueryCacheResultEntry>> _entriesByHash;
 
-      std::unordered_map<std::string, std::unordered_set<uint64_t>> entriesByCollection;
+      std::unordered_map<std::string, std::unordered_set<uint64_t>> _entriesByCollection;
 
     };
 
@@ -169,6 +176,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test whether the cache might be active
+////////////////////////////////////////////////////////////////////////////////
+
+        bool mayBeActive () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether or not the query cache is enabled
@@ -211,11 +224,44 @@ namespace triagens {
                     std::vector<std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate all queries for the given collections
+/// the lock is already acquired externally so we don't lock again
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidate (triagens::basics::ReadWriteLock&,
+                         struct TRI_vocbase_s*,
+                         std::vector<char const*> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate all queries for the given collections
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidate (struct TRI_vocbase_s*,
+                         std::vector<char const*> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate all queries for a particular collection
+/// the lock is already acquired externally so we don't lock again
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidate (triagens::basics::ReadWriteLock&,
+                         struct TRI_vocbase_s*,
+                         char const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for a particular collection
 ////////////////////////////////////////////////////////////////////////////////
 
         void invalidate (struct TRI_vocbase_s*,
-                         std::string const&);
+                         char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate all queries for a particular database
+/// the lock is already acquired externally so we don't lock again
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidate (triagens::basics::ReadWriteLock&,
+                         struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for a particular database
@@ -224,10 +270,35 @@ namespace triagens {
         void invalidate (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a reference to the R/w lock so callers can externally lock it
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::ReadWriteLock& getLock () {
+          return _lock;
+        } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disable ourselves in case of emergency
+////////////////////////////////////////////////////////////////////////////////
+
+        void disable ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the pointer to the global query cache
 ////////////////////////////////////////////////////////////////////////////////
 
         static QueryCache* instance ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate all entries in cache
+/// note that the caller of this method must hold the write lock
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidate ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -246,6 +317,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_map<struct TRI_vocbase_s*, QueryCacheDatabaseEntry*> _entries;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief activity flag. will be toggled to false only in case of something
+/// going terribly wrong
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _active;
 
     };
 

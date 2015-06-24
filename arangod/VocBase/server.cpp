@@ -35,6 +35,7 @@
 
 #include <regex.h>
 
+#include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
@@ -2506,51 +2507,51 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  int res = TRI_ERROR_INTERNAL;
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_RemoveKeyAssociativePointer(&server->_databases, name));
 
   if (vocbase == nullptr) {
     // not found
-    res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
-  else {
-    // mark as deleted
-    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
-    vocbase->_isOwnAppsDirectory = removeAppsDirectory;
+  // mark as deleted
+  TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
-    if (TRI_DropVocBase(vocbase)) {
-      if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
-        LOG_TRACE("dropping database '%s', directory '%s'",
-                  vocbase->_name,
-                  vocbase->_path);
-      }
-      else {
-        LOG_INFO("dropping database '%s', directory '%s'",
-                 vocbase->_name,
-                 vocbase->_path);
-      }
+  vocbase->_isOwnAppsDirectory = removeAppsDirectory;
 
-      res = SaveDatabaseParameters(vocbase->_id,
-                                   vocbase->_name,
-                                   true,
-                                   &vocbase->_settings,
-                                   vocbase->_path);
+  // invalidate all entries for the database
+  triagens::aql::QueryCache::instance()->invalidate(vocbase);
 
-      TRI_PushBackVectorPointer(&server->_droppedDatabases, vocbase);
-
-      // TODO: what to do in case of error?
-      if (writeMarker) {
-        WriteDropMarker(vocbase->_id);
-      }
+  if (TRI_DropVocBase(vocbase)) {
+    if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+      LOG_TRACE("dropping database '%s', directory '%s'",
+                vocbase->_name,
+                vocbase->_path);
     }
     else {
-      // already deleted
-      res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+      LOG_INFO("dropping database '%s', directory '%s'",
+               vocbase->_name,
+               vocbase->_path);
     }
-  }
 
-  return res;
+    int res = SaveDatabaseParameters(vocbase->_id,
+                                     vocbase->_name,
+                                     true,
+                                     &vocbase->_settings,
+                                     vocbase->_path);
+    // TODO: what to do here in case of error?
+
+    TRI_PushBackVectorPointer(&server->_droppedDatabases, vocbase);
+
+    if (writeMarker) {
+      WriteDropMarker(vocbase->_id);
+    }
+
+    return res;
+  }
+    
+  // already deleted
+  return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
