@@ -40,6 +40,9 @@ v2.7.0 (XXXX-XX-XX)
 
 * added Foxx manifest configuration type `password`.
 
+* fixed handling of default values in Foxx manifest configurations
+
+* fixed handling of optional parameters in Foxx manifest configurations
 
 v2.6.0-beta4 (2015-06-16)
 -------------------------
