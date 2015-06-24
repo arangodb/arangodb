@@ -1,8 +1,10 @@
-v2.6.2 (????-??-??)
+v2.6.2 (XXXX-XX-XX)
 -------------------
 
 * fixed handling of default values in Foxx manifest configurations
+
 * fixed handling of optional parameters in Foxx manifest configurations
+
 
 v2.6.1 (2015-06-24)
 -------------------
