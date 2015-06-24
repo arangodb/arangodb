@@ -9,13 +9,13 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1371713044
+etag: 1368969638
 
 { 
   "edge" : { 
     "_id" : "edges/edge1", 
     "_key" : "edge1", 
-    "_rev" : "1371713044", 
+    "_rev" : "1368969638", 
     "_from" : "vertices/vert2", 
     "_to" : "vertices/vert1", 
     "$label" : null, 

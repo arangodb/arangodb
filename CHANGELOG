@@ -1,3 +1,11 @@
+v2.6.1 (2015-06-24)
+-------------------
+
+* Add missing swagger files to cmake build. fixes #1368
+
+* fixed documentation errors
+
+
 v2.6.0 (2015-06-20)
 -------------------
 

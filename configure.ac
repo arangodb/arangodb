@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [2.6.0], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
+AC_INIT([triAGENS ArangoDB], [2.6.1], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
