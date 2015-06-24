@@ -187,6 +187,12 @@ endif # ENABLE_ARM6
 
 CLEANUP_3RD += clean-v8
 
+non-thin-v8:
+	for lib in `find @top_srcdir@/3rdParty/$(V8DIR)/out -name '*.a'`; \
+	    do ar -t $${lib} | xargs ar rvs $${lib}.new && mv -v $${lib}.new $${lib}; \
+	done
+
+
 clean-v8:
 	rm -f @srcdir@/.v8-build-@TRI_BITS@
 	cd @top_srcdir@/3rdParty/$(V8DIR) && ( $(MAKE) clean || true )
