@@ -340,6 +340,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname.c_str(), error);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
   // Essentially return the response we got from the DBserver, be it
@@ -347,6 +348,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   _response = createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
 
