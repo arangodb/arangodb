@@ -242,7 +242,7 @@ TRI_json_t* JsonHelper::getObjectElement (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a string element, or a default it is does not exist
+/// @brief returns a string element, or a default if it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string JsonHelper::getStringValue (TRI_json_t const* json,
@@ -254,7 +254,7 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a string sub-element, or a default it is does not exist
+/// @brief returns a string sub-element, or a default if it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string JsonHelper::getStringValue (TRI_json_t const* json,
@@ -269,7 +269,7 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a boolean sub-element, or a default it is does not exist
+/// @brief returns a boolean sub-element, or a default if it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
 bool JsonHelper::getBooleanValue (TRI_json_t const* json,
