@@ -55,3 +55,6 @@ install_bits:
 	for f in common i18n io; do \
 	  cp -a $(V8)/third_party/icu/source/$${f}/unicode/* ../WindowsLibraries/$(BITS)/include/unicode/; \
 	done
+
+	find ../WindowsLibraries -type f -exec chmod a+r {} \;
+	find ../WindowsLibraries -type d -exec chmod a+rx {} \; 
