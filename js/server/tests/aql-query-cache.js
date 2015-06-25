@@ -95,6 +95,54 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual("demand", result.mode);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-deterministic queries
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonDeterministicQueriesRandom : function () {
+      var query = "FOR doc IN @@collection RETURN RAND()";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual(5, result.json.length);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual(5, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-deterministic queries
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonDeterministicQueriesDocument : function () {
+      var query = "FOR doc IN @@collection RETURN RAND()";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual(5, result.json.length);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual(5, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalidation after single insert operation
+////////////////////////////////////////////////////////////////////////////////
+
     testInvalidationAfterInsertSingle : function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result;
@@ -114,9 +162,210 @@ function ahuacatlQueryCacheTestSuite () {
 
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
+
       assertEqual([ 1, 2 ], result.json);
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalidation after single update operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidationAfterUpdateSingle : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result;
+
+      var doc = c1.save({ value: 1 });
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1 ], result.json);
+
+      c1.update(doc, { value: 42 }); // this will invalidate cache
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 42 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 42 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalidation after single remove operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidationAfterRemoveSingle : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result;
+
+      c1.save({ value: 1 });
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1 ], result.json);
+
+      c1.remove(c1.any()._key); // this will invalidate cache
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalidation after truncate operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidationAfterTruncate : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      for (i = 1; i <= 10; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result.json);
+
+      c1.truncate(); // this will invalidate cache
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ ], result.json);
+
+      for (i = 1; i <= 10; ++i) {
+        c1.save({ value: i });
+      }
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalidation after AQL insert operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidationAfterAqlInsert : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      AQL_EXECUTE("INSERT { value: 9 } INTO @@collection", { "@collection" : c1.name() });
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalidation after AQL update operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidationAfterAqlUpdate : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      AQL_EXECUTE("FOR doc IN @@collection UPDATE doc._key WITH { value: doc.value + 1 } IN @@collection", { "@collection" : c1.name() });
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 2, 3, 4, 5, 6 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 2, 3, 4, 5, 6 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalidation after AQL remove operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidationAfterAqlRemove : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      AQL_EXECUTE("FOR doc IN @@collection REMOVE doc._key IN @@collection", { "@collection" : c1.name() });
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ ], result.json);
     }
 
+// non-deterministic functions
+// multi-collection queries
 
   };
 }
