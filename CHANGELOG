@@ -1,6 +1,8 @@
 v2.6.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1383: bindVars for HTTP API doesn't work with empty string
+
 * fixed handling of default values in Foxx manifest configurations
 
 * fixed handling of optional parameters in Foxx manifest configurations
