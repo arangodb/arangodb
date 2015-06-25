@@ -1282,6 +1282,7 @@ int createEdgeOnCoordinator (
   // First determine the collection ID from the name:
   shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
   if (collinfo->empty()) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   string collid = StringUtils::itoa(collinfo->id());
