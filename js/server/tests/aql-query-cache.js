@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, 
+/*global fail, assertEqual, assertTrue, assertFalse, AQL_EXECUTE, 
   AQL_QUERY_CACHE_PROPERTIES, AQL_QUERY_CACHE_INVALIDATE */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -339,6 +339,80 @@ function ahuacatlQueryCacheTestSuite () {
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertTrue(result.cached);
       assertEqual([ 3, 4, 5 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test queries w/ parse error
+////////////////////////////////////////////////////////////////////////////////
+
+    testParseError : function () {
+      var query = "FOR i IN 1..3 RETURN";
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      try {
+        AQL_EXECUTE(query);
+        fail();
+      }
+      catch (err1) {
+        assertEqual(internal.errors.ERROR_QUERY_PARSE.code, err1.errorNum);
+      }
+
+      // nothing should have been cached, so we shall be getting the same error again
+      try {
+        AQL_EXECUTE(query);
+        fail();
+      }
+      catch (err2) {
+        assertEqual(internal.errors.ERROR_QUERY_PARSE.code, err2.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test queries w/ other error
+////////////////////////////////////////////////////////////////////////////////
+
+    testOtherError : function () {
+      db._drop("UnitTestsAhuacatlQueryCache3");
+
+      var query = "FOR doc IN UnitTestsAhuacatlQueryCache3 RETURN doc";
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      try {
+        AQL_EXECUTE(query);
+        fail();
+      }
+      catch (err1) {
+        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err1.errorNum);
+      }
+
+      // nothing should have been cached, so we shall be getting the same error again
+      try {
+        AQL_EXECUTE(query);
+        fail();
+      }
+      catch (err2) {
+        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err2.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test queries w/ warnings
+////////////////////////////////////////////////////////////////////////////////
+
+    testWarnings : function () {
+      var query = "FOR i IN 1..3 RETURN i / 0";
+      var result, i;
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query);
+      assertFalse(result.cached);
+      assertEqual([ null, null, null ], result.json);
+      assertEqual(3, result.warnings.length);
+
+      result = AQL_EXECUTE(query);
+      assertFalse(result.cached); // won't be cached because of the warnings
+      assertEqual([ null, null, null ], result.json);
+      assertEqual(3, result.warnings.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
