@@ -31,6 +31,7 @@
 
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
+var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -93,6 +94,251 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual("demand", result.mode);
       result = AQL_QUERY_CACHE_PROPERTIES();
       assertEqual("demand", result.mode);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rename collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRenameCollection1 : function () {
+      if (require("org/arangodb/cluster").isCluster()) {
+        // renaming collections not supported in cluster
+        return;
+      }
+
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+      c2.drop();
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      c1.rename("UnitTestsAhuacatlQueryCache2");
+
+      try {
+        AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache1" });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+
+      result = AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache2" });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache2" });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rename collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRenameCollection2 : function () {
+      if (require("org/arangodb/cluster").isCluster()) {
+        // renaming collections not supported in cluster
+        return;
+      }
+
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache2" });
+      assertFalse(result.cached);
+      assertEqual([ ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache2" });
+      assertTrue(result.cached);
+      assertEqual([ ], result.json);
+
+      c2.drop();
+      c1.rename("UnitTestsAhuacatlQueryCache2");
+
+      try {
+        AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache1" });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+
+      result = AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache2" });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache2" });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test drop collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testDropCollection : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      c1.drop();
+
+      try {
+        AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache1" });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test drop and recreation of collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testDropAndRecreateCollection : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      c1.drop();
+
+      try {
+        AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache1" });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+
+      // re-create collection with same name
+      c1 = db._create("UnitTestsAhuacatlQueryCache1");
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test adding indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testAddIndexCapConstraint : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      c1.ensureCapConstraint(3);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 3, 4, 5 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test dropping indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testDropIndexCapConstraint : function () {
+      var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
+      var result, i;
+
+      c1.ensureCapConstraint(3);
+      for (i = 1; i <= 5; ++i) {
+        c1.save({ value: i });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 3, 4, 5 ], result.json);
+
+      var indexes = c1.getIndexes();
+      assertEqual(2, indexes.length);
+      assertEqual("cap", indexes[1].type);
+      assertTrue(c1.dropIndex(indexes[1].id));
+
+      indexes = c1.getIndexes();
+      assertEqual(1, indexes.length);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ 3, 4, 5 ], result.json);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,6 +418,61 @@ function ahuacatlQueryCacheTestSuite () {
         assertFalse(result.cached);
         assertEqual(5, result.json.length);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test same query with different bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+    testDifferentBindOrders : function () {
+      var query = "FOR doc IN @@collection SORT doc.value LIMIT @offset, @count RETURN doc.value";
+      var result, i;
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      for (i = 1; i <= 10; ++i) {
+        c1.save({ value: i });
+      }
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name(), offset: 0, count: 1 });
+      assertFalse(result.cached);
+      assertEqual([ 1 ], result.json);
+      
+      result = AQL_EXECUTE(query, { "@collection": c1.name(), offset: 0, count: 1 });
+      assertTrue(result.cached);
+      assertEqual([ 1 ], result.json);
+
+      // same bind parameter values, but in exchanged order
+      result = AQL_EXECUTE(query, { "@collection": c1.name(), offset: 1, count: 0 });
+      assertFalse(result.cached);
+      assertEqual([ ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test same query with different bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+    testDifferentBindOrdersArray : function () {
+      var query = "RETURN @values";
+      var result, i;
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+
+      result = AQL_EXECUTE(query, { values: [ 1, 2, 3, 4, 5 ] });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json[0]);
+
+      result = AQL_EXECUTE(query, { values: [ 1, 2, 3, 4, 5 ] });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json[0]);
+      
+      // same bind parameter values, but in exchanged order
+      result = AQL_EXECUTE(query, { values: [ 5, 4, 3, 2, 1 ] });
+      assertFalse(result.cached);
+      assertEqual([ 5, 4, 3, 2, 1 ], result.json[0]);
+
+      result = AQL_EXECUTE(query, { values: [ 1, 2, 3, 5, 4 ] });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 5, 4 ], result.json[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

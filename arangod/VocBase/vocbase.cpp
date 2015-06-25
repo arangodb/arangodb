@@ -819,10 +819,8 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   // i.e. db.<old-collection-name>
   collection->_internalVersion++;
 
-  // lock query cache and invalidate all entries for the two collections
-  auto& cacheLock = triagens::aql::QueryCache::instance()->getLock();
-  WRITE_LOCKER(cacheLock);
-  triagens::aql::QueryCache::instance()->invalidate(cacheLock, vocbase, std::vector<char const*>{ oldName, newName });
+  // invalidate all entries for the two collections
+  triagens::aql::QueryCache::instance()->invalidate(vocbase, std::vector<char const*>{ oldName, newName });
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2079,14 +2077,11 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 
-  // lock query cache and invalidate all entries for this collection
-  auto& cacheLock = triagens::aql::QueryCache::instance()->getLock();
-  WRITE_LOCKER(cacheLock);
-  triagens::aql::QueryCache::instance()->invalidate(cacheLock, vocbase, collection->_name); 
-
   TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+
+  triagens::aql::QueryCache::instance()->invalidate(vocbase, collection->_name); 
 
   // .............................................................................
   // collection already deleted
