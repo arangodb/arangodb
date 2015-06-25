@@ -2391,7 +2391,8 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json,
     return createNodeValueDouble(json->_value._number);
   }
 
-  if (json->_type == TRI_JSON_STRING) {
+  if (json->_type == TRI_JSON_STRING ||
+      json->_type == TRI_JSON_STRING_REFERENCE) {
     if (copyStringValues) {
       // we must copy string values!
       char const* value = _query->registerString(json->_value._string.data, json->_value._string.length - 1, false);
