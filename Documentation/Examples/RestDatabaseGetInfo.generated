@@ -6,8 +6,8 @@ content-type: application/json; charset=utf-8
 { 
   "result" : { 
     "name" : "_system", 
-    "id" : "119206", 
-    "path" : "/tmp/vocdir.11134/databases/database-119206", 
+    "id" : "122368", 
+    "path" : "/tmp/vocdir.9794/databases/database-122368", 
     "isSystem" : true 
   }, 
   "error" : false, 

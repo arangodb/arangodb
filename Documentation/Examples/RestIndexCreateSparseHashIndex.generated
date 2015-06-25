@@ -13,7 +13,7 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1398591910", 
+  "id" : "products/1399053824", 
   "type" : "hash", 
   "fields" : [ 
     "a" 

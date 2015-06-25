@@ -4,21 +4,21 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "time" : 1435136277.465598, 
+  "time" : 1435249196.393865, 
   "system" : { 
-    "minorPageFaults" : 62333, 
-    "majorPageFaults" : 3316, 
-    "userTime" : 8.177509, 
-    "systemTime" : 4.933853, 
-    "numberOfThreads" : 28, 
-    "residentSize" : 153133056, 
-    "residentSizePercent" : 0.03565406799316406, 
-    "virtualSize" : 5125681152 
+    "minorPageFaults" : 66522, 
+    "majorPageFaults" : 3299, 
+    "userTime" : 8.766863, 
+    "systemTime" : 4.823181, 
+    "numberOfThreads" : 29, 
+    "residentSize" : 147681280, 
+    "residentSizePercent" : 0.034384727478027344, 
+    "virtualSize" : 5131460608 
   }, 
   "client" : { 
     "httpConnections" : 1, 
     "connectionTime" : { 
-      "sum" : 0.0004818439483642578, 
+      "sum" : 0.00034809112548828125, 
       "count" : 1, 
       "counts" : [ 
         1, 
@@ -28,33 +28,33 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "totalTime" : { 
-      "sum" : 21.970632553100586, 
+      "sum" : 22.244866132736206, 
       "count" : 11987, 
       "counts" : [ 
-        11724, 
-        173, 
-        72, 
-        14, 
-        3, 
+        11715, 
+        197, 
+        59, 
+        10, 
+        5, 
         0, 
         1 
       ] 
     }, 
     "requestTime" : { 
-      "sum" : 13.067479372024536, 
+      "sum" : 14.442063570022583, 
       "count" : 11987, 
       "counts" : [ 
-        11823, 
-        107, 
-        48, 
+        11817, 
+        112, 
+        46, 
         7, 
-        1, 
+        4, 
         0, 
         1 
       ] 
     }, 
     "queueTime" : { 
-      "sum" : 0.2944779396057129, 
+      "sum" : 0.28702378273010254, 
       "count" : 11987, 
       "counts" : [ 
         11987, 
@@ -67,20 +67,20 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "ioTime" : { 
-      "sum" : 8.608675241470337, 
+      "sum" : 7.5157787799835205, 
       "count" : 11987, 
       "counts" : [ 
-        11912, 
-        46, 
-        22, 
-        5, 
+        11936, 
+        36, 
+        12, 
         2, 
+        1, 
         0, 
         0 
       ] 
     }, 
     "bytesSent" : { 
-      "sum" : 4600473, 
+      "sum" : 4600472, 
       "count" : 11987, 
       "counts" : [ 
         3107, 
@@ -117,7 +117,7 @@ content-type: application/json; charset=utf-8
     "requestsOther" : 0 
   }, 
   "server" : { 
-    "uptime" : 27.761770963668823, 
+    "uptime" : 30.027838945388794, 
     "physicalMemory" : 4294967296 
   }, 
   "error" : false, 
