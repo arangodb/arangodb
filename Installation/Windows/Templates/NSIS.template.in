@@ -63,7 +63,7 @@ Function openLinkNewWindow
   Exch
   Push $0
   Exch
- 
+
   ReadRegStr $0 HKCR "http\shell\open\command" ""
 # Get browser path
     DetailPrint $0
@@ -79,12 +79,12 @@ Function openLinkNewWindow
     StrCmp $1 "" found
     IntOp $3 $3 + 1
     Goto loop
- 
+
   found:
     StrCpy $1 $0 $3
     StrCmp $2 " " +2
       StrCpy $1 '$1"'
- 
+
   Pop $0
   Exec '$1 $0'
   Pop $0
@@ -92,12 +92,12 @@ Function openLinkNewWindow
   Pop $2
   Pop $3
 FunctionEnd
- 
+
 !macro _OpenURL URL
 Push "${URL}"
 Call openLinkNewWindow
 !macroend
- 
+
 !define OpenURL '!insertmacro "_OpenURL"'
 
 ;--------------------------------
@@ -131,7 +131,7 @@ Function Tri_ChangePrivileges
     !insertmacro UAC_RunElevated
     ${Switch} $0
     ${Case} 0
-    	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
+	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
 	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
 	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
 		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "Administrator privileges required, plesae try again" /SD IDNO IDYES uac_tryagain IDNO 0
@@ -151,7 +151,7 @@ Function Tri_ChangePrivileges
   SetShellVarContext all
 FunctionEnd
 
-; same aagin for uninstall - NSIS requires the function name to have 'un.' - prefix
+; same aagin for uninstall - NSIS requires the function name have to have 'un.' - prefix
 Function un.Tri_ChangePrivileges
 uac_tryagain:
 !insertmacro UAC_RunElevated
@@ -173,7 +173,7 @@ ${Default}
 	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Unable to elevate, error $0"
 	Quit
 ${EndSwitch}
- 
+
 SetShellVarContext all
 FunctionEnd
 
@@ -257,7 +257,7 @@ Var AR_RegFlags
 !macroend
 
 !macro RemoveSection_CPack SecName
-  ;  This macro is used to call section's Remove_... macro
+  ;  This macro is used to call section''s Remove_... macro
   ;from the uninstaller.
   ;Input: section index constant name specified in Section command.
 
@@ -869,6 +869,12 @@ Section "-Core installation"
   !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
   !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
 
+
+  StrCmp "0" "$INSTALL_DESKTOP" noDesktopIcon
+  CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\bin\arangosh.exe"  '' '$INSTDIR\resources\Icons\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\Icons\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  noDesktopIcon:
+
   ; Write special uninstall registry entries
   Push "StartMenu"
   Push "$STARTMENU_FOLDER"
@@ -888,7 +894,7 @@ Section "-Core installation"
 
   !insertmacro MUI_STARTMENU_WRITE_END
 
-  
+
 @CPACK_NSIS_EXTRA_INSTALL_COMMANDS@
    StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
      SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
@@ -954,7 +960,7 @@ FunctionEnd
 ;--------------------------------
 Function default_installation_directory
 ; Read variables which defines if arango should be installed as Service 
-  
+
   ${If} ${UAC_IsInnerInstance} 
      Call disableBackButton
   ${EndIf}
@@ -962,7 +968,7 @@ Function default_installation_directory
     !insertmacro MUI_INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
     !insertmacro MUI_INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
     !insertmacro MUI_INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
-  
+
      ${If} $R2 == '1'
        StrCpy $TRI_INSTALL_TYPE 'Service'
      ${EndIf}
@@ -982,7 +988,7 @@ Function default_installation_directory
      Call read_options
    ${EndIf}
 
-  
+
   ${Switch} $TRI_INSTALL_TYPE
     ${Case} 'Service' 
       Call Tri_ChangePrivileges
@@ -1137,7 +1143,7 @@ Function un.onInit
       StrCpy $R0 "user"
     ${EndIf}
   ${EndIf}
-  
+
   ${If} $R0 == "admin" 
     Call un.Tri_ChangePrivileges
   ${EndIf}
@@ -1148,7 +1154,7 @@ Function un.onInit
   ${Else}
     SetShellVarContext current
   ${EndIf} 
-   
+
 FunctionEnd
 
 ;--- Add/Remove callback functions: ---
@@ -1173,7 +1179,7 @@ Section -FinishComponents
   StrCpy $R2 $R0 13 $R1
   StrCmp $R2 "AddRemove.exe" addremove_installed
 
-  ; We're not running AddRemove.exe, so install it
+  ; We''re not running AddRemove.exe, so install it
   CopyFiles $R3 $INSTDIR\AddRemove.exe
 
   addremove_installed:
@@ -1196,7 +1202,7 @@ Section "Uninstall"
   ; this variable was defined by eld and included in NSIS.template.in
   ; we probably need this for the install/uninstall software list.
   SetRegView ${BITS}
-  ; A single user isn't in HKCC...
+  ; A single user isn''t in HKCC...
   StrCpy $TRI_INSTALL_TYPE 'SingleUser'
   ReadRegStr $TRI_INSTALL_TYPE         HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
   ;MessageBox MB_OK "Type: $TRI_INSTALL_TYPE"
@@ -1221,6 +1227,11 @@ Section "Uninstall"
   ;MessageBox MB_OK "Add to path: $DO_NOT_ADD_TO_PATH all users: $ADD_TO_PATH_ALL_USERS"
   ReadRegStr $INSTALL_DESKTOP          SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
   ;MessageBox MB_OK "Install to desktop: $INSTALL_DESKTOP "
+
+  StrCmp "0" "$INSTALL_DESKTOP" noDesktopIconRemove
+  Delete  "$DESKTOP\Arango Shell.lnk"
+  Delete  "$DESKTOP\Arango Management Interface.lnk"
+  noDesktopIconRemove:
 
 
   ;MessageBox MB_OK "Deleting Directory: $SMPROGRAMS\$START_MENU\ $TRI_INSTALL_TYPE "

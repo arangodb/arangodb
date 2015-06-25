@@ -100,6 +100,7 @@ AC_ARG_ENABLE(internal-go,
   AS_HELP_STRING([--enable-internal-go], [use go binaries from 3rdParty directory (default: no)]),
   [tr_INTERNAL_GO="${enableval:-yes}"],
   [tr_INTERNAL_GO=no]
+  GOPROG=x$tr_INTERNAL_GO
 )
 
 AM_CONDITIONAL(ENABLE_INTERNAL_GO, test "x$tr_INTERNAL_GO" = xyes)
@@ -112,7 +113,10 @@ if test "x$tr_INTERNAL_GO" = "xno"; then
   else
     BASIC_INFO="$BASIC_INFO|GO BINARY: $GO"
   fi
+  GOPROG=$GO
 fi
+AC_MSG_WARN(["helo " $GOPROG])
+AM_CONDITIONAL(GO_AVAILABLE, test "x$GOPROG" != x)
 
 dnl ============================================================================
 dnl --SECTION--                                                          OPTIONS

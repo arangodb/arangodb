@@ -331,7 +331,11 @@ ArangoApp.prototype.configure = function(config) {
       }
       if (!error) {
         if (schema.isJoi) {
-          result = schema.optional().allow(null).validate(value);
+          schema = schema.optional().allow(null);
+          if (expected[name].default !== undefined) {
+            schema = schema.default(expected[name].default);
+          }
+          result = schema.validate(value);
           if (result.error) {
             error = result.error.message.replace(/^"value"/, '"' + name + '"');
           }
@@ -400,7 +404,7 @@ ArangoApp.prototype.needsConfiguration = function() {
   var config = this.getConfiguration();
   var deps = this.getDependencies();
   return _.any(config, function (cfg) {
-    return cfg.current === undefined;
+    return cfg.current === undefined && cfg.required !== false;
   }) || _.any(deps, function (dep) {
     return dep.current === undefined;
   });
