@@ -455,7 +455,7 @@ double AqlValue::toNumber () const {
     case RANGE: {
       size_t rangeSize = _range->size();
       if (rangeSize == 1) {  
-        return _range->at(0);
+        return static_cast<double>(_range->at(0));
       }
       return 0.0;
     }
