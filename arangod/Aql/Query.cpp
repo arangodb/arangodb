@@ -662,7 +662,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
       return res;
     }
 
-    if (useQueryCache && (_isModificationQuery || ! _ast->root()->isDeterministic())) {
+    if (useQueryCache && (_isModificationQuery || ! _ast->root()->isDeterministic() || ! _warnings.empty())) {
       useQueryCache = false;
     }
 
@@ -695,15 +695,17 @@ QueryResult Query::execute (QueryRegistry* registry) {
           value = nullptr;
         }
 
-        // finally store the generated result in the query cache
-        QueryCache::instance()->store(
-          _vocbase, 
-          queryStringHash, 
-          _queryString, 
-          _queryLength, 
-          TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()), 
-          collections()->collectionNames()
-        );
+        if (_warnings.empty()) {
+          // finally store the generated result in the query cache
+          QueryCache::instance()->store(
+            _vocbase, 
+            queryStringHash, 
+            _queryString, 
+            _queryLength, 
+            TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()), 
+            collections()->collectionNames()
+          );
+        }
       }
       else {
         // iterate over result and return it
@@ -802,7 +804,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       return res;
     }
 
-    if (useQueryCache && (_isModificationQuery || ! _ast->root()->isDeterministic())) {
+    if (useQueryCache && (_isModificationQuery || ! _ast->root()->isDeterministic() || ! _warnings.empty())) {
       useQueryCache = false;
     }
 
@@ -839,16 +841,18 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
           value = nullptr;
         }
 
-        // finally store the generated result in the query cache
-        QueryCache::instance()->store(
-          _vocbase, 
-          queryStringHash, 
-          _queryString, 
-          _queryLength, 
-          cacheResult.get(), 
-          collections()->collectionNames()
-        );
-        cacheResult.release();
+        if (_warnings.empty()) {
+          // finally store the generated result in the query cache
+          QueryCache::instance()->store(
+            _vocbase, 
+            queryStringHash, 
+            _queryString, 
+            _queryLength, 
+            cacheResult.get(), 
+            collections()->collectionNames()
+          );
+          cacheResult.release();
+        }
       }
       else {
         // iterate over result and return it

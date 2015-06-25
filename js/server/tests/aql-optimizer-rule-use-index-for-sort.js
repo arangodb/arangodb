@@ -42,6 +42,7 @@ var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite() {
+  var cacheProperties;
   var ruleName = "use-index-for-sort";
   var secondRuleName = "use-index-range";
   var removeCalculationNodes = "remove-unnecessary-calculations-2";
@@ -136,6 +137,11 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      // turn off caching first
+      cacheProperties = AQL_QUERY_CACHE_PROPERTIES();
+     // AQL_QUERY_CACHE_PROPERTIES({ mode: "off" });
+     // AQL_QUERY_CACHE_INVALIDATE();
+
       var loopto = 10;
 
       internal.db._drop(colName);
@@ -175,8 +181,11 @@ function optimizerRuleTestSuite() {
       internal.db._drop(colName);
       internal.db._drop(colNameOther);
       skiplist = null;
-    },
 
+      // restore previous state
+     // AQL_QUERY_CACHE_PROPERTIES(cacheProperties);
+     // AQL_QUERY_CACHE_INVALIDATE();
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test that rule has no effect
@@ -242,7 +251,7 @@ function optimizerRuleTestSuite() {
                     removeAlwaysOnClusterRules(result.plan.rules), query);
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
         QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
-       
+      
         assertTrue(isEqual(QResults[0], QResults[1]), "result " + i + " is equal?");
 
         allresults = getQueryMultiplePlansAndExecutions(query, {});
@@ -307,8 +316,8 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief this sort is replaceable by an index.
     ////////////////////////////////////////////////////////////////////////////////
-    testSortIndexable: function () {
 
+    testSortIndexable: function () {
       var query = "FOR v IN " + colName + " SORT v.a RETURN [v.a, v.b]";
 
       var XPresult;
@@ -320,7 +329,7 @@ function optimizerRuleTestSuite() {
 
       // -> use-index-for-sort alone.
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-      QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json.sort(sortArray);
       // our rule should have been applied.
       assertEqual([ ruleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // The sortnode and its calculation node should have been removed.
@@ -332,7 +341,7 @@ function optimizerRuleTestSuite() {
 
       // -> combined use-index-for-sort and remove-unnecessary-calculations-2
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_RemoveCalculations);
-      QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_RemoveCalculations).json;
+      QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_RemoveCalculations).json.sort(sortArray);
       // our rule should have been applied.
       assertEqual([ ruleName, removeCalculationNodes ].sort(), removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // The sortnode and its calculation node should have been removed.
@@ -343,7 +352,7 @@ function optimizerRuleTestSuite() {
       hasIndexRangeNode_WithRanges(XPresult, false);
 
       for (i = 1; i < 3; i++) {
-        assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
+        assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is equal?");
       }
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
@@ -460,7 +469,7 @@ function optimizerRuleTestSuite() {
       QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
       // -> use-index-for-sort alone.
-      QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json.sort(sortArray);
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
       // our rule should be there.
       assertEqual([ ruleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
@@ -473,7 +482,7 @@ function optimizerRuleTestSuite() {
       hasIndexRangeNode_WithRanges(XPresult, false);
 
       // -> combined use-index-for-sort and use-index-range
-      QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
+      QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json.sort(sortArray);
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
       assertEqual([ secondRuleName, ruleName ].sort(), removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // The sortnode should be gone, its calculation node should not have been removed yet.
@@ -483,7 +492,7 @@ function optimizerRuleTestSuite() {
       hasIndexRangeNode_WithRanges(XPresult, true);
 
       // -> use-index-range alone.
-      QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+      QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json.sort(sortArray);
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
       assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there.
@@ -497,7 +506,7 @@ function optimizerRuleTestSuite() {
       hasIndexRangeNode_WithRanges(XPresult, true);
 
       // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
-      QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
+      QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json.sort(sortArray);
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations);
       assertEqual([ secondRuleName, removeCalculationNodes, ruleName ].sort(), removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
@@ -508,7 +517,7 @@ function optimizerRuleTestSuite() {
       hasIndexRangeNode_WithRanges(XPresult, true);
 
       for (i = 1; i < 5; i++) {
-        assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
+        assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is equal?");
       }
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
@@ -640,7 +649,7 @@ function optimizerRuleTestSuite() {
       assertEqual(first.lowConst.bound, first.highConst.bound, "bounds equality");
 
       for (i = 1; i < 2; i++) {
-        assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i]), "Result " + i + " is Equal?");
+        assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i].sort(sortArray)), "Result " + i + " is Equal?");
       }
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
@@ -670,7 +679,7 @@ function optimizerRuleTestSuite() {
       QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
       // -> use-index-range alone.
-      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json.sort(sortArray);
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
       assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
@@ -685,7 +694,7 @@ function optimizerRuleTestSuite() {
       assertEqual(first.highs.length, 0, "no variable high bound");
       assertEqual(first.highConst.bound, 5, "proper value was set");
 
-      assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+      assertTrue(isEqual(QResults[0], QResults[1]), "Results are equal?");
 
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
@@ -702,6 +711,7 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test in detail that an index range can be used for a greater than filter.
     ////////////////////////////////////////////////////////////////////////////////
+
     testRangeGreaterThan: function () {
       var query = "FOR v IN " + colName + " FILTER v.a > 5 RETURN [v.a, v.b]";
       var XPresult;
@@ -713,7 +723,7 @@ function optimizerRuleTestSuite() {
       QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
       // -> use-index-range alone.
-      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json.sort(sortArray);
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
       assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
@@ -758,7 +768,7 @@ function optimizerRuleTestSuite() {
       QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
       // -> use-index-range alone.
-      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json.sort(sortArray);
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
       assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
@@ -835,6 +845,7 @@ function optimizerRuleTestSuite() {
     /// @brief test in detail that an index range can be used for an or combined 
     ///   greater than + less than filter spanning a range. 
     ////////////////////////////////////////////////////////////////////////////////
+
     testRangeBandstop: function () {
       var query = "FOR v IN " + colName + " FILTER v.a < 5 || v.a > 10 RETURN [v.a, v.b]";
 
@@ -846,7 +857,7 @@ function optimizerRuleTestSuite() {
       QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
       // -> use-index-range alone.
-      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json.sort(sortArray);
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
       assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
@@ -865,7 +876,7 @@ function optimizerRuleTestSuite() {
       assertEqual(first.lowConst.bound, 10, "proper value was set");
       assertEqual(first.lowConst.include, false, "proper include");
 
-      assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+      assertTrue(isEqual(QResults[0], QResults[1]), "Results are equal?");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
