@@ -45,6 +45,7 @@ namespace triagens {
       
       QueryResult (QueryResult&& other) {
         code              = other.code;
+        cached            = other.cached;
         details           = other.details;
         warnings          = other.warnings;
         json              = other.json;
@@ -65,6 +66,7 @@ namespace triagens {
       QueryResult (int code,
                    std::string const& details) 
         : code(code),
+          cached(false),
           details(details),
           zone(TRI_UNKNOWN_MEM_ZONE),
           warnings(nullptr),
@@ -98,6 +100,7 @@ namespace triagens {
       }
 
       int                             code;
+      bool                            cached;
       std::string                     details;
       std::unordered_set<std::string> bindParameters;
       std::vector<std::string>        collectionNames;

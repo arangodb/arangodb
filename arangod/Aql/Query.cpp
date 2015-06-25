@@ -648,6 +648,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
         res.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
         res.json     = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheResult.get()->_queryResult);
         res.stats    = nullptr;
+        res.cached   = true;
 
         return res;
       } 
@@ -695,7 +696,14 @@ QueryResult Query::execute (QueryRegistry* registry) {
         }
 
         // finally store the generated result in the query cache
-        QueryCache::instance()->store(_vocbase, queryStringHash, _queryString, _queryLength, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()), std::vector<std::string>());
+        QueryCache::instance()->store(
+          _vocbase, 
+          queryStringHash, 
+          _queryString, 
+          _queryLength, 
+          TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()), 
+          collections()->collectionNames()
+        );
       }
       else {
         // iterate over result and return it
@@ -782,6 +790,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
         // got a result from the query cache
         QueryResultV8 res(TRI_ERROR_NO_ERROR);
         res.result = v8::Handle<v8::Array>::Cast(TRI_ObjectJson(isolate, cacheResult.get()->_queryResult));
+        res.cached = true;
         return res;
       } 
     }
@@ -831,7 +840,14 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
         }
 
         // finally store the generated result in the query cache
-        QueryCache::instance()->store(_vocbase, queryStringHash, _queryString, _queryLength, cacheResult.get(), std::vector<std::string>());
+        QueryCache::instance()->store(
+          _vocbase, 
+          queryStringHash, 
+          _queryString, 
+          _queryLength, 
+          cacheResult.get(), 
+          collections()->collectionNames()
+        );
         cacheResult.release();
       }
       else {

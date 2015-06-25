@@ -220,8 +220,7 @@ void QueryCacheDatabaseEntry::invalidate (char const* collection) {
 
 QueryCache::QueryCache () 
   : _lock(),
-    _entries(),
-    _active(true) {
+    _entries() {
 
 }
 
@@ -237,11 +236,24 @@ QueryCache::~QueryCache () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the query cache properties
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json QueryCache::properties () const {
+  triagens::basics::Json json(triagens::basics::Json::Object, 2);
+  json("mode", triagens::basics::Json(modeString(mode()))); 
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether the cache might be active
+/// this is a quick test that may save the caller from further bothering
+/// about the query cache if case it returns `false`
 ////////////////////////////////////////////////////////////////////////////////
 
 bool QueryCache::mayBeActive () const {
-  return (_active && (mode() != CACHE_ALWAYS_OFF));
+  return (mode() != CACHE_ALWAYS_OFF);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,11 +261,6 @@ bool QueryCache::mayBeActive () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryCacheMode QueryCache::mode () const {
-  if (! _active) {
-    // override whatever was stored in mode
-    return CACHE_ALWAYS_OFF;
-  }
-
   return Mode.load(std::memory_order_relaxed);
 }
 
@@ -291,6 +298,24 @@ void QueryCache::mode (std::string const& value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string version of the mode
+////////////////////////////////////////////////////////////////////////////////
+
+std::string QueryCache::modeString (QueryCacheMode mode) {
+  switch (mode) {
+    case CACHE_ALWAYS_OFF:
+      return "off";
+    case CACHE_ALWAYS_ON:
+      return "on";
+    case CACHE_ON_DEMAND:
+      return "demand";
+  }
+
+  TRI_ASSERT(false);
+  return "off";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a query result in the cache
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -323,6 +348,10 @@ void QueryCache::store (TRI_vocbase_t* vocbase,
                         TRI_json_t* result,
                         std::vector<std::string> const& collections) {
 
+  if (result == nullptr) {
+    return;
+  }
+
   std::shared_ptr<QueryCacheResultEntry> entry(new QueryCacheResultEntry(queryString, queryStringLength, result, collections));
 
   WRITE_LOCKER(_lock);
@@ -348,20 +377,14 @@ void QueryCache::invalidate (triagens::basics::ReadWriteLock& lock,
                              std::vector<char const*> const& collections) {
   TRI_ASSERT(&lock == &_lock); // this should be our lock
 
-  try {
-    auto it = _entries.find(vocbase);
+  auto it = _entries.find(vocbase);
 
-    if (it == _entries.end()) { 
-      return;
-    } 
+  if (it == _entries.end()) { 
+    return;
+  } 
 
-    // invalidate while holding the lock
-    (*it).second->invalidate(collections);
-  }
-  catch (...) {
-    // something is really wrong. now disable ourselves
-    disable();
-  }
+  // invalidate while holding the lock
+  (*it).second->invalidate(collections);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,22 +393,16 @@ void QueryCache::invalidate (triagens::basics::ReadWriteLock& lock,
 
 void QueryCache::invalidate (TRI_vocbase_t* vocbase,
                              std::vector<char const*> const& collections) {
-  try {
-    WRITE_LOCKER(_lock);
+  WRITE_LOCKER(_lock);
 
-    auto it = _entries.find(vocbase);
+  auto it = _entries.find(vocbase);
 
-    if (it == _entries.end()) { 
-      return;
-    } 
+  if (it == _entries.end()) { 
+    return;
+  } 
 
-    // invalidate while holding the lock
-    (*it).second->invalidate(collections);
-  }
-  catch (...) {
-    // something is really wrong. now disable ourselves
-    disable();
-  }
+  // invalidate while holding the lock
+  (*it).second->invalidate(collections);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -394,22 +411,16 @@ void QueryCache::invalidate (TRI_vocbase_t* vocbase,
 
 void QueryCache::invalidate (TRI_vocbase_t* vocbase,
                              char const* collection) {
-  try {
-    WRITE_LOCKER(_lock);
+  WRITE_LOCKER(_lock);
 
-    auto it = _entries.find(vocbase);
+  auto it = _entries.find(vocbase);
 
-    if (it == _entries.end()) { 
-      return;
-    } 
+  if (it == _entries.end()) { 
+    return;
+  } 
 
-    // invalidate while holding the lock
-    (*it).second->invalidate(collection);
-  }
-  catch (...) {
-    // something is really wrong. now disable ourselves
-    disable();
-  }
+  // invalidate while holding the lock
+  (*it).second->invalidate(collection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -422,20 +433,14 @@ void QueryCache::invalidate (triagens::basics::ReadWriteLock& lock,
                              char const* collection) {
   TRI_ASSERT(&lock == &_lock); // this should be our lock
 
-  try {
-    auto it = _entries.find(vocbase);
+  auto it = _entries.find(vocbase);
 
-    if (it == _entries.end()) { 
-      return;
-    } 
+  if (it == _entries.end()) { 
+    return;
+  } 
 
     // invalidate while holding the lock
-    (*it).second->invalidate(collection);
-  }
-  catch (...) {
-    // something is really wrong. now disable ourselves
-    disable();
-  }
+  (*it).second->invalidate(collection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,28 +450,22 @@ void QueryCache::invalidate (triagens::basics::ReadWriteLock& lock,
 void QueryCache::invalidate (TRI_vocbase_t* vocbase) {
   QueryCacheDatabaseEntry* databaseQueryCache = nullptr;
 
-  try {
-    {
-      WRITE_LOCKER(_lock);
+  {
+    WRITE_LOCKER(_lock);
 
-      auto it = _entries.find(vocbase);
+    auto it = _entries.find(vocbase);
 
-      if (it == _entries.end()) { 
-        return;
-      } 
+    if (it == _entries.end()) { 
+      return;
+    } 
 
-      databaseQueryCache = (*it).second;
-      _entries.erase(it);
-    }
-
-    // delete without holding the lock
-    TRI_ASSERT(databaseQueryCache != nullptr);
-    delete databaseQueryCache;
+    databaseQueryCache = (*it).second;
+    _entries.erase(it);
   }
-  catch (...) {
-    // something is really wrong. now disable ourselves
-    disable();
-  }
+
+  // delete without holding the lock
+  TRI_ASSERT(databaseQueryCache != nullptr);
+  delete databaseQueryCache;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -478,35 +477,20 @@ void QueryCache::invalidate (triagens::basics::ReadWriteLock& lock,
                              TRI_vocbase_t* vocbase) {
   TRI_ASSERT(&lock == &_lock); // this should be our lock
 
-  try {
-    QueryCacheDatabaseEntry* databaseQueryCache = nullptr;
+  QueryCacheDatabaseEntry* databaseQueryCache = nullptr;
 
-    auto it = _entries.find(vocbase);
+  auto it = _entries.find(vocbase);
 
-    if (it == _entries.end()) { 
-      return;
-    } 
+  if (it == _entries.end()) { 
+    return;
+  } 
 
-    databaseQueryCache = (*it).second;
-    _entries.erase(it);
+  databaseQueryCache = (*it).second;
+  _entries.erase(it);
 
-    // delete without holding the lock
-    TRI_ASSERT(databaseQueryCache != nullptr);
-    delete databaseQueryCache;
-  }
-  catch (...) {
-    // something is really wrong. now disable ourselves
-    disable();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disable ourselves in case of emergency
-////////////////////////////////////////////////////////////////////////////////
-
-void QueryCache::disable () {
-  _active = false;
-  mode(CACHE_ALWAYS_OFF);
+  // delete without holding the lock
+  TRI_ASSERT(databaseQueryCache != nullptr);
+  delete databaseQueryCache;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

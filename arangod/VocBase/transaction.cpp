@@ -149,7 +149,7 @@ void ClearQueryCache (TRI_transaction_t* trx) {
   }
   catch (...) {
     // in case something goes wrong, we have to disable the query cache
-    triagens::aql::QueryCache::instance()->disable();
+    triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase);
   }
 }
 
@@ -1268,7 +1268,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   if (isSingleOperationTransaction) {
     // operation is directly executed
     operation.handle();
-      
+     
     triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase, document->_info._name);
 
     ++document->_uncollectedLogfileEntries;
