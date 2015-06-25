@@ -23,8 +23,7 @@ Creates a queue with the given name and maximum number of workers.
 `Foxx.queues.create(name, [maxWorkers])`
 
 Returns the **Queue** instance for the given **name**. If the queue does not exist, a new queue with the given **name** will be created. If a queue with the given **name** already exists and **maxWorkers** is set, the queue's maximum number of workers will be updated.
-
-The queue will be created in the context of the current database. Jobs from this queue will only be executed automatically if the server is started with option `--server.foxx-queues-system-only` set to `false`.
+The queue will be created in the context of the current database. 
 
 **Parameters**
 
