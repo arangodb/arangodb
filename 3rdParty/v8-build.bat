@@ -11,7 +11,7 @@ SET VS_VERSION=vs2013
 SET VISUAL_STUDIO_VC="C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
 
 :: Set this to the version of ICU you are building
-SET V8_VERSION=4.2.77.1
+SET V8_VERSION=4.3.61
 
 :: x86_amd64 or x86
 set ARCHITECTURE=%1
