@@ -123,6 +123,30 @@ function StatementSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test different value types
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindValueTypes : function () {
+      var values = { 
+        nullValue: null, 
+        falseValue: false, 
+        trueValue: true, 
+        intValue: 2, 
+        doubleValue: -4.2, 
+        emptyString : "", 
+        nonemptyString : "foo", 
+        arrayValue: [ 1, 2, 3, null, "", "one", "two", "foobarbaz" ], 
+        objectValues: { "" : 1, "foo-bar-baz" : "test", "a b c" : -42 } 
+      };
+
+      var query = "return @values";
+      var bind = { values: values };
+      var st = db._createStatement({ query: query, bindVars: bind });
+      var result = st.execute().toArray();
+      assertEqual([ values ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test parse method
 ////////////////////////////////////////////////////////////////////////////////
 
