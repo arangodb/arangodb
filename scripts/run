@@ -36,8 +36,9 @@ for i in "$@"; do
       ARGS+=("$i")
     fi
 done
-echo Database has its data in data-$PID
-echo Logfile is in log-$PID
+mkdir out
+echo Database has its data in out${PS}data-$PID
+echo Logfile is in out${PS}log-$PID
 $VG bin/arangod \
     --configuration none \
     --cluster.agent-path bin${PS}etcd-arango${EXT} \
@@ -48,8 +49,8 @@ $VG bin/arangod \
     --cluster.disable-dispatcher-kickstarter false \
     --cluster.data-path cluster \
     --cluster.log-path cluster \
-    --database.directory data-$PID \
-    --log.file log-$PID \
+    --database.directory out${PS}data-$PID \
+    --log.file out${PS}log-$PID \
     --server.endpoint tcp://127.0.0.1:$PORT \
     --javascript.startup-directory js \
     --javascript.app-path js${PS}apps \
@@ -60,11 +61,11 @@ $VG bin/arangod \
     $VXML
 
 if test $? -eq 0; then
-  echo removing log-$PID data-$PID
-  rm -rf log-$PID data-$PID
+  echo removing out${PS}log-$PID out${PS}data-$PID
+  rm -rf out${PS}log-$PID out${PS}data-$PID
 else
-  echo "failed - don't remove log-$PID data-$PID - heres the logfile:"
-  cat log-$PID
+  echo "failed - don't remove out${PS}log-$PID out${PS}data-$PID - heres the logfile:"
+  cat out${PS}log-$PID
 fi
 
 echo Server has terminated.

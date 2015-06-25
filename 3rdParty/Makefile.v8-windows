@@ -1,3 +1,4 @@
+PDBNAME=vc120.pdb
 
 V8=V8-4.3.61
 
@@ -38,12 +39,22 @@ install:
 install_bits:
 	mkdir -p ../WindowsLibraries/$(BITS)/lib
 	mkdir -p ../WindowsLibraries/$(BITS)/include/unicode
+	for i in `find $(V8)/build -name $(PDBNAME) | grep $(BITS)`; do \
+		LIBNAME=`echo $$i|sed "s;.*/\(.*\)/$(PDBNAME);\1;"`; \
+		BUILD=`echo $$i|sed "s;$(V8)/build/\(.*\)/obj/$${LIBNAME}/$(PDBNAME);\1;"`; \
+		cp $$i $(V8)/build/$${BUILD}/lib/$${LIBNAME}.pdb; \
+	done
 
 	cp -a $(V8)/build/Release$(BITS)/lib/*.lib ../WindowsLibraries/$(BITS)/lib/Release
+	cp -a $(V8)/build/Release$(BITS)/lib/*.pdb ../WindowsLibraries/$(BITS)/lib/Release
 	cp -a $(V8)/build/Debug$(BITS)/lib/*.lib ../WindowsLibraries/$(BITS)/lib/Debug
+	cp -a $(V8)/build/Debug$(BITS)/lib/*.pdb ../WindowsLibraries/$(BITS)/lib/Debug
 	cp -a $(V8)/include/* ../WindowsLibraries/$(BITS)/include
 	cp $(V8)/third_party/icu/source/data/in/icudtl.dat ../WindowsLibraries/$(BITS)/icudtl.dat
 
 	for f in common i18n io; do \
 	  cp -a $(V8)/third_party/icu/source/$${f}/unicode/* ../WindowsLibraries/$(BITS)/include/unicode/; \
 	done
+
+	find ../WindowsLibraries -type f -exec chmod a+r {} \;
+	find ../WindowsLibraries -type d -exec chmod a+rx {} \; 
