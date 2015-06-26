@@ -117,7 +117,7 @@ function resultsToXml(results, baseName, cluster) {
 
           xml.elem("/testsuite");
           var fn = makePathGeneric(baseName + clprefix + testrun + '_' + test + ".xml").join('_');
-          fs.write(fn, xml.join(""));
+          fs.write("out/" + fn, xml.join(""));
         }
       }
     }
@@ -160,7 +160,7 @@ function main (argv) {
   fs.write("out/UNITTEST_RESULT_SUMMARY.txt", JSON.stringify(! r.crashed));
 
   try {
-    resultsToXml(r, "out/UNITTEST_RESULT_", (options.hasOwnProperty('cluster') && options.cluster));
+    resultsToXml(r, "UNITTEST_RESULT_", (options.hasOwnProperty('cluster') && options.cluster));
   }
   catch (x) {
     print("exception while serializing status xml!");
