@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
 struct TRI_json_t;
@@ -61,17 +62,79 @@ namespace triagens {
     struct QueryCacheResultEntry {
       QueryCacheResultEntry () = delete;
 
-      QueryCacheResultEntry (char const*,
+      QueryCacheResultEntry (uint64_t,
+                             char const*,
                              size_t, 
                              struct TRI_json_t*,
                              std::vector<std::string> const&);
 
       ~QueryCacheResultEntry ();
 
-      char*                    _queryString;
-      size_t                   _queryStringLength;
-      struct TRI_json_t*       _queryResult;
-      std::vector<std::string> _collections;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the element can be destroyed, and delete it if yes
+////////////////////////////////////////////////////////////////////////////////
+
+      void tryDelete ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use the element, so it cannot be deleted meanwhile
+////////////////////////////////////////////////////////////////////////////////
+
+      void use ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unuse the element, so it can be deleted if required
+////////////////////////////////////////////////////////////////////////////////
+
+      void unuse ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  member variables
+// -----------------------------------------------------------------------------
+
+      uint64_t const                  _hash;
+      char*                           _queryString;
+      size_t const                    _queryStringLength;
+      struct TRI_json_t*              _queryResult;
+      std::vector<std::string> const  _collections;
+      QueryCacheResultEntry*          _prev;
+      QueryCacheResultEntry*          _next;
+      std::atomic<uint32_t>           _refCount;
+      std::atomic<uint32_t>           _deletionRequested;
+      
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                  class QueryCacheResultEntryGuard
+// -----------------------------------------------------------------------------
+
+    class QueryCacheResultEntryGuard {
+
+      QueryCacheResultEntryGuard (QueryCacheResultEntryGuard const&) = delete;
+      QueryCacheResultEntryGuard& operator= (QueryCacheResultEntryGuard const&) = delete;
+      QueryCacheResultEntryGuard () = delete;
+
+      public:
+
+        explicit QueryCacheResultEntryGuard (QueryCacheResultEntry* entry) 
+          : _entry(entry) {
+        
+        }
+
+        ~QueryCacheResultEntryGuard () {
+          if (_entry != nullptr) {
+            _entry->unuse();
+          }
+        }
+
+        QueryCacheResultEntry* get () {
+          return _entry;
+        }
+
+      private:
+ 
+        QueryCacheResultEntry* _entry;
+      
     };
 
 // -----------------------------------------------------------------------------
@@ -84,7 +147,6 @@ namespace triagens {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-      QueryCacheDatabaseEntry () = delete;
       QueryCacheDatabaseEntry (QueryCacheDatabaseEntry const&) = delete;
       QueryCacheDatabaseEntry& operator= (QueryCacheDatabaseEntry const&) = delete;
 
@@ -92,7 +154,7 @@ namespace triagens {
 /// @brief create a database-specific cache
 ////////////////////////////////////////////////////////////////////////////////
      
-      explicit QueryCacheDatabaseEntry (struct TRI_vocbase_s*);
+      QueryCacheDatabaseEntry ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a database-specific cache
@@ -108,16 +170,16 @@ namespace triagens {
 /// @brief lookup a query result in the database-specific cache
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::shared_ptr<QueryCacheResultEntry> lookup (uint64_t, 
-                                                     char const*,
-                                                     size_t) const;
+      QueryCacheResultEntry* lookup (uint64_t, 
+                                     char const*,
+                                     size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief store a query result in the database-specific cache
 ////////////////////////////////////////////////////////////////////////////////
 
       void store (uint64_t,
-                  std::shared_ptr<QueryCacheResultEntry>&);
+                  QueryCacheResultEntry*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all entries for the given collections in the 
@@ -133,15 +195,69 @@ namespace triagens {
 
       void invalidate (char const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enforce maximum number of results
+////////////////////////////////////////////////////////////////////////////////
+
+      void enforceMaxResults (size_t);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the element can be destroyed, and delete it if yes
+////////////////////////////////////////////////////////////////////////////////
+
+      void tryDelete (QueryCacheResultEntry*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlink the result entry from the list
+////////////////////////////////////////////////////////////////////////////////
+  
+      void unlink (QueryCacheResultEntry*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief link the result entry to the end of the list
+////////////////////////////////////////////////////////////////////////////////
+  
+      void link (QueryCacheResultEntry*);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-      struct TRI_vocbase_s* _vocbase;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash table that maps query hashes to query results
+////////////////////////////////////////////////////////////////////////////////
 
-      std::unordered_map<uint64_t, std::shared_ptr<QueryCacheResultEntry>> _entriesByHash;
+      std::unordered_map<uint64_t, QueryCacheResultEntry*> _entriesByHash;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash table that contains all collection-specific query results
+/// maps from collection names to a set of query results as defined in 
+/// _entriesByHash
+////////////////////////////////////////////////////////////////////////////////
 
       std::unordered_map<std::string, std::unordered_set<uint64_t>> _entriesByCollection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief beginning of linked list of result entries
+////////////////////////////////////////////////////////////////////////////////
+
+      QueryCacheResultEntry* _head;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end of linked list of result entries
+////////////////////////////////////////////////////////////////////////////////
+
+      QueryCacheResultEntry* _tail;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of elements in this cache
+////////////////////////////////////////////////////////////////////////////////
+
+      size_t _numElements;
 
     };
 
@@ -182,7 +298,19 @@ namespace triagens {
 /// @brief return the query cache properties
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json properties () const;
+        triagens::basics::Json properties ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the cache properties
+////////////////////////////////////////////////////////////////////////////////
+
+        void properties (std::pair<std::string, size_t>&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the cache properties
+////////////////////////////////////////////////////////////////////////////////
+
+        void setProperties (std::pair<std::string, size_t> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether the cache might be active
@@ -199,18 +327,6 @@ namespace triagens {
         QueryCacheMode mode () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enable or disable the query cache
-////////////////////////////////////////////////////////////////////////////////
-
-        void mode (QueryCacheMode);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enable or disable the query cache
-////////////////////////////////////////////////////////////////////////////////
-
-        void mode (std::string const&);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string version of the mode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -220,10 +336,10 @@ namespace triagens {
 /// @brief lookup a query result in the cache
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<QueryCacheResultEntry> lookup (struct TRI_vocbase_s*,
-                                                       uint64_t,
-                                                       char const*,
-                                                       size_t);
+        QueryCacheResultEntry* lookup (struct TRI_vocbase_s*,
+                                       uint64_t,
+                                       char const*,
+                                       size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief store a query in the cache
@@ -231,21 +347,12 @@ namespace triagens {
 /// query result!
 ////////////////////////////////////////////////////////////////////////////////
 
-        void store (struct TRI_vocbase_s*, 
-                    uint64_t,
-                    char const*,
-                    size_t,
-                    struct TRI_json_t*,
-                    std::vector<std::string> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate all queries for the given collections
-/// the lock is already acquired externally so we don't lock again
-////////////////////////////////////////////////////////////////////////////////
-
-        void invalidate (triagens::basics::ReadWriteLock&,
-                         struct TRI_vocbase_s*,
-                         std::vector<char const*> const&);
+        QueryCacheResultEntry* store (struct TRI_vocbase_s*, 
+                                      uint64_t,
+                                      char const*,
+                                      size_t,
+                                      struct TRI_json_t*,
+                                      std::vector<std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for the given collections
@@ -256,27 +363,10 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for a particular collection
-/// the lock is already acquired externally so we don't lock again
-////////////////////////////////////////////////////////////////////////////////
-
-        void invalidate (triagens::basics::ReadWriteLock&,
-                         struct TRI_vocbase_s*,
-                         char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate all queries for a particular collection
 ////////////////////////////////////////////////////////////////////////////////
 
         void invalidate (struct TRI_vocbase_s*,
                          char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate all queries for a particular database
-/// the lock is already acquired externally so we don't lock again
-////////////////////////////////////////////////////////////////////////////////
-
-        void invalidate (triagens::basics::ReadWriteLock&,
-                         struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for a particular database
@@ -285,12 +375,17 @@ namespace triagens {
         void invalidate (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a reference to the R/w lock so callers can externally lock it
+/// @brief invalidate all queries
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::ReadWriteLock& getLock () {
-          return _lock;
-        } 
+        void invalidate ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes a query string
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t hashQueryString (char const*,
+                                  size_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the pointer to the global query cache
@@ -303,11 +398,41 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate all entries in cache
+/// @brief enforce maximum number of results in each database-specific cache
+////////////////////////////////////////////////////////////////////////////////
+
+        void enforceMaxResults (size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine which part of the cache to use for the cache entries
+////////////////////////////////////////////////////////////////////////////////
+
+        unsigned int getPart (struct TRI_vocbase_s const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate all entries in the cache part
 /// note that the caller of this method must hold the write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        void invalidate ();
+        void invalidate (unsigned int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the maximum number of elements in the cache
+////////////////////////////////////////////////////////////////////////////////
+
+        void setMaxResults (size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enable or disable the query cache
+////////////////////////////////////////////////////////////////////////////////
+
+        void setMode (QueryCacheMode);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enable or disable the query cache
+////////////////////////////////////////////////////////////////////////////////
+
+        void setMode (std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -316,16 +441,28 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief number of R/W locks for the query cache
+////////////////////////////////////////////////////////////////////////////////
+
+        static uint64_t const NumberOfParts = 8;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief protect mode changes with a mutex
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Mutex _propertiesLock;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read-write lock for the cache
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::ReadWriteLock _lock;
+        triagens::basics::ReadWriteLock _entriesLock[NumberOfParts];
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cached queries
+/// @brief cached query entries, organized per database
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<struct TRI_vocbase_s*, QueryCacheDatabaseEntry*> _entries;
+        std::unordered_map<struct TRI_vocbase_s*, QueryCacheDatabaseEntry*> _entries[NumberOfParts];
 
     };
 

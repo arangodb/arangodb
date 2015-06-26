@@ -401,7 +401,7 @@ function ahuacatlQueryCacheTestSuite () {
 
     testWarnings : function () {
       var query = "FOR i IN 1..3 RETURN i / 0";
-      var result, i;
+      var result;
 
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
       result = AQL_EXECUTE(query);
@@ -527,7 +527,7 @@ function ahuacatlQueryCacheTestSuite () {
 
     testDifferentBindOrdersArray : function () {
       var query = "RETURN @values";
-      var result, i;
+      var result;
 
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
 

@@ -640,13 +640,14 @@ QueryResult Query::execute (QueryRegistry* registry) {
       queryStringHash = hash();
 
       // check the query cache for an existing result
-      auto cacheResult = QueryCache::instance()->lookup(_vocbase, queryStringHash, _queryString, _queryLength);
+      auto cacheEntry = triagens::aql::QueryCache::instance()->lookup(_vocbase, queryStringHash, _queryString, _queryLength);
+      triagens::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
-      if (cacheResult != nullptr) {
+      if (cacheEntry != nullptr) {
         // got a result from the query cache
         QueryResult res(TRI_ERROR_NO_ERROR);
         res.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
-        res.json     = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheResult.get()->_queryResult);
+        res.json     = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheEntry->_queryResult);
         res.stats    = nullptr;
         res.cached   = true;
 
@@ -786,12 +787,13 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       queryStringHash = hash();
 
       // check the query cache for an existing result
-      auto cacheResult = QueryCache::instance()->lookup(_vocbase, queryStringHash, _queryString, _queryLength);
+      auto cacheEntry = triagens::aql::QueryCache::instance()->lookup(_vocbase, queryStringHash, _queryString, _queryLength);
+      triagens::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
-      if (cacheResult != nullptr) {
+      if (cacheEntry != nullptr) {
         // got a result from the query cache
         QueryResultV8 res(TRI_ERROR_NO_ERROR);
-        res.result = v8::Handle<v8::Array>::Cast(TRI_ObjectJson(isolate, cacheResult.get()->_queryResult));
+        res.result = v8::Handle<v8::Array>::Cast(TRI_ObjectJson(isolate, cacheEntry->_queryResult));
         res.cached = true;
         return res;
       } 
@@ -1236,10 +1238,8 @@ void Query::init () {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t Query::hash () const {
-  TRI_ASSERT(_queryString !=  nullptr);
-
   // hash the query string first
-  uint64_t hash = fasthash64(_queryString, _queryLength, 0x123456789);
+  uint64_t hash = triagens::aql::QueryCache::instance()->hashQueryString(_queryString, _queryLength);
 
   // handle "fullCount" option. if this option is set, the query result will
   // be different to when it is not set! 

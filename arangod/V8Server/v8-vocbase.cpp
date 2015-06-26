@@ -1205,7 +1205,7 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
     result->ForceSet(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
   }
   if (queryResult.profile != nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING("profile"),  TRI_ObjectJson(isolate, queryResult.profile));
+    result->ForceSet(TRI_V8_ASCII_STRING("profile"), TRI_ObjectJson(isolate, queryResult.profile));
   }
   if (queryResult.warnings == nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
@@ -1545,22 +1545,32 @@ static void JS_QueryCachePropertiesAql (const v8::FunctionCallbackInfo<v8::Value
   }
   
   if (args.Length() > 1 || (args.Length() == 1 && ! args[0]->IsObject())) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_PROPERTIES(<options>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_PROPERTIES(<properties>)");
   }
+    
+  auto queryCache = triagens::aql::QueryCache::instance();
 
   if (args.Length() == 1) {
     // called with options
     auto obj = args[0]->ToObject();
-  
-    if (obj->Has(TRI_V8_ASCII_STRING("mode"))) {
-      auto mode = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("mode")));
 
-      // set mode
-      triagens::aql::QueryCache::instance()->mode(mode);
+    std::pair<std::string, size_t> cacheProperties;
+    // fetch current configuration
+    queryCache->properties(cacheProperties);
+
+    if (obj->Has(TRI_V8_ASCII_STRING("mode"))) {
+      cacheProperties.first = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("mode")));
     }
+
+    if (obj->Has(TRI_V8_ASCII_STRING("maxResults"))) {
+      cacheProperties.second = static_cast<size_t>(TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("maxResults"))));
+    }
+
+    // set mode and max elements
+    queryCache->setProperties(cacheProperties);
   }
 
-  auto properties = triagens::aql::QueryCache::instance()->properties();
+  auto properties = queryCache->properties();
   TRI_V8_RETURN(TRI_ObjectJson(isolate, properties.json()));
   
   // fetch current configuration and return it
@@ -1585,7 +1595,7 @@ static void JS_QueryCacheInvalidateAql (const v8::FunctionCallbackInfo<v8::Value
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_INVALIDATE()");
   }
 
-  triagens::aql::QueryCache::instance()->invalidate(vocbase);
+  triagens::aql::QueryCache::instance()->invalidate();
   TRI_V8_TRY_CATCH_END
 }
 

@@ -91,12 +91,17 @@ ArangoDatabase.prototype._createStatement = function (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {
+  if (typeof query === 'object' && query !== null && arguments.length === 1) {
+    return new ArangoStatement(this, query).execute();
+  }
+
   var payload = {
     query: query,
     bindVars: bindVars || undefined,
     count: (cursorOptions && cursorOptions.count) || false,
     batchSize: (cursorOptions && cursorOptions.batchSize) || undefined,
-    options: options || undefined
+    options: options || undefined,
+    cache: (options && options.cache) || undefined
   };
   return new ArangoStatement(this, payload).execute();
 };

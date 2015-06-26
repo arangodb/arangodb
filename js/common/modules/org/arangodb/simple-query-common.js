@@ -54,6 +54,7 @@ function GeneralArrayCursor (documents, skip, limit, data) {
   this._countTotal = documents.length;
   this._skip = skip;
   this._limit = limit;
+  this._cached = false;
   this._extra = { };
   
   var self = this;
@@ -63,6 +64,7 @@ function GeneralArrayCursor (documents, skip, limit, data) {
         self._extra[d] = data[d];
       }
     });
+    this._cached = data.cached || false;
   }
 
   this.execute();
@@ -123,7 +125,7 @@ GeneralArrayCursor.prototype.execute = function () {
 GeneralArrayCursor.prototype._PRINT = function (context) {
   var text;
 
-  text = "GeneralArrayCursor([.. " + this._documents.length + " docs ..])";
+  text = "GeneralArrayCursor([.. " + this._documents.length + " docs .., cached: " + String(this._cached) + "])";
 
   if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";
