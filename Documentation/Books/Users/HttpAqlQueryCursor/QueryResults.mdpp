@@ -49,7 +49,7 @@ content-type: application/json
 }
 ```
 
-!SUBSECTION Using a Cursor
+!SUBSECTION Using a cursor
 
 If the result set contains more documents than should be transferred in a single
 roundtrip (i.e. as set via the *batchSize* attribute), the server will return
@@ -168,14 +168,14 @@ content-type: application/json
 
 The `_api/cursor` endpoint can also be used to execute modifying queries.
 
-The following example inserts a value into the list `listValue` of the document
-with key `test` in the collection `documents`. Normal PATH behaviour is to
-replace the list completely and using an update AQL query with `PUSH` allows to
-append to the list.
+The following example appends a value into the array `arrayValue` of the document
+with key `test` in the collection `documents`. Normal update behaviour is to
+replace the attribute completely, and using an update AQL query with the `PUSH()` 
+function allows to append to the array.
 
 ```js
 curl --data @- -X POST --dump http://127.0.0.1:8529/_api/cursor
-{ "query": "FOR doc IN documents FILTER doc._key == @myKey UPDATE doc._key WITH { listValue: PUSH(doc.listValue, @value) } IN documents","bindVars": { "myKey": "test", "value": 42 } }
+{ "query": "FOR doc IN documents FILTER doc._key == @myKey UPDATE doc._key WITH { arrayValue: PUSH(doc.arrayValue, @value) } IN documents","bindVars": { "myKey": "test", "value": 42 } }
 
 HTTP/1.1 201 Created
 Content-Type: application/json; charset=utf-8

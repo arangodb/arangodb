@@ -69,6 +69,7 @@
 #include "RestHandler/RestExportHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
+#include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestReplicationHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
@@ -197,6 +198,8 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
                             RestHandlerCreator<RestQueryHandler>::createData<ApplicationV8*>,
                             _applicationV8);
 
+  factory->addPrefixHandler("/_api/query-cache",
+                            RestHandlerCreator<RestQueryCacheHandler>::createNoData);
 
   // And now the "_admin" handlers
 
@@ -340,7 +343,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _v8Contexts(8),
     _indexThreads(2),
     _databasePath(),
-    _queryCacheMode("demand"),
+    _queryCacheMode("off"),
+    _queryCacheMaxResults(128),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
@@ -594,6 +598,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.ignore-datafile-errors", &_ignoreDatafileErrors, "load collections even if datafiles may contain errors")
     ("database.disable-query-tracking", &_disableQueryTracking, "turn off AQL query tracking by default")
     ("database.query-cache-mode", &_queryCacheMode, "mode for the AQL query cache (on, off, demand)")
+    ("database.query-cache-max-results", &_queryCacheMaxResults, "maximum number of results in query cache per database")
     ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
   ;
 
@@ -750,8 +755,10 @@ void ArangoServer::buildApplicationServer () {
   triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);
 
   // configure the query cache
-  triagens::aql::QueryCache::instance()->mode(_queryCacheMode);
-
+  {
+    std::pair<std::string, size_t> cacheProperties{ _queryCacheMode, _queryCacheMaxResults };
+    triagens::aql::QueryCache::instance()->setProperties(cacheProperties);
+  }
 
   // .............................................................................
   // now run arangod

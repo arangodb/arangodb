@@ -110,6 +110,17 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test _query function
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryObject : function () {
+      assertEqual([ 1 ], internal.db._query({ query: "return 1" }).toArray());
+      assertEqual([ [ 1, 2, 9, "foo" ] ], internal.db._query({ query: "return [ 1, 2, 9, \"foo\" ]" }).toArray());
+      var obj = { query: "return [ @low, @high ]", bindVars: { low : 1, high : 454 } };
+      assertEqual([ [ 1, 454 ] ], internal.db._query(obj).toArray());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _executeTransaction
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -42,7 +42,6 @@ var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite() {
-  var cacheProperties;
   var ruleName = "use-index-for-sort";
   var secondRuleName = "use-index-range";
   var removeCalculationNodes = "remove-unnecessary-calculations-2";
@@ -137,11 +136,6 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      // turn off caching first
-      cacheProperties = AQL_QUERY_CACHE_PROPERTIES();
-     // AQL_QUERY_CACHE_PROPERTIES({ mode: "off" });
-     // AQL_QUERY_CACHE_INVALIDATE();
-
       var loopto = 10;
 
       internal.db._drop(colName);
@@ -181,10 +175,6 @@ function optimizerRuleTestSuite() {
       internal.db._drop(colName);
       internal.db._drop(colNameOther);
       skiplist = null;
-
-      // restore previous state
-     // AQL_QUERY_CACHE_PROPERTIES(cacheProperties);
-     // AQL_QUERY_CACHE_INVALIDATE();
     },
 
     ////////////////////////////////////////////////////////////////////////////////

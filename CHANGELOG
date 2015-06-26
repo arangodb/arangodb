@@ -1,6 +1,32 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* AQL query result cache
+
+  The query result cache can optionally cache the complete results of all or selected AQL queries.
+  It can be operated in the following modes:
+
+  * `off`: the cache is disabled. No query results will be stored
+  * `on`: the cache will store the results of all AQL queries unless their `cache`
+    attribute flag is set to `false`
+  * `demand`: the cache will store the results of AQL queries that have their
+    `cache` attribute set to `true`, but will ignore all others
+
+  The mode can be set at server startup using the `--database.query-cache-mode` configuration
+  option and later changed at runtime.
+
+  The following HTTP REST APIs have been added for controlling the query cache:
+
+  * HTTP GET `/_api/query-cache/properties`: returns the global query cache configuration
+  * HTTP PUT `/_api/query-cache/properties`: modifies the global query cache configuration
+  * HTTP DELETE `/_api/query-cache`: invalidates all results in the query cache
+  
+  The following JavaScript functions have been added for controlling the query cache:
+
+  * `require("org/arangodb/aql/cache").properties()`: returns the global query cache configuration
+  * `require("org/arangodb/aql/cache").properties(properties)`: modifies the global query cache configuration
+  * `require("org/arangodb/aql/cache").clear()`: invalidates all results in the query cache
+
 * do not link arangoimp against V8
 
 * AQL functon call arguments optimization

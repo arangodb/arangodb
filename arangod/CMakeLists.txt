@@ -118,6 +118,7 @@ add_executable(
     RestHandler/RestExportHandler.cpp
     RestHandler/RestImportHandler.cpp
     RestHandler/RestPleaseUpgradeHandler.cpp
+    RestHandler/RestQueryCacheHandler.cpp
     RestHandler/RestQueryHandler.cpp
     RestHandler/RestReplicationHandler.cpp
     RestHandler/RestSimpleHandler.cpp

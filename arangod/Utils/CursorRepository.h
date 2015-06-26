@@ -84,6 +84,7 @@ namespace triagens {
                                     size_t,
                                     struct TRI_json_t*,
                                     double, 
+                                    bool,
                                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////

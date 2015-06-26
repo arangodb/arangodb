@@ -98,7 +98,7 @@ static void JS_CreateCursor (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto cursors = static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
 
   try {
-    triagens::arango::Cursor* cursor = cursors->createFromJson(json.get(), static_cast<size_t>(batchSize), nullptr, ttl, true);
+    triagens::arango::Cursor* cursor = cursors->createFromJson(json.get(), static_cast<size_t>(batchSize), nullptr, ttl, true, false);
     json.release();
 
     TRI_ASSERT(cursor != nullptr);
