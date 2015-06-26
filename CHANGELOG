@@ -7,6 +7,8 @@ v2.6.2 (XXXX-XX-XX)
 
 * fixed handling of optional parameters in Foxx manifest configurations
 
+* fixed a reference error being thrown in Foxx queues when a function-based job type is used that is not available and no options object is passed to queue.push
+
 
 v2.6.1 (2015-06-24)
 -------------------
