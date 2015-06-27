@@ -92,9 +92,9 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
 
   // connect to server and get version number
   map<string, string> headerFields;
-  SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, "/_api/version?details=true", nullptr, 0, headerFields);
+  std::unique_ptr<SimpleHttpResult> result(_client->request(HttpRequest::HTTP_REQUEST_GET, "/_api/version?details=true", nullptr, 0, headerFields));
 
-  if (! result || ! result->isComplete()) {
+  if (result == nullptr || ! result->isComplete()) {
     // save error message
     _lastErrorMessage = _client->getErrorMessage();
     _lastHttpReturnCode = 500;
@@ -135,14 +135,10 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       // now set up an error message
       _lastErrorMessage = _client->getErrorMessage();
 
-      if (result && result->getHttpReturnCode() > 0) {
+      if (result->getHttpReturnCode() > 0) {
         _lastErrorMessage = StringUtils::itoa(result->getHttpReturnCode()) + ": " + result->getHttpReturnMessage();
       }
     }
-  }
-
-  if (result) {
-    delete result;
   }
 }
 
@@ -151,17 +147,9 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
 ////////////////////////////////////////////////////////////////////////////////
 
 V8ClientConnection::~V8ClientConnection () {
-  if (_httpResult) {
-    delete _httpResult;
-  }
-
-  if (_client) {
-    delete _client;
-  }
-
-  if (_connection) {
-    delete _connection;
-  }
+  delete _httpResult;
+  delete _client;
+  delete _connection;
 }
 
 // -----------------------------------------------------------------------------
@@ -219,7 +207,7 @@ const string& V8ClientConnection::getDatabaseName () {
 /// @brief set the current database name
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8ClientConnection::setDatabaseName (const string& databaseName) {
+void V8ClientConnection::setDatabaseName (std::string const& databaseName) {
   _databaseName = databaseName;
 }
 
@@ -274,9 +262,7 @@ v8::Handle<v8::Value> V8ClientConnection::getData (v8::Isolate* isolate,
   if (raw) {
     return requestDataRaw(isolate, HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
   }
-  else {
-    return requestData(isolate, HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
-  }
+  return requestData(isolate, HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,9 +276,7 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData (v8::Isolate* isolate,
   if (raw) {
     return requestDataRaw(isolate, HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
   }
-  else {
-    return requestData(isolate, HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
-  }
+  return requestData(isolate, HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -306,9 +290,7 @@ v8::Handle<v8::Value> V8ClientConnection::headData (v8::Isolate* isolate,
   if (raw) {
     return requestDataRaw(isolate, HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
   }
-  else {
-    return requestData(isolate, HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
-  }
+  return requestData(isolate, HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -323,9 +305,7 @@ v8::Handle<v8::Value> V8ClientConnection::optionsData (v8::Isolate* isolate,
   if (raw) {
     return requestDataRaw(isolate, HttpRequest::HTTP_REQUEST_OPTIONS, location, body, headerFields);
   }
-  else {
-    return requestData(isolate, HttpRequest::HTTP_REQUEST_OPTIONS, location, body, headerFields);
-  }
+  return requestData(isolate, HttpRequest::HTTP_REQUEST_OPTIONS, location, body, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,9 +320,7 @@ v8::Handle<v8::Value> V8ClientConnection::postData (v8::Isolate* isolate,
   if (raw) {
     return requestDataRaw(isolate, HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
   }
-  else {
-    return requestData(isolate, HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
-  }
+  return requestData(isolate, HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -369,9 +347,7 @@ v8::Handle<v8::Value> V8ClientConnection::putData (v8::Isolate* isolate,
   if (raw) {
     return requestDataRaw(isolate, HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
   }
-  else {
-    return requestData(isolate, HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
-  }
+  return requestData(isolate, HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,9 +362,7 @@ v8::Handle<v8::Value> V8ClientConnection::patchData (v8::Isolate* isolate,
   if (raw) {
     return requestDataRaw(isolate, HttpRequest::HTTP_REQUEST_PATCH, location, body, headerFields);
   }
-  else {
-    return requestData(isolate, HttpRequest::HTTP_REQUEST_PATCH, location, body, headerFields);
-  }
+  return requestData(isolate, HttpRequest::HTTP_REQUEST_PATCH, location, body, headerFields);
 }
 
 // -----------------------------------------------------------------------------
@@ -409,9 +383,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (v8::Isolate* isolate,
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
 
-  if (_httpResult != nullptr) {
-    delete _httpResult;
-  }
+  delete _httpResult;
+  _httpResult = nullptr;
 
   _httpResult = _client->request(method, location, body, bodySize, headerFields);
 
@@ -430,10 +403,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (v8::Isolate* isolate,
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
 
-  if (_httpResult != nullptr) {
-    delete _httpResult;
-    _httpResult = nullptr;
-  }
+  delete _httpResult;
+  _httpResult = nullptr;
 
   if (body.empty()) {
     _httpResult = _client->request(method, location, nullptr, 0, headerFields);
@@ -451,6 +422,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (v8::Isolate* isolate,
 
 v8::Handle<v8::Value> V8ClientConnection::handleResult (v8::Isolate* isolate) {
   v8::EscapableHandleScope scope(isolate);
+
   if (! _httpResult->isComplete()) {
     // not complete
     _lastErrorMessage = _client->getErrorMessage();
@@ -490,43 +462,43 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult (v8::Isolate* isolate) {
 
     return scope.Escape<v8::Value>(result);
   }
-  else {
-    // complete
-    _lastHttpReturnCode = _httpResult->getHttpReturnCode();
 
-    // got a body
-    StringBuffer& sb = _httpResult->getBody();
+  // complete
 
-    if (sb.length() > 0) {
-      isolate->GetCurrentContext()->Global();
+  _lastHttpReturnCode = _httpResult->getHttpReturnCode();
 
-      if (_httpResult->isJson()) {
-        return scope.Escape<v8::Value>(TRI_FromJsonString(isolate, sb.c_str(), nullptr));
-      }
+  // got a body
+  StringBuffer& sb = _httpResult->getBody();
 
-      // return body as string
-      return scope.Escape<v8::Value>(TRI_V8_STD_STRING(sb));
+  if (sb.length() > 0) {
+    isolate->GetCurrentContext()->Global();
+
+    if (_httpResult->isJson()) {
+      return scope.Escape<v8::Value>(TRI_FromJsonString(isolate, sb.c_str(), nullptr));
     }
-    else {
-      // no body
 
-      v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-      result->ForceSet(TRI_V8_ASCII_STRING("code"), v8::Integer::New(isolate, _lastHttpReturnCode));
-
-      if (_lastHttpReturnCode >= 400) {
-        string returnMessage(_httpResult->getHttpReturnMessage());
-
-        result->ForceSet(TRI_V8_ASCII_STRING("error"),        v8::Boolean::New(isolate, true));
-        result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),     v8::Integer::New(isolate, _lastHttpReturnCode));
-        result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"), TRI_V8_STD_STRING(returnMessage));
-      }
-      else {
-        result->ForceSet(TRI_V8_ASCII_STRING("error"),        v8::Boolean::New(isolate, false));
-      }
-      return scope.Escape<v8::Value>(result);
-    }
+    // return body as string
+    return scope.Escape<v8::Value>(TRI_V8_STD_STRING(sb));
   }
+
+  // no body
+
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  result->ForceSet(TRI_V8_ASCII_STRING("code"), v8::Integer::New(isolate, _lastHttpReturnCode));
+
+  if (_lastHttpReturnCode >= 400) {
+    string returnMessage(_httpResult->getHttpReturnMessage());
+
+    result->ForceSet(TRI_V8_ASCII_STRING("error"),        v8::Boolean::New(isolate, true));
+    result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),     v8::Integer::New(isolate, _lastHttpReturnCode));
+    result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"), TRI_V8_STD_STRING(returnMessage));
+  }
+  else {
+    result->ForceSet(TRI_V8_ASCII_STRING("error"),        v8::Boolean::New(isolate, false));
+  }
+
+  return scope.Escape<v8::Value>(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -543,10 +515,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (v8::Isolate* isolate,
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
 
-  if (_httpResult) {
-    delete _httpResult;
-    _httpResult = nullptr;
-  }
+  delete _httpResult;
+  _httpResult = nullptr;
 
   if (body.empty()) {
     _httpResult = _client->request(method, location, nullptr, 0, headerFields);
@@ -555,7 +525,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (v8::Isolate* isolate,
     _httpResult = _client->request(method, location, body.c_str(), body.length(), headerFields);
   }
 
-  if (!_httpResult->isComplete()) {
+  if (! _httpResult->isComplete()) {
     // not complete
     _lastErrorMessage = _client->getErrorMessage();
 
@@ -593,50 +563,50 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (v8::Isolate* isolate,
 
     return scope.Escape<v8::Value>(result);
   }
-  else {
-    // complete
-    _lastHttpReturnCode = _httpResult->getHttpReturnCode();
 
-    // create raw response
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  // complete
 
-    result->ForceSet(TRI_V8_ASCII_STRING("code"), v8::Integer::New(isolate, _lastHttpReturnCode));
+  _lastHttpReturnCode = _httpResult->getHttpReturnCode();
 
-    if (_lastHttpReturnCode >= 400) {
-      string returnMessage(_httpResult->getHttpReturnMessage());
+  // create raw response
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-      result->ForceSet(TRI_V8_ASCII_STRING("error"),        v8::Boolean::New(isolate, true));
-      result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),     v8::Integer::New(isolate, _lastHttpReturnCode));
-      result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"), TRI_V8_STD_STRING(returnMessage));
-    }
-    else {
-      result->ForceSet(TRI_V8_ASCII_STRING("error"), v8::Boolean::New(isolate, false));
-    }
+  result->ForceSet(TRI_V8_ASCII_STRING("code"), v8::Integer::New(isolate, _lastHttpReturnCode));
 
-    // got a body, copy it into the result
-    StringBuffer& sb = _httpResult->getBody();
-    if (sb.length() > 0) {
-      v8::Handle<v8::String> b = TRI_V8_STD_STRING(sb);
+  if (_lastHttpReturnCode >= 400) {
+    string returnMessage(_httpResult->getHttpReturnMessage());
 
-      result->ForceSet(TRI_V8_ASCII_STRING("body"), b);
-    }
-
-    // copy all headers
-    v8::Handle<v8::Object> headers = v8::Object::New(isolate);
-    auto const& hf = _httpResult->getHeaderFields();
-
-    for (auto const& it : hf) {
-      v8::Handle<v8::String> key = TRI_V8_STD_STRING(it.first);
-      v8::Handle<v8::String> val = TRI_V8_STD_STRING(it.second);
-
-      headers->ForceSet(key, val);
-    }
-
-    result->ForceSet(TRI_V8_ASCII_STRING("headers"), headers);
-
-    // and returns
-    return scope.Escape<v8::Value>(result);
+    result->ForceSet(TRI_V8_ASCII_STRING("error"),        v8::Boolean::New(isolate, true));
+    result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),     v8::Integer::New(isolate, _lastHttpReturnCode));
+    result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"), TRI_V8_STD_STRING(returnMessage));
   }
+  else {
+    result->ForceSet(TRI_V8_ASCII_STRING("error"), v8::Boolean::New(isolate, false));
+  }
+
+  // got a body, copy it into the result
+  StringBuffer& sb = _httpResult->getBody();
+  if (sb.length() > 0) {
+    v8::Handle<v8::String> b = TRI_V8_STD_STRING(sb);
+
+    result->ForceSet(TRI_V8_ASCII_STRING("body"), b);
+  }
+
+  // copy all headers
+  v8::Handle<v8::Object> headers = v8::Object::New(isolate);
+  auto const& hf = _httpResult->getHeaderFields();
+
+  for (auto const& it : hf) {
+    v8::Handle<v8::String> key = TRI_V8_STD_STRING(it.first);
+    v8::Handle<v8::String> val = TRI_V8_STD_STRING(it.second);
+
+    headers->ForceSet(key, val);
+  }
+
+  result->ForceSet(TRI_V8_ASCII_STRING("headers"), headers);
+
+  // and returns
+  return scope.Escape<v8::Value>(result);
 }
 
 // -----------------------------------------------------------------------------
