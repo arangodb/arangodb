@@ -305,9 +305,9 @@ static TRI_transaction_collection_t* FindCollection (const TRI_transaction_t* co
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
-                                                       const TRI_voc_cid_t cid,
-                                                       const TRI_transaction_type_e accessType,
-                                                       const int nestingLevel) {
+                                                       TRI_voc_cid_t cid,
+                                                       TRI_transaction_type_e accessType,
+                                                       int nestingLevel) {
   TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_collection_t), false));
 
   if (trxCollection == nullptr) {

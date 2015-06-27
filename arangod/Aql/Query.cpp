@@ -663,7 +663,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
       return res;
     }
 
-    if (useQueryCache && (_isModificationQuery || ! _ast->root()->isDeterministic() || ! _warnings.empty())) {
+    if (useQueryCache && (_isModificationQuery || ! _warnings.empty() || ! _ast->root()->isCacheable())) {
       useQueryCache = false;
     }
 
@@ -704,7 +704,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
             _queryString, 
             _queryLength, 
             TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()), 
-            collections()->collectionNames()
+            _trx->collectionNames()
           );
         }
       }
@@ -806,7 +806,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       return res;
     }
 
-    if (useQueryCache && (_isModificationQuery || ! _ast->root()->isDeterministic() || ! _warnings.empty())) {
+    if (useQueryCache && (_isModificationQuery || ! _warnings.empty() || ! _ast->root()->isCacheable())) {
       useQueryCache = false;
     }
 
@@ -851,7 +851,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
             _queryString, 
             _queryLength, 
             cacheResult.get(), 
-            collections()->collectionNames()
+            _trx->collectionNames()
           );
           cacheResult.release();
         }
