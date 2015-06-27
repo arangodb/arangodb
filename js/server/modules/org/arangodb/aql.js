@@ -8512,7 +8512,7 @@ exports.reload = reloadUserFunctions;
 
 // initialise the query engine
 resetRegexCache();
-reloadUserFunctions();
+//reloadUserFunctions();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

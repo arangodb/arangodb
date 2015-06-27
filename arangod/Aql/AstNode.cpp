@@ -1493,10 +1493,16 @@ bool AstNode::isDeterministic () const {
     return ! hasFlag(VALUE_NONDETERMINISTIC);
   }
 
+  if (isConstant()) {
+    return true;
+  }
+
   // check sub-nodes first
   size_t const n = numMembers();
+
   for (size_t i = 0; i < n; ++i) {
-    auto member = getMember(i);
+    auto member = getMemberUnchecked(i);
+
     if (! member->isDeterministic()) {
       // if any sub-node is non-deterministic, we are neither
       setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
@@ -1507,10 +1513,12 @@ bool AstNode::isDeterministic () const {
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not be deterministic
     auto func = static_cast<Function*>(getData());
+
     if (! func->isDeterministic) {
       setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
       return false;
     }
+
     setFlag(DETERMINED_NONDETERMINISTIC);
     return true;
   }
@@ -1523,6 +1531,41 @@ bool AstNode::isDeterministic () const {
 
   // everything else is deterministic
   setFlag(DETERMINED_NONDETERMINISTIC);
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node (and its subnodes) is cacheable
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isCacheable () const {
+  if (isConstant()) {
+    return true;
+  }
+
+  // check sub-nodes first
+  size_t const n = numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMemberUnchecked(i);
+
+    if (! member->isCacheable()) {
+      return false;
+    }
+  }
+
+  if (type == NODE_TYPE_FCALL) {
+    // built-in functions may or may not be cacheable
+    auto func = static_cast<Function*>(getData());
+    return func->isCacheable;
+  }
+  
+  if (type == NODE_TYPE_FCALL_USER) {
+    // user functions are always non-cacheable
+    return false;
+  }
+
+  // everything else is cacheable
   return true;
 }
 
