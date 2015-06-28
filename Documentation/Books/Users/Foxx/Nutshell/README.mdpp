@@ -73,7 +73,7 @@ In order to develop your Foxx you now have two options. If you do not have acces
   ![Download and Upgrade the Application](foxx_download_upgrade.png)
 
 1. Use Foxx development mode.
-  * Active the development mode by clicking on `Set Dev`.
+  * Activate the development mode by clicking on `Set Dev`.
   * The Web Interface will print the folder containing the sources of your Application.
   * Open this folder to modify the files.
   * All changes to these files will be applied directly as long as the development mode is active.
