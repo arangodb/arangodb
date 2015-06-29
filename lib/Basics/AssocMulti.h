@@ -668,9 +668,29 @@ namespace triagens {
           uint64_t hashByElm;
           IndexType i = findElementPlace(b, element, true, hashByElm);
           if (b._table[i].ptr == nullptr) {
-            return nullptr;
+            // This can only happen if the element was the first in its doubly
+            // linked list (after all, the caller guaranteed that element was
+            // the last of a previous lookup). To cover this case, we have to
+            // look in the position given by the hashByKey:
+            i = hashToIndex(hashByKey) % b._nrAlloc;
+
+            // Now find the first slot with an entry with the same key
+            // that is the start of a linked list, or a free slot:
+            while (b._table[i].ptr != nullptr &&
+                   (b._table[i].prev != INVALID_INDEX ||
+                    b._table[i].hashCache != hashByKey ||
+                    ! _isEqualElementElementByKey(element, b._table[i].ptr))) {
+              i = incr(b, i);
+#ifdef TRI_INTERNAL_STATS
+              _nrProbes++;
+#endif
+            }
+
+            if (b._table[i].ptr == nullptr) {
+              // This cannot really happen, but we handle it gracefully anyway
+              return nullptr;
+            }
           }
-          // compute the hash
 
           // continue search of the table
           while (true) {
