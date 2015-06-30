@@ -673,7 +673,8 @@ function shutdownInstance (instanceInfo, options) {
             bar = bar + "#";
           }
           if (count > 600) {
-            print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) + " after 600 s grace period; marking crashy.");
+            print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) +
+                  " after 600 s grace period; marking crashy.");
             serverCrashed = true;
             killExternal(instanceInfo.pid);
             break;
@@ -684,7 +685,9 @@ function shutdownInstance (instanceInfo, options) {
         }
         else if (instanceInfo.exitStatus.status !== "TERMINATED") {
           if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
-            print("Server shut down with : " + yaml.safeDump(instanceInfo.exitStatus) + " marking build as crashy.");
+            print("Server shut down with : " +
+                  yaml.safeDump(instanceInfo.exitStatus) +
+                  " marking build as crashy.");
             serverCrashed = true;
             break;
           }
