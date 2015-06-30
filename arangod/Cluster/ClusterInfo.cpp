@@ -1452,7 +1452,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   const double endTime = TRI_microtime() + realTimeout;
   const double interval = getPollInterval();
 
-  resultJson = 0;
+  resultJson = nullptr;
   TRI_json_t* newIndex = nullptr;
   int numberOfShards = 0;
 
