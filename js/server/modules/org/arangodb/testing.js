@@ -536,6 +536,7 @@ function checkInstanceAlive(instanceInfo, options) {
       instanceInfo.exitStatus = res;
     }
     if (!ret) {
+      print("marking crashy");
       serverCrashed = true;
     }
     return ret;
@@ -578,6 +579,7 @@ function checkInstanceAlive(instanceInfo, options) {
     return true;
   }
   else {
+    print("marking crashy");
     serverCrashed = true;
     return false;
   }
@@ -641,6 +643,7 @@ function shutdownInstance (instanceInfo, options) {
                 print("Server " + serverState + " shut down with:\n" +
                       yaml.safeDump(rc.results[i].serverStates[serverState]) +
                       " marking run as crashy.");
+                print("marking crashy");
                 serverCrashed = true;
               }
             }
@@ -670,7 +673,7 @@ function shutdownInstance (instanceInfo, options) {
             bar = bar + "#";
           }
           if (count > 600) {
-            print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) + " after 600 s grace period.");
+            print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) + " after 600 s grace period; marking crashy.");
             serverCrashed = true;
             killExternal(instanceInfo.pid);
             break;
