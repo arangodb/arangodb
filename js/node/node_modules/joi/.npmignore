@@ -1,5 +1,6 @@
 .c9
 .idea
+.project
 *.iml
 npm-debug.log
 dump.rdb

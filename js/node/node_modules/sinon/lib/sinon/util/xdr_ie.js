@@ -6,8 +6,10 @@
  *
  * If you don't require fake XDR to work in IE, don't include this file.
  */
-function XDomainRequest() {}
+if (typeof window !== "undefined") {
+    function XDomainRequest() {}
 
-// Reassign the original function. Now its writable attribute
-// should be true. Hackish, I know, but it works.
-XDomainRequest = sinon.xdr.XDomainRequest || undefined;
+    // Reassign the original function. Now its writable attribute
+    // should be true. Hackish, I know, but it works.
+    XDomainRequest = sinon.xdr.XDomainRequest || undefined;
+}
