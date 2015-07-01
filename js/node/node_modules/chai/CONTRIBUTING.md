@@ -140,26 +140,30 @@ git push origin <topic-branch-name>
 <a name="releasing"></a>
 ## Releasing
 
-Releases can be prepared by any core-contributor or user whom has push access to
-the `chaijs/chai` repository.
+Releases can be **prepared** by anyone with access to the code.
 
-This process requires [git-extras](https://github.com/tj/git-extras) for some steps.
+Simply run `make release-major`, `make release-minor`, or `make-release-patch`
+and it will automatically do the following:
 
-1. Ensure all tests pass.
-2. Bump the version tag in-code and for all package managers.
-  - `lib/chai.js`
-  - `package.json`
-  - `component.json`
-  - `bower.json`
-3. Build the browser version with `make`.
-4. Append commit log to `HISTORY.md` using `git changelog` command.
-5. Write human-friendly `ReleaseNotes.md` based on changelog.
+ - Build chai.js
+ - Bump the version numbers accross the project
+ - Make a commit within git
+
+All you need to do is push the commit up and make a pull request, one of the core contributors will merge it and publish a release.
+
+### Publishing a Release
+
+Anyone who is a core contributor (see the [Core Contributors Heading in the Readme](https://github.com/chaijs/chai#core-contributors)) can publish a release:
+
+1. Go to te [Releases page on Github](https://github.com/chaijs/chai/releases)
+2. Hit "Draft a new release" (if you can't see this, you're not a core contributor!)
+3. Write human-friendly Release Notes based on changelog.
+  - The release title is "x.x.x / YYYY-MM-DD" (where x.x.x is the version number)
   - If breaking changes, write migration tutorial(s) and reasoning.
   - Callouts for community contributions (PRs) with links to PR and contributing user.
   - Callouts for other fixes made by core contributors with links to issue.
-6. Update `README.md` with an updated contributors list using `git summary` command.
-7. Push a tagged release using `git release x.x.x`.
-  - All tagged releases are published to NPM.
+4. Hit "Save Draft" and get other core contributors to check your work, or alternatively hit "Publish release"
+5. That's it!
 
 <a name="support"></a>
 ## Support

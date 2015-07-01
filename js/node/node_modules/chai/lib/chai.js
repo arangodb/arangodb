@@ -11,7 +11,7 @@ var used = []
  * Chai version
  */
 
-exports.version = '2.3.0';
+exports.version = '3.0.0';
 
 /*!
  * Assertion Error

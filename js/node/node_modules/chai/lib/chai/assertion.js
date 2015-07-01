@@ -81,8 +81,8 @@ module.exports = function (_chai, util) {
     util.overwriteChainableMethod(this.prototype, name, fn, chainingBehavior);
   };
 
-  /*!
-   * ### .assert(expression, message, negateMessage, expected, actual)
+  /**
+   * ### .assert(expression, message, negateMessage, expected, actual, showDiff)
    *
    * Executes an expression and check expectations. Throws AssertionError for reporting if test doesn't pass.
    *

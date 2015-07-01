@@ -34,7 +34,7 @@ module.exports = function getPathInfo(path, obj) {
   var info = {
     parent: parsed.length > 1 ? _getPathValue(parsed, obj, parsed.length - 1) : obj,
     name: last.p || last.i,
-    value: _getPathValue(parsed, obj),
+    value: _getPathValue(parsed, obj)
   };
   info.exists = hasProperty(info.name, info.parent);
 

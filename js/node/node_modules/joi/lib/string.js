@@ -70,6 +70,14 @@ internals.String.prototype._base = function (value, state, options) {
         if (this._flags.trim) {
             value = value.trim();
         }
+
+        if (this._inner.replacements) {
+
+            for (var r = 0, rl = this._inner.replacements.length; r < rl; ++r) {
+                var replacement = this._inner.replacements[r];
+                value = value.replace(replacement.pattern, replacement.replacement);
+            }
+        }
     }
 
     return {
@@ -219,6 +227,7 @@ internals.String.prototype.ip = function (ipOptions) {
         }
     }
     else {
+
         // Set our default cidr strategy
         ipOptions.cidr = 'optional';
     }
@@ -252,10 +261,10 @@ internals.String.prototype.ip = function (ipOptions) {
         }
 
         if (versions) {
-            return Errors.create('string.ipVersion', {value: value, cidr: ipOptions.cidr, version: versions}, state, options);
+            return Errors.create('string.ipVersion', { value: value, cidr: ipOptions.cidr, version: versions }, state, options);
         }
 
-        return Errors.create('string.ip', {value: value, cidr: ipOptions.cidr}, state, options);
+        return Errors.create('string.ip', { value: value, cidr: ipOptions.cidr }, state, options);
     });
 };
 
@@ -308,10 +317,10 @@ internals.String.prototype.uri = function (uriOptions) {
         }
 
         if (customScheme) {
-            return Errors.create('string.uriCustomScheme', {scheme: customScheme, value: value}, state, options);
+            return Errors.create('string.uriCustomScheme', { scheme: customScheme, value: value }, state, options);
         }
 
-        return Errors.create('string.uri', {value: value}, state, options);
+        return Errors.create('string.uri', { value: value }, state, options);
     });
 };
 
@@ -427,6 +436,32 @@ internals.String.prototype.trim = function () {
     });
 
     obj._flags.trim = true;
+    return obj;
+};
+
+
+internals.String.prototype.replace = function (pattern, replacement) {
+
+    if (typeof pattern === 'string') {
+        pattern = new RegExp(Hoek.escapeRegex(pattern), 'g');
+    }
+
+    Hoek.assert(pattern instanceof RegExp, 'pattern must be a RegExp');
+    Hoek.assert(typeof replacement === 'string', 'replacement must be a String');
+
+    // This can not be considere a test like trim, we can't "reject"
+    // anything from this rule, so just clone the current object
+    var obj = this.clone();
+
+    if (!obj._inner.replacements) {
+        obj._inner.replacements = [];
+    }
+
+    obj._inner.replacements.push({
+        pattern: pattern,
+        replacement: replacement
+    });
+
     return obj;
 };
 

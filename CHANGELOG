@@ -44,6 +44,8 @@ v2.7.0 (XXXX-XX-XX)
 
 * fixed handling of optional parameters in Foxx manifest configurations
 
+* updated chai to 3.0.
+
 
 v2.6.2 (XXXX-XX-XX)
 -------------------
