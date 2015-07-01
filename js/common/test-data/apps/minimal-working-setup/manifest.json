@@ -1,5 +1,7 @@
 {
   "name": "minimal-working-manifest",
   "version": "0.0.0",
-  "setup": "setup.js"
+  "scripts": {
+    "setup": "setup.js"
+  }
 }
