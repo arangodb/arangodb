@@ -207,7 +207,7 @@ function Job(id) {
     configurable: false,
     enumerable: true
   });
-  _.each(['data', 'status', 'type', 'failures'], function (key) {
+  _.each(['data', 'status', 'type', 'failures', 'runs', 'runFailures'], function (key) {
     Object.defineProperty(this, key, {
       get: function () {
         var value = db._jobs.document(this.id)[key];
@@ -258,29 +258,37 @@ function Queue(name) {
   });
 }
 
+function asNumber(num) {
+  if (!num) {
+    return 0;
+  }
+  if (num === Infinity) {
+    return -1;
+  }
+  return num ? Number(num) : 0;
+}
+
 _.extend(Queue.prototype, {
-  push: function (jobType, data, opts) {
-    if (!jobType) {
+  push: function (type, data, opts) {
+    if (!type) {
       throw new Error('Must pass a job type!');
     }
 
-    if (!opts) {
-      opts = {};
-    }
+    type = _.extend({}, type);
 
     var definition;
-    if (typeof jobType === 'string') {
+    if (typeof type === 'string') {
       // TODO Remove support for function-based job types in 2.7
       console.warn(
         "Function-based Foxx Queue job type definitions are deprecated and known to cause issues."
-        + " Please use script-based job types instead. Job type: " + jobType
+        + " Please use script-based job types instead. Job type: " + type
       );
       var cache = jobTypeCache[db._name()];
-      definition = cache && cache[jobType];
+      definition = cache && cache[type];
     } else {
-      definition = jobType;
-      jobType = _.extend({}, jobType);
-      delete jobType.schema;
+      definition = type;
+      type = _.extend({}, type);
+      delete type.schema;
     }
 
     if (definition) {
@@ -292,7 +300,7 @@ _.extend(Queue.prototype, {
       }
     } else {
       // TODO Remove support for function-based job types in 2.7
-      var message = 'Unknown job type: ' + jobType;
+      var message = 'Unknown job type: ' + type;
       if (opts.allowUnknown) {
         console.warn(message);
       } else {
@@ -301,20 +309,35 @@ _.extend(Queue.prototype, {
     }
 
     var now = Date.now();
-    var job = db._jobs.save({
+    var job = {
       status: 'pending',
       queue: this.name,
-      type: jobType,
+      type: type,
       failures: [],
+      runs: 0,
       data: data,
       created: now,
-      modified: now,
-      maxFailures: opts.maxFailures === Infinity ? -1 : opts.maxFailures,
-      backOff: typeof opts.backOff === 'function' ? opts.backOff.toString() : opts.backOff,
-      delayUntil: opts.delayUntil || now,
-      onSuccess: opts.success ? opts.success.toString() : null,
-      onFailure: opts.failure ? opts.failure.toString() : null
-    });
+      modified: now
+    };
+
+    if (!opts) {
+      opts = {};
+    }
+
+    job.delayUntil = asNumber(opts.delayUntil) || now;
+    job.delayUntil += asNumber(opts.delay);
+
+    job.maxFailures = asNumber(opts.maxFailures);
+
+    job.repeatDelay = asNumber(opts.repeatDelay);
+    job.repeatTimes = asNumber(opts.repeatTimes);
+    job.repeatUntil = asNumber(opts.repeatUntil) || -1;
+
+    job.backOff = typeof opts.backOff === 'function' ? opts.backOff.toString() : opts.backOff;
+    job.success = typeof opts.success === 'function' ? opts.success.toString() : opts.success;
+    job.failure = typeof opts.failure === 'function' ? opts.failure.toString() : opts.failure;
+
+    job = db._jobs.save(job);
     updateQueueDelay();
     return job._id;
   },
@@ -351,20 +374,20 @@ _.extend(Queue.prototype, {
       }
     });
   },
-  pending: function (jobType) {
-    return getJobs(this.name, 'pending', jobType);
+  pending: function (type) {
+    return getJobs(this.name, 'pending', type);
   },
-  complete: function (jobType) {
-    return getJobs(this.name, 'complete', jobType);
+  complete: function (type) {
+    return getJobs(this.name, 'complete', type);
   },
-  failed: function (jobType) {
-    return getJobs(this.name, 'failed', jobType);
+  failed: function (type) {
+    return getJobs(this.name, 'failed', type);
   },
-  progress: function (jobType) {
-    return getJobs(this.name, 'progress', jobType);
+  progress: function (type) {
+    return getJobs(this.name, 'progress', type);
   },
-  all: function (jobType) {
-    return getJobs(this.name, undefined, jobType);
+  all: function (type) {
+    return getJobs(this.name, undefined, type);
   }
 });
 
