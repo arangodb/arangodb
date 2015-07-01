@@ -220,4 +220,4 @@ if (typeof sinon == "undefined") {
     } else {
         makeApi(sinon);
     }
-})(this);
+})(typeof global !== "undefined" ? global : self);
