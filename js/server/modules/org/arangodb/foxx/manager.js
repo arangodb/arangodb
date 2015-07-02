@@ -338,7 +338,7 @@ var checkManifest = function(filename, manifest) {
 
   // TODO Remove in 2.8
 
-  if (manifest.setup) {
+  if (manifest.setup && manifest.setup !== manifest.scripts.setup) {
     console.warn(
       (
         'Manifest "%s" for app "%s" contains deprecated attribute "setup",'
@@ -347,11 +347,11 @@ var checkManifest = function(filename, manifest) {
       filename,
       manifest.name
     );
-    manifest.scripts.setup = manifest.setup;
+    manifest.scripts.setup = manifest.scripts.setup || manifest.setup;
     delete manifest.setup;
   }
 
-  if (manifest.teardown) {
+  if (manifest.teardown && manifest.teardown !== manifest.scripts.teardown) {
     console.warn(
       (
         'Manifest "%s" for app "%s" contains deprecated attribute "teardown",'
@@ -360,7 +360,7 @@ var checkManifest = function(filename, manifest) {
       filename,
       manifest.name
     );
-    manifest.scripts.teardown = manifest.teardown;
+    manifest.scripts.teardown = manifest.scripts.teardown || manifest.teardown;
     delete manifest.teardown;
   }
 
