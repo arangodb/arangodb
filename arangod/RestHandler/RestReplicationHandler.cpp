@@ -1832,9 +1832,10 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   TRI_voc_tick_t new_id_tick = ci->uniqid(1);
   string new_id = StringUtils::itoa(new_id_tick);
-  TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id",
-                        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                                 new_id.c_str(), new_id.size()));
+  TRI_json_t* newId = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                               new_id.c_str(), new_id.size());
+  TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id", newId);
+  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, newId);
 
   // Now put in the primary and an edge index if needed:
   TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
