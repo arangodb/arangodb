@@ -319,7 +319,8 @@ var checkManifest = function(filename, manifest) {
 
   if (manifest.setup) {
     console.warn(
-      "Manifest '%s' contains deprecated attribute 'setup', use 'scripts.setup' instead.",
+      "Manifest '%s' for app '%s' contains deprecated attribute 'setup', use 'scripts.setup' instead.",
+      manifest.name,
       filename
     );
     manifest.scripts.setup = manifest.setup;
@@ -328,7 +329,8 @@ var checkManifest = function(filename, manifest) {
 
   if (manifest.teardown) {
     console.warn(
-      "Manifest '%s' contains deprecated attribute 'teardown', use 'scripts.teardown' instead.",
+      "Manifest '%s' for app '%s' contains deprecated attribute 'teardown', use 'scripts.teardown' instead.",
+      manifest.name,
       filename
     );
     manifest.scripts.teardown = manifest.teardown;
@@ -337,7 +339,8 @@ var checkManifest = function(filename, manifest) {
 
   if (manifest.assets) {
     console.warn(
-      "Manifest '%s' contains deprecated attribute 'assets', use 'files' and an external build tool instead.",
+      "Manifest '%s' for app '%s' contains deprecated attribute 'assets', use 'files' and an external build tool instead.",
+      manifest.name,
       filename
     );
   }
