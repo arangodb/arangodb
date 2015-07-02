@@ -36,10 +36,11 @@
 // -----------------------------------------------------------------------------
 
 var R = require("ramda");
-var db = require("internal").db;
+var internal = require("internal");
 var fs = require("fs");
 var joi = require("joi");
 var util = require("util");
+var semver = require("semver");
 var utils = require("org/arangodb/foxx/manager-utils");
 var store = require("org/arangodb/foxx/store");
 var console = require("console");
@@ -50,9 +51,10 @@ var exportApp = require("org/arangodb/foxx/routing").exportApp;
 var invalidateExportCache  = require("org/arangodb/foxx/routing").invalidateExportCache;
 var arangodb = require("org/arangodb");
 var ArangoError = arangodb.ArangoError;
-var cluster = require("org/arangodb/cluster");
+var db = arangodb.db;
 var checkParameter = arangodb.checkParameter;
 var errors = arangodb.errors;
+var cluster = require("org/arangodb/cluster");
 var download = require("internal").download;
 var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
 var actions = require("org/arangodb/actions");
@@ -306,22 +308,44 @@ var checkManifest = function(filename, manifest) {
     if (result.error) {
       var message = result.error.message.replace(/^"value"/, util.format('"%s"', key));
       if (value === undefined) {
-        message = util.format('Manifest "%s": attribute %s.', filename, message);
+        message = util.format(
+          'Manifest "%s": attribute %s.',
+          filename,
+          message
+        );
       } else {
-        message = util.format('Manifest "%s": attribute %s (was "%s").', filename, message, manifest[key]);
+        message = util.format(
+          'Manifest "%s": attribute %s (was "%s").',
+          filename,
+          message,
+          manifest[key]
+        );
       }
       validationErrors.push(message);
       console.error(message);
     }
   });
 
+  if (manifest.engines && manifest.engines.arangodb && !semver.satisfies(internal.version, manifest.engines.arangodb)) {
+    console.warn(
+      'Manifest "%s" for app "%s": ArangoDB version %s probably not compatible with expected version %s.',
+      filename,
+      manifest.name,
+      internal.version,
+      manifest.engines.arangodb
+    );
+  }
+
   // TODO Remove in 2.8
 
   if (manifest.setup) {
     console.warn(
-      "Manifest '%s' for app '%s' contains deprecated attribute 'setup', use 'scripts.setup' instead.",
-      manifest.name,
-      filename
+      (
+        'Manifest "%s" for app "%s" contains deprecated attribute "setup",'
+        + ' use "scripts.setup" instead.'
+      ),
+      filename,
+      manifest.name
     );
     manifest.scripts.setup = manifest.setup;
     delete manifest.setup;
@@ -329,9 +353,12 @@ var checkManifest = function(filename, manifest) {
 
   if (manifest.teardown) {
     console.warn(
-      "Manifest '%s' for app '%s' contains deprecated attribute 'teardown', use 'scripts.teardown' instead.",
-      manifest.name,
-      filename
+      (
+        'Manifest "%s" for app "%s" contains deprecated attribute "teardown",'
+        + ' use "scripts.teardown" instead.'
+      ),
+      filename,
+      manifest.name
     );
     manifest.scripts.teardown = manifest.teardown;
     delete manifest.teardown;
@@ -339,17 +366,21 @@ var checkManifest = function(filename, manifest) {
 
   if (manifest.assets) {
     console.warn(
-      "Manifest '%s' for app '%s' contains deprecated attribute 'assets', use 'files' and an external build tool instead.",
-      manifest.name,
-      filename
+      (
+        'Manifest "%s" for app "%s" contains deprecated attribute "assets",'
+        + ' use "files" and an external build tool instead.'
+      ),
+      filename,
+      manifest.name
     );
   }
 
   Object.keys(manifest).forEach(function (key) {
     if (!manifestSchema[key]) {
       console.warn(
-        'Manifest "%s": unknown attribute "%s"',
+        'Manifest "%s" for app "%s": unknown attribute "%s"',
         filename,
+        manifest.name,
         key
       );
     }
