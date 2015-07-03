@@ -199,6 +199,9 @@ function DatabaseSuite () {
           internal.wait(2);
           continue;
         }
+        else {
+          break;
+        }
       }
       if (tries > 15) {
         require("internal").printf("[WARNING] waited " + tries * 2 +" seconds for " + path + " do disappear");
