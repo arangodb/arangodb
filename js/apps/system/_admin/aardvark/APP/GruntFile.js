@@ -83,7 +83,6 @@
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",
             "frontend/src/mode-aql.js"
-
           ],
           graphViewer: [
             "frontend/js/graphViewer/graph/*",
@@ -216,6 +215,10 @@
         },
         jsCluster: {
           src: [
+            "frontend/js/lib/dygraph-combined.js",
+            "frontend/js/config/dygraphConfig.js",
+            "frontend/js/lib/d3.v3.min.js",
+            "frontend/js/lib/nv.d3.js",
             "frontend/js/arango/arango.js",
             "clusterFrontend/js/models/*",
             "clusterFrontend/js/collections/*",
@@ -229,7 +232,6 @@
             "frontend/js/views/footerView.js",
             "frontend/js/views/dashboardView.js",
             "frontend/js/views/modalView.js",
-            "frontend/js/config/dygraphConfig.js",
             "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
             "clusterFrontend/js/views/*",
             "clusterFrontend/js/routers/*"
