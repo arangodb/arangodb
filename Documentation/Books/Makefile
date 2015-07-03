@@ -13,7 +13,7 @@ clean-md-files:
 	rm -f  `find -name \*.mdpp |sed "s;.mdpp;.md;"`
 
 clean-books:
-	@rm -rv books
+	@rm -rvf books
 
 check-docublocks:
 	grep -R '^@startDocuBlock' . |grep -v allComments.txt > /tmp/rawindoc.txt
