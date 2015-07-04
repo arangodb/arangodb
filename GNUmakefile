@@ -125,6 +125,8 @@ pack-dmg-cmake:
 
 	cd Build && ${MAKE}
 
+	./Installation/file-copy-js.sh . Build
+
 	cd Build && cpack \
 		-G Bundle \
 		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
@@ -247,6 +249,8 @@ pack-arm-cmake:
 
 	cd Build && ${MAKE}
 
+	./Installation/file-copy-js.sh . Build
+
 	cd Build && cpack \
 		-G DEB
 
@@ -273,6 +277,8 @@ pack-deb-cmake:
 	${MAKE} ${BUILT_SOURCES}
 
 	cd Build && ${MAKE}
+
+	./Installation/file-copy-js.sh . Build
 
 	cd Build && cpack \
 		-G DEB
@@ -329,6 +335,8 @@ winXX-build:
 	cd Build$(BITS) && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
+	./Installation/file-copy-js.sh . Build$(BITS)
+
 	cd Build$(BITS) && cpack -G NSIS && cpack -G ZIP
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
