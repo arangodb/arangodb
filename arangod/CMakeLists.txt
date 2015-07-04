@@ -233,35 +233,8 @@ install_config(arango-dfdb)
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/server ${PROJECT_SOURCE_DIR}/js/actions
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js" PATTERN "*.tmpl" PATTERN "*.html" PATTERN "*.css" PATTERN "droid*" PATTERN "*png"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/server/tests$" EXCLUDE)
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/node 
-  DESTINATION share/arangodb/js
-  REGEX ".travis.yml" EXCLUDE
-  REGEX ".npmignore" EXCLUDE
-  PATTERN "_db" EXCLUDE)
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/apps/system/_admin
-  DESTINATION share/arangodb/js/apps/system
-  REGEX "/node_modules/" EXCLUDE
-  REGEX "/test/" EXCLUDE
-  REGEX "/test_data/" EXCLUDE
-  REGEX "/coverage/" EXCLUDE
-  PATTERN "_db" EXCLUDE)
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/apps/system/_api ${PROJECT_SOURCE_DIR}/js/apps/system/_system
-  DESTINATION share/arangodb/js/apps/system
-  REGEX "/test/" EXCLUDE
-  REGEX "/test_data/" EXCLUDE
-  PATTERN "_db" EXCLUDE)
+  DIRECTORY ${PROJECT_BINARY_DIR}/js
+  DESTINATION share/arangodb/js)
 
 ################################################################################
 ### @brief install log directory

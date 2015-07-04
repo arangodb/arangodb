@@ -224,37 +224,21 @@ arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*$(PROGRAM_SUFF
 ### @brief /share data
 ################################################################################
 
-pkgdataACTIONSdir = $(datadir)/arangodb
-pkgdataCOMMONdir = $(datadir)/arangodb
-pkgdataSERVERdir = $(datadir)/arangodb
-pkgdataSWAGGERdir = $(datadir)/arangodb
-pkgdataCLIENTdir = $(datadir)/arangodb
-pkgdataNODEdir = $(datadir)/arangodb
-pkgdataNODE_JSHINTdir = $(datadir)/arangodb
-pkgdataAPPSdir = $(datadir)/arangodb
-pkgdataAPPSADMINdir = $(datadir)/arangodb
-pkgdataAPPSAPIdir = $(datadir)/arangodb
-pkgdataAPPSSYSTEMdir = $(datadir)/arangodb
+JS_FILE_LIST = $(shell @srcdir@/Installation/file-list-js.sh @srcdir@)
+
+pkgdataJS1dir = $(datadir)/arangodb
+pkgdataJS2dir = $(datadir)/arangodb
+pkgdataJS3dir = $(datadir)/arangodb
+pkgdataJS4dir = $(datadir)/arangodb
+pkgdataJS5dir = $(datadir)/arangodb
+
+nobase_pkgdataJS1_DATA = $(wordlist    1,   1000, $(JS_FILE_LIST))
+nobase_pkgdataJS2_DATA = $(wordlist 1001,   2000, $(JS_FILE_LIST))
+nobase_pkgdataJS3_DATA = $(wordlist 2001,   3000, $(JS_FILE_LIST))
+nobase_pkgdataJS4_DATA = $(wordlist 3001,   4000, $(JS_FILE_LIST))
+nobase_pkgdataJS5_DATA = $(wordlist 4001, 100000, $(JS_FILE_LIST))
 
 nobase_pkgdata_DATA =
-
-nobase_pkgdataACTIONS_DATA = $(shell find @srcdir@/js/actions -name "*.js" -print)
-nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
-nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name assets -prune -o "(" -name "*.js" -o -name "*.tmpl" ")" -print)
-nobase_pkgdataSWAGGER_DATA = $(shell find @srcdir@/js/server/assets -type f -print)
-nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
-# -o has short cut evaluation, thus the following command filters out
-# files with name .travis.yml and .npmignore
-# Furthermore, we separate jshint out because otherwise a command line
-# becomes too long on some systems.
-nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" | grep -v @srcdir@/js/node/node_modules/jshint )
-nobase_pkgdataNODE_JSHINT_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" | grep @srcdir@/js/node/node_modules/jshint )
-
-# note: we want to exclude node_modules from aardvark because they are only needed by grunt and not to run aardvark
-nobase_pkgdataAPPSADMIN_DATA = $(shell find @srcdir@/js/apps/system/_admin -type f "(" -path "*/node_modules/*" -o -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
-nobase_pkgdataAPPSAPI_DATA = $(shell find @srcdir@/js/apps/system/_api -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
-nobase_pkgdataAPPSSYSTEM_DATA = $(shell find @srcdir@/js/apps/system/_system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
-
 
 ################################################################################
 ### @brief /var data
@@ -280,23 +264,6 @@ install-exec-hook:
 
 	rm -f $(DESTDIR)$(sbindir)/arango-dfdb$(PROGRAM_SUFFIX)
 	$(LN_S) arangod$(PROGRAM_SUFFIX) $(DESTDIR)$(sbindir)/arango-dfdb$(PROGRAM_SUFFIX)
-
-################################################################################
-### @brief cleanup empty files
-################################################################################
-
-install-data-hook:
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/c
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/d
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/e
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/f
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/sub/b
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/joi/node_modules/hoek/test/modules/ignore.txt
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/setup.sh
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/joi/node_modules/isemail/dns-no-mx.js
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/run.sh
-	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/run.sh
-
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           TARGETS
