@@ -7,7 +7,7 @@ arangosh> query.neighbors().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "800579072", 
+      "_rev" : "804508474", 
       "name" : "Alice" 
     }, 
     null 
@@ -16,7 +16,7 @@ arangosh> query.neighbors().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "800579072", 
+      "_rev" : "804508474", 
       "name" : "Alice" 
     }, 
     null 

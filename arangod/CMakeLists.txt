@@ -234,7 +234,7 @@ install_config(arango-dfdb)
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/js
-  DESTINATION share/arangodb/js)
+  DESTINATION share/arangodb)
 
 ################################################################################
 ### @brief install log directory

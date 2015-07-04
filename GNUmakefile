@@ -163,6 +163,9 @@ pack-macosxcode-cmake:
 		$(MOREOPTS) \
 		..
 
+	./Installation/file-copy-js.sh . Build
+
+
 ################################################################################
 ### @brief MacOSX
 ################################################################################
@@ -204,6 +207,9 @@ pack-macosx-cmake:
 	make bin/etcd-arango
 
 	cd Build && ${MAKE}
+
+	./Installation/file-copy-js.sh . Build
+
 	cd Build && ${MAKE} install DESTDIR=${PACK_DESTDIR}
 
 ################################################################################
@@ -251,8 +257,7 @@ pack-arm-cmake:
 
 	./Installation/file-copy-js.sh . Build
 
-	cd Build && cpack \
-		-G DEB
+	cd Build && cpack -G DEB
 
 
 pack-deb-cmake:
@@ -280,8 +285,8 @@ pack-deb-cmake:
 
 	./Installation/file-copy-js.sh . Build
 
-	cd Build && cpack \
-		-G DEB
+	cd Build && cpack -G DEB
+
 ################################################################################
 ### @brief Windows 64-bit bundle
 ################################################################################

@@ -84,7 +84,6 @@ exports.work = function (job) {
   var databaseName = db._name();
   var cache = queues._jobTypes[databaseName];
   var cfg = typeof job.type === 'string' ? (cache && cache[job.type]) : job.type;
-  var now = Date.now();
 
   if (!cfg) {
     console.warn('Unknown job type for job %s in %s: %s', job._key, db._name(), job.type);
