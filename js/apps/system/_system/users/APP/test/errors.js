@@ -1,4 +1,4 @@
-/*global describe, it */
+/*global require, describe, it */
 'use strict';
 var expect = require('expect.js');
 var errors = require('../errors');
@@ -7,11 +7,12 @@ describe('errors', function () {
   ['UserNotFound', 'UsernameNotAvailable'].forEach(function (name) {
     describe(name, function () {
       var UserError = errors[name];
-      it('is a constructor', function () {
-        expect(new UserError()).to.be.a(UserError);
-      });
       it('creates an Error', function () {
         expect(new UserError()).to.be.an(Error);
+      });
+      it('has its name', function () {
+        var err = new UserError();
+        expect(err.name).to.equal(name);
       });
       it('uses its argument in its message', function () {
         var err = new UserError('potato');

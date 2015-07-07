@@ -1,35 +1,21 @@
 'use strict';
-function UserNotFound(uid) {
-  this.message = 'User with user id ' + uid + ' not found.';
-  var err = new Error(this.message);
-  err.name = this.name;
-  this.stack = err.stack;
-}
-UserNotFound.prototype = new Error();
-UserNotFound.prototype.constructor = UserNotFound;
-Object.defineProperty(UserNotFound.prototype, 'name', {
-  enumerable: true,
-  configurable: true,
-  get: function () {
-    return this.constructor.name;
+class UserNotFound extends Error {
+  constructor(uid) {
+    super();
+    this.name = this.constructor.name;
+    this.message = `User with user id ${uid} not found.`;
+    Error.captureStackTrace(this, this.constructor);
   }
-});
+}
 
-function UsernameNotAvailable(username) {
-  this.message = 'The username ' + username + ' is not available or already taken.';
-  var err = new Error(this.message);
-  err.name = this.name;
-  this.stack = err.stack;
-}
-UsernameNotAvailable.prototype = new Error();
-UsernameNotAvailable.prototype.constructor = UsernameNotAvailable;
-Object.defineProperty(UsernameNotAvailable.prototype, 'name', {
-  enumerable: true,
-  configurable: true,
-  get: function () {
-    return this.constructor.name;
+class UsernameNotAvailable extends Error {
+  constructor(username) {
+    super();
+    this.name = this.constructor.name;
+    this.message = `The username ${username} is not available or already taken.`;
+    Error.captureStackTrace(this, this.constructor);
   }
-});
+}
 
 exports.UserNotFound = UserNotFound;
 exports.UsernameNotAvailable = UsernameNotAvailable;
