@@ -21,7 +21,6 @@ function SessionExpired(sid) {
 }
 SessionExpired.prototype = Object.create(SessionNotFound.prototype);
 SessionExpired.prototype.constructor = SessionExpired;
-SessionExpired.prototype.name = SessionExpired.name;
 Object.defineProperty(SessionExpired.prototype, 'name', {
   enumerable: true,
   configurable: true,
