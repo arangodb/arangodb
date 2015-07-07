@@ -1,36 +1,26 @@
 /*global applicationContext */
 'use strict';
-
-var _ = require('underscore'),
-  joi = require('joi'),
-  arangodb = require('org/arangodb'),
-  db = arangodb.db,
-  Foxx = require('org/arangodb/foxx'),
-  errors = require('./errors'),
-  User = Foxx.Model.extend({
-    schema: {
-      user: joi.string().required(),
-      authData: joi.object().required(),
-      userData: joi.object().required()
-    }
-  }),
-  users;
-
-if (applicationContext.mount.indexOf('/_system/') === 0) {
-  users = new Foxx.Repository(
-    db._collection('_users'),
-    {model: User}
-  );
-} else {
-  users = new Foxx.Repository(
-    applicationContext.collection('users'),
-    {model: User}
-  );
-}
-
+const _ = require('underscore');
+const joi = require('joi');
+const arangodb = require('org/arangodb');
+const db = arangodb.db;
+const Foxx = require('org/arangodb/foxx');
+const errors = require('./errors');
+const refreshUserCache = require('org/arangodb/users').reload;
+const User = Foxx.Model.extend({
+  schema: {
+    user: joi.string().required(),
+    authData: joi.object().required(),
+    userData: joi.object().required()
+  }
+});
+const users = new Foxx.Repository(
+  db._collection('_users'),
+  {model: User}
+);
 
 function resolve(username) {
-  var user = users.firstExample({user: username});
+  const user = users.firstExample({user: username});
   if (!user.get('_key')) {
     return null;
   }
@@ -60,7 +50,7 @@ function createUser(username, userData, authData) {
   if (!username) {
     throw new Error('Must provide username!');
   }
-  var user;
+  let user;
   db._executeTransaction({
     collections: {
       read: [users.collection.name()],
@@ -78,14 +68,12 @@ function createUser(username, userData, authData) {
       users.save(user);
     }
   });
-  if (applicationContext.mount.indexOf('/_system/') === 0) {
-    require('org/arangodb/users').reload();
-  }
+  refreshUserCache();
   return user;
 }
 
 function getUser(uid) {
-  var user;
+  let user;
   try {
     user = users.byId(uid);
   } catch (err) {
@@ -112,19 +100,15 @@ function deleteUser(uid) {
     }
     throw err;
   }
-  if (applicationContext.mount.indexOf('/_system/') === 0) {
-    require('org/arangodb/users').reload();
-  }
+  refreshUserCache();
   return null;
 }
 
 _.extend(User.prototype, {
   save: function () {
-    var user = this;
+    const user = this;
     users.replace(user);
-    if (applicationContext.mount.indexOf('/_system/') === 0) {
-      require('org/arangodb/users').reload();
-    }
+    refreshUserCache();
     return user;
   },
   delete: function () {
@@ -136,9 +120,7 @@ _.extend(User.prototype, {
       }
       throw e;
     }
-    if (applicationContext.mount.indexOf('/_system/') === 0) {
-      require('org/arangodb/users').reload();
-    }
+    refreshUserCache();
     return true;
   }
 });
