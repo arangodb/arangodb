@@ -27,6 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "v8-vocbaseprivate.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"

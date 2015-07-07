@@ -27,6 +27,8 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "Basics/Common.h"
 
 #include "Basics/messages.h"

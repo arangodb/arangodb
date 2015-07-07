@@ -35,6 +35,7 @@
 #include "v8-buffer.h"
 
 #include <regex.h>
+#include <iostream>
 
 #include "Basics/Dictionary.h"
 #include "Basics/FileUtils.h"

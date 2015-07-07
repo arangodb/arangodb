@@ -30,6 +30,7 @@
 #include "ArangoServer.h"
 
 #include <v8.h>
+#include <iostream>
 
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
