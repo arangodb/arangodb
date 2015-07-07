@@ -1,33 +1,21 @@
 'use strict';
-function SessionNotFound(sid) {
-  this.message = 'Session with session id ' + sid + ' not found.';
-  this.name = this.name;
-  Error.captureStackTrace(this, SessionNotFound);
-}
-SessionNotFound.prototype = new Error();
-SessionNotFound.prototype.constructor = SessionNotFound;
-Object.defineProperty(SessionNotFound.prototype, 'name', {
-  enumerable: true,
-  configurable: true,
-  get: function () {
-    return this.constructor.name;
+class SessionNotFound extends Error {
+  constructor(sid) {
+    super();
+    this.name = this.constructor.name;
+    this.message = `Session with session id ${sid} not found.`;
+    Error.captureStackTrace(this, this.constructor);
   }
-});
+}
 
-function SessionExpired(sid) {
-  this.message = 'Session with session id ' + sid + ' has expired.';
-  this.name = this.name;
-  Error.captureStackTrace(this, SessionExpired);
-}
-SessionExpired.prototype = Object.create(SessionNotFound.prototype);
-SessionExpired.prototype.constructor = SessionExpired;
-Object.defineProperty(SessionExpired.prototype, 'name', {
-  enumerable: true,
-  configurable: true,
-  get: function () {
-    return this.constructor.name;
+class SessionExpired extends SessionNotFound {
+  constructor(sid) {
+    super(sid);
+    this.name = this.constructor.name;
+    this.message = `Session with session id ${sid} has expired.`;
+    Error.captureStackTrace(this, this.constructor);
   }
-});
+}
 
 exports.SessionNotFound = SessionNotFound;
 exports.SessionExpired = SessionExpired;
