@@ -1,19 +1,21 @@
 'use strict';
-function SessionNotFound(sid) {
-  this.message = 'Session with session id ' + sid + ' not found.';
-  this.name = this.constructor.name;
-  Error.captureStackTrace(this, SessionNotFound);
+class SessionNotFound extends Error {
+  constructor(sid) {
+    super();
+    this.name = this.constructor.name;
+    this.message = `Session with session id ${sid} not found.`;
+    Error.captureStackTrace(this, this.constructor);
+  }
 }
-SessionNotFound.prototype = new Error();
-SessionNotFound.prototype.constructor = SessionNotFound;
 
-function SessionExpired(sid) {
-  this.message = 'Session with session id ' + sid + ' has expired.';
-  this.name = this.constructor.name;
-  Error.captureStackTrace(this, SessionExpired);
+class SessionExpired extends SessionNotFound {
+  constructor(sid) {
+    super(sid);
+    this.name = this.constructor.name;
+    this.message = `Session with session id ${sid} has expired.`;
+    Error.captureStackTrace(this, this.constructor);
+  }
 }
-SessionExpired.prototype = Object.create(SessionNotFound.prototype);
-SessionExpired.prototype.constructor = SessionExpired;
 
 exports.SessionNotFound = SessionNotFound;
 exports.SessionExpired = SessionExpired;
