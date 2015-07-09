@@ -58,28 +58,26 @@ Other features of ArangoDB include:
 For more in-depth information read the [design goals of ArangoDB](http://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
 
 
-Latest Release - ArangoDB 2.5
+Latest Release - ArangoDB 2.6
 -----------------
 
-The full [changelog](https://docs.arangodb.com/) can be found in the documentation.
+The [What's new in ArangoDB 2.6](https://docs.arangodb.com/NewFeatures/NewFeatures26.html) can be found in the documentation.
 
-**Sparse Indexes**: In ArangoDB 2.5, hash and skiplist indexes can optionally be made sparse. Here is a [performance comparison](https://www.arangodb.com/2015/02/24/sparse-indexes-in-arangodb) that shows how you can benefit from great savings in memory and index creation CPU time declaring indexes as sparse.
+**New collection export HTTP REST API**: ArangoDB now provides a dedicated collection export API, which can take snapshots of entire collections more efficiently than the general-purpose cursor API. The export API is useful to transfer the contents of an entire collection to a client application.
 
-We’ve added some small but useful **AQL language improvements** plus several **AQL optimizer improvements**.
+Added **batch document removal and lookup** commands: The commands collection.lookupByKeys(keys) and collection.removeByKeys(keys) have been added for collection objects. These can be used to perform multi-document lookup and removal operations efficiently from the ArangoShell.
 
-**Object attribute names** in ArangoDB 2.5 can be specified using static string literals, bind parameters, and dynamic expressions.
+Added **AQL UPSERT command**: This adds an UPSERT statement to AQL that is a combination of both INSERT and UPDATE / REPLACE. The UPSERT will search for a matching document using a user-provided example. If no document matches the example, the insert part of the UPSERT statement will be executed. If there is a match, the update / replace part will be carried out.
 
-Function **RANDOM_TOKEN(length)**: produces a pseudo-random string of the specified length. Such strings can be used for id or token generation.
+We have **simplified the return value syntax** for data-modification AQL queries, added an **alternative implementation for AQL COLLECT** that uses a hash table for grouping and does not require its input elements to be sorted. 
 
-One example implementation is the [API-Key management](https://www.arangodb.com/2015/03/05/using-api-keys) that restricts access to certain routes of an API. You can use this custom Foxx library to start charging your valuable data right away.
- 
-**Streamlined development process**: ArangoDB 2.5 improves the development process of data-centric microservices with the Foxx framework.
+Other **optimizations and speedups** in AQL relate to **subqueries**, **return values** and queries containing big **IN lists** for index lookups.
 
-Installing an app is now as easy as it should be:
-* install: get your Foxx app up and running
-* uninstall: shut it down and erase it from disk
+**Arangoimp** can now optionally update or replace existing documents, provided the import data contains documents with _key attributes.
 
-Developers can enable the new *development mode* per app. The development mode makes app code changes live instantly, without the need to re-deploy. Additionally, it provides fine-grained debugging information.
+**Foxx Improvements**
+
+Added **Configuration and Dependencies** so that manifests can now define configuration options, as well as dependencies on other Foxx apps. With the **Mocha Test** framework you can now [write tests for your Foxx apps](https://www.arangodb.com/2015/04/testing-foxx-mocha/). The API documentation has been updated to **Swagger 2**. 
 
 
 More Information
