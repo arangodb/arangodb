@@ -971,6 +971,13 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
   this.bindVars["options_" + this.stack.length] = opts;
   var stmt = new AQLStatement(query, "neighbor");
   this.stack.push(stmt);
+
+  /*
+  this.lastVar = resultName;
+  this._path.push(resultName);
+  this._pathVertices.push(resultName);
+  */
+
   this.lastVar = resultName + ".vertex";
   this._path.push(resultName + ".path");
   this._pathVertices.push("SLICE(" + resultName + ".path.vertices, 1)");
