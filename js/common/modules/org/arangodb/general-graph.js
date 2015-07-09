@@ -407,6 +407,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
     ex = [ex];
   }
   this.options.edgeExamples = ex;
+  this.options.includeData = true;
   this.bindVars["options_" + this.stack.length] = this.options;
   var stmt = new AQLStatement(query, "edge");
   this.stack.push(stmt);
@@ -4654,11 +4655,10 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 
 Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, options) {
 
-  if (!options) {
-    options = {};
-  }
+  options = options || {};
 
   var opts = {
+    includeData: true
   };
 
   if (options.vertex1CollectionRestriction) {
@@ -4686,7 +4686,6 @@ Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, o
     + ',@vertexExample'
     + ',@options'
     + ')';
-  options = options || {};
   var bindVars = {
     "graphName": this.__name,
     "vertexExample": vertexExample1,
