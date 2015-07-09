@@ -1462,9 +1462,11 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
   }
 
   size_t const n = TRI_LengthArrayJson(keys);
+  size_t const m = TRI_LengthArrayJson(values);
 
-  if (n != TRI_LengthArrayJson(values)) {
-    errorMsg = positionise(lineNumber) + "wrong number of JSON values";
+  if (n != m) {
+    errorMsg = positionise(lineNumber) + "wrong number of JSON values (got " 
+             + to_string(m) + ", expected " + to_string(n) + ")";
     return nullptr;
   }
 
