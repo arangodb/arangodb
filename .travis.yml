@@ -11,10 +11,17 @@ branches:
 language: cpp
 compiler: g++
 
-before_install:
-# g++4.9.2
-- if [ "$CXX" == "g++" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - g++-4.9
+    - gcc-4.9
+    - binutils-gold
+    - gdb
 
+before_install:
 # clang 3.4
 - if [ "$CXX" == "clang++" ]; then sudo add-apt-repository -y ppa:h-rayflood/llvm; fi
 
@@ -22,7 +29,6 @@ before_install:
 
 install:
 # g++4.9.2
-- if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.9 gcc-4.9; fi
 - if [ "$CXX" = "g++" ]; then sudo /bin/bash -c 'rm /usr/bin/gcc; ln -s /usr/bin/gcc-4.9 /usr/bin/gcc' ; fi
 - if [ "$CXX" = "g++" ]; then sudo /bin/bash -c 'rm /usr/bin/g++; ln -s /usr/bin/g++-4.9 /usr/bin/g++' ; fi
 - if [ "$CXX" = "g++" ]; then export CC="gcc-4.9"; fi
@@ -33,11 +39,7 @@ install:
 - if [ "$CXX" == "clang++" ]; then sudo apt-get install --allow-unauthenticated -qq clang-3.4; fi
 - if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi
 
-# gdb
-- sudo apt-get -y install gdb
-
 # prepare wrapper for gold
-- sudo apt-get -y install binutils-gold
 - mkdir -p ~/bin/gold
 - echo '#!/bin/bash' > ~/bin/gold/ld
 - echo 'gold "$@"' >> ~/bin/gold/ld
@@ -46,7 +48,7 @@ install:
 - export CXXFLAGS="-B$HOME/bin/gold $CXXFLAGS"
 
 before_script: "bash -c Installation/travisCI/before_script.sh"
-script: - "bash -c Installation/travisCI/build.sh"
+script: "bash -c Installation/travisCI/build.sh"
 after_failure: "bash -c Installation/travisCI/after_failure.sh"
 
 notifications:
