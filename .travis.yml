@@ -46,8 +46,7 @@ install:
 - export CXXFLAGS="-B$HOME/bin/gold $CXXFLAGS"
 
 before_script: "bash -c Installation/travisCI/before_script.sh"
-script:
- - "bash -c Installation/travisCI/build.sh"
+script: - "bash -c Installation/travisCI/build.sh"
 after_failure: "bash -c Installation/travisCI/after_failure.sh"
 
 notifications:
