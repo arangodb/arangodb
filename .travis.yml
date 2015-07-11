@@ -21,29 +21,19 @@ addons:
     - binutils-gold
     - gdb
 
-before_install:
-# clang 3.4
-- if [ "$CXX" == "clang++" ]; then sudo add-apt-repository -y ppa:h-rayflood/llvm; fi
-
-- sudo apt-get update -qq
-
 install:
-# g++4.9.2
-- if [ "$CXX" = "g++" ]; then sudo /bin/bash -c 'rm /usr/bin/gcc; ln -s /usr/bin/gcc-4.9 /usr/bin/gcc' ; fi
-- if [ "$CXX" = "g++" ]; then sudo /bin/bash -c 'rm /usr/bin/g++; ln -s /usr/bin/g++-4.9 /usr/bin/g++' ; fi
-- if [ "$CXX" = "g++" ]; then export CC="gcc-4.9"; fi
-- if [ "$CXX" = "g++" ]; then export CXX="g++-4.9"; fi
-- ls -l /usr/bin/
-
-# clang 3.4
-- if [ "$CXX" == "clang++" ]; then sudo apt-get install --allow-unauthenticated -qq clang-3.4; fi
-- if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi
 
 # prepare wrapper for gold
-- mkdir -p ~/bin/gold
-- echo '#!/bin/bash' > ~/bin/gold/ld
-- echo 'gold "$@"' >> ~/bin/gold/ld
-- chmod a+x ~/bin/gold/ld
+- mkdir -p ~/bin/gold && (echo '#!/bin/bash'; echo 'gold "$@"') > ~/bin/gold/ld && chmod a+x ~/bin/gold/ld
+
+# prepare GCC & G++
+- rm -f $HOME/bin/gcc && ln -s /usr/bin/gcc-4.9 ~/bin/gcc
+- rm -f $HOME/bin/g++ && ln -s /usr/bin/g++-4.9 ~/bin/g++
+
+# prepare environment
+- export PATH="$HOME/bin:$PATH"
+- export CXX="g++-4.9"
+- export CC="gcc-4.9"
 - export CFLAGS="-B$HOME/bin/gold $CFLAGS"
 - export CXXFLAGS="-B$HOME/bin/gold $CXXFLAGS"
 
