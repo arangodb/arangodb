@@ -10,6 +10,7 @@ branches:
 
 language: cpp
 compiler: g++
+sudo: false
 
 addons:
   apt:
