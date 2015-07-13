@@ -381,10 +381,7 @@ int Scheduler::unregisterTask (Task* task) {
 
     thread = (*it).second;
 
-    if (taskRegistered.count(task) > 0) {
-      taskRegistered.erase(task);
-    }
-
+    taskRegistered.erase(task);
     task2thread.erase(it);
   }
 
@@ -415,10 +412,7 @@ int Scheduler::destroyTask (Task* task) {
 
     thread = (*it).second;
 
-    if (taskRegistered.count(task) > 0) {
-      taskRegistered.erase(task);
-    }
-
+    taskRegistered.erase(task);
     task2thread.erase(it);
   }
 
