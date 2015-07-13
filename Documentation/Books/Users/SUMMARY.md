@@ -58,7 +58,7 @@
   * [How to invoke AQL](Aql/Invoke.md)
   * [Data modification queries](Aql/DataModification.md)
   * [The AQL query optimizer](Aql/Optimizer.md)
-  * [The AQL query cache](Aql/QueryCache.md)
+  * [The AQL query result cache](Aql/QueryCache.md)
   * [Language Basics](Aql/Basics.md)
   * [Functions](Aql/Functions.md)
     * [Type cast](Aql/TypeCastFunctions.md)
