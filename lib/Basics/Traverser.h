@@ -36,6 +36,7 @@
 
 #include <mutex>
 #include <functional>
+#include <iostream>
 
 namespace triagens {
   namespace basics {
@@ -483,11 +484,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct Step {
+
+          private:
+
+            EdgeWeight _weight;
+
+          public:
+
             VertexId _vertex;
             VertexId _predecessor;
-          private:
-            EdgeWeight _weight;
-          public:
             EdgeId _edge;
             bool _done;
 
@@ -496,7 +501,7 @@ namespace triagens {
 
             Step (VertexId& vert, VertexId& pred,
                   EdgeWeight weig, EdgeId const& edge)
-              : _vertex(vert), _predecessor(pred), _weight(weig), _edge(edge),
+              :  _weight(weig), _vertex(vert), _predecessor(pred), _edge(edge),
                 _done(false) {
             }
 
@@ -870,8 +875,6 @@ namespace triagens {
         };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                          PathFinder: constructors and destructors
-// -----------------------------------------------------------------------------
 
         PathFinder (PathFinder const&) = delete;
         PathFinder& operator= (PathFinder const&) = delete;
@@ -1212,6 +1215,155 @@ namespace triagens {
         ExpanderFunction _forwardExpander;
         ExpanderFunction _backwardExpander;
         bool _bidirectional;
+    };
+
+
+    template <typename VertexId, typename EdgeId>
+    class ConstDistanceFinder {
+
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Path, type for the result
+////////////////////////////////////////////////////////////////////////////////
+
+        // Convention vertices.size() -1 === edges.size()
+        // path is vertices[0] , edges[0], vertices[1] etc.
+        // NOTE Do not forget to compute and set weight!
+        struct Path {
+          std::deque<VertexId> vertices; 
+          std::deque<EdgeId> edges; 
+          size_t weight;
+
+          Path () : weight(0) {};
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback to find neighbours
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef std::function<void(VertexId& V, std::vector<EdgeId>& edges, std::vector<VertexId>& neighbors)>
+                ExpanderFunction;
+
+
+      private:
+
+        struct PathSnippet {
+          VertexId const _pred;
+          EdgeId const _path;
+
+          PathSnippet (VertexId& pred, EdgeId& path) :
+            _pred(pred),
+            _path(path) {
+          }
+
+        };
+
+        std::unordered_map<VertexId, PathSnippet*> _leftFound;
+        std::deque<VertexId> _leftClosure;
+
+        std::unordered_map<VertexId, PathSnippet*> _rightFound;
+        std::deque<VertexId> _rightClosure;
+
+        ExpanderFunction _leftNeighborExpander;
+        ExpanderFunction _rightNeighborExpander;
+
+      public:
+
+        ConstDistanceFinder (ExpanderFunction left, ExpanderFunction right) :
+          _leftNeighborExpander(left),
+          _rightNeighborExpander(right) {
+
+        }
+
+        Path* search (VertexId& start, VertexId& end) {
+          Path* res = new Path();
+          // Init
+          if (start == end) {
+            res->vertices.push_back(start);
+            return res;
+          }
+          _leftFound.emplace(start, nullptr);
+          _rightFound.emplace(end, nullptr);
+          _leftClosure.push_back(start);
+          _rightClosure.push_back(end);
+          std::vector<EdgeId> edges;
+          std::vector<VertexId> neighbors;
+          while (_leftClosure.size() > 0 && _rightClosure.size() > 0) {
+            edges.clear();
+            neighbors.clear();
+            std::deque<VertexId> _nextClosure;
+            if (_leftClosure.size() < _rightClosure.size()) {
+              for (VertexId v : _leftClosure) {
+                _leftNeighborExpander(v, edges, neighbors);
+                TRI_ASSERT(edges.size() == neighbors.size());
+                for (size_t i = 0; i < neighbors.size(); ++i) {
+                  VertexId n = neighbors.at(i);
+                  if (_leftFound.find(n) == _leftFound.end()) {
+                    _leftFound.emplace(n, new PathSnippet(v, edges.at(i)));
+                    if (_rightFound.find(n) != _rightFound.end()) {
+                      res->vertices.push_back(n);
+                      auto it = _leftFound.find(n);
+                      VertexId next;
+                      while (it->second != nullptr) {
+                        next = it->second->_pred;
+                        res->vertices.push_front(next);
+                        res->edges.push_front(it->second->_path);
+                        it = _leftFound.find(next);
+                      }
+                      it = _rightFound.find(n);
+                      while (it->second != nullptr) {
+                        next = it->second->_pred;
+                        res->vertices.push_back(next);
+                        res->edges.push_back(it->second->_path);
+                        it = _rightFound.find(next);
+                      }
+                      res->weight = res->edges.size();
+                      return res;
+                    }
+                    _nextClosure.push_back(n);
+                  }
+                }
+              }
+              _leftClosure = _nextClosure;
+            } else {
+               for (VertexId v : _rightClosure) {
+                _rightNeighborExpander(v, edges, neighbors);
+                TRI_ASSERT(edges.size() == neighbors.size());
+                for (size_t i = 0; i < neighbors.size(); ++i) {
+                  VertexId n = neighbors.at(i);
+                  if (_rightFound.find(n) == _rightFound.end()) {
+                    _rightFound.emplace(n, new PathSnippet(v, edges.at(i)));
+                    if (_leftFound.find(n) != _leftFound.end()) {
+                      res->vertices.push_back(n);
+                      auto it = _leftFound.find(n);
+                      VertexId next;
+                      while (it->second != nullptr) {
+                        next = it->second->_pred;
+                        res->vertices.push_front(next);
+                        res->edges.push_front(it->second->_path);
+                        it = _leftFound.find(next);
+                      }
+                      it = _rightFound.find(n);
+                      while (it->second != nullptr) {
+                        next = it->second->_pred;
+                        res->vertices.push_back(next);
+                        res->edges.push_back(it->second->_path);
+                        it = _rightFound.find(next);
+                      }
+                      res->weight = res->edges.size();
+                      return res;
+                    }
+                    _nextClosure.push_back(n);
+                  }
+                }
+              }
+              _rightClosure = _nextClosure;
+            }         
+          }
+          return nullptr;
+        }
     };
   }
 }

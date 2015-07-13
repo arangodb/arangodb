@@ -128,6 +128,9 @@ struct VertexFilterInfo {
 typedef triagens::basics::PathFinder<VertexId, EdgeId, double> 
         ArangoDBPathFinder;
 
+typedef triagens::basics::ConstDistanceFinder<VertexId, EdgeId> 
+        ArangoDBConstDistancePathFinder;
+
 namespace triagens {
   namespace basics {
     namespace traverser {
@@ -349,6 +352,12 @@ class VertexCollectionInfo {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
+    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    triagens::basics::traverser::ShortestPathOptions& opts
+);
+
+
+std::unique_ptr<ArangoDBConstDistancePathFinder::Path> TRI_RunSimpleShortestPathSearch (
     std::vector<EdgeCollectionInfo*>& collectionInfos,
     triagens::basics::traverser::ShortestPathOptions& opts
 );
