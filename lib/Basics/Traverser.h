@@ -1274,7 +1274,15 @@ namespace triagens {
         ConstDistanceFinder (ExpanderFunction left, ExpanderFunction right) :
           _leftNeighborExpander(left),
           _rightNeighborExpander(right) {
+        }
 
+        ~ConstDistanceFinder () {
+          for (auto& it : _leftFound) {
+            delete it.second;
+          }
+          for (auto& it : _rightFound) {
+            delete it.second;
+          }
         }
 
         Path* search (VertexId& start, VertexId& end) {
