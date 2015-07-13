@@ -66,7 +66,7 @@ namespace triagens {
           result() {
       }
 
-      v8::Handle<v8::Array>          result;
+      v8::Handle<v8::Array> result;
     };
 
   }

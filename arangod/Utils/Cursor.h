@@ -155,6 +155,7 @@ namespace triagens {
                     size_t,
                     struct TRI_json_t*,
                     double,
+                    bool,
                     bool);
 
         ~JsonCursor ();
@@ -190,6 +191,7 @@ namespace triagens {
         struct TRI_vocbase_s* _vocbase;
         struct TRI_json_t*    _json;
         size_t const          _size;
+        bool                  _cached;
     };
 
 // -----------------------------------------------------------------------------

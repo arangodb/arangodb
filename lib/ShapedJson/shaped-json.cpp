@@ -1474,7 +1474,10 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
                                                TRI_shape_t const* shape,
                                                char const* data,
                                                uint64_t size) {
+  // note: length includes the NULL byte
+  TRI_shape_length_short_string_t const length = *((TRI_shape_length_short_string_t const*) data);
   data += sizeof(TRI_shape_length_short_string_t);
+  TRI_ASSERT(length + sizeof(TRI_shape_length_short_string_t) <= size);
 
   int res = TRI_AppendCharStringBuffer(buffer, '"');
 
@@ -1482,7 +1485,7 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
     return false;
   }
 
-  res = TRI_AppendJsonEncodedStringStringBuffer(buffer, data, true);
+  res = TRI_AppendJsonEncodedStringStringBuffer(buffer, data, static_cast<size_t>(length) - 1, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
@@ -1506,7 +1509,10 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
                                               TRI_shape_t const* shape,
                                               char const* data,
                                               uint64_t size) {
+  // note: length includes the NULL byte
+  TRI_shape_length_long_string_t const length = *((TRI_shape_length_long_string_t const*) data);
   data += sizeof(TRI_shape_length_long_string_t);
+  TRI_ASSERT(length + sizeof(TRI_shape_length_long_string_t) <= size);
 
   int res = TRI_AppendCharStringBuffer(buffer, '"');
 
@@ -1514,7 +1520,7 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
     return false;
   }
 
-  res = TRI_AppendJsonEncodedStringStringBuffer(buffer, data, true);
+  res = TRI_AppendJsonEncodedStringStringBuffer(buffer, data, static_cast<size_t>(length) - 1, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return false;

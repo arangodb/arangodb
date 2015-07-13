@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, bind parameters
+/// @brief query cache request handler
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,102 +23,88 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/BindParameters.h"
-#include "Basics/json.h"
-#include "Basics/json-utilities.h"
-#include "Basics/Exceptions.h"
+#ifndef ARANGODB_REST_HANDLER_REST_QUERY_CACHE_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_QUERY_CACHE_HANDLER_H 1
 
-using namespace triagens::aql;
+#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
+
+namespace triagens {
+  namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
+// --SECTION--                                       class RestQueryCacheHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the parameters
+/// @brief query request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-BindParameters::BindParameters (TRI_json_t* json)
-  : _json(json),
-    _parameters(),
-    _processed(false) {
-}
+    class RestQueryCacheHandler : public RestVocbaseBaseHandler {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the parameters
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-BindParameters::~BindParameters () {
-  if (_json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
+        RestQueryCacheHandler (rest::HttpRequest*);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   Handler methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isDirect () const override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        status_t execute () override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the list of properties
+////////////////////////////////////////////////////////////////////////////////
+
+        bool readProperties ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the properties
+////////////////////////////////////////////////////////////////////////////////
+
+        bool replaceProperties ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears the cache
+////////////////////////////////////////////////////////////////////////////////
+
+        bool clearCache ();
+
+    };
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a hash value for the bind parameters
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t BindParameters::hash () const {
-  if (_json == nullptr) {
-    return 0x12345678abcdef;
-  }
-
-  return TRI_FastHashJson(_json);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the parameters
-////////////////////////////////////////////////////////////////////////////////
-
-void BindParameters::process () {
-  if (_processed || _json == nullptr) {
-    return;
-  }
-
-  if (! TRI_IsObjectJson(_json)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID);
-  }
-  
-  size_t const n = TRI_LengthVector(&_json->_value._objects);
-
-  for (size_t i = 0; i < n; i += 2) {
-    auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&_json->_value._objects, i));
-
-    if (! TRI_IsStringJson(key)) {
-      // no string, should not happen
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE);
-    }
-
-    std::string const k(key->_value._string.data, key->_value._string.length - 1);
-
-    auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&_json->_value._objects, i + 1));
-
-    if (value == nullptr) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, k.c_str()); 
-    }
-
-    if (k[0] == '@' && ! TRI_IsStringJson(value)) {
-      // collection bind parameter
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, k.c_str()); 
-    }
-
-    _parameters.emplace(std::make_pair(k, std::make_pair(value, false)));
-  }
-  
-  _processed = true;
-}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

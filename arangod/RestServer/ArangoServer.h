@@ -402,6 +402,41 @@ namespace triagens {
         std::string _databasePath;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to enable the AQL query cache
+/// @startDocuBlock queryCacheMode
+/// `--database.query-cache-mode`
+///
+/// Toggles the AQL query cache behavior. Possible values are:
+///
+/// * *off*: do not use query cache
+/// * *on*: always use query cache, except for queries that have their *cache*
+///   attribute set to *false*
+/// * *demand*: use query cache only for queries that have their *cache*
+///   attribute set to *true*
+///   set
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _queryCacheMode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of elements in the query cache per database
+/// @startDocuBlock queryCacheMaxResults
+/// `--database.query-cache-max-results`
+///
+/// Maximum number of query results that can be stored per database-specific 
+/// query cache. If a query is eligible for caching and the number of items in 
+/// the database's query cache is equal to this threshold value, another cached
+/// query result will be removed from the cache.
+///
+/// This option only has an effect if the query cache mode is set to either
+/// *on* or *demand*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _queryCacheMaxResults;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock databaseMaximalJournalSize
 /// 
 /// `--database.maximal-journal-size size`

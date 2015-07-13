@@ -107,6 +107,14 @@ the option *--disable-figures*.
 @startDocuBlock databaseDisableQueryTracking
 
 
+!SUBSECTION AQL Query caching mode
+@startDocuBlock queryCacheMode
+
+
+!SUBSECTION AQL Query cache size 
+@startDocuBlock queryCacheMaxResults
+
+
 !SUBSECTION Index threads
 @startDocuBlock indexThreads
 

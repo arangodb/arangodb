@@ -35,6 +35,7 @@
 
 #include <regex.h>
 
+#include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
@@ -710,7 +711,6 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
                              char const* newName,
                              bool writeMarker) {
   TRI_col_info_t info;
-  void const* found;
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -734,7 +734,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   }
 
   // check if the new name is unused
-  found = (void*) TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, newName);
+  void const* found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, newName);
 
   if (found != nullptr) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -815,8 +815,12 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  // to prevent caching
+  // to prevent caching returning now invalid old collection name in db's NamedPropertyAccessor,
+  // i.e. db.<old-collection-name>
   collection->_internalVersion++;
+
+  // invalidate all entries for the two collections
+  triagens::aql::QueryCache::instance()->invalidate(vocbase, std::vector<char const*>{ oldName, newName });
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2076,6 +2080,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+
+  triagens::aql::QueryCache::instance()->invalidate(vocbase, collection->_name); 
 
   // .............................................................................
   // collection already deleted

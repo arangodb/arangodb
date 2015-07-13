@@ -82,11 +82,13 @@ JsonCursor::JsonCursor (TRI_vocbase_t* vocbase,
                         size_t batchSize,
                         TRI_json_t* extra,
                         double ttl, 
-                        bool hasCount) 
+                        bool hasCount,
+                        bool cached) 
   : Cursor(id, batchSize, extra, ttl, hasCount),
     _vocbase(vocbase),
     _json(json),
-    _size(TRI_LengthArrayJson(_json)) {
+    _size(TRI_LengthArrayJson(_json)),
+    _cached(cached) {
 
   TRI_UseVocBase(vocbase);
 }
@@ -196,6 +198,9 @@ void JsonCursor::dump (triagens::basics::StringBuffer& buffer) {
     buffer.appendText(",\"extra\":");
     TRI_StringifyJson(buffer.stringBuffer(), extraJson);
   }
+
+  buffer.appendText(",\"cached\":");
+  buffer.appendText(_cached ? "true" : "false");
     
   if (! hasNext()) {
     // mark the cursor as deleted

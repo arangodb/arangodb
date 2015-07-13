@@ -115,14 +115,15 @@ JsonCursor* CursorRepository::createFromJson (TRI_json_t* json,
                                               size_t batchSize,
                                               TRI_json_t* extra,
                                               double ttl,
-                                              bool count) {
+                                              bool count,
+                                              bool cached) {
   TRI_ASSERT(json != nullptr);
 
   CursorId const id = TRI_NewTickServer();
   triagens::arango::JsonCursor* cursor = nullptr;
 
   try {
-    cursor = new triagens::arango::JsonCursor(_vocbase, id, json, batchSize, extra, ttl, count);
+    cursor = new triagens::arango::JsonCursor(_vocbase, id, json, batchSize, extra, ttl, count, cached);
   }
   catch (...) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

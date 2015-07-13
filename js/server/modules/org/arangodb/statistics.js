@@ -520,7 +520,7 @@ exports.historian = function () {
     }
   }
   catch (err) {
-    require("console").warn("catch error in historian: %s", err);
+    require("console").warn("catch error in historian: %s", err.stack);
   }
 };
 
