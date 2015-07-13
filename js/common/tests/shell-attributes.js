@@ -439,6 +439,52 @@ function AttributesSuite () {
         assertEqual(value["@language"], doc["@language"]);
         assertEqual(value["@value"], doc["@value"]);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test attribute names containing NULL bytes
+////////////////////////////////////////////////////////////////////////////////
+
+    testNullBytes : function () {
+      var doc = { "abc" : "foo\u0001bar\u0000baz", "def" : "\u0000test\u0000test", "123" : "abc\u0000" };
+
+      var d1 = c.save(doc);
+      var d2 = c.document(d1._id);
+
+      assertEqual("foo\u0001bar\u0000baz", d2.abc);
+      assertEqual("\u0000test\u0000test", d2.def);
+      assertEqual("abc\u0000", d2["123"]);
+
+      var docs = c.toArray();
+      assertEqual("foo\u0001bar\u0000baz", docs[0].abc);
+      assertEqual("\u0000test\u0000test", docs[0].def);
+      assertEqual("abc\u0000", docs[0]["123"]);
+
+      var result = db._query("FOR doc IN @@collection RETURN doc", { "@collection" : c.name() }).toArray();
+      assertEqual("foo\u0001bar\u0000baz", result[0].abc);
+      assertEqual("\u0000test\u0000test", result[0].def);
+      assertEqual("abc\u0000", result[0]["123"]);
+
+
+      // now shape documents
+      require("internal").wal.flush(true, true);
+      wait(3, false);
+      
+      var d3 = c.document(d1._id);
+
+      assertEqual("foo\u0001bar\u0000baz", d3.abc);
+      assertEqual("\u0000test\u0000test", d3.def);
+      assertEqual("abc\u0000", d3["123"]);
+
+      docs = c.toArray();
+      assertEqual("foo\u0001bar\u0000baz", docs[0].abc);
+      assertEqual("\u0000test\u0000test", docs[0].def);
+      assertEqual("abc\u0000", docs[0]["123"]);
+      
+      result = db._query("FOR doc IN @@collection RETURN doc", { "@collection" : c.name() }).toArray();
+      assertEqual("foo\u0001bar\u0000baz", result[0].abc);
+      assertEqual("\u0000test\u0000test", result[0].def);
+      assertEqual("abc\u0000", result[0]["123"]);
     }
 
   };

@@ -29,6 +29,7 @@
 
 #include "transaction.h"
 
+#include "Aql/QueryCache.h"
 #include "Basics/conversions.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
@@ -119,6 +120,40 @@ static inline bool NeedWriteMarker (TRI_transaction_t const* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the query cache for all collections that were modified by
+/// the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+void ClearQueryCache (TRI_transaction_t* trx) {
+  std::vector<char const*> collections;
+
+  size_t const n = trx->_collections._length;
+ 
+  try { 
+    for (size_t i = 0; i < n; ++i) {
+      auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
+
+      if (trxCollection->_accessType != TRI_TRANSACTION_WRITE ||
+          trxCollection->_operations == nullptr ||
+          trxCollection->_operations->empty()) {
+        // we're only interested in collections that may have been modified
+        continue;
+      }
+
+      collections.emplace_back(reinterpret_cast<char const*>(&(trxCollection->_collection->_name)));
+    }
+
+    if (! collections.empty()) {
+      triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase, collections);
+    }
+  }
+  catch (...) {
+    // in case something goes wrong, we have to disable the query cache
+    triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the status of the transaction as a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -152,7 +187,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
   bool const isSingleOperation = IsSingleOperationTransaction(trx);
 
   for (size_t i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
+    auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
     if (trxCollection->_operations == nullptr) {
@@ -242,7 +277,7 @@ static TRI_transaction_collection_t* FindCollection (const TRI_transaction_t* co
   size_t i;
 
   for (i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
+    auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     if (cid < trxCollection->_cid) {
       // collection not found
@@ -270,9 +305,9 @@ static TRI_transaction_collection_t* FindCollection (const TRI_transaction_t* co
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
-                                                       const TRI_voc_cid_t cid,
-                                                       const TRI_transaction_type_e accessType,
-                                                       const int nestingLevel) {
+                                                       TRI_voc_cid_t cid,
+                                                       TRI_transaction_type_e accessType,
+                                                       int nestingLevel) {
   TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_collection_t), false));
 
   if (trxCollection == nullptr) {
@@ -471,7 +506,7 @@ static int UseCollections (TRI_transaction_t* trx,
 
   // process collections in forward order
   for (size_t i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
+    auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     if (trxCollection->_nestingLevel != nestingLevel) {
       // only process our own collections
@@ -554,7 +589,7 @@ static int UnuseCollections (TRI_transaction_t* trx,
 
   // process collections in reverse order
   while (i-- > 0) {
-    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
+    auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     if (IsLocked(trxCollection) &&
         (nestingLevel == 0 || trxCollection->_nestingLevel == nestingLevel)) {
@@ -594,7 +629,7 @@ static int ReleaseCollections (TRI_transaction_t* trx,
 
   // process collections in reverse order
   while (i-- > 0) {
-    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
+    auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     // the top level transaction releases all collections
     if (trxCollection->_collection != nullptr) {
@@ -839,7 +874,7 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
   // free all collections
   size_t i = trx->_collections._length;
   while (i-- > 0) {
-    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
+    auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     FreeDitch(trxCollection);
     FreeCollection(trxCollection);
@@ -1233,6 +1268,8 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   if (isSingleOperationTransaction) {
     // operation is directly executed
     operation.handle();
+     
+    triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase, document->_info._name);
 
     ++document->_uncollectedLogfileEntries;
 
@@ -1366,6 +1403,11 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
     }
 
     UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+
+    // if a write query, clear the query cache for the participating collections
+    if (trx->_type == TRI_TRANSACTION_WRITE) { 
+      ClearQueryCache(trx);
+    }
 
     FreeOperations(trx);
   }

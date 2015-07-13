@@ -115,7 +115,7 @@ if test "x$tr_INTERNAL_GO" = "xno"; then
   fi
   GOPROG=$GO
 fi
-AC_MSG_WARN(["helo " $GOPROG])
+
 AM_CONDITIONAL(GO_AVAILABLE, test "x$GOPROG" != x)
 
 dnl ============================================================================

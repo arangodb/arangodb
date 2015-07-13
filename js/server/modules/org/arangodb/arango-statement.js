@@ -81,6 +81,9 @@ ArangoStatement.prototype.execute = function () {
   var opts = this._options || { };
   if (typeof opts === 'object') {
     opts._doCount = this._doCount;
+    if (this._cache !== undefined) {
+      opts.cache = this._cache;
+    } 
   }
 
   var result = AQL_EXECUTE(this._query, this._bindVars, opts);

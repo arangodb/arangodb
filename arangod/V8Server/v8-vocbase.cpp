@@ -31,6 +31,7 @@
 
 #include "v8-vocbaseprivate.h"
 #include "Aql/Query.h"
+#include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/conversions.h"
@@ -1200,20 +1201,21 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
   // return the array value as it is. this is a performance optimisation
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (queryResult.json != nullptr) {
-    result->Set(TRI_V8_ASCII_STRING("json"),     TRI_ObjectJson(isolate, queryResult.json));
+    result->ForceSet(TRI_V8_ASCII_STRING("json"),     TRI_ObjectJson(isolate, queryResult.json));
   }
   if (queryResult.stats != nullptr) {
-    result->Set(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
+    result->ForceSet(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
   }
   if (queryResult.profile != nullptr) {
-    result->Set(TRI_V8_ASCII_STRING("profile"),  TRI_ObjectJson(isolate, queryResult.profile));
+    result->ForceSet(TRI_V8_ASCII_STRING("profile"), TRI_ObjectJson(isolate, queryResult.profile));
   }
   if (queryResult.warnings == nullptr) {
-    result->Set(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
+    result->ForceSet(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
   }
   else {
-    result->Set(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
+    result->ForceSet(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
   }
+  result->ForceSet(TRI_V8_ASCII_STRING("cached"), v8::Boolean::New(isolate, queryResult.cached));
   
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1300,20 +1302,21 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   // return the array value as it is. this is a performance optimisation
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  result->Set(TRI_V8_ASCII_STRING("json"), queryResult.result);
+  result->ForceSet(TRI_V8_ASCII_STRING("json"), queryResult.result);
 
   if (queryResult.stats != nullptr) {
-    result->Set(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
+    result->ForceSet(TRI_V8_ASCII_STRING("stats"), TRI_ObjectJson(isolate, queryResult.stats));
   }
   if (queryResult.profile != nullptr) {
-    result->Set(TRI_V8_ASCII_STRING("profile"),  TRI_ObjectJson(isolate, queryResult.profile));
+    result->ForceSet(TRI_V8_ASCII_STRING("profile"), TRI_ObjectJson(isolate, queryResult.profile));
   }
   if (queryResult.warnings == nullptr) {
-    result->Set(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
+    result->ForceSet(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
   }
   else {
-    result->Set(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
+    result->ForceSet(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
   }
+  result->ForceSet(TRI_V8_ASCII_STRING("cached"), v8::Boolean::New(isolate, queryResult.cached));
   
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1393,11 +1396,9 @@ static void JS_QueriesCurrentAql (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   
-  
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CURRENT()");
   }
-  
 
   auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
@@ -1445,7 +1446,6 @@ static void JS_QueriesSlowAql (const v8::FunctionCallbackInfo<v8::Value>& args) 
   
   auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
-
   
   if (args.Length() == 1) {
     queryList->clearSlow();
@@ -1529,6 +1529,75 @@ static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configures the AQL query cache
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryCachePropertiesAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (args.Length() > 1 || (args.Length() == 1 && ! args[0]->IsObject())) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_PROPERTIES(<properties>)");
+  }
+    
+  auto queryCache = triagens::aql::QueryCache::instance();
+
+  if (args.Length() == 1) {
+    // called with options
+    auto obj = args[0]->ToObject();
+
+    std::pair<std::string, size_t> cacheProperties;
+    // fetch current configuration
+    queryCache->properties(cacheProperties);
+
+    if (obj->Has(TRI_V8_ASCII_STRING("mode"))) {
+      cacheProperties.first = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("mode")));
+    }
+
+    if (obj->Has(TRI_V8_ASCII_STRING("maxResults"))) {
+      cacheProperties.second = static_cast<size_t>(TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("maxResults"))));
+    }
+
+    // set mode and max elements
+    queryCache->setProperties(cacheProperties);
+  }
+
+  auto properties = queryCache->properties();
+  TRI_V8_RETURN(TRI_ObjectJson(isolate, properties.json()));
+  
+  // fetch current configuration and return it
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates the AQL query cache
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryCacheInvalidateAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_INVALIDATE()");
+  }
+
+  triagens::aql::QueryCache::instance()->invalidate();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3836,6 +3905,8 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_KILL"), JS_QueriesKillAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_SLEEP"), JS_QuerySleepAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_IS_KILLED"), JS_QueryIsKilledAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_PROPERTIES"), JS_QueryCachePropertiesAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_INVALIDATE"), JS_QueryCacheInvalidateAql, true);
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_SHORTEST_PATH"), JS_QueryShortestPath, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_NEIGHBORS"), JS_QueryNeighbors, true);

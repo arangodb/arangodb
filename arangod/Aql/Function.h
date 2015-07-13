@@ -57,6 +57,7 @@ namespace triagens {
       Function (std::string const& externalName,
                 std::string const& internalName,
                 std::string const& arguments,
+                bool isCacheable,
                 bool isDeterministic,
                 bool canThrow,
                 bool canRunOnDBServer,
@@ -130,6 +131,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string const       arguments;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the function results may be cached by the query cache
+////////////////////////////////////////////////////////////////////////////////
+
+      bool const              isCacheable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the function is deterministic (i.e. its results are

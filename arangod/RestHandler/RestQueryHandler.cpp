@@ -72,7 +72,7 @@ RestQueryHandler::RestQueryHandler (HttpRequest* request, ApplicationV8* applica
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryHandler::isDirect () const {
-  return  _request->requestType() != HttpRequest::HTTP_REQUEST_POST;
+  return _request->requestType() != HttpRequest::HTTP_REQUEST_POST;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +142,7 @@ HttpHandler::status_t RestQueryHandler::execute () {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// Is returned when the list of queries can be retrieved successfully.
+/// Is returned if properties were retrieved successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// The server will respond with *HTTP 400* in case of a malformed request,
@@ -324,7 +324,7 @@ bool RestQueryHandler::readQuery () {
 ///
 /// @RESTRETURNCODES
 ///
-/// @RESTRETURNCODE{204}
+/// @RESTRETURNCODE{200}
 /// The server will respond with *HTTP 200* when the list of queries was
 /// cleared successfully.
 ///

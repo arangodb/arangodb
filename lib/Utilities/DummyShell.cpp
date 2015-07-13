@@ -29,6 +29,8 @@
 
 #include "DummyShell.h"
 
+#include <iostream>
+
 #include "Basics/tri-strings.h"
 #include "Basics/files.h"
 
