@@ -2,6 +2,7 @@
 
 Users can pick attribute names for document attributes as desired, provided the
 following attribute naming constraints are not violated:
+
 - Attribute names starting with an underscore are considered to be system
   attributes for ArangoDB's internal use. Such attribute names are already used
   by ArangoDB for special purposes:
@@ -41,6 +42,8 @@ following attribute naming constraints are not violated:
   length is variable and depends on the number and data types of attributes
   used.
 * Attribute names are case-sensitive.
+* Attribute names should not include the NUL byte (`\u0000`), as names will be
+  truncated at the first NUL byte.
 * Attributes with empty names (the empty string) are removed from the document 
   when saving it. 
 
