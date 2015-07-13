@@ -151,7 +151,9 @@ if (typeof sinon == "undefined") {
                     return;
                 }
 
-                if (!this.responses) { this.responses = []; }
+                if (!this.responses) {
+                    this.responses = [];
+                }
 
                 if (arguments.length == 1) {
                     body = method;

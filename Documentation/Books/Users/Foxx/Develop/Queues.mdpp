@@ -12,7 +12,7 @@ By default the Foxx queue manager will be checking the queues once every second.
 
 For the low-level functionality see [the chapter on the **Task Management** module](../../ModuleTasks/).
 
-As of ArangoDB 2.6, Foxx queue job types are defined as regular Foxx scripts. To learn more about Foxx scripts, see [the chapter on Foxx scripts](./Scripts.html). Function-based job types are still supported in 2.6 but will be removed in 2.7.
+As of ArangoDB 2.6, Foxx queue job types are defined as regular Foxx scripts. To learn more about Foxx scripts, see [the chapter on Foxx scripts](./Scripts.html). Function-based job types are still supported in 2.6 but have been removed in 2.7.
 
 For an example of re-usable job types see the various mailer apps available in the Foxx app store.
 

@@ -11,20 +11,22 @@
  *
  * Copyright (c) 2010-2013 Christian Johansen
  */
-function setTimeout() {}
-function clearTimeout() {}
-function setImmediate() {}
-function clearImmediate() {}
-function setInterval() {}
-function clearInterval() {}
-function Date() {}
+if (typeof window !== "undefined") {
+    function setTimeout() {}
+    function clearTimeout() {}
+    function setImmediate() {}
+    function clearImmediate() {}
+    function setInterval() {}
+    function clearInterval() {}
+    function Date() {}
 
-// Reassign the original functions. Now their writable attribute
-// should be true. Hackish, I know, but it works.
-setTimeout = sinon.timers.setTimeout;
-clearTimeout = sinon.timers.clearTimeout;
-setImmediate = sinon.timers.setImmediate;
-clearImmediate = sinon.timers.clearImmediate;
-setInterval = sinon.timers.setInterval;
-clearInterval = sinon.timers.clearInterval;
-Date = sinon.timers.Date;
+    // Reassign the original functions. Now their writable attribute
+    // should be true. Hackish, I know, but it works.
+    setTimeout = sinon.timers.setTimeout;
+    clearTimeout = sinon.timers.clearTimeout;
+    setImmediate = sinon.timers.setImmediate;
+    clearImmediate = sinon.timers.clearImmediate;
+    setInterval = sinon.timers.setInterval;
+    clearInterval = sinon.timers.clearInterval;
+    Date = sinon.timers.Date;
+}

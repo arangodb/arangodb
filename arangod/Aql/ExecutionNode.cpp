@@ -25,6 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"

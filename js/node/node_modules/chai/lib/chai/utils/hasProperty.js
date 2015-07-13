@@ -4,7 +4,7 @@
  * MIT Licensed
  */
 
-var type = require('./type');
+var type = require('type-detect');
 
 /**
  * ### .hasProperty(object, name)

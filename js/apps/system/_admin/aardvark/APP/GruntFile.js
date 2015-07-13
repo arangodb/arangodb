@@ -17,6 +17,33 @@
             "frontend/js/lib/underscore.js",
             "frontend/js/lib/backbone.js",
             "frontend/js/lib/bootstrap.js"
+          ],
+          css: [
+            "frontend/css/swagger/hightlight.default.css",
+            "frontend/css/bootstrap.css",
+            "frontend/css/jquery-ui-1.9.2.custom.css",
+            "frontend/css/jquery.contextmenu.css",
+            "frontend/css/select2.css",
+            "frontend/css/jquery.dataTables.css",
+            "frontend/css/nv.d3.css",
+            "frontend/css/swaggerView.css",
+            "frontend/css/ansi.css",
+            "frontend/css/jsoneditor.css",
+            "frontend/ttf/arangofont/style.css"
+          ],
+          documentation: [
+            "frontend/js/lib/jquery-2.1.0.min.js",
+            "frontend/js/lib/handlebars-1.0.rc.1.js",
+            "frontend/js/lib/underscore.js",
+            "frontend/js/lib/backbone.js",
+            "frontend/js/lib/swagger.js",
+            "frontend/js/lib/swagger-ui.js",
+            "frontend/js/lib/highlight.7.3.pack.js",
+            "frontend/js/arango/arango.js",
+            "frontend/js/shell/browser.js",
+            "frontend/js/bootstrap/module-internal.js",
+            "frontend/js/client/bootstrap/module-internal.js",
+            "frontend/js/documentation/documentation.js"
           ]
         },
         standalone: {
@@ -56,7 +83,6 @@
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",
             "frontend/src/mode-aql.js"
-
           ],
           graphViewer: [
             "frontend/js/graphViewer/graph/*",
@@ -139,6 +165,17 @@
         }
       },
 
+      concat: {
+        css: {
+          src: ['<%=project.shared.css %>'],
+          dest: 'build/extra.css'
+        },
+        documentation: {
+          src: ['<%=project.shared.documentation %>'],
+          dest: "build/documentation.js"
+        }
+      },
+
       concat_in_order: {
         default: {
           files: {
@@ -178,6 +215,10 @@
         },
         jsCluster: {
           src: [
+            "frontend/js/lib/dygraph-combined.js",
+            "frontend/js/config/dygraphConfig.js",
+            "frontend/js/lib/d3.v3.min.js",
+            "frontend/js/lib/nv.d3.js",
             "frontend/js/arango/arango.js",
             "clusterFrontend/js/models/*",
             "clusterFrontend/js/collections/*",
@@ -191,7 +232,6 @@
             "frontend/js/views/footerView.js",
             "frontend/js/views/dashboardView.js",
             "frontend/js/views/modalView.js",
-            "frontend/js/config/dygraphConfig.js",
             "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
             "clusterFrontend/js/views/*",
             "clusterFrontend/js/routers/*"
@@ -312,6 +352,7 @@
     });
 
     grunt.loadNpmTasks("grunt-sass");
+    grunt.loadNpmTasks("grunt-contrib-concat");
 
     require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
     grunt.loadNpmTasks('grunt-text-replace');
@@ -320,6 +361,7 @@
       'sass:dev',
       'jshint:default',
       'replace',
+      'concat',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',
@@ -332,6 +374,7 @@
     grunt.registerTask('devel', [
       'sass:dev',
       'replace',
+      'concat',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',

@@ -14,7 +14,7 @@
   "contributors": [
     {
       "name": "Heiko Kernbach",
-      "email": "h.kernbach@triagens.de"
+      "email": "heiko@arangodb.com"
     },
     {
       "name": "Michael Hackstein",
@@ -34,83 +34,15 @@
     "/templates": "foxxTemplates.js"
   },
 
-  "assets": {
-    "documentation.js": {
-      "files": [
-        "frontend/js/lib/jquery-2.1.0.min.js",
-        "frontend/js/lib/handlebars-1.0.rc.1.js",
-        "frontend/js/lib/underscore.js",
-        "frontend/js/lib/backbone.js",
-        "frontend/js/lib/swagger.js",
-        "frontend/js/lib/swagger-ui.js",
-        "frontend/js/lib/highlight.7.3.pack.js",
-        "frontend/js/arango/arango.js",
-        "frontend/js/shell/browser.js",
-        "frontend/js/bootstrap/module-internal.js",
-        "frontend/js/client/bootstrap/module-internal.js",
-        "frontend/js/documentation/documentation.js"
-      ]
-    },
-
-    "libs.js": {
-      "files": [
-        "frontend/js/lib/jquery-ui-1.9.2.custom.js",
-        "frontend/js/lib/jquery.snippet.js",
-        "frontend/js/lib/jquery.slideto.min.js",
-        "frontend/js/lib/jquery.wiggle.min.js",
-        "frontend/js/lib/jquery.contextmenu.js",
-        "frontend/js/lib/jquery.hotkeys.js",
-        "frontend/js/lib/jquery.form.js",
-        "frontend/js/lib/jquery.uploadfile.js",
-        "frontend/js/lib/select2.min.js",
-        "frontend/js/lib/handlebars-1.0.rc.1.js",
-        "frontend/js/lib/underscore.js",
-        "frontend/js/lib/backbone.js",
-        "frontend/js/lib/jsoneditor-min.js",
-        "frontend/js/lib/d3.v3.min.js",
-        "frontend/js/lib/nv.d3.js",
-        "frontend/js/lib/strftime-min.js",
-        "frontend/js/lib/dygraph-combined.js",
-        "frontend/js/lib/d3.fisheye.js",
-        "frontend/js/lib/bootstrap-pagination.js",
-        "frontend/js/lib/jqconsole.min.js",
-        "frontend/js/lib/swagger.js",
-        "frontend/js/lib/swagger-ui.js",
-        "frontend/js/lib/highlight.7.3.pack.js",
-        "frontend/js/lib/joi.browser.js",
-        "frontend/js/lib/md5.js"
-      ]
-    },
-
-    "css/style.css": {
-      "files": [
-        "frontend/css/swagger/hightlight.default.css",
-        "frontend/css/bootstrap.css",
-        "frontend/css/jquery-ui-1.9.2.custom.css",
-        "frontend/css/jquery.contextmenu.css",
-        "frontend/css/select2.css",
-        "frontend/css/jquery.dataTables.css",
-        "frontend/css/nv.d3.css",
-        "frontend/css/swaggerView.css",
-        "frontend/css/ansi.css",
-        "frontend/css/jsoneditor.css",
-        "frontend/ttf/arangofont/style.css"
-      ]
-    },
-
-    "css/cluster.css": {
-        "files": [
-         "frontend/scss/cluster.css",
-         "frontend/scss/generated.css"
-        ]
-    }
-  },
-
   "files": {
+    "/documentation.js": "build/documentation.js",
     "/documentation.html": "frontend/html/documentation.html",
     "/standalone.html": "frontend/build/standalone.html",
     "/cluster.html": "clusterFrontend/build/cluster.html",
     "/css/sass.css": "frontend/build/style.css",
+    "/css/style.css": "build/extra.css",
+    "css/cluster.css": "frontend/scss/cluster.css",
+    "css/generated.css": "frontend/scss/generated.css",
     "/cluster.js": "clusterFrontend/build/cluster.js",
     "/ace.js": "frontend/src/ace.js",
     "/sharedLibs.js": "build/sharedLibs.js",

@@ -140,29 +140,31 @@ exports.work = function (job) {
       }
       if (success) {
         // mark complete
-        callback = job.onSuccess;
+        callback = job.success;
         data.status = 'complete';
+        data.runs += 1;
       } else if (maxFailures === false || job.runFailures > maxFailures) {
         // mark failed
-        callback = job.onFailure;
+        callback = job.failure;
         data.status = 'failed';
         data.failures = job.failures;
       } else {
         data.delayUntil = now + getBackOffDelay(job);
         data.status = 'pending';
       }
-      if (data.status !== 'pending' && job.runs < repeatTimes && now <= repeatUntil) {
+      if (data.status !== 'pending' && data.runs < repeatTimes && now <= repeatUntil) {
         data.status = 'pending';
         data.delayUntil = now + repeatDelay;
         data.runFailures = 0;
       }
       db._jobs.update(job._key, data);
       job = _.extend(job, data);
-      if (data.status === 'pending') {
-        queues._updateQueueDelay();
-      }
     }
   });
+
+  if (job.status === 'pending') {
+    queues._updateQueueDelay();
+  }
 
   if (callback) {
     var cbType = success ? 'success' : 'failure';

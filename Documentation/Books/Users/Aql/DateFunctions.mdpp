@@ -116,3 +116,13 @@ The following other date functions are also available:
   
   Note that this function is evaluated on every invocation and may return different 
   values when invoked multiple times in the same query.
+
+
+Working with dates and indices
+------------------------------
+There are two recommended ways to store timestamps in ArangoDB:
+  - as string with ISO 8601 UTC timestamp
+  - as [Epoch number](https://en.wikipedia.org/wiki/Epoch_%28reference_date%29)
+
+This way you can work with [skiplist incices](../IndexHandling/Skiplist.html) and use
+string comparisons (less than, greater than, in, equality) to express timeranges in your queries.

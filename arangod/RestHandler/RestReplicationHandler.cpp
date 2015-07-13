@@ -652,7 +652,8 @@ void RestReplicationHandler::handleCommandBatch () {
     TRI_json_t json;
     TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
     char* idString = TRI_StringUInt64((uint64_t) id);
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "id", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, idString, strlen(idString)));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "id",
+                          TRI_CreateStringJson(TRI_CORE_MEM_ZONE, idString, strlen(idString)));
 
     generateResult(&json);
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
@@ -1831,9 +1832,10 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   TRI_voc_tick_t new_id_tick = ci->uniqid(1);
   string new_id = StringUtils::itoa(new_id_tick);
-  TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id",
-                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                                new_id.c_str(), new_id.size()));
+  TRI_json_t* newId = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                               new_id.c_str(), new_id.size());
+  TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id", newId);
+  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, newId);
 
   // Now put in the primary and an edge index if needed:
   TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
@@ -2054,6 +2056,9 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
     TRI_json_t* res_json = nullptr;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef,
                      true, triagens::arango::Index::Compare, res_json, errorMsg, 3600.0);
+    if (res_json != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, res_json);
+    }
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not create index: " + string(TRI_errno_string(res));
       break;

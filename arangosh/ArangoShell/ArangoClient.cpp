@@ -27,6 +27,7 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 #include "ArangoClient.h"
 
 #include "Basics/files.h"

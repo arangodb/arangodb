@@ -8,6 +8,8 @@
   "exports": {
     "legacyJobType": "exports.js"
   },
-  "setup": "setup.js",
-  "teardown": "teardown.js"
+  "scripts": {
+    "setup": "setup.js",
+    "teardown": "teardown.js"
+  }
 }

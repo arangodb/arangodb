@@ -37,6 +37,7 @@
 #include <pwd.h>
 #include <grp.h>
 #endif
+#include <iostream>
 
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Basics/ConditionLocker.h"
