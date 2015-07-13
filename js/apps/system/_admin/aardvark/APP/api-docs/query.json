@@ -8,7 +8,7 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "Is returned when the list of queries can be retrieved successfully. <br><br>",
+                            "reason": "Is returned if properties were retrieved successfully. <br><br>",
                             "code": "200"
                         },
                         {
@@ -78,7 +78,7 @@
                     "errorResponses": [
                         {
                             "reason": "The server will respond with <em>HTTP 200</em> when the list of queries was cleared successfully. <br><br>",
-                            "code": "204"
+                            "code": "200"
                         },
                         {
                             "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request. <br><br>",

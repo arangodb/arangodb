@@ -5,21 +5,20 @@ content-type: application/json; charset=utf-8
 
 { 
   "server" : "arango", 
-  "version" : "2.6.0-devel", 
+  "version" : "2.7.0-alpha1", 
   "details" : { 
     "architecture" : "64bit", 
-    "build-date" : "2015-05-21 10:54:00", 
-    "configure" : "'./configure' '--enable-relative' '--enable-maintainer-mode' '--enable-all-in-one-icu' '--with-backtrace' '--enable-v8-debug' 'CXXFLAGS=-O0 -ggdb -DDEBUG_CLUSTER_COMM' 'LDFLAGS=-lgcov' 'CFLAGS=-O0 -ggdb  -DDEBUG_CLUSTER_COMM'", 
-    "env" : "CFLAGS='-O0 -ggdb  -DDEBUG_CLUSTER_COMM' CXXFLAGS='-O0 -ggdb -DDEBUG_CLUSTER_COMM' LDFLAGS='-lgcov'", 
+    "build-date" : "2015-07-13 15:49:17", 
+    "configure" : "'./configure' '--enable-maintainer-mode'", 
     "icu-version" : "54.1", 
     "libev-version" : "4.11", 
     "maintainer-mode" : "true", 
-    "openssl-version" : "OpenSSL 1.0.2 22 Jan 2015", 
-    "repository-version" : "heads/devel-0-gf13e7b6904dec4ae390d4f3a14dc075dd73e6d98-dirty", 
-    "server-version" : "2.6.0-devel", 
+    "openssl-version" : "OpenSSL 0.9.8zd 8 Jan 2015", 
+    "repository-version" : "heads/2.7-0-g0c9a1fe80731785a51dbff8614cce9e7be1c13d4-dirty", 
+    "server-version" : "2.7.0-alpha1", 
     "sizeof int" : "4", 
     "sizeof void*" : "8", 
-    "v8-version" : "3.31.74.1", 
+    "v8-version" : "4.3.61", 
     "mode" : "standalone" 
   } 
 }

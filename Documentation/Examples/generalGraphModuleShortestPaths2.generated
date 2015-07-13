@@ -5,9 +5,14 @@ arangosh> g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'
 [ 
   [ 
     { 
-      "vertex" : "frenchCity/Lyon", 
-      "distance" : 700, 
-      "startVertex" : "germanCity/Cologne" 
+      "vertices" : [ 
+        "germanCity/Cologne", 
+        "frenchCity/Lyon" 
+      ], 
+      "edges" : [ 
+        "internationalHighway/1073757021" 
+      ], 
+      "distance" : 1 
     } 
   ] 
 ]
