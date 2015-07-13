@@ -1,34 +1,43 @@
-# ArangoDB
+ArangoDB
 
 ArangoDB is a multi-model, open-source database with flexible data models for
 documents, graphs, and key-values. Build high performance applications using a
 convenient SQL-like query language or JavaScript extensions. Use ACID
-transactions if you require them. Scale horizontally and vertically with a few
-mouse clicks.
-The supported data models can be mixed in queries and allow ArangoDB to be the 
+transactions if you require them. Scale horizontally with a few mouse clicks.
+The supported data models can be mixed in queries and allow ArangoDB to be the
 aggregation point for your data.
-To get started, try one of our 10 Minutes Tutorials in your favorite
-programming language or try one of our [ArangoDB Cookbook recipes](https://docs.arangodb.com/cookbook).
-For the impatient: [download and install ArangoDB](https://www.arangodb.com/download. Then start the server arangod and
+To get started, try one of our 10 minutes tutorials in your favourite
+programming language or try one of our ArangoDB_Cookbook_recipes.
+For the impatient: download and install ArangoDB. Start the server arangod and
 point your browser to http://127.0.0.1:8529/.
 
-## Key Features in ArangoDB
+Key Features in ArangoDB
 
-* Multi-Model Documents, graphs and key-value pairs: model your data as you
-see fit for your application
+
+* Multi-Model: Documents, graphs and key-value pairs — model your data as you
+  see fit for your application.
 * Joins: Conveniently join what belongs together for flexible ad-hoc querying,
-less data redundancy
-*Transactions: Easy application development keeping your data consistent and
-safe. No hassle in your client
+  less data redundancy.
+* Transactions: Easy application development keeping your data consistent and
+  safe. No hassle in your client.
 
-Joins and Transactions are key features for flexible, secure data designs,
-widely used in RDBMSs that you won’t want to miss in NoSQL products. You
-decide how and when to use Joins and strong consistency guarantees, keeping all
-the power for scaling and performance as choice.
-Furthermore, ArangoDB offers a microservice framework called Foxx to build your
-own Rest API with a few lines of code.
-
-## Key features include:
+Here is an AQL query that makes use of all those features:
+  AQL Query Example  AQL Query Example
+Joins and transactions are key features for flexible, secure data designs,
+widely used in relational databases but lacking in many NoSQL products.
+However, there is no need to forego them in ArangoDB. You decide how and when
+to use joins and strong consistency guarantees, without sacrificing performance
+and scalability.
+Furthermore, ArangoDB offers a JavaScript framework called Foxx that is
+executed in the database server with direct access to the data. Build your own
+data-centric microservices with a few lines of code:
+Microservice Example
+  Microservice Example  Microservice Example
+By extending the HTTP API with user code written in JavaScript, ArangoDB can be
+turned into a strict schema-enforcing persistence engine.
+Next step, bundle your Foxx application as a docker_container and get it
+running in the cloud.
+Other features of ArangoDB include:
 
 * Schema-free schemata let you combine the space efficiency of MySQL with the
   performance power of NoSQL
@@ -37,14 +46,12 @@ own Rest API with a few lines of code.
 * JavaScript for all: no language zoo, you can use one language from your
   browser to your back-end
 * ArangoDB is multi-threaded - exploit the power of all your cores
-* Flexible data modeling: model your data as combination of key-value pairs,
+* Flexible data modelling: model your data as combination of key-value pairs,
   documents or graphs - perfect for social relations
 * Free index choice: use the correct index for your problem, be it a skip list
   or a fulltext search
 * Configurable durability: let the application decide if it needs more
   durability or more performance
-* No-nonsense storage: ArangoDB uses all of the power of modern storage
-  hardware, like SSD and large caches
 * Powerful query language (AQL) to retrieve and modify data
 * Transactions: run queries on multiple documents or collections with optional
   transactional consistency and isolation
@@ -52,15 +59,48 @@ own Rest API with a few lines of code.
   or spread bigger datasets across multiple servers
 * It is open source (Apache Licence 2.0)
 
-## More Information
+For more in-depth information read the design_goals_of_ArangoDB
 
-Please check the installation manual for installation and compilation
+Latest Release - ArangoDB 2.6
+
+The What&#8217;s_new_in_ArangoDB_2.6 can be found in the documentation.
+New collection export HTTP REST API: ArangoDB now provides a dedicated
+collection export API, which can take snapshots of entire collections more
+efficiently than the general-purpose cursor API. The export API is useful to
+transfer the contents of an entire collection to a client application.
+Added batch document removal and lookup commands: The commands
+collection.lookupByKeys(keys) and collection.removeByKeys(keys) have been added
+for collection objects. These can be used to perform multi-document lookup and
+removal operations efficiently from the ArangoShell.
+Added AQL UPSERT command: This adds an UPSERT statement to AQL that is a
+combination of both INSERT and UPDATE / REPLACE. The UPSERT will search for a
+matching document using a user-provided example. If no document matches the
+example, the insert part of the UPSERT statement will be executed. If there is
+a match, the update / replace part will be carried out.
+We have simplified the return value syntax for data-modification AQL queries,
+added an alternative implementation for AQL COLLECT that uses a hash table for
+grouping and does not require its input elements to be sorted.
+Other optimizations and speedups in AQL relate to subqueries, return values and
+queries containing big IN lists for index lookups.
+Arangoimp can now optionally update or replace existing documents, provided the
+import data contains documents with _key attributes.
+Foxx Improvements
+Added Configuration and Dependencies so that manifests can now define
+configuration options, as well as dependencies on other Foxx apps. With the
+Mocha Test framework you can now write_tests_for_your_Foxx_apps. The API
+documentation has been updated to Swagger 2.
+
+More Information
+
+Please check the Installation_Manual for installation and compilation
 instructions.
+The User_Manual has an introductory chapter showing the basic operations of
+ArangoDB.
 
-## Stay in Contact
+Stay in Contact
 
-Please note that there will be bugs and we would really appreciate it if you
-report them:
+We really appreciate feature requests and bug reports. Please use our Github
+issue tracker for reporting them:
 https://github.com/arangodb/arangodb/issues
 You can use the Google group for improvements, feature requests, comments
 http://www.arangodb.com/community
