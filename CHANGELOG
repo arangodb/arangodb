@@ -73,7 +73,13 @@ v2.7.0 (XXXX-XX-XX)
 * updated chai to 3.0.
 
 
-v2.6.2 (XXXX-XX-XX)
+v2.6.3 (XXXX-XX-XX)
+-------------------
+
+* issue #1409: Document values with null character truncated
+
+
+v2.6.2 (2015-07-04)
 -------------------
 
 * fixed issue #1383: bindVars for HTTP API doesn't work with empty string
@@ -81,6 +87,8 @@ v2.6.2 (XXXX-XX-XX)
 * fixed handling of default values in Foxx manifest configurations
 
 * fixed handling of optional parameters in Foxx manifest configurations
+
+* fixed a reference error being thrown in Foxx queues when a function-based job type is used that is not available and no options object is passed to queue.push
 
 
 v2.6.1 (2015-06-24)
