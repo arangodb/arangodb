@@ -1632,6 +1632,47 @@ static void ExtractCidsFromPath (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Extracts all touched collections from ArangoDBPathFinder::Path
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExtractCidsFromPath (TRI_vocbase_t* vocbase,
+                                 ArangoDBConstDistancePathFinder::Path const& p,
+                                 vector<TRI_voc_cid_t>& result) {
+  unordered_set<TRI_voc_cid_t> found;
+  uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
+  uint32_t const en = static_cast<uint32_t>(p.edges.size());
+
+  for (uint32_t j = 0;  j < vn;  ++j) {
+    TRI_voc_cid_t cid = p.vertices[j].cid;
+    auto it = found.find(cid);
+
+    if (it == found.end()) {
+      // Not yet found. Insert it if it exists
+      if (TRI_LookupCollectionByIdVocBase(vocbase, cid) != nullptr) {
+        result.emplace_back(cid);
+        found.insert(cid);
+      }
+    }
+  }
+
+  for (uint32_t j = 0;  j < en;  ++j) {
+    TRI_voc_cid_t cid = p.edges[j].cid;
+    auto it = found.find(cid);
+
+    if (it == found.end()) {
+      // Not yet found. Insert it if it exists
+      if (TRI_LookupCollectionByIdVocBase(vocbase, cid) != nullptr) {
+        result.emplace_back(cid);
+        found.insert(cid);
+      }
+    }
+  }
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Request a ditch for the given collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1745,6 +1786,59 @@ static v8::Handle<v8::Value> PathIdsToV8 (v8::Isolate* isolate,
 
   return scope.Escape<v8::Value>(result);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms an ConstDistanceFinder::Path to v8 json values
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> PathIdsToV8 (v8::Isolate* isolate, 
+                                          TRI_vocbase_t* vocbase,
+                                          CollectionNameResolver const* resolver,
+                                          ArangoDBConstDistancePathFinder::Path const& p,
+                                          unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
+                                          bool& includeData) {
+  v8::EscapableHandleScope scope(isolate);
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
+  v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
+
+  uint32_t const en = static_cast<uint32_t>(p.edges.size());
+  v8::Handle<v8::Array> edges = v8::Array::New(isolate, static_cast<int>(en));
+
+  if (includeData) {
+    vector<TRI_voc_cid_t> readCollections;
+    ExtractCidsFromPath(vocbase, p, readCollections);
+    vector<TRI_voc_cid_t> writeCollections;
+    unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
+
+    std::unique_ptr<ExplicitTransaction> trx(BeginTransaction(vocbase, readCollections,
+                                                              writeCollections, resolver, ditches));
+    for (uint32_t j = 0;  j < vn;  ++j) {
+      vertices->Set(j, VertexIdToData(isolate, resolver, trx.get(), ditches, p.vertices[j]));
+    }
+    for (uint32_t j = 0;  j < en;  ++j) {
+      edges->Set(j, EdgeIdToData(isolate, resolver, trx.get(), ditches, p.edges[j]));
+    }
+    trx->finish(TRI_ERROR_NO_ERROR);
+  } 
+  else {
+    for (uint32_t j = 0;  j < vn;  ++j) {
+      vertices->Set(j, VertexIdToString(isolate, resolver, p.vertices[j]));
+    }
+    for (uint32_t j = 0;  j < en;  ++j) {
+      edges->Set(j, EdgeIdToString(isolate, resolver, p.edges[j]));
+    }
+  }
+
+  result->Set(TRI_V8_STRING("vertices"), vertices);
+  result->Set(TRI_V8_STRING("edges"), edges);
+  result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, p.weight));
+
+  return scope.Escape<v8::Value>(result);
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Extract collection names from v8 array.
@@ -2076,37 +2170,72 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_THROW_EXCEPTION(e);
   }
   
-  // Compute the path
-  unique_ptr<ArangoDBPathFinder::Path> path;
+  if (opts.useVertexFilter || opts.useEdgeFilter || opts.useWeight) {
+    // Compute the path
+    unique_ptr<ArangoDBPathFinder::Path> path;
 
-  try {
-    path = TRI_RunShortestPathSearch(
-      edgeCollectionInfos,
-      opts
-    );
-  } 
-  catch (int e) {
-    trx->finish(e);
-    TRI_V8_THROW_EXCEPTION(e);
-  }
+    try {
+      path = TRI_RunShortestPathSearch(
+        edgeCollectionInfos,
+        opts
+      );
+    } 
+    catch (int e) {
+      trx->finish(e);
+      TRI_V8_THROW_EXCEPTION(e);
+    }
 
-  // Lift the result to v8
-  if (path.get() == nullptr) {
-    v8::EscapableHandleScope scope(isolate);
+    // Lift the result to v8
+    if (path.get() == nullptr) {
+      v8::EscapableHandleScope scope(isolate);
+      trx->finish(res);
+      TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Null(isolate)));
+    }
+
     trx->finish(res);
-    TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Null(isolate)));
+    // must finish "old" transaction first before starting a new in PathIdsToV8
+    delete trx.release();
+
+    // Potential inconsistency here. Graph is outside a transaction in this very second.
+    // Adding additional locks on vertex collections at this point to the transaction
+    // would cause dead-locks.
+    // Will be fixed automatically with new MVCC version.
+    auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
+    TRI_V8_RETURN(result);
+  } else {
+    // No Data reading required for this path. Use shortcuts.
+    // Compute the path
+    unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
+
+    try {
+      path = TRI_RunSimpleShortestPathSearch(
+        edgeCollectionInfos,
+        opts
+      );
+    } 
+    catch (int e) {
+      trx->finish(e);
+      TRI_V8_THROW_EXCEPTION(e);
+    }
+
+    // Lift the result to v8
+    if (path.get() == nullptr) {
+      v8::EscapableHandleScope scope(isolate);
+      trx->finish(res);
+      TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Null(isolate)));
+    }
+
+    trx->finish(res);
+    // must finish "old" transaction first before starting a new in PathIdsToV8
+    delete trx.release();
+
+    // Potential inconsistency here. Graph is outside a transaction in this very second.
+    // Adding additional locks on vertex collections at this point to the transaction
+    // would cause dead-locks.
+    // Will be fixed automatically with new MVCC version.
+    auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
+    TRI_V8_RETURN(result);
   }
-
-  trx->finish(res);
-  // must finish "old" transaction first before starting a new in PathIdsToV8
-  delete trx.release();
-
-  // Potential inconsistency here. Graph is outside a transaction in this very second.
-  // Adding additional locks on vertex collections at this point to the transaction
-  // would cause dead-locks.
-  // Will be fixed automatically with new MVCC version.
-  auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
-  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 

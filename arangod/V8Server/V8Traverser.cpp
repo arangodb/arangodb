@@ -427,6 +427,77 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Wrapper for the shortest path computation
+////////////////////////////////////////////////////////////////////////////////
+
+std::unique_ptr<ArangoDBConstDistancePathFinder::Path> TRI_RunSimpleShortestPathSearch ( 
+    vector<EdgeCollectionInfo*>& collectionInfos,
+    ShortestPathOptions& opts) {
+
+  TRI_edge_direction_e forward;
+  TRI_edge_direction_e backward;
+
+  if (opts.direction == "outbound") {
+    forward = TRI_EDGE_OUT;
+    backward = TRI_EDGE_IN;
+  } 
+  else if (opts.direction == "inbound") {
+    forward = TRI_EDGE_IN;
+    backward = TRI_EDGE_OUT;
+  } 
+  else {
+    forward = TRI_EDGE_ANY;
+    backward = TRI_EDGE_ANY;
+  }
+
+  auto fwExpander = [&collectionInfos, forward] (VertexId& v, vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
+    equal_to<VertexId> eq;
+    for (auto edgeCollection : collectionInfos) { 
+      auto edges = edgeCollection->getEdges(forward, v); 
+      for (size_t j = 0;  j < edges.size(); ++j) {
+        EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
+        VertexId from = ExtractFromId(edges[j]);
+        if (! eq(from, v)) {
+          res_edges.push_back(edgeId);
+          neighbors.push_back(from);
+        } else {
+          VertexId to = ExtractToId(edges[j]);
+          if (! eq(to, v)) {
+            res_edges.push_back(edgeId);
+            neighbors.push_back(to);
+          }
+        }
+      }
+    }
+  };
+  auto bwExpander = [&collectionInfos, backward] (VertexId& v, vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
+    equal_to<VertexId> eq;
+    for (auto edgeCollection : collectionInfos) { 
+      auto edges = edgeCollection->getEdges(backward, v); 
+      for (size_t j = 0;  j < edges.size(); ++j) {
+        EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
+        VertexId from = ExtractFromId(edges[j]);
+        if (! eq(from, v)) {
+          res_edges.push_back(edgeId);
+          neighbors.push_back(from);
+        } else {
+          VertexId to = ExtractToId(edges[j]);
+          if (! eq(to, v)) {
+            res_edges.push_back(edgeId);
+            neighbors.push_back(to);
+          }
+        }
+      }
+    }
+  };
+
+  ArangoDBConstDistancePathFinder pathFinder(fwExpander, bwExpander);
+  std::unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
+  path.reset(pathFinder.search(opts.start, opts.end));
+  return path;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief search for distinct inbound neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
