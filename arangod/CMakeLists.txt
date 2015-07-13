@@ -67,6 +67,7 @@ add_executable(
     Aql/OptimizerRules.cpp
     Aql/Parser.cpp
     Aql/Query.cpp
+    Aql/QueryCache.cpp
     Aql/QueryList.cpp
     Aql/QueryRegistry.cpp
     Aql/RangeInfo.cpp
@@ -117,6 +118,7 @@ add_executable(
     RestHandler/RestExportHandler.cpp
     RestHandler/RestImportHandler.cpp
     RestHandler/RestPleaseUpgradeHandler.cpp
+    RestHandler/RestQueryCacheHandler.cpp
     RestHandler/RestQueryHandler.cpp
     RestHandler/RestReplicationHandler.cpp
     RestHandler/RestSimpleHandler.cpp

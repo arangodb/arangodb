@@ -284,7 +284,7 @@ static void JS_ProcessJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args)
       if (object->IsUndefined()) {
         if (error != nullptr) {
           string msg = error;
-          TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, error);
           TRI_V8_THROW_SYNTAX_ERROR(msg.c_str());
         }
         else {

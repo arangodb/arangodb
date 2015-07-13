@@ -40,6 +40,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/OptimizerRules.cpp \
 	arangod/Aql/Parser.cpp \
 	arangod/Aql/Query.cpp \
+	arangod/Aql/QueryCache.cpp \
 	arangod/Aql/QueryList.cpp \
 	arangod/Aql/QueryRegistry.cpp \
 	arangod/Aql/RangeInfo.cpp \
@@ -90,6 +91,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestExportHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestPleaseUpgradeHandler.cpp \
+	arangod/RestHandler/RestQueryCacheHandler.cpp \
 	arangod/RestHandler/RestQueryHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestSimpleHandler.cpp \

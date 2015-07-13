@@ -176,6 +176,10 @@ ArangoStatement.prototype.execute = function () {
     body.options = this._options;
   }
 
+  if (this._cache !== undefined) {
+    body.cache = this._cache;
+  }
+
   var requestResult = this._database._connection.POST(
     "/_api/cursor",
     JSON.stringify(body));

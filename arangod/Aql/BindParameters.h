@@ -58,7 +58,7 @@ namespace triagens {
 /// @brief create the parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-        BindParameters (TRI_json_t*);
+        explicit BindParameters (TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the parameters
@@ -80,6 +80,12 @@ namespace triagens {
           process();
           return _parameters;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a hash value for the bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t hash () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

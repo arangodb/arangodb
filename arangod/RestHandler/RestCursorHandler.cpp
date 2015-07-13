@@ -193,7 +193,7 @@ void RestCursorHandler::processQuery (TRI_json_t const* json) {
     if (n <= batchSize) {
       // result is smaller than batchSize and will be returned directly. no need to create a cursor
 
-      triagens::basics::Json result(triagens::basics::Json::Object, 6);
+      triagens::basics::Json result(triagens::basics::Json::Object, 7);
       result.set("result", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
       queryResult.json = nullptr;
 
@@ -203,6 +203,7 @@ void RestCursorHandler::processQuery (TRI_json_t const* json) {
         result.set("count", triagens::basics::Json(static_cast<double>(n)));
       }
     
+      result.set("cached", triagens::basics::Json(queryResult.cached));
       result.set("extra", extra);
       result.set("error", triagens::basics::Json(false));
       result.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
@@ -220,7 +221,7 @@ void RestCursorHandler::processQuery (TRI_json_t const* json) {
     
     // steal the query JSON, cursor will take over the ownership
     auto j = queryResult.json;
-    triagens::arango::JsonCursor* cursor = cursors->createFromJson(j, batchSize, extra.steal(), ttl, count); 
+    triagens::arango::JsonCursor* cursor = cursors->createFromJson(j, batchSize, extra.steal(), ttl, count, queryResult.cached); 
     queryResult.json = nullptr;
 
     try {
@@ -310,6 +311,11 @@ triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
   }
 
+  attribute = getAttribute("cache");
+  if (TRI_IsBooleanJson(attribute)) {
+    options.set("cache", triagens::basics::Json(attribute->_value._boolean));
+  }
+
   attribute = getAttribute("options");
 
   if (TRI_IsObjectJson(attribute)) {
@@ -327,6 +333,11 @@ triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) 
 
       if (strcmp(keyName, "count") != 0 && 
           strcmp(keyName, "batchSize") != 0) { 
+
+        if (strcmp(keyName, "cache") == 0 && options.has("cache")) {
+          continue;
+        }
+
         options.set(keyName, triagens::basics::Json(
           TRI_UNKNOWN_MEM_ZONE, 
           TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value),
@@ -407,9 +418,14 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   is useful to ensure garbage collection of cursors that are not fully fetched
 ///   by clients. If not set, a server-defined value will be used.
 ///
-/// - *bindVars*: key/value list of bind parameters (optional).
+/// - *cache*: optional boolean flag to determine whether the AQL query cache
+///   shall be used. If set to *false*, then any query cache lookup will be skipped
+///   for the query. If set to *true*, it will lead to the query cache being checked
+///   for the query if the query cache mode is either *on* or *demand*.
 ///
-/// - *options*: key/value list of extra options for the query (optional).
+/// - *bindVars*: key/value object with bind parameters (optional).
+///
+/// - *options*: key/value object with extra options for the query (optional).
 ///
 /// The following options are supported at the moment:
 ///
@@ -432,11 +448,15 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
 ///   with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
 ///
+/// - *profile*: if set to *true*, then the additional query profiling information
+///   will be returned in the *extra.stats* return attribute if the query result is not
+///   served from the query cache.
+///
 /// If the result set can be created by the server, the server will respond with
 /// *HTTP 201*. The body of the response will contain a JSON object with the
 /// result set.
 ///
-/// The returned JSON object has the following properties:
+/// The returned JSON object has the following attributes:
 ///
 /// - *error*: boolean flag to indicate that an error occurred (*false*
 ///   in this case)
@@ -453,10 +473,16 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// - *id*: id of temporary cursor created on the server (optional, see above)
 ///
-/// - *extra*: an optional JSON object with extra information about the query result.
-///   For data-modification queries, the *extra* attribute will contain the number
-///   of modified documents and the number of documents that could not be modified
+/// - *extra*: an optional JSON object with extra information about the query result
+///   contained in its *stats* sub-attribute. For data-modification queries, the 
+///   *extra.stats* sub-attribute will contain the number of modified documents and 
+///   the number of documents that could not be modified
 ///   due to an error (if *ignoreErrors* query option is specified)
+///
+/// - *cached*: a boolean flag indicating whether the query result was served 
+///   from the query cache or not. If the query result is served from the query
+///   cache, the *extra* return attribute will not contain any *stats* sub-attribute
+///   and no *profile* sub-attribute.
 ///
 /// If the JSON representation is malformed or the query specification is
 /// missing from the request, the server will respond with *HTTP 400*.
