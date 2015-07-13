@@ -96,6 +96,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['count'].should eq(2)
         doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['cached'].should eq(false)
       end
       
       it "creates a cursor single run, without count" do
@@ -111,6 +112,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['count'].should eq(nil)
         doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['cached'].should eq(false)
       end
 
       it "creates a cursor single run, large batch size" do
@@ -126,6 +128,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['count'].should eq(2)
         doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['cached'].should eq(false)
       end
 
       it "creates a cursor" do
@@ -142,6 +145,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['cached'].should eq(false)
 
         id = doc.parsed_response['id']
 
@@ -158,6 +162,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['cached'].should eq(false)
 
         cmd = api + "/#{id}"
         doc = ArangoDB.log_put("#{prefix}-create-for-limit-return-cont2", cmd)
@@ -170,6 +175,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
 
         cmd = api + "/#{id}"
         doc = ArangoDB.log_put("#{prefix}-create-for-limit-return-cont3", cmd)
@@ -195,6 +201,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['cached'].should eq(false)
 
         id = doc.parsed_response['id']
 
@@ -211,6 +218,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['cached'].should eq(false)
 
         cmd = api + "/#{id}"
         doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
@@ -237,6 +245,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['cached'].should eq(false)
 
         id = doc.parsed_response['id']
 
@@ -265,6 +274,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['cached'].should eq(false)
 
         id = doc.parsed_response['id']
 
@@ -315,6 +325,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
 
         sleep 1
         id = doc.parsed_response['id']
@@ -332,6 +343,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
 
         sleep 1
 
@@ -345,6 +357,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
 
         # after this, the cursor might expire eventually
         # the problem is that we cannot exactly determine the point in time
@@ -374,6 +387,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
 
         sleep 1
         id = doc.parsed_response['id']
@@ -391,6 +405,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
 
         sleep 1
 
@@ -404,6 +419,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
 
         sleep 5 # this should not delete the cursor on the server
         doc = ArangoDB.log_put("#{prefix}-create-ttl", cmd)
@@ -415,6 +431,7 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
       end
 
       it "creates a query that executes a v8 expression during query optimization" do
@@ -429,6 +446,7 @@ describe ArangoDB do
         doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
       end
 
       it "creates a query that executes a v8 expression during query execution" do
@@ -443,6 +461,7 @@ describe ArangoDB do
         doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['result'].length.should eq(10)
+        doc.parsed_response['cached'].should eq(false)
       end
       
       it "creates a query that executes a dynamic index expression during query execution" do
@@ -457,6 +476,7 @@ describe ArangoDB do
         doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['result'].length.should eq(10)
+        doc.parsed_response['cached'].should eq(false)
       end
       
       it "creates a query that executes a dynamic V8 index expression during query execution" do
@@ -471,7 +491,25 @@ describe ArangoDB do
         doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['result'].length.should eq(10)
+        doc.parsed_response['cached'].should eq(false)
       end
+
+      it "creates a cursor with different bind values" do
+        cmd = api
+        body = "{ \"query\" : \"RETURN @values\", \"bindVars\" : { \"values\" : [ null, false, true, -1, 2.5, 3e4, \"\", \" \", \"true\", \"foo bar baz\", [ 1, 2, 3, \"bar\" ], { \"foo\" : \"bar\", \"\" : \"baz\", \" bar-baz \" : \"foo-bar\" } ] } }"
+        doc = ArangoDB.log_post("#{prefix}-test-bind-values", cmd, :body => body)
+        
+        values = [ [ nil, false, true, -1, 2.5, 3e4, "", " ", "true", "foo bar baz", [ 1, 2, 3, "bar" ], { "foo" => "bar", "" => "baz", " bar-baz " => "foo-bar" } ] ]
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['result'].should eq(values)
+        doc.parsed_response['cached'].should eq(false)
+      end
+
     end
 
 ################################################################################
@@ -516,7 +554,7 @@ describe ArangoDB do
     end
 
 ################################################################################
-## floating points
+## floating point values
 ################################################################################
 
     context "fetching floating-point values:" do
@@ -564,6 +602,139 @@ describe ArangoDB do
         doc = ArangoDB.get("/_api/document/#{@cid}/small")
         doc.parsed_response['value'].should eq(4e-262)
       end
+    end
+
+################################################################################
+## query cache
+################################################################################
+
+    context "testing the query cache:" do
+      before do
+        doc = ArangoDB.get("/_api/query-cache/properties")
+        @mode = doc.parsed_response['mode']
+        ArangoDB.put("/_api/query-cache/properties", :body => "{ \"mode\" : \"demand\" }")
+
+        ArangoDB.delete("/_api/query-cache")
+      end
+
+      after do
+        ArangoDB.put("/_api/query-cache/properties", :body => "{ \"mode\" : \"#{@mode}\" }")
+      end
+
+      it "testing without cache attribute set" do
+        cmd = api
+        body = "{ \"query\" : \"FOR i IN 1..5 RETURN i\" }"
+        doc = ArangoDB.log_post("#{prefix}-query-cache-disabled", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(false)
+        doc.parsed_response['extra'].should have_key('stats')
+
+        # should see same result, but not from cache
+        doc = ArangoDB.log_post("#{prefix}-query-cache", cmd, :body => body)
+        doc.code.should eq(201)
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(false)
+        doc.parsed_response['extra'].should have_key('stats')
+      end
+
+      it "testing explicitly disable cache" do
+        cmd = api
+        body = "{ \"query\" : \"FOR i IN 1..5 RETURN i\", \"cache\" : false }"
+        doc = ArangoDB.log_post("#{prefix}-query-cache-disabled", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(false)
+        doc.parsed_response['extra'].should have_key('stats')
+
+        # should see same result, but not from cache
+        doc = ArangoDB.log_post("#{prefix}-query-cache", cmd, :body => body)
+        doc.code.should eq(201)
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(false)
+        doc.parsed_response['extra'].should have_key('stats')
+      end
+
+      it "testing enabled cache" do
+        cmd = api
+        body = "{ \"query\" : \"FOR i IN 1..5 RETURN i\", \"cache\" : true }"
+        doc = ArangoDB.log_post("#{prefix}-query-cache-enabled", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(false)
+        doc.parsed_response['extra'].should have_key('stats')
+
+        # should see same result, but now from cache
+        doc = ArangoDB.log_post("#{prefix}-query-cache", cmd, :body => body)
+        doc.code.should eq(201)
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(true)
+        doc.parsed_response['extra'].should_not have_key('stats')
+      end
+
+      it "testing clearing the cache" do
+        cmd = api
+        body = "{ \"query\" : \"FOR i IN 1..5 RETURN i\", \"cache\" : true }"
+        doc = ArangoDB.log_post("#{prefix}-query-cache-enabled", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(false)
+        doc.parsed_response['extra'].should have_key('stats')
+
+        # should see same result, but now from cache
+        doc = ArangoDB.log_post("#{prefix}-query-cache", cmd, :body => body)
+        doc.code.should eq(201)
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(true)
+        doc.parsed_response['extra'].should_not have_key('stats')
+
+        # now clear cache
+        ArangoDB.delete("/_api/query-cache")
+
+        # query again. now response should not come from cache
+        doc = ArangoDB.log_post("#{prefix}-query-cache", cmd, :body => body)
+        doc.code.should eq(201)
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(false)
+        doc.parsed_response['extra'].should have_key('stats')
+
+        doc = ArangoDB.log_post("#{prefix}-query-cache", cmd, :body => body)
+        doc.code.should eq(201)
+        result = doc.parsed_response['result']
+        result.should eq([ 1, 2, 3, 4, 5 ])
+        doc.parsed_response['cached'].should eq(true)
+        doc.parsed_response['extra'].should_not have_key('stats')
+      end
+
     end
 
   end

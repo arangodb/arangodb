@@ -65,6 +65,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         private:
+
+          Transaction () = delete;
           Transaction (Transaction const&) = delete;
           Transaction& operator= (Transaction const&) = delete;
 
@@ -182,6 +184,24 @@ namespace triagens {
 
           std::string const getErrorData () const {
             return _errorData;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the names of all collections used in the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+          std::vector<std::string> collectionNames () {
+            std::vector<std::string> result;
+
+            for (size_t i = 0; i < _trx->_collections._length; ++i) {
+              auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&_trx->_collections, i)); 
+
+              if (trxCollection->_collection != nullptr) {
+                result.emplace_back(trxCollection->_collection->_name);
+              }
+            }
+
+            return result;  
           }
 
 ////////////////////////////////////////////////////////////////////////////////

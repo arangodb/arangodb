@@ -633,15 +633,14 @@ static uint64_t FastHashJsonRecursive (uint64_t hash,
     case TRI_JSON_OBJECT: {
       hash = fasthash64(static_cast<const void*>("object"), 6, hash);
       size_t const n = TRI_LengthVector(&object->_value._objects);
-      uint64_t tmphash = hash;
       for (size_t i = 0;  i < n;  i += 2) {
         auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
         TRI_ASSERT(TRI_IsStringJson(subjson));
-        tmphash ^= FastHashJsonRecursive(hash, subjson);
+        hash = FastHashJsonRecursive(hash, subjson);
         subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i + 1));
-        tmphash ^= FastHashJsonRecursive(hash, subjson);
+        hash = FastHashJsonRecursive(hash, subjson);
       }
-      return tmphash;
+      return hash;
     }
 
     case TRI_JSON_ARRAY: {
