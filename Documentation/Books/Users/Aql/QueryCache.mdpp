@@ -1,4 +1,4 @@
-!CHAPTER The AQL query cache
+!CHAPTER The AQL query result cache
 
 AQL provides an optional query result cache.
 
