@@ -4,13 +4,13 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "1551425024", 
+  "id" : "1552667450", 
   "name" : "products", 
   "isSystem" : false, 
   "status" : 3, 
   "type" : 2, 
-  "checksum" : 3950883394, 
-  "revision" : "1551752704", 
+  "checksum" : 41250671, 
+  "revision" : "1552995130", 
   "error" : false, 
   "code" : 200 
 }

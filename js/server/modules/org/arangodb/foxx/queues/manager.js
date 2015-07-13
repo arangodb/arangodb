@@ -76,7 +76,7 @@ var runInDatabase = function () {
         }
 
         jobs.forEach(function (job) {
-          db._jobs.update(job, {status: 'progress'});
+          db._jobs.update(job._key, {status: 'progress'});
           tasks.register({
             command: function (cfg) {
               var db = require('org/arangodb').db;

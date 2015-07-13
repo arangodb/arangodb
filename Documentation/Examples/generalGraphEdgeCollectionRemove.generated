@@ -3,7 +3,7 @@ arangosh> var graph = examples.loadGraph("social");
 arangosh> graph.relation.save("female/alice", "female/diana", {_key: "aliceAndDiana"});
 { 
   "_id" : "relation/aliceAndDiana", 
-  "_rev" : "672128512", 
+  "_rev" : "672846650", 
   "_key" : "aliceAndDiana" 
 }
 arangosh> db._exists("relation/aliceAndDiana")

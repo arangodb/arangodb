@@ -7,6 +7,8 @@ ArangoDB
 2.3: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.3)](http://travis-ci.org/arangodb/arangodb)
 2.4: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.4)](http://travis-ci.org/arangodb/arangodb)
 2.5: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.5)](http://travis-ci.org/arangodb/arangodb)
+2.6: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.6)](http://travis-ci.org/arangodb/arangodb)
+
 Master: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=master)](http://travis-ci.org/arangodb/arangodb)
 
 ArangoDB is a multi-model, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally with a few mouse clicks.
@@ -56,32 +58,10 @@ Other features of ArangoDB include:
 For more in-depth information read the [design goals of ArangoDB](http://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
 
 
-Latest Release - ArangoDB 2.5
------------------
-
-The full [changelog](https://docs.arangodb.com/) can be found in the documentation.
-
-**Sparse Indexes**: In ArangoDB 2.5, hash and skiplist indexes can optionally be made sparse. Here is a [performance comparison](https://www.arangodb.com/2015/02/24/sparse-indexes-in-arangodb) that shows how you can benefit from great savings in memory and index creation CPU time declaring indexes as sparse.
-
-We’ve added some small but useful **AQL language improvements** plus several **AQL optimizer improvements**.
-
-**Object attribute names** in ArangoDB 2.5 can be specified using static string literals, bind parameters, and dynamic expressions.
-
-Function **RANDOM_TOKEN(length)**: produces a pseudo-random string of the specified length. Such strings can be used for id or token generation.
-
-One example implementation is the [API-Key management](https://www.arangodb.com/2015/03/05/using-api-keys) that restricts access to certain routes of an API. You can use this custom Foxx library to start charging your valuable data right away.
- 
-**Streamlined development process**: ArangoDB 2.5 improves the development process of data-centric microservices with the Foxx framework.
-
-Installing an app is now as easy as it should be:
-* install: get your Foxx app up and running
-* uninstall: shut it down and erase it from disk
-
-Developers can enable the new *development mode* per app. The development mode makes app code changes live instantly, without the need to re-deploy. Additionally, it provides fine-grained debugging information.
-
-
 More Information
 ----------------
+
+Read more about ArangoDB 2.6 in the changelog or in our [What's new in Version 2.6](https://docs.arangodb.com/NewFeatures/NewFeatures26.html) article in the online documentation.
 
 Please check the [Installation Manual](https://docs.arangodb.com/Installing/) for installation and compilation instructions.
 

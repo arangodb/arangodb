@@ -41,11 +41,9 @@
 
     function makeApi(sinon) {
         function testCase(tests, prefix) {
-            /*jsl:ignore*/
             if (!tests || typeof tests != "object") {
                 throw new TypeError("sinon.testCase needs an object with test functions");
             }
-            /*jsl:end*/
 
             prefix = prefix || "test";
             var rPrefix = new RegExp("^" + prefix);
@@ -54,12 +52,8 @@
             var tearDown = tests.tearDown;
 
             for (testName in tests) {
-                if (tests.hasOwnProperty(testName)) {
+                if (tests.hasOwnProperty(testName) && !/^(setUp|tearDown)$/.test(testName)) {
                     property = tests[testName];
-
-                    if (/^(setUp|tearDown)$/.test(testName)) {
-                        continue;
-                    }
 
                     if (typeof property == "function" && rPrefix.test(testName)) {
                         method = property;
