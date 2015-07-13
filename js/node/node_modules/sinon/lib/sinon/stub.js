@@ -49,7 +49,7 @@
 
             if (typeof property === "undefined" && typeof object == "object") {
                 for (var prop in object) {
-                    if (typeof object[prop] === "function") {
+                    if (typeof sinon.getPropertyDescriptor(object, prop).value === "function") {
                         stub(object, prop);
                     }
                 }

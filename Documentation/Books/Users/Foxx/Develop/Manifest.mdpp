@@ -4,7 +4,6 @@ In the **manifest.json** you define the components of your application.
 The content is a JSON object with the following attributes (not all
 attributes are required though):
 
-* **assets**: Deliver preprocessed files
 * **author**: The author name
 * **configuration**: Define your app's configuration parameters.
 * **contributors**: An array containing objects, each represents a contributor (with **name** and optional **email**)
@@ -59,15 +58,6 @@ A more complete example for a Manifest file:
 
   "files": {
     "/images": "images"
-  },
-
-  "assets": {
-    "application.js": {
-      "files": [
-        "vendor/jquery.js",
-        "assets/javascripts/*"
-      ]
-    }
   },
 
   "scripts": {
@@ -233,49 +223,5 @@ text files as well as binaries:
 ```js
 "files": {
   "/images": "images"
-}
-```
-
-!SUBSECTION The assets
-
-The value for the asset key is an object consisting of paths that are matched
-to the files they are composed of. Let's take the following example:
-
-```js
-"assets": {
-  "application.js": {
-    "files": [
-      "vendor/jquery.js",
-      "assets/javascripts/*"
-    ]
-  }
-}
-```
-
-If a request is made to **/application.js** (in development mode), the file
-array provided will be processed one element at a time. The elements are
-paths to files (with the option to use wildcards). The files will be
-concatenated and delivered as a single file.
-
-The content-type (or mime type) of the HTTP response when requesting
-**application.js** is automatically determined by looking at the filename
-extension in the asset name (**application.js** in the above example).
-If the asset does not have a filename extension, the content-type is
-determined by looking at the filename extension of the first file in the
-**files** list. If no file extension can be determined, the asset will be
-delivered with a content-type of **text/plain**.
-
-It is possible to explicitly override the content-type for an asset by
-setting the optional **contentType** attribute of an asset as follows:
-
-```js
-"assets": {
-  "myincludes": {
-    "files": [
-      "vendor/jquery.js",
-      "assets/javascripts/*"
-    ],
-    "contentType": "text/javascript"
-  }
 }
 ```

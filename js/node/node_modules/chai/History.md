@@ -1,3 +1,10 @@
+### Note
+
+As of 3.0.0, the History.md file has been deprecated. [Please refer to the full
+commit logs available on GitHub](https://github.com/chaijs/chai/commits/master).
+
+---
+
 2.3.0 / 2015-04-26
 ==================
 

@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include <iostream>
 
 #include <v8.h>
 #include <libplatform/libplatform.h>

@@ -888,6 +888,17 @@ static int CloseDroppedDatabases (TRI_server_t* server) {
         // clear to avoid potential double freeing
         server->_droppedDatabases._buffer[i] = nullptr;
       }
+      else if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+        TRI_DestroyInitialVocBase(vocbase);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+        // clear to avoid potential double freeing
+        server->_droppedDatabases._buffer[i] = nullptr;
+      }
+      else {
+        LOG_ERROR("unknown database type %d %s - close doing nothing.",
+                  vocbase->_type,
+                  vocbase->_name);
+      }
     }
   }
 
@@ -2210,7 +2221,11 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
   {
     DatabaseWriteLocker locker(&server->_databasesLock);
-    TRI_InsertKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name, vocbase, false);
+
+    if (TRI_InsertKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name, vocbase, false) != nullptr) {
+      // this shouldn't happen, since we will leak and not replace the new database.
+      LOG_ERROR("Replacing existing database by name %s", vocbase->_name);
+    }
   }
 
   TRI_UnlockMutex(&server->_createLock);

@@ -27,6 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "Aql/ExecutionPlan.h"
 #include "Aql/AggregationOptions.h"
 #include "Aql/Ast.h"

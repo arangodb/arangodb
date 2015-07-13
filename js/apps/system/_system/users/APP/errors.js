@@ -1,21 +1,21 @@
-(function () {
-  'use strict';
-  function UserNotFound(uid) {
-    this.message = 'User with user id ' + uid + ' not found.';
-    var err = new Error(this.message);
-    err.name = this.constructor.name;
-    this.stack = err.stack;
+'use strict';
+class UserNotFound extends Error {
+  constructor(uid) {
+    super();
+    this.name = this.constructor.name;
+    this.message = `User with user id ${uid} not found.`;
+    Error.captureStackTrace(this, this.constructor);
   }
-  UserNotFound.prototype = new Error();
+}
 
-  function UsernameNotAvailable(username) {
-    this.message = 'The username ' + username + ' is not available or already taken.';
-    var err = new Error(this.message);
-    err.name = this.constructor.name;
-    this.stack = err.stack;
+class UsernameNotAvailable extends Error {
+  constructor(username) {
+    super();
+    this.name = this.constructor.name;
+    this.message = `The username ${username} is not available or already taken.`;
+    Error.captureStackTrace(this, this.constructor);
   }
-  UsernameNotAvailable.prototype = new Error();
+}
 
-  exports.UserNotFound = UserNotFound;
-  exports.UsernameNotAvailable = UsernameNotAvailable;
-}());
+exports.UserNotFound = UserNotFound;
+exports.UsernameNotAvailable = UsernameNotAvailable;

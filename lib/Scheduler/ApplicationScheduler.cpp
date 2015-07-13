@@ -30,6 +30,7 @@
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #endif
+#include <iostream>
 
 #include "ApplicationScheduler.h"
 

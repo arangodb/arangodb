@@ -20,7 +20,7 @@ exports.test = require('./test');
  * type utility
  */
 
-exports.type = require('./type');
+exports.type = require('type-detect');
 
 /*!
  * message utility

@@ -857,7 +857,8 @@ function GeneralGraphAQLQueriesSuite() {
       assertEqual(bindVars.graphName, graphName);
       assertEqual(bindVars.options_0, {
         direction: "outbound",
-        edgeExamples: [{}]
+        edgeExamples: [{}],
+        includeData: true
       });
       var result = query.toArray();
       assertEqual(result.length, 1);
@@ -974,16 +975,16 @@ function ChainedFluentAQLResultsSuite() {
   var pTypeElec = "Electro";
   var pTypeCloth = "Cloth";
 
-    var ud1 = 2000;
-    var ud2 = 2001;
-    var ud3 = 2002;
-    var ud4 = 2003;
+  var ud1 = 2000;
+  var ud2 = 2001;
+  var ud3 = 2002;
+  var ud4 = 2003;
 
-    var d1 = 2004;
-    var d2 = 2005;
-    var d3 = 2006;
-    var d4 = 2007;
-    var d5 = 2008;
+  var d1 = 2004;
+  var d2 = 2005;
+  var d3 = 2006;
+  var d4 = 2007;
+  var d5 = 2008;
 
   var g;
 
@@ -1131,9 +1132,6 @@ function ChainedFluentAQLResultsSuite() {
       + "@graphName,";
     if(vDepth > -1) {
       q += type + "_" + vDepth;
-      if (type === "neighbors") {
-        q += ".vertex";
-      }
       q += ",";
     } else {
       q += "{},";
@@ -1291,7 +1289,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, plainEdgesQueryStmt(0));
       assertEqual(query.bindVars.options_0, {
         direction: "outbound",
-        edgeExamples: [{}]
+        edgeExamples: [{}],
+        includeData: true
       });
     },
 
@@ -1309,7 +1308,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, plainEdgesQueryStmt(0));
       assertEqual(query.bindVars.options_0, {
         direction: "outbound",
-        edgeExamples: [{_id: a_id}]
+        edgeExamples: [{_id: a_id}],
+        includeData: true
       });
     },
 
@@ -1331,7 +1331,8 @@ function ChainedFluentAQLResultsSuite() {
         edgeExamples: [
           {_id: a_id},
           {_id: b_id}
-        ]
+        ],
+        includeData: true
       });
     },
 
@@ -1354,7 +1355,8 @@ function ChainedFluentAQLResultsSuite() {
         direction: "outbound",
         edgeExamples: [
           {date: d2}
-        ]
+        ],
+        includeData: true
       });
     },
 
@@ -1379,7 +1381,8 @@ function ChainedFluentAQLResultsSuite() {
         edgeExamples: [
           {since: ud3},
           {date: d3}
-        ]
+        ],
+        includeData: true
       });
     },
 
@@ -1411,7 +1414,8 @@ function ChainedFluentAQLResultsSuite() {
           {date: d5},
           {_id: b_id},
           {since: ud1}
-        ]
+        ],
+        includeData: true
       });
     },
 
@@ -1441,7 +1445,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
       assertEqual(query.bindVars.options_1, {
         direction: "any",
-        edgeExamples: [{}]
+        edgeExamples: [{}],
+        includeData: true
       });
     },
 
@@ -1491,7 +1496,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
       assertEqual(query.bindVars.options_1, {
         direction: "inbound",
-        edgeExamples: [{}]
+        edgeExamples: [{}],
+        includeData: true
       });
     },
 
@@ -1515,7 +1521,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
       assertEqual(query.bindVars.options_1, {
         direction: "outbound",
-        edgeExamples: [{}]
+        edgeExamples: [{}],
+        includeData: true
       });
     },
 
@@ -1538,7 +1545,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {
         direction: "outbound",
-        edgeExamples: [{since: ud1}]
+        edgeExamples: [{since: ud1}],
+        includeData: true
       });
       assertEqual(query.bindVars.options_1, {});
     },
@@ -1563,7 +1571,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {
         direction: "outbound",
-        edgeExamples: [{since: ud1}]
+        edgeExamples: [{since: ud1}],
+        includeData: true
       });
       assertEqual(query.bindVars.options_1, {});
     },
@@ -1586,7 +1595,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {
         direction: "outbound",
-        edgeExamples: [{since: ud1}]
+        edgeExamples: [{since: ud1}],
+        includeData: true
       });
       assertEqual(query.bindVars.options_1, {});
     },
@@ -1615,7 +1625,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
       assertEqual(query.bindVars.options_1, {
         direction: "outbound",
-        edgeExamples: [{}]
+        edgeExamples: [{}],
+        includeData: true
       });
       assertEqual(query.bindVars.options_2, {});
     },
@@ -1654,7 +1665,8 @@ function ChainedFluentAQLResultsSuite() {
         edgeExamples: [
           {since: ud1},
           {date: d1}
-        ]
+        ],
+        includeData: true
       });
       assertEqual(query.bindVars.options_2, {});
     },
@@ -1682,7 +1694,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {});
       assertEqual(query.bindVars.options_1, {
-        neighborExamples: {}
+        neighborExamples: {},
+        includeData: true
       });
     },
 
@@ -1715,7 +1728,8 @@ function ChainedFluentAQLResultsSuite() {
           name: ubName
         },{
           name: p1Name
-        }]
+        }],
+        includeData: true
       });
     },
 
@@ -1745,11 +1759,13 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {});
       assertEqual(query.bindVars.options_1, {
-        neighborExamples: {}
+        neighborExamples: {},
+        includeData: true
       });
       assertEqual(query.bindVars.options_2, {
         direction: "outbound",
-        edgeExamples: [{}]
+        edgeExamples: [{}],
+        includeData: true
       });
     },
 
@@ -1823,9 +1839,9 @@ function EdgesAndVerticesSuite() {
   var vc3 = "unitTestVertexCollection3";
   var vc4 = "unitTestVertexCollection4";
 
+  var ids = {};
 
   var fillCollections = function() {
-    var ids = {};
     var vertex = g[vc1].save({first_name: "Tam"});
     ids.vId11 = vertex._id;
     vertex = g[vc1].save({first_name: "Tem"});
@@ -1880,7 +1896,7 @@ function EdgesAndVerticesSuite() {
 
     setUp : function() {
       try {
-        arangodb.db._collection("_graphs").remove(unitTestGraphName);
+        graph._drop(unitTestGraphName, true);
       } catch (ignore) {
       }
       g = graph._create(
@@ -1902,7 +1918,7 @@ function EdgesAndVerticesSuite() {
     test_connectingEdges : function () {
       fillCollections();
       var res = g._getConnectingEdges({first_name: "Tam"}, {first_name: "Tem"}, {});
-      assertTrue(res.length === 3);
+      assertEqual(res.length, 3);
     },
 
     test_connectingEdgesWithEdgeCollectionRestriction : function () {
@@ -2480,27 +2496,29 @@ function GeneralGraphCommonNeighborsSuite() {
 
 
     testNeighborsAnyV3: function () {
-      actual = testGraph._neighbors(v3);
+      actual = testGraph._neighbors(v3).sort();
       assertTrue(actual[0]._id, v2);
       assertTrue(actual[1]._id, v5);
-      assertTrue(actual[2]._id, v8);
-      assertTrue(actual[3]._id, v5);
-      assertTrue(actual[4]._id, v7);
+      assertTrue(actual[2]._id, v7);
+      assertTrue(actual[3]._id, v8);
     },
 
     testNeighborsAnyV6: function () {
-      actual = testGraph._neighbors(v6);
+      actual = testGraph._neighbors(v6).sort();
       assertTrue(actual[0]._id, v2);
       assertTrue(actual[1]._id, v7);
-
-
     },
 
 
     testCommonNeighborsAny: function () {
       actual = testGraph._commonNeighbors(v3 , v6);
-      assertEqual(actual[0][v3][v6][0]._id  , v2);
-      assertEqual(actual[0][v3][v6][1]._id  , v7);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].left, v3);
+      assertEqual(actual[0].right, v6);
+      assertEqual(actual[0].neighbors.length, 2);
+      actual[0].neighbors.sort();
+      assertEqual(actual[0].neighbors[0], v2);
+      assertEqual(actual[0].neighbors[1], v7);
       actual = testGraph._countCommonNeighbors(v3 , v6);
       assertEqual(actual[0][v3][0][v6] , 2);
     },
@@ -2510,10 +2528,10 @@ function GeneralGraphCommonNeighborsSuite() {
 
     testCommonNeighborsIn: function () {
       actual = testGraph._commonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
-      assertEqual(actual.length, 5 );
+      assertEqual(actual.length, 8);
 
       actual = testGraph._countCommonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
-      assertEqual(actual.length, 5 );
+      assertEqual(actual.length, 5);
 
     },
 
@@ -2528,27 +2546,77 @@ function GeneralGraphCommonNeighborsSuite() {
         {direction: 'outbound', minDepth: 1, maxDepth: 3},
         {direction: 'outbound', minDepth: 1, maxDepth: 3}
       );
-      assertEqual(Object.keys(actual[1])[0], v2);
-      assertEqual(Object.keys(actual[1][Object.keys(actual[1])[0]]), [v8, v3]);
 
-      assertEqual(actual[1][Object.keys(actual[1])[0]][v8].length, 3);
-      assertEqual(actual[1][Object.keys(actual[1])[0]][v3].length, 4);
+      actual.sort(function(a ,b) {
+        if (a.left < b.left) {
+          return -1;
+        }
+        if (b.left < a.left) {
+          return 1;
+        }
+        if (a.right < b.right) {
+          return -1;
+        }
+        if (b.right < a.right) {
+          return 1;
+        }
+        return 0;
+      });
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].left, v1);
+      assertEqual(actual[0].right, v3);
+      assertEqual(actual[0].neighbors.length, 4);
 
-      assertEqual(Object.keys(actual[0])[0], v1);
-      assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]), [v8, v3]);
+      assertEqual(actual[1].left, v1);
+      assertEqual(actual[1].right, v8);
+      assertEqual(actual[1].neighbors.length, 3);
 
-      assertEqual(actual[0][Object.keys(actual[0])[0]][v3].length, 4);
-      assertEqual(actual[0][Object.keys(actual[0])[0]][v8].length, 3);
+      assertEqual(actual[2].left, v2);
+      assertEqual(actual[2].right, v3);
+      assertEqual(actual[2].neighbors.length, 4);
+
+      assertEqual(actual[3].left, v2);
+      assertEqual(actual[3].right, v8);
+      assertEqual(actual[3].neighbors.length, 3);
 
       actual = testGraph._countCommonNeighbors(
         {hugo: true }, {heinz: 1},
         {direction: 'outbound', minDepth: 1, maxDepth: 3},
         {direction: 'outbound', minDepth: 1, maxDepth: 3}
       );
-      assertEqual(actual[0][v1][0][v8], 3);
-      assertEqual(actual[0][v1][1][v3], 4);
-      assertEqual(actual[1][v2][0][v8], 3);
-      assertEqual(actual[1][v2][1][v3], 4);
+      if (actual[0].hasOwnProperty(v1)) {
+        if (actual[0][v1][0].hasOwnProperty(v8)) {
+          assertEqual(actual[0][v1][0][v8], 3);
+          assertEqual(actual[0][v1][1][v3], 4);
+        } else {
+          assertEqual(actual[0][v1][0][v3], 4);
+          assertEqual(actual[0][v1][1][v8], 3);
+        }
+
+        if(actual[1][v2][0].hasOwnProperty(v8)) {
+          assertEqual(actual[1][v2][0][v8], 3);
+          assertEqual(actual[1][v2][1][v3], 4);
+        } else {
+          assertEqual(actual[1][v2][0][v3], 4);
+          assertEqual(actual[1][v2][1][v8], 3);
+        }
+      } else {
+        if(actual[0][v2][0].hasOwnProperty(v8)) {
+          assertEqual(actual[0][v2][0][v8], 3);
+          assertEqual(actual[0][v2][1][v3], 4);
+        } else {
+          assertEqual(actual[0][v2][0][v3], 4);
+          assertEqual(actual[0][v2][1][v8], 3);
+        }
+
+        if (actual[1][v1][0].hasOwnProperty(v8)) {
+          assertEqual(actual[1][v1][0][v8], 3);
+          assertEqual(actual[1][v1][1][v3], 4);
+        } else {
+          assertEqual(actual[1][v1][0][v3], 4);
+          assertEqual(actual[1][v1][1][v8], 3);
+        }
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2932,14 +3000,14 @@ function MeasurementsSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
 jsunity.run(GeneralGraphCommonNeighborsSuite);
 jsunity.run(GeneralGraphAQLQueriesSuite);
+/*
 jsunity.run(EdgesAndVerticesSuite);
+*/
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
 jsunity.run(OrphanCollectionSuite);
-*/
 jsunity.run(MeasurementsSuite);
 
 return jsunity.done();

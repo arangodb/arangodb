@@ -407,6 +407,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
     ex = [ex];
   }
   this.options.edgeExamples = ex;
+  this.options.includeData = true;
   this.bindVars["options_" + this.stack.length] = this.options;
   var stmt = new AQLStatement(query, "edge");
   this.stack.push(stmt);
@@ -967,13 +968,21 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
     opts = {};
   }
   opts.neighborExamples = ex;
+  opts.includeData = true;
   this.bindVars["options_" + this.stack.length] = opts;
   var stmt = new AQLStatement(query, "neighbor");
   this.stack.push(stmt);
+
+  this.lastVar = resultName;
+  this._path.push(resultName);
+  this._pathVertices.push(resultName);
+
+  /*
   this.lastVar = resultName + ".vertex";
   this._path.push(resultName + ".path");
   this._pathVertices.push("SLICE(" + resultName + ".path.vertices, 1)");
   this._pathEdges.push(resultName + ".path.edges");
+  */
   return this;
 };
 
@@ -3029,7 +3038,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
     + ',@ex2'
     + ',@options1'
     + ',@options2'
-    + ')  SORT  ATTRIBUTES(e)[0] RETURN e';
+    + ') RETURN e';
   optionsVertex1 = optionsVertex1 || {};
   optionsVertex2 = optionsVertex2 || {};
   var bindVars = {
@@ -3086,8 +3095,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
     + ',@ex2'
     + ',@options1'
     + ',@options2'
-    + ') FOR a in ATTRIBUTES(e) FOR b in ATTRIBUTES(e[a]) '
-    + 'SORT ATTRIBUTES(e)[0] RETURN [a, b, LENGTH(e[a][b]) ]';
+    + ') RETURN [e.left, e.right, LENGTH(e.neighbors)]';
   optionsVertex1 = optionsVertex1 || {};
   optionsVertex2 = optionsVertex2 || {};
   var bindVars = {
@@ -4647,11 +4655,10 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 
 Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, options) {
 
-  if (!options) {
-    options = {};
-  }
+  options = options || {};
 
   var opts = {
+    includeData: true
   };
 
   if (options.vertex1CollectionRestriction) {
@@ -4679,7 +4686,6 @@ Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, o
     + ',@vertexExample'
     + ',@options'
     + ')';
-  options = options || {};
   var bindVars = {
     "graphName": this.__name,
     "vertexExample": vertexExample1,

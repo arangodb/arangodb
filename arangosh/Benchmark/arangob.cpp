@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include <iostream>
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Mutex.h"
