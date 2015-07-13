@@ -298,6 +298,10 @@ SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
     ((ev_async**) _wakers)[i] = w;
   }
 
+  _watchers.reserve(256);
+  _frees.reserve(256);
+  _types.reserve(256);
+
   // watcher 0 is undefined
   _watchers.push_back(0);
 }
@@ -651,14 +655,13 @@ void SchedulerLibev::rearmTimer (EventToken token, double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* SchedulerLibev::lookupWatcher (EventToken token) {
+  void* watcher = nullptr;
+
   SCHEDULER_LOCK(&_watcherLock);
 
-  if (token >= (EventToken) _watchers.size()) {
-    SCHEDULER_UNLOCK(&_watcherLock);
-    return nullptr;
+  if (token < (EventToken) _watchers.size()) {
+    watcher = _watchers[token];
   }
-
-  void* watcher = _watchers[token];
 
   SCHEDULER_UNLOCK(&_watcherLock);
   return watcher;
@@ -669,15 +672,14 @@ void* SchedulerLibev::lookupWatcher (EventToken token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* SchedulerLibev::lookupWatcher (EventToken token, EventType& type) {
+  void* watcher = nullptr;
+
   SCHEDULER_LOCK(&_watcherLock);
 
-  if (token >= (EventToken) _watchers.size()) {
-    SCHEDULER_UNLOCK(&_watcherLock);
-    return nullptr;
+  if (token < (EventToken) _watchers.size()) {
+    type = _types[token];
+    watcher = _watchers[token];
   }
-
-  type = _types[token];
-  void* watcher = _watchers[token];
 
   SCHEDULER_UNLOCK(&_watcherLock);
   return watcher;
@@ -700,13 +702,13 @@ void* SchedulerLibev::lookupLoop (EventLoop loop) {
 ////////////////////////////////////////////////////////////////////////////////
 
 EventToken SchedulerLibev::registerWatcher (void* watcher, EventType type) {
-  SCHEDULER_LOCK(&_watcherLock);
-
   EventToken token;
+
+  SCHEDULER_LOCK(&_watcherLock);
 
   if (_frees.empty()) {
     token = (EventToken) _watchers.size();
-    _watchers.push_back(watcher);
+    _watchers.emplace_back(watcher);
   }
   else {
     token = (EventToken) _frees.back();
@@ -727,7 +729,7 @@ EventToken SchedulerLibev::registerWatcher (void* watcher, EventType type) {
 void SchedulerLibev::unregisterWatcher (EventToken token) {
   SCHEDULER_LOCK(&_watcherLock);
 
-  _frees.push_back(token);
+  _frees.emplace_back(token);
   _watchers[token] = nullptr;
 
   SCHEDULER_UNLOCK(&_watcherLock);
