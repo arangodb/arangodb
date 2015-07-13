@@ -61,12 +61,12 @@ Foxx applications are also organized in database-specific directories inside the
 ```
 apps/                   # the instance's application directory
   system/               # system applications (can be ignored)
-  databases/            # sub-directory containing database-specific applications
+  _db/                  # sub-directory containing database-specific applications
     <database-name>/    # sub-directory for a single database
-      <app-name>        # sub-directory for a single application
-      <app-name>        # sub-directory for a single application
+      <mountpoint>/APP  # sub-directory for a single application
+      <mountpoint>/APP  # sub-directory for a single application
     <database-name>/    # sub-directory for another database
-      <app-name>        # sub-directory for a single application
+      <mountpoint>/APP  # sub-directory for a single application
 ```
 
 !SUBSECTION Document
