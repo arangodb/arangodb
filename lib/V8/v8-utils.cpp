@@ -473,6 +473,7 @@ static void JS_Parse (const v8::FunctionCallbackInfo<v8::Value>& args) {
     if (tryCatch.CanContinue()) {
       string err = TRI_StringifyV8Exception(isolate, &tryCatch);
 
+      tryCatch.ReThrow();
       TRI_V8_THROW_SYNTAX_ERROR(err.c_str());
     }
     else {
