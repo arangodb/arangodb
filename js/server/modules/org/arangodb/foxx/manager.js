@@ -735,7 +735,7 @@ var buildGithubUrl = function (appInfo) {
 
 var installAppFromRemote = function(url, targetPath) {
   var tempFile = fs.getTempFile("downloads", false);
-  var auth = undefined;
+  var auth;
 
   var urlObj = parseUrl(url);
   if (urlObj.auth) {
