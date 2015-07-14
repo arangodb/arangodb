@@ -988,7 +988,7 @@ function performTests(options, testList, testname, remote) {
 
   if (testList.length === 0) {
     print("Testsuite is empty!");
-    return {};
+    return {"EMPTY TESTSUITE": {status: false, message: "no testsuites found!"}};
   }
 
   for (i = 0; i < testList.length; i++) {

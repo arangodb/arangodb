@@ -138,7 +138,7 @@ exports.genRandomAlphaNumbers = function (value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Generates a string containing numbers and characters (length 8).
+/// @brief Generates a string of a given length containing ASCII characters.
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.genRandomSalt = function (value) {
