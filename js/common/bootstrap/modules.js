@@ -1346,7 +1346,7 @@ function require (path) {
     }
 
     // test for parse errors first and fail early if a parse error detected
-    if (!internal.parse(content)) {
+    if (!internal.parse(content, filename)) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_SYNTAX_ERROR.code,
         errorMessage: internal.errors.ERROR_MODULE_SYNTAX_ERROR.message
