@@ -180,7 +180,7 @@ static bool LoadJavaScriptFile (v8::Isolate* isolate,
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
 
   if (content == nullptr) {
-    LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_last_error());
+    LOG_ERROR("cannot load java script file '%s': %s", filename, TRI_last_error());
     return false;
   }
 
@@ -200,7 +200,7 @@ static bool LoadJavaScriptFile (v8::Isolate* isolate,
   }
 
   if (content == nullptr) {
-    LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    LOG_ERROR("cannot load java script file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
     return false;
   }
 
@@ -209,10 +209,18 @@ static bool LoadJavaScriptFile (v8::Isolate* isolate,
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
+  v8::TryCatch tryCatch;
+
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
+
+  if (tryCatch.HasCaught()) {
+    TRI_LogV8Exception(isolate, &tryCatch);
+    return false;
+  }
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
+    LOG_ERROR("cannot load java script file '%s': compilation failed.", filename);
     return false;
   }
 
