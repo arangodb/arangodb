@@ -500,6 +500,7 @@ void Query::registerWarning (int code,
 
 QueryResult Query::prepare (QueryRegistry* registry) {
   try {
+    init();
     enterState(PARSING);
 
     std::unique_ptr<Parser> parser(new Parser(this));
@@ -655,8 +656,6 @@ QueryResult Query::execute (QueryRegistry* registry) {
       } 
     }
 
-    init();
-
     QueryResult res = prepare(registry);
 
     if (res.code != TRI_ERROR_NO_ERROR) {
@@ -799,7 +798,6 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       } 
     }
 
-    init();
     QueryResultV8 res = prepare(registry);
 
     if (res.code != TRI_ERROR_NO_ERROR) {
@@ -1220,8 +1218,14 @@ TRI_json_t* Query::warningsToJson (TRI_memory_zone_t* zone) const {
 /// @brief initializes the query
 ////////////////////////////////////////////////////////////////////////////////
 
-void Query::init () { 
+void Query::init () {
+  if (_id != 0) {
+    // already called
+    return;
+  }
+   
   TRI_ASSERT(_id == 0);
+  TRI_ASSERT(_ast == nullptr);
  
   _id = TRI_NextQueryIdVocBase(_vocbase);
 
