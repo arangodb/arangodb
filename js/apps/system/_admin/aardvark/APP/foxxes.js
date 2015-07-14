@@ -361,14 +361,15 @@
   // SECTION                                        documentation
   // ------------------------------------------------------------
 
-  controller.apiDocumentation('/docs', function (req, res) {
-    var standalone = false;
-    if (req.suffix.length === 1 && req.suffix[0] === 'standalone.html') {
-      standalone = true;
-      req.suffix = [];
-    }
+  controller.apiDocumentation('/docs/standalone', function (req, res) {
     return {
-      indexFile: standalone ? 'index.html' : 'index-alt.html',
+      appPath: req.parameters.mount
+    };
+  });
+
+  controller.apiDocumentation('/docs', function (req, res) {
+    return {
+      indexFile: 'index-alt.html',
       appPath: req.parameters.mount
     };
   });
