@@ -111,21 +111,23 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an execution plan from JSON
+/// @brief process the list of collections in a JSON
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::getCollectionsFromJson (Ast* ast, 
                                             triagens::basics::Json const& json) {
-  Json jsonCollectionList = json.get("collections");
+  TRI_ASSERT(ast != nullptr);
 
-  if (! jsonCollectionList.isArray()) {
+  Json jsonCollections = json.get("collections");
+
+  if (! jsonCollections.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node \"collections\" not found or not an array");
   }
 
-  auto const size = jsonCollectionList.size();
+  auto const size = jsonCollections.size();
     
   for (size_t i = 0; i < size; i++) {
-    Json oneJsonCollection = jsonCollectionList.at(static_cast<int>(i));
+    Json oneJsonCollection = jsonCollections.at(static_cast<int>(i));
     auto typeStr = triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type");
       
     ast->query()->collections()->add(
@@ -135,8 +137,14 @@ void ExecutionPlan::getCollectionsFromJson (Ast* ast,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan from JSON
+////////////////////////////////////////////////////////////////////////////////
+
 ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& json) {
+  TRI_ASSERT(ast != nullptr);
+
   auto plan = new ExecutionPlan(ast);
 
   try {

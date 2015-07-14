@@ -1278,14 +1278,14 @@ bool Query::canUseQueryCache () const {
     // setting `cache` attribute to false.
 
     // cannot use query cache on a coordinator at the moment
-    return ! triagens::arango::ServerState::instance()->isCoordinator();
+    return ! triagens::arango::ServerState::instance()->isRunningInCluster();
   }
   else if (queryCacheMode == CACHE_ON_DEMAND && getBooleanOption("cache", false)) {
     // cache mode is set to demand... query will only be cached if `cache`
     // attribute is set to false
     
     // cannot use query cache on a coordinator at the moment
-    return ! triagens::arango::ServerState::instance()->isCoordinator();
+    return ! triagens::arango::ServerState::instance()->isRunningInCluster();
   }
 
   return false;
