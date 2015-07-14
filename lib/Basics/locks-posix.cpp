@@ -64,7 +64,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitMutex (TRI_mutex_t* mutex) {
-  return pthread_mutex_init(mutex, 0);
+  return pthread_mutex_init(mutex, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,9 +84,7 @@ int TRI_DestroyMutex (TRI_mutex_t* mutex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockMutex (TRI_mutex_t* mutex) {
-  int rc;
-
-  rc = pthread_mutex_lock(mutex);
+  int rc = pthread_mutex_lock(mutex);
 
   if (rc != 0) {
     if (rc == EDEADLK) {
@@ -101,9 +99,7 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockMutex (TRI_mutex_t* mutex) {
-  int rc;
-
-  rc = pthread_mutex_unlock(mutex);
+  int rc = pthread_mutex_unlock(mutex);
 
   if (rc != 0) {
     LOG_FATAL_AND_EXIT("could not release the mutex: %s", strerror(rc));
@@ -147,11 +143,9 @@ void TRI_DestroySpin (TRI_spin_t* spinLock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockSpin (TRI_spin_t* spinLock) {
-  int rc;
+  int rc = pthread_spin_lock(spinLock);
 
-  rc = pthread_spin_lock(spinLock);
-
- if (rc != 0) {
+  if (rc != 0) {
     if (rc == EDEADLK) {
       LOG_ERROR("spinlock deadlock detected");
     }
@@ -167,9 +161,7 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockSpin (TRI_spin_t* spinLock) {
-  int rc;
-
-  rc = pthread_spin_unlock(spinLock);
+  int rc = pthread_spin_unlock(spinLock);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -196,7 +188,7 @@ void TRI_UnlockSpin (TRI_spin_t* spinLock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
-  pthread_rwlock_init(lock, 0);
+  pthread_rwlock_init(lock, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,9 +208,7 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
-  int rc;
-
-  rc = pthread_rwlock_tryrdlock(lock);
+  int rc = pthread_rwlock_tryrdlock(lock);
 
   return (rc == 0);
 }
@@ -228,11 +218,10 @@ bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
-  int rc;
   bool complained = false;
 
 again:
-  rc = pthread_rwlock_rdlock(lock);
+  int rc = pthread_rwlock_rdlock(lock);
 
   if (rc != 0) {
     if (rc == EAGAIN) {
@@ -269,9 +258,7 @@ again:
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
-  int rc;
-
-  rc = pthread_rwlock_unlock(lock);
+  int rc = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -286,9 +273,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
-  int rc;
-
-  rc = pthread_rwlock_trywrlock(lock);
+  int rc = pthread_rwlock_trywrlock(lock);
 
   return (rc == 0);
 }
@@ -298,9 +283,7 @@ bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
-  int rc;
-
-  rc = pthread_rwlock_wrlock(lock);
+  int rc = pthread_rwlock_wrlock(lock);
 
   if (rc != 0) {
     if (rc == EDEADLK) {
@@ -318,9 +301,7 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
-  int rc;
-
-  rc  = pthread_rwlock_unlock(lock);
+  int rc  = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -343,7 +324,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCondition (TRI_condition_t* cond) {
-  pthread_cond_init(&cond->_cond, 0);
+  pthread_cond_init(&cond->_cond, nullptr);
 
   cond->_mutex = static_cast<pthread_mutex_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t), false));
 
@@ -351,7 +332,7 @@ void TRI_InitCondition (TRI_condition_t* cond) {
     LOG_FATAL_AND_EXIT("could not allocate memory for condition variable mutex");
   }
 
-  pthread_mutex_init(cond->_mutex, 0);
+  pthread_mutex_init(cond->_mutex, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -375,9 +356,7 @@ void TRI_DestroyCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SignalCondition (TRI_condition_t* cond) {
-  int rc;
-
-  rc = pthread_cond_signal(&cond->_cond);
+  int rc = pthread_cond_signal(&cond->_cond);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -394,9 +373,7 @@ void TRI_SignalCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_BroadcastCondition (TRI_condition_t* cond) {
-  int rc;
-
-  rc = pthread_cond_broadcast(&cond->_cond);
+  int rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -413,9 +390,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WaitCondition (TRI_condition_t* cond) {
-  int rc;
-
-  rc = pthread_cond_wait(&cond->_cond, cond->_mutex);
+  int rc = pthread_cond_wait(&cond->_cond, cond->_mutex);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -432,7 +407,6 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
-  int rc;
   struct timespec ts;
   struct timeval tp;
   uint64_t x, y;
@@ -449,7 +423,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   ts.tv_sec  = ts.tv_sec + ((x - y) / 1000000000);
 
   // and wait
-  rc = pthread_cond_timedwait(&cond->_cond, cond->_mutex, &ts);
+  int rc = pthread_cond_timedwait(&cond->_cond, cond->_mutex, &ts);
 
   if (rc != 0) {
     if (rc == ETIMEDOUT) {
@@ -470,9 +444,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockCondition (TRI_condition_t* cond) {
-  int rc;
-
-  rc = pthread_mutex_lock(cond->_mutex);
+  int rc = pthread_mutex_lock(cond->_mutex);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -487,9 +459,7 @@ void TRI_LockCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockCondition (TRI_condition_t* cond) {
-  int rc;
-
-  rc = pthread_mutex_unlock(cond->_mutex);
+  int rc = pthread_mutex_unlock(cond->_mutex);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE

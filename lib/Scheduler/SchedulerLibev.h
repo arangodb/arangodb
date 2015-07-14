@@ -268,7 +268,7 @@ namespace triagens {
 /// @brief event-token to event-type
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<EventToken, EventType> _types;
+        std::unordered_map<EventToken, EventType> _types;
     };
   }
 }

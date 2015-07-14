@@ -135,14 +135,12 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _query(nullptr),
     _server(nullptr),
     _vocbase(nullptr),
-    _allowUseDatabase(true),
-    _hasDeadObjects(false),
+    _activeExternals(0),
     _applicationV8(nullptr),
     _loader(nullptr),
-    _canceled(false)
+    _canceled(false),
+    _allowUseDatabase(true) {
 
-
-{
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING("Buffer"));

@@ -161,7 +161,7 @@ static void WeakCollectionCallback (const v8::WeakCallbackData<v8::External, v8:
   auto collection   = static_cast<TRI_vocbase_col_t*>(myCollection->Value());
   TRI_GET_GLOBALS();
 
-  v8g->_hasDeadObjects = true;
+  v8g->decreaseActiveExternals();
 
   // decrease the reference-counter for the database
   TRI_ReleaseVocBase(collection->_vocbase);
@@ -208,6 +208,7 @@ v8::Handle<v8::Object> WrapCollection (v8::Isolate* isolate,
 
       v8g->JSCollections[nonconstCollection].Reset(isolate, externalCollection);
       v8g->JSCollections[nonconstCollection].SetWeak(&v8g->JSCollections[nonconstCollection],  WeakCollectionCallback);
+      v8g->increaseActiveExternals();
     }
     else {
       auto myCollection = v8::Local<v8::External>::New(isolate, it->second);

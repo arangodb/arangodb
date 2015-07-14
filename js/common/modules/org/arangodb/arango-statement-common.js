@@ -47,9 +47,17 @@ function ArangoStatement (database, data) {
   this._options = undefined;
   this._cache = undefined;
 
+  if (! data) {
+    throw "ArangoStatement needs initial data";
+  }
+
   if (typeof data === "string") {
     data = { query: data };
   }
+  else if (typeof data === 'object' && typeof data.toAQL === 'function') {
+    data = { query: data.toAQL() };
+  }
+
   if (! (data instanceof Object)) {
     throw "ArangoStatement needs initial data";
   }
