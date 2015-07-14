@@ -49,6 +49,8 @@ var TemplateEngine = require("org/arangodb/foxx/templateEngine").Engine;
 var routeApp = require("org/arangodb/foxx/routing").routeApp;
 var exportApp = require("org/arangodb/foxx/routing").exportApp;
 var invalidateExportCache  = require("org/arangodb/foxx/routing").invalidateExportCache;
+var formatUrl = require('url').format;
+var parseUrl = require('url').parse;
 var arangodb = require("org/arangodb");
 var ArangoError = arangodb.ArangoError;
 var db = arangodb.db;
@@ -733,12 +735,27 @@ var buildGithubUrl = function (appInfo) {
 
 var installAppFromRemote = function(url, targetPath) {
   var tempFile = fs.getTempFile("downloads", false);
+  var auth = undefined;
+
+  var urlObj = parseUrl(url);
+  if (urlObj.auth) {
+    require('console').log('old path', url);
+    auth = urlObj.auth.split(':');
+    auth = {
+      username: decodeURIComponent(auth[0]),
+      password: decodeURIComponent(auth[1])
+    };
+    delete urlObj.auth;
+    url = formatUrl(urlObj);
+    require('console').log('new path', url);
+  }
 
   try {
     var result = download(url, "", {
       method: "get",
       followRedirects: true,
-      timeout: 30
+      timeout: 30,
+      auth: auth
     }, tempFile);
 
     if (result.code < 200 || result.code > 299) {
