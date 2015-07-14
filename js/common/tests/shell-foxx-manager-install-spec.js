@@ -125,7 +125,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-controller-file"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_SYNTAX_ERROR_IN_SCRIPT, e);
+        validateError(errors.ERROR_FAILED_TO_EXECUTE_SCRIPT, e);
       }
     });
 
@@ -179,7 +179,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-exports-file"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_SYNTAX_ERROR_IN_SCRIPT, e);
+        validateError(errors.ERROR_FAILED_TO_EXECUTE_SCRIPT, e);
       }
     });
 
@@ -197,7 +197,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-setup-file"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_SYNTAX_ERROR_IN_SCRIPT, e);
+        validateError(errors.ERROR_FAILED_TO_EXECUTE_SCRIPT, e);
       }
     });
 
