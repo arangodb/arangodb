@@ -138,8 +138,7 @@ namespace {
       V8GcThread (ApplicationV8* applicationV8)
         : Thread("v8-gc"),
           _applicationV8(applicationV8),
-          _lock(),
-          _lastGcStamp(TRI_microtime()) {
+          _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {
       }
 
     public:
@@ -157,8 +156,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
       double getLastGcStamp () {
-        READ_LOCKER(_lock);
-        return _lastGcStamp;
+        return static_cast<double>(_lastGcStamp.load(std::memory_order_acquire));
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,14 +164,13 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
       void updateGcStamp (double value) {
-        WRITE_LOCKER(_lock);
-        _lastGcStamp = value;
+        _lastGcStamp.store(static_cast<uint64_t>(value), std::memory_order_release);
       }
 
     private:
-      ApplicationV8* _applicationV8;
-      ReadWriteLock _lock;
-      double _lastGcStamp;
+
+      ApplicationV8*        _applicationV8;
+      std::atomic<uint64_t> _lastGcStamp;
   };
 }
 
@@ -376,16 +373,18 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
     return nullptr;
   }
 
-  LOG_TRACE("found unused V8 context");
-  TRI_ASSERT(! _freeContexts[name].empty());
+  auto& free = _freeContexts[name];
 
-  V8Context* context = _freeContexts[name].back();
+  LOG_TRACE("found unused V8 context");
+  TRI_ASSERT(! free.empty());
+
+  V8Context* context = free.back();
 
   TRI_ASSERT(context != nullptr);
   auto isolate = context->isolate;
   TRI_ASSERT(isolate != nullptr);
 
-  _freeContexts[name].pop_back();
+  free.pop_back();
   _busyContexts[name].insert(context);
 
   context->_locker = new v8::Locker(isolate);
@@ -416,11 +415,11 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief exists an context
+/// @brief exits a context
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::exitContext (V8Context* context) {
-  const string& name = context->_name;
+  std::string const& name = context->_name;
   bool isStandard = (name == DEFAULT_NAME);
 
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
@@ -513,10 +512,10 @@ void ApplicationV8::exitContext (V8Context* context) {
     }
 
     if (performGarbageCollection) {
-      _dirtyContexts[name].push_back(context);
+      _dirtyContexts[name].emplace_back(context);
     }
     else {
-      _freeContexts[name].push_back(context);
+      _freeContexts[name].emplace_back(context);
     }
 
     _busyContexts[name].erase(context);
@@ -564,7 +563,7 @@ void ApplicationV8::exitContext (V8Context* context) {
 
     delete context->_locker;
     context->_locker = nullptr;
-    _freeContexts[name].push_back(context);
+    _freeContexts[name].emplace_back(context);
   }
   
   // reset the context data. garbage collection should be able to run without it
@@ -627,7 +626,7 @@ void ApplicationV8::collectGarbage () {
         gotSignal = guard.wait(waitTime);
 
         // use a reduced wait time in the next round because we seem to be idle
-        // the reduced wait time will allow use to perfom GC for more contexts
+        // the reduced wait time will allow to perfom GC for more contexts
         useReducedWait = ! gotSignal;
       }
 
@@ -646,6 +645,9 @@ void ApplicationV8::collectGarbage () {
         // already. increase the wait time so we don't cycle too much in the GC loop
         // and waste CPU unnecessary
         useReducedWait = (context != nullptr);
+      }
+      else {
+        useReducedWait = false; 
       }
     }
 
@@ -687,7 +689,7 @@ void ApplicationV8::collectGarbage () {
       {
         CONDITION_LOCKER(guard, _contextCondition);
 
-        _freeContexts[DEFAULT_NAME].push_back(context);
+        _freeContexts[DEFAULT_NAME].emplace_back(context);
         guard.broadcast();
       }
     }
@@ -924,6 +926,9 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
   }
   
   bool result = true;
+
+  _freeContexts[name].reserve(concurrency);
+  _dirtyContexts[name].reserve(concurrency);
 
   for (size_t i = 0;  i < concurrency;  ++i) {
     bool ok = prepareV8Instance(name, i, false);
@@ -1408,7 +1413,7 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
 
   LOG_TRACE("initialised V8 context #%d", (int) i);
 
-  _freeContexts[name].push_back(context);
+  _freeContexts[name].emplace_back(context);
 
   return true;
 }
