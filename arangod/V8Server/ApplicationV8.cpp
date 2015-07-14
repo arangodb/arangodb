@@ -610,7 +610,7 @@ void ApplicationV8::collectGarbage () {
   uint64_t const regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
 
   // the time we'll wait for a signal when the previous wait timed out
-  uint64_t const reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
+  uint64_t const reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 200.0);
 
   while (_stopping == 0) {
     V8Context* context = nullptr;
