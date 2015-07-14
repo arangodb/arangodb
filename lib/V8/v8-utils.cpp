@@ -228,6 +228,11 @@ static bool LoadJavaScriptFile (v8::Isolate* isolate,
     // execute script
     v8::Handle<v8::Value> result = script->Run();
 
+    if (tryCatch.HasCaught()) {
+      TRI_LogV8Exception(isolate, &tryCatch);
+      return false;
+    }
+
     if (result.IsEmpty()) {
       return false;
     }
