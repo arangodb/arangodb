@@ -47,7 +47,10 @@
 void TRI_InitSpin (TRI_spin_t* spinLock) {
   *spinLock = 0;
 }
+#else
+void locks_macos_cpp_MusntBeEmpty(void){}
 #endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a spin-lock
