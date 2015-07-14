@@ -1,8 +1,8 @@
 arangosh> db.example.save({ Hello : "world" });
 { 
-  "_id" : "example/450706269", 
-  "_rev" : "450706269", 
-  "_key" : "450706269" 
+  "_id" : "example/447159522", 
+  "_rev" : "447159522", 
+  "_key" : "447159522" 
 }
 arangosh> db.example.updateByExample({ Hello: "world" }, { Hello: "foo", World: "bar" }, false);
 1

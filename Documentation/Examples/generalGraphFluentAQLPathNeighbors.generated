@@ -7,13 +7,13 @@ arangosh> query.neighbors().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "785857373", 
+      "_rev" : "782114018", 
       "name" : "Alice" 
     }, 
     { 
       "_id" : "male/bob", 
       "_key" : "bob", 
-      "_rev" : "786185053", 
+      "_rev" : "782441698", 
       "name" : "Bob" 
     } 
   ], 
@@ -21,13 +21,13 @@ arangosh> query.neighbors().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "785857373", 
+      "_rev" : "782114018", 
       "name" : "Alice" 
     }, 
     { 
       "_id" : "male/charly", 
       "_key" : "charly", 
-      "_rev" : "786381661", 
+      "_rev" : "782638306", 
       "name" : "Charly" 
     } 
   ] 

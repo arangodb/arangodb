@@ -3,6 +3,6 @@ arangosh> var graph = examples.loadGraph("social");
 arangosh> graph.male.save({name: "Floyd", _key: "floyd"});
 { 
   "_id" : "male/floyd", 
-  "_rev" : "1169439581", 
+  "_rev" : "1168907490", 
   "_key" : "floyd" 
 }
