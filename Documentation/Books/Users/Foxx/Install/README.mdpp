@@ -119,6 +119,55 @@ Finally you can upgrade a running application to a newer version:
 
 This will do *uninstall* and *install* of the application but will **not** execute *setup* or *teardown* scripts, but will run the *upgrade* script instead.
 
+!SECTION Configuration
+
+* **configuration**: Reads the configuration of a Foxx application
+* **configure**: Modifies Foxx application's configuration
+
+Here example of how to modify and check that it worked. In this case we modified the workKey for 388 to 700.
+
+  unix>foxx-manager configure /auth workKey=700
+  Reconfigured Application credential-auth version 1.1.0 on mount point /auth
+
+````
+unix> foxx-manager configuration /auth
+Configuration options:
+{
+  "json": {
+    "default": false,
+    "required": true,
+    "description": "Convert password data to JSON.",
+    "type": "boolean",
+    "title": "Json",
+    "current": false
+  },
+  "keyLength": {
+    "required": true,
+    "default": 66,
+    "description": "Length of the derived key.",
+    "type": "integer",
+    "title": "KeyLength",
+    "current": 66
+  },
+  "workUnits": {
+    "required": true,
+    "default": 60,
+    "description": "Multiplication factor to determine the number of iterations. Higher values make the hashing slower and harder to brute-force.",
+    "type": "integer",
+    "title": "WorkUnits",
+    "current": 60
+  },
+  "workKey": {
+    "required": true,
+    "default": 388,
+    "description": "Addition factor to determine the number of iterations. Should be a secret value between one and 999.",
+    "type": "integer",
+    "title": "WorkKey",
+    "current": 700
+  },
+  "code": 200
+}
+```
 
 !SECTION Application identifier
 
