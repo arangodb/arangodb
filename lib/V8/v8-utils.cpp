@@ -2039,20 +2039,25 @@ static void JS_RandomAlphaNum (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a salt
 ///
-/// @FUN{internal.genRandomSalt()}
+/// @FUN{internal.genRandomSalt(@FA{length})}
 ///
-/// Generates a string containing numbers and characters (length 8).
+/// Generates a string of a given @FA{length} containing ASCII characters.
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RandomSalt (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("genRandomSalt()");
+  if (args.Length() != 1 || ! args[0]->IsNumber()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("genRandomSalt(<length>)");
   }
 
-  string str = JSSaltGenerator.random(8);
+  int length = (int) TRI_ObjectToInt64(args[0]);
+  if (length <= 0 || length > 65536) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "<length> must be between 0 and 65536");
+  }
+
+  string str = JSSaltGenerator.random(length);
   TRI_V8_RETURN_STD_STRING(str);
   TRI_V8_TRY_CATCH_END
 }
