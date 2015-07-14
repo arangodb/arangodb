@@ -83,12 +83,15 @@ namespace triagens {
         static ExecutionPlan* instanciateFromAst (Ast*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an execution plan from JSON
+/// @brief process the list of collections in a JSON
 ////////////////////////////////////////////////////////////////////////////////
 
         static void getCollectionsFromJson(Ast *ast, 
                                            triagens::basics::Json const& Json);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan from JSON
+////////////////////////////////////////////////////////////////////////////////
 
         static ExecutionPlan* instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& Json);
