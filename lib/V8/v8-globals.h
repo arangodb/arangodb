@@ -329,7 +329,6 @@ static const uint32_t V8DataSlot = 0;
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);                       \
   }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return undefined (default..)
 ///   implicitely requires 'args and 'isolate' to be available
