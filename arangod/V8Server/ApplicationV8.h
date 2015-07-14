@@ -260,7 +260,7 @@ namespace triagens {
 /// @brief whether or not the context has dead (ex-v8 wrapped) objects
 ////////////////////////////////////////////////////////////////////////////////
 
-          bool _hasDeadObjects;
+          bool _hasActiveExternals;
         };
 
 // -----------------------------------------------------------------------------

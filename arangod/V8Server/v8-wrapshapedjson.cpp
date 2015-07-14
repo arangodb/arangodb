@@ -242,7 +242,7 @@ static void WeakDocumentDitchCallback (const v8::WeakCallbackData<v8::External, 
 
   TRI_GET_GLOBALS();
 
-  v8g->_hasDeadObjects = true;
+  v8g->decreaseActiveExternals();
 
   LOG_TRACE("weak-callback for document ditch called");
 
@@ -329,6 +329,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
     per.Reset(isolate, externalDitch);
     result->SetInternalField(SLOT_DITCH, externalDitch);
     per.SetWeak(&per, WeakDocumentDitchCallback);
+    v8g->increaseActiveExternals();
   }
   else {
     auto myDitch = v8::Local<v8::External>::New(isolate, it->second);

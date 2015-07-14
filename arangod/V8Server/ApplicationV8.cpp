@@ -436,7 +436,7 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   // update data for later garbage collection
   TRI_GET_GLOBALS();
-  context->_hasDeadObjects = v8g->_hasDeadObjects;
+  context->_hasActiveExternals = v8g->hasActiveExternals();
   ++context->_numExecutions;
 
   TRI_ASSERT(v8g->_vocbase != nullptr);
@@ -530,7 +530,7 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   // non-standard case: directly collect the garbage
   else {
-    if (context->_numExecutions >= 1000) {
+    if (context->_numExecutions >= _gcInterval) {
       LOG_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
       performGarbageCollection = true;
     }
@@ -549,7 +549,6 @@ void ApplicationV8::exitContext (V8Context* context) {
       
         TRI_ASSERT(context->_locker->IsLocked(isolate));
         TRI_ASSERT(v8::Locker::IsLocked(isolate));
-
         TRI_RunGarbageCollectionV8(isolate, 1.0);
 
         localContext->Exit();
@@ -558,7 +557,8 @@ void ApplicationV8::exitContext (V8Context* context) {
 
       guard.lock();
 
-      context->_numExecutions = 0;
+      context->_numExecutions      = 0;
+      context->_lastGcStamp        = lastGc;
     }
 
     delete context->_locker;
@@ -657,6 +657,7 @@ void ApplicationV8::collectGarbage () {
 
     if (context != nullptr) {
       LOG_TRACE("collecting V8 garbage");
+      bool hasActiveExternals = false;
       auto isolate = context->isolate;
       TRI_ASSERT(context->_locker == nullptr);
       context->_locker = new v8::Locker(isolate);
@@ -672,6 +673,8 @@ void ApplicationV8::collectGarbage () {
         TRI_ASSERT(context->_locker->IsLocked(isolate));
         TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
+        TRI_GET_GLOBALS();
+        hasActiveExternals = v8g->hasActiveExternals();
         TRI_RunGarbageCollectionV8(isolate, 1.0);
 
         localContext->Exit();
@@ -682,9 +685,9 @@ void ApplicationV8::collectGarbage () {
       context->_locker = nullptr;
 
       // update garbage collection statistics
-      context->_hasDeadObjects = false;
-      context->_numExecutions  = 0;
-      context->_lastGcStamp    = lastGc;
+      context->_hasActiveExternals = hasActiveExternals;
+      context->_numExecutions      = 0;
+      context->_lastGcStamp        = lastGc;
 
       {
         CONDITION_LOCKER(guard, _contextCondition);
@@ -1246,7 +1249,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
 
   for (int i = 0; i < n; ++i) {
     // check if there's actually anything to clean up in the context
-    if (_freeContexts[DEFAULT_NAME][i]->_numExecutions == 0 && ! _freeContexts[DEFAULT_NAME][i]->_hasDeadObjects) {
+    if (_freeContexts[DEFAULT_NAME][i]->_numExecutions == 0 && ! _freeContexts[DEFAULT_NAME][i]->_hasActiveExternals) {
       continue;
     }
 
@@ -1407,9 +1410,9 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
   context->_locker = nullptr;
 
   // initialise garbage collection for context
-  context->_numExecutions  = 0;
-  context->_hasDeadObjects = true;
-  context->_lastGcStamp    = TRI_microtime();
+  context->_numExecutions      = 0;
+  context->_hasActiveExternals = true;
+  context->_lastGcStamp        = TRI_microtime();
 
   LOG_TRACE("initialised V8 context #%d", (int) i);
 
