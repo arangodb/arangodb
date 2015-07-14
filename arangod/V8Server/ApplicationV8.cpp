@@ -356,14 +356,23 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
 
   while (_freeContexts[name].empty() && ! _stopping) {
     LOG_DEBUG("waiting for unused V8 context");
-    auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
 
-    if (currentThread != nullptr) {
-      triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+    if (! _dirtyContexts[name].empty()) {
+      // we'll use a dirty context in this case
+      auto context = _dirtyContexts[name].back();
+      _freeContexts[name].emplace_back(context);
+      _dirtyContexts[name].pop_back();
     }
-    guard.wait();
-    if (currentThread != nullptr) {
-      triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+    else {
+      auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
+
+      if (currentThread != nullptr) {
+        triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+      }
+      guard.wait();
+      if (currentThread != nullptr) {
+        triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+      }
     }
   }
 
