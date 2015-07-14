@@ -42,7 +42,6 @@
     "/css/sass.css": "frontend/build/style.css",
     "/css/style.css": "build/extra.css",
     "css/cluster.css": "frontend/scss/cluster.css",
-    "css/generated.css": "frontend/scss/generated.css",
     "/cluster.js": "clusterFrontend/build/cluster.js",
     "/ace.js": "frontend/src/ace.js",
     "/sharedLibs.js": "build/sharedLibs.js",
