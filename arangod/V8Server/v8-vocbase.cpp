@@ -1851,7 +1851,7 @@ static v8::Handle<v8::Value> PathIdsToV8 (v8::Isolate* isolate,
 
   result->Set(TRI_V8_STRING("vertices"), vertices);
   result->Set(TRI_V8_STRING("edges"), edges);
-  result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, p.weight));
+  result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, static_cast<double>(p.weight)));
 
   return scope.Escape<v8::Value>(result);
 }
@@ -1902,7 +1902,7 @@ static v8::Handle<v8::Value> PathIdsToV8 (v8::Isolate* isolate,
 
   result->Set(TRI_V8_STRING("vertices"), vertices);
   result->Set(TRI_V8_STRING("edges"), edges);
-  result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, p.weight));
+  result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, static_cast<double>(p.weight)));
 
   return scope.Escape<v8::Value>(result);
 }

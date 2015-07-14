@@ -473,10 +473,13 @@ namespace triagens {
           std::deque<EdgeId> edges; 
           EdgeWeight weight;
 
-          Path (std::deque<VertexId> vertices, std::deque<EdgeId> edges,
+          Path (std::deque<VertexId> const& vertices, 
+                std::deque<EdgeId> const& edges,
                 EdgeWeight weight) 
-            : vertices(vertices), edges(edges), weight(weight) {
-          };
+            : vertices(vertices), 
+              edges(edges), 
+              weight(weight) {
+          }
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -499,9 +502,14 @@ namespace triagens {
             Step () : _done(false) {
             }
 
-            Step (VertexId& vert, VertexId& pred,
-                  EdgeWeight weig, EdgeId const& edge)
-              :  _weight(weig), _vertex(vert), _predecessor(pred), _edge(edge),
+            Step (VertexId& vert, 
+                  VertexId& pred,
+                  EdgeWeight weig, 
+                  EdgeId const& edge)
+              : _weight(weig), 
+                _vertex(vert), 
+                _predecessor(pred), 
+                _edge(edge),
                 _done(false) {
             }
 
@@ -571,10 +579,11 @@ namespace triagens {
                                 ThreadInfo& peerInfo,
                                 VertexId& start,
                                 ExpanderFunction expander,
-                                std::string id)
+                                std::string const& id)
               : _pathFinder(pathFinder), _myInfo(myInfo), 
                 _peerInfo(peerInfo), _start(std::move(start)),
                 _expander(expander), _id(id) {
+
             }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,8 +592,8 @@ namespace triagens {
 
           private:
 
-            void insertNeighbor (Step* step, EdgeWeight newWeight) {
-
+            void insertNeighbor (Step* step, 
+                                 EdgeWeight newWeight) {
               std::lock_guard<std::mutex> guard(_myInfo._mutex);
               Step* s = _myInfo._pq.find(step->_vertex);
 
@@ -750,11 +759,17 @@ namespace triagens {
 
           public:
 
-            Searcher (PathFinder* pathFinder, ThreadInfo& myInfo, 
-                      ThreadInfo& peerInfo, VertexId& start,
-                      ExpanderFunction expander, std::string id)
-              : _pathFinder(pathFinder), _myInfo(myInfo), 
-                _peerInfo(peerInfo), _start(start), _expander(expander),
+            Searcher (PathFinder* pathFinder, 
+                      ThreadInfo& myInfo, 
+                      ThreadInfo& peerInfo, 
+                      VertexId& start,
+                      ExpanderFunction expander, 
+                      std::string const& id)
+              : _pathFinder(pathFinder), 
+                _myInfo(myInfo), 
+                _peerInfo(peerInfo), 
+                _start(start), 
+                _expander(expander),
                 _id(id) {
             }
 
@@ -764,8 +779,8 @@ namespace triagens {
 
           private:
 
-            void insertNeighbor (Step* step, EdgeWeight newWeight) {
-
+            void insertNeighbor (Step* step, 
+                                 EdgeWeight newWeight) {
               Step* s = _myInfo._pq.find(step->_vertex);
 
               // Not found, so insert it:
@@ -966,7 +981,7 @@ namespace triagens {
           }
 
           Step* s = forward._pq.find(_intermediate);
-          r_vertices.push_back(_intermediate);
+          r_vertices.emplace_back(_intermediate);
 
           // FORWARD Go path back from intermediate -> start.
           // Insert all vertices and edges at front of vector
@@ -984,8 +999,8 @@ namespace triagens {
           s = backward._pq.find(_intermediate);
           while (s->_predecessor.key != nullptr &&
                  strcmp(s->_predecessor.key, "") != 0) {
-            r_edges.push_back(s->_edge);
-            r_vertices.push_back(s->_predecessor);
+            r_edges.emplace_back(s->_edge);
+            r_vertices.emplace_back(s->_predecessor);
             s = backward._pq.find(s->_predecessor);
           }
 
@@ -1062,7 +1077,7 @@ namespace triagens {
           }
 
           Step* s = forward._pq.find(_intermediate);
-          r_vertices.push_back(_intermediate);
+          r_vertices.emplace_back(_intermediate);
 
           // FORWARD Go path back from intermediate -> start.
           // Insert all vertices and edges at front of vector
@@ -1080,8 +1095,8 @@ namespace triagens {
           s = backward._pq.find(_intermediate);
           while (s->_predecessor.key != nullptr &&
                  strcmp(s->_predecessor.key, "") != 0) {
-            r_edges.push_back(s->_edge);
-            r_vertices.push_back(s->_predecessor);
+            r_edges.emplace_back(s->_edge);
+            r_vertices.emplace_back(s->_predecessor);
             s = backward._pq.find(s->_predecessor);
           }
 
@@ -1236,7 +1251,10 @@ namespace triagens {
           std::deque<EdgeId> edges; 
           size_t weight;
 
-          Path () : weight(0) {};
+          Path () 
+            : weight(0) {
+
+          };
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1253,9 +1271,10 @@ namespace triagens {
           VertexId const _pred;
           EdgeId const _path;
 
-          PathSnippet (VertexId& pred, EdgeId& path) :
-            _pred(pred),
-            _path(path) {
+          PathSnippet (VertexId& pred, EdgeId& path) 
+            : _pred(pred),
+              _path(path) {
+
           }
 
         };
@@ -1289,13 +1308,13 @@ namespace triagens {
           Path* res = new Path();
           // Init
           if (start == end) {
-            res->vertices.push_back(start);
+            res->vertices.emplace_back(start);
             return res;
           }
           _leftFound.emplace(start, nullptr);
           _rightFound.emplace(end, nullptr);
-          _leftClosure.push_back(start);
-          _rightClosure.push_back(end);
+          _leftClosure.emplace_back(start);
+          _rightClosure.emplace_back(end);
           std::vector<EdgeId> edges;
           std::vector<VertexId> neighbors;
           while (_leftClosure.size() > 0 && _rightClosure.size() > 0) {
@@ -1303,7 +1322,7 @@ namespace triagens {
             neighbors.clear();
             std::deque<VertexId> _nextClosure;
             if (_leftClosure.size() < _rightClosure.size()) {
-              for (VertexId v : _leftClosure) {
+              for (VertexId& v : _leftClosure) {
                 _leftNeighborExpander(v, edges, neighbors);
                 TRI_ASSERT(edges.size() == neighbors.size());
                 for (size_t i = 0; i < neighbors.size(); ++i) {
@@ -1311,7 +1330,7 @@ namespace triagens {
                   if (_leftFound.find(n) == _leftFound.end()) {
                     _leftFound.emplace(n, new PathSnippet(v, edges.at(i)));
                     if (_rightFound.find(n) != _rightFound.end()) {
-                      res->vertices.push_back(n);
+                      res->vertices.emplace_back(n);
                       auto it = _leftFound.find(n);
                       VertexId next;
                       while (it->second != nullptr) {
@@ -1323,20 +1342,21 @@ namespace triagens {
                       it = _rightFound.find(n);
                       while (it->second != nullptr) {
                         next = it->second->_pred;
-                        res->vertices.push_back(next);
-                        res->edges.push_back(it->second->_path);
+                        res->vertices.emplace_back(next);
+                        res->edges.emplace_back(it->second->_path);
                         it = _rightFound.find(next);
                       }
                       res->weight = res->edges.size();
                       return res;
                     }
-                    _nextClosure.push_back(n);
+                    _nextClosure.emplace_back(n);
                   }
                 }
               }
               _leftClosure = _nextClosure;
-            } else {
-               for (VertexId v : _rightClosure) {
+            } 
+            else {
+               for (VertexId& v : _rightClosure) {
                 _rightNeighborExpander(v, edges, neighbors);
                 TRI_ASSERT(edges.size() == neighbors.size());
                 for (size_t i = 0; i < neighbors.size(); ++i) {
@@ -1344,7 +1364,7 @@ namespace triagens {
                   if (_rightFound.find(n) == _rightFound.end()) {
                     _rightFound.emplace(n, new PathSnippet(v, edges.at(i)));
                     if (_leftFound.find(n) != _leftFound.end()) {
-                      res->vertices.push_back(n);
+                      res->vertices.emplace_back(n);
                       auto it = _leftFound.find(n);
                       VertexId next;
                       while (it->second != nullptr) {
@@ -1356,14 +1376,14 @@ namespace triagens {
                       it = _rightFound.find(n);
                       while (it->second != nullptr) {
                         next = it->second->_pred;
-                        res->vertices.push_back(next);
-                        res->edges.push_back(it->second->_path);
+                        res->vertices.emplace_back(next);
+                        res->edges.emplace_back(it->second->_path);
                         it = _rightFound.find(next);
                       }
                       res->weight = res->edges.size();
                       return res;
                     }
-                    _nextClosure.push_back(n);
+                    _nextClosure.emplace_back(n);
                   }
                 }
               }
