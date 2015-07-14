@@ -511,7 +511,8 @@ void ApplicationV8::exitContext (V8Context* context) {
       performGarbageCollection = true;
     }
 
-    if (performGarbageCollection) {
+    if (performGarbageCollection && ! _freeContexts[name].empty()) {
+      // only add the context to the dirty list if there is at least one other free context
       _dirtyContexts[name].emplace_back(context);
     }
     else {
@@ -1408,11 +1409,15 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
   isolate->Exit();
   delete context->_locker;
   context->_locker = nullptr;
+  
+  // some random delay value to add as an initial garbage collection offset
+  // this avoids collecting all contexts at the very same time
+  double const randomWait = fmod(static_cast<double>(TRI_UInt32Random()), 15.0);
 
   // initialise garbage collection for context
   context->_numExecutions      = 0;
   context->_hasActiveExternals = true;
-  context->_lastGcStamp        = TRI_microtime();
+  context->_lastGcStamp        = TRI_microtime() + randomWait;
 
   LOG_TRACE("initialised V8 context #%d", (int) i);
 
