@@ -347,9 +347,9 @@
 
       $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
         function(data) {
-          name = data.name;
+          name = data.user;
 
-          if (name === null) {
+          if (name === null || name === false) {
             name = "root";
           }
 
