@@ -89,11 +89,11 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
-  MUTEX_LOCKER(RequestListLock);
-
   if (statistics == nullptr) {
     return;
   }
+
+  MUTEX_LOCKER(RequestListLock);
 
   if (! statistics->_ignore) {
     TRI_TotalRequestsStatistics.incCounter();
