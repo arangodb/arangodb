@@ -28,3 +28,4 @@ SRCDIR=$1
 | egrep -v "^js/apps/system/.*/test/" \
 | egrep -v "^js/apps/system/.*/test_data/" \
 | egrep -v "^js/apps/system/.*/coverage/" \
+| egrep -v "fileset.*tests.*fixtures.*an.*odd.*filename"
