@@ -2008,7 +2008,7 @@ static VertexId IdStringToVertexId (CollectionNameResolver const* resolver,
   char const* str = vertex.c_str();
 
   if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    throw TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
+    throw TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
   string const collectionName = vertex.substr(0, split);
