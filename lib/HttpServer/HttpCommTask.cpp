@@ -63,9 +63,7 @@ AsyncChunkedTask::AsyncChunkedTask (HttpCommTask* output)
 ////////////////////////////////////////////////////////////////////////////////
 
 AsyncChunkedTask::~AsyncChunkedTask () {
-  if (_data != nullptr) {
-    delete _data;
-  }
+  delete _data;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,6 +177,7 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     _isChunked(false),
     _chunkedTask(this),
     _setupDone(false) {
+
   LOG_TRACE(
     "connection established, client %d, server ip %s, server port %d, client ip %s, client port %d",
     (int) TRI_get_fd_or_handle_of_socket(socket),
@@ -210,22 +209,20 @@ HttpCommTask::~HttpCommTask () {
             (int) TRI_get_fd_or_handle_of_socket(_commSocket));
 
   // free write buffers
-  for (auto i : _writeBuffers) {
+  for (auto& i : _writeBuffers) {
     delete i;
   }
 
 #ifdef TRI_ENABLE_FIGURES
 
-  for (auto i : _writeBuffersStats) {
+  for (auto& i : _writeBuffersStats) {
     TRI_ReleaseRequestStatistics(i);
   }
 
 #endif
 
   // free request
-  if (_request != nullptr) {
-    delete _request;
-  }
+  delete _request;
 }
 
 // -----------------------------------------------------------------------------
@@ -519,7 +516,7 @@ bool HttpCommTask::processRead () {
           _writeBuffers.push_back(buffer);
 
 #ifdef TRI_ENABLE_FIGURES
-          _writeBuffersStats.push_back(0);
+          _writeBuffersStats.push_back(nullptr);
 #endif
 
           fillWriteBuffer();
