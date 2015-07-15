@@ -47,9 +47,7 @@ void TaskManager::deleteTask (Task* task) {
 }
 
 bool TaskManager::setupTask (Task* task, Scheduler* scheduler, EventLoop loop) {
-  bool ok = task->setup(scheduler, loop);
-  return ok;
-  // TODO: respond when not ok
+  return task->setup(scheduler, loop);
 }
 
 void TaskManager::cleanupTask (Task* task) {
