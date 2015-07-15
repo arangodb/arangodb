@@ -36,6 +36,8 @@
 namespace triagens {
   namespace rest {
 
+    struct Watcher;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         constants
 // -----------------------------------------------------------------------------
@@ -50,7 +52,7 @@ namespace triagens {
 /// @brief event handler identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef int32_t EventToken;
+    typedef Watcher* EventToken;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief event type identifier
@@ -103,6 +105,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     uint32_t const BACKEND_AUTO = 0;
+    
+// -----------------------------------------------------------------------------
+// --SECTION--                                                Watcher base class
+// -----------------------------------------------------------------------------
+
+    struct Watcher {
+      Watcher (EventType type) 
+        : type(type) {
+
+      }
+
+      EventType const type;
+    };
   }
 }
 

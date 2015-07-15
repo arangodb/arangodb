@@ -45,18 +45,6 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-#ifdef TRI_USE_SPIN_LOCK_SCHEDULER_LIBEV
-#define SCHEDULER_INIT TRI_InitSpin
-#define SCHEDULER_DESTROY TRI_DestroySpin
-#define SCHEDULER_LOCK TRI_LockSpin
-#define SCHEDULER_UNLOCK TRI_UnlockSpin
-#else
-#define SCHEDULER_INIT TRI_InitMutex
-#define SCHEDULER_DESTROY TRI_DestroyMutex
-#define SCHEDULER_LOCK TRI_LockMutex
-#define SCHEDULER_UNLOCK TRI_UnlockMutex
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             libev
 // -----------------------------------------------------------------------------
@@ -76,11 +64,13 @@ namespace {
 /// @brief async event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct AsyncWatcher {
-    ev_async async;
+  struct AsyncWatcher : public ev_async, Watcher {
     struct ev_loop* loop;
-    EventToken token;
     Task* task;
+
+    AsyncWatcher () 
+      : Watcher(EVENT_ASYNC) {
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,11 +78,11 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void asyncCallback (struct ev_loop*, ev_async* w, int revents) {
-    AsyncWatcher* watcher = reinterpret_cast<AsyncWatcher*>(w);
+    AsyncWatcher* watcher = (AsyncWatcher*) w;
     Task* task = watcher->task;
 
     if (task != nullptr && (revents & EV_ASYNC) && task->isActive()) {
-      task->handleEvent(watcher->token, EVENT_ASYNC);
+      task->handleEvent(watcher, EVENT_ASYNC);
     }
   }
 
@@ -108,11 +98,13 @@ namespace {
 /// @brief socket event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct SocketWatcher {
-    ev_io io;
+  struct SocketWatcher : public ev_io, Watcher {
     struct ev_loop* loop;
-    EventToken token;
     Task* task;
+    
+    SocketWatcher () 
+      : Watcher(EVENT_SOCKET_READ) {
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,20 +112,20 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void socketCallback (struct ev_loop*, ev_io* w, int revents) {
-    SocketWatcher* watcher = reinterpret_cast<SocketWatcher*>(w);
+    SocketWatcher* watcher = (SocketWatcher*) w;
     Task* task = watcher->task;
 
     if (task != nullptr && task->isActive()) {
       if (revents & EV_READ) {
         if (revents & EV_WRITE) {
-          task->handleEvent(watcher->token, EVENT_SOCKET_READ | EVENT_SOCKET_WRITE);
+          task->handleEvent(watcher, EVENT_SOCKET_READ | EVENT_SOCKET_WRITE);
         }
         else {
-          task->handleEvent(watcher->token, EVENT_SOCKET_READ);
+          task->handleEvent(watcher, EVENT_SOCKET_READ);
         }
       }
       else if (revents & EV_WRITE) {
-        task->handleEvent(watcher->token, EVENT_SOCKET_WRITE);
+        task->handleEvent(watcher, EVENT_SOCKET_WRITE);
       }
     }
   }
@@ -142,11 +134,13 @@ namespace {
 /// @brief periodic event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct PeriodicWatcher {
-    ev_periodic periodic;
+  struct PeriodicWatcher : public ev_periodic, Watcher {
     struct ev_loop* loop;
-    EventToken token;
     Task* task;
+    
+    PeriodicWatcher () 
+      : Watcher(EVENT_PERIODIC) {
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,11 +148,11 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void periodicCallback (struct ev_loop*, ev_periodic* w, int revents) {
-    PeriodicWatcher* watcher = reinterpret_cast<PeriodicWatcher*>(w);
+    PeriodicWatcher* watcher = (PeriodicWatcher*) w;
     Task* task = watcher->task;
 
     if (task != nullptr && (revents & EV_PERIODIC) && task->isActive()) {
-      task->handleEvent(watcher->token, EVENT_PERIODIC);
+      task->handleEvent(watcher, EVENT_PERIODIC);
     }
   }
 
@@ -166,11 +160,13 @@ namespace {
 /// @brief signal event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct SignalWatcher {
-    ev_signal signal;
+  struct SignalWatcher : public ev_signal, Watcher {
     struct ev_loop* loop;
-    EventToken token;
     Task* task;
+    
+    SignalWatcher () 
+      : Watcher(EVENT_SIGNAL) {
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,11 +174,11 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void signalCallback (struct ev_loop*, ev_signal* w, int revents) {
-    SignalWatcher* watcher = reinterpret_cast<SignalWatcher*>(w);
+    SignalWatcher* watcher = (SignalWatcher*) w;
     Task* task = watcher->task;
 
     if (task != nullptr && (revents & EV_SIGNAL) && task->isActive()) {
-      task->handleEvent(watcher->token, EVENT_SIGNAL);
+      task->handleEvent(watcher, EVENT_SIGNAL);
     }
   }
 
@@ -190,11 +186,13 @@ namespace {
 /// @brief timer event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct TimerWatcher {
-    ev_timer timer;
+  struct TimerWatcher : public ev_timer, Watcher {
     struct ev_loop* loop;
-    EventToken token;
     Task* task;
+    
+    TimerWatcher () 
+      : Watcher(EVENT_TIMER) {
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,11 +200,11 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void timerCallback (struct ev_loop*, ev_timer* w, int revents) {
-    TimerWatcher* watcher = reinterpret_cast<TimerWatcher*>(w);
+    TimerWatcher* watcher = (TimerWatcher*) w;
     Task* task = watcher->task;
 
     if (task != nullptr && (revents & EV_TIMER) && task->isActive()) {
-      task->handleEvent(watcher->token, EVENT_TIMER);
+      task->handleEvent(watcher, EVENT_TIMER);
     }
   }
 }
@@ -265,8 +263,6 @@ SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
   switchAllocator();
 
   //_backend = 1;
-  // setup lock
-  SCHEDULER_INIT(&_watcherLock);
 
   // report status
   LOG_TRACE("supported backends: %d", (int) ev_supported_backends());
@@ -297,13 +293,6 @@ SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
 
     ((ev_async**) _wakers)[i] = w;
   }
-
-  _watchers.reserve(256);
-  _frees.reserve(256);
-  _types.reserve(256);
-
-  // watcher 0 is undefined
-  _watchers.push_back(0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -347,9 +336,6 @@ SchedulerLibev::~SchedulerLibev () {
   // delete threads buffer and wakers
   delete[] threads;
   delete[] (ev_async**)_wakers;
-
-  // destroy lock
-  SCHEDULER_DESTROY(&_watcherLock);
 }
 
 // -----------------------------------------------------------------------------
@@ -382,50 +368,41 @@ void SchedulerLibev::wakeupLoop (EventLoop loop) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerLibev::uninstallEvent (EventToken token) {
-  EventType type;
-  void* watcher = lookupWatcher(token, type);
-
+void SchedulerLibev::uninstallEvent (EventToken watcher) {
   if (watcher == nullptr) {
     return;
   }
+  
+  EventType type = watcher->type;
 
   switch (type) {
     case EVENT_ASYNC: {
-      AsyncWatcher* w = reinterpret_cast<AsyncWatcher*>(watcher);
+      AsyncWatcher* w = (AsyncWatcher*) watcher;
       ev_async_stop(w->loop, (ev_async*) w);
-
-      unregisterWatcher(token);
       delete w;
 
       break;
     }
 
     case EVENT_PERIODIC: {
-      PeriodicWatcher* w = reinterpret_cast<PeriodicWatcher*>(watcher);
+      PeriodicWatcher* w = (PeriodicWatcher*) watcher;
       ev_periodic_stop(w->loop, (ev_periodic*) w);
-
-      unregisterWatcher(token);
       delete w;
 
       break;
     }
 
     case EVENT_SIGNAL: {
-      SignalWatcher* w = reinterpret_cast<SignalWatcher*>(watcher);
+      SignalWatcher* w = (SignalWatcher*) watcher;
       ev_signal_stop(w->loop, (ev_signal*) w);
-
-      unregisterWatcher(token);
       delete w;
 
       break;
     }
 
     case EVENT_SOCKET_READ: {
-      SocketWatcher* w = reinterpret_cast<SocketWatcher*>(watcher);
+      SocketWatcher* w = (SocketWatcher*) watcher;
       ev_io_stop(w->loop, (ev_io*) w);
-
-      unregisterWatcher(token);
       delete w;
 
       break;
@@ -433,10 +410,8 @@ void SchedulerLibev::uninstallEvent (EventToken token) {
 
 
     case EVENT_TIMER: {
-      TimerWatcher* w = reinterpret_cast<TimerWatcher*>(watcher);
-      ev_timer_stop(w->loop, &w->timer);
-
-      unregisterWatcher(token);
+      TimerWatcher* w = (TimerWatcher*) watcher;
+      ev_timer_stop(w->loop, (ev_timer*) w);
       delete w;
 
       break;
@@ -452,13 +427,12 @@ EventToken SchedulerLibev::installAsyncEvent (EventLoop loop, Task* task) {
   AsyncWatcher* watcher = new AsyncWatcher;
   watcher->loop = (struct ev_loop*) lookupLoop(loop);
   watcher->task = task;
-  watcher->token = registerWatcher(watcher, EVENT_ASYNC);
 
-  ev_async* w = &watcher->async;
+  ev_async* w = (ev_async*) watcher;
   ev_async_init(w, asyncCallback);
   ev_async_start(watcher->loop, w);
 
-  return watcher->token;
+  return watcher;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -466,8 +440,8 @@ EventToken SchedulerLibev::installAsyncEvent (EventLoop loop, Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::sendAsync (EventToken token) {
-  AsyncWatcher* watcher = reinterpret_cast<AsyncWatcher*>(lookupWatcher(token));
-
+  AsyncWatcher* watcher = (AsyncWatcher*) token;
+  
   if (watcher == nullptr) {
     return;
   }
@@ -484,13 +458,12 @@ EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, dou
   PeriodicWatcher* watcher = new PeriodicWatcher;
   watcher->loop = (struct ev_loop*) lookupLoop(loop);
   watcher->task = task;
-  watcher->token = registerWatcher(watcher, EVENT_PERIODIC);
 
-  ev_periodic* w = &watcher->periodic;
+  ev_periodic* w = (ev_periodic*) watcher;
   ev_periodic_init(w, periodicCallback, offset, interval, 0);
   ev_periodic_start(watcher->loop, w);
 
-  return watcher->token;
+  return watcher;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,8 +471,8 @@ EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, dou
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double interval) {
-  PeriodicWatcher* watcher = reinterpret_cast<PeriodicWatcher*>(lookupWatcher(token));
-
+  PeriodicWatcher* watcher = (PeriodicWatcher*) token;
+  
   if (watcher == nullptr) {
     return;
   }
@@ -517,13 +490,12 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
   SignalWatcher* watcher = new SignalWatcher;
   watcher->loop = (struct ev_loop*) lookupLoop(loop);
   watcher->task = task;
-  watcher->token = registerWatcher(watcher, EVENT_SIGNAL);
 
-  ev_signal* w = &watcher->signal;
+  ev_signal* w = (ev_signal*) watcher;
   ev_signal_init(w, signalCallback, signal);
   ev_signal_start(watcher->loop, w);
 
-  return watcher->token;
+  return watcher;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -540,7 +512,6 @@ EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, T
   SocketWatcher* watcher = new SocketWatcher;
   watcher->loop = (struct ev_loop*) lookupLoop(loop);
   watcher->task = task;
-  watcher->token = registerWatcher(watcher, EVENT_SOCKET_READ);
 
   int flags = 0;
 
@@ -559,7 +530,7 @@ EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, T
   ev_io_init(w, socketCallback, socket.fileDescriptor, flags);
   ev_io_start(watcher->loop, w);
 
-  return watcher->token;
+  return watcher;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -567,7 +538,7 @@ EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, T
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::startSocketEvents (EventToken token) {
-  SocketWatcher* watcher = reinterpret_cast<SocketWatcher*>(lookupWatcher(token));
+  SocketWatcher* watcher = (SocketWatcher*) token;
 
   if (watcher == nullptr) {
     return;
@@ -585,7 +556,7 @@ void SchedulerLibev::startSocketEvents (EventToken token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::stopSocketEvents (EventToken token) {
-  SocketWatcher* watcher = reinterpret_cast<SocketWatcher*>(lookupWatcher(token));
+  SocketWatcher* watcher = (SocketWatcher*) token;
 
   if (watcher == nullptr) {
     return;
@@ -606,13 +577,12 @@ EventToken SchedulerLibev::installTimerEvent (EventLoop loop, Task* task, double
   TimerWatcher* watcher = new TimerWatcher;
   watcher->loop = (struct ev_loop*) lookupLoop(loop);
   watcher->task = task;
-  watcher->token = registerWatcher(watcher, EVENT_TIMER);
 
-  ev_timer* w = &watcher->timer;
+  ev_timer* w = (ev_timer*) watcher;
   ev_timer_init(w, timerCallback, timeout, 0.0);
   ev_timer_start(watcher->loop, w);
 
-  return watcher->token;
+  return watcher;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -620,13 +590,13 @@ EventToken SchedulerLibev::installTimerEvent (EventLoop loop, Task* task, double
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::clearTimer (EventToken token) {
-  TimerWatcher* watcher = reinterpret_cast<TimerWatcher*>(lookupWatcher(token));
+  TimerWatcher* watcher = (TimerWatcher*) token;
 
   if (watcher == nullptr) {
     return;
   }
 
-  ev_timer* w = &watcher->timer;
+  ev_timer* w = (ev_timer*) watcher;
   ev_timer_stop(watcher->loop, w);
 }
 
@@ -635,13 +605,13 @@ void SchedulerLibev::clearTimer (EventToken token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::rearmTimer (EventToken token, double timeout) {
-  TimerWatcher* watcher = reinterpret_cast<TimerWatcher*>(lookupWatcher(token));
+  TimerWatcher* watcher = (TimerWatcher*) token;
 
   if (watcher == nullptr) {
     return;
   }
 
-  ev_timer* w = &watcher->timer;
+  ev_timer* w = (ev_timer*) watcher;
   ev_timer_set(w, 0.0, timeout);
   ev_timer_again(watcher->loop, w);
 }
@@ -649,41 +619,6 @@ void SchedulerLibev::rearmTimer (EventToken token, double timeout) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a watcher by event-token
-////////////////////////////////////////////////////////////////////////////////
-
-void* SchedulerLibev::lookupWatcher (EventToken token) {
-  void* watcher = nullptr;
-
-  SCHEDULER_LOCK(&_watcherLock);
-
-  if (token < (EventToken) _watchers.size()) {
-    watcher = _watchers[token];
-  }
-
-  SCHEDULER_UNLOCK(&_watcherLock);
-  return watcher;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a watcher by event-token and event-type
-////////////////////////////////////////////////////////////////////////////////
-
-void* SchedulerLibev::lookupWatcher (EventToken token, EventType& type) {
-  void* watcher = nullptr;
-
-  SCHEDULER_LOCK(&_watcherLock);
-
-  if (token < (EventToken) _watchers.size()) {
-    type = _types[token];
-    watcher = _watchers[token];
-  }
-
-  SCHEDULER_UNLOCK(&_watcherLock);
-  return watcher;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an event lookup
@@ -695,44 +630,6 @@ void* SchedulerLibev::lookupLoop (EventLoop loop) {
   }
 
   return ((struct ev_loop**) _loops)[loop];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a watcher
-////////////////////////////////////////////////////////////////////////////////
-
-EventToken SchedulerLibev::registerWatcher (void* watcher, EventType type) {
-  EventToken token;
-
-  SCHEDULER_LOCK(&_watcherLock);
-
-  if (_frees.empty()) {
-    token = (EventToken) _watchers.size();
-    _watchers.emplace_back(watcher);
-  }
-  else {
-    token = (EventToken) _frees.back();
-    _frees.pop_back();
-    _watchers[token] = watcher;
-  }
-
-  _types[token] = type;
-
-  SCHEDULER_UNLOCK(&_watcherLock);
-  return token;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisters a watcher
-////////////////////////////////////////////////////////////////////////////////
-
-void SchedulerLibev::unregisterWatcher (EventToken token) {
-  SCHEDULER_LOCK(&_watcherLock);
-
-  _frees.emplace_back(token);
-  _watchers[token] = nullptr;
-
-  SCHEDULER_UNLOCK(&_watcherLock);
 }
 
 // -----------------------------------------------------------------------------

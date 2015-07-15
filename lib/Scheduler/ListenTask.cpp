@@ -145,7 +145,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->_loop = loop;
   readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
 
-  if (readWatcher == -1) {
+  if (readWatcher == nullptr) {
     return false;
   }
   return true;
@@ -154,13 +154,13 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 
 void ListenTask::cleanup () {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_WARNING("In ListenTask::cleanup the scheduler has disappeared -- invalid pointer");
-    readWatcher = 0;
+    readWatcher = nullptr;
     return;
   }
   _scheduler->uninstallEvent(readWatcher);
-  readWatcher = 0;
+  readWatcher = nullptr;
 }
 
 

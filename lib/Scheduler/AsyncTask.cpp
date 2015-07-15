@@ -41,10 +41,8 @@ using namespace triagens::rest;
 
 AsyncTask::AsyncTask ()
   : Task("AsyncTask"),
-    watcher(0) {
+    watcher(nullptr) {
 }
-
-
 
 AsyncTask::~AsyncTask () {
 }
@@ -68,7 +66,7 @@ bool AsyncTask::setup (Scheduler* scheduler,
 
   watcher = scheduler->installAsyncEvent(loop, this);
 
-  if (watcher == -1) {
+  if (watcher == nullptr) {
     return false;
   }
 
@@ -78,17 +76,15 @@ bool AsyncTask::setup (Scheduler* scheduler,
 
 
 void AsyncTask::cleanup () {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_WARNING("In AsyncTask::cleanup the scheduler has disappeared -- invalid pointer");
-    watcher = 0;
+    watcher = nullptr;
     return;
   }
 
   _scheduler->uninstallEvent(watcher);
-  watcher = 0;
+  watcher = nullptr;
 }
-
-
 
 bool AsyncTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;
