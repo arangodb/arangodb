@@ -32,23 +32,31 @@
 var internal = require('internal');
 var Buffer = require('buffer').Buffer;
 var extend = require('underscore').extend;
+var httperr = require('http-errors');
 var is = require('org/arangodb/is');
 var querystring = require('querystring');
 var qs = require('qs');
 var url = require('url');
 
-function Response(res, encoding, json) {
-  this.status = this.statusCode = res.code;
-  this.message = res.message;
-  this.headers = res.headers ? res.headers : {};
-  this.body = this.rawBody = res.body;
-  if (this.body && encoding !== null) {
-    this.body = this.body.toString(encoding || 'utf-8');
-    if (json) {
-      try {
-        this.body = JSON.parse(this.body);
-      } catch (e) {
-        // Do nothing.
+class Response {
+  throw(msg) {
+    var err = new httperr[this.status](msg || this.message);
+    err.details = this;
+    throw err;
+  }
+  constructor(res, encoding, json) {
+    this.status = this.statusCode = res.code;
+    this.message = res.message;
+    this.headers = res.headers ? res.headers : {};
+    this.body = this.rawBody = res.body;
+    if (this.body && encoding !== null) {
+      this.body = this.body.toString(encoding || 'utf-8');
+      if (json) {
+        try {
+          this.body = JSON.parse(this.body);
+        } catch (e) {
+          // Do nothing.
+        }
       }
     }
   }
