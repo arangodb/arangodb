@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read locker
+/// @brief SpinLock
 ///
 /// @file
 ///
@@ -22,52 +22,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
+/// @author Dr. Frank Celler
 /// @author Achim Brandt
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_READ_LOCKER_H
-#define ARANGODB_BASICS_READ_LOCKER_H 1
+#ifndef ARANGODB_BASICS_SPIN_LOCK_H
+#define ARANGODB_BASICS_SPIN_LOCK_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief construct locker with file and line information
-///
-/// Ones needs to use macros twice to get a unique variable based on the line
-/// number.
-////////////////////////////////////////////////////////////////////////////////
-
-#define READ_LOCKER_VAR_A(a) _read_lock_variable ## a
-#define READ_LOCKER_VAR_B(a) READ_LOCKER_VAR_A(a)
-
-#define READ_LOCKER(b) \
-  triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class ReadLocker
-// -----------------------------------------------------------------------------
+#include "Basics/locks.h"
 
 namespace triagens {
   namespace basics {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    class SpinLock
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read locker
-///
-/// A ReadLocker read-locks a read-write lock during its lifetime and unlocks
-/// the lock when it is destroyed.
+/// @brief spinlock
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ReadLocker {
-        ReadLocker (ReadLocker const&);
-        ReadLocker& operator= (ReadLocker const&);
+    class SpinLock {
+      private:
+        SpinLock (SpinLock const&) = delete;
+        SpinLock& operator= (SpinLock const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -76,27 +57,34 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a read-lock
-///
-/// The constructors read-locks the lock, the destructors unlocks the lock.
+/// @brief constructs a spinlock
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        ReadLocker (ReadWriteLock*);
+        SpinLock ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a read-lock
-///
-/// The constructors read-locks the lock, the destructors unlocks the lock.
+/// @brief deletes the spinlock
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line);
+        ~SpinLock ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief releases the read-lock
+/// @brief acquires the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~ReadLocker ();
+        void lock ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases the lock
+////////////////////////////////////////////////////////////////////////////////
+
+        void unlock ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -105,23 +93,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the read-write lock
+/// @brief spinlock variable
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReadWriteLock* _readWriteLock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief file
-////////////////////////////////////////////////////////////////////////////////
-
-        char const* _file;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line number
-////////////////////////////////////////////////////////////////////////////////
-
-        int _line;
-
+        TRI_spin_t _lock;
     };
   }
 }

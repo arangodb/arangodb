@@ -32,7 +32,6 @@
 #define ARANGODB_BASICS_MUTEX_LOCKER_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/Mutex.h"
 
 // -----------------------------------------------------------------------------
@@ -53,7 +52,7 @@
   triagens::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class ReadLocker
+// --SECTION--                                                 class MutexLocker
 // -----------------------------------------------------------------------------
 
 namespace triagens {
@@ -79,7 +78,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
 ///
-/// The constructors aquires a lock, the destructors releases the lock.
+/// The constructor aquires a lock, the destructor releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
@@ -88,7 +87,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
 ///
-/// The constructors aquires a lock, the destructors releases the lock.
+/// The constructor aquires a lock, the destructor releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
         MutexLocker (Mutex* mutex, char const* file, int line);
@@ -122,6 +121,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _line;
+
     };
   }
 }

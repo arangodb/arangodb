@@ -30,9 +30,6 @@
 
 #include "WriteLocker.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
-
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
@@ -46,8 +43,7 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 WriteLocker::WriteLocker (ReadWriteLock* readWriteLock)
-  : _readWriteLock(readWriteLock), _file(0), _line(0) {
-  _readWriteLock->writeLock();
+  : WriteLocker(readWriteLock, nullptr, 0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
