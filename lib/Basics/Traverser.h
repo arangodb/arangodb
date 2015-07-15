@@ -1305,11 +1305,11 @@ namespace triagens {
         }
 
         Path* search (VertexId& start, VertexId& end) {
-          Path* res = new Path();
+          std::unique_ptr<Path> res(new Path());
           // Init
           if (start == end) {
             res->vertices.emplace_back(start);
-            return res;
+            return res.release();
           }
           _leftFound.emplace(start, nullptr);
           _rightFound.emplace(end, nullptr);
@@ -1347,7 +1347,7 @@ namespace triagens {
                         it = _rightFound.find(next);
                       }
                       res->weight = res->edges.size();
-                      return res;
+                      return res.release();
                     }
                     _nextClosure.emplace_back(n);
                   }
@@ -1381,7 +1381,7 @@ namespace triagens {
                         it = _rightFound.find(next);
                       }
                       res->weight = res->edges.size();
-                      return res;
+                      return res.release();
                     }
                     _nextClosure.emplace_back(n);
                   }
