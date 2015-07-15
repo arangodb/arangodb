@@ -53,7 +53,7 @@
   triagens::basics::ReadUnlocker READ_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class ReadLocker
+// --SECTION--                                                class ReadUnlocker
 // -----------------------------------------------------------------------------
 
 namespace triagens {
@@ -79,17 +79,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
 ///
-/// The constructors unlocks the lock, the destructors aquires a read-lock.
+/// The constructor unlocks the lock, the destructors aquires a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
         ReadUnlocker (ReadWriteLock* readWriteLock);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
 ///
-/// The constructors unlocks the lock, the destructors aquires a read-lock.
+/// The constructor unlocks the lock, the destructors aquires a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
         ReadUnlocker (ReadWriteLock* readWriteLock, char const* file, int line);
