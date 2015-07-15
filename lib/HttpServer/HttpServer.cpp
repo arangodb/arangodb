@@ -47,6 +47,12 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
+#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
+#define GENERAL_SERVER_LOCKER(a) SPIN_LOCKER(a)
+#else
+#define GENERAL_SERVER_LOCKER(a) MUTEX_LOCKER(a)
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private static variables
 // -----------------------------------------------------------------------------
@@ -110,8 +116,6 @@ HttpServer::HttpServer (Scheduler* scheduler,
     _handlers(),
     _task2handler(),
     _keepAliveTimeout(keepAliveTimeout) {
-  GENERAL_SERVER_INIT(&_commTasksLock);
-  GENERAL_SERVER_INIT(&_mappingLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,36 +123,17 @@ HttpServer::HttpServer (Scheduler* scheduler,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer::~HttpServer () {
-  for (auto task : _commTasks) {
+  for (auto& task : _commTasks) {
     unregisterChunkedTask(task);
     _scheduler->destroyTask(task);
   }
 
   stopListening();
-
-  GENERAL_SERVER_DESTROY(&_mappingLock);
-  GENERAL_SERVER_DESTROY(&_commTasksLock);
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            virtual public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the protocol
-////////////////////////////////////////////////////////////////////////////////
-
-const char* HttpServer::protocol () const {
-  return "http";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the encryption to be used
-////////////////////////////////////////////////////////////////////////////////
-
-Endpoint::EncryptionType HttpServer::encryptionType () const {
-  return Endpoint::ENCRYPTION_NONE;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a suitable communication task
@@ -258,7 +243,7 @@ void HttpServer::startListening () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::stopListening () {
-  for (auto task : _listenTasks) {
+  for (auto& task : _listenTasks) {
     _scheduler->destroyTask(task);
   }
 
@@ -290,26 +275,26 @@ void HttpServer::unregisterChunkedTask (HttpCommTask* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::shutdownHandlers () {
-  GENERAL_SERVER_LOCK(&_mappingLock);
+  {
+    GENERAL_SERVER_LOCKER(_mappingLock);
 
-  for (auto&& i : _handlers) {
-    HttpServerJob* job = i.second._job;
+    for (auto&& i : _handlers) {
+      HttpServerJob* job = i.second._job;
 
-    if (job != nullptr) {
-      job->abandon();
-      i.second._job = nullptr;
+      if (job != nullptr) {
+        job->abandon();
+        i.second._job = nullptr;
+      }
     }
   }
 
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
+  {
+    GENERAL_SERVER_LOCKER(_commTasksLock);
 
-  GENERAL_SERVER_LOCK(&_commTasksLock);
-
-  for (auto i : _commTasks) {
-    i->beginShutdown();
+    for (auto& i : _commTasks) {
+      i->beginShutdown();
+    }
   }
-
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,20 +302,23 @@ void HttpServer::shutdownHandlers () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::stop () {
-  GENERAL_SERVER_LOCK(&_commTasksLock);
+  while (true) {
+    HttpCommTask* task = nullptr;
 
-  while (! _commTasks.empty()) {
-    HttpCommTask* task = *_commTasks.begin();
-    _commTasks.erase(task);
-    GENERAL_SERVER_UNLOCK(&_commTasksLock);
+    {
+      GENERAL_SERVER_LOCKER(_commTasksLock);
+ 
+      if (_commTasks.empty()) {
+        break;
+      }
+
+      task = *_commTasks.begin();
+      _commTasks.erase(task);
+    }
 
     unregisterChunkedTask(task);
     _scheduler->destroyTask(task);
-
-    GENERAL_SERVER_LOCK(&_commTasksLock);
   }
-
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,17 +328,15 @@ void HttpServer::stop () {
 void HttpServer::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
   HttpCommTask* task = createCommTask(s, info);
 
-
-  GENERAL_SERVER_LOCK(&_commTasksLock);
-  try {
-    _commTasks.emplace(task);
+  {
+    GENERAL_SERVER_LOCKER(_commTasksLock);
+    try {
+      _commTasks.emplace(task);
+    }
+    catch (...) {
+      throw;
+    }
   }
-  catch (...) {
-    GENERAL_SERVER_UNLOCK(&_commTasksLock);
-    throw;
-  }
-
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
 
   // registers the task and get the number of the scheduler thread
   ssize_t n;
@@ -371,9 +357,10 @@ void HttpServer::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
 void HttpServer::handleCommunicationClosed (HttpCommTask* task) {
   shutdownHandlerByTask(task);
 
-  GENERAL_SERVER_LOCK(&_commTasksLock);
-  _commTasks.erase(task);
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
+  {
+    GENERAL_SERVER_LOCKER(_commTasksLock);
+    _commTasks.erase(task);
+  }
 
   unregisterChunkedTask(task);
 }
@@ -385,9 +372,10 @@ void HttpServer::handleCommunicationClosed (HttpCommTask* task) {
 void HttpServer::handleCommunicationFailure (HttpCommTask* task) {
   shutdownHandlerByTask(task);
 
-  GENERAL_SERVER_LOCK(&_commTasksLock);
-  _commTasks.erase(task);
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
+  {
+    GENERAL_SERVER_LOCKER(_commTasksLock);
+    _commTasks.erase(task);
+  }
 
   unregisterChunkedTask(task);
 }
@@ -397,24 +385,26 @@ void HttpServer::handleCommunicationFailure (HttpCommTask* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::handleAsync (HttpCommTask* task) {
-  GENERAL_SERVER_LOCK(&_mappingLock);
+  HttpHandler* handler = nullptr;
 
-  auto&& it = _task2handler.find(task);
+  {
+    GENERAL_SERVER_LOCKER(_mappingLock);
 
-  if (it == _task2handler.end() || it->second._task != task) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-    LOG_WARNING("cannot find a task for the handler, giving up");
+    auto&& it = _task2handler.find(task);
 
-    return;
+    if (it == _task2handler.end() || it->second._task != task) {
+      LOG_WARNING("cannot find a task for the handler, giving up");
+      return;
+    }
+
+    handler_task_job_t element = it->second;
+    _task2handler.erase(it);
+
+    handler = element._handler;
+    _handlers.erase(handler);
   }
 
-  handler_task_job_t element = it->second;
-  _task2handler.erase(it);
-
-  HttpHandler* handler = element._handler;
-  _handlers.erase(handler);
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
+  TRI_ASSERT(handler != nullptr);
 
   HttpResponse * response = handler->getResponse();
 
@@ -583,13 +573,10 @@ void HttpServer::jobDone (Job* ajob) {
     return;
   }
 
-  GENERAL_SERVER_LOCK(&_mappingLock);
+  GENERAL_SERVER_LOCKER(_mappingLock);
   auto&& it = _handlers.find(handler);
 
-
   if (it == _handlers.end() || it->second._handler != handler) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-
     LOG_WARNING("jobDone called, but handler is unknown");
     return;
   }
@@ -605,15 +592,11 @@ void HttpServer::jobDone (Job* ajob) {
     _handlers.erase(it);
 
     delete handler;
-
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
     return;
   }
 
   // signal the task, to continue its work
   element._task->signal();
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
 }
 
 // -----------------------------------------------------------------------------
@@ -726,15 +709,13 @@ Handler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, HttpHan
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::shutdownHandlerByTask (Task* task) {
-  GENERAL_SERVER_LOCK(&_mappingLock);
+  GENERAL_SERVER_LOCKER(_mappingLock);
 
   // remove the task from the map
   auto&& it = _task2handler.find(task);
 
   if (it == _task2handler.end() || it->second._task != task) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
     LOG_DEBUG("shutdownHandler called, but no handler is known for task");
-
     return;
   }
 
@@ -747,9 +728,7 @@ void HttpServer::shutdownHandlerByTask (Task* task) {
   auto&& jt = _handlers.find(handler);
 
   if (jt == _handlers.end() || jt->second._handler != handler) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
     LOG_DEBUG("shutdownHandler called, but handler of task is unknown");
-
     return;
   }
 
@@ -759,9 +738,6 @@ void HttpServer::shutdownHandlerByTask (Task* task) {
 
   if (job == nullptr) {
     _handlers.erase(jt);
-
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-
     delete handler;
 
     return;
@@ -770,49 +746,45 @@ void HttpServer::shutdownHandlerByTask (Task* task) {
   // initiate shutdown if a job is known
   element2._task = nullptr;
   job->beginShutdown();
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a task
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::registerHandler (HttpHandler* handler, HttpCommTask* task) {
+void HttpServer::registerHandler (HttpHandler* handler, 
+                                  HttpCommTask* task) {
   handler_task_job_t element;
   element._handler = handler;
   element._task = task;
   element._job = nullptr;
 
-  GENERAL_SERVER_LOCK(&_mappingLock);
+  GENERAL_SERVER_LOCKER(_mappingLock);
 
   _handlers[handler] = element;
   _task2handler[task] = element;
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a new job
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::registerJob (HttpHandler* handler, HttpServerJob* job) {
-  GENERAL_SERVER_LOCK(&_mappingLock);
+void HttpServer::registerJob (HttpHandler* handler, 
+                              HttpServerJob* job) {
+  {
+    GENERAL_SERVER_LOCKER(_mappingLock);
 
-  // update the handler information
-  auto&& it = _handlers.find(handler);
+    // update the handler information
+    auto&& it = _handlers.find(handler);
 
-  if (it == _handlers.end() || it->second._handler != handler) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-    LOG_DEBUG("registerJob called for an unknown handler");
+    if (it == _handlers.end() || it->second._handler != handler) {
+      LOG_DEBUG("registerJob called for an unknown handler");
+      return;
+    }
 
-    return;
+    handler_task_job_t& element = it->second;
+    element._job = job;
   }
-
-  handler_task_job_t& element = it->second;
-  element._job = job;
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
 
   handler->RequestStatisticsAgent::transfer(job);
 

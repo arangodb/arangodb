@@ -29,30 +29,16 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_GENERAL_SERVER_H
-#define ARANGODB_GENERAL_SERVER_GENERAL_SERVER_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTP_SERVER_H
+#define ARANGODB_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "Scheduler/TaskManager.h"
-
-#include "Basics/locks.h"
+#include "Basics/Mutex.h"
+#include "Basics/SpinLock.h"
 #include "Rest/ConnectionInfo.h"
 #include "Rest/Handler.h"
 
 // #define TRI_USE_SPIN_LOCK_GENERAL_SERVER 1
-
-#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
-#define GENERAL_SERVER_LOCK_TYPE TRI_spin_t
-#define GENERAL_SERVER_INIT TRI_InitSpin
-#define GENERAL_SERVER_DESTROY TRI_DestroySpin
-#define GENERAL_SERVER_LOCK TRI_LockSpin
-#define GENERAL_SERVER_UNLOCK TRI_UnlockSpin
-#else
-#define GENERAL_SERVER_LOCK_TYPE TRI_mutex_t
-#define GENERAL_SERVER_INIT TRI_InitMutex
-#define GENERAL_SERVER_DESTROY TRI_DestroyMutex
-#define GENERAL_SERVER_LOCK TRI_LockMutex
-#define GENERAL_SERVER_UNLOCK TRI_UnlockMutex
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class HttpServer
@@ -122,13 +108,17 @@ namespace triagens {
 /// @brief returns the protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual const char* protocol () const;
+        virtual char const* protocol () const {
+          return "http";
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Endpoint::EncryptionType encryptionType () const;
+        virtual Endpoint::EncryptionType encryptionType () const {
+          return Endpoint::ENCRYPTION_NONE;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a suitable communication task
@@ -354,19 +344,27 @@ namespace triagens {
 /// @brief mutex for comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-        GENERAL_SERVER_LOCK_TYPE _commTasksLock;
+#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
+        triagens::basics::SpinLock _commTasksLock;
+#else
+        triagens::basics::Mutex _commTasksLock;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief active comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::set<HttpCommTask*> _commTasks;
+        std::unordered_set<HttpCommTask*> _commTasks;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex for mapping structures
 ////////////////////////////////////////////////////////////////////////////////
 
-        GENERAL_SERVER_LOCK_TYPE _mappingLock;
+#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
+        triagens::basics::SpinLock _mappingLock;
+#else
+        triagens::basics::Mutex _mappingLock;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief map handler to task
