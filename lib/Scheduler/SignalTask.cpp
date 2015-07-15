@@ -45,7 +45,7 @@ using namespace triagens::rest;
 SignalTask::SignalTask ()
   : Task("SignalTask") {
   for (size_t i = 0;  i < MAX_SIGNALS;  ++i) {
-    watcher[i] = 0;
+    watcher[i] = nullptr;
   }
 }
 
@@ -66,13 +66,13 @@ bool SignalTask::addSignal (int signal) {
     return false;
   }
   else {
-    if (_scheduler != 0) {
+    if (_scheduler != nullptr) {
       _scheduler->unregisterTask(this);
     }
 
     signals.insert(signal);
 
-    if (_scheduler != 0) {
+    if (_scheduler != nullptr) {
       _scheduler->registerTask(this);
     }
 
@@ -99,20 +99,22 @@ bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 
 void SignalTask::cleanup () {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_WARNING("In SignalTask::cleanup the scheduler has disappeared -- invalid pointer");
   }
   for (size_t pos = 0;  pos < signals.size() && pos < MAX_SIGNALS;  ++pos) {
-    if (_scheduler != 0) {
+    if (_scheduler != nullptr) {
       _scheduler->uninstallEvent(watcher[pos]);
     }
-    watcher[pos] = 0;
+    watcher[pos] = nullptr;
   }
 }
 
 
 
 bool SignalTask::handleEvent (EventToken token, EventType revents) {
+  TRI_ASSERT(token != nullptr);
+
   bool result = true;
 
   if (revents & EVENT_SIGNAL) {

@@ -30,13 +30,13 @@
 
 #include "SocketTask.h"
 
-#include <errno.h>
-
+#include "Basics/logging.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/logging.h"
 #include "Basics/socket-utils.h"
 #include "Scheduler/Scheduler.h"
+
+#include <errno.h>
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -51,15 +51,15 @@ using namespace triagens::rest;
 
 SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
   : Task("SocketTask"),
-    keepAliveWatcher(0),
-    readWatcher(0),
-    writeWatcher(0),
-    watcher(0),
+    keepAliveWatcher(nullptr),
+    readWatcher(nullptr),
+    writeWatcher(nullptr),
+    watcher(nullptr),
     _commSocket(socket),
     _keepAliveTimeout(keepAliveTimeout),
     _writeBuffer(nullptr),
 #ifdef TRI_ENABLE_FIGURES
-    _writeBufferStatistics(0),
+    _writeBufferStatistics(nullptr),
 #endif
     ownBuffer(true),
     writeLength(0),
@@ -85,7 +85,7 @@ SocketTask::~SocketTask () {
     TRI_invalidatesocket(&_commSocket);
   }
 
-  if (_writeBuffer != nullptr && ownBuffer) {
+  if (ownBuffer) {
     delete _writeBuffer;
   }
 
@@ -112,7 +112,7 @@ SocketTask::~SocketTask () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::setKeepAliveTimeout (double timeout) {
-  if (keepAliveWatcher != 0 && timeout > 0.0) {
+  if (keepAliveWatcher != nullptr && timeout > 0.0) {
     _scheduler->rearmTimer(keepAliveWatcher, timeout);
   }
 }
@@ -126,7 +126,6 @@ void SocketTask::setKeepAliveTimeout (double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::fillReadBuffer () {
-
   // reserve some memory for reading
   if (_readBuffer->reserve(READ_BLOCK_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
     // out of memory
@@ -148,21 +147,20 @@ bool SocketTask::fillReadBuffer () {
 
     return false;
   }
-  else {
-    if (errno == EINTR) {
-      return fillReadBuffer();
-    }
-    else if (errno != EWOULDBLOCK) {
-      LOG_TRACE("read failed with %d: %s", (int) errno, strerror(errno));
 
-      return false;
-    }
-    else {
-      LOG_TRACE("read would block with %d: %s", (int) errno, strerror(errno));
-
-      return true;
-    }
+  if (errno == EINTR) {
+    return fillReadBuffer();
   }
+
+  if (errno != EWOULDBLOCK) {
+    LOG_TRACE("read failed with %d: %s", (int) errno, strerror(errno));
+
+    return false;
+  }
+    
+  LOG_TRACE("read would block with %d: %s", (int) errno, strerror(errno));
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +315,6 @@ bool SocketTask::hasWriteBuffer () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
-
 #ifdef _WIN32
   // ..........................................................................
   // The problem we have here is that this opening of the fs handle may fail.
@@ -336,7 +333,7 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   // never use _open_osfhandle for sockets.
   // Therefore, we do the following, although it has the potential to
   // lose the higher bits of the socket handle:
-  int res = (int)_commSocket.fileHandle;
+  int res = (int) _commSocket.fileHandle;
 
   if (res == -1) {
     LOG_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
@@ -363,7 +360,7 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
   writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
 
-  if (readWatcher == -1 || writeWatcher == -1) {
+  if (readWatcher == nullptr || writeWatcher == nullptr) {
     return false;
   }
 
@@ -384,24 +381,24 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 void SocketTask::cleanup () {
   if (_scheduler == nullptr) {
     LOG_WARNING("In SocketTask::cleanup the scheduler has disappeared -- invalid pointer");
-    watcher = 0;
-    keepAliveWatcher = 0;
-    readWatcher = 0;
-    writeWatcher = 0;
+    watcher = nullptr;
+    keepAliveWatcher = nullptr;
+    readWatcher = nullptr;
+    writeWatcher = nullptr;
     return;
   }
 
   _scheduler->uninstallEvent(watcher);
-  watcher = 0;
+  watcher = nullptr;
 
   _scheduler->uninstallEvent(keepAliveWatcher);
-  keepAliveWatcher = 0;
+  keepAliveWatcher = nullptr;
 
   _scheduler->uninstallEvent(readWatcher);
-  readWatcher = 0;
+  readWatcher = nullptr;
 
   _scheduler->uninstallEvent(writeWatcher);
-  writeWatcher = 0;
+  writeWatcher = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,7 +421,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
   }
 
   if (token == readWatcher && (revents & EVENT_SOCKET_READ)) {
-    if (keepAliveWatcher != 0) {
+    if (keepAliveWatcher != nullptr) {
       // disable timer for keep-alive timeout
       _scheduler->clearTimer(keepAliveWatcher);
     }
