@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Read Locker
+/// @brief SpinLocker
 ///
 /// @file
 ///
@@ -22,13 +22,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
+/// @author Dr. Frank Celler
 /// @author Achim Brandt
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReadLocker.h"
+#include "SpinLocker.h"
 
 using namespace triagens::basics;
 
@@ -37,32 +37,32 @@ using namespace triagens::basics;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief acquires a read-lock
+/// @brief aquires a lock
 ///
-/// The constructors read-lock the lock, the destructors unlock the lock.
+/// The constructor aquires a lock, the destructor releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadLocker::ReadLocker (ReadWriteLock* readWriteLock)
-  : ReadLocker(readWriteLock, nullptr, 0) {
+SpinLocker::SpinLocker (SpinLock* lock)
+  : SpinLocker(lock, nullptr, 0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief acquires a read-lock
+/// @brief aquires a lock
 ///
-/// The constructors read-lock the lock, the destructors unlock the lock.
+/// The constructor aquires a lock, the destructor releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line)
-  : _readWriteLock(readWriteLock), _file(file), _line(line) {
-  _readWriteLock->readLock();
+SpinLocker::SpinLocker (SpinLock* lock, char const* file, int line)
+  : _lock(lock), _file(file), _line(line) {
+  _lock->lock();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief releases the read-lock
+/// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadLocker::~ReadLocker () {
-  _readWriteLock->unlock();
+SpinLocker::~SpinLocker () {
+  _lock->unlock();
 }
 
 // -----------------------------------------------------------------------------

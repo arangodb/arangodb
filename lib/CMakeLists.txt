@@ -83,6 +83,8 @@ add_library(
     Basics/ReadWriteLock.cpp
     Basics/skip-list.cpp
     Basics/socket-utils.cpp
+    Basics/SpinLock.cpp
+    Basics/SpinLocker.cpp
     Basics/ssl-helper.cpp
     Basics/string-buffer.cpp
     Basics/StringUtils.cpp

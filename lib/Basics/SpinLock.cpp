@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Read Locker
+/// @brief SpinLock
 ///
 /// @file
 ///
@@ -22,13 +22,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
+/// @author Dr. Frank Celler
 /// @author Achim Brandt
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReadLocker.h"
+#include "SpinLock.h"
 
 using namespace triagens::basics;
 
@@ -37,32 +37,40 @@ using namespace triagens::basics;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief acquires a read-lock
-///
-/// The constructors read-lock the lock, the destructors unlock the lock.
+/// @brief constructs a spinlock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadLocker::ReadLocker (ReadWriteLock* readWriteLock)
-  : ReadLocker(readWriteLock, nullptr, 0) {
+SpinLock::SpinLock ()
+  : _lock() {
+  TRI_InitSpin(&_lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief acquires a read-lock
-///
-/// The constructors read-lock the lock, the destructors unlock the lock.
+/// @brief deletes the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line)
-  : _readWriteLock(readWriteLock), _file(file), _line(line) {
-  _readWriteLock->readLock();
+SpinLock::~SpinLock () {
+  TRI_DestroySpin(&_lock);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquires the lock
+////////////////////////////////////////////////////////////////////////////////
+
+void SpinLock::lock () {
+  TRI_LockSpin(&_lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief releases the read-lock
+/// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadLocker::~ReadLocker () {
-  _readWriteLock->unlock();
+void SpinLock::unlock () {
+  TRI_UnlockSpin(&_lock);
 }
 
 // -----------------------------------------------------------------------------

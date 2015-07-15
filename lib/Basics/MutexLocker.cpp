@@ -30,9 +30,6 @@
 
 #include "MutexLocker.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
-
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
@@ -42,18 +39,17 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
 ///
-/// The constructors aquires a lock, the destructors releases the lock.
+/// The constructor aquires a lock, the destructors releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
 MutexLocker::MutexLocker (Mutex* mutex)
-  : _mutex(mutex), _file(0), _line(0) {
-  _mutex->lock();
+  : MutexLocker(mutex, nullptr, 0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
 ///
-/// The constructors aquires a lock, the destructors releases the lock.
+/// The constructor aquires a lock, the destructors releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
 MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)

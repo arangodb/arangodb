@@ -32,7 +32,6 @@
 #define ARANGODB_BASICS_WRITE_LOCKER_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/ReadWriteLock.h"
 
 // -----------------------------------------------------------------------------
@@ -123,6 +122,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _line;
+
     };
   }
 }
