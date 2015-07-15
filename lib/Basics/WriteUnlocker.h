@@ -79,7 +79,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
 ///
-/// The constructors unlocks the lock, the destructors aquires a write-lock.
+/// The constructor unlocks the lock, the destructors aquires a write-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
@@ -88,7 +88,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
 ///
-/// The constructors unlocks the lock, the destructors aquires a write-lock.
+/// The constructor unlocks the lock, the destructors aquires a write-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
         WriteUnlocker (ReadWriteLock* readWriteLock, char const* file, int line);
