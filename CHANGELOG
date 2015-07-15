@@ -552,6 +552,15 @@ v2.6.0 (2015-06-20)
   
       GRAPH_SHORTEST_PATH(<graph>, <source>, <target>, { includeData: true, includePath: { edges: true, vertices: true } })
 
+  The attributes `startVertex` and `vertex` that were present in the results of `GRAPH_SHORTEST_PATH`
+  in previous versions of ArangoDB will not be produced in 2.6. To calculate these attributes in 2.6,
+  please extract the first and last elements from the `vertices` result attribute.
+
+* INCOMPATIBLE CHANGE:
+
+  The AQL function `GRAPH_DISTANCE_TO` will now return only the id the destination vertex 
+  in the `vertex` attribute, and not the full vertex data with all vertex attributes.
+
 * INCOMPATIBLE CHANGE:
 
   All graph measurements functions in JavaScript module `general-graph` that calculated a 
