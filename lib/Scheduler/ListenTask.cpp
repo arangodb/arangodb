@@ -65,16 +65,15 @@ using namespace triagens::rest;
 
 ListenTask::ListenTask (Endpoint* endpoint)
   : Task("ListenTask"),
-    readWatcher(0),
+    readWatcher(nullptr),
     _endpoint(endpoint),
     acceptFailures(0) {
   TRI_invalidatesocket(&_listenSocket);
   bindSocket();
 }
 
-
 ListenTask::~ListenTask () {
-  if (readWatcher != 0) {
+  if (readWatcher != nullptr) {
     _scheduler->uninstallEvent(readWatcher);
   }
 }
@@ -86,15 +85,12 @@ ListenTask::~ListenTask () {
 bool ListenTask::isBound () const {
   MUTEX_LOCKER(changeLock);
 
-  return _endpoint != 0 && _endpoint->isConnected();
+  return _endpoint != nullptr && _endpoint->isConnected();
 }
-
-
 
 // -----------------------------------------------------------------------------
 // Task methods
 // -----------------------------------------------------------------------------
-
 
 bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   if (! isBound()) {
@@ -151,8 +147,6 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   return true;
 }
 
-
-
 void ListenTask::cleanup () {
   if (_scheduler == nullptr) {
     LOG_WARNING("In ListenTask::cleanup the scheduler has disappeared -- invalid pointer");
@@ -162,8 +156,6 @@ void ListenTask::cleanup () {
   _scheduler->uninstallEvent(readWatcher);
   readWatcher = nullptr;
 }
-
-
 
 bool ListenTask::handleEvent (EventToken token, EventType revents) {
   if (token == readWatcher) {
@@ -249,7 +241,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
         if (p != nullptr) {
           info.clientAddress = p;
         }
-	info.clientPort = addr->sin_port;
+        info.clientPort = addr->sin_port;
       }
       else if (type == Endpoint::DOMAIN_IPV6) {
         const char *p;
@@ -258,8 +250,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
         buf[INET6_ADDRSTRLEN] = '\0';
         if (p != nullptr) {
           info.clientAddress = p;
-        }
-	info.clientPort = addrmem.sin6_port;
+        } 
+        info.clientPort = addrmem.sin6_port;
       }
     }
 

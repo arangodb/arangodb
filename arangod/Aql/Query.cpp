@@ -632,10 +632,10 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute (QueryRegistry* registry) {
-  bool useQueryCache = canUseQueryCache();
-  uint64_t queryStringHash = 0;
-
   try {
+    bool useQueryCache = canUseQueryCache();
+    uint64_t queryStringHash = 0;
+
     if (useQueryCache) {
       // hash the query
       queryStringHash = hash();
@@ -777,10 +777,10 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
 QueryResultV8 Query::executeV8 (v8::Isolate* isolate, 
                                 QueryRegistry* registry) {
-  bool useQueryCache = canUseQueryCache();
-  uint64_t queryStringHash = 0;
-
   try {
+    bool useQueryCache = canUseQueryCache();
+    uint64_t queryStringHash = 0;
+
     if (useQueryCache) {
       // hash the query
       queryStringHash = hash();

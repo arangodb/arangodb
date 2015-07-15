@@ -51,7 +51,7 @@ bool V8Completer::isComplete (std::string const& source, size_t lineno, size_t c
 
   char const* ptr = source.c_str();
   char const* end = ptr + source.length();
-  state = NORMAL;
+  LineParseState state = NORMAL;
 
   while (ptr < end) {
     if (state == DOUBLE_QUOTE) {
