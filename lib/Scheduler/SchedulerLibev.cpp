@@ -68,8 +68,10 @@ namespace {
     struct ev_loop* loop;
     Task* task;
 
-    AsyncWatcher () 
-      : Watcher(EVENT_ASYNC) {
+    AsyncWatcher (struct ev_loop* loop, Task* task) 
+      : Watcher(EVENT_ASYNC),
+        loop(loop), 
+        task(task) {
     }
   };
 
@@ -78,7 +80,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void asyncCallback (struct ev_loop*, ev_async* w, int revents) {
-    AsyncWatcher* watcher = (AsyncWatcher*) w;
+    AsyncWatcher* watcher = (AsyncWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
     if (task != nullptr && (revents & EV_ASYNC) && task->isActive()) {
@@ -102,8 +104,10 @@ namespace {
     struct ev_loop* loop;
     Task* task;
     
-    SocketWatcher () 
-      : Watcher(EVENT_SOCKET_READ) {
+    SocketWatcher (struct ev_loop* loop, Task* task) 
+      : Watcher(EVENT_SOCKET_READ),
+        loop(loop),
+        task(task) {
     }
   };
 
@@ -112,7 +116,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void socketCallback (struct ev_loop*, ev_io* w, int revents) {
-    SocketWatcher* watcher = (SocketWatcher*) w;
+    SocketWatcher* watcher = (SocketWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
     if (task != nullptr && task->isActive()) {
@@ -138,8 +142,10 @@ namespace {
     struct ev_loop* loop;
     Task* task;
     
-    PeriodicWatcher () 
-      : Watcher(EVENT_PERIODIC) {
+    PeriodicWatcher (struct ev_loop* loop, Task* task) 
+      : Watcher(EVENT_PERIODIC),
+        loop(loop),
+        task(task) {
     }
   };
 
@@ -148,7 +154,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void periodicCallback (struct ev_loop*, ev_periodic* w, int revents) {
-    PeriodicWatcher* watcher = (PeriodicWatcher*) w;
+    PeriodicWatcher* watcher = (PeriodicWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
     if (task != nullptr && (revents & EV_PERIODIC) && task->isActive()) {
@@ -164,8 +170,10 @@ namespace {
     struct ev_loop* loop;
     Task* task;
     
-    SignalWatcher () 
-      : Watcher(EVENT_SIGNAL) {
+    SignalWatcher (struct ev_loop* loop, Task* task) 
+      : Watcher(EVENT_SIGNAL),
+        loop(loop),
+        task(task) {
     }
   };
 
@@ -174,7 +182,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void signalCallback (struct ev_loop*, ev_signal* w, int revents) {
-    SignalWatcher* watcher = (SignalWatcher*) w;
+    SignalWatcher* watcher = (SignalWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
     if (task != nullptr && (revents & EV_SIGNAL) && task->isActive()) {
@@ -190,8 +198,10 @@ namespace {
     struct ev_loop* loop;
     Task* task;
     
-    TimerWatcher () 
-      : Watcher(EVENT_TIMER) {
+    TimerWatcher (struct ev_loop* loop, Task* task) 
+      : Watcher(EVENT_TIMER),
+        loop(loop),
+        task(task) {
     }
   };
 
@@ -200,7 +210,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   void timerCallback (struct ev_loop*, ev_timer* w, int revents) {
-    TimerWatcher* watcher = (TimerWatcher*) w;
+    TimerWatcher* watcher = (TimerWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
     if (task != nullptr && (revents & EV_TIMER) && task->isActive()) {
@@ -377,7 +387,7 @@ void SchedulerLibev::uninstallEvent (EventToken watcher) {
 
   switch (type) {
     case EVENT_ASYNC: {
-      AsyncWatcher* w = (AsyncWatcher*) watcher;
+      AsyncWatcher* w = (AsyncWatcher*) watcher; 
       ev_async_stop(w->loop, (ev_async*) w);
       delete w;
 
@@ -424,9 +434,7 @@ void SchedulerLibev::uninstallEvent (EventToken watcher) {
 ////////////////////////////////////////////////////////////////////////////////
 
 EventToken SchedulerLibev::installAsyncEvent (EventLoop loop, Task* task) {
-  AsyncWatcher* watcher = new AsyncWatcher;
-  watcher->loop = (struct ev_loop*) lookupLoop(loop);
-  watcher->task = task;
+  AsyncWatcher* watcher = new AsyncWatcher((struct ev_loop*) lookupLoop(loop), task);
 
   ev_async* w = (ev_async*) watcher;
   ev_async_init(w, asyncCallback);
@@ -455,9 +463,7 @@ void SchedulerLibev::sendAsync (EventToken token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, double offset, double interval) {
-  PeriodicWatcher* watcher = new PeriodicWatcher;
-  watcher->loop = (struct ev_loop*) lookupLoop(loop);
-  watcher->task = task;
+  PeriodicWatcher* watcher = new PeriodicWatcher((struct ev_loop*) lookupLoop(loop), task);
 
   ev_periodic* w = (ev_periodic*) watcher;
   ev_periodic_init(w, periodicCallback, offset, interval, 0);
@@ -487,9 +493,7 @@ void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double inte
 ////////////////////////////////////////////////////////////////////////////////
 
 EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int signal) {
-  SignalWatcher* watcher = new SignalWatcher;
-  watcher->loop = (struct ev_loop*) lookupLoop(loop);
-  watcher->task = task;
+  SignalWatcher* watcher = new SignalWatcher((struct ev_loop*) lookupLoop(loop), task);
 
   ev_signal* w = (ev_signal*) watcher;
   ev_signal_init(w, signalCallback, signal);
@@ -509,9 +513,7 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
   // ..........................................................................
 
 EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, TRI_socket_t socket) {
-  SocketWatcher* watcher = new SocketWatcher;
-  watcher->loop = (struct ev_loop*) lookupLoop(loop);
-  watcher->task = task;
+  SocketWatcher* watcher = new SocketWatcher((struct ev_loop*) lookupLoop(loop), task);
 
   int flags = 0;
 
@@ -574,9 +576,7 @@ void SchedulerLibev::stopSocketEvents (EventToken token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 EventToken SchedulerLibev::installTimerEvent (EventLoop loop, Task* task, double timeout) {
-  TimerWatcher* watcher = new TimerWatcher;
-  watcher->loop = (struct ev_loop*) lookupLoop(loop);
-  watcher->task = task;
+  TimerWatcher* watcher = new TimerWatcher((struct ev_loop*) lookupLoop(loop), task);
 
   ev_timer* w = (ev_timer*) watcher;
   ev_timer_init(w, timerCallback, timeout, 0.0);

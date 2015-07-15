@@ -45,27 +45,39 @@ namespace triagens {
 
   class V8Completer : public Completer {
 
-    enum {
-      NORMAL,             // start
-      NORMAL_1,           // from NORMAL: seen a single /
-      DOUBLE_QUOTE,       // from NORMAL: seen a single "
-      DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
-      SINGLE_QUOTE,       // from NORMAL: seen a single '
-      SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
-      BACKTICK,           // from NORMAL: seen a single `
-      BACKTICK_ESC,       // from BACKTICK: seen a backslash
-      MULTI_COMMENT,      // from NORMAL_1: seen a *
-      MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
-      SINGLE_COMMENT      // from NORMAL_1; seen a /
-    }
-    state;
+    public:
 
-    virtual bool isComplete (std::string const&, 
-                            size_t lineno, 
-                            size_t column);
+      V8Completer () {
+      }
 
-    virtual void getAlternatives (char const*, 
-                                  std::vector<std::string>&);
+      ~V8Completer () {
+      }
+
+    public: 
+    
+      bool isComplete (std::string const&, 
+                       size_t lineno, 
+                       size_t column) override final;
+
+      void getAlternatives (char const*, 
+                            std::vector<std::string>&) override final;
+
+    private:
+
+      enum LineParseState {
+        NORMAL,             // start
+        NORMAL_1,           // from NORMAL: seen a single /
+        DOUBLE_QUOTE,       // from NORMAL: seen a single "
+        DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
+        SINGLE_QUOTE,       // from NORMAL: seen a single '
+        SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
+        BACKTICK,           // from NORMAL: seen a single `
+        BACKTICK_ESC,       // from BACKTICK: seen a backslash
+        MULTI_COMMENT,      // from NORMAL_1: seen a *
+        MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
+        SINGLE_COMMENT      // from NORMAL_1; seen a /
+      };
+
   };
 
 // -----------------------------------------------------------------------------
@@ -109,7 +121,7 @@ namespace triagens {
 
     protected:
 
-      virtual void initializeShell ();
+      void initializeShell () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
