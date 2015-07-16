@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt) {
   BOOST_CHECK_EQUAL_COLLECTIONS(F_2_T, F_2_T + l, sb._buffer, sb._buffer + l);
 
   TRI_EraseFrontStringBuffer(&sb, 15);
-  BOOST_CHECK_EQUAL(0, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
   
   BOOST_TEST_CHECKPOINT("erase front2");
   BOOST_CHECK(TRI_EmptyStringBuffer(&sb));
@@ -298,7 +298,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt2) {
   l = STRLEN(sb._buffer);
 
   BOOST_CHECK_EQUAL(1, l);
-  BOOST_CHECK_EQUAL(1, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(1, (int) TRI_LengthStringBuffer(&sb));
   BOOST_CHECK_EQUAL("f", sb._buffer);
 
   // clang 5.1 failes without the cast
@@ -330,7 +330,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt3) {
   l = STRLEN(sb._buffer);
   
   BOOST_CHECK_EQUAL(499, l);
-  BOOST_CHECK_EQUAL(499, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(499, (int) TRI_LengthStringBuffer(&sb));
 
   // clang 5.1 failes without the cast
   BOOST_CHECK_EQUAL((unsigned int) 'a', (unsigned int) sb._buffer[498]);
@@ -342,7 +342,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt3) {
   l = STRLEN(sb._buffer);
   
   BOOST_CHECK_EQUAL(498, l);
-  BOOST_CHECK_EQUAL(498, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(498, (int) TRI_LengthStringBuffer(&sb));
 
   // clang 5.1 failes without the cast
   BOOST_CHECK_EQUAL((unsigned int) 'a', (unsigned int) sb._buffer[497]);
@@ -355,7 +355,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt3) {
   l = STRLEN(sb._buffer);
   
   BOOST_CHECK_EQUAL(0, l);
-  BOOST_CHECK_EQUAL(0, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
 
   // clang 5.1 failes without the cast
   BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[0]);
@@ -581,24 +581,24 @@ BOOST_AUTO_TEST_CASE (tst_reserve) {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
-  BOOST_CHECK_EQUAL(0, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
   
   TRI_ReserveStringBuffer(&sb, 0);
-  BOOST_CHECK_EQUAL(0, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
 
   TRI_ReserveStringBuffer(&sb, 1000);
-  BOOST_CHECK_EQUAL(0, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, "f");
-  BOOST_CHECK_EQUAL(1, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(1, (int) TRI_LengthStringBuffer(&sb));
 
   for (size_t i = 0; i < 5000; ++i) {
     TRI_AppendCharStringBuffer(&sb, '.');
   }
-  BOOST_CHECK_EQUAL(5001, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(5001, (int) TRI_LengthStringBuffer(&sb));
   
   TRI_ReserveStringBuffer(&sb, 1000);
-  BOOST_CHECK_EQUAL(5001, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(5001, (int) TRI_LengthStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }

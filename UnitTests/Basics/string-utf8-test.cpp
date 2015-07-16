@@ -383,7 +383,7 @@ BOOST_AUTO_TEST_CASE (tst_western_european) {
 BOOST_AUTO_TEST_CASE (tst_char_length) {
   const char* test = "დახმარებისთვის";
 
-  BOOST_CHECK_EQUAL(14, TRI_CharLengthUtf8String(test));
+  BOOST_CHECK_EQUAL(14, (int) TRI_CharLengthUtf8String(test));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

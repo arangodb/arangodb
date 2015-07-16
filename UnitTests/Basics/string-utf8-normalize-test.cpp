@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE (tst_4) {
   TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, true);
   BOOST_CHECK(words != NULL);
   
-  BOOST_CHECK_EQUAL(5, words->_length);
+  BOOST_CHECK_EQUAL(5, (int) words->_length);
   BOOST_CHECK_EQUAL("der", words->_buffer[0]);
   BOOST_CHECK_EQUAL("müller", words->_buffer[1]);
   BOOST_CHECK_EQUAL("geht", words->_buffer[2]);
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE (tst_4) {
   words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, true);
   BOOST_CHECK(words != NULL);
   
-  BOOST_CHECK_EQUAL(3, words->_length);
+  BOOST_CHECK_EQUAL(3, (int) words->_length);
   BOOST_CHECK_EQUAL("müller", words->_buffer[0]);
   BOOST_CHECK_EQUAL("geht", words->_buffer[1]);
   BOOST_CHECK_EQUAL("post", words->_buffer[2]);
@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE (tst_5) {
   TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, false);
   BOOST_CHECK(words != NULL);
   
-  BOOST_CHECK_EQUAL(5, words->_length);
+  BOOST_CHECK_EQUAL(5, (int) words->_length);
   BOOST_CHECK_EQUAL("Der", words->_buffer[0]);
   BOOST_CHECK_EQUAL("Müller", words->_buffer[1]);
   BOOST_CHECK_EQUAL("geht", words->_buffer[2]);
@@ -214,7 +214,7 @@ BOOST_AUTO_TEST_CASE (tst_5) {
   words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, false);
   BOOST_CHECK(words != NULL);
   
-  BOOST_CHECK_EQUAL(3, words->_length);
+  BOOST_CHECK_EQUAL(3, (int) words->_length);
   BOOST_CHECK_EQUAL("Müller", words->_buffer[0]);
   BOOST_CHECK_EQUAL("geht", words->_buffer[1]);
   BOOST_CHECK_EQUAL("Post", words->_buffer[2]);
