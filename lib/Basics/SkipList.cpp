@@ -27,7 +27,7 @@
 /// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "skip-list.h"
+#include "SkipList.h"
 #include "Basics/random.h"
 #include "Basics/Exceptions.h"
 
