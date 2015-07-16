@@ -27,7 +27,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "Basics/skip-list.h"
+#include "Basics/SkipList.h"
 #include "Basics/voc-errors.h"
 
 #include <vector>

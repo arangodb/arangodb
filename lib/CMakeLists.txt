@@ -81,7 +81,7 @@ add_library(
     Basics/ReadLocker.cpp
     Basics/ReadUnlocker.cpp
     Basics/ReadWriteLock.cpp
-    Basics/skip-list.cpp
+    Basics/SkipList.cpp
     Basics/socket-utils.cpp
     Basics/SpinLock.cpp
     Basics/SpinLocker.cpp

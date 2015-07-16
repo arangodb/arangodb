@@ -31,9 +31,7 @@
 #define ARANGODB_SKIP_LISTS_SKIPLIST_INDEX_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/skip-list.h"
-
+#include "Basics/SkipList.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
 
