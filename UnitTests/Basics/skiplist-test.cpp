@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_forward) {
   // check end node
   BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
   
-  BOOST_CHECK_EQUAL(0, skiplist.getNrUsed());
+  BOOST_CHECK_EQUAL(0, (int) skiplist.getNrUsed());
 
   // insert 100 values
   std::vector<int*> values; 
@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_forward) {
   }
 
   // now check consistency
-  BOOST_CHECK_EQUAL(100, skiplist.getNrUsed());
+  BOOST_CHECK_EQUAL(100, (int) skiplist.getNrUsed());
 
   // check start node
   BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->prevNode());
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
   // check end node
   BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
   
-  BOOST_CHECK_EQUAL(0, skiplist.getNrUsed());
+  BOOST_CHECK_EQUAL(0, (int) skiplist.getNrUsed());
 
   std::vector<int*> values; 
   for (int i = 0; i < 100; ++i) {
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
   }
 
   // now check consistency
-  BOOST_CHECK_EQUAL(100, skiplist.getNrUsed());
+  BOOST_CHECK_EQUAL(100, (int) skiplist.getNrUsed());
 
   // check start node
   BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->prevNode());
@@ -337,7 +337,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_remove) {
   // check end node
   BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
   
-  BOOST_CHECK_EQUAL(93, skiplist.getNrUsed());
+  BOOST_CHECK_EQUAL(93, (int) skiplist.getNrUsed());
 
 
   // lookup existing values
@@ -426,7 +426,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_remove_all) {
   // check end node
   BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
   
-  BOOST_CHECK_EQUAL(0, skiplist.getNrUsed());
+  BOOST_CHECK_EQUAL(0, (int) skiplist.getNrUsed());
 
   // lookup non-existing values
   BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(values[0]));

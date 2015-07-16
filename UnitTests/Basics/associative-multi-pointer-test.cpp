@@ -200,13 +200,13 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
                                     sizeof(int) * NUMBER_OF_ELEMENTS / MODULUS,
                                     true));
     res = a1.lookupByKey(&i);
-    BOOST_CHECK_EQUAL(res->size(),
-                      NUMBER_OF_ELEMENTS/MODULUS);
+    BOOST_CHECK_EQUAL((int) res->size(),
+                      (int) (NUMBER_OF_ELEMENTS / MODULUS));
     // Now check its contents:
     for (j = 0; j < res->size(); j++) {
       data_container_t* q = static_cast<data_container_t*> (res->at(j));
-      BOOST_CHECK_EQUAL(q->value % MODULUS, i);
-      BOOST_CHECK_EQUAL(space[(q->value - i) / MODULUS],0);
+      BOOST_CHECK_EQUAL((int) (q->value % MODULUS), (int) i);
+      BOOST_CHECK_EQUAL(space[(q->value - i) / MODULUS], 0);
       space[(q->value - i) / MODULUS] = 1;
     }
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, space);
