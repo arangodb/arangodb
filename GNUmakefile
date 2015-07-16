@@ -42,7 +42,8 @@ MAINTAINER = \
 	lib/V8/v8-json.cpp \
 	lib/Basics/voc-errors.h \
 	lib/Basics/voc-errors.cpp \
-	js/common/bootstrap/errors.js
+	js/common/bootstrap/errors.js \
+	mr/common/bootstrap/mr-error.h
 
 AUTOMAGIC = \
 	Makefile.in \
@@ -313,7 +314,7 @@ pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
 	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
-	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Release
+	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=RelWithDebInfo
 	${MAKE} packXX BITS="$(BITS)"
 
 pack-winXX-MOREOPTS:
@@ -327,6 +328,8 @@ winXX-cmake: checkcmake
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
 		-D "ARANGODB_VERSION=${VERSION}" \
+	        -D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
+		-D "BUILD_TYPE=RelWithDebInfo" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
@@ -342,7 +345,9 @@ winXX-build:
 packXX:
 	./Installation/file-copy-js.sh . Build$(BITS)
 
-	cd Build$(BITS) && cpack -G NSIS && cpack -G ZIP
+	cd Build$(BITS) && cp -a bin/RelWithDebInfo bin/Release
+	cd Build$(BITS) && cpack -G NSIS -D "BUILD_TYPE=RelWithDebInfo"
+	cd Build$(BITS) && cpack -G ZIP -D "BUILD_TARGET=RelWithDebInfo"
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
 
