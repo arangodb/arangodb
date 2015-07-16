@@ -219,7 +219,7 @@ dnl BOOST
 dnl ----------------------------------------------------------------------------
 
 BOOST_VERSION="1.58.0"
-BOOST_CPPFLAGS="-I${srcdir}/3rdParty/boost"
+BOOST_CPPFLAGS="-I${srcdir}/3rdParty/boost/${BOOST_VERSION}"
 
 AC_SUBST(BOOST_VERSION)
 AC_SUBST(BOOST_CPPFLAGS)
