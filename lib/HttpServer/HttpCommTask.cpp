@@ -303,8 +303,13 @@ bool HttpCommTask::processRead () {
       _sinceCompactification++;
     }
 
-    const char * ptr = _readBuffer->c_str() + _readPosition;
-    const char * end = _readBuffer->end() - 3;
+    char const* ptr = _readBuffer->c_str() + _readPosition;
+    char const* end = _readBuffer->end() - 3;
+
+    if (ptr >= end) {
+      // read buffer contents are way to small. we can exit here directly
+      return false;
+    }
 
     for (;  ptr < end;  ptr++) {
       if (ptr[0] == '\r' && ptr[1] == '\n' && ptr[2] == '\r' && ptr[3] == '\n') {
