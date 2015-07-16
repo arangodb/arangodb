@@ -1643,6 +1643,12 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
 
   TRI_FreeCollectionInfoOptions(&info);
 
+  double start = TRI_microtime();
+
+  LOG_ACTION("open-collection { collection: %s/%s }", 
+             vocbase->_name,
+             collection->_info._name);
+
   // check for journals and datafiles
   bool ok = CheckCollection(collection, ignoreErrors);
 
@@ -1656,6 +1662,11 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
 
     return nullptr;
   }
+  
+  LOG_TIMER((TRI_microtime() - start),
+            "open-collection { collection: %s/%s }", 
+            vocbase->_name,
+            collection->_info._name);
 
   return collection;
 }
