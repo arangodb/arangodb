@@ -246,7 +246,7 @@ pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
 	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
-	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Release
+	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=RelWithDebInfo
 	${MAKE} packXX BITS="$(BITS)"
 
 pack-winXX-MOREOPTS:
@@ -260,6 +260,8 @@ winXX-cmake: checkcmake
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
 		-D "ARANGODB_VERSION=${VERSION}" \
+	        -D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
+		-D "BUILD_TYPE=RelWithDebInfo" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
@@ -274,8 +276,11 @@ winXX-build:
 	cd Build$(BITS) && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
-	cd Build$(BITS) && cpack -G NSIS && cpack -G ZIP
+	# work around cpack: 
+	cd Build$(BITS); cp -a bin/RelWithDebInfo bin/Release
 
+	cd Build$(BITS) && cpack -G NSIS -D "BUILD_TYPE=RelWithDebInfo"
+	cd Build$(BITS) && cpack -G ZIP -D "BUILD_TARGET=RelWithDebInfo"
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
 
 checkcmake:
