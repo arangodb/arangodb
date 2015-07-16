@@ -598,6 +598,18 @@ if (ICU_LIB_PATH)
 endif ()
 
 ################################################################################
+### @brief BOOST
+################################################################################
+
+set(BOOST_VERSION "1.58" CACHE string "BOOST version")
+
+set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost CACHE path "BOOST include path")
+
+if (BOOST_INCLUDE)
+  include_directories(${BOOST_INCLUDE})
+endif ()
+
+################################################################################
 ### @brief LIBEV
 ################################################################################
 

@@ -215,6 +215,22 @@ dnl ----------------------------------------------------------------------------
 m4_include([m4/external.openssl])
 
 dnl ----------------------------------------------------------------------------
+dnl BOOST
+dnl ----------------------------------------------------------------------------
+
+BOOST_VERSION="1.58.0"
+BOOST_CPPFLAGS="-I${srcdir}/3rdParty/boost"
+
+AC_SUBST(BOOST_VERSION)
+AC_SUBST(BOOST_CPPFLAGS)
+
+LIB_INFO="$LIB_INFO|BOOST: 3rdParty version"
+LIB_INFO="$LIB_INFO|BOOST VERSION: ${BOOST_VERSION}"
+
+LIB_INFO="$LIB_INFO|BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|."
+
+dnl ----------------------------------------------------------------------------
 dnl V8
 dnl ----------------------------------------------------------------------------
 
