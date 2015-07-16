@@ -114,6 +114,7 @@ AM_CPPFLAGS = \
 	-D_SYSCONFDIR_='"${TRI_SYSCONFDIR}"' \
 	-I@top_srcdir@/lib \
 	-I@top_builddir@/lib \
+	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
