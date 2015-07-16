@@ -150,7 +150,7 @@ var help = function () {
     "available"       : "lists all Foxx applications available in the local repository",
     "configuration"   : "request the configuration information for the given mountpoint",
     "configure"       : "sets the configuration for the given mountpoint",
-    "updateDeps"      : "links the dependencies in manifest to a mountpoint"
+    "updateDeps"      : "links the dependencies in manifest to a mountpoint",
     "dependencies"    : "request the dependencies information for the given mountpoint",
     "development"     : "activates development mode for the given mountpoint",
     "help"            : "shows this help",
