@@ -33,13 +33,27 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 if (MSVC)
   SET(ARANGO_MSVC
     RestServer/WindowsServiceUtils.cpp
-  )
+    )
+  ################################################################################
+  ### @brief give the binary a version information
+  ################################################################################
+
+  generate_product_version(
+    ProductVersionFiles
+    NAME ${ARANGODB_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR CPACK_PACKAGE_VERSION_MINOR
+    VERSION_PATCH CPACK_PACKAGE_VERSION_PATCH
+    VERSION_REVISION ${ARANGODB_VERSION}
+    )
 endif ()
 
 
 add_executable(
     ${BIN_ARANGOD}
     ${ARANGO_MSVC}
+    ${ProductVersionFiles}
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
     Aql/AggregationOptions.cpp
