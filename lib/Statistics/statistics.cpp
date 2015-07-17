@@ -63,7 +63,7 @@ static triagens::basics::Mutex RequestDataLock;
 /// @brief the request statistics queue
 ////////////////////////////////////////////////////////////////////////////////
 
-boost::lockfree::queue<TRI_request_statistics_t*, boost::lockfree::fixed_sized<true>> RequestFreeList{ QUEUE_SIZE };
+boost::lockfree::queue<TRI_request_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> RequestFreeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                               public request statistics functions
@@ -172,7 +172,7 @@ static triagens::basics::Mutex ConnectionDataLock;
 /// @brief free list
 ////////////////////////////////////////////////////////////////////////////////
 
-boost::lockfree::queue<TRI_connection_statistics_t*, boost::lockfree::fixed_sized<true>> ConnectionFreeList{ QUEUE_SIZE };
+boost::lockfree::queue<TRI_connection_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> ConnectionFreeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                            public connection statistics functions
@@ -555,7 +555,7 @@ void TRI_ShutdownStatistics (void) {
   }
 
   {
-    TRI_request_statistics_t* entry = nullptr;
+    TRI_connection_statistics_t* entry = nullptr;
     while (ConnectionFreeList.pop(entry)) {
       TRI_Free(TRI_CORE_MEM_ZONE, entry);
     }
