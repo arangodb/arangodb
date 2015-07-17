@@ -352,7 +352,7 @@ void AsyncJobManager::initAsyncJob (HttpServerJob* job, uint64_t* jobId) {
   AsyncCallbackContext* ctx = nullptr;
 
   bool found;
-  char const* hdr = job->getHandler()->getRequest()->header("x-arango-coordinator", found);
+  char const* hdr = job->handler()->getRequest()->header("x-arango-coordinator", found);
 
   if (found) {
     LOG_DEBUG("Found header X-Arango-Coordinator in async request");
@@ -377,7 +377,7 @@ void AsyncJobManager::initAsyncJob (HttpServerJob* job, uint64_t* jobId) {
 void AsyncJobManager::finishAsyncJob (HttpServerJob* job) {
   TRI_ASSERT(job != nullptr);
 
-  HttpHandler* handler = job->getHandler();
+  HttpHandler* handler = job->handler();
   TRI_ASSERT(handler != nullptr);
 
   AsyncJobResult::IdType jobId = job->id();

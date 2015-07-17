@@ -223,9 +223,10 @@ void DispatcherThread::run () {
 
         // finish jobs
         try {
-          job->setDispatcherThread(0);
+          job->setDispatcherThread(nullptr);
 
-          if (status.status == Job::JOB_DONE) {
+          if (status.status == Job::JOB_DONE ||
+              status.status == Job::JOB_FAILED) {
             job->cleanup();
           }
           else if (status.status == Job::JOB_REQUEUE) {
@@ -239,9 +240,6 @@ void DispatcherThread::run () {
             else {
               _queue->_dispatcher->addJob(job);
             }
-          }
-          else if (status.status == Job::JOB_FAILED) {
-            job->cleanup();
           }
         }
         catch (...) {

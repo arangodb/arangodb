@@ -328,30 +328,28 @@ void Dispatcher::shutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::reportStatus () {
-  if (TRI_IsDebugLogging(__FILE__)) {
-    MUTEX_LOCKER(_accessDispatcher);
+  MUTEX_LOCKER(_accessDispatcher);
 
-    for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-      DispatcherQueue* q = i->second;
+  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
+    DispatcherQueue* q = i->second;
 #ifdef TRI_ENABLE_LOGGER
-      string const& name = i->first;
+    string const& name = i->first;
 
-      LOG_DEBUG("dispatcher queue '%s': threads = %d, started: %d, running = %d, waiting = %d, stopped = %d, blocked = %d, special = %d, monopolistic = %s",
-                name.c_str(),
-                (int) q->_nrThreads,
-                (int) q->_nrStarted,
-                (int) q->_nrRunning,
-                (int) q->_nrWaiting,
-                (int) q->_nrStopped,
-                (int) q->_nrBlocked,
-                (int) q->_nrSpecial,
-                (q->_monopolizer ? "yes" : "no"));
+    LOG_INFO("dispatcher queue '%s': threads = %d, started: %d, running = %d, waiting = %d, stopped = %d, blocked = %d, special = %d, monopolistic = %s",
+              name.c_str(),
+              (int) q->_nrThreads,
+              (int) q->_nrStarted,
+              (int) q->_nrRunning,
+              (int) q->_nrWaiting,
+              (int) q->_nrStopped,
+              (int) q->_nrBlocked,
+              (int) q->_nrSpecial,
+              (q->_monopolizer ? "yes" : "no"));
 #endif
-      CONDITION_LOCKER(guard, q->_accessQueue);
+    CONDITION_LOCKER(guard, q->_accessQueue);
 
-      for (set<DispatcherThread*>::iterator j = q->_startedThreads.begin();  j != q->_startedThreads.end(); ++j) {
-        (*j)->reportStatus();
-      }
+    for (set<DispatcherThread*>::iterator j = q->_startedThreads.begin();  j != q->_startedThreads.end(); ++j) {
+      (*j)->reportStatus();
     }
   }
 }
@@ -379,7 +377,7 @@ void Dispatcher::setProcessorAffinity (const string& name, const vector<size_t>&
 ////////////////////////////////////////////////////////////////////////////////
 
 DispatcherQueue* Dispatcher::lookupQueue (const std::string& name) {
-  MUTEX_LOCKER(_accessDispatcher);
+  MUTEX_LOCKER(_accessDispatcher); // FIX_MUTEX
 
   map<std::string, DispatcherQueue*>::const_iterator i = _queues.find(name);
 
