@@ -21,8 +21,21 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 ### @brief arangob
 ################################################################################
 
+if (MSVC)
+  generate_product_version(
+    ProductVersionFiles
+    NAME ${ARANGOB_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR CPACK_PACKAGE_VERSION_MINOR
+    VERSION_PATCH CPACK_PACKAGE_VERSION_PATCH
+    VERSION_REVISION ${ARANGODB_VERSION}
+    )
+endif ()
+
 add_executable(
     ${BIN_ARANGOB}
+    ${ProductVersionFiles}
     ArangoShell/ArangoClient.cpp
     Benchmark/arangob.cpp
 )
@@ -57,8 +70,21 @@ install_config(arangob)
 ### @brief arangodump
 ################################################################################
 
+if (MSVC)
+  generate_product_version(
+    ProductVersionFiles
+    NAME ARANGO_DUMP_FRIENDLY_STRING
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR CPACK_PACKAGE_VERSION_MINOR
+    VERSION_PATCH CPACK_PACKAGE_VERSION_PATCH
+    VERSION_REVISION ${ARANGODB_VERSION}
+    )
+endif ()
+
 add_executable(
     ${BIN_ARANGODUMP}
+    ${ProductVersionFiles}
     ArangoShell/ArangoClient.cpp
     V8Client/arangodump.cpp
 )
@@ -93,8 +119,21 @@ install_config(arangodump)
 ### @brief arangoimp
 ################################################################################
 
+if (MSVC)
+  generate_product_version(
+    ProductVersionFiles
+    NAME ARANGO_IMP_FRIENDLY_STRING
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR CPACK_PACKAGE_VERSION_MINOR
+    VERSION_PATCH CPACK_PACKAGE_VERSION_PATCH
+    VERSION_REVISION ${ARANGODB_VERSION}
+    )
+endif ()
+
 add_executable(
     ${BIN_ARANGOIMP}
+    ${ProductVersionFiles}
     ArangoShell/ArangoClient.cpp
     V8Client/ImportHelper.cpp
     V8Client/arangoimp.cpp
@@ -130,8 +169,20 @@ install_config(arangoimp)
 ### @brief arangorestore
 ################################################################################
 
+if (MSVC)
+  generate_product_version(
+    ProductVersionFiles
+    NAME ARANGO_RESTORE_HELP_LINK
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR CPACK_PACKAGE_VERSION_MINOR
+    VERSION_PATCH CPACK_PACKAGE_VERSION_PATCH
+    VERSION_REVISION ${ARANGODB_VERSION}
+    )
+endif ()
 add_executable(
     ${BIN_ARANGORESTORE}
+    ${ProductVersionFiles}
     ArangoShell/ArangoClient.cpp
     V8Client/arangorestore.cpp
 )
@@ -166,8 +217,20 @@ install_config(arangorestore)
 ### @brief arangosh
 ################################################################################
 
+if (MSVC)
+  generate_product_version(
+    ProductVersionFiles
+    NAME ARANGOSH_HELP_LINK
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR CPACK_PACKAGE_VERSION_MINOR
+    VERSION_PATCH CPACK_PACKAGE_VERSION_PATCH
+    VERSION_REVISION ${ARANGODB_VERSION}
+    )
+endif ()
 add_executable(
     ${BIN_ARANGOSH}
+    ${ProductVersionFiles}
     ArangoShell/ArangoClient.cpp
     V8Client/ImportHelper.cpp
     V8Client/V8ClientConnection.cpp
