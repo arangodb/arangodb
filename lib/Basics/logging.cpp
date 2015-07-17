@@ -400,7 +400,7 @@ static void StoreOutput (TRI_log_level_e level,
     return;
   }
 
-  MUTEX_LOCKER(BufferLock);
+  MUTEX_LOCKER(BufferLock); // FIX_MUTEX
 
   oldPos = BufferCurrent[pos];
   BufferCurrent[pos] = (oldPos + 1) % OUTPUT_BUFFER_SIZE;

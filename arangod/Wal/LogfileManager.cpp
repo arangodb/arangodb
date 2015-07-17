@@ -588,7 +588,7 @@ void LogfileManager::stop () {
 
 bool LogfileManager::registerTransaction (TRI_voc_tid_t transactionId) {
   {
-    WRITE_LOCKER(_logfilesLock);
+    WRITE_LOCKER(_logfilesLock); // FIX_MUTEX
 
     _transactions.emplace(std::make_pair(transactionId, std::make_pair(_lastCollectedId, _lastSealedId)));
     TRI_ASSERT(_lastCollectedId <= _lastSealedId);
@@ -604,7 +604,7 @@ bool LogfileManager::registerTransaction (TRI_voc_tid_t transactionId) {
 void LogfileManager::unregisterTransaction (TRI_voc_tid_t transactionId,
                                             bool markAsFailed) {
   {
-    WRITE_LOCKER(_logfilesLock);
+    WRITE_LOCKER(_logfilesLock); // FIX_MUTEX
     _transactions.erase(transactionId);
 
     if (markAsFailed) {

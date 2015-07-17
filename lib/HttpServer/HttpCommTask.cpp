@@ -36,6 +36,7 @@
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
+#include "HttpServer/HttpServerJob.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
@@ -150,6 +151,8 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     SocketTask(socket, keepAliveTimeout),
     _connectionInfo(info),
     _server(server),
+    _job(nullptr),
+    _handler(nullptr),
     _writeBuffers(),
 #ifdef TRI_ENABLE_FIGURES
     _writeBuffersStats(),
@@ -205,6 +208,15 @@ HttpCommTask::HttpCommTask (HttpServer* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::~HttpCommTask () {
+  if (_job != nullptr) {
+    _job->beginShutdown();
+    clearCurrentJob();
+  }
+
+  if (_handler != nullptr) {
+    delete _handler;
+  }
+
   LOG_TRACE("connection closed, client %d",
             (int) TRI_get_fd_or_handle_of_socket(_commSocket));
 
@@ -242,23 +254,13 @@ int HttpCommTask::signalChunk (const string& data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::beginShutdown ()  {
-#ifdef _WIN32
-  // Cannot close socket descriptors here. Probably should not close
-  // these for linux as well.
-  return;
-#else
-  if (TRI_isvalidsocket(_commSocket)) {
-    TRI_CLOSE_SOCKET(_commSocket);
-    TRI_invalidatesocket(&_commSocket);
-  }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles response
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::handleResponse (HttpResponse * response)  {
+void HttpCommTask::handleResponse (HttpResponse* response)  {
   if (response->isChunked()) {
     _requestPending = true;
     _isChunked = true;
@@ -725,7 +727,6 @@ void HttpCommTask::setupDone () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::addResponse (HttpResponse* response) {
-
   // CORS response handling
   if (! _origin.empty()) {
 
@@ -943,7 +944,8 @@ void HttpCommTask::processCorsOptions (uint32_t compatibility) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::processRequest (uint32_t compatibility) {
-  HttpHandler* handler = _server->handlerFactory()->createHandler(_request);
+  std::unique_ptr<HttpHandler> handler(_server->handlerFactory()->createHandler(_request));
+
   bool ok = false;
 
   if (handler == nullptr) {
@@ -971,7 +973,7 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
 
   // clear request object
   _request = nullptr;
-  RequestStatisticsAgent::transfer(handler);
+  RequestStatisticsAgent::transfer(handler.get());
 
   // async execution
   if (found && (asyncExecution == "true" || asyncExecution == "store")) {
@@ -1023,10 +1025,8 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::clearRequest () {
-  if (_request != nullptr) {
-    delete _request;
-    _request = nullptr;
-  }
+  delete _request;
+  _request = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1169,7 +1169,19 @@ bool HttpCommTask::handleEvent (EventToken token, EventType events) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpCommTask::handleAsync () {
+  TRI_ASSERT(_job != nullptr);
+  TRI_ASSERT(_handler != nullptr);
+  TRI_ASSERT(! _job->hasHandler());
+
+  _job->beginShutdown(); 
+  _job = nullptr;
+
+  _server->handleResponse(this, _handler);
+  delete _handler;
+  _handler = nullptr;
+
   _server->handleAsync(this);
+
   return true;
 }
 
