@@ -10,6 +10,8 @@ VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
 VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
 VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 
+VERSION_PATCH := $(wordlist 1,1,$(subst -, ,$(VERSION_PATCH)))
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   SPECIAL TARGETS
 ## -----------------------------------------------------------------------------
