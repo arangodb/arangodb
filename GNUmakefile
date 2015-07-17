@@ -338,6 +338,7 @@ winXX-cmake: checkcmake
 		-D "LIBEV_VERSION=4.11" \
 		-D "V8_VERSION=3.31.74.1" \
 		-D "ZLIB_VERSION=1.2.7" \
+		-D "BUILD_ID=${BUILD_ID}" \
 		$(MOREOPTS) \
 		..
 
