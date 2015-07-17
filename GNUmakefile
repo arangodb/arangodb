@@ -78,7 +78,7 @@ remove-automagic:
 ### @brief make love
 ################################################################################
 
-love: 
+love:
 	@echo ArangoDB loves you
 
 ## -----------------------------------------------------------------------------
@@ -328,7 +328,7 @@ winXX-cmake: checkcmake
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
 		-D "ARANGODB_VERSION=${VERSION}" \
-	        -D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
+		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
 		-D "BUILD_TYPE=RelWithDebInfo" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
@@ -340,6 +340,7 @@ winXX-cmake: checkcmake
 		..
 
 winXX-build:
+	cp Installation/Windows/Icons/arangodb.ico Build$(BITS) 
 	cd Build$(BITS) && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
