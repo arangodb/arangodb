@@ -31,10 +31,11 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/logging.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 #include "Indexes/Index.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -814,7 +815,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
         string const progress = "creating indexes for " + collectionMsg;
         setProgress(progress.c_str());
 
-        TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
+        READ_LOCKER(_vocbase->_inventoryLock);
 
         try {
           triagens::arango::CollectionGuard guard(_vocbase, col->_cid, false);
@@ -865,7 +866,6 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
           res = TRI_ERROR_INTERNAL;
         }
 
-        TRI_ReadUnlockReadWriteLock(&_vocbase->_inventoryLock);
       }
     }
 

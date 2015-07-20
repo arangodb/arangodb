@@ -1376,14 +1376,12 @@ int TRI_RemoveBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CompactorVocBase (void* data) {
-  TRI_vocbase_t* vocbase;
-  TRI_vector_pointer_t collections;
-  int numCompacted = 0;
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
 
-  vocbase = (TRI_vocbase_t*) data;
+  int numCompacted = 0;
   TRI_ASSERT(vocbase->_state == 1);
 
-  TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
+  std::vector<TRI_vocbase_col_t*> collections;
 
   while (true) {
     // keep initial _state value as vocbase->_state might change during compaction loop
@@ -1397,14 +1395,15 @@ void TRI_CompactorVocBase (void* data) {
 
       // copy all collections
       TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-      TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
+      try {
+        collections = vocbase->_collections;
+      }
+      catch (...) {
+        collections.clear();
+      }
       TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-      size_t const n = collections._length;
-
-      for (size_t i = 0;  i < n;  ++i) {
-        TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(collections._buffer[i]);
-
+      for (auto& collection : collections) {
         if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
           // if we can't acquire the read lock instantly, we continue directly
           // we don't want to stall here for too long
@@ -1486,8 +1485,6 @@ void TRI_CompactorVocBase (void* data) {
       break;
     }
   }
-
-  TRI_DestroyVectorPointer(&collections);
 
   LOG_TRACE("shutting down compactor thread");
 }

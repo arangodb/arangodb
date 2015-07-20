@@ -35,6 +35,7 @@
 
 #include "Basics/associative.h"
 #include "Basics/locks.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/threads.h"
 #include "Basics/vector.h"
 #include "Basics/voc-errors.h"
@@ -50,6 +51,7 @@ struct TRI_json_t;
 struct TRI_server_s;
 struct TRI_vector_pointer_s;
 struct TRI_vector_string_s;
+struct TRI_vocbase_col_s;
 struct TRI_vocbase_defaults_s;
 struct TRI_replication_applier_t;
 
@@ -296,44 +298,45 @@ struct TRI_vocbase_t {
 
   ~TRI_vocbase_t ();
 
-  TRI_voc_tick_t             _id;                 // internal database id
-  char*                      _path;               // path to the data directory
-  char*                      _name;               // database name
-  TRI_vocbase_type_e         _type;               // type (normal or coordinator)
+  TRI_voc_tick_t                          _id;                 // internal database id
+  char*                                   _path;               // path to the data directory
+  char*                                   _name;               // database name
+  TRI_vocbase_type_e                      _type;               // type (normal or coordinator)
 
   struct {
-    TRI_spin_t               _lock;               // a lock protecting the usage information
-    uint32_t                 _refCount;           // reference counter
-    bool                     _isDeleted;          // flag if database is marked as deleted
-  }                          _usage;
+    TRI_spin_t                            _lock;               // a lock protecting the usage information
+    uint32_t                              _refCount;           // reference counter
+    bool                                  _isDeleted;          // flag if database is marked as deleted
+  }                                 
+  _usage;
 
-  struct TRI_server_s*       _server;
-  TRI_vocbase_defaults_t     _settings;
+  struct TRI_server_s*                    _server;
+  TRI_vocbase_defaults_t                  _settings;
 
-  TRI_read_write_lock_t      _lock;               // collection iterator lock
-  TRI_vector_pointer_t       _collections;        // pointers to ALL collections
-  TRI_vector_pointer_t       _deadCollections;    // pointers to collections dropped that can be removed later
+  TRI_read_write_lock_t                   _lock;               // collection iterator lock
+  std::vector<struct TRI_vocbase_col_s*>  _collections;        // pointers to ALL collections
+  std::vector<struct TRI_vocbase_col_s*>  _deadCollections;    // pointers to collections dropped that can be removed later
 
-  TRI_associative_pointer_t  _collectionsByName;  // collections by name
-  TRI_associative_pointer_t  _collectionsById;    // collections by id
+  TRI_associative_pointer_t               _collectionsByName;  // collections by name
+  TRI_associative_pointer_t               _collectionsById;    // collections by id
 
-  TRI_read_write_lock_t      _inventoryLock;      // object lock needed when replication is assessing the state of the vocbase
+  triagens::basics::ReadWriteLock         _inventoryLock;      // object lock needed when replication is assessing the state of the vocbase
 
   // structures for user-defined volatile data
-  void*                      _userStructures;
-  void*                      _queries;
-  void*                      _cursorRepository;
+  void*                                   _userStructures;
+  void*                                   _queries;
+  void*                                   _cursorRepository;
 
-  TRI_associative_pointer_t  _authInfo;
-  TRI_associative_pointer_t  _authCache;
-  TRI_read_write_lock_t      _authInfoLock;
-  bool                       _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
-  bool                       _hasCompactor;
-  bool                       _isOwnAppsDirectory;
+  TRI_associative_pointer_t               _authInfo;
+  TRI_associative_pointer_t               _authCache;
+  TRI_read_write_lock_t                   _authInfoLock;
+  bool                                    _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
+  bool                                    _hasCompactor;
+  bool                                    _isOwnAppsDirectory;
 
-  std::set<TRI_voc_tid_t>*   _oldTransactions;
+  std::set<TRI_voc_tid_t>*                _oldTransactions;
 
-  struct TRI_replication_applier_t* _replicationApplier;
+  struct TRI_replication_applier_t*       _replicationApplier;
 
   // state of the database
   // 0 = inactive
@@ -342,19 +345,19 @@ struct TRI_vocbase_t {
   // 3 = shutdown in progress/waiting for cleanup thread to finish
   // 4 = version check failed
 
-  sig_atomic_t               _state;
+  sig_atomic_t                            _state;
 
-  TRI_thread_t               _compactor;
-  TRI_thread_t               _cleanup;
+  TRI_thread_t                            _compactor;
+  TRI_thread_t                            _cleanup;
 
   struct {
-    TRI_read_write_lock_t _lock;
-    TRI_vector_t          _data;
+    TRI_read_write_lock_t                 _lock;
+    TRI_vector_t                          _data;
   }
   _compactionBlockers;
 
-  TRI_condition_t            _compactorCondition;
-  TRI_condition_t            _cleanupCondition;
+  TRI_condition_t                         _compactorCondition;
+  TRI_condition_t                         _cleanupCondition;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -416,12 +419,6 @@ TRI_vocbase_col_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCollectionVocBase (TRI_vocbase_col_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the memory associated with all collections in a vector
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCollectionsVocBase (struct TRI_vector_pointer_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object, without threads and some other attributes

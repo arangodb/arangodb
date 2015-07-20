@@ -58,6 +58,32 @@ ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a read-lock, with periodic sleeps while not acquired
+/// sleep time is specified in nanoseconds
+////////////////////////////////////////////////////////////////////////////////
+
+ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, 
+                          uint64_t sleepTime) 
+  : ReadLocker(readWriteLock, sleepTime, nullptr, 0) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a read-lock, with periodic sleeps while not acquired
+/// sleep time is specified in nanoseconds
+////////////////////////////////////////////////////////////////////////////////
+
+ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, 
+                        uint64_t sleepTime,
+                        char const* file,
+                        int line) 
+  : _readWriteLock(readWriteLock), _file(file), _line(line) {
+  
+  while (! _readWriteLock->tryReadLock()) {
+    usleep(sleepTime);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the read-lock
 ////////////////////////////////////////////////////////////////////////////////
 

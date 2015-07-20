@@ -28,10 +28,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
+#include "Basics/ReadLocker.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterComm.h"
 #include "HttpServer/HttpServer.h"
@@ -1936,7 +1937,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
+  READ_LOCKER(_vocbase->_inventoryLock);
 
   // look up the collection
   try {
@@ -1983,8 +1984,6 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
   catch (...) {
     errorMsg = "could not create index: unknown error";
   }
-
-  TRI_ReadUnlockReadWriteLock(&_vocbase->_inventoryLock);
 
   return TRI_ERROR_NO_ERROR;
 }
