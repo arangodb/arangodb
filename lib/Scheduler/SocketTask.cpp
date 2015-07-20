@@ -51,21 +51,21 @@ using namespace triagens::rest;
 
 SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
   : Task("SocketTask"),
-    keepAliveWatcher(nullptr),
-    readWatcher(nullptr),
-    writeWatcher(nullptr),
-    watcher(nullptr),
+    _keepAliveWatcher(nullptr),
+    _readWatcher(nullptr),
+    _writeWatcher(nullptr),
+    _asyncWatcher(nullptr),
     _commSocket(socket),
     _keepAliveTimeout(keepAliveTimeout),
     _writeBuffer(nullptr),
 #ifdef TRI_ENABLE_FIGURES
     _writeBufferStatistics(nullptr),
 #endif
-    ownBuffer(true),
-    writeLength(0),
+    _ownBuffer(true),
+    _writeLength(0),
     _readBuffer(nullptr),
     _clientClosed(false),
-    tid(0) {
+    _tid(0) {
 
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
@@ -85,7 +85,7 @@ SocketTask::~SocketTask () {
     TRI_invalidatesocket(&_commSocket);
   }
 
-  if (ownBuffer) {
+  if (_ownBuffer) {
     delete _writeBuffer;
   }
 
@@ -112,8 +112,8 @@ SocketTask::~SocketTask () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::setKeepAliveTimeout (double timeout) {
-  if (keepAliveWatcher != nullptr && timeout > 0.0) {
-    _scheduler->rearmTimer(keepAliveWatcher, timeout);
+  if (_keepAliveWatcher != nullptr && timeout > 0.0) {
+    _scheduler->rearmTimer(_keepAliveWatcher, timeout);
   }
 }
 
@@ -174,14 +174,14 @@ bool SocketTask::handleWrite () {
   size_t len = 0;
 
   if (nullptr != _writeBuffer) {
-    TRI_ASSERT(_writeBuffer->length() >= writeLength);
-    len = _writeBuffer->length() - writeLength;
+    TRI_ASSERT(_writeBuffer->length() >= _writeLength);
+    len = _writeBuffer->length() - _writeLength;
   }
 
   int nr = 0;
 
   if (0 < len) {
-    nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + writeLength, (int) len, 0);
+    nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + _writeLength, (int) len, 0);
 
     if (nr < 0) {
       if (errno == EINTR) {
@@ -201,14 +201,14 @@ bool SocketTask::handleWrite () {
   }
 
   if (len == 0) {
-    if (nullptr != _writeBuffer && ownBuffer) {
+    if (nullptr != _writeBuffer && _ownBuffer) {
       delete _writeBuffer;
     }
 
     callCompletedWriteBuffer = true;
   }
   else {
-    writeLength += nr;
+    _writeLength += nr;
   }
 
   if (callCompletedWriteBuffer) {
@@ -225,10 +225,10 @@ bool SocketTask::handleWrite () {
 
   // we might have a new write buffer or none at all
   if (_writeBuffer == nullptr) {
-    _scheduler->stopSocketEvents(writeWatcher);
+    _scheduler->stopSocketEvents(_writeWatcher);
   }
   else {
-    _scheduler->startSocketEvents(writeWatcher);
+    _scheduler->startSocketEvents(_writeWatcher);
   }
 
   return true;
@@ -258,7 +258,7 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
 
 #endif
 
-  writeLength = 0;
+  _writeLength = 0;
 
   if (buffer->empty()) {
     if (ownBuffer) {
@@ -269,13 +269,13 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
   }
   else {
     if (_writeBuffer != nullptr) {
-      if (this->ownBuffer) {
+      if (_ownBuffer) {
         delete _writeBuffer;
       }
     }
 
     _writeBuffer = buffer;
-    this->ownBuffer = ownBuffer;
+    _ownBuffer = ownBuffer;
   }
 
   if (callCompletedWriteBuffer) {
@@ -288,13 +288,13 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
   }
 
   // we might have a new write buffer or none at all
-  TRI_ASSERT(tid == Thread::currentThreadId());
+  TRI_ASSERT(_tid == Thread::currentThreadId());
 
   if (_writeBuffer == nullptr) {
-    _scheduler->stopSocketEvents(writeWatcher);
+    _scheduler->stopSocketEvents(_writeWatcher);
   }
   else {
-    _scheduler->startSocketEvents(writeWatcher);
+    _scheduler->startSocketEvents(_writeWatcher);
   }
 }
 
@@ -353,24 +353,24 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 #endif
 
 
-  this->_scheduler = scheduler;
-  this->_loop = loop;
+  _scheduler = scheduler;
+  _loop = loop;
 
-  watcher = _scheduler->installAsyncEvent(loop, this);
-  readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
-  writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
+  _asyncWatcher = _scheduler->installAsyncEvent(loop, this);
+  _readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
+  _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
 
-  if (readWatcher == nullptr || writeWatcher == nullptr) {
+  if (_readWatcher == nullptr || _writeWatcher == nullptr) {
     return false;
   }
 
   // install timer for keep-alive timeout with some high default value
-  keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
+  _keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
 
   // and stop it immediately so it's not actively at the start
-  _scheduler->clearTimer(keepAliveWatcher);
+  _scheduler->clearTimer(_keepAliveWatcher);
 
-  tid = Thread::currentThreadId();
+  _tid = Thread::currentThreadId();
   return true;
 }
 
@@ -381,24 +381,24 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 void SocketTask::cleanup () {
   if (_scheduler == nullptr) {
     LOG_WARNING("In SocketTask::cleanup the scheduler has disappeared -- invalid pointer");
-    watcher = nullptr;
-    keepAliveWatcher = nullptr;
-    readWatcher = nullptr;
-    writeWatcher = nullptr;
+    _asyncWatcher = nullptr;
+    _keepAliveWatcher = nullptr;
+    _readWatcher = nullptr;
+    _writeWatcher = nullptr;
     return;
   }
 
-  _scheduler->uninstallEvent(watcher);
-  watcher = nullptr;
+  _scheduler->uninstallEvent(_asyncWatcher);
+  _asyncWatcher = nullptr;
 
-  _scheduler->uninstallEvent(keepAliveWatcher);
-  keepAliveWatcher = nullptr;
+  _scheduler->uninstallEvent(_keepAliveWatcher);
+  _keepAliveWatcher = nullptr;
 
-  _scheduler->uninstallEvent(readWatcher);
-  readWatcher = nullptr;
+  _scheduler->uninstallEvent(_readWatcher);
+  _readWatcher = nullptr;
 
-  _scheduler->uninstallEvent(writeWatcher);
-  writeWatcher = nullptr;
+  _scheduler->uninstallEvent(_writeWatcher);
+  _writeWatcher = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,7 +408,7 @@ void SocketTask::cleanup () {
 bool SocketTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;
 
-  if (token == keepAliveWatcher && (revents & EVENT_TIMER)) {
+  if (token == _keepAliveWatcher && (revents & EVENT_TIMER)) {
     // got a keep-alive timeout
     LOG_TRACE("got keep-alive timeout signal, closing connection");
 
@@ -420,16 +420,16 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
     return false;
   }
 
-  if (token == readWatcher && (revents & EVENT_SOCKET_READ)) {
-    if (keepAliveWatcher != nullptr) {
+  if (token == _readWatcher && (revents & EVENT_SOCKET_READ)) {
+    if (_keepAliveWatcher != nullptr) {
       // disable timer for keep-alive timeout
-      _scheduler->clearTimer(keepAliveWatcher);
+      _scheduler->clearTimer(_keepAliveWatcher);
     }
 
     result = handleRead();
   }
 
-  if (result && ! _clientClosed && token == writeWatcher) {
+  if (result && ! _clientClosed && token == _writeWatcher) {
     if (revents & EVENT_SOCKET_WRITE) {
       result = handleWrite();
     }
@@ -437,10 +437,10 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
 
   if (result) {
     if (_writeBuffer == nullptr) {
-      _scheduler->stopSocketEvents(writeWatcher);
+      _scheduler->stopSocketEvents(_writeWatcher);
     }
     else {
-      _scheduler->startSocketEvents(writeWatcher);
+      _scheduler->startSocketEvents(_writeWatcher);
     }
   }
 
