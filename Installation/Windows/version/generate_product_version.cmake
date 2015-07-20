@@ -75,6 +75,10 @@ function(generate_product_version outfiles)
         set(PRODUCT_VERSION_REVISION 0)
     endif()
 
+    if (NOT PRODUCT_NAME OR "${PRODUCT_NAME}" STREQUAL "")
+        set(PRODUCT_NAME "")
+    endif()
+
     if (NOT PRODUCT_COMPANY_COPYRIGHT OR "${PRODUCT_COMPANY_COPYRIGHT}" STREQUAL "")
         string(TIMESTAMP PRODUCT_CURRENT_YEAR "%Y")
         set(PRODUCT_COMPANY_COPYRIGHT "${PRODUCT_COMPANY_NAME} (C) Copyright ${PRODUCT_CURRENT_YEAR}")
@@ -92,8 +96,8 @@ function(generate_product_version outfiles)
         set(PRODUCT_FILE_DESCRIPTION "${PRODUCT_NAME}")
     endif()
 
-    set (_VersionInfoFile ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.h)
-    set (_VersionResourceFile ${CMAKE_CURRENT_BINARY_DIR}/VersionResource.rc)
+    set (_VersionInfoFile ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo_${PRODUCT_NAME}.h)
+    set (_VersionResourceFile ${CMAKE_CURRENT_BINARY_DIR}/VersionResource_${PRODUCT_NAME}.rc)
     configure_file(
         ${GenerateProductVersionCurrentDir}/VersionInfo.in
         ${_VersionInfoFile}
@@ -101,7 +105,7 @@ function(generate_product_version outfiles)
     configure_file(
         ${GenerateProductVersionCurrentDir}/VersionResource.rc
         ${_VersionResourceFile}
-        COPYONLY)
+        @ONLY)
     list(APPEND ${outfiles} ${_VersionInfoFile} ${_VersionResourceFile})
     set (${outfiles} ${${outfiles}} PARENT_SCOPE)
 endfunction()
