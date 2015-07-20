@@ -52,7 +52,7 @@ namespace triagens {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 struct TRI_vocbase_col_s;
 
 // -----------------------------------------------------------------------------
@@ -143,7 +143,7 @@ TRI_transaction_hint_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_s {
-  struct TRI_vocbase_s*                _vocbase;           // vocbase
+  TRI_vocbase_t*                       _vocbase;           // vocbase
   TRI_voc_tid_t                        _id;                // local trx id
   TRI_voc_tid_t                        _externalId;        // external trx id (used in replication)
   TRI_transaction_type_e               _type;              // access type (read|write)
@@ -185,7 +185,7 @@ TRI_transaction_collection_t;
 /// @brief create a new transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_t* TRI_CreateTransaction (struct TRI_vocbase_s*,
+TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t*,
                                           TRI_voc_tid_t,
                                           double,
                                           bool);

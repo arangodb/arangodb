@@ -34,7 +34,7 @@
 #include "VocBase/voc-types.h"
 
 struct TRI_json_t;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -62,7 +62,7 @@ TRI_vocbase_defaults_t;
 /// @brief apply default settings
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ApplyVocBaseDefaults (struct TRI_vocbase_s*,
+void TRI_ApplyVocBaseDefaults (TRI_vocbase_t*,
                                TRI_vocbase_defaults_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////

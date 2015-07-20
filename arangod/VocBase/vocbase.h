@@ -286,7 +286,16 @@ TRI_vocbase_type_e;
 /// For the lock handling, see the document "LOCKS.md".
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_vocbase_s {
+struct TRI_vocbase_t {
+  TRI_vocbase_t (struct TRI_server_s*,
+                 TRI_vocbase_type_e,
+                 char const*,
+                 TRI_voc_tick_t,
+                 char const*,
+                 struct TRI_vocbase_defaults_s const*);
+
+  ~TRI_vocbase_t ();
+
   TRI_voc_tick_t             _id;                 // internal database id
   char*                      _path;               // path to the data directory
   char*                      _name;               // database name
@@ -346,8 +355,7 @@ typedef struct TRI_vocbase_s {
 
   TRI_condition_t            _compactorCondition;
   TRI_condition_t            _cleanupCondition;
-}
-TRI_vocbase_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of a collection
@@ -425,12 +433,6 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (struct TRI_server_s*,
                                          TRI_voc_tick_t,
                                          char const*,
                                          struct TRI_vocbase_defaults_s const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an initial, not fully constructed vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyInitialVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing database, loads all collections

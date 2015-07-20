@@ -33,7 +33,7 @@
 #include "Basics/json.h"
 #include "Dispatcher/Job.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class V8Job
@@ -58,7 +58,7 @@ namespace triagens {
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Job (struct TRI_vocbase_s*,
+        V8Job (TRI_vocbase_t*,
                ApplicationV8*,
                std::string const&,
                TRI_json_t const*,
@@ -130,7 +130,7 @@ namespace triagens {
 /// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 dealer

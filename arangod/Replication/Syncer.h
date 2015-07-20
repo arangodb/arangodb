@@ -45,7 +45,7 @@
 struct TRI_json_t;
 struct TRI_replication_applier_configuration_s;
 struct TRI_transaction_collection_s;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 struct TRI_vocbase_col_s;
 
 namespace triagens {
@@ -78,7 +78,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        Syncer (struct TRI_vocbase_s*,
+        Syncer (TRI_vocbase_t*,
                 struct TRI_replication_applier_configuration_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +169,7 @@ namespace triagens {
 /// @brief vocbase base pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configuration
