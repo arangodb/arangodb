@@ -34,7 +34,7 @@
 
 #include "V8/v8-globals.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -44,13 +44,13 @@ struct TRI_vocbase_s;
 /// @brief creates the user structures for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateUserStructuresVocBase (struct TRI_vocbase_s*);
+void TRI_CreateUserStructuresVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the user structures for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeUserStructuresVocBase (struct TRI_vocbase_s*);
+void TRI_FreeUserStructuresVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the user structures functions

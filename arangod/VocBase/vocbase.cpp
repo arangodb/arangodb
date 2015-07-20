@@ -1360,133 +1360,16 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
                                          TRI_voc_tick_t id,
                                          char const* name,
                                          TRI_vocbase_defaults_t const* defaults) {
-  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_t), false));
-
-  if (vocbase == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-
-  vocbase->_server             = server;
-  vocbase->_type               = type;
-  vocbase->_id                 = id;
-  vocbase->_path               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
-  vocbase->_name               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
-  vocbase->_authInfoLoaded     = false;
-  vocbase->_hasCompactor       = false;
-  vocbase->_isOwnAppsDirectory = true;
-  vocbase->_replicationApplier = nullptr;
-  vocbase->_userStructures     = nullptr;
-  vocbase->_cursorRepository   = nullptr;
-  vocbase->_queries            = nullptr;
-  vocbase->_oldTransactions    = nullptr;
-
   try {
-    vocbase->_queries          = new triagens::aql::QueryList(vocbase);
+    std::unique_ptr<TRI_vocbase_t> vocbase(new TRI_vocbase_t(server, type, path, id, name, defaults));
+
+    return vocbase.release();
   }
   catch (...) {
-    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
-    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     
     return nullptr;
   }
-
-  try {
-    vocbase->_cursorRepository = new triagens::arango::CursorRepository(vocbase);
-  }
-  catch (...) {
-    delete static_cast<triagens::aql::QueryList*>(vocbase->_queries);
-    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
-    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-
-  // use the defaults provided
-  TRI_ApplyVocBaseDefaults(vocbase, defaults);
-
-  // init usage info
-  TRI_InitSpin(&vocbase->_usage._lock);
-  vocbase->_usage._refCount  = 0;
-  vocbase->_usage._isDeleted = false;
-
-  // init collections
-  TRI_InitVectorPointer(&vocbase->_collections, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&vocbase->_deadCollections, TRI_UNKNOWN_MEM_ZONE);
-
-  TRI_InitAssociativePointer(&vocbase->_collectionsById,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             HashKeyCid,
-                             HashElementCid,
-                             EqualKeyCid,
-                             nullptr);
-
-  TRI_InitAssociativePointer(&vocbase->_collectionsByName,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             HashKeyCollectionName,
-                             HashElementCollectionName,
-                             EqualKeyCollectionName,
-                             nullptr);
-
-  TRI_InitAuthInfo(vocbase);
-
-  TRI_InitReadWriteLock(&vocbase->_inventoryLock);
-  TRI_InitReadWriteLock(&vocbase->_lock);
-
-  TRI_InitCondition(&vocbase->_compactorCondition);
-  TRI_InitCondition(&vocbase->_cleanupCondition);
-
-  TRI_CreateUserStructuresVocBase(vocbase);
-  
-  return vocbase;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the central parts of a vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
-  if (vocbase->_userStructures != nullptr) {
-    TRI_FreeUserStructuresVocBase(vocbase);
-  }
-
-  // free replication
-  if (vocbase->_replicationApplier != nullptr) {
-    TRI_FreeReplicationApplier(vocbase->_replicationApplier);
-    vocbase->_replicationApplier = nullptr;
-  }
-
-  if (vocbase->_oldTransactions == nullptr) {
-    delete vocbase->_oldTransactions;
-  }
-
-  TRI_DestroyCondition(&vocbase->_cleanupCondition);
-  TRI_DestroyCondition(&vocbase->_compactorCondition);
-
-  TRI_DestroyReadWriteLock(&vocbase->_lock);
-  TRI_DestroyReadWriteLock(&vocbase->_inventoryLock);
-
-  TRI_DestroyAuthInfo(vocbase);
-
-  TRI_DestroyAssociativePointer(&vocbase->_collectionsByName);
-  TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
-
-  TRI_DestroyVectorPointer(&vocbase->_collections);
-  TRI_DestroyVectorPointer(&vocbase->_deadCollections);
-
-  delete static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
-  delete static_cast<triagens::aql::QueryList*>(vocbase->_queries);
-  
-  TRI_DestroySpin(&vocbase->_usage._lock);
-
-  // free name and path
-  TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
-  TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1524,8 +1407,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyCompactorVocBase(vocbase);
-    TRI_DestroyInitialVocBase(vocbase);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+    delete vocbase;
     TRI_set_errno(res);
 
     return nullptr;
@@ -1637,7 +1519,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   }
 
   TRI_DestroyCompactorVocBase(vocbase);
-  TRI_DestroyInitialVocBase(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2534,6 +2415,121 @@ bool TRI_IsAllowedNameVocBase (bool allowSystem,
 
 TRI_voc_tick_t TRI_NextQueryIdVocBase (TRI_vocbase_t* vocbase) {
   return QueryId.fetch_add(1, std::memory_order_seq_cst);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     TRI_vocbase_t
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a vocbase object
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
+                              TRI_vocbase_type_e type,
+                              char const* path,
+                              TRI_voc_tick_t id,
+                              char const* name,
+                              TRI_vocbase_defaults_t const* defaults) 
+  : _id(id),
+    _path(nullptr),
+    _name(nullptr),
+    _type(type),
+    _server(server),
+    _userStructures(nullptr),
+    _queries(nullptr),
+    _cursorRepository(nullptr),
+    _authInfoLoaded(false),
+    _hasCompactor(false),
+    _isOwnAppsDirectory(true),
+    _oldTransactions(nullptr),
+    _replicationApplier(nullptr) {
+
+  _queries = new triagens::aql::QueryList(this);
+  _cursorRepository = new triagens::arango::CursorRepository(this);
+ 
+  _path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
+  _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
+    
+  // init usage info
+  TRI_InitSpin(&_usage._lock);
+  _usage._refCount  = 0;
+  _usage._isDeleted = false;
+    
+  // use the defaults provided
+  TRI_ApplyVocBaseDefaults(this, defaults);
+    
+  // init collections
+  TRI_InitVectorPointer(&_collections, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&_deadCollections, TRI_UNKNOWN_MEM_ZONE);
+
+  TRI_InitAssociativePointer(&_collectionsById,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             HashKeyCid,
+                             HashElementCid,
+                             EqualKeyCid,
+                             nullptr);
+
+  TRI_InitAssociativePointer(&_collectionsByName,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             HashKeyCollectionName,
+                             HashElementCollectionName,
+                             EqualKeyCollectionName,
+                             nullptr);
+
+  TRI_InitAuthInfo(this);
+
+  TRI_InitReadWriteLock(&_inventoryLock);
+  TRI_InitReadWriteLock(&_lock);
+
+  TRI_CreateUserStructuresVocBase(this);
+
+  TRI_InitCondition(&_compactorCondition);
+  TRI_InitCondition(&_cleanupCondition);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a vocbase object
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t::~TRI_vocbase_t () {
+  if (_userStructures != nullptr) {
+    TRI_FreeUserStructuresVocBase(this);
+  }
+
+  // free replication
+  if (_replicationApplier != nullptr) {
+    TRI_FreeReplicationApplier(_replicationApplier);
+  }
+
+  delete _oldTransactions;
+
+  TRI_DestroyCondition(&_cleanupCondition);
+  TRI_DestroyCondition(&_compactorCondition);
+
+  TRI_DestroyReadWriteLock(&_lock);
+  TRI_DestroyReadWriteLock(&_inventoryLock);
+
+  TRI_DestroyAuthInfo(this);
+
+  TRI_DestroyAssociativePointer(&_collectionsByName);
+  TRI_DestroyAssociativePointer(&_collectionsById);
+
+  TRI_DestroyVectorPointer(&_collections);
+  TRI_DestroyVectorPointer(&_deadCollections);
+
+  delete static_cast<triagens::arango::CursorRepository*>(_cursorRepository);
+  delete static_cast<triagens::aql::QueryList*>(_queries);
+  
+  TRI_DestroySpin(&_usage._lock);
+
+  // free name and path
+  if (_path != nullptr) {
+    TRI_Free(TRI_CORE_MEM_ZONE, _path);
+  }
+  if (_name != nullptr) {
+    TRI_Free(TRI_CORE_MEM_ZONE, _name);
+  }
 }
 
 // -----------------------------------------------------------------------------

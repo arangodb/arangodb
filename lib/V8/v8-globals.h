@@ -38,7 +38,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -1068,7 +1068,7 @@ typedef struct TRI_v8_global_s {
 /// @brief pointer to the vocbase (TRI_vocbase_t*)
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_vocbase_s* _vocbase;
+  TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of v8 externals used in the context

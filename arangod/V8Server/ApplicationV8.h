@@ -44,7 +44,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_server_s;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace aql {
@@ -306,14 +306,14 @@ namespace triagens {
 /// @brief sets the database
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setVocbase (struct TRI_vocbase_s*);
+        void setVocbase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enters an context
 ////////////////////////////////////////////////////////////////////////////////
 
         V8Context* enterContext (std::string const& name,
-                                 TRI_vocbase_s*,
+                                 TRI_vocbase_t*,
                                  bool useDatabase);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -592,7 +592,7 @@ namespace triagens {
 /// @brief system database
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of instances to create

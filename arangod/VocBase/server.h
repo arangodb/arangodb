@@ -38,7 +38,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -53,10 +53,8 @@ typedef struct TRI_server_s {
   TRI_associative_pointer_t   _coordinatorDatabases;
   TRI_read_write_lock_t       _databasesLock;
 
-  TRI_mutex_t                 _createLock;
   TRI_thread_t                _databaseManager;
   TRI_vector_pointer_t        _droppedDatabases;
-  bool                        _shutdown;
 
   TRI_vocbase_defaults_t      _defaults;
   void*                       _applicationEndpointServer; // ptr to C++ object
@@ -175,7 +173,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t*,
                                          TRI_voc_tick_t,
                                          char const*,
                                          TRI_vocbase_defaults_t const*,
-                                         struct TRI_vocbase_s**);
+                                         TRI_vocbase_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
@@ -185,7 +183,7 @@ int TRI_CreateDatabaseServer (TRI_server_t*,
                               TRI_voc_tick_t,
                               char const*,
                               TRI_vocbase_defaults_t const*,
-                              struct TRI_vocbase_s**,
+                              TRI_vocbase_t**,
                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,46 +231,46 @@ int TRI_DropByIdDatabaseServer (TRI_server_t*,
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vocbase_s* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t*,
-                                                            TRI_voc_tick_t);
+TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t*,
+                                                     TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a coordinator database by its name
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vocbase_s* TRI_UseCoordinatorDatabaseServer (TRI_server_t*,
-                                                        char const*);
+TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t*,
+                                                 char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a database by its name
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vocbase_s* TRI_UseDatabaseServer (TRI_server_t*,
-                                             char const*);
+TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t*,
+                                      char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a database by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vocbase_s* TRI_LookupDatabaseByIdServer (TRI_server_t*,
-                                                    TRI_voc_tick_t);
+TRI_vocbase_t* TRI_LookupDatabaseByIdServer (TRI_server_t*,
+                                             TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a database by its name
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vocbase_s* TRI_LookupDatabaseByNameServer (TRI_server_t*,
-                                                      char const*);
+TRI_vocbase_t* TRI_LookupDatabaseByNameServer (TRI_server_t*,
+                                               char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a database by its id
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vocbase_s* TRI_UseDatabaseByIdServer (TRI_server_t*,
-                                                 TRI_voc_tick_t);
+TRI_vocbase_t* TRI_UseDatabaseByIdServer (TRI_server_t*,
+                                          TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief release a previously used database
@@ -280,7 +278,7 @@ struct TRI_vocbase_s* TRI_UseDatabaseByIdServer (TRI_server_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReleaseDatabaseServer (TRI_server_t*,
-                                struct TRI_vocbase_s*);
+                                TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a database exists

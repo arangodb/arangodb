@@ -48,7 +48,7 @@ using namespace triagens::arango;
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8QueueJob::V8QueueJob (const string& queue,
+V8QueueJob::V8QueueJob (std::string const& queue,
                         TRI_vocbase_t* vocbase,
                         ApplicationV8* v8Dealer,
                         TRI_json_t const* parameters)

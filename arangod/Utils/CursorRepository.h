@@ -36,7 +36,7 @@
 #include "VocBase/voc-types.h"
 
 struct TRI_json_t;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -59,7 +59,7 @@ namespace triagens {
 /// @brief create a cursors repository
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit CursorRepository (struct TRI_vocbase_s*);
+        explicit CursorRepository (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a cursors repository
@@ -139,7 +139,7 @@ namespace triagens {
 /// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex for the cursors repository

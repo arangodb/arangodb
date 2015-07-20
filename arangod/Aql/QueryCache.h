@@ -36,7 +36,7 @@
 #include "Basics/ReadWriteLock.h"
 
 struct TRI_json_t;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace aql {
@@ -336,7 +336,7 @@ namespace triagens {
 /// @brief lookup a query result in the cache
 ////////////////////////////////////////////////////////////////////////////////
 
-        QueryCacheResultEntry* lookup (struct TRI_vocbase_s*,
+        QueryCacheResultEntry* lookup (TRI_vocbase_t*,
                                        uint64_t,
                                        char const*,
                                        size_t);
@@ -347,7 +347,7 @@ namespace triagens {
 /// query result!
 ////////////////////////////////////////////////////////////////////////////////
 
-        QueryCacheResultEntry* store (struct TRI_vocbase_s*, 
+        QueryCacheResultEntry* store (TRI_vocbase_t*, 
                                       uint64_t,
                                       char const*,
                                       size_t,
@@ -358,21 +358,21 @@ namespace triagens {
 /// @brief invalidate all queries for the given collections
 ////////////////////////////////////////////////////////////////////////////////
 
-        void invalidate (struct TRI_vocbase_s*,
+        void invalidate (TRI_vocbase_t*,
                          std::vector<char const*> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for a particular collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        void invalidate (struct TRI_vocbase_s*,
+        void invalidate (TRI_vocbase_t*,
                          char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for a particular database
 ////////////////////////////////////////////////////////////////////////////////
 
-        void invalidate (struct TRI_vocbase_s*);
+        void invalidate (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries
@@ -407,7 +407,7 @@ namespace triagens {
 /// @brief determine which part of the cache to use for the cache entries
 ////////////////////////////////////////////////////////////////////////////////
 
-        unsigned int getPart (struct TRI_vocbase_s const*) const;
+        unsigned int getPart (TRI_vocbase_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all entries in the cache part
@@ -462,7 +462,7 @@ namespace triagens {
 /// @brief cached query entries, organized per database
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<struct TRI_vocbase_s*, QueryCacheDatabaseEntry*> _entries[NumberOfParts];
+        std::unordered_map<TRI_vocbase_t*, QueryCacheDatabaseEntry*> _entries[NumberOfParts];
 
     };
 

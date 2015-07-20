@@ -37,7 +37,7 @@
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -58,7 +58,7 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExplicitTransaction (struct TRI_vocbase_s* vocbase,
+        ExplicitTransaction (TRI_vocbase_t* vocbase,
                              std::vector<std::string> const& readCollections,
                              std::vector<std::string> const& writeCollections,
                              double lockTimeout,
@@ -89,7 +89,7 @@ namespace triagens {
 /// @brief create the transaction with cids
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExplicitTransaction (struct TRI_vocbase_s* vocbase,
+        ExplicitTransaction (TRI_vocbase_t* vocbase,
                              std::vector<TRI_voc_cid_t> const& readCollections,
                              std::vector<TRI_voc_cid_t> const& writeCollections,
                              double lockTimeout,
