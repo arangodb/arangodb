@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Aql/Collection.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace aql {
@@ -49,7 +49,7 @@ namespace triagens {
 
         Collections& operator= (Collections const& other) = delete;
       
-        Collections (struct TRI_vocbase_s* vocbase) 
+        Collections (TRI_vocbase_t* vocbase) 
           : _vocbase(vocbase),
             _collections() {
         }
@@ -123,7 +123,7 @@ namespace triagens {
 
       private:
 
-        struct TRI_vocbase_s*               _vocbase;
+        TRI_vocbase_t*                      _vocbase;
 
         std::map<std::string, Collection*>  _collections;
 

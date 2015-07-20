@@ -35,7 +35,7 @@
 #include "VocBase/voc-types.h"
 
 struct TRI_json_t;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -149,7 +149,7 @@ namespace triagens {
     class JsonCursor : public Cursor {
       public:
 
-        JsonCursor (struct TRI_vocbase_s*,
+        JsonCursor (TRI_vocbase_t*,
                     CursorId,
                     struct TRI_json_t*, 
                     size_t,
@@ -188,7 +188,7 @@ namespace triagens {
 
       private:
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t*        _vocbase;
         struct TRI_json_t*    _json;
         size_t const          _size;
         bool                  _cached;
@@ -201,7 +201,7 @@ namespace triagens {
     class ExportCursor : public Cursor {
       public:
 
-        ExportCursor (struct TRI_vocbase_s*,
+        ExportCursor (TRI_vocbase_t*,
                       CursorId,
                       triagens::arango::CollectionExport*,
                       size_t,
@@ -230,7 +230,7 @@ namespace triagens {
 
       private:
 
-        struct TRI_vocbase_s*               _vocbase;
+        TRI_vocbase_t*                      _vocbase;
         triagens::arango::CollectionExport* _ex;
         size_t const                        _size;
     };

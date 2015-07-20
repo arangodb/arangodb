@@ -38,16 +38,17 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/conversions.h"
+#include "Basics/Exceptions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/json.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/locks.h"
 #include "Basics/logging.h"
 #include "Basics/memory-map.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/auth.h"
@@ -125,6 +126,18 @@ class DatabaseWriteLocker {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock for serializing the creation of database
+////////////////////////////////////////////////////////////////////////////////
+
+static triagens::basics::Mutex DatabaseCreateLock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief variable protecting the server shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+static std::atomic<bool> ServerShutdown;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server operation mode (e.g. read-only, normal etc).
@@ -842,7 +855,8 @@ static int CloseDatabases (TRI_server_t* server) {
       TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
       TRI_DestroyVocBase(vocbase);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+
+      delete vocbase;
 
       // clear to avoid potential double freeing
       server->_databases._table[i] = nullptr;
@@ -857,8 +871,7 @@ static int CloseDatabases (TRI_server_t* server) {
     if (vocbase != nullptr) {
       TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
 
-      TRI_DestroyInitialVocBase(vocbase);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+      delete vocbase;
 
       // clear to avoid potential double freeing
       server->_coordinatorDatabases._table[i] = nullptr;
@@ -883,14 +896,13 @@ static int CloseDroppedDatabases (TRI_server_t* server) {
     if (vocbase != nullptr) {
       if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
         TRI_DestroyVocBase(vocbase);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+        delete vocbase;
 
         // clear to avoid potential double freeing
         server->_droppedDatabases._buffer[i] = nullptr;
       }
       else if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
-        TRI_DestroyInitialVocBase(vocbase);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+        delete vocbase;
         // clear to avoid potential double freeing
         server->_droppedDatabases._buffer[i] = nullptr;
       }
@@ -1578,9 +1590,7 @@ static void DatabaseManager (void* data) {
   int cleanupCycles = 0;
 
   while (true) {
-    TRI_LockMutex(&server->_createLock);
-    bool shutdown = server->_shutdown;
-    TRI_UnlockMutex(&server->_createLock);
+    bool shutdown = ServerShutdown.load(std::memory_order_relaxed);
 
     // check if we have to drop some database
     TRI_vocbase_t* database = nullptr;
@@ -1604,13 +1614,7 @@ static void DatabaseManager (void* data) {
     }
 
     if (database != nullptr) {
-      if (database->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
-        // coordinator database
-        // ---------------------------
-
-        TRI_DestroyInitialVocBase(database);
-      }
-      else {
+      if (database->_type != TRI_VOCBASE_TYPE_COORDINATOR) {
         // regular database
         // ---------------------------
 
@@ -1647,9 +1651,9 @@ static void DatabaseManager (void* data) {
           TRI_RemoveDirectory(path);
           TRI_FreeString(TRI_CORE_MEM_ZONE, path);
         }
-
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, database);
       }
+        
+      delete database;
 
       // directly start next iteration
     }
@@ -1811,8 +1815,6 @@ int TRI_InitServer (TRI_server_t* server,
 
   TRI_InitVectorPointer(&server->_droppedDatabases, TRI_UNKNOWN_MEM_ZONE, 64);
 
-  TRI_InitMutex(&server->_createLock);
-
   server->_disableReplicationAppliers = disableAppliers;
 
   server->_queryRegistry = nullptr;   // will be filled in later
@@ -1830,7 +1832,6 @@ void TRI_DestroyServer (TRI_server_t* server) {
   if (server->_initialised) {
     CloseDatabases(server);
 
-    TRI_DestroyMutex(&server->_createLock);
     TRI_DestroyVectorPointer(&server->_droppedDatabases);
     TRI_DestroyReadWriteLock(&server->_databasesLock);
     TRI_DestroyAssociativePointer(&server->_coordinatorDatabases);
@@ -2064,12 +2065,6 @@ int TRI_StartServer (TRI_server_t* server,
     return res;
   }
 
-  // we don't yet need the lock here as this is called during startup and no races
-  // are possible. however, this may be changed in the future
-  TRI_LockMutex(&server->_createLock);
-  server->_shutdown = false;
-  TRI_UnlockMutex(&server->_createLock);
-
   // start dbm thread
   TRI_InitThread(&server->_databaseManager);
   TRI_StartThread(&server->_databaseManager, nullptr, "[databases]", DatabaseManager, server);
@@ -2128,9 +2123,7 @@ int TRI_InitDatabasesServer (TRI_server_t* server) {
 
 int TRI_StopServer (TRI_server_t* server) {
   // set shutdown flag
-  TRI_LockMutex(&server->_createLock);
-  server->_shutdown = true;
-  TRI_UnlockMutex(&server->_createLock);
+  ServerShutdown.store(true);
 
   // stop dbm thread
   int res = TRI_JoinThread(&server->_databaseManager);
@@ -2163,7 +2156,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
-  TRI_LockMutex(&server->_createLock);
+  MUTEX_LOCKER(DatabaseCreateLock);
 
   {
     DatabaseReadLocker locker(&server->_databasesLock);
@@ -2172,8 +2165,6 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
     if (vocbase != nullptr) {
       // name already in use
-      TRI_UnlockMutex(&server->_createLock);
-
       return TRI_ERROR_ARANGO_DUPLICATE_NAME;
     }
   }
@@ -2183,8 +2174,6 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(server, TRI_VOCBASE_TYPE_COORDINATOR, "none", tick, name, defaults);
 
   if (vocbase == nullptr) {
-    TRI_UnlockMutex(&server->_createLock);
-
     // grab last error
     int res = TRI_errno();
 
@@ -2205,9 +2194,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(server, vocbase);
 
   if (vocbase->_replicationApplier == nullptr) {
-    TRI_DestroyInitialVocBase(vocbase);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
-    TRI_UnlockMutex(&server->_createLock);
+    delete vocbase;
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -2227,8 +2214,6 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
       LOG_ERROR("Replacing existing database by name %s", vocbase->_name);
     }
   }
-
-  TRI_UnlockMutex(&server->_createLock);
 
   *database = vocbase;
 
@@ -2250,124 +2235,124 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
+  TRI_vocbase_t* vocbase = nullptr;
+  TRI_json_t* json = nullptr;
+  int res;
+
   // the create lock makes sure no one else is creating a database while we're inside
   // this function
-  TRI_LockMutex(&server->_createLock);
-
+  MUTEX_LOCKER(DatabaseCreateLock);
   {
-    DatabaseReadLocker locker(&server->_databasesLock);
 
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_databases, name));
+    {
+      DatabaseReadLocker locker(&server->_databasesLock);
 
-    if (vocbase != nullptr) {
-      // name already in use
-      TRI_UnlockMutex(&server->_createLock);
+      vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_databases, name));
 
-      return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+      if (vocbase != nullptr) {
+        // name already in use
+        return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+      }
     }
-  }
 
-  // name not yet in use
-  TRI_json_t* json = TRI_JsonVocBaseDefaults(TRI_UNKNOWN_MEM_ZONE, defaults);
+    // name not yet in use
+    json = TRI_JsonVocBaseDefaults(TRI_UNKNOWN_MEM_ZONE, defaults);
 
-  if (json == nullptr) {
-    TRI_UnlockMutex(&server->_createLock);
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+    if (json == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
 
-  // create the database directory
-  char* file;
+    // create the database directory
+    char* file;
 
-  if (databaseId == 0) {
-    databaseId = TRI_NewTickServer();
-  }
+    if (databaseId == 0) {
+      databaseId = TRI_NewTickServer();
+    }
 
-  int res = CreateDatabaseDirectory(server, databaseId, name, defaults, &file);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_UnlockMutex(&server->_createLock);
-
-    return res;
-  }
-
-  char* path = TRI_Concatenate2File(server->_databasePath, file);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-
-  if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
-    LOG_TRACE("creating database '%s', directory '%s'",
-              name,
-              path);
-  }
-  else {
-    LOG_INFO("creating database '%s', directory '%s'",
-             name,
-             path);
-  }
-
-  TRI_vocbase_t* vocbase = TRI_OpenVocBase(server, path, databaseId, name, defaults, false, false);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, path);
-
-  if (vocbase == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_UnlockMutex(&server->_createLock);
-
-    // grab last error
-    res = TRI_errno();
+    res = CreateDatabaseDirectory(server, databaseId, name, defaults, &file);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      // but we must have an error...
-      res = TRI_ERROR_INTERNAL;
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+      return res;
     }
 
-    LOG_ERROR("could not create database '%s': %s",
+    char* path = TRI_Concatenate2File(server->_databasePath, file);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+
+    if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+      LOG_TRACE("creating database '%s', directory '%s'",
+                name,
+                path);
+    }
+    else {
+      LOG_INFO("creating database '%s', directory '%s'",
               name,
-              TRI_errno_string(res));
+              path);
+    }
 
-    return res;
-  }
+    vocbase = TRI_OpenVocBase(server, path, databaseId, name, defaults, false, false);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, path);
 
-  TRI_ASSERT(vocbase != nullptr);
-  
-  char* tickString = TRI_StringUInt64(databaseId);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString, strlen(tickString)));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name, strlen(name)));
+    if (vocbase == nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
+      // grab last error
+      res = TRI_errno();
 
-  // create application directories
-  CreateApplicationDirectory(vocbase->_name, server->_appPath);
-
-  if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
-    TRI_ReloadAuthInfo(vocbase);
-    TRI_StartCompactorVocBase(vocbase);
-
-    // start the replication applier
-    if (vocbase->_replicationApplier->_configuration._autoStart) {
-      if (server->_disableReplicationAppliers) {
-        LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
+      if (res != TRI_ERROR_NO_ERROR) {
+        // but we must have an error...
+        res = TRI_ERROR_INTERNAL;
       }
-      else {
-        res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_WARNING("unable to start replication applier for database '%s': %s",
-                      name,
-                      TRI_errno_string(res));
+      LOG_ERROR("could not create database '%s': %s",
+                name,
+                TRI_errno_string(res));
+
+      return res;
+    }
+
+    TRI_ASSERT(vocbase != nullptr);
+    
+    char* tickString = TRI_StringUInt64(databaseId);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString, strlen(tickString)));
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name, strlen(name)));
+
+
+    // create application directories
+    CreateApplicationDirectory(vocbase->_name, server->_appPath);
+
+    if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
+      TRI_ReloadAuthInfo(vocbase);
+      TRI_StartCompactorVocBase(vocbase);
+
+      // start the replication applier
+      if (vocbase->_replicationApplier->_configuration._autoStart) {
+        if (server->_disableReplicationAppliers) {
+          LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
+        }
+        else {
+          res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_WARNING("unable to start replication applier for database '%s': %s",
+                        name,
+                        TRI_errno_string(res));
+          }
         }
       }
+
+      // increase reference counter
+      TRI_UseVocBase(vocbase);
     }
 
-    // increase reference counter
-    TRI_UseVocBase(vocbase);
-  }
+    {
+      DatabaseWriteLocker locker(&server->_databasesLock);
+      TRI_InsertKeyAssociativePointer(&server->_databases, vocbase->_name, vocbase, false);
+    }
 
-  {
-    DatabaseWriteLocker locker(&server->_databasesLock);
-    TRI_InsertKeyAssociativePointer(&server->_databases, vocbase->_name, vocbase, false);
-  }
-
-  TRI_UnlockMutex(&server->_createLock);
+  } // release DatabaseCreateLock
 
   // write marker into log
   if (writeMarker) {

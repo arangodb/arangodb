@@ -35,7 +35,7 @@
 #include "VocBase/voc-types.h"
 
 struct TRI_document_collection_t;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -74,7 +74,7 @@ namespace triagens {
         CollectionExport (CollectionExport const&) = delete;
         CollectionExport& operator= (CollectionExport const&) = delete;
 
-        CollectionExport (TRI_vocbase_s*, 
+        CollectionExport (TRI_vocbase_t*, 
                           std::string const&,
                           Restrictions const&);
 

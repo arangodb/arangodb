@@ -37,7 +37,7 @@
 
 #include "VocBase/transaction.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -62,7 +62,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionReadOnlyTransaction (TransactionContext* transactionContext,
-                                             struct TRI_vocbase_s* vocbase,
+                                             TRI_vocbase_t* vocbase,
                                              TRI_voc_cid_t cid) 
           : SingleCollectionTransaction(transactionContext, vocbase, cid, TRI_TRANSACTION_READ) {
         }
@@ -72,7 +72,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionReadOnlyTransaction (TransactionContext* transactionContext,
-                                             struct TRI_vocbase_s* vocbase,
+                                             TRI_vocbase_t* vocbase,
                                              std::string const& name) 
           : SingleCollectionTransaction(transactionContext, vocbase, name, TRI_TRANSACTION_READ) {
         }
