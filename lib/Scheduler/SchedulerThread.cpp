@@ -134,11 +134,12 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
     return ok;
   }
 
+  Work w(SETUP, scheduler, task);
+
   // different thread, be careful - we have to stop the event loop
   // put the register request onto the queue
   SCHEDULER_LOCKER(_queueLock);
 
-  Work w(SETUP, scheduler, task);
   _queue.push_back(w);
   _hasWork = true;
 
@@ -166,11 +167,11 @@ void SchedulerThread::unregisterTask (Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   else {
+    Work w(CLEANUP, nullptr, task);
 
-    // put the unregister request unto the queue
+    // put the unregister request into the queue
     SCHEDULER_LOCKER(_queueLock);
 
-    Work w(CLEANUP, nullptr, task);
     _queue.push_back(w);
     _hasWork = true;
 
@@ -198,10 +199,11 @@ void SchedulerThread::destroyTask (Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   else {
-    // put the unregister request unto the queue
+    // put the unregister request into the queue
+    Work w(DESTROY, nullptr, task);
+
     SCHEDULER_LOCKER(_queueLock);
 
-    Work w(DESTROY, nullptr, task);
     _queue.push_back(w);
     _hasWork = true;
 

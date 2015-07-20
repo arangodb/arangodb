@@ -81,8 +81,8 @@ Dispatcher::Dispatcher (Scheduler* scheduler)
 ////////////////////////////////////////////////////////////////////////////////
 
 Dispatcher::~Dispatcher () {
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    delete i->second;
+  for (auto& it : _queues) {
+    delete it.second;
   }
 }
 
@@ -97,13 +97,13 @@ Dispatcher::~Dispatcher () {
 bool Dispatcher::isRunning () {
   MUTEX_LOCKER(_accessDispatcher);
 
-  bool isRunning = false;
-
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    isRunning = isRunning || i->second->isRunning();
+  for (auto& it : _queues) {
+    if (it.second->isRunning()) {
+      return true;
+    }
   }
 
-  return isRunning;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,8 +234,8 @@ bool Dispatcher::cancelJob (uint64_t jobId) {
 
   MUTEX_LOCKER(_accessDispatcher);
 
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end() && ! done;  ++i) {
-    DispatcherQueue* q = i->second;
+  for (auto& it : _queues) {
+    DispatcherQueue* q = it.second;
 
     done = q->cancelJob(jobId);
   }
@@ -250,8 +250,8 @@ bool Dispatcher::cancelJob (uint64_t jobId) {
 bool Dispatcher::start () {
   MUTEX_LOCKER(_accessDispatcher);
 
-  for (map<std::string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    bool ok = i->second->start();
+  for (auto& it : _queues) {
+    bool ok = it.second->start();
 
     if (! ok) {
       LOG_FATAL_AND_EXIT("cannot start dispatcher queue");
@@ -268,8 +268,8 @@ bool Dispatcher::start () {
 bool Dispatcher::isStarted () {
   MUTEX_LOCKER(_accessDispatcher);
 
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    bool started = i->second->isStarted();
+  for (auto& it : _queues) {
+    bool started = it.second->isStarted();
 
     if (! started) {
       return false;
@@ -303,8 +303,8 @@ void Dispatcher::beginShutdown () {
 
     _stopping = 1;
 
-    for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-      i->second->beginShutdown();
+    for (auto& it : _queues) {
+      it.second->beginShutdown();
     }
   }
 }
@@ -318,8 +318,8 @@ void Dispatcher::shutdown () {
 
   LOG_DEBUG("shutting down the dispatcher");
 
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    i->second->shutdown();
+  for (auto& it : _queues) {
+    it.second->shutdown();
   }
 }
 
@@ -330,10 +330,10 @@ void Dispatcher::shutdown () {
 void Dispatcher::reportStatus () {
   MUTEX_LOCKER(_accessDispatcher);
 
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    DispatcherQueue* q = i->second;
+  for (auto& it : _queues) {
+    DispatcherQueue* q = it.second;
 #ifdef TRI_ENABLE_LOGGER
-    string const& name = i->first;
+    string const& name = it.first;
 
     LOG_INFO("dispatcher queue '%s': threads = %d, started: %d, running = %d, waiting = %d, stopped = %d, blocked = %d, special = %d, monopolistic = %s",
               name.c_str(),
@@ -348,8 +348,8 @@ void Dispatcher::reportStatus () {
 #endif
     CONDITION_LOCKER(guard, q->_accessQueue);
 
-    for (set<DispatcherThread*>::iterator j = q->_startedThreads.begin();  j != q->_startedThreads.end(); ++j) {
-      (*j)->reportStatus();
+    for (auto& it2 : q->_startedThreads) {
+      it2->reportStatus();
     }
   }
 }
@@ -358,7 +358,7 @@ void Dispatcher::reportStatus () {
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::setProcessorAffinity (const string& name, const vector<size_t>& cores) {
+void Dispatcher::setProcessorAffinity (string const& name, std::vector<size_t> const& cores) {
   auto const& it = _queues.find(name);
 
   if (it == _queues.end()) {
@@ -376,17 +376,16 @@ void Dispatcher::setProcessorAffinity (const string& name, const vector<size_t>&
 /// @brief looks up a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-DispatcherQueue* Dispatcher::lookupQueue (const std::string& name) {
+DispatcherQueue* Dispatcher::lookupQueue (std::string const& name) {
   MUTEX_LOCKER(_accessDispatcher); // FIX_MUTEX
 
-  map<std::string, DispatcherQueue*>::const_iterator i = _queues.find(name);
+  auto it = _queues.find(name);
 
-  if (i == _queues.end()) {
+  if (it == _queues.end()) {
     return nullptr;
   }
-  else {
-    return i->second;
-  }
+  
+  return (*it).second;
 }
 
 // -----------------------------------------------------------------------------

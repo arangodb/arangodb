@@ -36,8 +36,6 @@
 #include "Basics/Mutex.h"
 #include "Basics/SpinLock.h"
 
-// #define TRI_USE_SPIN_LOCK_SCHEDULER_LIBEV 1
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class SchedulerLibev
 // -----------------------------------------------------------------------------
