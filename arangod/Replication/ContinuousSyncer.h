@@ -42,7 +42,7 @@
 
 struct TRI_json_t;
 struct TRI_server_s;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
 
@@ -75,7 +75,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ContinuousSyncer (struct TRI_server_s*,
-                          struct TRI_vocbase_s*,
+                          TRI_vocbase_t*,
                           struct TRI_replication_applier_configuration_s const*,
                           TRI_voc_tick_t,
                           bool);

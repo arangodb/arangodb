@@ -31,7 +31,6 @@
 #define ARANGODB_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
-
 #include "Replication/Syncer.h"
 
 // -----------------------------------------------------------------------------
@@ -41,7 +40,7 @@
 struct TRI_json_t;
 struct TRI_replication_applier_configuration_s;
 struct TRI_transaction_collection_s;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
 
@@ -87,7 +86,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        InitialSyncer (struct TRI_vocbase_s*,
+        InitialSyncer (TRI_vocbase_t*,
                        struct TRI_replication_applier_configuration_s const*,
                        std::unordered_map<std::string, bool> const&,
                        std::string const&,

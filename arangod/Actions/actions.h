@@ -37,7 +37,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace rest {
@@ -98,7 +98,7 @@ class TRI_action_t {
 
     virtual ~TRI_action_t () {}
 
-    virtual TRI_action_result_t execute (struct TRI_vocbase_s*,
+    virtual TRI_action_result_t execute (TRI_vocbase_t*,
                                          triagens::rest::HttpRequest*,
                                          triagens::basics::Mutex* dataLock,
                                          void** data) = 0;

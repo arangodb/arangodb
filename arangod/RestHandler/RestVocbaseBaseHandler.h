@@ -46,7 +46,7 @@
 
 struct TRI_document_collection_t;
 struct TRI_vocbase_col_s;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class RestVocbaseBaseHandler
@@ -404,7 +404,7 @@ namespace triagens {
 /// @brief the vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods

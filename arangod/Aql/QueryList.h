@@ -34,7 +34,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace aql {
@@ -85,7 +85,7 @@ namespace triagens {
 /// @brief create a query list
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit QueryList (struct TRI_vocbase_s*);
+        explicit QueryList (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a query list

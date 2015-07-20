@@ -35,7 +35,7 @@
 #include "V8/V8LineEditor.h"
 #include "V8Server/ApplicationV8.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace rest {
@@ -76,7 +76,7 @@ namespace triagens {
 
         ConsoleThread (triagens::rest::ApplicationServer*,
                        ApplicationV8*,
-                       struct TRI_vocbase_s*);
+                       TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -144,7 +144,7 @@ namespace triagens {
 
         ApplicationV8::V8Context* _context;
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
         sig_atomic_t _done;
 

@@ -54,7 +54,7 @@ namespace triagens {
       Collection () = delete;
       
       Collection (std::string const&,
-                  struct TRI_vocbase_s*,
+                  TRI_vocbase_t*,
                   TRI_transaction_type_e);
       
       ~Collection ();

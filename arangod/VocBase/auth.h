@@ -37,7 +37,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -76,31 +76,31 @@ TRI_vocbase_auth_cache_t;
 /// @brief initialises the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitAuthInfo (struct TRI_vocbase_s*);
+int TRI_InitAuthInfo (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyAuthInfo (struct TRI_vocbase_s*);
+void TRI_DestroyAuthInfo (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert initial authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertInitialAuthInfo (struct TRI_vocbase_s*);
+bool TRI_InsertInitialAuthInfo (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadAuthInfo (struct TRI_vocbase_s*);
+bool TRI_LoadAuthInfo (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief populate the authentication info cache
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PopulateAuthInfo (struct TRI_vocbase_s*,
+bool TRI_PopulateAuthInfo (TRI_vocbase_t*,
                            struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,19 +108,19 @@ bool TRI_PopulateAuthInfo (struct TRI_vocbase_s*,
 /// this must be executed after the underlying _users collection is modified
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReloadAuthInfo (struct TRI_vocbase_s*);
+bool TRI_ReloadAuthInfo (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ClearAuthInfo (struct TRI_vocbase_s*);
+void TRI_ClearAuthInfo (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up authentication data in the cache
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_CheckCacheAuthInfo (struct TRI_vocbase_s*,
+char* TRI_CheckCacheAuthInfo (TRI_vocbase_t*,
                               char const* hash,
                               bool* mustChange);
 
@@ -128,14 +128,14 @@ char* TRI_CheckCacheAuthInfo (struct TRI_vocbase_s*,
 /// @brief checks the authentication - note: only checks whether the user exists
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExistsAuthenticationAuthInfo (struct TRI_vocbase_s*,
+bool TRI_ExistsAuthenticationAuthInfo (TRI_vocbase_t*,
                                        char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckAuthenticationAuthInfo (struct TRI_vocbase_s*,
+bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t*,
                                       char const* hash,
                                       char const* username,
                                       char const* password,

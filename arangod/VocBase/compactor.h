@@ -34,7 +34,7 @@
 
 #include "VocBase/voc-types.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -44,25 +44,25 @@ struct TRI_vocbase_s;
 /// @brief initialise the compaction blockers structure
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitCompactorVocBase (struct TRI_vocbase_s*);
+int TRI_InitCompactorVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the compaction blockers structure
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyCompactorVocBase (struct TRI_vocbase_s*);
+void TRI_DestroyCompactorVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove data of expired compaction blockers
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CleanupCompactorVocBase (struct TRI_vocbase_s*);
+bool TRI_CleanupCompactorVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a compaction blocker
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertBlockerCompactorVocBase (struct TRI_vocbase_s*,
+int TRI_InsertBlockerCompactorVocBase (TRI_vocbase_t*,
                                        double,
                                        TRI_voc_tick_t*);
 
@@ -70,7 +70,7 @@ int TRI_InsertBlockerCompactorVocBase (struct TRI_vocbase_s*,
 /// @brief touch an existing compaction blocker
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_TouchBlockerCompactorVocBase (struct TRI_vocbase_s*,
+int TRI_TouchBlockerCompactorVocBase (TRI_vocbase_t*,
                                       TRI_voc_tick_t,
                                       double);
 
@@ -78,7 +78,7 @@ int TRI_TouchBlockerCompactorVocBase (struct TRI_vocbase_s*,
 /// @brief remove an existing compaction blocker
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveBlockerCompactorVocBase (struct TRI_vocbase_s*,
+int TRI_RemoveBlockerCompactorVocBase (TRI_vocbase_t*,
                                        TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,13 +87,13 @@ int TRI_RemoveBlockerCompactorVocBase (struct TRI_vocbase_s*,
 /// acquired, which must eventually be freed by the caller
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckAndLockCompactorVocBase (struct TRI_vocbase_s*);
+bool TRI_CheckAndLockCompactorVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlock the compactor
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockCompactorVocBase (struct TRI_vocbase_s*);
+void TRI_UnlockCompactorVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compactor event loop
