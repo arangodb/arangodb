@@ -612,11 +612,6 @@ void ApplicationEndpointServer::close () {
     return;
   }
 
-  // close all open connections
-  for (auto server : _servers) {
-    server->shutdownHandlers();
-  }
-
   // close all listen sockets
   for (auto server : _servers) {
     server->stopListening();
