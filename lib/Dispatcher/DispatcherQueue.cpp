@@ -138,16 +138,14 @@ bool DispatcherQueue::addJob (Job* job) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::cancelJob (uint64_t jobId) {
-  CONDITION_LOCKER(guard, _accessQueue);
-
   if (jobId == 0) {
     return false;
   }
 
-  // job is already running, try to cancel it
-  for (set<Job*>::iterator it = _runningJobs.begin();  it != _runningJobs.end();  ++it) {
-    Job* job = *it;
+  CONDITION_LOCKER(guard, _accessQueue);
 
+  // job is already running, try to cancel it
+  for (auto& job : _runningJobs) {
     if (job->id() == jobId) {
       job->cancel(true);
       return true;
@@ -274,6 +272,7 @@ void DispatcherQueue::beginShutdown () {
   // kill all jobs in the queue that were not yet executed
   {
     CONDITION_LOCKER(guard, _accessQueue);
+    
     for (auto it = _readyJobs.begin();  it != _readyJobs.end();  ++it) {
       Job* job = *it;
 
@@ -336,14 +335,14 @@ void DispatcherQueue::shutdown () {
     threads.insert(_stoppedThreads.begin(), _stoppedThreads.end());
   }
 
-  for (set<DispatcherThread*>::iterator i = threads.begin();  i != threads.end();  ++i) {
-    (*i)->stop();
+  for (auto& it : threads) {
+    it->stop();
   }
 
   usleep(10000);
 
-  for (set<DispatcherThread*>::iterator i = threads.begin();  i != threads.end();  ++i) {
-    delete *i;
+  for (auto& it : threads) {
+    delete it;
   }
 }
 
