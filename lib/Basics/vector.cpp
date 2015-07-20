@@ -176,39 +176,6 @@ TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t* zone,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy data from one vector into another
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CopyDataVector (TRI_vector_t* dst,
-                        TRI_vector_t const* source) {
-  if (dst->_elementSizeX != source->_elementSizeX) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (dst->_buffer != nullptr) {
-    TRI_Free(TRI_MemoryZone(dst->_memoryZoneX), dst->_buffer);
-    dst->_buffer = nullptr;
-  }
-
-  dst->_capacityX = 0;
-  dst->_lengthX   = 0;
-
-  if (source->_lengthX > 0) {
-    dst->_buffer = static_cast<char*>(TRI_Allocate(TRI_MemoryZone(dst->_memoryZoneX), static_cast<size_t>(source->_lengthX * source->_elementSizeX), false));
-
-    if (dst->_buffer == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    memcpy(dst->_buffer, source->_buffer, static_cast<size_t>(source->_lengthX * source->_elementSizeX));
-    dst->_capacityX = source->_lengthX;
-    dst->_lengthX   = source->_lengthX;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if the vector is empty
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -579,28 +546,6 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t* zone,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copies all pointers from a vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CopyDataVectorPointer (TRI_vector_pointer_t* dst,
-                               TRI_vector_pointer_t const* src) {
-  if (src->_length == 0) {
-    dst->_length = 0;
-  }
-  else {
-    int res = TRI_ResizeVectorPointer(dst, src->_length);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    memcpy(dst->_buffer, src->_buffer, src->_length * sizeof(void*));
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if the vector is empty
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -882,80 +827,6 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
   }
 
   return copy;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies all pointers from a vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CopyDataVectorString (TRI_memory_zone_t* zone,
-                              TRI_vector_string_t* dst,
-                              TRI_vector_string_t const* src) {
-  TRI_ClearVectorString(dst);
-
-  if (0 < src->_length) {
-    char** ptr;
-    char** end;
-    char** qtr;
-    int res;
-
-    res = TRI_ResizeVectorString (dst, src->_length);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    ptr = src->_buffer;
-    end = src->_buffer + src->_length;
-    qtr = dst->_buffer;
-
-    for (;  ptr < end;  ++ptr, ++qtr) {
-      *qtr = TRI_DuplicateStringZ(zone, *ptr);
-
-      if (*qtr == nullptr) {
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies data from a TRI_vector_pointer_t into a string vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CopyDataFromVectorPointerVectorString (TRI_memory_zone_t* zone,
-                                               TRI_vector_string_t* dst,
-                                               TRI_vector_pointer_t const* src) {
-  TRI_ClearVectorString(dst);
-
-  if (0 < src->_length) {
-    void** ptr;
-    void** end;
-    char** qtr;
-    int res;
-
-    res = TRI_ResizeVectorString(dst, src->_length);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    ptr = src->_buffer;
-    end = src->_buffer + src->_length;
-    qtr = dst->_buffer;
-
-    for (;  ptr < end;  ++ptr, ++qtr) {
-      *qtr = TRI_DuplicateStringZ(zone, static_cast<char const*>(*ptr));
-
-      if (*qtr == nullptr) {
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

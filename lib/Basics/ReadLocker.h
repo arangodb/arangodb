@@ -51,6 +51,9 @@
 #define READ_LOCKER(b) \
   triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
+#define READ_LOCKER_EVENTUAL(b, t) \
+  triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class ReadLocker
 // -----------------------------------------------------------------------------
@@ -91,6 +94,22 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a read-lock, with periodic sleeps while not acquired
+/// sleep time is specified in nanoseconds
+////////////////////////////////////////////////////////////////////////////////
+
+        explicit
+        ReadLocker (ReadWriteLock*, uint64_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a read-lock, with periodic sleeps while not acquired
+/// sleep time is specified in nanoseconds
+////////////////////////////////////////////////////////////////////////////////
+
+        explicit
+        ReadLocker (ReadWriteLock* readWriteLock, uint64_t sleepDelay, char const* file, int line);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the read-lock

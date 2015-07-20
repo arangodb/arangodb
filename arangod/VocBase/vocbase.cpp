@@ -87,6 +87,16 @@ typedef struct index_json_helper_s {
 }
 index_json_helper_t;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief states for TRI_DropCollectionVocBase()
+////////////////////////////////////////////////////////////////////////////////
+
+enum DropState {
+  DROP_EXIT,       // drop done, nothing else to do
+  DROP_AGAIN,      // drop not done, must try again
+  DROP_PERFORM     // drop done, must perform actual cleanup routine
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             DICTIONARY FUNCTOIONS
 // -----------------------------------------------------------------------------
@@ -369,15 +379,14 @@ static bool DropCollectionCallback (TRI_collection_t* col,
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  for (size_t i = 0;  i < vocbase->_collections._length;  ++i) {
-    if (vocbase->_collections._buffer[i] == collection) {
-      TRI_RemoveVectorPointer(&vocbase->_collections, i);
-      break;
-    }
+  auto it = std::find(vocbase->_collections.begin(), vocbase->_collections.end(), collection);
+
+  if (it != vocbase->_collections.end()) {
+    vocbase->_collections.erase(it);
   }
 
   // we need to clean up the pointers later so we insert it into this vector
-  TRI_PushBackVectorPointer(&vocbase->_deadCollections, collection);
+  vocbase->_deadCollections.emplace_back(collection);
 
   // we are now done with the vocbase structure
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -584,7 +593,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   TRI_InitReadWriteLock(&collection->_lock);
 
   // this needs TRI_WRITE_LOCK_COLLECTIONS_VOCBASE
-  TRI_PushBackVectorPointer(&vocbase->_collections, collection);
+  vocbase->_collections.emplace_back(collection);
   return collection;
 }
 
@@ -599,6 +608,18 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   char const* name = parameter->_name;
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  try {
+    // reserve room for collection
+    vocbase->_collections.reserve(vocbase->_collections.size() + 1);
+    vocbase->_deadCollections.reserve(vocbase->_deadCollections.size() + 1);
+  }
+  catch (...) {
+    TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return nullptr;
+  }
 
   // .............................................................................
   // check that we have a new name
@@ -1210,6 +1231,137 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drops a (document) collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int DropCollection (TRI_vocbase_t* vocbase,
+                           TRI_vocbase_col_t* collection,
+                           bool writeMarker,
+                           DropState& state) {
+
+  state = DROP_EXIT;
+
+  TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+
+  triagens::aql::QueryCache::instance()->invalidate(vocbase, collection->_name); 
+
+  // .............................................................................
+  // collection already deleted
+  // .............................................................................
+
+  if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
+    // mark collection as deleted
+    UnregisterCollection(vocbase, collection);
+
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // .............................................................................
+  // collection is unloaded
+  // .............................................................................
+
+  else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
+    TRI_col_info_t info;
+
+    int res = TRI_LoadCollectionInfo(collection->_path, &info, true);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+      return TRI_set_errno(res);
+    }
+
+    if (! info._deleted) {
+      info._deleted = true;
+
+      // we don't need to fsync if we are in the recovery phase
+      bool doSync = (vocbase->_settings.forceSyncProperties &&
+                     ! triagens::wal::LogfileManager::instance()->isInRecovery());
+
+      res = TRI_SaveCollectionInfo(collection->_path, &info, doSync);
+      TRI_FreeCollectionInfoOptions(&info);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+        return TRI_set_errno(res);
+      }
+    }
+
+    collection->_status = TRI_VOC_COL_STATUS_DELETED;
+    UnregisterCollection(vocbase, collection);
+    if (writeMarker) {
+      WriteDropCollectionMarker(vocbase, collection->_cid);
+    }
+
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+    DropCollectionCallback(nullptr, collection);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // .............................................................................
+  // collection is loading
+  // .............................................................................
+
+  else if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
+    // loop until status changes
+    
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    state = DROP_AGAIN;
+
+    // try again later
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // .............................................................................
+  // collection is loaded
+  // .............................................................................
+
+  else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
+    collection->_collection->_info._deleted = true;
+      
+    bool doSync = (vocbase->_settings.forceSyncProperties &&
+                   ! triagens::wal::LogfileManager::instance()->isInRecovery());
+
+    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, nullptr, doSync);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+      return res;
+    }
+
+    collection->_status = TRI_VOC_COL_STATUS_DELETED;
+
+    UnregisterCollection(vocbase, collection);
+    if (writeMarker) {
+      WriteDropCollectionMarker(vocbase, collection->_cid);
+    }
+
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+    state = DROP_PERFORM;
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // .............................................................................
+  // unknown status
+  // .............................................................................
+
+  else {
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+    LOG_WARNING("internal error in TRI_DropCollectionVocBase");
+
+    return TRI_set_errno(TRI_ERROR_INTERNAL);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief filter callback function for indexes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1330,22 +1482,6 @@ void TRI_FreeCollectionVocBase (TRI_vocbase_col_t* collection) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the memory associated with all collections in a vector
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCollectionsVocBase (TRI_vector_pointer_t* collections) {
-  size_t i, n;
-
-  n = TRI_LengthVectorPointer(collections);
-
-  for (i = 0; i < n; ++i) {
-    TRI_vocbase_col_t* c = static_cast<TRI_vocbase_col_t*>(TRI_AtVectorPointer(collections, i));
-
-    TRI_FreeCollectionVocBase(c);
-  }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1456,25 +1592,18 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository)->garbageCollect(true);
   }
 
-  TRI_vector_pointer_t collections;
-  TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
+  std::vector<TRI_vocbase_col_t*> collections;
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
-
-  // cannot use this vocbase from now on
-  TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
+  collections = vocbase->_collections;
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // from here on, the vocbase is unusable, i.e. no collections can be created/loaded etc.
 
   // starts unloading of collections
-  for (size_t i = 0;  i < collections._length;  ++i) {
-    TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(vocbase->_collections._buffer[i]);
-
+  for (auto& collection : collections) {
     TRI_UnloadCollectionVocBase(vocbase, collection, true);
   }
-
-  TRI_DestroyVectorPointer(&collections);
 
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
@@ -1505,16 +1634,12 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   }
 
   // free dead collections (already dropped but pointers still around)
-  for (size_t i = 0;  i < vocbase->_deadCollections._length;  ++i) {
-    TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(vocbase->_deadCollections._buffer[i]);
-
+  for (auto& collection : vocbase->_deadCollections) {
     TRI_FreeCollectionVocBase(collection);
   }
 
   // free collections
-  for (size_t i = 0;  i < vocbase->_collections._length;  ++i) {
-    TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(vocbase->_collections._buffer[i]);
-
+  for (auto& collection : vocbase->_collections) {
     TRI_FreeCollectionVocBase(collection);
   }
 
@@ -1617,33 +1742,24 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
                                              TRI_voc_tick_t maxTick,
                                              bool (*filter)(TRI_vocbase_col_t*, void*),
                                              void* data) {
-  TRI_vector_pointer_t collections;
-  TRI_json_t* json;
-  size_t i, n;
-
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json == nullptr) {
     return nullptr;
   }
 
-  TRI_InitVectorPointer(&collections, TRI_CORE_MEM_ZONE);
+  std::vector<TRI_vocbase_col_t*> collections;
 
-  while (! TRI_TryWriteLockReadWriteLock(&vocbase->_inventoryLock)) {
-    // cycle on write-lock
-    usleep(1000);
-  }
+  // cycle on write-lock
+  WRITE_LOCKER_EVENTUAL(vocbase->_inventoryLock, 1000);
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
+  collections = vocbase->_collections;
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  n = collections._length;
-  for (i = 0; i < n; ++i) {
-    TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(TRI_AtVectorPointer(&collections, i));
-
+  for (auto& collection : collections) {
     TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
     if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
@@ -1690,10 +1806,6 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
 
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   }
-
-  TRI_WriteUnlockReadWriteLock(&vocbase->_inventoryLock);
-
-  TRI_DestroyVectorPointer(&collections);
 
   return json;
 }
@@ -1856,13 +1968,9 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
+  READ_LOCKER(vocbase->_inventoryLock);
 
-  TRI_vocbase_col_t* collection = CreateCollection(vocbase, parameters, cid, writeMarker);
-
-  TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-
-  return collection;
+  return CreateCollection(vocbase, parameters, cid, writeMarker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1958,160 +2066,37 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 
-  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
+  while (true) {
+    DropState state = DROP_EXIT;
+    int res;
+    {
+      READ_LOCKER(vocbase->_inventoryLock);
 
-  TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
-
-  triagens::aql::QueryCache::instance()->invalidate(vocbase, collection->_name); 
-
-  // .............................................................................
-  // collection already deleted
-  // .............................................................................
-
-  if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
-    // mark collection as deleted
-    UnregisterCollection(vocbase, collection);
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // .............................................................................
-  // collection is unloaded
-  // .............................................................................
-
-  else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    TRI_col_info_t info;
-
-    int res = TRI_LoadCollectionInfo(collection->_path, &info, true);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-      TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-      return TRI_set_errno(res);
+      res = DropCollection(vocbase, collection, writeMarker, state);
     }
 
-    if (! info._deleted) {
-      info._deleted = true;
+    if (state == DROP_PERFORM) {
+      if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+        DropCollectionCallback(nullptr, collection);
+      }
+      else {
+        // add callback for dropping
+        collection->_collection->ditches()->createDropCollectionDitch(collection->_collection, collection, DropCollectionCallback, __FILE__, __LINE__);
 
-      // we don't need to fsync if we are in the recovery phase
-      bool doSync = (vocbase->_settings.forceSyncProperties &&
-                     ! triagens::wal::LogfileManager::instance()->isInRecovery());
-
-      res = TRI_SaveCollectionInfo(collection->_path, &info, doSync);
-      TRI_FreeCollectionInfoOptions(&info);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-        TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-        return TRI_set_errno(res);
+        // wake up the cleanup thread
+        TRI_LockCondition(&vocbase->_cleanupCondition);
+        TRI_SignalCondition(&vocbase->_cleanupCondition);
+        TRI_UnlockCondition(&vocbase->_cleanupCondition);
       }
     }
 
-    collection->_status = TRI_VOC_COL_STATUS_DELETED;
-    UnregisterCollection(vocbase, collection);
-    if (writeMarker) {
-      WriteDropCollectionMarker(vocbase, collection->_cid);
-    }
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-    DropCollectionCallback(nullptr, collection);
-
-    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // .............................................................................
-  // collection is loading
-  // .............................................................................
-
-  else if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
-    // loop until status changes
-    while (1) {
-      TRI_vocbase_col_status_e status = collection->_status;
-
-      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-      TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-
-      if (status != TRI_VOC_COL_STATUS_LOADING) {
-        break;
-      }
-      usleep(COLLECTION_STATUS_POLL_INTERVAL);
-
-      TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
-      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
-    }
-
-    // try again with changed status
-    return TRI_DropCollectionVocBase(vocbase, collection, writeMarker);
-  }
-
-  // .............................................................................
-  // collection is loaded
-  // .............................................................................
-
-  else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
-    collection->_collection->_info._deleted = true;
-      
-    bool doSync = (vocbase->_settings.forceSyncProperties &&
-                   ! triagens::wal::LogfileManager::instance()->isInRecovery());
-
-    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, nullptr, doSync);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-      TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-
+    if (state == DROP_PERFORM || state == DROP_EXIT) {
       return res;
     }
 
-    collection->_status = TRI_VOC_COL_STATUS_DELETED;
-
-    UnregisterCollection(vocbase, collection);
-    if (writeMarker) {
-      WriteDropCollectionMarker(vocbase, collection->_cid);
-    }
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-    
-    if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
-      DropCollectionCallback(nullptr, collection);
-    }
-    else {
-      // add callback for dropping
-      collection->_collection->ditches()->createDropCollectionDitch(collection->_collection, collection, DropCollectionCallback, __FILE__, __LINE__);
-
-      // wake up the cleanup thread
-      TRI_LockCondition(&vocbase->_cleanupCondition);
-      TRI_SignalCondition(&vocbase->_cleanupCondition);
-      TRI_UnlockCondition(&vocbase->_cleanupCondition);
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // .............................................................................
-  // upps, unknown status
-  // .............................................................................
-
-  else {
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-
-    LOG_WARNING("internal error in TRI_DropCollectionVocBase");
-
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    // try again in next iteration
+    TRI_ASSERT(state == DROP_AGAIN);
+    usleep(COLLECTION_STATUS_POLL_INTERVAL);
   }
 }
 
@@ -2171,11 +2156,9 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
     }
   }
 
-  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
+  READ_LOCKER(vocbase->_inventoryLock);
 
   int res = RenameCollection(vocbase, collection, oldName, newName, writeMarker);
-
-  TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
@@ -2460,8 +2443,8 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
   TRI_ApplyVocBaseDefaults(this, defaults);
     
   // init collections
-  TRI_InitVectorPointer(&_collections, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&_deadCollections, TRI_UNKNOWN_MEM_ZONE);
+  _collections.reserve(32);
+  _deadCollections.reserve(32);
 
   TRI_InitAssociativePointer(&_collectionsById,
                              TRI_UNKNOWN_MEM_ZONE,
@@ -2479,7 +2462,6 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
 
   TRI_InitAuthInfo(this);
 
-  TRI_InitReadWriteLock(&_inventoryLock);
   TRI_InitReadWriteLock(&_lock);
 
   TRI_CreateUserStructuresVocBase(this);
@@ -2508,15 +2490,11 @@ TRI_vocbase_t::~TRI_vocbase_t () {
   TRI_DestroyCondition(&_compactorCondition);
 
   TRI_DestroyReadWriteLock(&_lock);
-  TRI_DestroyReadWriteLock(&_inventoryLock);
 
   TRI_DestroyAuthInfo(this);
 
   TRI_DestroyAssociativePointer(&_collectionsByName);
   TRI_DestroyAssociativePointer(&_collectionsById);
-
-  TRI_DestroyVectorPointer(&_collections);
-  TRI_DestroyVectorPointer(&_deadCollections);
 
   delete static_cast<triagens::arango::CursorRepository*>(_cursorRepository);
   delete static_cast<triagens::aql::QueryList*>(_queries);

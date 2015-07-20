@@ -348,7 +348,7 @@ function ReplicationSuite () {
 /// @brief test big markers
 ////////////////////////////////////////////////////////////////////////////////
 
-    testBigMarkersArray : function () {
+    testBigMarkersObject : function () {
       connectToMaster();
 
       compare(
@@ -381,7 +381,7 @@ function ReplicationSuite () {
 /// @brief test big markers
 ////////////////////////////////////////////////////////////////////////////////
 
-    testBigMarkersList : function () {
+    testBigMarkersArray : function () {
       connectToMaster();
 
       compare(

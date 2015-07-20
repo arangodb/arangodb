@@ -51,6 +51,9 @@
 #define WRITE_LOCKER(b) \
   triagens::basics::WriteLocker WRITE_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
+#define WRITE_LOCKER_EVENTUAL(b, t) \
+  triagens::basics::WriteLocker WRITE_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class WriteLocker
 // -----------------------------------------------------------------------------
@@ -82,7 +85,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
-        WriteLocker (ReadWriteLock* readWriteLock);
+        WriteLocker (ReadWriteLock*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a write-lock
@@ -92,6 +95,22 @@ namespace triagens {
 
         explicit
         WriteLocker (ReadWriteLock* readWriteLock, char const* file, int line);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a write-lock, with periodic sleeps while not acquired
+/// sleep time is specified in nanoseconds
+////////////////////////////////////////////////////////////////////////////////
+
+        explicit
+        WriteLocker (ReadWriteLock*, uint64_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a write-lock, with periodic sleeps while not acquired
+/// sleep time is specified in nanoseconds
+////////////////////////////////////////////////////////////////////////////////
+
+        explicit
+        WriteLocker (ReadWriteLock* readWriteLock, uint64_t sleepDelay, char const* file, int line);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the write-lock

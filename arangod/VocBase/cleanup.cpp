@@ -219,8 +219,7 @@ void TRI_CleanupVocBase (void* data) {
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(vocbase->_state == 1);
 
-  TRI_vector_pointer_t collections;
-  TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
+  std::vector<TRI_vocbase_col_t*> collections;
 
   while (true) {
     // keep initial _state value as vocbase->_state might change during cleanup loop
@@ -240,14 +239,15 @@ void TRI_CleanupVocBase (void* data) {
     if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
       // copy all collections
       TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-      TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
+      try {
+        collections = vocbase->_collections;
+      }
+      catch (...) {
+        collections.clear();
+      }
       TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-      size_t const n = collections._length;
-
-      for (size_t i = 0;  i < n;  ++i) {
-        TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(collections._buffer[i]);
-
+      for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);
 
         TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
@@ -305,8 +305,6 @@ void TRI_CleanupVocBase (void* data) {
     }
 
   }
-
-  TRI_DestroyVectorPointer(&collections);
 
   LOG_TRACE("shutting down cleanup thread");
 }
