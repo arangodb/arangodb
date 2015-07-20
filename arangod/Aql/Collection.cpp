@@ -271,9 +271,23 @@ void Collection::fillIndexesCoordinator () const {
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* v = TRI_LookupArrayJson(json, i);
 
-      if (v != nullptr) {
-        indexes.emplace_back(new triagens::aql::Index(v));
+      if (! TRI_IsObjectJson(v)) {
+        continue;
       }
+
+      TRI_json_t const* type = TRI_LookupObjectJson(v, "type");
+
+      if (! TRI_IsStringJson(type)) {
+        // no "type" attribute. this is invalid
+        continue;
+      }
+      
+      if (strcmp(type->_value._string.data, "cap") == 0) {
+        // ignore cap constraints
+        continue;
+      }
+
+      indexes.emplace_back(new triagens::aql::Index(v));
     }
   }
 }
@@ -311,6 +325,19 @@ void Collection::fillIndexesDBServer () const {
       TRI_json_t const* id = TRI_LookupObjectJson(v, "id");
 
       if (! TRI_IsStringJson(id)) {
+        // no "id" attribute. this is invalid
+        continue;
+      }
+          
+      TRI_json_t const* type = TRI_LookupObjectJson(v, "type");
+
+      if (! TRI_IsStringJson(type)) {
+        // no "type" attribute. this is invalid
+        continue;
+      }
+
+      if (strcmp(type->_value._string.data, "cap") == 0) {
+        // ignore cap constraints
         continue;
       }
 
@@ -329,9 +356,6 @@ void Collection::fillIndexesDBServer () const {
           // found
           data = localIndex;
           break;
-        }
-        else if (localIndex->type() == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX || 
-                 localIndex->type() == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
         }
       }
 
@@ -362,6 +386,11 @@ void Collection::fillIndexesLocal () const {
   indexes.reserve(n);
 
   for (size_t i = 0; i < n; ++i) {
+    if (allIndexes[i]->type() == triagens::arango::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
+      // ignore this type of index
+      continue;
+    }
+
     indexes.emplace_back(new triagens::aql::Index(allIndexes[i]));
   }
 }
