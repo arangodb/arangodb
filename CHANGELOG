@@ -1,6 +1,8 @@
 v2.5.6 (XXXX-XX-XX)
 -------------------
 
+* alter windows build infrastructure so we can properly store pdb files.
+
 * potentially fixed issue #1313: Wrong metric calculation at dashboard
 
   Escape whitespace in process name when scanning /proc/pid/stats
