@@ -24,7 +24,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 if (MSVC)
   generate_product_version(
     ProductVersionFiles_arangob
-    NAME ${ARANGOB_FRIENDLY_STRING}
+    NAME arangob
+    FILE_DESCRIPTION ${ARANGOB_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
@@ -73,7 +74,8 @@ install_config(arangob)
 if (MSVC)
   generate_product_version(
     ProductVersionFiles_arangodump
-    NAME ${ARANGO_DUMP_FRIENDLY_STRING}
+    NAME arangodump
+    FILE_DESCRIPTION ${ARANGO_DUMP_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
@@ -122,7 +124,8 @@ install_config(arangodump)
 if (MSVC)
   generate_product_version(
     ProductVersionFiles_arangoimp
-    NAME ${ARANGO_IMP_FRIENDLY_STRING}
+    NAME arangoimp
+    FILE_DESCRIPTION ${ARANGO_IMP_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
@@ -172,7 +175,8 @@ install_config(arangoimp)
 if (MSVC)
   generate_product_version(
     ProductVersionFiles_arangorestore
-    NAME ${ARANGO_RESTORE_HELP_LINK}
+    NAME arangorestore
+    FILE_DESCRIPTION ${ARANGO_RESTORE_HELP_LINK}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
@@ -220,7 +224,8 @@ install_config(arangorestore)
 if (MSVC)
   generate_product_version(
     ProductVersionFiles_arangosh
-    NAME ${ARANGOSH_HELP_LINK}
+    NAME arangosh
+    FILE_DESCRIPTION ${ARANGOSH_HELP_LINK}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
