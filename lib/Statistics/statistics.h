@@ -42,7 +42,25 @@
 /// @brief request statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_request_statistics_s {
+struct TRI_request_statistics_t {
+  TRI_request_statistics_t ()
+    : _readStart(0.0),
+      _readEnd(0.0),
+      _queueStart(0.0),
+      _queueEnd(0.0),
+      _requestStart(0.0),
+      _requestEnd(0.0),
+      _writeStart(0.0),
+      _writeEnd(0.0),
+      _receivedBytes(0.0),
+      _sentBytes(0.0),
+      _requestType(triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL),
+      _async(false),
+      _tooLarge(false),
+      _executeError(false),
+      _ignore(false) {
+  }
+
   double _readStart;
   double _readEnd;
   double _queueStart;
@@ -61,31 +79,40 @@ typedef struct TRI_request_statistics_s {
   bool _tooLarge;
   bool _executeError;
   bool _ignore;
-}
-TRI_request_statistics_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_connection_statistics_s {
+struct TRI_connection_statistics_t {
+  TRI_connection_statistics_t ()
+    : _connStart(0.0),
+      _connEnd(0.0),
+      _http(false),
+      _error(false) {
+  }
+  
   double _connStart;
   double _connEnd;
 
   bool   _http;
   bool   _error;
-}
-TRI_connection_statistics_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global server statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_server_statistics_s {
+struct TRI_server_statistics_t {
+  TRI_server_statistics_t ()
+    : _startTime(0.0),
+      _uptime(0.0) {
+  }
+
   double _startTime;
   double _uptime;
-}
-TRI_server_statistics_t;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                               public request statistics functions
