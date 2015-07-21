@@ -160,8 +160,29 @@ omitted here for the sake of brevity):
 
 In order to use a skiplist index for sorting, the index attributes must be specified in
 the `SORT` clause of the query in the same order as they appear in the index definition.
-Sort orders cannot be mixed, i.e. the sort orders specified in the `SORT` clause must all
-be either ascending (optionally ommitted as ascending is the default) or descending. 
+Skiplist indexes are always created in ascending order, but they can be used to access
+the indexed elements in both ascending or descending order. However, for a combined index
+(an index on multiple attributes) this requires that the sort orders in a single query
+as specified in the `SORT` clause must all be either all ascending (optionally ommitted 
+as ascending is the default) or all descending. 
+
+For example, if the skiplist index is created on attributes `value1` and `value2` (in this order),
+then the following sorts clauses can use the index to determine the sort order:
+
+* `SORT value1 ASC, value2 ASC` (and its equivalent `SORT value1, value2`)
+* `SORT value1 DESC, value2 DESC`
+* `SORT value1 ASC` (and its equivalent `SORT value1`)
+* `SORT value1 DESC`
+
+However, the following sort clauses cannot make use of the index only:
+
+* `SORT value1 ASC, value2 DESC`
+* `SORT value1 DESC, value2 ASC`
+* `SORT value2` (and its equivalent `SORT value2 ASC`)
+* `SORT value2 DESC` (because first indexed attribute `value1` is not used in sort clause)
+
+Note: the latter two sort clauses cannot use the index because the sort clause does not
+refer to a leftmost prefix of the index attributes.
 
 Skiplists can optionally be declared to be unique, disallowing saving the same
 value in the indexed attribute. They can be sparse or non-sparse.
