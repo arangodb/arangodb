@@ -63,7 +63,6 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
     _runningJobs(),
     _maxSize(maxSize),
     _stopping(0),
-    _monopolizer(nullptr),
     _startedThreads(),
     _stoppedThreads(),
     _nrStarted(0),
@@ -71,7 +70,6 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
     _nrRunning(0),
     _nrWaiting(0),
     _nrStopped(0),
-    _nrSpecial(0),
     _nrBlocked(0),
     _nrThreads(nrThreads),
     _lastChanged(0.0),
@@ -186,36 +184,13 @@ bool DispatcherQueue::cancelJob (uint64_t jobId) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief downgrades the thread to special
-////////////////////////////////////////////////////////////////////////////////
-
-void DispatcherQueue::specializeThread (DispatcherThread* thread) {
-  CONDITION_LOCKER(guard, _accessQueue);
-
-  if (thread->_jobType == Job::READ_JOB || thread->_jobType == Job::WRITE_JOB) {
-    thread->_jobType = Job::SPECIAL_JOB;
-
-    _nrRunning--;
-    _nrSpecial++;
-
-    startQueueThread();
-
-    if (_monopolizer == thread) {
-      _monopolizer = nullptr;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates that thread is doing a blocking operation
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherQueue::blockThread (DispatcherThread* thread) {
   CONDITION_LOCKER(guard, _accessQueue);
 
-  if (thread->_jobType == Job::READ_JOB || thread->_jobType == Job::WRITE_JOB) {
-    _nrBlocked++;
-  }
+  _nrBlocked++;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,13 +200,11 @@ void DispatcherQueue::blockThread (DispatcherThread* thread) {
 void DispatcherQueue::unblockThread (DispatcherThread* thread) {
   CONDITION_LOCKER(guard, _accessQueue);
 
-  if (thread->_jobType == Job::READ_JOB || thread->_jobType == Job::WRITE_JOB) {
-    if (_nrBlocked == 0) {
-      LOG_ERROR("unblocking too many threads");
-    }
-    else {
-      _nrBlocked--;
-    }
+  if (_nrBlocked == 0) {
+    LOG_ERROR("unblocking too many threads");
+  }
+  else {
+    _nrBlocked--;
   }
 }
 
@@ -295,11 +268,10 @@ void DispatcherQueue::beginShutdown () {
     {
       CONDITION_LOCKER(guard, _accessQueue);
 
-      LOG_TRACE("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads, %d special threads",
+      LOG_TRACE("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads",
                 _name.c_str(),
                 (int) _nrRunning,
-                (int) _nrWaiting,
-                (int) _nrSpecial);
+                (int) _nrWaiting);
 
       if (0 == _nrRunning + _nrWaiting) {
         break;
@@ -311,11 +283,10 @@ void DispatcherQueue::beginShutdown () {
     usleep(10000);
   }
 
-  LOG_DEBUG("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads, %d special threads",
+  LOG_DEBUG("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads",
             _name.c_str(),
             (int) _nrRunning,
-            (int) _nrWaiting,
-            (int) _nrSpecial);
+            (int) _nrWaiting);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +324,7 @@ void DispatcherQueue::shutdown () {
 bool DispatcherQueue::isStarted () {
   CONDITION_LOCKER(guard, _accessQueue);
 
-  return (_nrStarted + _nrRunning + _nrSpecial) <= _nrUp;
+  return (_nrStarted + _nrRunning) <= _nrUp;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,7 +334,7 @@ bool DispatcherQueue::isStarted () {
 bool DispatcherQueue::isRunning () {
   CONDITION_LOCKER(guard, _accessQueue);
 
-  return 0 < (_nrStarted + _nrRunning + _nrSpecial);
+  return 0 < (_nrStarted + _nrRunning);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
