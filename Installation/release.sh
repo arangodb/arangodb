@@ -48,6 +48,12 @@ make swagger || exit 1
 
 git add -f Documentation/Examples/*.generated
 
+case "$TAG" in
+  *-alpha*|*-beta*|devel)
+    git rm -f EXPERIMENTAL
+    ;;
+esac
+
 if [ "$TAG" == "1" ];  then
   git commit -m "release version $VERSION" -a
   git push
