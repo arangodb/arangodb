@@ -403,6 +403,25 @@
           "collection/:colid/:docid" ,
           "shell",
           "query",
+          "logs",
+          "api",
+          "databases",
+          "application/installed/:key",
+          "application/available/:key",
+          "applications",
+          "graphManagement",
+          "userManagement",
+          "userProfile" ,
+          "testing"
+        ];
+        this.addMatchers({
+          toDefineTheRoutes: function (exp) {
+            var avail = this.actual,
+                leftDiff = _.difference(avail, exp),
+                rightDiff = _.difference(exp, avail);
+            this.message = function () {
+              var msg = "";
+              if (rightDiff.length) {
                 msg += "Expect routes: "
                 + rightDiff.join(' & ')
                 + " to be available.\n";
