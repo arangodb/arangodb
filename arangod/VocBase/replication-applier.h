@@ -42,7 +42,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
-struct TRI_server_s;
+struct TRI_server_t;
 struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
@@ -158,7 +158,7 @@ struct TRI_replication_applier_t {
     _runningRemoteTransactions.clear();
   }
 
-  struct TRI_server_s*                     _server;
+  TRI_server_t*                            _server;
   TRI_vocbase_t*                           _vocbase;
   TRI_read_write_lock_t                    _statusLock;
   TRI_spin_t                               _threadLock;
@@ -179,7 +179,7 @@ struct TRI_replication_applier_t {
 /// @brief create a replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_replication_applier_t* TRI_CreateReplicationApplier (struct TRI_server_s*,
+TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t*,
                                                          TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////

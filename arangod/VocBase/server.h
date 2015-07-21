@@ -33,12 +33,25 @@
 #include "Basics/Common.h"
 #include "Basics/associative.h"
 #include "Basics/locks.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/threads.h"
 #include "Basics/vector.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
 
 struct TRI_vocbase_t;
+
+namespace triagens {
+  namespace aql {
+    class QueryRegistry;
+  }
+  namespace basics {
+    class ThreadPool;
+  }
+  namespace rest {
+    class ApplicationEndpointServer;
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -48,33 +61,33 @@ struct TRI_vocbase_t;
 /// @brief server structure
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_server_s {
-  TRI_associative_pointer_t   _databases;
-  TRI_associative_pointer_t   _coordinatorDatabases;
-  TRI_read_write_lock_t       _databasesLock;
+struct TRI_server_t {
+  TRI_server_t ();
+  ~TRI_server_t ();
 
-  TRI_thread_t                _databaseManager;
-  TRI_vector_pointer_t        _droppedDatabases;
+  TRI_associative_pointer_t        _databases;
+  TRI_associative_pointer_t        _coordinatorDatabases;
+  triagens::basics::ReadWriteLock  _databasesLock;
 
-  TRI_vocbase_defaults_t      _defaults;
-  void*                       _applicationEndpointServer; // ptr to C++ object
-  void*                       _indexPool;                 // ptr to C++ object
+  TRI_thread_t                     _databaseManager;
+  std::vector<TRI_vocbase_t*>      _droppedDatabases;
 
-  char*                       _basePath;
-  char*                       _databasePath;
-  char*                       _lockFilename;
-  char*                       _serverIdFilename;
+  TRI_vocbase_defaults_t           _defaults;
+  triagens::rest::ApplicationEndpointServer*  _applicationEndpointServer; 
+  triagens::basics::ThreadPool*    _indexPool;                 
+  triagens::aql::QueryRegistry*    _queryRegistry;
 
-  char*                       _appPath;
+  char*                            _basePath;
+  char*                            _databasePath;
+  char*                            _lockFilename;
+  char*                            _serverIdFilename;
+  char*                            _appPath;
 
-  bool                        _disableReplicationAppliers;
-  bool                        _iterateMarkersOnOpen;
-  bool                        _hasCreatedSystemDatabase;
-
-  bool                        _initialised;
-  void*                       _queryRegistry;
-}
-TRI_server_t;
+  bool                             _disableReplicationAppliers;
+  bool                             _iterateMarkersOnOpen;
+  bool                             _hasCreatedSystemDatabase;
+  bool                             _initialized;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief page size
@@ -87,18 +100,12 @@ extern size_t PageSize;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a server instance
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_server_t* TRI_CreateServer (void);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer (TRI_server_t*,
-                    void*,
-                    void*,
+                    triagens::rest::ApplicationEndpointServer*,
+                    triagens::basics::ThreadPool*,
                     char const*,
                     char const*,
                     TRI_vocbase_defaults_t const*,
@@ -106,28 +113,10 @@ int TRI_InitServer (TRI_server_t*,
                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a server instance
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyServer (TRI_server_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a server instance
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeServer (TRI_server_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise globals
+/// @brief initialize globals
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitServerGlobals (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief de-initialise globals
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeServerGlobals (void);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

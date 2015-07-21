@@ -31,8 +31,6 @@
 #define ARANGODB_VOC_BASE_VOCBASE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-
 #include "Basics/associative.h"
 #include "Basics/locks.h"
 #include "Basics/ReadWriteLock.h"
@@ -45,49 +43,19 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_document_collection_t;
 struct TRI_col_info_s;
+struct TRI_document_collection_t;
 struct TRI_json_t;
-struct TRI_server_s;
-struct TRI_vector_pointer_s;
-struct TRI_vector_string_s;
+struct TRI_replication_applier_t;
+struct TRI_server_t;
 struct TRI_vocbase_col_s;
 struct TRI_vocbase_defaults_s;
-struct TRI_replication_applier_t;
 
 extern bool IGNORE_DATAFILE_ERRORS;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks the collections structure
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_LOCK_COLLECTIONS_VOCBASE(a) \
-  TRI_ReadLockReadWriteLock(&(a)->_lock)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks the collections structure
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(a) \
-  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write locks the collections structure
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(a) \
-  TRI_WriteLockReadWriteLock(&(a)->_lock)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write unlocks the collections structure
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(a) \
-  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock the vocbase collection status
@@ -289,7 +257,7 @@ TRI_vocbase_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_vocbase_t {
-  TRI_vocbase_t (struct TRI_server_s*,
+  TRI_vocbase_t (TRI_server_t*,
                  TRI_vocbase_type_e,
                  char const*,
                  TRI_voc_tick_t,
@@ -310,10 +278,10 @@ struct TRI_vocbase_t {
   }                                 
   _usage;
 
-  struct TRI_server_s*                    _server;
+  TRI_server_t*                           _server;
   TRI_vocbase_defaults_t                  _settings;
 
-  TRI_read_write_lock_t                   _lock;               // collection iterator lock
+  triagens::basics::ReadWriteLock         _collectionsLock;    // collection iterator lock
   std::vector<struct TRI_vocbase_col_s*>  _collections;        // pointers to ALL collections
   std::vector<struct TRI_vocbase_col_s*>  _deadCollections;    // pointers to collections dropped that can be removed later
 
@@ -424,7 +392,7 @@ void TRI_FreeCollectionVocBase (TRI_vocbase_col_t*);
 /// @brief create a vocbase object, without threads and some other attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_CreateInitialVocBase (struct TRI_server_s*,
+TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t*,
                                          TRI_vocbase_type_e,
                                          char const*,
                                          TRI_voc_tick_t,
@@ -435,7 +403,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (struct TRI_server_s*,
 /// @brief opens an existing database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (struct TRI_server_s*,
+TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t*,
                                 char const*,
                                 TRI_voc_tick_t,
                                 char const*,
@@ -465,13 +433,13 @@ int TRI_StopCompactorVocBase (TRI_vocbase_t*);
 /// @brief returns all known collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
+std::vector<TRI_vocbase_col_t*> TRI_CollectionsVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns names of all known collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t TRI_CollectionNamesVocBase (TRI_vocbase_t*);
+std::vector<std::string> TRI_CollectionNamesVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters

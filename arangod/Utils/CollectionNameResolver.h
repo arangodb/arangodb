@@ -31,6 +31,7 @@
 #define ARANGODB_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
@@ -152,7 +153,7 @@ namespace triagens {
 
           std::string name;
           if (ServerState::instance()->isDBServer()) {
-            TRI_READ_LOCK_COLLECTIONS_VOCBASE(_vocbase);
+            READ_LOCKER(_vocbase->_collectionsLock);
 
             TRI_vocbase_col_t* found
                 = static_cast<TRI_vocbase_col_t*>(
@@ -176,8 +177,6 @@ namespace triagens {
                 name = ci->name();   // can be empty, if collection unknown
               }
             }
-
-            TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(_vocbase);
           }
           else {
             // exactly as in the non-cluster case

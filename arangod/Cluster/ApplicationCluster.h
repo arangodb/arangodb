@@ -35,7 +35,7 @@
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 
-struct TRI_server_s;
+struct TRI_server_t;
 
 namespace triagens {
   namespace rest {
@@ -66,7 +66,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationCluster (struct TRI_server_s*,
+        ApplicationCluster (TRI_server_t*,
                             triagens::rest::ApplicationDispatcher*,
                             triagens::arango::ApplicationV8*);
 
@@ -150,7 +150,7 @@ namespace triagens {
 /// @brief server
 ////////////////////////////////////////////////////////////////////////////////
 
-         struct TRI_server_s* _server;
+         TRI_server_t* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatcher

@@ -40,7 +40,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_server_s;
+struct TRI_server_t;
 struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
@@ -101,7 +101,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         VocbaseContext (rest::HttpRequest*,
-                        struct TRI_server_s*,
+                        TRI_server_t*,
                         TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +172,7 @@ namespace triagens {
 /// @brief the server
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_server_s* TRI_UNUSED _server;
+        TRI_server_t* TRI_UNUSED _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the vocbase

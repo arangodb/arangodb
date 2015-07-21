@@ -43,7 +43,7 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Aql/QueryRegistry.h"
 
-struct TRI_server_s;
+struct TRI_server_t;
 struct TRI_vocbase_defaults_s;
 
 // -----------------------------------------------------------------------------
@@ -647,7 +647,7 @@ namespace triagens {
 /// @brief the server
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_server_s* _server;
+        TRI_server_t* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the server
