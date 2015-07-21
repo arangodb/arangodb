@@ -31,6 +31,7 @@
 
   var internal = require("internal");
   var db = require("org/arangodb").db;
+  var NotFound = require("http-errors").NotFound;
   var FoxxController = require("org/arangodb/foxx").Controller;
   var UnauthorizedError = require("http-errors").Unauthorized;
   var controller = new FoxxController(applicationContext);
@@ -39,6 +40,7 @@
   var fmUtils = require("org/arangodb/foxx/manager-utils");
   var actions = require("org/arangodb/actions");
   var joi = require("joi");
+  var marked = require("marked");
   var docu = require("./lib/swagger").Swagger;
   var underscore = require("underscore");
   var mountPoint = {
@@ -210,6 +212,21 @@
   })
   .queryParam("mount", mountPoint);
 
+  /** Get the readme of a Foxx
+   *
+   * Used to request the readme of the given Foxx in order to display it on the screen.
+   */
+  controller.get("/readme", function (req, res) {
+    var mount = validateMount(req);
+    var readme = FoxxManager.readme(mount);
+    if (!readme) {
+      throw new NotFound('ERROR: No README data!');
+    }
+    res.contentType = 'text/html';
+    res.body = marked(readme);
+  })
+  .queryParam("mount", mountPoint);
+
   /** Get the configuration for an app
    *
    * Used to request the configuration options for apps
@@ -295,6 +312,7 @@
   })
   .queryParam("mount", mountPoint);
 
+
   /** Trigger teardown script for an app
    *
    * Used to trigger the teardown script of an app
@@ -304,7 +322,6 @@
     res.json(FoxxManager.runScript("teardown", mount));
   })
   .queryParam("mount", mountPoint);
-
 
 
   /** Activate/Deactivate development mode for an app
@@ -321,6 +338,7 @@
     }
   })
   .queryParam("mount", mountPoint);
+
 
   /** Download an app as zip archive
    *
