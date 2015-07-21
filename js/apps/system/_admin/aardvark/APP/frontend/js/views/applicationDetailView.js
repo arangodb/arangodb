@@ -18,6 +18,8 @@
       'click #app-tests': 'runTests',
       'click #app-upgrade': 'upgradeApp',
       'click #download-app': 'downloadApp',
+      'click #app-show-swagger': 'showSwagger',
+      'click #app-show-readme': 'showReadme',
       'mouseenter #app-scripts': 'showDropdown',
       'mouseleave #app-scripts': 'hideDropdown'
     },
@@ -120,6 +122,16 @@
       );
     },
 
+    showSwagger: function(event) {
+      event.preventDefault();
+      this.render('swagger');
+    },
+
+    showReadme: function(event) {
+      event.preventDefault();
+      this.render('readme');
+    },
+
     runTests: function(event) {
       event.preventDefault();
       var warning = (
@@ -157,10 +169,11 @@
       );
     },
 
-    render: function() {
+    render: function(mode) {
       $(this.el).html(this.template.render({
         app: this.model,
-        db: arangoHelper.currentDatabase()
+        db: arangoHelper.currentDatabase(),
+        mode: mode
       }));
 
       $.get(this.appUrl()).success(function () {
