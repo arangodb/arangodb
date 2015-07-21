@@ -124,8 +124,6 @@ void TRI_usleep (unsigned long waitTime) {
   return;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Sets up a handler when invalid (win) handles are passed to a windows function.
 // This is not of much use since no values can be returned. All we can do
@@ -263,7 +261,6 @@ int initialiseWindows (const TRI_win_initialise_e initialiseWhat,
   }
 
   return -1;
-
 }
 
 int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
@@ -461,7 +458,6 @@ int TRI_MapSystemError (DWORD error) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
 /// we rather are keen on logging something at all then on being able to work
@@ -512,8 +508,6 @@ void TRI_LogWindowsEventlog (char const* func,
   }
   DeregisterEventSource(hEventLog);
 }
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

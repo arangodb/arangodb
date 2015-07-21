@@ -81,7 +81,11 @@ ReadLocker::ReadLocker (ReadWriteLock* readWriteLock,
   
   double t = TRI_microtime();
   while (! _readWriteLock->tryReadLock()) {
-    usleep(sleepTime);
+#ifdef _WIN32
+    usleep((unsigned long) sleepTime);
+#else
+    usleep((useconds_t) sleepTime);
+#endif
   }
   _time = TRI_microtime() - t;
 }
@@ -93,7 +97,11 @@ ReadLocker::ReadLocker (ReadWriteLock* readWriteLock,
   : _readWriteLock(readWriteLock) {
   
   while (! _readWriteLock->tryReadLock()) {
-    usleep(sleepTime);
+#ifdef _WIN32
+    usleep((unsigned long) sleepTime);
+#else
+    usleep((useconds_t) sleepTime);
+#endif
   }
 }
 
