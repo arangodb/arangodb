@@ -41,6 +41,7 @@
   var actions = require("org/arangodb/actions");
   var joi = require("joi");
   var marked = require("marked");
+  var highlightAuto = require("highlight.js").highlightAuto;
   var docu = require("./lib/swagger").Swagger;
   var underscore = require("underscore");
   var mountPoint = {
@@ -188,7 +189,18 @@
    * Get a List of all running foxxes
    */
   controller.get('/', function (req, res) {
-    res.json(FoxxManager.listJson());
+    var foxxes = FoxxManager.listJson();
+    foxxes.forEach(function (foxx) {
+      var readme = FoxxManager.readme(foxx.mount);
+      if (readme) {
+        foxx.readme = marked(readme, {
+          highlight(code) {
+            return highlightAuto(code).value;
+          }
+        });
+      }
+    });
+    res.json(foxxes);
   });
 
   /** Get the thumbnail of a Foxx
@@ -209,21 +221,6 @@
     if (start.indexOf("PNG") !== -1) {
       res.contentType = "image/png";
     }
-  })
-  .queryParam("mount", mountPoint);
-
-  /** Get the readme of a Foxx
-   *
-   * Used to request the readme of the given Foxx in order to display it on the screen.
-   */
-  controller.get("/readme", function (req, res) {
-    var mount = validateMount(req);
-    var readme = FoxxManager.readme(mount);
-    if (!readme) {
-      throw new NotFound('ERROR: No README data!');
-    }
-    res.contentType = 'text/html';
-    res.body = marked(readme);
   })
   .queryParam("mount", mountPoint);
 
