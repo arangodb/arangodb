@@ -505,20 +505,18 @@ static int OpenDatabases (TRI_server_t* server,
     TRI_json_t const* idJson;
     TRI_voc_tick_t id;
     TRI_vocbase_defaults_t defaults;
-    char const* name;
-    char* databaseDirectory;
     char* parametersFile;
     char* databaseName;
     void const* found;
 
-    name = files._buffer[i];
+    char const* name = files._buffer[i];
     TRI_ASSERT(name != nullptr);
 
     // .............................................................................
     // construct and validate path
     // .............................................................................
 
-    databaseDirectory = TRI_Concatenate2File(server->_databasePath, name);
+    char* databaseDirectory = TRI_Concatenate2File(server->_databasePath, name);
 
     if (databaseDirectory == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;

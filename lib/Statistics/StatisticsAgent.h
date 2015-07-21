@@ -61,33 +61,20 @@ namespace triagens {
 /// @brief constructs a new agent
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FIGURES
-
         StatisticsAgent ()
           : _statistics(nullptr),
             _lastReadStart(0.0) {
         }
 
-#else
-
-        StatisticsAgent () {
-        }
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs an agent
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
         ~StatisticsAgent () {
           if (_statistics != nullptr) {
             FUNC::release(_statistics);
           }
         }
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -100,18 +87,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         STAT* acquire () {
-#ifdef TRI_ENABLE_FIGURES
-
           if (_statistics != nullptr) {
             return _statistics;
           }
 
           _lastReadStart = 0.0;
           return _statistics = FUNC::acquire();
-
-#else
-          return nullptr;
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,14 +100,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void release () {
-#ifdef TRI_ENABLE_FIGURES
-
           if (_statistics != nullptr) {
             FUNC::release(_statistics);
             _statistics = nullptr;
           }
-
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,12 +111,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void transfer (StatisticsAgent* agent) {
-#ifdef TRI_ENABLE_FIGURES
-
           agent->replace(_statistics);
           _statistics = nullptr;
-
-#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,27 +120,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         STAT* transfer () {
-#ifdef TRI_ENABLE_FIGURES
-
           STAT* statistics = _statistics;
           _statistics = nullptr;
           
           return statistics;
-
-#else
-
-          return nullptr;
-
-#endif
         }
 
         double elapsedSinceReadStart () {
-#ifdef TRI_ENABLE_FIGURES
-
           if (_lastReadStart != 0.0) {
             return TRI_StatisticsTime() - _lastReadStart;
           }
-#endif        
+
           return 0.0;
         }
 
@@ -181,9 +144,7 @@ namespace triagens {
 /// @brief statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FIGURES
         STAT* _statistics;
-#endif
 
         double _lastReadStart;
 
@@ -198,15 +159,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void replace (STAT* statistics) {
-#ifdef TRI_ENABLE_FIGURES
-
           if (_statistics != nullptr) {
             FUNC::release(_statistics);
           }
 
           _statistics = statistics;
-
-#endif
         }
     };
   }
@@ -245,8 +202,6 @@ namespace triagens {
 /// @brief sets the request type
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FIGURES
-
 #define RequestStatisticsAgentSetRequestType(a,b)                                     \
   do {                                                                                \
     if (TRI_ENABLE_STATISTICS) {                                                      \
@@ -257,17 +212,9 @@ namespace triagens {
   }                                                                                   \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetRequestType(a,b) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the async flag
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetAsync(a)                                             \
   do {                                                                                \
@@ -279,17 +226,9 @@ namespace triagens {
   }                                                                                   \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetAsync(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the read start
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetReadStart(a)                                        \
   do {                                                                               \
@@ -303,17 +242,9 @@ namespace triagens {
   }                                                                                  \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetReadStart(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the read end
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetReadEnd(a)                                        \
   do {                                                                             \
@@ -325,17 +256,9 @@ namespace triagens {
   }                                                                                \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetReadEnd(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the write start
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetWriteStart(a)                                        \
   do {                                                                                \
@@ -347,17 +270,9 @@ namespace triagens {
   }                                                                                   \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetWriteStart(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the write end
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetWriteEnd(a)                                        \
   do {                                                                              \
@@ -369,17 +284,9 @@ namespace triagens {
   }                                                                                 \
     while (0)
 
-#else
-
-#define RequestStatisticsAgentSetWriteEnd(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the queue start
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetQueueStart(a)                                        \
   do {                                                                                \
@@ -391,17 +298,9 @@ namespace triagens {
   }                                                                                   \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetQueueStart(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the queue end
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetQueueEnd(a)                                        \
   do {                                                                              \
@@ -413,17 +312,9 @@ namespace triagens {
   }                                                                                 \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetQueueEnd(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the request start
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetRequestStart(a)                                        \
   do {                                                                                  \
@@ -435,17 +326,9 @@ namespace triagens {
   }                                                                                     \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetRequestStart(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the request end
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetRequestEnd(a)                                        \
   do {                                                                                \
@@ -457,17 +340,9 @@ namespace triagens {
   }                                                                                   \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetRequestEnd(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets execution error
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetExecuteError(a)                         \
   do {                                                                   \
@@ -479,17 +354,9 @@ namespace triagens {
   }                                                                      \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetExecuteError(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets ignore flag
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentSetIgnore(a)                               \
   do {                                                                   \
@@ -501,17 +368,9 @@ namespace triagens {
   }                                                                      \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentSetIgnore(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds bytes received
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentAddReceivedBytes(a,b)                      \
   do {                                                                   \
@@ -523,17 +382,9 @@ namespace triagens {
   }                                                                      \
   while (0)
 
-#else
-
-#define RequestStatisticsAgentAddReceivedBytes(a,b) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds bytes sent
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define RequestStatisticsAgentAddSentBytes(a,b)                      \
   do {                                                               \
@@ -544,12 +395,6 @@ namespace triagens {
     }                                                                \
   }                                                                  \
   while (0)
-
-#else
-
-#define RequestStatisticsAgentAddSentBytes(a,b) while (0)
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   class ConnectionStatisticsAgent
@@ -584,8 +429,6 @@ namespace triagens {
 /// @brief sets the connection type
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FIGURES
-
 #define ConnectionStatisticsAgentSetHttp(a)                             \
   do {                                                                  \
     if (TRI_ENABLE_STATISTICS) {                                        \
@@ -596,17 +439,9 @@ namespace triagens {
   }                                                                     \
   while (0)
 
-#else
-
-#define ConnectionStatisticsAgentSetHttp(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the connection start
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define ConnectionStatisticsAgentSetStart(a)                                            \
   do {                                                                                  \
@@ -618,17 +453,9 @@ namespace triagens {
   }                                                                                     \
   while (0)
 
-#else
-
-#define ConnectionStatisticsAgentSetStart(a) while (0)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the connection end
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FIGURES
 
 #define ConnectionStatisticsAgentSetEnd(a)                                            \
   do {                                                                                \
@@ -639,12 +466,6 @@ namespace triagens {
     }                                                                                 \
   }                                                                                   \
   while (0)
-
-#else
-
-#define ConnectionStatisticsAgentSetEnd(a) while (0)
-
-#endif
 
 #endif
 

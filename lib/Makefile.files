@@ -65,7 +65,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/Thread.cpp \
 	lib/Basics/ThreadPool.cpp \
 	lib/Basics/threads-posix.cpp \
-	lib/Basics/Timing.cpp \
 	lib/Basics/tri-strings.cpp \
 	lib/Basics/tri-zip.cpp \
 	lib/Basics/Utf8Helper.cpp \

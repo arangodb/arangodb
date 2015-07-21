@@ -247,11 +247,7 @@ namespace triagens {
 /// @brief the current write buffer statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FIGURES
-
         TRI_request_statistics_t* _writeBufferStatistics;
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief if true, the resource writeBuffer is owned by the write task
