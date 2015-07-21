@@ -48,8 +48,17 @@
 #define SPIN_LOCKER_VAR_A(a) _spin_lock_variable_ ## a
 #define SPIN_LOCKER_VAR_B(a) SPIN_LOCKER_VAR_A(a)
 
+#ifdef TRI_SHOW_LOCK_TIME
+
 #define SPIN_LOCKER(b) \
   triagens::basics::SpinLocker SPIN_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+
+#else
+
+#define SPIN_LOCKER(b) \
+  triagens::basics::SpinLocker SPIN_LOCKER_VAR_B(__LINE__)(&b)
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class SpinLocker
@@ -81,16 +90,16 @@ namespace triagens {
 /// The constructor aquires a lock, the destructors releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_SHOW_LOCK_TIME
+
+        SpinLocker (SpinLock*, char const* file, int line);
+
+#else
+
         explicit
         SpinLocker (SpinLock*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a lock
-///
-/// The constructor aquires a lock, the destructors releases the lock.
-////////////////////////////////////////////////////////////////////////////////
-
-        SpinLocker (SpinLock*, char const* file, int line);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
@@ -110,6 +119,8 @@ namespace triagens {
 
         SpinLock* _lock;
 
+#ifdef TRI_SHOW_LOCK_TIME
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief file
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,6 +133,13 @@ namespace triagens {
 
         int _line;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock time
+////////////////////////////////////////////////////////////////////////////////
+
+        double _time;
+
+#endif
     };
   }
 }

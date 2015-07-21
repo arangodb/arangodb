@@ -30,6 +30,10 @@
 
 #include "SpinLocker.h"
 
+#ifdef TRI_SHOW_LOCK_TIME
+#include "Basics/logging.h"
+#endif
+
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
@@ -42,9 +46,7 @@ using namespace triagens::basics;
 /// The constructor aquires a lock, the destructor releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-SpinLocker::SpinLocker (SpinLock* lock)
-  : SpinLocker(lock, nullptr, 0) {
-}
+#ifdef TRI_SHOW_LOCK_TIME
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
@@ -54,8 +56,21 @@ SpinLocker::SpinLocker (SpinLock* lock)
 
 SpinLocker::SpinLocker (SpinLock* lock, char const* file, int line)
   : _lock(lock), _file(file), _line(line) {
+  
+  double t = TRI_microtime();
+  _lock->lock();
+  _time = TRI_microtime() - t;
+}
+
+#else
+
+SpinLocker::SpinLocker (SpinLock* lock)
+  : _lock(lock) {
+  
   _lock->lock();
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
@@ -63,6 +78,12 @@ SpinLocker::SpinLocker (SpinLock* lock, char const* file, int line)
 
 SpinLocker::~SpinLocker () {
   _lock->unlock();
+
+#ifdef TRI_SHOW_LOCK_TIME
+  if (_time > TRI_SHOW_LOCK_THRESHOLD) {
+    LOG_WARNING("SpinLocker %s:%d took %f s", _file, _line, _time);
+  }
+#endif  
 }
 
 // -----------------------------------------------------------------------------

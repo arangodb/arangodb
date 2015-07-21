@@ -30,47 +30,49 @@
 
 #include "WriteLocker.h"
 
+#ifdef TRI_SHOW_LOCK_TIME
+#include "Basics/logging.h"
+#endif
+
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a write-lock
-///
-/// The constructors aquires a write lock, the destructors unlocks the lock.
-////////////////////////////////////////////////////////////////////////////////
-
-WriteLocker::WriteLocker (ReadWriteLock* readWriteLock)
-  : WriteLocker(readWriteLock, nullptr, 0) {
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a write-lock
 ///
 /// The constructors aquires a write lock, the destructors unlocks the lock.
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_SHOW_LOCK_TIME
 
 WriteLocker::WriteLocker (ReadWriteLock* readWriteLock, char const* file, int line)
   : _readWriteLock(readWriteLock), _file(file), _line(line) {
+
+  double t = TRI_microtime();
+  _readWriteLock->writeLock();
+  _time = TRI_microtime() - t;
+}
+
+#else 
+
+WriteLocker::WriteLocker (ReadWriteLock* readWriteLock)
+  : _readWriteLock(readWriteLock) {
+  
   _readWriteLock->writeLock();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a write-lock, with periodic sleeps while not acquired
-/// sleep time is specified in nanoseconds
-////////////////////////////////////////////////////////////////////////////////
-
-WriteLocker::WriteLocker (ReadWriteLock* readWriteLock, 
-                          uint64_t sleepTime) 
-  : WriteLocker(readWriteLock, sleepTime, nullptr, 0) {
-}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a write-lock, with periodic sleeps while not acquired
 /// sleep time is specified in nanoseconds
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_SHOW_LOCK_TIME
 
 WriteLocker::WriteLocker (ReadWriteLock* readWriteLock, 
                           uint64_t sleepTime,
@@ -78,10 +80,25 @@ WriteLocker::WriteLocker (ReadWriteLock* readWriteLock,
                           int line) 
   : _readWriteLock(readWriteLock), _file(file), _line(line) {
   
+  double t = TRI_microtime();
+  while (! _readWriteLock->tryWriteLock()) {
+    usleep(sleepTime);
+  }
+  _time = TRI_microtime() - t;
+}
+
+#else
+
+WriteLocker::WriteLocker (ReadWriteLock* readWriteLock, 
+                          uint64_t sleepTime) 
+  : _readWriteLock(readWriteLock) {
+  
   while (! _readWriteLock->tryWriteLock()) {
     usleep(sleepTime);
   }
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the write-lock
@@ -89,6 +106,12 @@ WriteLocker::WriteLocker (ReadWriteLock* readWriteLock,
 
 WriteLocker::~WriteLocker () {
   _readWriteLock->unlock();
+
+#ifdef TRI_SHOW_LOCK_TIME
+  if (_time > TRI_SHOW_LOCK_THRESHOLD) {
+    LOG_WARNING("WriteLocker %s:%d took %f s", _file, _line, _time);
+  }
+#endif  
 }
 
 // -----------------------------------------------------------------------------

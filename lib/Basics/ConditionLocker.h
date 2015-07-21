@@ -32,7 +32,6 @@
 #define ARANGODB_BASICS_CONDITION_LOCKER_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/ConditionVariable.h"
 
 // -----------------------------------------------------------------------------
@@ -43,11 +42,20 @@
 /// @brief construct locker with file and line information
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_SHOW_LOCK_TIME
+
 #define CONDITION_LOCKER(a, b) \
   triagens::basics::ConditionLocker a(&b, __FILE__, __LINE__)
 
+#else
+
+#define CONDITION_LOCKER(a, b) \
+  triagens::basics::ConditionLocker a(&b)
+
+#endif
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class ReadLocker
+// --SECTION--                                             class ConditionLocker
 // -----------------------------------------------------------------------------
 
 namespace triagens {
@@ -74,21 +82,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the condition variable
 ///
-/// The constructors locks the condition variable, the destructors unlocks
+/// The constructor locks the condition variable, the destructor unlocks
 /// the condition variable
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_SHOW_LOCK_TIME
+
+        ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line);
+
+#else
 
         explicit
         ConditionLocker (ConditionVariable* conditionVariable);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks the condition variable
-///
-/// The constructors locks the condition variable, the destructors unlocks
-/// the condition variable
-////////////////////////////////////////////////////////////////////////////////
-
-        ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line);
+#endif        
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the condition variable
@@ -150,6 +157,8 @@ namespace triagens {
 
         ConditionVariable* _conditionVariable;
 
+#ifdef TRI_SHOW_LOCK_TIME
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief file
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,6 +170,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _line;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock time
+////////////////////////////////////////////////////////////////////////////////
+
+        double _time;
+
+#endif        
     };
   }
 }

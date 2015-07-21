@@ -255,7 +255,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
   *res = *static_cast<ClusterCommResult*>(op);
 
   {
-    basics::ConditionLocker locker(&somethingToSend);
+    CONDITION_LOCKER(guard, somethingToSend);
     toSend.push_back(op);
     TRI_ASSERT(nullptr != op);
     list<ClusterCommOperation*>::iterator i = toSend.end();
@@ -463,7 +463,8 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
 
   // First look into the send queue:
   {
-    basics::ConditionLocker locker(&somethingToSend);
+    CONDITION_LOCKER(guard, somethingToSend);
+
     i = toSendByOpID.find(operationID);
     if (i != toSendByOpID.end()) {
       res = new ClusterCommResult();
@@ -482,7 +483,8 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
 
   // If the above did not give anything, look into the receive queue:
   {
-    basics::ConditionLocker locker(&somethingReceived);
+    CONDITION_LOCKER(guard, somethingReceived);
+
     i = receivedByOpID.find(operationID);
     if (i != receivedByOpID.end()) {
       res = new ClusterCommResult();
@@ -542,12 +544,14 @@ ClusterCommResult* ClusterComm::wait (
 
   if (0 != operationID) {
     // In this case we only have to look into at most one operation.
-    basics::ConditionLocker locker(&somethingReceived);
+    CONDITION_LOCKER(guard, somethingReceived);
+
     while (true) {   // will be left by return or break on timeout
       i = receivedByOpID.find(operationID);
       if (i == receivedByOpID.end()) {
         // It could be that the operation is still in the send queue:
-        basics::ConditionLocker sendlocker(&somethingToSend);
+        CONDITION_LOCKER(guard, somethingToSend);
+
         i = toSendByOpID.find(operationID);
         if (i == toSendByOpID.end()) {
           // Nothing known about this operation, return with failure:
@@ -591,7 +595,8 @@ ClusterCommResult* ClusterComm::wait (
     // here, operationID == 0, so we have to do matching, we are only
     // interested, if at least one operation matches, if it is ready,
     // we return it immediately, otherwise, we report an error or wait.
-    basics::ConditionLocker locker(&somethingReceived);
+    CONDITION_LOCKER(locker, somethingReceived);
+
     while (true) {   // will be left by return or break on timeout
       bool found = false;
       for (q = received.begin(); q != received.end(); q++) {
@@ -616,7 +621,8 @@ ClusterCommResult* ClusterComm::wait (
       }
       // If we found nothing, we have to look through the send queue:
       if (! found) {
-        basics::ConditionLocker sendlocker(&somethingToSend);
+        CONDITION_LOCKER(sendLocker, somethingReceived);
+
         for (q = toSend.begin(); q != toSend.end(); q++) {
           op = *q;
           if (match(clientTransactionID, coordTransactionID, shardID, op)) {
@@ -689,7 +695,8 @@ void ClusterComm::drop (
 
   // First look through the send queue:
   {
-    basics::ConditionLocker sendlocker(&somethingToSend);
+    CONDITION_LOCKER(sendLocker, somethingToSend);
+
     for (q = toSend.begin(); q != toSend.end(); ) {
       op = *q;
       if ((0 != operationID && operationID == op->operationID) ||
@@ -716,7 +723,8 @@ void ClusterComm::drop (
   }
   // Now look through the receive queue:
   {
-    basics::ConditionLocker locker(&somethingReceived);
+    CONDITION_LOCKER(locker, somethingReceived);
+
     for (q = received.begin(); q != received.end(); ) {
       op = *q;
       if ((0 != operationID && operationID == op->operationID) ||
@@ -849,7 +857,8 @@ string ClusterComm::processAnswer (string& coordinatorHeader,
 
   // Finally find the ClusterCommOperation record for this operation:
   {
-    basics::ConditionLocker locker(&somethingReceived);
+    CONDITION_LOCKER(locker, somethingReceived);
+
     ClusterComm::IndexIterator i;
     i = receivedByOpID.find(operationID);
     if (i != receivedByOpID.end()) {
@@ -873,7 +882,8 @@ string ClusterComm::processAnswer (string& coordinatorHeader,
       // We have to look in the send queue as well, as it might not yet
       // have been moved to the received queue. Note however that it must
       // have been fully sent, so this is highly unlikely, but not impossible.
-      basics::ConditionLocker sendlocker(&somethingToSend);
+      CONDITION_LOCKER(sendLocker, somethingToSend);
+
       i = toSendByOpID.find(operationID);
       if (i != toSendByOpID.end()) {
         ClusterCommOperation* op = *(i->second);
@@ -910,8 +920,10 @@ string ClusterComm::processAnswer (string& coordinatorHeader,
 
 bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   LOG_DEBUG("In moveFromSendToReceived %llu", (unsigned long long) operationID);
-  basics::ConditionLocker locker(&somethingReceived);
-  basics::ConditionLocker sendlocker(&somethingToSend);
+
+  CONDITION_LOCKER(guard1, somethingReceived);
+  CONDITION_LOCKER(guard2, somethingToSend);
+
   IndexIterator i = toSendByOpID.find(operationID);   // cannot fail
   TRI_ASSERT(i != toSendByOpID.end());
 
@@ -944,15 +956,18 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
 void ClusterComm::cleanupAllQueues() {
   QueueIterator i;
   {
-    basics::ConditionLocker locker(&somethingToSend);
+    CONDITION_LOCKER(guard, somethingToSend);
+
     for (auto& it : toSend) {
       delete it;
     }
     toSendByOpID.clear();
     toSend.clear();
   }
+
   {
-    basics::ConditionLocker locker(&somethingReceived);
+    CONDITION_LOCKER(guard, somethingReceived);
+
     for (auto& it : received) {
       delete it;
     }
@@ -1014,7 +1029,8 @@ void ClusterCommThread::run () {
       }
 
       {
-        basics::ConditionLocker locker(&cc->somethingToSend);
+        CONDITION_LOCKER(guard, cc->somethingToSend);
+
         if (cc->toSend.empty()) {
           break;
         }
@@ -1133,7 +1149,8 @@ void ClusterCommThread::run () {
 
     {
       double currentTime = TRI_microtime();
-      basics::ConditionLocker locker(&cc->somethingReceived);
+      CONDITION_LOCKER(guard, cc->somethingReceived);
+
       ClusterComm::QueueIterator q;
       for (q = cc->received.begin(); q != cc->received.end(); ++q) {
         op = *q;
@@ -1148,8 +1165,8 @@ void ClusterCommThread::run () {
     // Finally, wait for some time or until something happens using
     // the condition variable:
     {
-      basics::ConditionLocker locker(&cc->somethingToSend);
-      locker.wait(100000);
+      CONDITION_LOCKER(guard, cc->somethingToSend);
+      guard.wait(100000);
     }
   }
 

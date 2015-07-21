@@ -263,6 +263,9 @@ namespace triagens {
   typedef TRI_msec_t msec_t;
 }
 
+#undef TRI_SHOW_LOCK_TIME 
+#define TRI_SHOW_LOCK_THRESHOLD 0.000199
+
 #endif
 
 // -----------------------------------------------------------------------------
