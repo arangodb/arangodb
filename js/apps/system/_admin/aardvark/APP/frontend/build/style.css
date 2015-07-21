@@ -6230,8 +6230,13 @@ input.gv-radio-button {
         margin: 0;
         font-size: 1em; }
   .application-detail-view section.info .swagger iframe {
+    border: 1px solid black;
     height: 600px;
     width: 100%; }
+  .application-detail-view section.info .readme {
+    border: 1px solid black;
+    background: white;
+    padding: 1em 2em; }
 .application-detail-view aside.meta {
   clear: right;
   float: left;

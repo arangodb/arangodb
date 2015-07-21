@@ -21,7 +21,6 @@
       "databases": "databases",
       "applications": "applications",
       "applications/:mount": "applicationDetail",
-      "application/documentation/:mount": "appDocumentation",
       "graph": "graphManagement",
       "graph2": "graph2",
       "graph/:name": "showGraph",
@@ -154,7 +153,7 @@
       }
 
       this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
-      this.applicationDetailView.render();
+      this.applicationDetailView.render('swagger');
     },
 
     login: function () {
@@ -354,15 +353,6 @@
         });
       }
       this.applicationsView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    appDocumentation: function (mount) {
-      if (!this.checkUser()) {
-        return;
-      }
-      var docuView = new window.AppDocumentationView({mount: mount});
-      docuView.render();
       this.naviView.selectMenuItem('applications-menu');
     },
 
