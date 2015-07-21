@@ -60,8 +60,8 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
            (queue->name() == "STANDARD" 
             ? std::string("_def")
             : std::string("_aql"))),
-    _queue(queue),
-    _jobType(Job::READ_JOB) {
+    _queue(queue) {
+
   allowAsynchronousCancelation();
 }
 
@@ -86,7 +86,7 @@ void DispatcherThread::run () {
   _queue->_startedThreads.insert(this);
 
   // iterate until we are shutting down.
-  while (_jobType != Job::SPECIAL_JOB && _queue->_stopping == 0) {
+  while (_queue->_stopping == 0) {
 
     // delete old jobs
     for (list<DispatcherThread*>::iterator i = _queue->_stoppedThreads.begin();  i != _queue->_stoppedThreads.end();  ++i) {
@@ -97,28 +97,11 @@ void DispatcherThread::run () {
     _queue->_nrStopped = 0;
 
     // a job is waiting to execute
-    if (  ! _queue->_readyJobs.empty()
-         && _queue->_monopolizer == 0
-         && ! (_queue->_readyJobs.front()->type() == Job::WRITE_JOB && 1 < _queue->_nrRunning)) {
+    if (  ! _queue->_readyJobs.empty()) {
 
       // try next job
       Job* job = _queue->_readyJobs.front();
       _queue->_readyJobs.pop_front();
-
-      // handle job type
-      _jobType = job->type();
-
-      // start a new thread for special jobs
-      if (_jobType == Job::SPECIAL_JOB) {
-        _queue->_nrRunning--;
-        _queue->_nrSpecial++;
-        _queue->startQueueThread();
-      }
-
-      // monopolize queue
-      else if (_jobType == Job::WRITE_JOB) {
-        _queue->_monopolizer = this;
-      }
 
       // set running job
       _queue->_runningJobs.insert(job);
@@ -257,9 +240,6 @@ void DispatcherThread::run () {
       // require the lock
       _queue->_accessQueue.lock();
 
-      // cleanup
-      _queue->_monopolizer = 0;
-
       if (0 < _queue->_nrWaiting && ! _queue->_readyJobs.empty()) {
         _queue->_accessQueue.broadcast();
       }
@@ -299,11 +279,6 @@ void DispatcherThread::run () {
 
   _queue->_nrRunning--;
   _queue->_nrStopped++;
-
-  if (_jobType == Job::SPECIAL_JOB) {
-    _queue->_nrSpecial--;
-  }
-
   _queue->_nrUp--;
 
   _queue->_accessQueue.unlock();

@@ -197,10 +197,10 @@ void RestJobHandler::getJob () {
   std::string const type = suffix[0];
 
   if (! type.empty() && type[0] >= '1' && type[0] <= '9') {
-    getJobId(type);
+    getJobById(type);
   }
   else {
-    getJobType(type);
+    getJobByType(type);
   }
 }
 
@@ -208,7 +208,7 @@ void RestJobHandler::getJob () {
 /// @brief Returns the status of a specific job
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestJobHandler::getJobId (std::string const& value) {
+void RestJobHandler::getJobById (std::string const& value) {
   uint64_t jobId = StringUtils::uint64(value);
 
   // numeric job id, just pull the job status and return it
@@ -234,7 +234,7 @@ void RestJobHandler::getJobId (std::string const& value) {
 /// @brief Returns the ids of job results with a specific status
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestJobHandler::getJobType (std::string const& type) {
+void RestJobHandler::getJobByType (std::string const& type) {
   size_t count = 100;
 
   // extract "count" parameter
