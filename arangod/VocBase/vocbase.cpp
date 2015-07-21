@@ -787,7 +787,11 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
 static bool StartupTickIterator (TRI_df_marker_t const* marker,
                                  void* data,
                                  TRI_datafile_t* datafile) {
-  TRI_FastUpdateTickServer(marker->_tick);
+  auto tick = static_cast<TRI_voc_tick_t*>(data);
+
+  if (marker->_tick > *tick) {
+    *tick = marker->_tick;
+  }
 
   return true;
 }
@@ -856,7 +860,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       res = TRI_LoadCollectionInfo(file, &info, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        TRI_FastUpdateTickServer(info._cid);
+        TRI_UpdateTickServer(info._cid);
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -958,7 +962,10 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         if (iterateMarkers) {
           // iterating markers may be time-consuming. we'll only do it if
           // we have to
-          TRI_IterateTicksCollection(file, StartupTickIterator, nullptr);
+          TRI_voc_tick_t tick;
+          TRI_IterateTicksCollection(file, StartupTickIterator, &tick);
+
+          TRI_UpdateTickServer(tick);
         }
 
         LOG_DEBUG("added document collection from '%s'", file);

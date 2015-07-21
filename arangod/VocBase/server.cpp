@@ -117,13 +117,7 @@ static uint16_t ServerIdentifier = 0;
 /// @brief current tick identifier (48 bit)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t CurrentTick = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tick lock
-////////////////////////////////////////////////////////////////////////////////
-
-static triagens::basics::SpinLock TickLock;
+static std::atomic<uint64_t> CurrentTick(0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the server's global id
@@ -304,30 +298,6 @@ static int DetermineServerId (TRI_server_t* server, bool checkVersion) {
   }
 
   return res;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    tick functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current tick value, without using a lock
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_tick_t GetTick (void) {
-  return (ServerIdentifier | (CurrentTick << 16));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the tick counter, without using a lock
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void UpdateTick (TRI_voc_tick_t tick) {
-  TRI_voc_tick_t s = tick >> 16;
-
-  if (CurrentTick < s) {
-    CurrentTick = s;
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -2772,8 +2742,6 @@ void TRI_GetDatabaseDefaultsServer (TRI_server_t* server,
 TRI_voc_tick_t TRI_NewTickServer () {
   uint64_t tick = ServerIdentifier;
 
-  SPIN_LOCKER(TickLock);
-
   tick |= (++CurrentTick) << 16;
 
   return tick;
@@ -2784,16 +2752,15 @@ TRI_voc_tick_t TRI_NewTickServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UpdateTickServer (TRI_voc_tick_t tick) {
-  SPIN_LOCKER(TickLock);
-  UpdateTick(tick);
-}
+  TRI_voc_tick_t t = tick >> 16;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the tick counter, without lock - only use at startup!!
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FastUpdateTickServer (TRI_voc_tick_t tick) {
-  UpdateTick(tick);
+  auto expected = CurrentTick.load(std::memory_order_relaxed);
+ 
+  // only update global tick if less than the specified value...
+  while (expected < t &&
+         ! CurrentTick.compare_exchange_weak(expected, t, std::memory_order_release, std::memory_order_relaxed)) {
+    expected = CurrentTick.load(std::memory_order_relaxed);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2801,8 +2768,7 @@ void TRI_FastUpdateTickServer (TRI_voc_tick_t tick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_tick_t TRI_CurrentTickServer () {
-  SPIN_LOCKER(TickLock);
-  return GetTick();
+  return (ServerIdentifier | (CurrentTick << 16));
 }
 
 // -----------------------------------------------------------------------------
