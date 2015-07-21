@@ -21,7 +21,7 @@
       "databases": "databases",
       "applications": "applications",
       "applications/:mount": "applicationDetail",
-      "application/documentation/:mount": "appDocumentation",
+      "application/readme/:mount": "applicationReadme",
       "graph": "graphManagement",
       "graph2": "graph2",
       "graph/:name": "showGraph",
@@ -154,7 +154,26 @@
       }
 
       this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
-      this.applicationDetailView.render();
+      this.applicationDetailView.render('swagger');
+    },
+
+    applicationReadme: function (mount) {
+      if (!this.checkUser()) {
+        return;
+      }
+      this.naviView.selectMenuItem('applications-menu');
+
+      if (this.foxxList.length === 0) {
+        this.foxxList.fetch({ async: false });
+      }
+      if (!this.hasOwnProperty('applicationDetailView')) {
+        this.applicationDetailView = new window.ApplicationDetailView({
+          model: this.foxxList.get(decodeURIComponent(mount))
+        });
+      }
+
+      this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
+      this.applicationDetailView.render('readme');
     },
 
     login: function () {
@@ -354,15 +373,6 @@
         });
       }
       this.applicationsView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    appDocumentation: function (mount) {
-      if (!this.checkUser()) {
-        return;
-      }
-      var docuView = new window.AppDocumentationView({mount: mount});
-      docuView.render();
       this.naviView.selectMenuItem('applications-menu');
     },
 

@@ -85,9 +85,16 @@
 
     .swagger {
       iframe {
+        border: 1px solid black;
         height: 600px;
         width: 100%;
       }
+    }
+
+    .readme {
+      border: 1px solid black;
+      background: white;
+      padding: 1em 2em;
     }
   }
 
