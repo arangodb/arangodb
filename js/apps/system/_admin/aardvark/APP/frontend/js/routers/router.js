@@ -21,7 +21,6 @@
       "databases": "databases",
       "applications": "applications",
       "applications/:mount": "applicationDetail",
-      "application/readme/:mount": "applicationReadme",
       "graph": "graphManagement",
       "graph2": "graph2",
       "graph/:name": "showGraph",
@@ -155,25 +154,6 @@
 
       this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
       this.applicationDetailView.render('swagger');
-    },
-
-    applicationReadme: function (mount) {
-      if (!this.checkUser()) {
-        return;
-      }
-      this.naviView.selectMenuItem('applications-menu');
-
-      if (this.foxxList.length === 0) {
-        this.foxxList.fetch({ async: false });
-      }
-      if (!this.hasOwnProperty('applicationDetailView')) {
-        this.applicationDetailView = new window.ApplicationDetailView({
-          model: this.foxxList.get(decodeURIComponent(mount))
-        });
-      }
-
-      this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
-      this.applicationDetailView.render('readme');
     },
 
     login: function () {
