@@ -236,7 +236,7 @@
     "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "not in orphan collection" },
     "ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF" : { "code" : 1929, "message" : "collection used in edge def" },
     "ERROR_GRAPH_EDGE_COLLECTION_NOT_USED" : { "code" : 1930, "message" : "edge collection not used in graph" },
-    "ERROR_GRAPH_NO_AN_ARANGO_COLLECTION" : { "code" : 1931, "message" : " is not an ArangoCollection" },
+    "ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION" : { "code" : 1931, "message" : " is not an ArangoCollection" },
     "ERROR_GRAPH_NO_GRAPH_COLLECTION" : { "code" : 1932, "message" : "collection _graphs does not exist" },
     "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING" : { "code" : 1933, "message" : "Invalid example type. Has to be String, Array or Object" },
     "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT" : { "code" : 1934, "message" : "Invalid example type. Has to be Array or Object" },

@@ -3021,14 +3021,14 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          (1930)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1931: ERROR_GRAPH_NO_AN_ARANGO_COLLECTION
+/// @brief 1931: ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION
 ///
 ///  is not an ArangoCollection
 ///
 /// The collection is not an ArangoCollection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_NO_AN_ARANGO_COLLECTION                           (1931)
+#define TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION                          (1931)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION

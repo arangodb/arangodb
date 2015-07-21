@@ -232,7 +232,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection used in edge def");
   REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
-  REG_ERROR(ERROR_GRAPH_NO_AN_ARANGO_COLLECTION, " is not an ArangoCollection");
+  REG_ERROR(ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION, " is not an ArangoCollection");
   REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION, "collection _graphs does not exist");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING, "Invalid example type. Has to be String, Array or Object");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT, "Invalid example type. Has to be Array or Object");

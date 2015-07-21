@@ -9,8 +9,7 @@ ArangoDB can also do a so called *broadcast bind* using *tcp://0.0.0.0:8529*. Th
 it will be reachable on all interfaces of the host. This may be useful
 on development systems that frequently change their network setup like laptops.
 
-The number of endpoints can also be changed at runtime using the API described
-below. Each endpoint can optionally be restricted to a specific list of databases
+Each endpoint can optionally be restricted to a specific list of databases
 only, thus allowing the usage of different port numbers for different databases.
 
 This may be useful in multi-tenant setups. 
@@ -34,26 +33,16 @@ you can use the [netstat command](http://en.wikipedia.org/wiki/Netstat)
 (it behaves a little different on each platform, run it with *-lnpt* on Linux, *-p tcp*
 on MacOSX or with *-an* on windows for valuable information).
 
-The JavaScript interface for endpoints provides operations to add new endpoints at 
-runtime, and optionally restrict them for use with specific databases. The interface 
-also can be used to update existing endpoints or remove them at runtime.
+The JavaScript interface for endpoints provides an operation for retrieving the
+list of endpoints. There is no functionality to add, remove or reconfigure an 
+existing endpoint via the API after server start.
 
-Please note that all endpoint management operations can only be accessed via
-the default database (*_system*) and none of the other databases.
-
+Please note that the operation to retrieve the list of endpoints can only be carried 
+out in the default database (*_system*) and none of the other databases.
 When not in the default database, you must first switch to it using the 
 *db._useDatabase* method.
-
-!SECTION Configuring and Removing Endpoints
 
 !SUBSECTION List
 <!-- js/server/modules/org/arangodb/arango-database.js -->
 @startDocuBlock listEndpoints
 
-!SUBSECTION Configure
-<!-- js/server/modules/org/arangodb/arango-database.js -->
-@startDocuBlock configureEndpoint
-
-!SUBSECTION Remove
-<!-- js/server/modules/org/arangodb/arango-database.js -->
-@startDocuBlock removeEndpoint

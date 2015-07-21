@@ -727,40 +727,6 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an endpoint from the endpoints list
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyComm::removeEndpoint (std::string const& endpointSpecification) {
-  LOG_TRACE("removing global agency-endpoint '%s'", endpointSpecification.c_str());
-
-  {
-    WRITE_LOCKER(AgencyComm::_globalLock);
-
-    // check if we have got this endpoint
-    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
-
-    while (it != _globalEndpoints.end()) {
-      AgencyEndpoint const* agencyEndpoint = (*it);
-
-      if (agencyEndpoint->_endpoint->getSpecification() == endpointSpecification) {
-        // found, now remove
-        AgencyComm::_globalEndpoints.erase(it);
-
-        // and get rid of the endpoint
-        delete agencyEndpoint;
-
-        return true;
-      }
-
-      ++it;
-    }
-  }
-
-  // not found
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if an endpoint is present
 ////////////////////////////////////////////////////////////////////////////////
 
