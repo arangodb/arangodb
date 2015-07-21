@@ -418,60 +418,6 @@ ArangoDatabase.prototype._listEndpoints = function () {
   return internal._listEndpoints();
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds and connects a new endpoint
-/// @startDocuBlock configureEndpoint
-/// `db._configureEndpoint(endpoint, databases)`
-///
-/// Adds and connects or updates the *endpoint*.
-///
-/// The optional *databases* argument allows restricting the endpoint for
-/// use with specific databases only. The first database in the list will
-/// automatically become the default database for the endpoint. The default
-/// database will be used for incoming requests that do not specify the database
-/// name explicitly.
-///
-/// If *databases* is an empty list, the endpoint will allow access to all
-/// existing databases.
-///
-/// The adjusted list of endpoints is saved in a file *ENDPOINTS* in the
-/// database directory. The endpoints are restored from the file at server
-/// start.
-///
-/// Please note that managing endpoints can only be performed from out of the
-/// *_system* database. When not in the default database, you must first switch
-/// to it using the "db._useDatabase" method.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._configureEndpoint = function (endpoint, databases) {
-  return internal._configureEndpoint(endpoint, databases || [ ]);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disconnects and removes a specific endpoint
-/// @startDocuBlock removeEndpoint
-/// `db._removeEndpoint(endpoint)`
-///
-/// Disconnects and removes the *endpoint*. If the endpoint was not
-/// configured before, the operation will fail. If the endpoint happens to be
-/// the last bound endpoint, the operation will also fail as disconnecting
-/// would make the server unable to communicate with any clients.
-///
-/// The adjusted list of endpoints is saved in a file *ENDPOINTS* in the
-/// database directory. The endpoints are restored from the file at server
-/// start.
-///
-/// Please note that managing endpoints can only be performed from out of the
-/// *_system* database. When not in the default database, you must first switch
-/// to it using the "db._useDatabase" method.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._removeEndpoint = function (endpoint) {
-  return internal._removeEndpoint(endpoint);
-};
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

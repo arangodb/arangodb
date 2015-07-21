@@ -1,6 +1,13 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* removed run-time manipulation methods for server endpoints:
+
+  * `db._removeEndpoint()` 
+  * `db._configureEndpoint()`
+  * HTTP POST `/_api/endpoint`
+  * HTTP DELETE `/_api/endpoint`
+
 * AQL query result cache
 
   The query result cache can optionally cache the complete results of all or selected AQL queries.

@@ -288,129 +288,8 @@ std::string ApplicationEndpointServer::getEndpointsFilename () const {
 /// @brief return a list of all endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::vector<std::string> > ApplicationEndpointServer::getEndpoints () {
-  READ_LOCKER(_endpointsLock);
-
+std::map<std::string, std::vector<std::string>> ApplicationEndpointServer::getEndpoints () {
   return _endpointList.getAll();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new endpoint at runtime, and connects to it
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
-                                             vector<string> const& dbNames,
-                                             bool save) {
-  // validate...
-  const string unified = Endpoint::getUnifiedForm(newEndpoint);
-
-  if (unified.empty()) {
-    // invalid endpoint
-    return false;
-  }
-
-  Endpoint::EncryptionType encryption;
-  if (unified.substr(0, 6) == "ssl://") {
-    encryption = Endpoint::ENCRYPTION_SSL;
-  }
-  else {
-    encryption = Endpoint::ENCRYPTION_NONE;
-  }
-
-  // find the correct server (HTTP or HTTPS)
-  for (size_t i = 0; i < _servers.size(); ++i) {
-    if (_servers[i]->encryptionType() == encryption) {
-      // found the correct server
-      WRITE_LOCKER(_endpointsLock);
-
-      Endpoint* endpoint;
-      bool ok = _endpointList.add(newEndpoint, dbNames, _backlogSize, _reuseAddress, &endpoint);
-
-      if (! ok) {
-        return false;
-      }
-
-      if (endpoint == nullptr) {
-        if (save) {
-          saveEndpoints();
-        }
-
-        LOG_DEBUG("reconfigured endpoint '%s'", newEndpoint.c_str());
-        // in this case, we updated an existing endpoint and are done
-        return true;
-      }
-
-      // this connects the new endpoint
-      ok = _servers[i]->addEndpoint(endpoint);
-
-      if (ok) {
-        if (save) {
-          saveEndpoints();
-        }
-        LOG_DEBUG("bound to endpoint '%s'", newEndpoint.c_str());
-        return true;
-      }
-
-      LOG_WARNING("failed to bind to endpoint '%s'", newEndpoint.c_str());
-      return false;
-    }
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an existing endpoint, and disconnects from it
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) {
-  // validate...
-  const string unified = Endpoint::getUnifiedForm(oldEndpoint);
-
-  if (unified.empty()) {
-    // invalid endpoint
-    return false;
-  }
-
-  Endpoint::EncryptionType encryption;
-  if (unified.substr(0, 6) == "ssl://") {
-    encryption = Endpoint::ENCRYPTION_SSL;
-  }
-  else {
-    encryption = Endpoint::ENCRYPTION_NONE;
-  }
-
-  // find the correct server (HTTP or HTTPS)
-  for (size_t i = 0; i < _servers.size(); ++i) {
-    if (_servers[i]->encryptionType() == encryption) {
-      // found the correct server
-      WRITE_LOCKER(_endpointsLock);
-
-      Endpoint* endpoint;
-      bool ok = _endpointList.remove(unified, &endpoint);
-
-      if (! ok) {
-        LOG_WARNING("could not remove endpoint '%s'", oldEndpoint.c_str());
-        return false;
-      }
-
-      // this disconnects the new endpoint
-      ok = _servers[i]->removeEndpoint(endpoint);
-      delete endpoint;
-
-      if (ok) {
-        saveEndpoints();
-        LOG_DEBUG("removed endpoint '%s'", oldEndpoint.c_str());
-      }
-      else {
-        LOG_WARNING("failed to remove endpoint '%s'", oldEndpoint.c_str());
-      }
-
-      return ok;
-    }
-  }
-
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -426,18 +305,13 @@ bool ApplicationEndpointServer::loadEndpoints () {
 
   LOG_TRACE("loading endpoint list from file '%s'", filename.c_str());
 
-  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename.c_str(), 0);
+  std::unique_ptr<TRI_json_t> json(TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename.c_str(), nullptr));
 
-  if (json == 0) {
+  if (! TRI_IsObjectJson(json.get())) {
     return false;
   }
 
-  std::map<std::string, std::vector<std::string> > endpoints;
-
-  if (! TRI_IsObjectJson(json)) {
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return false;
-  }
+  std::map<std::string, std::vector<std::string>> endpoints;
 
   size_t const n = TRI_LengthVector(&json->_value._objects);
 
@@ -446,18 +320,16 @@ bool ApplicationEndpointServer::loadEndpoints () {
     auto const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
     if (! TRI_IsStringJson(e) || ! TRI_IsArrayJson(v)) {
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       return false;
     }
 
-    const string endpoint = string(e->_value._string.data, e->_value._string.length - 1);
+    std::string const endpoint = string(e->_value._string.data, e->_value._string.length - 1);
 
-    vector<string> dbNames;
+    std::vector<std::string> dbNames;
     for (size_t j = 0; j < TRI_LengthVector(&v->_value._objects); ++j) {
       auto d = static_cast<TRI_json_t const*>(TRI_AtVector(&v->_value._objects, j));
 
       if (! TRI_IsStringJson(d)) {
-        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         return false;
       }
 
@@ -468,13 +340,8 @@ bool ApplicationEndpointServer::loadEndpoints () {
     endpoints[endpoint] = dbNames;
   }
 
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-
-  std::map<std::string, std::vector<std::string> >::const_iterator it;
-  for (it = endpoints.begin(); it != endpoints.end(); ++it) {
-
-    bool ok = _endpointList.add((*it).first, (*it).second, _backlogSize, _reuseAddress);
+  for (auto& it : endpoints) {
+    bool ok = _endpointList.add(it.first, it.second, _backlogSize, _reuseAddress);
 
     if (! ok) {
       return false;
@@ -485,54 +352,10 @@ bool ApplicationEndpointServer::loadEndpoints () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief persists the endpoint list
-/// this method must be called under the _endpointsLock
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationEndpointServer::saveEndpoints () {
-  const std::map<std::string, std::vector<std::string> > endpoints = _endpointList.getAll();
-
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-
-  if (json == nullptr) {
-    return false;
-  }
-
-  std::map<std::string, std::vector<std::string> >::const_iterator it;
-
-  for (it = endpoints.begin(); it != endpoints.end(); ++it) {
-    TRI_json_t* list = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-    if (list == nullptr) {
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      return false;
-    }
-
-    for (size_t i = 0; i < (*it).second.size(); ++i) {
-      const string e = (*it).second.at(i);
-
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, list, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, e.c_str(), e.size()));
-    }
-
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, (*it).first.c_str(), list);
-  }
-
-  const string filename = getEndpointsFilename();
-  LOG_TRACE("saving endpoint list in file '%s'", filename.c_str());
-  bool ok = TRI_SaveJson(filename.c_str(), json, true);
-
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  return ok;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the list of databases for an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<std::string> ApplicationEndpointServer::getEndpointMapping (std::string const& endpoint) {
-  READ_LOCKER(_endpointsLock);
-
+std::vector<std::string> const& ApplicationEndpointServer::getEndpointMapping (std::string const& endpoint) {
   return _endpointList.getMapping(endpoint);
 }
 

@@ -39,6 +39,8 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      EndpointList
 // -----------------------------------------------------------------------------
+        
+static std::vector<std::string> const EmptyMapping;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -57,10 +59,8 @@ EndpointList::EndpointList () :
 ////////////////////////////////////////////////////////////////////////////////
 
 EndpointList::~EndpointList () {
-  map<string, pair<Endpoint*, vector<string> > >::iterator it;
-
-  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
-    Endpoint* ep = (*it).second.first;
+  for (auto& it : _endpoints) {
+    Endpoint* ep = it.second.first;
 
     delete ep;
   }
@@ -76,18 +76,18 @@ EndpointList::~EndpointList () {
 /// @brief add a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::add (const std::string& specification,
-                        const std::vector<std::string>& dbNames,
+bool EndpointList::add (std::string const& specification,
+                        std::vector<std::string> const& dbNames,
                         int backLogSize,
                         bool reuseAddress,
                         Endpoint** dst) {
-  const string key = Endpoint::getUnifiedForm(specification);
+  std::string const key = Endpoint::getUnifiedForm(specification);
 
   if (key.empty()) {
     return false;
   }
 
-  map<string, pair<Endpoint*, vector<string> > >::iterator it = _endpoints.find(key);
+  auto it = _endpoints.find(key);
 
   if (it != _endpoints.end()) {
     // already in list, just update
@@ -117,9 +117,9 @@ bool EndpointList::add (const std::string& specification,
 /// @brief remove a specific endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::remove (const std::string& specification,
+bool EndpointList::remove (std::string const& specification,
                            Endpoint** dst) {
-  const string key = Endpoint::getUnifiedForm(specification);
+  std::string const key = Endpoint::getUnifiedForm(specification);
 
   if (key.empty()) {
     return false;
@@ -130,7 +130,7 @@ bool EndpointList::remove (const std::string& specification,
     return false;
   }
 
-  map<string, pair<Endpoint*, vector<string> > >::const_iterator it = _endpoints.find(key);
+  auto it = _endpoints.find(key);
 
   if (it == _endpoints.end()) {
     // not in list
@@ -147,28 +147,25 @@ bool EndpointList::remove (const std::string& specification,
 /// @brief return all databases for an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> EndpointList::getMapping (const std::string& endpoint) const {
-  vector<string> result;
-
-  map<string, pair<Endpoint*, vector<string> > >::const_iterator it = _endpoints.find(endpoint);
+std::vector<std::string> const& EndpointList::getMapping (std::string const& endpoint) const {
+  auto it = _endpoints.find(endpoint);
 
   if (it != _endpoints.end()) {
-    result = (*it).second.second;
+    return (*it).second.second;
   }
 
-  return result;
+  return EmptyMapping;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::vector<std::string> > EndpointList::getAll () const {
-  map<string, vector<string> > result;
-  map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
+std::map<std::string, std::vector<std::string>> EndpointList::getAll () const {
+  std::map<std::string, std::vector<std::string>> result;
 
-  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
-    result[(*it).first] = (*it).second.second;
+  for (auto& it : _endpoints) {
+    result[it.first] = it.second.second;
   }
 
   return result;
@@ -178,15 +175,14 @@ std::map<std::string, std::vector<std::string> > EndpointList::getAll () const {
 /// @brief return all endpoints with a certain prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, Endpoint*> EndpointList::getByPrefix (const std::string& prefix) const {
-  map<string, Endpoint*> result;
-  map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
+std::map<std::string, Endpoint*> EndpointList::getByPrefix (std::string const& prefix) const {
+  std::map<string, Endpoint*> result;
 
-  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
-    const string& key = (*it).first;
+  for (auto& it : _endpoints) {
+    std::string const& key = it.first;
 
     if (StringUtils::isPrefix(key, prefix)) {
-      result[key] = (*it).second.first;
+      result[key] = it.second.first;
     }
   }
 
@@ -197,21 +193,20 @@ std::map<std::string, Endpoint*> EndpointList::getByPrefix (const std::string& p
 /// @brief return all endpoints with a certain encryption type
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, Endpoint*> EndpointList::getByPrefix (const Endpoint::EncryptionType encryption) const {
-  map<string, Endpoint*> result;
-  map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
+std::map<std::string, Endpoint*> EndpointList::getByPrefix (Endpoint::EncryptionType encryption) const {
+  std::map<string, Endpoint*> result;
 
-  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
-    const string& key = (*it).first;
+  for (auto& it : _endpoints) {
+    std::string const& key = it.first;
 
     if (encryption == Endpoint::ENCRYPTION_SSL) {
       if (StringUtils::isPrefix(key, "ssl://")) {
-        result[key] = (*it).second.first;
+        result[key] = it.second.first;
       }
     }
     else {
       if (StringUtils::isPrefix(key, "tcp://") || StringUtils::isPrefix(key, "unix://")) {
-        result[key] = (*it).second.first;
+        result[key] = it.second.first;
       }
     }
   }
@@ -223,11 +218,9 @@ std::map<std::string, Endpoint*> EndpointList::getByPrefix (const Endpoint::Encr
 /// @brief return if there is an endpoint with a certain encryption type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::has (const Endpoint::EncryptionType encryption) const {
-  map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
-
-  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
-    const string& key = (*it).first;
+bool EndpointList::has (Endpoint::EncryptionType encryption) const {
+  for (auto& it : _endpoints) {
+    std::string const& key = it.first;
 
     if (encryption == Endpoint::ENCRYPTION_SSL) {
       if (StringUtils::isPrefix(key, "ssl://")) {
@@ -249,11 +242,11 @@ bool EndpointList::has (const Endpoint::EncryptionType encryption) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void EndpointList::dump () const {
-  for (map<string, pair<Endpoint*, vector<string> > >::const_iterator it = _endpoints.begin(); it != _endpoints.end(); ++it) {
-    Endpoint const* ep = (*it).second.first;
+  for (auto& it : _endpoints) {
+    Endpoint const* ep = it.second.first;
 
     LOG_INFO("using endpoint '%s' for %s requests",
-             (*it).first.c_str(),
+             it.first.c_str(),
              getEncryptionName(ep->getEncryption()).c_str());
   }
 }
@@ -262,7 +255,7 @@ void EndpointList::dump () const {
 /// @brief return an encryption name
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string EndpointList::getEncryptionName (const Endpoint::EncryptionType encryption) {
+std::string EndpointList::getEncryptionName (Endpoint::EncryptionType encryption) {
   switch (encryption) {
     case Endpoint::ENCRYPTION_SSL:
       return "ssl-encrypted";

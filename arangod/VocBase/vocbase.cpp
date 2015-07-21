@@ -2224,11 +2224,9 @@ void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsDeletedVocBase (TRI_vocbase_t* vocbase) {
-  TRI_LockSpin(&vocbase->_usage._lock);
-  bool isDeleted = vocbase->_usage._isDeleted;
-  TRI_UnlockSpin(&vocbase->_usage._lock);
-
-  return isDeleted;
+  auto refCount = vocbase->_refCount.load();
+  // if the stored value is odd, it means the database has been marked as deleted
+  return (refCount % 1 == 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2236,19 +2234,12 @@ bool TRI_IsDeletedVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
-  bool result;
-
-  TRI_LockSpin(&vocbase->_usage._lock);
-  ++vocbase->_usage._refCount;
-  if (vocbase->_usage._isDeleted) {
-    result = false;
-  }
-  else {
-    result = true;
-  }
-  TRI_UnlockSpin(&vocbase->_usage._lock);
-
-  return result;
+  // increase the reference counter by 2. 
+  // this is because we use odd values to indicate that the database has been
+  // marked as deleted
+  auto oldValue = vocbase->_refCount.fetch_add(2, std::memory_order_release);
+  // check if the deleted bit is set
+  return (oldValue % 1 != 1); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2256,10 +2247,11 @@ bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
-  TRI_LockSpin(&vocbase->_usage._lock);
-  TRI_ASSERT(vocbase->_usage._refCount > 0);
-  --vocbase->_usage._refCount;
-  TRI_UnlockSpin(&vocbase->_usage._lock);
+  // decrease the reference counter by 2. 
+  // this is because we use odd values to indicate that the database has been
+  // marked as deleted
+  auto oldValue = vocbase->_refCount.fetch_sub(2, std::memory_order_release);
+  TRI_ASSERT(oldValue >= 2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2267,20 +2259,9 @@ void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropVocBase (TRI_vocbase_t* vocbase) {
-  bool result;
-
-  TRI_LockSpin(&vocbase->_usage._lock);
-  if (vocbase->_usage._isDeleted) {
-    result = false;
-  }
-  else {
-    vocbase->_usage._isDeleted = true;
-    result = true;
-
-  }
-  TRI_UnlockSpin(&vocbase->_usage._lock);
-
-  return result;
+  auto oldValue = vocbase->_refCount.fetch_or(1, std::memory_order_release);
+  // if the previously stored value is odd, it means the database has already been marked as deleted
+  return (oldValue % 1 == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2288,11 +2269,10 @@ bool TRI_DropVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsUsedVocBase (TRI_vocbase_t* vocbase) {
-  TRI_LockSpin(&vocbase->_usage._lock);
-  bool result = (vocbase->_usage._refCount > 0);
-  TRI_UnlockSpin(&vocbase->_usage._lock);
-
-  return result;
+  auto refCount = vocbase->_refCount.load();
+  // we are intentionally comparing for greater than 1 here, because a 1 would
+  // only mean that the database was marked as deleted
+  return (refCount > 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2300,11 +2280,10 @@ bool TRI_IsUsedVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CanRemoveVocBase (TRI_vocbase_t* vocbase) {
-  TRI_LockSpin(&vocbase->_usage._lock);
-  bool result = (vocbase->_usage._isDeleted && vocbase->_usage._refCount == 0);
-  TRI_UnlockSpin(&vocbase->_usage._lock);
-
-  return result;
+  auto refCount = vocbase->_refCount.load();
+  // we are intentionally comparing with exactly 1 here, because a 1 means
+  // that noone else references the database but it has been marked as deleted
+  return (refCount == 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2323,12 +2302,11 @@ bool TRI_IsSystemVocBase (TRI_vocbase_t* vocbase) {
 
 bool TRI_IsAllowedNameVocBase (bool allowSystem,
                                char const* name) {
-  bool ok;
-  char const* ptr;
   size_t length = 0;
 
   // check allow characters: must start with letter or underscore if system is allowed
-  for (ptr = name;  *ptr;  ++ptr) {
+  for (char const* ptr = name;  *ptr;  ++ptr) {
+    bool ok;
     if (length == 0) {
       if (allowSystem) {
         ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
@@ -2382,6 +2360,7 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
     _path(nullptr),
     _name(nullptr),
     _type(type),
+    _refCount(0),
     _server(server),
     _userStructures(nullptr),
     _queries(nullptr),
@@ -2397,11 +2376,6 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
  
   _path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
-    
-  // init usage info
-  TRI_InitSpin(&_usage._lock);
-  _usage._refCount  = 0;
-  _usage._isDeleted = false;
     
   // use the defaults provided
   TRI_ApplyVocBaseDefaults(this, defaults);
@@ -2459,8 +2433,6 @@ TRI_vocbase_t::~TRI_vocbase_t () {
   delete static_cast<triagens::arango::CursorRepository*>(_cursorRepository);
   delete static_cast<triagens::aql::QueryList*>(_queries);
   
-  TRI_DestroySpin(&_usage._lock);
-
   // free name and path
   if (_path != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, _path);

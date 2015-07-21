@@ -154,49 +154,11 @@ void HttpServer::setEndpointList (const EndpointList* list) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add another endpoint at runtime
-///
-/// the caller must make sure this is not called in parallel
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpServer::addEndpoint (Endpoint* endpoint) {
-  bool ok = openEndpoint(endpoint);
-
-  if (ok) {
-    LOG_INFO("added endpoint '%s'", endpoint->getSpecification().c_str());
-  }
-
-  return ok;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an endpoint at runtime
-///
-/// the caller must make sure this is not called in parallel
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpServer::removeEndpoint (Endpoint* endpoint) {
-  for (auto task = _listenTasks.begin();  task != _listenTasks.end();  ++task) {
-    if ((*task)->endpoint() == endpoint) {
-      // TODO: remove commtasks for the listentask??
-
-      _scheduler->destroyTask(*task);
-      _listenTasks.erase(task);
-
-      LOG_INFO("removed endpoint '%s'", endpoint->getSpecification().c_str());
-      return true;
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts listening
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::startListening () {
-  map<string, Endpoint*> endpoints = _endpointList->getByPrefix(encryptionType());
+  auto endpoints = _endpointList->getByPrefix(encryptionType());
 
   for (auto&& i : endpoints) {
     LOG_TRACE("trying to bind to endpoint '%s' for requests", i.first.c_str());

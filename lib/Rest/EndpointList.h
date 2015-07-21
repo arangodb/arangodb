@@ -81,8 +81,8 @@ namespace triagens {
 /// @brief add a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool add (const std::string&,
-                  const std::vector<std::string>&,
+        bool add (std::string const&,
+                  std::vector<std::string> const&,
                   int,
                   bool,
                   Endpoint** = nullptr);
@@ -91,38 +91,38 @@ namespace triagens {
 /// @brief remove a specific endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool remove (const std::string&,
+        bool remove (std::string const&,
                      Endpoint**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all databases for an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::string> getMapping (const std::string&) const;
+        std::vector<std::string> const& getMapping (std::string const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<std::string, std::vector<std::string> > getAll () const;
+        std::map<std::string, std::vector<std::string>> getAll () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all endpoints with a certain prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<std::string, Endpoint*> getByPrefix (const std::string&) const;
+        std::map<std::string, Endpoint*> getByPrefix (std::string const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all endpoints with a certain encryption type
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<std::string, Endpoint*> getByPrefix (const Endpoint::EncryptionType) const;
+        std::map<std::string, Endpoint*> getByPrefix (Endpoint::EncryptionType) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return if there is an endpoint with a certain encryption type
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool has (const Endpoint::EncryptionType) const;
+        bool has (Endpoint::EncryptionType) const;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief dump all endpoints used
@@ -134,7 +134,7 @@ namespace triagens {
 /// @brief return an encryption name
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string getEncryptionName (const Endpoint::EncryptionType);
+        static std::string getEncryptionName (Endpoint::EncryptionType);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -146,7 +146,7 @@ namespace triagens {
 /// @brief list of endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<std::string, std::pair<Endpoint*, std::vector<std::string> > > _endpoints;
+        std::map<std::string, std::pair<Endpoint*, std::vector<std::string>>> _endpoints;
 
     };
 

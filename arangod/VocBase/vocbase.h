@@ -271,12 +271,7 @@ struct TRI_vocbase_t {
   char*                                   _name;               // database name
   TRI_vocbase_type_e                      _type;               // type (normal or coordinator)
 
-  struct {
-    TRI_spin_t                            _lock;               // a lock protecting the usage information
-    uint32_t                              _refCount;           // reference counter
-    bool                                  _isDeleted;          // flag if database is marked as deleted
-  }                                 
-  _usage;
+  std::atomic<uint64_t>                   _refCount;
 
   TRI_server_t*                           _server;
   TRI_vocbase_defaults_t                  _settings;
