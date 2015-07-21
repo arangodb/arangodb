@@ -387,7 +387,7 @@ static uint64_t TRI_GetPhysicalMemory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StatisticsQueueWorker (void* data) {
-  while (! Shutdown) {
+  while (! Shutdown && TRI_ENABLE_STATISTICS) {
     size_t count = ProcessAllRequestStatistics();
 
     if (count == 0) {

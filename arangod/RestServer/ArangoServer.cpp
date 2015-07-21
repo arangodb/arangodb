@@ -791,6 +791,7 @@ int ArangoServer::startupServer () {
 
   if (_applicationServer->programOptions().has("no-server")) {
     startServer = false;
+    TRI_ENABLE_STATISTICS = false;
   }
 
   // check version
