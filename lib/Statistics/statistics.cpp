@@ -551,23 +551,9 @@ uint64_t TRI_PhysicalMemory;
 /// @brief gets the current wallclock time
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_HIRES_FIGURES
-
-double TRI_StatisticsTime () {
-  struct timespec tp;
-
-  clock_gettime(CLOCK_REALTIME, &tp);
-
-  return tp.tv_sec + (tp.tv_nsec / 1000000000.0);
-}
-
-#else
-
 double TRI_StatisticsTime () {
   return TRI_microtime();
 }
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             module initialisation
@@ -581,8 +567,6 @@ void TRI_InitialiseStatistics () {
   TRI_ServerStatistics._startTime = TRI_microtime();
   TRI_PhysicalMemory = GetPhysicalMemory();
 
-#if TRI_ENABLE_FIGURES
-
   // .............................................................................
   // sets up the statistics
   // .............................................................................
@@ -591,12 +575,7 @@ void TRI_InitialiseStatistics () {
 
   TRI_BytesSentDistributionVectorStatistics << (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000);
   TRI_BytesReceivedDistributionVectorStatistics << (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000);
-
-#ifdef TRI_ENABLE_HIRES_FIGURES
-  TRI_RequestTimeDistributionVectorStatistics << (0.0001) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0);
-#else
   TRI_RequestTimeDistributionVectorStatistics << (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0);
-#endif
 
   TRI_ConnectionTimeDistributionStatistics = new StatisticsDistribution(TRI_ConnectionTimeDistributionVectorStatistics);
   TRI_TotalTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
@@ -640,8 +619,6 @@ void TRI_InitialiseStatistics () {
 
   Shutdown = false;
   TRI_StartThread(&StatisticsThread, nullptr, "[statistics]", StatisticsQueueWorker, 0);
-
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,11 +626,9 @@ void TRI_InitialiseStatistics () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownStatistics (void) {
-#if TRI_ENABLE_FIGURES
   Shutdown = true;
   int res = TRI_JoinThread(&StatisticsThread);
   TRI_ASSERT(res == 0);
-#endif
 }
 
 // -----------------------------------------------------------------------------

@@ -58,9 +58,7 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     _commSocket(socket),
     _keepAliveTimeout(keepAliveTimeout),
     _writeBuffer(nullptr),
-#ifdef TRI_ENABLE_FIGURES
     _writeBufferStatistics(nullptr),
-#endif
     _ownBuffer(true),
     _writeLength(0),
     _readBuffer(nullptr),
@@ -89,13 +87,9 @@ SocketTask::~SocketTask () {
     delete _writeBuffer;
   }
 
-#ifdef TRI_ENABLE_FIGURES
-
   if (_writeBufferStatistics != nullptr) {
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
   }
-
-#endif
 
   delete _readBuffer;
 
@@ -247,16 +241,12 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
                                  bool ownBuffer) {
   bool callCompletedWriteBuffer = false;
 
-#ifdef TRI_ENABLE_FIGURES
-
   _writeBufferStatistics = statistics;
 
   if (_writeBufferStatistics != nullptr) {
     _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
     _writeBufferStatistics->_sentBytes += buffer->length();
   }
-
-#endif
 
   _writeLength = 0;
 

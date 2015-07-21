@@ -1,6 +1,14 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* removed configure option `--enable-timings`
+
+  This option did not have an effect.
+
+* removed configure option `--enable-figures`
+
+  This option was removed to simplify statistics code.
+
 * removed run-time manipulation methods for server endpoints:
 
   * `db._removeEndpoint()` 

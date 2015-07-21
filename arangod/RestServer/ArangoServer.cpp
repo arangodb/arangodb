@@ -387,9 +387,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
 ArangoServer::~ArangoServer () {
   delete _indexPool;
-
   delete _jobManager;
-
   delete _server;
 
   Nonce::destroy();
@@ -404,13 +402,7 @@ ArangoServer::~ArangoServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer () {
-  map<string, ProgramOptionsDescription> additional;
-
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
-
-  if (_applicationServer == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
 
   string conf = TRI_BinaryName(_argv[0]) + ".conf";
 
@@ -430,11 +422,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher();
-
-  if (_applicationDispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
   _applicationServer->addFeature(_applicationDispatcher);
 
   // .............................................................................
@@ -468,10 +455,6 @@ void ArangoServer::buildApplicationServer () {
                                      _applicationScheduler,
                                      _applicationDispatcher);
 
-  if (_applicationV8 == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -479,6 +462,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   string ignoreOpt;
+  map<string, ProgramOptionsDescription> additional;
 
   additional["Hidden Options"]
     ("ruby.gc-interval", &ignoreOpt, "Ruby garbage collection interval (each x requests)")
@@ -495,9 +479,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationAdminServer = new ApplicationAdminServer();
-  if (_applicationAdminServer == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
 
   _applicationServer->addFeature(_applicationAdminServer);
   _applicationAdminServer->allowLogViewer();
@@ -600,11 +581,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
-
-  if (_applicationCluster == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
   _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
@@ -631,11 +607,9 @@ void ArangoServer::buildApplicationServer () {
 
   bool disableStatistics = false;
 
-#if TRI_ENABLE_FIGURES
   additional["Server Options:help-admin"]
     ("server.disable-statistics", &disableStatistics, "turn off statistics gathering")
   ;
-#endif
 
   additional["Javascript Options:help-admin"]
     ("javascript.v8-contexts", &_v8Contexts, "number of V8 contexts that are created for executing JavaScript actions")
@@ -659,10 +633,6 @@ void ArangoServer::buildApplicationServer () {
                                                              "arangodb",
                                                              &SetRequestContext,
                                                              (void*) _server);
-  if (_applicationEndpointServer == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
@@ -792,7 +762,7 @@ void ArangoServer::buildApplicationServer () {
     string currentDir = FileUtils::currentDirectory(&err);
     char* absoluteFile = TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
 
-    if (absoluteFile != 0) {
+    if (absoluteFile != nullptr) {
       _pidFile = string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
 
