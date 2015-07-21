@@ -28,6 +28,7 @@
             "frontend/css/nv.d3.css",
             "frontend/css/swaggerView.css",
             "frontend/css/ansi.css",
+            "frontend/css/highlightjs.css",
             "frontend/css/jsoneditor.css",
             "frontend/ttf/arangofont/style.css"
           ],
