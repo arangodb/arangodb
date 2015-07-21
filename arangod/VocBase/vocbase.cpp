@@ -600,7 +600,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
 static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                                             TRI_col_info_t* parameter,
-                                            TRI_voc_cid_t cid,
+                                            TRI_voc_cid_t& cid,
                                             bool writeMarker,
                                             TRI_json_t*& json) {
   TRI_ASSERT(json == nullptr);
