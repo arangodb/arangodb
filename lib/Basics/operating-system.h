@@ -622,8 +622,8 @@
 
 #define TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS 1
 
-#define TRI_srandom                         srand
-#define TRI_random                          rand
+#define TRI_srandom                     srand
+#define TRI_random                      rand
 
 #define strcasecmp                      _stricmp
 #define strncasecmp                     _strnicmp
