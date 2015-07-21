@@ -1,4 +1,4 @@
-v2.6.3 (XXXX-XX-XX)
+v2.6.3 (2015-07-21)
 -------------------
 
 * issue #1409: Document values with null character truncated

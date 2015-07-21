@@ -2,12 +2,60 @@ arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js")
 arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._neighbors({isCapital : true});
 [ 
-  null, 
-  null, 
-  null, 
-  null, 
-  null, 
-  null, 
-  null, 
-  null 
+  { 
+    "_id" : "frenchCity/Lyon", 
+    "_key" : "Lyon", 
+    "_rev" : "1049061495", 
+    "isCapital" : false, 
+    "population" : 80000 
+  }, 
+  { 
+    "_id" : "frenchCity/Paris", 
+    "_key" : "Paris", 
+    "_rev" : "1049258103", 
+    "isCapital" : true, 
+    "population" : 4000000 
+  }, 
+  { 
+    "_id" : "germanCity/Cologne", 
+    "_key" : "Cologne", 
+    "_rev" : "1048471671", 
+    "isCapital" : false, 
+    "population" : 1000000 
+  }, 
+  { 
+    "_id" : "germanCity/Hamburg", 
+    "_key" : "Hamburg", 
+    "_rev" : "1048668279", 
+    "isCapital" : false, 
+    "population" : 1000000 
+  }, 
+  { 
+    "_id" : "germanCity/Berlin", 
+    "_key" : "Berlin", 
+    "_rev" : "1048275063", 
+    "isCapital" : true, 
+    "population" : 3000000 
+  }, 
+  { 
+    "_id" : "germanCity/Cologne", 
+    "_key" : "Cologne", 
+    "_rev" : "1048471671", 
+    "isCapital" : false, 
+    "population" : 1000000 
+  }, 
+  { 
+    "_id" : "germanCity/Hamburg", 
+    "_key" : "Hamburg", 
+    "_rev" : "1048668279", 
+    "isCapital" : false, 
+    "population" : 1000000 
+  }, 
+  { 
+    "_id" : "frenchCity/Lyon", 
+    "_key" : "Lyon", 
+    "_rev" : "1049061495", 
+    "isCapital" : false, 
+    "population" : 80000 
+  } 
 ]

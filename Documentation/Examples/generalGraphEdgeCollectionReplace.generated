@@ -3,12 +3,12 @@ arangosh> var graph = examples.loadGraph("social");
 arangosh> graph.relation.save("female/alice", "female/diana", {typo: "nose", _key: "aliceAndDiana"});
 { 
   "_id" : "relation/aliceAndDiana", 
-  "_rev" : "677499706", 
+  "_rev" : "677472375", 
   "_key" : "aliceAndDiana" 
 }
 arangosh> graph.relation.replace("relation/aliceAndDiana", {type: "knows"});
 { 
   "_id" : "relation/aliceAndDiana", 
-  "_rev" : "677696314", 
+  "_rev" : "677668983", 
   "_key" : "aliceAndDiana" 
 }

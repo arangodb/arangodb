@@ -2,7 +2,25 @@ arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js")
 arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
 [ 
-  null, 
-  null, 
-  null 
+  { 
+    "_id" : "frenchCity/Paris", 
+    "_key" : "Paris", 
+    "_rev" : "1055418487", 
+    "isCapital" : true, 
+    "population" : 4000000 
+  }, 
+  { 
+    "_id" : "frenchCity/Lyon", 
+    "_key" : "Lyon", 
+    "_rev" : "1055221879", 
+    "isCapital" : false, 
+    "population" : 80000 
+  }, 
+  { 
+    "_id" : "germanCity/Cologne", 
+    "_key" : "Cologne", 
+    "_rev" : "1054632055", 
+    "isCapital" : false, 
+    "population" : 1000000 
+  } 
 ]

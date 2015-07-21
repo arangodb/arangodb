@@ -8,66 +8,6 @@ arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
 ........> ).toArray();
 [ 
   [ 
-    "germanCity/Berlin", 
-    "germanCity/Hamburg", 
-    1 
-  ], 
-  [ 
-    "germanCity/Berlin", 
-    "germanCity/Cologne", 
-    1 
-  ], 
-  [ 
-    "germanCity/Berlin", 
-    "frenchCity/Paris", 
-    1 
-  ], 
-  [ 
-    "germanCity/Berlin", 
-    "frenchCity/Lyon", 
-    1 
-  ], 
-  [ 
-    "germanCity/Hamburg", 
-    "germanCity/Berlin", 
-    1 
-  ], 
-  [ 
-    "germanCity/Hamburg", 
-    "germanCity/Cologne", 
-    1 
-  ], 
-  [ 
-    "germanCity/Hamburg", 
-    "frenchCity/Paris", 
-    1 
-  ], 
-  [ 
-    "germanCity/Hamburg", 
-    "frenchCity/Lyon", 
-    1 
-  ], 
-  [ 
-    "germanCity/Cologne", 
-    "germanCity/Berlin", 
-    1 
-  ], 
-  [ 
-    "germanCity/Cologne", 
-    "germanCity/Hamburg", 
-    1 
-  ], 
-  [ 
-    "germanCity/Cologne", 
-    "frenchCity/Paris", 
-    1 
-  ], 
-  [ 
-    "germanCity/Cologne", 
-    "frenchCity/Lyon", 
-    1 
-  ], 
-  [ 
     "frenchCity/Paris", 
     "germanCity/Berlin", 
     1 
@@ -83,11 +23,6 @@ arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
     1 
   ], 
   [ 
-    "frenchCity/Paris", 
-    "frenchCity/Lyon", 
-    1 
-  ], 
-  [ 
     "frenchCity/Lyon", 
     "germanCity/Berlin", 
     1 
@@ -100,11 +35,6 @@ arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
   [ 
     "frenchCity/Lyon", 
     "germanCity/Cologne", 
-    1 
-  ], 
-  [ 
-    "frenchCity/Lyon", 
-    "frenchCity/Paris", 
     1 
   ] 
 ]

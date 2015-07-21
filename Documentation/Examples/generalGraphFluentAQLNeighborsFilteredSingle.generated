@@ -3,5 +3,10 @@ arangosh> var graph = examples.loadGraph("social");
 arangosh> var query = graph._vertices({name: "Alice"});
 arangosh> query.neighbors({name: "Bob"}).toArray();
 [ 
-  null 
+  { 
+    "_id" : "male/bob", 
+    "_key" : "bob", 
+    "_rev" : "774924407", 
+    "name" : "Bob" 
+  } 
 ]

@@ -3,4 +3,19 @@ arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> var example = { isCapital: true };
 arangosh> var options = { includeData: true };
 arangosh> graph._countCommonNeighbors(example, example, options, options);
-[ ]
+[ 
+  { 
+    "germanCity/Berlin" : [ 
+      { 
+        "frenchCity/Paris" : 3 
+      } 
+    ] 
+  }, 
+  { 
+    "frenchCity/Paris" : [ 
+      { 
+        "germanCity/Berlin" : 3 
+      } 
+    ] 
+  } 
+]

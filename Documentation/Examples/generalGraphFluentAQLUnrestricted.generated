@@ -2,4 +2,29 @@ arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js")
 arangosh> var graph = examples.loadGraph("social");
 arangosh> var query = graph._vertices({name: "Alice"});
 arangosh> query.edges().vertices().toArray();
-[ ]
+[ 
+  { 
+    "_id" : "female/alice", 
+    "_key" : "alice", 
+    "_rev" : "842426487", 
+    "name" : "Alice" 
+  }, 
+  { 
+    "_id" : "male/bob", 
+    "_key" : "bob", 
+    "_rev" : "842754167", 
+    "name" : "Bob" 
+  }, 
+  { 
+    "_id" : "female/alice", 
+    "_key" : "alice", 
+    "_rev" : "842426487", 
+    "name" : "Alice" 
+  }, 
+  { 
+    "_id" : "male/charly", 
+    "_key" : "charly", 
+    "_rev" : "842950775", 
+    "name" : "Charly" 
+  } 
+]
