@@ -48,8 +48,17 @@
 #define MUTEX_LOCKER_VAR_A(a) _mutex_lock_variable_ ## a
 #define MUTEX_LOCKER_VAR_B(a) MUTEX_LOCKER_VAR_A(a)
 
+#ifdef TRI_SHOW_LOCK_TIME
+
 #define MUTEX_LOCKER(b) \
   triagens::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+
+#else
+
+#define MUTEX_LOCKER(b) \
+  triagens::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b)
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class MutexLocker
@@ -81,16 +90,16 @@ namespace triagens {
 /// The constructor aquires a lock, the destructor releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_SHOW_LOCK_TIME
+
+        MutexLocker (Mutex* mutex, char const* file, int line);
+
+#else
+
         explicit
         MutexLocker (Mutex* mutex);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a lock
-///
-/// The constructor aquires a lock, the destructor releases the lock.
-////////////////////////////////////////////////////////////////////////////////
-
-        MutexLocker (Mutex* mutex, char const* file, int line);
+#endif        
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
@@ -110,6 +119,8 @@ namespace triagens {
 
         Mutex* _mutex;
 
+#ifdef TRI_SHOW_LOCK_TIME
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief file
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,6 +133,13 @@ namespace triagens {
 
         int _line;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock time
+////////////////////////////////////////////////////////////////////////////////
+
+        double _time;
+
+#endif        
     };
   }
 }

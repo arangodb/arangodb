@@ -30,8 +30,9 @@
 
 #include "ConditionLocker.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
+#ifdef TRI_SHOW_LOCK_TIME
+#include "Basics/logging.h"
+#endif
 
 using namespace triagens::basics;
 
@@ -46,22 +47,25 @@ using namespace triagens::basics;
 /// the condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable)
-  : _conditionVariable(conditionVariable), _file(0), _line(0) {
-  _conditionVariable->lock();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks the condition variable
-///
-/// The constructors locks the condition variable, the destructors unlocks
-/// the condition variable
-////////////////////////////////////////////////////////////////////////////////
+#ifdef TRI_SHOW_LOCK_TIME
 
 ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line)
-  : _conditionVariable(conditionVariable), _file(file), _line(line) {
+  : _conditionVariable(conditionVariable), _file(file), _line(line), _time(0.0) {
+
+  double t = TRI_microtime();
+  _conditionVariable->lock();
+  _time = TRI_microtime() - t;
+}
+
+#else
+
+ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable)
+  : _conditionVariable(conditionVariable) {
+
   _conditionVariable->lock();
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the condition variable
@@ -69,6 +73,12 @@ ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable, char con
 
 ConditionLocker::~ConditionLocker () {
   _conditionVariable->unlock();
+
+#ifdef TRI_SHOW_LOCK_TIME
+  if (_time > TRI_SHOW_LOCK_THRESHOLD) {
+    LOG_WARNING("ConditionLocker %s:%d took %f s", _file, _line, _time);
+  }
+#endif  
 }
 
 // -----------------------------------------------------------------------------
