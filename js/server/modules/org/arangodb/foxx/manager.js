@@ -808,6 +808,34 @@ var runScript = function (scriptName, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the app's README.md
+///
+/// Input:
+/// * mount: the mount path starting with a "/"
+///
+/// Output:
+/// -
+////////////////////////////////////////////////////////////////////////////////
+
+var readme = function (mount) {
+  checkParameter(
+    "readme(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ]
+  );
+  let app = lookupApp(mount);
+  let path, readme;
+
+  path = fs.join(app._root, app._path, 'README.md');
+  readme = fs.exists(path) && fs.read(path);
+  if (!readme) {
+    path = fs.join(app._root, app._path, 'README');
+    readme = fs.exists(path) && fs.read(path);
+  }
+  return readme || null;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief run a Foxx application's tests
 ///
 /// Input:
@@ -1551,6 +1579,7 @@ var syncWithFolder = function(options) {
 
 exports.syncWithFolder = syncWithFolder;
 exports.install = install;
+exports.readme = readme;
 exports.runTests = runTests;
 exports.runScript = runScript;
 exports.setup = R.partial(runScript, 'setup');
