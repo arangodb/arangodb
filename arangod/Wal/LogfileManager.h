@@ -41,7 +41,7 @@
 
 #include <regex.h>
 
-struct TRI_server_s;
+struct TRI_server_t;
 
 namespace triagens {
   namespace wal {
@@ -87,7 +87,7 @@ namespace triagens {
 
       public:
 
-        LogfileManager (struct TRI_server_s*,
+        LogfileManager (TRI_server_t*,
                         std::string*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static void initialise (std::string*,
-                                struct TRI_server_s*);
+                                TRI_server_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
@@ -790,7 +790,7 @@ namespace triagens {
 /// @brief pointer to the server
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_server_s* _server;
+        TRI_server_t* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the arangod config variable containing the database path

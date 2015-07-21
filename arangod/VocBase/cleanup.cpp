@@ -237,15 +237,15 @@ void TRI_CleanupVocBase (void* data) {
 
     // check if we can get the compactor lock exclusively
     if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
-      // copy all collections
-      TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+
       try {
+        READ_LOCKER(vocbase->_collectionsLock);
+        // copy all collections
         collections = vocbase->_collections;
       }
       catch (...) {
         collections.clear();
       }
-      TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
       for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);

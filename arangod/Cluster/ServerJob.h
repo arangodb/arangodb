@@ -36,7 +36,7 @@
 #include "Dispatcher/Job.h"
 #include "Rest/Handler.h"
 
-struct TRI_server_s;
+struct TRI_server_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class ServerJob
@@ -67,7 +67,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ServerJob (HeartbeatThread* heartbeat,
-                   struct TRI_server_s* server,
+                   TRI_server_t* server,
                    ApplicationV8* applicationV8);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +172,7 @@ namespace triagens {
 /// @brief server
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_server_s* _server;
+        TRI_server_t* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief v8 dispatcher

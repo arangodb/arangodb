@@ -36,7 +36,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
 
-struct TRI_server_s;
+struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace triagens {
@@ -101,7 +101,7 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
                           triagens::arango::ApplicationV8*,
                           v8::Handle<v8::Context>,
                           triagens::aql::QueryRegistry*,
-                          struct TRI_server_s*,
+                          TRI_server_t*,
                           TRI_vocbase_t*,
                           triagens::arango::JSLoader*,
                           size_t);

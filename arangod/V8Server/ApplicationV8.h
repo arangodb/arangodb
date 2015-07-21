@@ -43,7 +43,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_server_s;
+struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace triagens {
@@ -273,7 +273,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationV8 (struct TRI_server_s*,
+        ApplicationV8 (TRI_server_t*,
                        triagens::aql::QueryRegistry*,
                        rest::ApplicationScheduler*,
                        rest::ApplicationDispatcher*);
@@ -475,7 +475,7 @@ namespace triagens {
 /// @brief server object
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_server_s* _server;
+        TRI_server_t* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query registry object

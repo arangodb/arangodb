@@ -1393,15 +1393,14 @@ void TRI_CompactorVocBase (void* data) {
       double now = TRI_microtime();
       numCompacted = 0;
 
-      // copy all collections
-      TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
       try {
+        READ_LOCKER(vocbase->_collectionsLock);
+        // copy all collections
         collections = vocbase->_collections;
       }
       catch (...) {
         collections.clear();
       }
-      TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
       for (auto& collection : collections) {
         if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {

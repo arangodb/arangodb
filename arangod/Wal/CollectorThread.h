@@ -43,7 +43,7 @@
 struct TRI_datafile_s;
 struct TRI_df_marker_s;
 struct TRI_document_collection_t;
-struct TRI_server_s;
+struct TRI_server_t;
 
 namespace triagens {
   namespace wal {
@@ -210,7 +210,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         CollectorThread (LogfileManager*,
-                         struct TRI_server_s*);
+                         TRI_server_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the collector thread
@@ -390,7 +390,7 @@ namespace triagens {
 /// @brief pointer to the server
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_server_s* _server;
+        TRI_server_t* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable for the collector thread

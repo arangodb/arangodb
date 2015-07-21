@@ -378,11 +378,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   TRI_InitServerGlobals();
 
-  _server = TRI_CreateServer();
-
-  if (_server == nullptr) {
-    LOG_FATAL_AND_EXIT("could not create server instance");
-  }
+  _server = new TRI_server_t;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -394,11 +390,7 @@ ArangoServer::~ArangoServer () {
 
   delete _jobManager;
 
-  if (_server != nullptr) {
-    TRI_FreeServer(_server);
-  }
-
-  TRI_FreeServerGlobals();
+  delete _server;
 
   Nonce::destroy();
 }
@@ -465,7 +457,7 @@ void ArangoServer::buildApplicationServer () {
   // ...........................................................................
 
   _queryRegistry = new aql::QueryRegistry();
-  _server->_queryRegistry = static_cast<void*>(_queryRegistry);
+  _server->_queryRegistry = _queryRegistry;
 
   // .............................................................................
   // V8 engine

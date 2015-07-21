@@ -37,7 +37,7 @@
 #include "Basics/logging.h"
 #include "Cluster/AgencyComm.h"
 
-struct TRI_server_s;
+struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace triagens {
@@ -68,7 +68,7 @@ namespace triagens {
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        HeartbeatThread (struct TRI_server_s*,
+        HeartbeatThread (TRI_server_t*,
                          triagens::rest::ApplicationDispatcher*,
                          ApplicationV8*,
                          uint64_t,
@@ -205,7 +205,7 @@ namespace triagens {
 /// @brief server
 ////////////////////////////////////////////////////////////////////////////////
 
-         struct TRI_server_s* _server;
+         TRI_server_t* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Job dispatcher
