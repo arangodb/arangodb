@@ -27,8 +27,10 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var joi = require('joi');
 var Foxx = require('org/arangodb/foxx');
 var crypto = require('org/arangodb/crypto');
+var paramSchema = joi.string().optional().description('Foxx session ID');
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -41,10 +43,17 @@ var crypto = require('org/arangodb/crypto');
 function decorateController(auth, controller) {
   var cfg = auth.configuration;
 
+  if (cfg.param) {
+    controller.allRoutes.queryParam(cfg.param, paramSchema);
+  }
+
   controller.before('/*', function (req) {
     var sessions = auth.getSessionStorage();
     var sid;
-    if (cfg.cookie) {
+    if (cfg.param) {
+      sid = req.params(cfg.param);
+    }
+    if (!sid && cfg.cookie) {
       sid = req.cookie(cfg.cookie.name, cfg.cookie.secret ? {
         signed: {
           secret: cfg.cookie.secret,
@@ -195,6 +204,13 @@ function Sessions(opts) {
       opts.header = 'X-Session-Id';
     } else if (typeof opts.header !== 'string') {
       throw new Error('Header name must be true, a string or empty.');
+    }
+  }
+  if (opts.param) {
+    if (opts.param === true) {
+      opts.param = 'FOXXSID';
+    } else if (typeof opts.param !== 'string') {
+      throw new Error('Param name must be true, a string or empty.');
     }
   }
   if (opts.jwt) {
