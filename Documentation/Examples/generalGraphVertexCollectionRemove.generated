@@ -4,7 +4,7 @@ arangosh> graph.male.save({name: "Kermit", _key: "kermit"});
 { 
   "error" : false, 
   "_id" : "male/kermit", 
-  "_rev" : "802950678", 
+  "_rev" : "804507455", 
   "_key" : "kermit" 
 }
 arangosh> db._exists("male/kermit")

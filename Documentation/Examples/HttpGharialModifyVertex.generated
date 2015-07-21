@@ -5,15 +5,15 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharia
 
 HTTP/1.1 202 Accepted
 content-type: application/json
-etag: 1463619094
+etag: 1468059455
 
 { 
   "error" : false, 
   "code" : 202, 
   "vertex" : { 
     "_id" : "female/alice", 
-    "_rev" : "1463619094", 
-    "_oldRev" : "1461456406", 
+    "_rev" : "1468059455", 
+    "_oldRev" : "1465896767", 
     "_key" : "alice" 
   } 
 }
