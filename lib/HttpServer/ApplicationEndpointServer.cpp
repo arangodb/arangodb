@@ -419,7 +419,7 @@ bool ApplicationEndpointServer::open () {
     return true;
   }
 
-  for (auto server : _servers) {
+  for (auto& server : _servers) {
     server->startListening();
   }
 
@@ -436,7 +436,7 @@ void ApplicationEndpointServer::close () {
   }
 
   // close all listen sockets
-  for (auto server : _servers) {
+  for (auto& server : _servers) {
     server->stopListening();
   }
 }
@@ -450,7 +450,7 @@ void ApplicationEndpointServer::stop () {
     return;
   }
 
-  for (auto server : _servers) {
+  for (auto& server : _servers) {
     server->stop();
   }
 }
@@ -536,7 +536,7 @@ bool ApplicationEndpointServer::createSslContext () {
 
     certNames = SSL_load_client_CA_file(_cafile.c_str());
 
-    if (certNames == 0) {
+    if (certNames == nullptr) {
       LOG_ERROR("ssl error: %s", lastSSLError().c_str());
       LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'", _cafile.c_str());
     }
