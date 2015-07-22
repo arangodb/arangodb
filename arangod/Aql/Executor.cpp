@@ -219,7 +219,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l,o", true, false, true, false, false) },
   { "GRAPH_EDGES",                 Function("GRAPH_EDGES",                 "AQL_GRAPH_EDGES", "s,als|a", false, false, true, false, false) },
   { "GRAPH_VERTICES",              Function("GRAPH_VERTICES",              "AQL_GRAPH_VERTICES", "s,als|a", false, false, true, false, false) },
-  { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l,a", true, false, true, false, false) },
+  { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l,a", true, false, true, false, false, &Functions::Neighbors, NotInCluster) },
   { "GRAPH_NEIGHBORS",             Function("GRAPH_NEIGHBORS",             "AQL_GRAPH_NEIGHBORS", "s,als|a", false, false, true, false, false) },
   { "GRAPH_COMMON_NEIGHBORS",      Function("GRAPH_COMMON_NEIGHBORS",      "AQL_GRAPH_COMMON_NEIGHBORS", "s,als,als|a,a", false, false, true, false, false) },
   { "GRAPH_COMMON_PROPERTIES",     Function("GRAPH_COMMON_PROPERTIES",     "AQL_GRAPH_COMMON_PROPERTIES", "s,als,als|a", false, false, true, false, false) },
