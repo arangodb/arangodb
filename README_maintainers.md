@@ -309,6 +309,29 @@ make unittest
 
 js/common/modules/loadtestrunner.js
 
+Windows debugging
+-----------------
+-----------------
+For the average *nix user windows debugging has some awkward methods.
+
+Coredump generation
+-------------------
+Coredumps can be created using the task manager; switch it to detail view, the context menu offers to *create dump file*; the generated file ends in a directory that explorer hides from you - AppData - you have to type that in the location bar. This however only for running processes which is not as usefull as having dumps of crashing processes. While its a common feature to turn on coredumps with the system facilities on *nix systems, its not as easy in windows. You need an external program [from the Sysinternals package: ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx). First look up the PID of arangod, you can finde it in the brackets in its logfile. Then call it like this:
+
+    procdump -accepteula -e -ma < PID of arangod >
+
+It will keep on running and monitor arangod until eventually a crash happenes. You will then get a core dump if an incident occurs or *Dump count not reached.* if nothing happened, *Dump count reached.* if a dump was written - the filename will be printed above.
+
+Debugging symbols
+-----------------
+Releases are supported by a public symbol server so you will be able to debug cores.
+Releases starting with 2.5.6, 2.6.3 onwards are supported.
+Either [WinDbg](http://go.microsoft.com/fwlink/p/?linkid=84137) or Visual studio support setting the symbol path
+via the environment variable or in the menu. Given we want to store the symbols on *e:\symbol_cach* we add the arangodb symbolserver like this:
+
+    set _NT_SYMBOL_PATH=cache*e:\symbol_cache\cache;srv*e:\symbol_cache\arango*https://www.arangodb.com/repositories/symsrv/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
+
+You then will be able to see stack traces.
 
 Documentation
 -------------
