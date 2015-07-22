@@ -255,7 +255,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
   *res = *static_cast<ClusterCommResult*>(op);
 
   {
-    CONDITION_LOCKER(guard, somethingToSend);
+    CONDITION_LOCKER(locker, somethingToSend);
     toSend.push_back(op);
     TRI_ASSERT(nullptr != op);
     list<ClusterCommOperation*>::iterator i = toSend.end();
@@ -463,7 +463,7 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
 
   // First look into the send queue:
   {
-    CONDITION_LOCKER(guard, somethingToSend);
+    CONDITION_LOCKER(locker, somethingToSend);
 
     i = toSendByOpID.find(operationID);
     if (i != toSendByOpID.end()) {
@@ -483,7 +483,7 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
 
   // If the above did not give anything, look into the receive queue:
   {
-    CONDITION_LOCKER(guard, somethingReceived);
+    CONDITION_LOCKER(locker, somethingReceived);
 
     i = receivedByOpID.find(operationID);
     if (i != receivedByOpID.end()) {
@@ -544,13 +544,13 @@ ClusterCommResult* ClusterComm::wait (
 
   if (0 != operationID) {
     // In this case we only have to look into at most one operation.
-    CONDITION_LOCKER(guard, somethingReceived);
+    CONDITION_LOCKER(locker, somethingReceived);
 
     while (true) {   // will be left by return or break on timeout
       i = receivedByOpID.find(operationID);
       if (i == receivedByOpID.end()) {
         // It could be that the operation is still in the send queue:
-        CONDITION_LOCKER(guard, somethingToSend);
+        CONDITION_LOCKER(sendLocker, somethingToSend);
 
         i = toSendByOpID.find(operationID);
         if (i == toSendByOpID.end()) {
@@ -621,7 +621,7 @@ ClusterCommResult* ClusterComm::wait (
       }
       // If we found nothing, we have to look through the send queue:
       if (! found) {
-        CONDITION_LOCKER(sendLocker, somethingReceived);
+        CONDITION_LOCKER(sendLocker, somethingToSend);
 
         for (q = toSend.begin(); q != toSend.end(); q++) {
           op = *q;
@@ -921,8 +921,8 @@ string ClusterComm::processAnswer (string& coordinatorHeader,
 bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   LOG_DEBUG("In moveFromSendToReceived %llu", (unsigned long long) operationID);
 
-  CONDITION_LOCKER(guard1, somethingReceived);
-  CONDITION_LOCKER(guard2, somethingToSend);
+  CONDITION_LOCKER(locker, somethingReceived);
+  CONDITION_LOCKER(sendLocker, somethingToSend);
 
   IndexIterator i = toSendByOpID.find(operationID);   // cannot fail
   TRI_ASSERT(i != toSendByOpID.end());
@@ -956,7 +956,7 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
 void ClusterComm::cleanupAllQueues() {
   QueueIterator i;
   {
-    CONDITION_LOCKER(guard, somethingToSend);
+    CONDITION_LOCKER(locker, somethingToSend);
 
     for (auto& it : toSend) {
       delete it;
@@ -966,7 +966,7 @@ void ClusterComm::cleanupAllQueues() {
   }
 
   {
-    CONDITION_LOCKER(guard, somethingReceived);
+    CONDITION_LOCKER(locker, somethingReceived);
 
     for (auto& it : received) {
       delete it;
@@ -1029,7 +1029,7 @@ void ClusterCommThread::run () {
       }
 
       {
-        CONDITION_LOCKER(guard, cc->somethingToSend);
+        CONDITION_LOCKER(locker, cc->somethingToSend);
 
         if (cc->toSend.empty()) {
           break;
@@ -1149,7 +1149,7 @@ void ClusterCommThread::run () {
 
     {
       double currentTime = TRI_microtime();
-      CONDITION_LOCKER(guard, cc->somethingReceived);
+      CONDITION_LOCKER(locker, cc->somethingReceived);
 
       ClusterComm::QueueIterator q;
       for (q = cc->received.begin(); q != cc->received.end(); ++q) {
@@ -1165,8 +1165,8 @@ void ClusterCommThread::run () {
     // Finally, wait for some time or until something happens using
     // the condition variable:
     {
-      CONDITION_LOCKER(guard, cc->somethingToSend);
-      guard.wait(100000);
+      CONDITION_LOCKER(locker, cc->somethingToSend);
+      locker.wait(100000);
     }
   }
 
