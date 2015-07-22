@@ -1264,9 +1264,43 @@ bool AstNode::isSimple () const {
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
 
-    if (func->implementation == nullptr || ! getMember(0)->isSimple()) {
+    if (func->implementation == nullptr) {
+      // no C++ handler available for function
       setFlag(DETERMINED_SIMPLE);
       return false;
+    }
+
+    TRI_ASSERT(func->implementation != nullptr);
+
+    TRI_ASSERT(numMembers() == 1);
+
+    // check if there is a C++ function handler condition
+    if (func->condition != nullptr && ! func->condition()) {
+      // function execution condition is false
+      setFlag(DETERMINED_SIMPLE);
+      return false;
+    }
+    
+    // check simplicity of function arguments
+    auto args = getMember(0);
+    size_t const n = args->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = args->getMemberUnchecked(i);
+      auto conversion = func->getArgumentConversion(i);
+
+      if (member->type == NODE_TYPE_COLLECTION &&
+          (conversion == Function::CONVERSION_REQUIRED || conversion == Function::CONVERSION_OPTIONAL)) {
+        // collection attribute: no need to check for member simplicity
+        continue;
+      }
+      else {
+        // check for member simplicity the usual way
+        if (! member->isSimple()) {
+          setFlag(DETERMINED_SIMPLE);
+          return false;
+        }
+      }
     }
 
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);

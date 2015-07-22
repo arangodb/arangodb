@@ -34,6 +34,7 @@
 #include "Aql/Variable.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 
@@ -42,6 +43,14 @@ using namespace triagens::aql;
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static initialization
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if code is executed in cluster or not
+////////////////////////////////////////////////////////////////////////////////
+
+static ExecutionCondition const NotInCluster = [] {
+  return ! triagens::arango::ServerState::instance()->isRunningInCluster();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal functions used in execution
