@@ -45,7 +45,9 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   public typedefs
 // -----------------------------------------------------------------------------
-
+    
+    typedef std::function<bool()> ExecutionCondition;
+    
     typedef std::vector<std::pair<AqlValue, TRI_document_collection_t const*>> FunctionParameters;
 
     typedef std::function<AqlValue(triagens::aql::Query*,
