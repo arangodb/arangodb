@@ -137,8 +137,10 @@ static size_t ProcessAllRequestStatistics () {
   size_t count = 0;
 
   while (RequestFinishedList.pop(statistics)) {
-    ProcessRequestStatistics(statistics);
-    ++count;
+    if (statistics != nullptr) {
+      ProcessRequestStatistics(statistics);
+      ++count;
+    }
   }
 
   return count;
