@@ -1631,22 +1631,29 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   Json vertexInfo = ExtractFunctionParameter(trx, parameters, 2, false);
   if (vertexInfo.isString()) {
     std::string vertexId = basics::JsonHelper::getStringValue(vertexInfo.json(), "");
-    
-    // TODO tmp can be replaced by Traversal::IdStringToVertexId
-    size_t split;
-    char const* str = vertexId.c_str();
+    if (vertexId.find("/") != std::string::npos) {
+      
+      // TODO tmp can be replaced by Traversal::IdStringToVertexId
+      size_t split;
+      char const* str = vertexId.c_str();
 
-    if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-      throw TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-    }
+      if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+        throw TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+      }
 
-    std::string const collectionName = vertexId.substr(0, split);
-    auto coli = resolver->getCollectionStruct(collectionName);
-    if (coli == nullptr) {
-      throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      std::string const collectionName = vertexId.substr(0, split);
+      auto coli = resolver->getCollectionStruct(collectionName);
+      if (coli == nullptr) {
+        throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      }
+      VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
+      opts.start = v;
     }
-    VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
-    opts.start = v;
+    else {
+      std::string vColName = basics::JsonHelper::getStringValue(vertexCol.json(), "");
+      VertexId v(resolver->getCollectionId(vColName), vertexId.c_str());
+      opts.start = v;
+    }
   }
   else {
     // TODO FIXME
