@@ -1629,8 +1629,9 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   std::string eColName = basics::JsonHelper::getStringValue(edgeCol.json(), "");
 
   Json vertexInfo = ExtractFunctionParameter(trx, parameters, 2, false);
+  std::string vertexId;
   if (vertexInfo.isString()) {
-    std::string vertexId = basics::JsonHelper::getStringValue(vertexInfo.json(), "");
+    vertexId = basics::JsonHelper::getStringValue(vertexInfo.json(), "");
     if (vertexId.find("/") != std::string::npos) {
       
       // TODO tmp can be replaced by Traversal::IdStringToVertexId
