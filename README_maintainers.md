@@ -331,11 +331,6 @@ via the environment variable or in the menu. Given we want to store the symbols 
 
     set _NT_SYMBOL_PATH=cache*e:\symbol_cache\cache;srv*e:\symbol_cache\arango*https://www.arangodb.com/repositories/symsrv/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
 
-
-_NT_SYMBOL_PATH='CACHE*e:\symbol_cache;SRV*http://germany/symsrv/*http://msdl.microsoft.com/download/symbols'
-_NT_SYMBOL_PATH=SRV*C:\dev\symbols*http://msdl.microsoft.com/download/symbols;\\foo\build1234
-_NT_SYMBOL_PATH=cache*C:\dev\symbols;SRV*C:\dev\symbols*http://msdl.microsoft.com/download/symbols;\\foo\build1234
-
 You then will be able to see stack traces.
 
 Documentation
