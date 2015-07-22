@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Functions.h"
+#include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/fpconv.h"
@@ -1171,7 +1172,7 @@ AqlValue Functions::Unique (triagens::aql::Query* query,
                             triagens::arango::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   if (parameters.size() != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE", (int) 1, (int) 1);
   }
 
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
@@ -1228,7 +1229,7 @@ AqlValue Functions::Union (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION", (int) 2, (int) Function::MaxArguments);
   }
 
   std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 16));
@@ -1288,7 +1289,7 @@ AqlValue Functions::UnionDistinct (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION_DISTINCT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION_DISTINCT", (int) 2, (int) Function::MaxArguments);
   }
 
   std::unordered_set<TRI_json_t*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
@@ -1378,7 +1379,7 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "INTERSECTION");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "INTERSECTION", (int) 2, (int) Function::MaxArguments);
   }
 
   std::unordered_map<TRI_json_t*, size_t, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
