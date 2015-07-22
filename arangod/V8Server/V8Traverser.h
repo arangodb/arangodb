@@ -368,7 +368,6 @@ std::unique_ptr<ArangoDBConstDistancePathFinder::Path> TRI_RunSimpleShortestPath
 
 void TRI_RunNeighborsSearch (std::vector<EdgeCollectionInfo*>& collectionInfos,
                              triagens::basics::traverser::NeighborsOptions& opts,
-                             std::unordered_set<VertexId>& distinct,
-                             std::vector<VertexId>& result);
+                             std::unordered_set<VertexId>& distinct);
 
 #endif
