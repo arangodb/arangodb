@@ -173,7 +173,8 @@ namespace triagens {
 
           void addEdgeFilter (Json const& example,
                               TRI_shaper_t* shaper,
-                              TRI_voc_cid_t const& cid);
+                              TRI_voc_cid_t const& cid,
+                              triagens::arango::CollectionNameResolver const* resolver);
 
           void addVertexFilter (v8::Isolate* isolate,
                                 v8::Handle<v8::Value> const& example,

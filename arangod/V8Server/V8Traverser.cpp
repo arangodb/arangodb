@@ -315,11 +315,12 @@ void BasicOptions::addEdgeFilter (v8::Isolate* isolate,
 
 void BasicOptions::addEdgeFilter (Json const& example,
                                   TRI_shaper_t* shaper,
-                                  TRI_voc_cid_t const& cid) {
+                                  TRI_voc_cid_t const& cid,
+                                  CollectionNameResolver const* resolver) {
   useEdgeFilter = true;
   auto it = _edgeFilter.find(cid);
   if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid, new ExampleMatcher(example.json(), shaper));
+    _edgeFilter.emplace(cid, new ExampleMatcher(example.json(), shaper, resolver));
   }
 }
 
