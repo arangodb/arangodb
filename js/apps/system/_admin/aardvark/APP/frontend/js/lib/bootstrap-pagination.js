@@ -30,8 +30,20 @@
       li = $('<li/>').append(a);
       if (enable) {
         a.click(function () { options.click(page); });
+        $('.arango-pagination').next().children().first().removeClass('disabledPag');
+        $('.arango-pagination').prev().children().first().removeClass('disabledPag');
       } else {
         li.addClass('disabledPag');
+
+        setTimeout(function(){
+          if ($(li).find('i').hasClass('fa-angle-right')) {
+            $('.arango-pagination').next().children().first().addClass('disabledPag');
+          }
+          else if ($(li).find('i').hasClass('fa-angle-left')) {
+            $('.arango-pagination').prev().children().first().addClass('disabledPag');
+          }
+        }, 50);
+
       }
       a.click(stopPropagation);
       if (page === options.page) { li.addClass('active active-arango-pagination-button'); }
