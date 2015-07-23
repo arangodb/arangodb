@@ -6226,7 +6226,8 @@ input.gv-radio-button {
     font-size: 13px; } }
 
 .document-info-div {
-  margin-top: 20px; }
+  margin-top: 20px;
+  min-height: 0; }
 
 .document-info {
   background-color: #fff;
