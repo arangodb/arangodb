@@ -135,13 +135,18 @@ int DispatcherQueue::addJob (Job* job) {
 
   // wake up the _dispatcher queue threads - only if someone is waiting
   if (0 < _nrWaiting) {
-    CONDITION_LOCKER(guard, _waitLock);
-    guard.signal();
+    //CONDITION_LOCKER(guard, _waitLock);
+    //guard.signal();
+    _waitLock.signal();
   }
 
   // if all threads are blocked, start a new one - we ignore race conditions
-  else if (_nrRunning <= min(_nrThreads - 1, (size_t) _nrBlocked.load())) {
-    startQueueThread();
+  else {
+    size_t nrRunning = _nrRunning;
+    if (nrRunning <= _nrThreads - 1 ||
+        nrRunning <= (size_t) _nrBlocked.load()) {
+      startQueueThread();
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
