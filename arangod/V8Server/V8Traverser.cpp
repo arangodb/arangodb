@@ -293,6 +293,7 @@ void BasicOptions::addEdgeFilter (v8::Isolate* isolate,
                                   TRI_shaper_t* shaper,
                                   TRI_voc_cid_t const& cid,
                                   string& errorMessage) {
+  useEdgeFilter = true;
   auto it = _edgeFilter.find(cid);
 
   if (example->IsArray()) {
@@ -305,6 +306,20 @@ void BasicOptions::addEdgeFilter (v8::Isolate* isolate,
     if (it == _edgeFilter.end()) {
       _edgeFilter.emplace(cid, new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example), shaper, errorMessage));
     }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a new edge matcher object
+////////////////////////////////////////////////////////////////////////////////
+
+void BasicOptions::addEdgeFilter (Json const& example,
+                                  TRI_shaper_t* shaper,
+                                  TRI_voc_cid_t const& cid) {
+  useEdgeFilter = true;
+  auto it = _edgeFilter.find(cid);
+  if (it == _edgeFilter.end()) {
+    _edgeFilter.emplace(cid, new ExampleMatcher(example.json(), shaper));
   }
 }
 

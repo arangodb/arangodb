@@ -76,6 +76,9 @@ namespace triagens {
       TRI_shaper_t* _shaper;
       std::vector<ExampleDefinition> definitions;
 
+      void fillExampleDefinition (TRI_json_t const* example,
+                                  ExampleDefinition& def);
+
       void fillExampleDefinition (v8::Isolate* isolate,
                                   v8::Handle<v8::Object> const& example,
                                   v8::Handle<v8::Array> const& names,
@@ -95,7 +98,7 @@ namespace triagens {
                         TRI_shaper_t* shaper,
                         std::string& errorMessage);
 
-        ExampleMatcher (TRI_json_t* example,
+        ExampleMatcher (TRI_json_t const* example,
                         TRI_shaper_t* shaper);
 
         ~ExampleMatcher () {
