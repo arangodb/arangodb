@@ -955,13 +955,26 @@ object_elements_list:
   ;
 
 object_element: 
-    object_element_name T_COLON expression {
+    T_STRING {
+      // attribute-name-only (comparable to JS enhanced object literals, e.g. { foo, bar })
+      auto ast = parser->ast();
+      auto variable = ast->scopes()->getVariable($1);
+      
+      if (variable == nullptr) {
+        // variable does not exist
+        parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "use of unknown variable '%s' in object literal", $1, yylloc.first_line, yylloc.first_column);
+      }
+
+      // create a reference to the variable
+      auto node = ast->createNodeReference(variable);
+      parser->pushObjectElement($1, node);
+    }
+  | object_element_name T_COLON expression {
+      // attribute-name : attribute-value
       parser->pushObjectElement($1, $3);
     }
-  | T_ARRAY_OPEN expression T_ARRAY_CLOSE T_COLON expression {
-      parser->pushObjectElement($2, $5);
-    }
   | T_PARAMETER T_COLON expression {
+      // bind-parameter : attribute-value
       if ($1 == nullptr) {
         ABORT_OOM
       }
@@ -972,6 +985,10 @@ object_element:
 
       auto param = parser->ast()->createNodeParameter($1);
       parser->pushObjectElement(param, $3);
+    }
+  | T_ARRAY_OPEN expression T_ARRAY_CLOSE T_COLON expression {
+      // [ attribute-name-expression ] : attribute-value
+      parser->pushObjectElement($2, $5);
     }
   ;
 

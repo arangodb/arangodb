@@ -628,6 +628,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-refaccess-attribute.js \
 			@top_srcdir@/js/server/tests/aql-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/aql-relational.js \
+			@top_srcdir@/js/server/tests/aql-simple-attributes.js \
 			@top_srcdir@/js/server/tests/aql-skiplist-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-subquery.js \
 			@top_srcdir@/js/server/tests/aql-ternary.js \
