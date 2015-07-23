@@ -137,19 +137,12 @@ int DispatcherQueue::addJob (Job* job) {
 
   // wake up the _dispatcher queue threads - only if someone is waiting
   if (0 < _nrWaiting) {
-    //CONDITION_LOCKER(guard, _waitLock);
-    //guard.signal();
     _waitLock.signal();
   }
 
   // if all threads are blocked, start a new one - we ignore race conditions
-  else {
-    size_t nrRunning = _nrRunning;
-
-    if (nrRunning <= _nrThreads - 1 ||
-        nrRunning <= (size_t) _nrBlocked.load()) {
-      startQueueThread();
-    }
+  else if (notEnoughThreads()) {
+    startQueueThread();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -377,8 +370,6 @@ void DispatcherQueue::shutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherQueue::startQueueThread () {
-  ++_nrRunning;
-
   DispatcherThread * thread = (*createDispatcherThread)(this);
 
   if (! _affinityCores.empty()) {
@@ -397,10 +388,18 @@ void DispatcherQueue::startQueueThread () {
 
   {
     MUTEX_LOCKER(_threadsLock);
-    _startedThreads.insert(thread);
-  }
 
-  deleteOldThreads();
+    size_t nrRunning = _nrRunning;
+
+    if (! notEnoughThreads()) {
+      delete thread;
+      return;
+    }
+
+    _startedThreads.insert(thread);
+
+    ++_nrRunning;
+  }
 
   bool ok = thread->start();
 
@@ -410,6 +409,8 @@ void DispatcherQueue::startQueueThread () {
   else {
     _lastChanged = TRI_microtime();
   }
+
+  deleteOldThreads();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -428,7 +429,7 @@ void DispatcherQueue::removeStartedThread (DispatcherThread* thread) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if we have enough threads
+/// @brief checks if we have too many threads
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::tooManyThreads () {
@@ -444,6 +445,16 @@ bool DispatcherQueue::tooManyThreads () {
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if we have enough threads
+////////////////////////////////////////////////////////////////////////////////
+
+bool DispatcherQueue::notEnoughThreads () {
+  size_t nrRunning = _nrRunning;
+
+  return nrRunning <= _nrThreads - 1 || nrRunning <= (size_t) _nrBlocked.load();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
