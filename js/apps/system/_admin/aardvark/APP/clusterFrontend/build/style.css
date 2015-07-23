@@ -2003,6 +2003,10 @@ a.tab {
   a.tab.userImg {
     padding-bottom: 5px; }
 
+.dropdown-item a {
+  border-bottom: 0 !important;
+  font-weight: 300; }
+
 ul.script-dropdown-menu li.dropdown-item {
   margin-left: 0; }
   ul.script-dropdown-menu li.dropdown-item a {
@@ -2402,7 +2406,7 @@ a.button-gui {
   background-color: #fff;
   border-top: 1px solid #c2c2c2;
   height: 30px;
-  padding: 5px; }
+  padding: 10px; }
 
 div.tileList {
   margin-left: -6px;

@@ -39,9 +39,9 @@
     &.active a {
       background: $c-tab-active;
       border-bottom-color: $c-tab-active !important; /* <-- is important */
-      border-left-color: $c-tab-border;
-      border-right-color: $c-tab-border;
-      border-top-color: $c-tab-border;
+      border-left-color: $c-c2grey;
+      border-right-color: $c-c2grey;
+      border-top-color: $c-c2grey;
       height: 21px;
       margin-top: -1px;
     }

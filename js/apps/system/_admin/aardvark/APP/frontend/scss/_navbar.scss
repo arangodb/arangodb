@@ -141,6 +141,13 @@ a.tab {
   }
 }
 
+.dropdown-item {
+  a {
+    border-bottom: 0 !important;
+    font-weight: 300;
+  }
+}
+
 ul.link-dropdown-menu {
   @extend %dropdown-menu;
 }

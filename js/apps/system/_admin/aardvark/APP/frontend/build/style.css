@@ -1989,6 +1989,10 @@ a.tab {
   a.tab.userImg {
     padding-bottom: 5px; }
 
+.dropdown-item a {
+  border-bottom: 0 !important;
+  font-weight: 300; }
+
 ul.script-dropdown-menu li.dropdown-item {
   margin-left: 0; }
   ul.script-dropdown-menu li.dropdown-item a {
@@ -2388,7 +2392,7 @@ a.button-gui {
   background-color: #fff;
   border-top: 1px solid #c2c2c2;
   height: 30px;
-  padding: 5px; }
+  padding: 10px; }
 
 div.tileList {
   margin-left: -6px;
@@ -5345,6 +5349,20 @@ toolbar {
   padding: 5px;
   border-top: 1px solid #c2c2c2; }
 
+#queryManagementContent {
+  margin-top: 18px; }
+
+.queryManagementBottomActions {
+  margin-top: -2px;
+  border-top: 1px solid #c2c2c2;
+  height: 40px;
+  padding-top: 10px;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  background-color: white; }
+  .queryManagementBottomActions button {
+    margin-right: 10px; }
+
 .editor-toolbar {
   border-color: #a0a0a0;
   margin-top: 3px; }
@@ -5599,6 +5617,7 @@ svg.explain-tree {
   margin-top: 0; }
 
 .innerContent {
+  min-height: 200px;
   background-color: #fff;
   border-radius: 4px;
   padding-top: 13px; }
@@ -5642,9 +5661,9 @@ svg.explain-tree {
       background: #fff;
       border-bottom-color: #fff !important;
       /* <-- is important */
-      border-left-color: #888;
-      border-right-color: #888;
-      border-top-color: #888;
+      border-left-color: #c2c2c2;
+      border-right-color: #c2c2c2;
+      border-top-color: #c2c2c2;
       height: 21px;
       margin-top: -1px; }
 
@@ -5696,8 +5715,13 @@ svg.explain-tree {
 
 .pagination-line {
   margin: 20px 0;
-  padding-top: 10px;
-  text-align: center; }
+  padding-top: 12px;
+  text-align: center;
+  margin-top: 0;
+  border-top: 1px solid grey;
+  background-color: white;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px; }
   .pagination-line li a:hover, .pagination-line li.active a, .pagination-line li.active span {
     background-color: #8f8d8c;
     color: #fff; }
@@ -5830,6 +5854,10 @@ svg.explain-tree {
 .query-output .ace_gutter-cell {
   background-color: #f0f0f0; }
 
+.swagger-ui-wrap {
+  background-color: #fff;
+  border-radius: 4px; }
+
 .swagger-ui-wrap #resources li.resource {
   background-color: #f4f3f3; }
 
@@ -5902,6 +5930,7 @@ textarea, .alert {
   word-wrap: break-word; }
 
 .log-content-id {
+  margin-top: 20px;
   padding-bottom: 0 !important; }
   .log-content-id .dataTable {
     border-collapse: separate;
@@ -6690,7 +6719,7 @@ input.gv-radio-button {
   width: 30%; }
 
 .arango-table {
-  border-top: 1px solid #000;
+  border-top: 1px solid #c2c2c2;
   width: 100%; }
   .arango-table thead {
     background-color: #fff; }
@@ -6712,12 +6741,18 @@ input.gv-radio-button {
     border: 0;
     float: right;
     height: 27px;
-    width: 82px; }
+    width: 82px;
+    margin-right: 5px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px; }
+  .arango-tabbar button:first-child {
+    margin-right: 10px; }
   .arango-tabbar .arango-active-tab {
-    background-color: rgba(222, 233, 207, 0.8);
-    border-left: 1px solid #000;
-    border-right: 1px solid #000;
-    border-top: 1px solid #000; }
+    background-color: #fff;
+    border-left: 1px solid #c2c2c2;
+    border-right: 1px solid #c2c2c2;
+    border-top: 1px solid #c2c2c2;
+    border-bottom: 1px solid #fff; }
 
 .arangoDataTable {
   border-spacing: 0 0;
@@ -6790,7 +6825,7 @@ input.gv-radio-button {
   color: #666;
   font-weight: 100;
   float: left;
-  margin-top: -58px !important;
+  margin-top: -56px !important;
   padding-left: 10px; }
 
 .prettify {
@@ -6904,11 +6939,6 @@ table .sorting {
 
 .totalDocuments:hover {
   color: #000; }
-
-#documentsToolbarFL {
-  border-top: 1px solid #c2c2c2; }
-  #documentsToolbarFL #documentsToolbarF {
-    margin-top: 5px; }
 
 .ajax-file-upload-statusbar {
   -moz-border-radius: 2px;
