@@ -124,8 +124,12 @@ static void ProcessRequestStatistics (TRI_request_statistics_t* statistics) {
   statistics->_requestType = triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL;
 
   // put statistics item back onto the freelist
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   bool ok = RequestFreeList.push(statistics);
   TRI_ASSERT(ok);
+#else
+  RequestFreeList.push(statistics);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,8 +141,10 @@ static size_t ProcessAllRequestStatistics () {
   size_t count = 0;
 
   while (RequestFinishedList.pop(statistics)) {
-    ProcessRequestStatistics(statistics);
-    ++count;
+    if (statistics != nullptr) {
+      ProcessRequestStatistics(statistics);
+      ++count;
+    }
   }
 
   return count;
@@ -172,8 +178,12 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
   }
  
   if (! statistics->_ignore) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
     bool ok = RequestFinishedList.push(statistics);
     TRI_ASSERT(ok);
+#else
+    RequestFinishedList.push(statistics);
+#endif
   }
 }
 
@@ -262,8 +272,12 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
   memset(statistics, 0, sizeof(TRI_connection_statistics_t));
 
   // put statistics item back onto the freelist
+#ifdef TRI_ENABLE_MAINTAINER_MODE  
   bool ok = ConnectionFreeList.push(statistics);
   TRI_ASSERT(ok);
+#else
+  ConnectionFreeList.push(statistics);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -599,8 +613,12 @@ void TRI_InitialiseStatistics () {
 
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
     auto entry = new TRI_request_statistics_t;
+#ifdef TRI_ENABLE_MAINTAINER_MODE    
     bool ok = RequestFreeList.push(entry);
     TRI_ASSERT(ok);
+#else
+    RequestFreeList.push(entry);
+#endif    
   }
 
   // .............................................................................
@@ -609,8 +627,12 @@ void TRI_InitialiseStatistics () {
   
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
     auto entry = new TRI_connection_statistics_t;
+#ifdef TRI_ENABLE_MAINTAINER_MODE    
     bool ok = ConnectionFreeList.push(entry);
     TRI_ASSERT(ok);
+#else
+    ConnectionFreeList.push(entry);
+#endif
   }
 
   // .............................................................................
@@ -627,8 +649,12 @@ void TRI_InitialiseStatistics () {
 
 void TRI_ShutdownStatistics (void) {
   Shutdown = true;
+#ifdef TRI_ENABLE_MAINTAINER_MODE    
   int res = TRI_JoinThread(&StatisticsThread);
   TRI_ASSERT(res == 0);
+#else
+  TRI_JoinThread(&StatisticsThread);
+#endif
 }
 
 // -----------------------------------------------------------------------------

@@ -146,14 +146,18 @@
 
     loadCollection: function () {
       var self = this;
+      window.progressView.showWithDelay(500, "Loading collection...");
       $.ajax({
-        async: false,
+        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
         success: function () {
           self.set("status", "loaded");
-          arangoHelper.arangoNotification('Collection loaded');
+          if (window.location.hash === "#collections") {
+            window.App.collectionsView.render();
+          }
+          window.progressView.hide();
         },
         error: function () {
           arangoHelper.arangoError('Collection error');
@@ -163,14 +167,18 @@
 
     unloadCollection: function () {
       var self = this;
+      window.progressView.showWithDelay(500, "Unloading collection...");
       $.ajax({
-        async:false,
+        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/unload",
         success: function () {
           self.set("status", "unloaded");
-          arangoHelper.arangoNotification('Collection unloaded');
+          if (window.location.hash === "#collections") {
+            window.App.collectionsView.render();
+          }
+          window.progressView.hide();
         },
         error: function () {
           arangoHelper.arangoError('Collection error');

@@ -672,8 +672,15 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     try { 
       for (size_t i = 0; i < n; ++i) {
         TRI_document_collection_t const* myCollection = nullptr;
-        auto value = executeSimpleExpression(member->getMemberUnchecked(i), &myCollection, trx, argv, startPos, vars, regs, false);
-        parameters.emplace_back(std::make_pair(value, myCollection));
+        auto arg = member->getMemberUnchecked(i);
+        if (arg->type == NODE_TYPE_COLLECTION) {
+          char const* collectionName = arg->getStringValue();
+          parameters.emplace_back(std::make_pair(AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, collectionName, strlen(collectionName))), nullptr));
+        }
+        else {
+          auto value = executeSimpleExpression(arg, &myCollection, trx, argv, startPos, vars, regs, false);
+          parameters.emplace_back(std::make_pair(value, myCollection));
+        }
       }
 
       auto res2 = func->implementation(_ast->query(), trx, parameters);

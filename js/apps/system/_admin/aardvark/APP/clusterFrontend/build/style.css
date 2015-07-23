@@ -1842,12 +1842,13 @@ a.warning.coordinator, a.warning.dbserver {
     background-color: #3a322e; }
 
 .button-header, a.headerButton, a.button-gui {
-  background-color: #ddd;
-  border: 1px solid #222;
+  background-color: #fff;
+  border: 1px solid #fff;
   color: #555; }
   .button-header:hover, a.headerButton:hover, a.button-gui:hover, .button-header:focus, a.headerButton:focus, a.button-gui:focus {
-    background-color: #fff;
-    color: #000; }
+    border: 1px solid #8aa051;
+    background-color: #8aa051;
+    color: #fff; }
 
 .button-notification {
   background-color: #faa020; }
@@ -2153,9 +2154,9 @@ button.shutdown {
   padding: 3px 14px; }
 
 a.headerButton, a.button-gui {
-  -moz-border-radius: 3px;
-  -webkit-border-radius: 3px;
-  border-radius: 3px;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
@@ -2178,7 +2179,8 @@ a.headerButton {
     font-weight: bold; }
   a.headerButton.activated {
     background-color: #788f3d;
-    color: #fff; }
+    color: #fff;
+    border: 1px solid #788f3d; }
     a.headerButton.activated:hover {
       background-color: #fff;
       color: #788f3d; }
@@ -2360,9 +2362,9 @@ a.button-gui {
   padding-top: 10px;
   text-align: center; }
   .clusterDownBtn button {
-    -moz-border-radius: 3px;
-    -webkit-border-radius: 3px;
-    border-radius: 3px;
+    -moz-border-radius: 2px;
+    -webkit-border-radius: 2px;
+    border-radius: 2px;
     background-color: #f1f1f1;
     border: 1px solid rgba(0, 0, 0, 0.1875);
     color: #333;
@@ -4523,14 +4525,14 @@ span.gv_caret {
   margin-top: 2px !important; }
 
 input.search-input {
-  -moz-border-radius: 0;
-  -webkit-border-radius: 0;
-  border-radius: 0;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
   border: 0;
   height: 18px;
   line-height: 18px;
   margin-top: 5px;
-  width: 214px; }
+  width: 115px; }
   input.search-input:focus {
     -webkit-box-shadow: 0 0 10px #8aa051;
     -moz-box-shadow: 0 0 10px #8aa051;
@@ -4540,6 +4542,14 @@ input.search-input {
 
 .search-field {
   margin-left: 15px; }
+  .search-field .fa-search {
+    color: #555;
+    margin-left: -25px;
+    font-size: 15pt;
+    opacity: 0.5; }
+    .search-field .fa-search:hover {
+      opacity: 1;
+      cursor: pointer; }
 
 .search-submit-icon, .gv-search-submit-icon {
   background-image: url('../img/enter_icon.png');
