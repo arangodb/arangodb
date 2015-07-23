@@ -131,8 +131,9 @@ int Dispatcher::addJob (Job* job) {
 
   // try to find a suitable queue
   size_t qnr = job->queue();
+  DispatcherQueue* queue;
 
-  if (qnr >= SIZE_QUEUE) {
+  if (qnr >= SIZE_QUEUE || (queue = _queues[qnr]) == nullptr) {
     LOG_WARNING("unknown queue '%lu'", (unsigned long) qnr);
     return TRI_ERROR_QUEUE_UNKNOWN;
   }
@@ -142,7 +143,7 @@ int Dispatcher::addJob (Job* job) {
   LOG_TRACE("added job %p to queue '%lu'", (void*) job, (unsigned long) qnr);
 
   // add the job to the list of ready jobs
-  return _queues[qnr]->addJob(job);
+  return queue->addJob(job);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,7 +154,11 @@ bool Dispatcher::cancelJob (uint64_t jobId) {
   bool done = false;
 
   for (size_t i = 0;  ! done && i < SIZE_QUEUE;  ++i) {
-    done = _queues[i]->cancelJob(jobId);
+    DispatcherQueue* queue = _queues[i];
+
+    if (queue != nullptr) {
+      done = queue->cancelJob(jobId);
+    }
   }
 
   return done;
@@ -173,7 +178,11 @@ void Dispatcher::beginShutdown () {
   _stopping = true;
 
   for (size_t i = 0;  i < SIZE_QUEUE;  ++i) {
-    _queues[i]->beginShutdown();
+    DispatcherQueue* queue = _queues[i];
+
+    if (queue != nullptr) {
+      queue->beginShutdown();
+    }
   }
 }
 
@@ -185,7 +194,11 @@ void Dispatcher::shutdown () {
   LOG_DEBUG("shutting down the dispatcher");
 
   for (size_t i = 0;  i < SIZE_QUEUE;  ++i) {
-    _queues[i]->shutdown();
+    DispatcherQueue* queue = _queues[i];
+
+    if (queue != nullptr) {
+      queue->shutdown();
+    }
   }
 }
 
@@ -197,14 +210,16 @@ void Dispatcher::reportStatus () {
 #ifdef TRI_ENABLE_LOGGER
 
   for (size_t i = 0;  i < SIZE_QUEUE;  ++i) {
-    DispatcherQueue* q = _queues[i];
+    DispatcherQueue* queue = _queues[i];
 
-    LOG_INFO("dispatcher queue '%lu': initial = %d, running = %d, waiting = %d, blocked = %d",
-             (unsigned long) i,
-             (int) q->_nrThreads,
-             (int) q->_nrRunning,
-             (int) q->_nrWaiting,
-             (int) q->_nrBlocked);
+    if (queue != nullptr) {
+      LOG_INFO("dispatcher queue '%lu': initial = %d, running = %d, waiting = %d, blocked = %d",
+               (unsigned long) i,
+               (int) queue->_nrThreads,
+               (int) queue->_nrRunning,
+               (int) queue->_nrWaiting,
+               (int) queue->_nrBlocked);
+    }
   }
 
 #endif
@@ -215,11 +230,13 @@ void Dispatcher::reportStatus () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::setProcessorAffinity (size_t id, std::vector<size_t> const& cores) {
-  if (id >= SIZE_QUEUE) {
+    DispatcherQueue* queue;
+
+    if (id >= SIZE_QUEUE || (queue = _queues[id]) == nullptr) {
     return;
   }
 
-  _queues[id]->setProcessorAffinity(cores);
+  queue->setProcessorAffinity(cores);
 }
 
 // -----------------------------------------------------------------------------
