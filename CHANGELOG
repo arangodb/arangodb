@@ -5,6 +5,18 @@ v2.7.0 (XXXX-XX-XX)
 
 * moved dispatcher to atmoic implementation
 
+* added shorthand notation for attribute names in AQL object literals:
+
+      LET name = "Peter"
+      LET age = 42
+      RETURN { name, age }
+
+  The above is the shorthand equivalent of the generic form
+      
+      LET name = "Peter"
+      LET age = 42
+      RETURN { name : name, age : age }
+
 * removed configure option `--enable-timings`
 
   This option did not have an effect.

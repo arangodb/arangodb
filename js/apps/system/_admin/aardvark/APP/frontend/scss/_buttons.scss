@@ -119,7 +119,7 @@ button.shutdown {
   @extend %clickable;
   @extend %header;
   @extend %pull-left;
-  @include border-radius(3px);
+  @include border-radius(2px);
   @include box-shadow(none);
 
   margin: {
@@ -155,6 +155,7 @@ a.headerButton {
   &.activated {
     background-color: $c-positive-hover;
     color: $c-white;
+    border: 1px solid $c-positive-hover;
 
     &:hover {
       background-color: $c-white;
@@ -406,7 +407,7 @@ a.button-gui {
 
   %cluster-button {
     @extend %clickable;
-    @include border-radius(3px);
+    @include border-radius(2px);
 
     background-color: $c-cluster-button-grey;
     border: 1px solid $c-cluster-button-grey-border;
