@@ -143,6 +143,13 @@ namespace triagens {
           h.ptr = nullptr;             // implicit memory_order_seq_cst
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exchange, call this to exchange the guarded pointer. The function
+/// can be slow and returns the old version. It is guaranteed that no reader
+/// is still reading the old version when this method returns, therefore it
+/// is safe to delete the pointer in that case.
+////////////////////////////////////////////////////////////////////////////////
+
         T const* exchange (T const* replacement) {
           std::lock_guard<std::mutex> lock(_mutex);
 
