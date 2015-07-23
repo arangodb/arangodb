@@ -88,8 +88,8 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const& queue () const override {
-          return triagens::rest::Dispatcher::AQL_QUEUE_NAME;
+        size_t queue () const override {
+          return triagens::rest::Dispatcher::AQL_QUEUE;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

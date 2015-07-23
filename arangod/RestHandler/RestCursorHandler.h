@@ -86,7 +86,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool cancel (bool running) override;
+        bool cancel () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods

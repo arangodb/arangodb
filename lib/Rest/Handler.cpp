@@ -29,14 +29,10 @@
 
 #include "Handler.h"
 
+#include "Dispatcher/Dispatcher.h"
+
 using namespace triagens::rest;
 using namespace std;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  static variables
-// -----------------------------------------------------------------------------
-  
-std::string const Handler::STANDARD_QUEUE{ "STANDARD" };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -65,8 +61,8 @@ Handler::~Handler () {
 /// @brief returns the queue name
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& Handler::queue () const {
-  return STANDARD_QUEUE;
+size_t Handler::queue () const {
+  return Dispatcher::STANDARD_QUEUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +91,7 @@ void Handler::finalizeExecute () {
 /// @brief tries to cancel an execution
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Handler::cancel (bool) {
+bool Handler::cancel () {
   return false;
 }
 

@@ -33,9 +33,6 @@ exports.register    = internal.registerTask;
 exports.unregister  = internal.unregisterTask;
 exports.get         = internal.getTask;
 
-exports.createNamedQueue = internal.createNamedQueue;
-exports.addJob           = internal.addJob;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

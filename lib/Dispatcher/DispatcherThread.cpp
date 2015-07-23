@@ -30,8 +30,8 @@
 
 #include "DispatcherThread.h"
 
+#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
 #include "Basics/logging.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
@@ -48,6 +48,17 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            thread local variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a global, but thread-local place to hold the current dispatcher
+/// thread. If we are not in a dispatcher thread this is set to nullptr.
+////////////////////////////////////////////////////////////////////////////////
+
+thread_local DispatcherThread* DispatcherThread::currentDispatcherThread = nullptr;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -57,8 +68,8 @@ using namespace triagens::rest;
 
 DispatcherThread::DispatcherThread (DispatcherQueue* queue)
   : Thread("dispat"+ 
-           (queue->name() == "STANDARD" 
-            ? std::string("_def")
+           (queue->_id == Dispatcher::STANDARD_QUEUE 
+            ? std::string("_std")
             : std::string("_aql"))),
     _queue(queue) {
 
@@ -74,216 +85,56 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::run () {
-
   currentDispatcherThread = this;
 
-  _queue->_accessQueue.lock();
+  // iterate until we are shutting down
+  while (! _queue->_stopping.load(memory_order_relaxed)) {
 
-  _queue->_nrStarted--;
-  _queue->_nrRunning++;
-  _queue->_nrUp++;
+    // drain the job queue
+    {
+      Job* job = nullptr;
+      bool worked = false;
 
-  _queue->_startedThreads.insert(this);
-
-  // iterate until we are shutting down.
-  while (_queue->_stopping == 0) {
-
-    // delete old jobs
-    for (list<DispatcherThread*>::iterator i = _queue->_stoppedThreads.begin();  i != _queue->_stoppedThreads.end();  ++i) {
-      delete *i;
-    }
-
-    _queue->_stoppedThreads.clear();
-    _queue->_nrStopped = 0;
-
-    // a job is waiting to execute
-    if (  ! _queue->_readyJobs.empty()) {
-
-      // try next job
-      Job* job = _queue->_readyJobs.front();
-      _queue->_readyJobs.pop_front();
-
-      // set running job
-      _queue->_runningJobs.insert(job);
-      LOG_DEBUG("Starting to run job: %s", job->getName().c_str());
-
-      // now release the queue lock (initialise is inside the lock, work outside)
-      _queue->_accessQueue.unlock();
-
-      // do the work (this might change the job type)
-      Job::status_t status(Job::JOB_FAILED);
-
-      try {
-        RequestStatisticsAgentSetQueueEnd(job);
-
-        // set current thread
-        job->setDispatcherThread(this);
-
-        // and do all the dirty work
-        status = job->work();
-      }
-      catch (Exception const& ex) {
-        try {
-          job->handleError(ex);
-        }
-        catch (Exception const& ex) {
-          LOG_WARNING("caught error while handling error: %s", ex.what());
-        }
-        catch (std::exception const& ex) {
-          LOG_WARNING("caught error while handling error: %s", ex.what());
-        }
-        catch (...) {
-          LOG_WARNING("caught error while handling error!");
-        }
-
-        status = Job::status_t(Job::JOB_FAILED);
-      }
-      catch (std::bad_alloc const& ex) {
-        try {
-          Exception ex2(TRI_ERROR_OUT_OF_MEMORY, string("job failed with unknown error in work(): ") + ex.what(), __FILE__, __LINE__);
-
-          job->handleError(ex2);
-          LOG_WARNING("caught exception in work(): %s", ex2.what());
-        }
-        catch (...) {
-          LOG_WARNING("caught error while handling error!");
-        }
-
-        status = Job::status_t(Job::JOB_FAILED);
-      }
-      catch (std::exception const& ex) {
-        try {
-          Exception ex2(TRI_ERROR_INTERNAL, string("job failed with unknown error in work(): ") + ex.what(), __FILE__, __LINE__);
-
-          job->handleError(ex2);
-          LOG_WARNING("caught exception in work(): %s", ex2.what());
-        }
-        catch (...) {
-          LOG_WARNING("caught error while handling error!");
-        }
-
-        status = Job::status_t(Job::JOB_FAILED);
-      }
-      catch (...) {
-#ifdef TRI_HAVE_POSIX_THREADS
-        if (_queue->_stopping != 0) {
-          LOG_WARNING("caught cancellation exception during work");
-          throw;
-        }
-#endif
-
-        try {
-          Exception ex(TRI_ERROR_INTERNAL, "job failed with unknown error in work()", __FILE__, __LINE__);
-
-          job->handleError(ex);
-          LOG_WARNING("caught unknown exception in work()");
-        }
-        catch (...) {
-          LOG_WARNING("caught error while handling error!");
-        }
-
-        status = Job::status_t(Job::JOB_FAILED);
-      }
-
-      // clear running job
-      _queue->_accessQueue.lock();
-      _queue->_runningJobs.erase(job);
-      _queue->_accessQueue.unlock();
-
-      // trigger GC
-      tick(false);
-
-      // detached jobs (status == JOB::DETACH) might be killed asynchronously by other means
-      // it is not safe to use detached jobs after job->work()
-
-      if (status.status == Job::JOB_DETACH) {
-        // we must do absolutely nothing with dispatched jobs here because they might be
-        // killed asynchronously and this is not under our control
-      }
-
-      // normal jobs
-      else {
-
-        // finish jobs
-        try {
-          job->setDispatcherThread(nullptr);
-
-          if (status.status == Job::JOB_DONE ||
-              status.status == Job::JOB_FAILED) {
-            job->cleanup();
-          }
-          else if (status.status == Job::JOB_REQUEUE) {
-            if (0.0 < status.sleep) {
-              _queue->_scheduler->registerTask(
-                new RequeueTask(_queue->_scheduler,
-                                _queue->_dispatcher,
-                                status.sleep,
-                                job));
-            }
-            else {
-              _queue->_dispatcher->addJob(job);
-            }
-          }
-        }
-        catch (...) {
-#ifdef TRI_HAVE_POSIX_THREADS
-          if (_queue->_stopping != 0) {
-            LOG_WARNING("caught cancellation exception during cleanup");
-            throw;
-          }
-#endif
-
-          LOG_WARNING("caught error while cleaning up!");
+      while (_queue->_readyJobs.pop(job)) {
+        if (job != nullptr) {
+          worked = true;
+          handleJob(job);
         }
       }
 
-      // require the lock
-      _queue->_accessQueue.lock();
+      // we need to check again if more work has arrived after we have
+      // aquired the lock. The lockfree queue and _nrWaiting are accessed
+      // using "memory_order_seq_cst", this guaranties that we do not
+      // miss a signal.
 
-      if (0 < _queue->_nrWaiting && ! _queue->_readyJobs.empty()) {
-        _queue->_accessQueue.broadcast();
+      if (! worked) {
+        ++_queue->_nrWaiting;
+
+        CONDITION_LOCKER(guard, _queue->_waitLock);
+
+        if (! _queue->_readyJobs.empty()) {
+          --_queue->_nrWaiting;
+          continue;
+        }
+
+        // wait at most 100ms
+        _queue->_waitLock.wait(100 * 1000);
+        --_queue->_nrWaiting;
       }
     }
-    else {
+      
 
-      // cleanup without holding a lock
-      _queue->_accessQueue.unlock();
-      tick(true);
-      _queue->_accessQueue.lock();
-
-      // there is a chance, that we created more threads than necessary
-      if (_queue->_nrThreads + _queue->_nrBlocked < _queue->_nrRunning + _queue->_nrStarted + _queue->_nrWaiting) {
-        double n = TRI_microtime();
-
-        if (_queue->_lastChanged + _queue->_gracePeriod < n) {
-          _queue->_lastChanged = n;
-          break;
-        }
-      }
-
-      // wait, if there are no jobs
-      if (_queue->_readyJobs.empty()) {
-        _queue->_nrRunning--;
-        _queue->_nrWaiting++;
-
-        _queue->_accessQueue.wait();
-
-        _queue->_nrWaiting--;
-        _queue->_nrRunning++;
-      }
+    // there is a chance, that we created more threads than necessary because
+    // we ignore race conditions for the statistic variables
+    if (_queue->tooManyThreads()) {
+      break;
     }
   }
 
-  _queue->_stoppedThreads.push_back(this);
-  _queue->_startedThreads.erase(this);
-
-  _queue->_nrRunning--;
-  _queue->_nrStopped++;
-  _queue->_nrUp--;
-
-  _queue->_accessQueue.unlock();
-
   LOG_TRACE("dispatcher thread has finished");
+
+  // this will delete the thread
+  _queue->removeStartedThread(this);
 }
 
 // -----------------------------------------------------------------------------
@@ -294,42 +145,137 @@ void DispatcherThread::run () {
 /// @brief indicates that thread is doing a blocking operation
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherThread::blockThread () {
-  _queue->blockThread(this);
+void DispatcherThread::block () {
+  _queue->blockThread();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates that thread has resumed work
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherThread::unblockThread () {
-  _queue->unblockThread(this);
+void DispatcherThread::unblock () {
+  _queue->unblockThread();
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief called to report the status of the thread
+/// @brief do the real work
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherThread::reportStatus () {
+void DispatcherThread::handleJob (Job* job) {
+
+  // set running job
+  LOG_DEBUG("starting to run job: %s", job->getName().c_str());
+
+  // do the work (this might change the job type)
+  Job::status_t status(Job::JOB_FAILED);
+
+  try {
+    RequestStatisticsAgentSetQueueEnd(job);
+
+    // set current thread
+    job->setDispatcherThread(this);
+
+    // and do all the dirty work
+    status = job->work();
+  }
+  catch (Exception const& ex) {
+    try {
+      job->handleError(ex);
+    }
+    catch (Exception const& ex) {
+      LOG_WARNING("caught error while handling error: %s", ex.what());
+    }
+    catch (std::exception const& ex) {
+      LOG_WARNING("caught error while handling error: %s", ex.what());
+    }
+    catch (...) {
+      LOG_WARNING("caught unknown error while handling error!");
+    }
+
+    status = Job::status_t(Job::JOB_FAILED);
+  }
+  catch (std::bad_alloc const& ex) {
+    try {
+      Exception ex2(TRI_ERROR_OUT_OF_MEMORY, string("job failed with bad_alloc: ") + ex.what(), __FILE__, __LINE__);
+
+      job->handleError(ex2);
+      LOG_WARNING("caught exception in work(): %s", ex2.what());
+    }
+    catch (...) {
+      LOG_WARNING("caught unknown error while handling error!");
+    }
+
+    status = Job::status_t(Job::JOB_FAILED);
+  }
+  catch (std::exception const& ex) {
+    try {
+      Exception ex2(TRI_ERROR_INTERNAL, string("job failed with error: ") + ex.what(), __FILE__, __LINE__);
+
+      job->handleError(ex2);
+      LOG_WARNING("caught exception in work(): %s", ex2.what());
+    }
+    catch (...) {
+      LOG_WARNING("caught unknown error while handling error!");
+    }
+
+    status = Job::status_t(Job::JOB_FAILED);
+  }
+  catch (...) {
+#ifdef TRI_HAVE_POSIX_THREADS
+    if (_queue->_stopping.load(memory_order_relaxed)) {
+      LOG_WARNING("caught cancellation exception during work");
+      throw;
+    }
+#endif
+
+    try {
+      Exception ex(TRI_ERROR_INTERNAL, "job failed with unknown error", __FILE__, __LINE__);
+
+      job->handleError(ex);
+      LOG_WARNING("caught unknown exception in work()");
+    }
+    catch (...) {
+      LOG_WARNING("caught unknown error while handling error!");
+    }
+
+    status = Job::status_t(Job::JOB_FAILED);
+  }
+
+  // finish jobs
+  try {
+    job->setDispatcherThread(nullptr);
+
+    if (status.status == Job::JOB_DONE || status.status == Job::JOB_FAILED) {
+      job->cleanup(_queue);
+    }
+    else if (status.status == Job::JOB_REQUEUE) {
+      if (0.0 < status.sleep) {
+        _queue->_scheduler->registerTask(
+          new RequeueTask(_queue->_scheduler,
+                          _queue->_dispatcher,
+                          status.sleep,
+                          job));
+      }
+      else {
+        _queue->_dispatcher->addJob(job);
+      }
+    }
+  }
+  catch (...) {
+#ifdef TRI_HAVE_POSIX_THREADS
+    if (_queue->_stopping.load(memory_order_relaxed)) {
+      LOG_WARNING("caught cancellation exception during cleanup");
+      throw;
+    }
+#endif
+
+    LOG_WARNING("caught error while cleaning up!");
+  }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief called in regular intervals
-////////////////////////////////////////////////////////////////////////////////
-
-void DispatcherThread::tick (bool) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a global, but thread-local place to hold the current dispatcher
-/// thread. If we are not in a dispatcher thread this is set to nullptr.
-////////////////////////////////////////////////////////////////////////////////
-
-thread_local DispatcherThread* DispatcherThread::currentDispatcherThread = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
