@@ -32,6 +32,7 @@
 
 #include "v8.h"
 #include "ShapedJson/json-shaper.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
@@ -77,6 +78,7 @@ namespace triagens {
       std::vector<ExampleDefinition> definitions;
 
       void fillExampleDefinition (TRI_json_t const* example,
+                                  triagens::arango::CollectionNameResolver const* resolver,
                                   ExampleDefinition& def);
 
       void fillExampleDefinition (v8::Isolate* isolate,
@@ -99,7 +101,8 @@ namespace triagens {
                         std::string& errorMessage);
 
         ExampleMatcher (TRI_json_t const* example,
-                        TRI_shaper_t* shaper);
+                        TRI_shaper_t* shaper,
+                        triagens::arango::CollectionNameResolver const* resolver);
 
         ~ExampleMatcher () {
           cleanup();

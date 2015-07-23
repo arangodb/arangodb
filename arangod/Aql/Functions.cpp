@@ -1748,7 +1748,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   if (n > 4) {
     auto edgeExamples = ExtractFunctionParameter(trx, parameters, 4, false);
     if (! (edgeExamples.isArray() && edgeExamples.size() == 0) ) {
-      opts.addEdgeFilter(edgeExamples, eci->getShaper(), eCid); 
+      opts.addEdgeFilter(edgeExamples, eci->getShaper(), eCid, resolver); 
     }
   }
 
