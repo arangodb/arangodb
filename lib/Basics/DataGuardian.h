@@ -80,11 +80,22 @@ namespace triagens {
           _P[_V].ptr = nullptr;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registerHazard, every thread that wants to read the guarded pointer
+/// has to create an instance of HazardPtr first and then register it with 
+/// this object. After use one has to unregisterHazard (see below) the
+/// structure again.
+////////////////////////////////////////////////////////////////////////////////
+
         void registerHazard (HazardPtr& h) {
           std::lock_guard<std::mutex> lock(_mutex);
           _H.push_back(&h);
           return;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregisterHazard
+////////////////////////////////////////////////////////////////////////////////
 
         void unregisterHazard (HazardPtr& h) {
           std::lock_guard<std::mutex> lock(_mutex);
@@ -95,6 +106,11 @@ namespace triagens {
             }
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lease, call this with your registered HazardPtr structure before
+/// using the pointer. It is safe to use this pointer until one calls unlease.
+////////////////////////////////////////////////////////////////////////////////
 
         T const* lease (HazardPtr& h) {
           int v;
@@ -117,6 +133,11 @@ namespace triagens {
           };
           return p;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlease, call this with your registered HazardPtr structure after 
+/// using the pointer.
+////////////////////////////////////////////////////////////////////////////////
 
         void unlease (HazardPtr& h) {
           h.ptr = nullptr;             // implicit memory_order_seq_cst
