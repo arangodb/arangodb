@@ -1755,10 +1755,10 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-medium:before {
   content: "\f23a"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
   float: left; }
 
-div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
+div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, .search-field, div.headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
   float: right; }
 
 div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .machineClass:after, .scenarioSingleMachine:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after {
@@ -1773,7 +1773,7 @@ ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerBut
   cursor: pointer; }
 
 nav.navbar, footer.footer {
-  background-color: #333232;
+  background-color: rgba(222, 233, 207, 0.8);
   color: #fff;
   left: 0;
   position: fixed;
@@ -1903,7 +1903,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dro
     height: 1px;
     margin: 10px 1px; }
   ul.link-dropdown-menu a, ul.user-dropdown-menu a, ul.script-dropdown-menu a, ul.gv-dropdown-menu a {
-    color: #333232;
+    color: #fff;
     padding: 0 20px; }
   ul.link-dropdown-menu:before, ul.user-dropdown-menu:before, ul.script-dropdown-menu:before, ul.gv-dropdown-menu:before {
     position: absolute;
@@ -1938,6 +1938,9 @@ nav.navbar {
   height: 38px;
   margin-bottom: 3px;
   top: 0; }
+  nav.navbar .arangodbLogo {
+    width: 32%;
+    height: auto; }
   nav.navbar .nav > .active > a {
     background-color: #8aa051;
     color: #fff;
@@ -1945,10 +1948,10 @@ nav.navbar {
     -moz-box-shadow: 0 0 0 transparent inset;
     box-shadow: 0 0 0 transparent inset; }
   nav.navbar .nav > li > a:focus {
-    background-color: #333232; }
+    background-color: #fff; }
   nav.navbar .nav > li > a:hover {
     background-color: #8aa051;
-    color: #fff; }
+    color: #686766; }
 
 div.navlogo {
   margin-left: 5px;
@@ -1960,9 +1963,6 @@ ul.navlist {
   ul.navlist li {
     margin-left: 1px; }
     ul.navlist li.navbar-spacer {
-      -webkit-box-shadow: 1px 0 0 #c8c8c8;
-      -moz-box-shadow: 1px 0 0 #c8c8c8;
-      box-shadow: 1px 0 0 #c8c8c8;
       background-color: #a0a0a0;
       height: 21px;
       margin-top: 9px;
@@ -1975,17 +1975,26 @@ ul.navlist {
         margin-right: 5px; }
       ul.navlist li.navbar-spacer:hover {
         background-color: #a0a0a0; }
+  ul.navlist li.active {
+    font-weight: bold; }
+    ul.navlist li.active .tab {
+      border-bottom: 2px solid #8aa051;
+      padding-bottom: 4px; }
   ul.navlist > li.active, ul.navlist li.dropdown-item:hover, ul.navlist > li:hover {
-    background-color: #8aa051; }
+    background-color: transparent; }
+    ul.navlist > li.active a, ul.navlist li.dropdown-item:hover a, ul.navlist > li:hover a {
+      color: #000; }
   ul.navlist li.dropdown-item {
     margin-left: 0; }
     ul.navlist li.dropdown-item a {
-      display: block; }
+      display: block;
+      border-bottom: 0; }
     ul.navlist li.dropdown-item a:hover {
-      color: #fff; }
+      color: #686766;
+      background-color: #dee9cf; }
 
 a.tab {
-  color: #fff;
+  color: #686766;
   display: block;
   padding-top: 9px;
   padding-left: 10px;
@@ -2012,7 +2021,7 @@ ul.gv-dropdown-menu {
   margin-right: -20px;
   margin-top: 6px; }
   ul.gv-dropdown-menu:after {
-    border-bottom-color: #333232; }
+    border-bottom-color: #fff; }
   ul.gv-dropdown-menu li:hover {
     background-color: #8aa051;
     background-image: none; }
@@ -2034,7 +2043,7 @@ ul.gv-dropdown-menu {
 
 .caret {
   border-left: 5px solid transparent;
-  border-top: 5px solid #fff;
+  border-top: 5px solid #686766;
   border-right: 5px solid transparent;
   content: '';
   display: inline-block;
@@ -2052,7 +2061,6 @@ ul.gv-dropdown-menu {
     margin-left: 22px; }
 
 .footer {
-  background-color: #333232;
   bottom: 0;
   font-size: 14px;
   left: 0;
@@ -2067,23 +2075,25 @@ footer.footer {
   footer.footer p {
     margin-bottom: 0;
     padding-bottom: 10px;
-    padding-top: 10px; }
+    padding-top: 10px;
+    font-weight: 100;
+    font-size: 10pt; }
 
 div.footer-left {
-  background: none repeat scroll 0 0 #333232;
-  color: #fff;
+  background: none repeat scroll 0 0 transparent;
+  color: #686766;
   width: 45%; }
 
 div.footer-center {
-  background: none repeat scroll 0 0 #333232;
-  color: #fff;
+  background: none repeat scroll 0 0 transparent;
+  color: #686766;
   width: 10%; }
   div.footer-center p:hover {
     cursor: pointer; }
 
 div.footer-right {
-  background: none repeat scroll 0 0 #333232;
-  color: #333232;
+  background: none repeat scroll 0 0 transparent;
+  color: #686766;
   width: 45%; }
   div.footer-right p {
     color: #fff; }
@@ -2091,7 +2101,7 @@ div.footer-right {
     color: #da4f49;
     font-size: 18px; }
   div.footer-right a {
-    color: #fff;
+    color: #686766;
     margin-left: 5px;
     position: relative;
     top: -1px; }
@@ -2191,11 +2201,11 @@ div.toolbox {
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
   border-radius: 2px;
-  border: 3px solid #333232;
+  border: 3px solid #fff;
   margin-right: 5px;
   position: absolute; }
   div.toolbox div.gv_action_button {
-    background-color: #333232;
+    background-color: #fff;
     color: #fff;
     height: 50px;
     margin-bottom: 2px;
@@ -2388,6 +2398,12 @@ a.button-gui {
     .clusterDownBtn button.green:hover {
       background-color: #8ba142; }
 
+.bottomButtonBar {
+  background-color: #fff;
+  border-top: 1px solid #c2c2c2;
+  height: 30px;
+  padding: 5px; }
+
 div.tileList {
   margin-left: -6px;
   margin-right: -6px; }
@@ -2398,7 +2414,8 @@ div .tile, div .bigtile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: #fff;
+  border-radius: 4px;
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -2427,6 +2444,12 @@ div .tile, div .bigtile {
       margin-left: 1px; }
     div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
       font-size: 8px; }
+  div .tile .collection-type-icon, div .bigtile .collection-type-icon {
+    color: #666;
+    font-size: 30pt;
+    margin-top: 12pt; }
+  div .tile .collection-type-icon:hover, div .bigtile .collection-type-icon:hover {
+    cursor: pointer; }
   div .tile img.icon, div .bigtile img.icon {
     height: 50px;
     width: 50px; }
@@ -2503,11 +2526,14 @@ div .tile, div .bigtile {
       margin-right: 5px; }
     div .tile div.tileBadge span, div .bigtile div.tileBadge span {
       display: inline-block;
-      line-height: 13px; }
+      line-height: 15px; }
       div .tile div.tileBadge span div.corneredBadge, div .bigtile div.tileBadge span div.corneredBadge {
-        border-left: 17px solid transparent;
+        border-left: 5px solid transparent;
         border-bottom-style: solid;
         border-bottom-width: 17px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        margin-right: 5px;
         color: #fff;
         height: 0;
         padding-left: 4px;
@@ -2536,6 +2562,8 @@ div .bigtile {
 
 .collectionName {
   bottom: 0;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
   font-weight: 300;
   left: 0;
   position: absolute;
@@ -4340,7 +4368,7 @@ div.centralRow {
   margin-bottom: 40px; }
 
 div.centralContent {
-  background-color: rgba(0, 0, 0, 0.0675);
+  background-color: transparent;
   height: 100%;
   margin-left: -5px;
   margin-right: -5px;
@@ -4401,6 +4429,7 @@ li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
 
 div.headerDropdown {
   background-color: #fff;
+  border-radius: 4px;
   display: none;
   padding: 10px;
   position: relative;
@@ -4469,7 +4498,7 @@ div.queryline {
       -moz-border-radius: 0;
       -webkit-border-radius: 0;
       border-radius: 0;
-      background-color: #333232;
+      background-color: #fff;
       color: #fff;
       display: none;
       left: 0;
@@ -4479,6 +4508,7 @@ div.queryline {
 
 div.dropdownImport {
   background-color: #fff;
+  border-radius: 4px;
   display: none;
   padding-top: 10px;
   padding-left: 10px;
@@ -4528,23 +4558,29 @@ input.search-input {
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
   border-radius: 2px;
-  border: 0;
+  background-color: #fff !important;
+  border: 1px solid #eeeeee;
+  box-shadow: none;
   height: 18px;
   line-height: 18px;
-  margin-top: 5px;
-  width: 115px; }
+  margin-top: 4px;
+  margin-right: -6px;
+  width: 115px;
+  outline: none;
+  outline-color: transparent;
+  outline-style: none; }
   input.search-input:focus {
-    -webkit-box-shadow: 0 0 10px #8aa051;
-    -moz-box-shadow: 0 0 10px #8aa051;
-    box-shadow: 0 0 10px #8aa051;
-    border-color: #8aa051;
-    outline: none; }
+    border-color: #999999;
+    box-shadow: none;
+    outline: none;
+    outline-color: transparent;
+    outline-style: none; }
 
 .search-field {
-  margin-left: 15px; }
+  margin-left: 10px; }
   .search-field .fa-search {
-    color: #555;
-    margin-left: -25px;
+    color: #d2d2d2;
+    margin-left: -22px;
     font-size: 15pt;
     opacity: 0.5; }
     .search-field .fa-search:hover {
@@ -4569,7 +4605,8 @@ input.search-input {
   margin-top: 6px; }
 
 div.headerBar {
-  background-color: #686766;
+  background-color: #fff;
+  border-radius: 4px;
   color: #fff;
   font-size: 16px;
   height: 36px;
@@ -4618,7 +4655,7 @@ div.headerBar {
     background: url('../img/check_radio_sheet.png') -57px top no-repeat; }
 
 div.headerBar a.arangoHeader {
-  color: #fff;
+  color: #000;
   font-size: 16px;
   left: 5px;
   position: relative;
@@ -4634,7 +4671,7 @@ div.headerBar > div.headerButtonBar {
   border-radius: 0;
   padding: 8px 0; }
   .breadcrumb .disabledBread {
-    color: #fff;
+    color: #c2c2c2;
     float: left;
     padding-left: 5px; }
   .breadcrumb .activeBread {
@@ -4660,6 +4697,7 @@ div.headerBar > div.headerButtonBar {
 
 .modal-header, .modal-dashboard-header {
   background-color: #686766;
+  border-radius: 4px;
   border-bottom: 0 !important;
   margin-top: 5px;
   padding-left: 5px;
@@ -4777,7 +4815,9 @@ div.headerBar > div.headerButtonBar {
   opacity: .4; }
 
 .modal {
-  border-radius: 0 !important; }
+  box-shadow: none;
+  border: 0 !important;
+  border-radius: 4px !important; }
   .modal .fade.in {
     top: 12.1% !important; }
   .modal table tr:last-child {
@@ -5003,7 +5043,8 @@ div .tile, div .bigtile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: #fff;
+  border-radius: 4px;
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -5032,6 +5073,12 @@ div .tile, div .bigtile {
       margin-left: 1px; }
     div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
       font-size: 8px; }
+  div .tile .collection-type-icon, div .bigtile .collection-type-icon {
+    color: #666;
+    font-size: 30pt;
+    margin-top: 12pt; }
+  div .tile .collection-type-icon:hover, div .bigtile .collection-type-icon:hover {
+    cursor: pointer; }
   div .tile img.icon, div .bigtile img.icon {
     height: 50px;
     width: 50px; }
@@ -5108,11 +5155,14 @@ div .tile, div .bigtile {
       margin-right: 5px; }
     div .tile div.tileBadge span, div .bigtile div.tileBadge span {
       display: inline-block;
-      line-height: 13px; }
+      line-height: 15px; }
       div .tile div.tileBadge span div.corneredBadge, div .bigtile div.tileBadge span div.corneredBadge {
-        border-left: 17px solid transparent;
+        border-left: 5px solid transparent;
         border-bottom-style: solid;
         border-bottom-width: 17px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        margin-right: 5px;
         color: #fff;
         height: 0;
         padding-left: 4px;
@@ -5141,6 +5191,8 @@ div .bigtile {
 
 .collectionName {
   bottom: 0;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
   font-weight: 300;
   left: 0;
   position: absolute;
@@ -5148,7 +5200,9 @@ div .bigtile {
   text-align: left; }
 
 .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container {
-  border-left: 0 solid #000; }
+  border-left: 0 solid #000;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px; }
   .dashboard-large-chart .dashboard-large-chart-inner:first-child, .dashboard-small-chart .dashboard-small-chart-inner:first-child, .dashboard-medium-chart:first-child, .dashboard-tendency-container:first-child, .dashboard-bar-chart-container:first-child {
     margin-left: 0; }
 
@@ -5166,18 +5220,18 @@ div .bigtile {
   margin-right: 12px; }
   .dashboard-large-chart .dashboard-large-chart-inner {
     background-color: #fff;
-    border-left: 5px solid #e1e1e1;
-    border-right: 5px solid #e1e1e1;
-    border-top: 5px solid #e1e1e1;
+    border-left: 5px solid #fff;
+    border-right: 5px solid #fff;
+    border-top: 5px solid #fff;
     padding-top: 5px; }
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       margin-bottom: 0; }
 
 .dashboard-small-chart .dashboard-small-chart-inner {
   background-color: #fff;
-  border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1; }
+  border-left: 5px solid #fff;
+  border-right: 5px solid #fff;
+  border-top: 5px solid #fff; }
   .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
     fill-opacity: .15;
     stroke-opacity: 1;
@@ -5185,9 +5239,9 @@ div .bigtile {
 
 .dashboard-medium-chart {
   background-color: #fff;
-  border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1;
+  border-left: 5px solid #fff;
+  border-right: 5px solid #fff;
+  border-top: 5px solid #fff;
   padding-top: 5px; }
   .dashboard-medium-chart:first-child {
     margin-right: 12px; }
@@ -5214,9 +5268,12 @@ div .bigtile {
 
 .dashboard-tendency-container .dashboard-tendency-chart {
   background-color: #fff;
-  border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1; }
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  border-top: 5px solid #fff;
+  border-left: 5px solid #fff;
+  border-right: 5px solid #fff;
+  border-top: 5px solid #fff; }
   .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency {
     background-color: #fff;
     margin-top: 5px;
@@ -5231,9 +5288,11 @@ div .bigtile {
 
 .dashboard-bar-chart-container .dashboard-bar-chart {
   background-color: #fff;
-  border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1; }
+  border-left: 5px solid #fff;
+  border-right: 5px solid #fff;
+  border-top: 5px solid #fff;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px; }
   .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
     margin-top: 5px;
     padding: 0 8px; }
@@ -5251,6 +5310,8 @@ div .bigtile {
 
 .dashboard-sub-bar {
   background-color: #686766;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
   color: #fff;
   height: 24px;
   line-height: 24px;
@@ -7092,7 +7153,7 @@ div.centralRow {
   margin-bottom: 40px; }
 
 div.centralContent {
-  background-color: rgba(0, 0, 0, 0.0675);
+  background-color: transparent;
   height: 100%;
   margin-left: -5px;
   margin-right: -5px;

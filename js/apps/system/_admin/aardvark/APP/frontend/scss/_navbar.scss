@@ -19,6 +19,11 @@ nav.navbar {
   margin-bottom: 3px;
   top: 0;
 
+  .arangodbLogo {
+    width: 32%;
+    height: auto;
+  }
+
   .nav {
 
     & > .active {
@@ -38,7 +43,7 @@ nav.navbar {
 
       & > a:hover {
         background-color: $c-positive;
-        color: $c-white;
+        color: $c-bar-bg;
       }
     }
   }
@@ -63,7 +68,6 @@ ul.navlist {
     margin-left: 1px;
 
     &.navbar-spacer {
-      @include box-shadow(1px 0 0 $c-navbar-spacer-shadow);
       background-color: $c-navbar-spacer;
       height: 21px;
       margin-top: 9px;
@@ -85,10 +89,26 @@ ul.navlist {
     }
   }
 
+  li.active {
+    font-weight: bold;
+
+    .tab {
+      border-bottom: 2px solid $c-positive;
+      padding-bottom: 4px;
+    }
+  }
+
   > li.active,
   li.dropdown-item:hover,
   > li:hover {
-    background-color: $c-positive;
+    background-color: $c-transp;
+
+    a {
+      color: $c-black;
+    }
+  }
+
+  li.dropdown-item:hover {
   }
 
   li.dropdown-item {
@@ -96,16 +116,18 @@ ul.navlist {
 
     a {
       display: block;
+      border-bottom: 0;
     }
 
     a:hover {
-      color: $c-white;
+      color: $c-bar-bg;
+      background-color: $c-lightgreen-bg;
     }
   }
 }
 
 a.tab {
-  color: $c-white;
+  color: $c-bar-bg;
   display: block;
   padding: {
     top: 9px;
@@ -196,7 +218,7 @@ ul.gv-dropdown-menu {
 .caret {
   border: {
     left: 5px solid $c-transp;
-    top: 5px solid $c-white;
+    top: 5px solid $c-bar-bg;
     right: 5px solid $c-transp;
   }
   content: '';

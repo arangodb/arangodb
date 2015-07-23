@@ -1,25 +1,34 @@
 input.search-input {
   @include border-radius(2px);
-  border: 0;
+  background-color: $c-white !important;
+  border: 1px solid #eeeeee;
+  box-shadow: none;
   height: 18px;
   line-height: 18px;
-  margin-top: 5px;
+  margin-top: 4px;
+  margin-right: -6px;
   width: 115px;
+  outline: none;
+    outline-color: $c-transp;
+    outline-style: none;
 
   &:focus {
-    @include box-shadow(0 0 10px $c-positive);
-    border-color: $c-positive;
+    border-color: #999999;
+    box-shadow: none;
     outline: none;
+    outline-color: $c-transp;
+    outline-style: none;
   }
 }
 
+
 .search-field {
-  @extend %pull-left;
-  margin-left: 15px;
+  @extend %pull-right;
+  margin-left: 10px;
 
   .fa-search {
-    color: $c-header-btn-fg;
-    margin-left: -25px;
+    color: #d2d2d2;
+    margin-left: -22px;
     font-size: 15pt;
     opacity: 0.5;
 
@@ -28,6 +37,7 @@ input.search-input {
       cursor: pointer;
     }
   }
+
 }
 
 %search-submit-icon {
@@ -59,7 +69,8 @@ input.search-input {
 
 // The bar on top of each page
 div.headerBar {
-  background-color: $c-bar-bg;
+  background-color: $c-white;
+  border-radius: 4px;
   color: $c-white;
   font-size: 16px;
   height: 36px;
@@ -130,7 +141,7 @@ div.headerBar {
 // The title of the page
 
 div.headerBar a.arangoHeader {
-  color: $c-white;
+  color: $c-black;
   font-size: 16px;
   left: 5px;
   position: relative;
@@ -157,7 +168,7 @@ div.headerBar > div.headerButtonBar {
 
   // Disabled breadcrumb
   .disabledBread {
-    color: $c-white;
+    color: $c-c2grey;
     float: left;
     padding-left: 5px;
   }

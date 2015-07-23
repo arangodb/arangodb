@@ -42,19 +42,19 @@
       },
 
       translateTypePicture : function (type) {
-        var returnString = "img/icon_";
+        var returnString = "";
         switch (type) {
           case 'document':
-            returnString += "document.png";
+            returnString += "fa-file-text-o";
             break;
           case 'edge':
-            returnString += "node.png";
+            returnString += "fa-share-alt";
             break;
           case 'unknown':
-            returnString += "unknown.png";
+            returnString += "fa-question";
             break;
           default:
-            returnString += "arango.png";
+            returnString += "fa-cogs";
         }
         return returnString;
       },

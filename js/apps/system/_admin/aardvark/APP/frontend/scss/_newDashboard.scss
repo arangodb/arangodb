@@ -1,6 +1,8 @@
 %dashboard-chart-box {
   @extend %pull-left;
   border-left: 0 solid $c-black;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
 
   &:first-child {
     margin-left: 0;
@@ -45,9 +47,9 @@
     @extend %dashboard-chart-box;
     @extend %pull-left;
     background-color: $c-white;
-    border-left: $dashboard-borderwidth solid $c-e1grey;
-    border-right: $dashboard-borderwidth solid $c-e1grey;
-    border-top: $dashboard-borderwidth solid $c-e1grey;
+    border-left: $dashboard-borderwidth solid $c-white;
+    border-right: $dashboard-borderwidth solid $c-white;
+    border-top: $dashboard-borderwidth solid $c-white;
     padding-top: $dashboard-padding;
 
     .dashboard-interior-chart {
@@ -65,9 +67,9 @@
     @extend %dashboard-chart-box;
     @extend %pull-left;
     background-color: $c-white;
-    border-left: $dashboard-borderwidth solid $c-e1grey;
-    border-right: $dashboard-borderwidth solid $c-e1grey;
-    border-top: $dashboard-borderwidth solid $c-e1grey;
+    border-left: $dashboard-borderwidth solid $c-white;
+    border-right: $dashboard-borderwidth solid $c-white;
+    border-top: $dashboard-borderwidth solid $c-white;
 
     .dashboard-interior-chart {
       @extend %pull-left;
@@ -86,9 +88,9 @@
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
   background-color: $c-white;
-  border-left: $dashboard-borderwidth solid $c-e1grey;
-  border-right: $dashboard-borderwidth solid $c-e1grey;
-  border-top: $dashboard-borderwidth solid $c-e1grey;
+  border-left: $dashboard-borderwidth solid $c-white;
+  border-right: $dashboard-borderwidth solid $c-white;
+  border-top: $dashboard-borderwidth solid $c-white;
   padding-top: $dashboard-padding;
   
   &:first-child {
@@ -137,9 +139,12 @@
   .dashboard-tendency-chart {
     @extend %clear-float;
     background-color: $c-white;
-    border-left: 5px solid $c-e1grey;
-    border-right: 5px solid $c-e1grey;
-    border-top: 5px solid $c-e1grey;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-top: $dashboard-borderwidth solid $c-white;
+    border-left: 5px solid $c-white;
+    border-right: 5px solid $c-white;
+    border-top: 5px solid $c-white;
 
     .dashboard-tendency {
       @extend %pull-left;
@@ -173,9 +178,11 @@
   .dashboard-bar-chart {
     @extend %clear-float;
     background-color: $c-white;
-    border-left: 5px solid $c-e1grey;
-    border-right: 5px solid $c-e1grey;
-    border-top: 5px solid $c-e1grey;
+    border-left: 5px solid $c-white;
+    border-right: 5px solid $c-white;
+    border-top: 5px solid $c-white;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
 
     .dashboard-bar-chart-title {
       @extend %pull-left;
@@ -218,6 +225,8 @@
 .dashboard-sub-bar {
   @extend %pull-left;
   background-color: $c-bar-bg;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
   color: $c-white;
   height: 24px;
   line-height: 24px;

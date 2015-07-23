@@ -1,4 +1,4 @@
-%toolbar {
+toolbar {
   background-color: $c-toolbar-bg;
   border-bottom: 0;
   border-style: solid;
@@ -9,16 +9,21 @@
   margin-right: 0;
 }
 
+.queryBottomActions {
+  padding: 5px;
+  border-top: 1px solid $c-c2grey;
+}
+
 .editor-toolbar {
   border-color: $c-editor-toolbar;
-  margin-top: 5px;
+  margin-top: 3px;
 
   span {
     float: right;
     margin-left: 5px;
     margin-right: 5px;
     position: relative;
-    top: 2px;
+    top: 0px;
   }
 
   i {
@@ -30,10 +35,19 @@
     }
   }
 
+  .icon_arangodb {
+    font-size: 15pt;
+  }
+
+  .icon_arangodb_trash {
+    margin-left: -2px;
+  }
+
   .fa-comment,
   .fa-comment-o {
-    font-size: 18px;
+    font-size: 17px;
     position: relative;
+    margin-right: -1px;
     top: -2px;
   }
 
@@ -81,10 +95,9 @@
 
 .query-output {
   background-color: $c-white;
-  border: 1px solid $c-query-output-border;
+  border: 0;
   border-top-width: 0;
   height: 200px;
-  margin-bottom: 10px;
   margin-left: 0;
   margin-right: 0;
   min-height: 100px;
@@ -114,8 +127,8 @@
 
   select {
     background: $c-white;
-    border: 0;
-    border-radius: 0;
+    border: 1px solid $c-c2grey !important;
+    border-radius: 4px !important;
     font-size: 14px;
     font-weight: 300;
     height: 30px;
@@ -137,7 +150,8 @@
 }
 
 .wide-button-div {
-  height: 20px;
+  margin-top: -10px;
+  height: 26px;
   margin-bottom: 15px;
   padding-top: 5px;
   width: 100%;
@@ -260,6 +274,9 @@
 }
 
 #queryContent {
+
+  margin-top: 18px;
+
   .arango-tab a {
     border-bottom-color: #ddd;
   }
