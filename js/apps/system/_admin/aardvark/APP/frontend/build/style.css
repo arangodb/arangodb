@@ -5681,8 +5681,12 @@ svg.explain-tree {
   font-weight: 300;
   margin-top: 5px; }
 
+.document-editor-extra {
+  margin-top: 10px; }
+
 .document-editor {
   height: 500px;
+  margin-top: -10px;
   margin-bottom: 5px;
   width: 100%; }
 
@@ -6192,11 +6196,14 @@ input.gv-radio-button {
   .arango-collection-ul a {
     font-size: 13px; } }
 
+.document-info-div {
+  margin-top: 20px; }
+
 .document-info {
   background-color: #fff;
   border-radius: 4px;
   margin-bottom: 8px;
-  margin-top: -10px;
+  margin-top: -13px;
   min-height: 65px;
   padding: 5px; }
   .document-info .document-info-container {
@@ -6797,6 +6804,9 @@ table .sorting {
 
 .sorting_asc, .sorting_desc {
   background: #e4e0dd; }
+
+#documentsDiv {
+  margin-top: 20px; }
 
 .new-index-view input[type='checkbox'] {
   float: left;
