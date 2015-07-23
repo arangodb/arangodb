@@ -1599,7 +1599,7 @@ static AqlValue VertexIdsToAqlValue (triagens::arango::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function INTERSECTION
+/// @brief function NEIGHBORS
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Neighbors (triagens::aql::Query* query,
@@ -1676,7 +1676,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     opts.start = v;
   }
   else {
-    // TODO FIXME
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
 
@@ -1693,13 +1692,11 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       opts.direction = TRI_EDGE_ANY;
     }
     else {
-      // TODO FIXME
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
     }
   }
   else {
-    // TODO FIXME
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
 
 
@@ -1708,8 +1705,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   if (n > 5) {
     auto options = ExtractFunctionParameter(trx, parameters, 5, false);
     if (! options.isObject()) {
-      //TODO Correct Error Message
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
     }
     includeData = basics::JsonHelper::getBooleanValue(options.json(), "includeData", false);
     opts.minDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "minDepth", 1);
