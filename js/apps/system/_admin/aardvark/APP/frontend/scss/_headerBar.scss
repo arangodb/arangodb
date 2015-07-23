@@ -1,10 +1,10 @@
 input.search-input {
-  @include border-radius(0);
+  @include border-radius(2px);
   border: 0;
   height: 18px;
   line-height: 18px;
   margin-top: 5px;
-  width: 214px;
+  width: 115px;
 
   &:focus {
     @include box-shadow(0 0 10px $c-positive);
@@ -16,6 +16,18 @@ input.search-input {
 .search-field {
   @extend %pull-left;
   margin-left: 15px;
+
+  .fa-search {
+    color: $c-header-btn-fg;
+    margin-left: -25px;
+    font-size: 15pt;
+    opacity: 0.5;
+
+    &:hover {
+      opacity: 1;
+      cursor: pointer;
+    }
+  }
 }
 
 %search-submit-icon {

@@ -64,13 +64,11 @@
 
     unloadCollection: function () {
       this.model.unloadCollection();
-      this.render();
       window.modalView.hide();
     },
 
     loadCollection: function () {
       this.model.loadCollection();
-      this.render();
       window.modalView.hide();
     },
 
