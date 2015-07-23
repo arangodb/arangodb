@@ -63,6 +63,7 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
     _stopping(false),
     _threadsLock(),
     _startedThreads(),
+    _stoppedThreads(0),
     _nrRunning(0),
     _nrWaiting(0),
     _nrBlocked(0),
@@ -82,6 +83,7 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
   // and a list of positions into this array
   for (size_t i = 0;  i < maxSize;  ++i) {
     _jobPositions.push(i);
+    _jobs[i] = nullptr;
   }
 }
 
@@ -91,7 +93,7 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
 
 DispatcherQueue::~DispatcherQueue () {
   beginShutdown();
-  delete _jobs;
+  delete[] _jobs;
 }
 
 // -----------------------------------------------------------------------------
@@ -143,6 +145,7 @@ int DispatcherQueue::addJob (Job* job) {
   // if all threads are blocked, start a new one - we ignore race conditions
   else {
     size_t nrRunning = _nrRunning;
+
     if (nrRunning <= _nrThreads - 1 ||
         nrRunning <= (size_t) _nrBlocked.load()) {
       startQueueThread();
@@ -356,7 +359,10 @@ void DispatcherQueue::shutdown () {
   // wait a little while
   usleep(100 * 1000);
 
-  // and butcher the threads
+  // delete all old threads
+  deleteOldThreads();
+
+  // and butcher the remaining threads
   {
     MUTEX_LOCKER(_threadsLock);
 
@@ -370,7 +376,9 @@ void DispatcherQueue::shutdown () {
 /// @brief starts a new queue thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DispatcherQueue::startQueueThread () {
+void DispatcherQueue::startQueueThread () {
+  ++_nrRunning;
+
   DispatcherThread * thread = (*createDispatcherThread)(this);
 
   if (! _affinityCores.empty()) {
@@ -392,7 +400,8 @@ bool DispatcherQueue::startQueueThread () {
     _startedThreads.insert(thread);
   }
 
-  ++_nrRunning;
+  deleteOldThreads();
+
   bool ok = thread->start();
 
   if (! ok) {
@@ -401,8 +410,6 @@ bool DispatcherQueue::startQueueThread () {
   else {
     _lastChanged = TRI_microtime();
   }
-
-  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,7 +424,7 @@ void DispatcherQueue::removeStartedThread (DispatcherThread* thread) {
 
   --_nrRunning;
 
-  delete thread;
+  _stoppedThreads.push(thread);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,7 +432,7 @@ void DispatcherQueue::removeStartedThread (DispatcherThread* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::tooManyThreads () {
-  if (_nrThreads + _nrBlocked < _nrRunning) {
+  if ((ssize_t)(_nrThreads + _nrBlocked) <  _nrRunning) {
     double now = TRI_microtime();
 
     if (_lastChanged + _gracePeriod < now) {
@@ -445,6 +452,24 @@ bool DispatcherQueue::tooManyThreads () {
 
 void DispatcherQueue::setProcessorAffinity (const vector<size_t>& cores) {
   _affinityCores = cores;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes old threads
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherQueue::deleteOldThreads () {
+  DispatcherThread* thread;
+
+  while (_stoppedThreads.pop(thread)) {
+    if (thread != nullptr) {
+      delete thread;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
