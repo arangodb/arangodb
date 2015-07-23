@@ -2722,8 +2722,8 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 2);
-      assertEqual(actual[0]._id, t2);
-      assertEqual(actual[1]._id, t1);
+      assertEqual(actual[0]._id, t1);
+      assertEqual(actual[1]._id, t2);
     }
   };
 }
