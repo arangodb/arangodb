@@ -1554,8 +1554,7 @@ static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
   auto collection = trx->trxCollection(id.cid);
   int res = trx->readSingle(collection, &mptr, id.key); 
   if (res != TRI_ERROR_NO_ERROR) {
-    // TODO FIXME
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    THROW_ARANGO_EXCEPTION(res);
   }
   return TRI_ExpandShapedJson(
     collection->_collection->_collection->getShaper(),
