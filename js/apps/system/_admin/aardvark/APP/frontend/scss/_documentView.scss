@@ -1,7 +1,7 @@
 .document-info {
 
   background-color: #fff;
-  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: 4px;
   margin-bottom: 8px;
   margin-top: -10px;
   min-height: 65px;
@@ -42,6 +42,10 @@
   .document-type-container {
     div {
       float: left;
+    }
+
+    #document-id {
+      margin-left: 10px;
     }
   }
 }

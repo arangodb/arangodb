@@ -22,7 +22,7 @@
     </div>
   </div>
 
-  <div id="queryContent">
+  <div id="queryContent" class="innerContent">
     <ul class="arango-tab">
       <li><a href="#result" data-toggle="pill" id="result-switch">Result</a></li>
       <!--<li><a href="#explain" data-toggle="pill" id="explain-switch">Explain</a></li>-->
@@ -40,7 +40,6 @@
     <div class="tab-content" id="tabContentQuery">
       <div class="tab-pane active" id="query">
         <div id="queryDiv" class="query-div">
-          <div id="editorLabel" class="editor-label"></div>
           <div id="editorToolbar" class="query-toolbar editor-toolbar">
             <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearInput"/>
             <span class="icon_arangodb icon_arangodb_adddoc queryTooltips" title="Save current query" id="addAQL"/>
@@ -58,7 +57,7 @@
               <div id="shortcutDiv" class="shortcuts shortcut-div showHotkeyHelp">
               </div>
             </div>
-            <div>
+            <div class="queryBottomActions">
 
               <button id="submitQueryButton" class="button-success query-button">Execute</button>
               <button id="explainQueryButton" class="button-success query-button">Explain</button>
@@ -80,7 +79,6 @@
     <div class="tab-content" id="tabContentExplain">
 
       <div class="tab-pane" id="explain">
-        <div id="editorLabel" class="editor-label"></div>
         <div id="outputToolbar" class="query-toolbar output-toolbar">
         </div>
         <div class="explain-warnings"></div>
@@ -94,7 +92,6 @@
     <div class="tab-content" id="tabContentResult">
 
       <div class="tab-pane" id="result">
-        <div id="editorLabel" class="editor-label"></div>
         <div id="outputToolbar" class="query-toolbar output-toolbar">
           <!--
           <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearOutput"></span>
@@ -104,7 +101,9 @@
         <div id="queryOutput" class="contentDiv query-output">
         </div>
         <div class="pull-left queryExecutionTime"></div>
-        <button id="downloadQueryResult" class="button-success query-button">Download</button>
+        <div class="queryBottomActions">
+          <button id="downloadQueryResult" style="margin-bottom: 5px" class="button-success query-button">Download</button>
+        </div>
       </div>
 
     </div>

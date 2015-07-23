@@ -11,7 +11,7 @@
     <link href="css/sass.css" rel="stylesheet">
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
 
-// obsolete file
+<!-- obsolete file -->
 
 <script id="apiView.ejs" type="text/template">
 <div class="headerBar">
@@ -283,7 +283,8 @@
   <%}%>
 </div>
 
-<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">
+<i class="collection-type-icon fa <%= model.get('picture') %>"></i>
+<!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
 <div class="tileBadge">
   <span>
     <div class="corneredBadge <%= model.get('status') %>">
@@ -296,6 +297,11 @@
 
 <script id="collectionsView.ejs" type="text/template">
   <div class="headerBar">
+    <div class="search-field">
+      <input type="text" id="searchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="searchSubmit" class="search-submit-icon"/> -->
+      <i id="searchSubmit" class="fa fa-search"></i>
+    </div>
     <div class="headerButtonBar">
       <ul class="headerButtonList">
         <li class="enabled">
@@ -308,11 +314,6 @@
 
     <div class="pull-left">
       <a class="arangoHeader">Collections</a>
-    </div>
-    <div class="search-field">
-      <input type="text" id="searchInput" class="search-input" placeholder="Search..."/>
-      <!-- <img id="searchSubmit" class="search-submit-icon"/> -->
-      <i id="searchSubmit" class="fa fa-search"></i>
     </div>
   </div>
 
@@ -539,6 +540,11 @@
 
 <script id="databaseView.ejs" type="text/template">
   <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="databaseSearchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="databaseSearchSubmit" class="search-submit-icon">-->
+      <i id="databaseSearchSubmit" class="fa fa-search"></i>
+    </div>
     <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li class="enabled">
@@ -551,11 +557,6 @@
 
     <div class="pull-left">
       <a class="arangoHeader">Databases</a>
-    </div>
-    <div class="search-field">
-      <input type="text" value="<%=searchString%>" id="databaseSearchInput" class="search-input" placeholder="Search..."/>
-      <!-- <img id="databaseSearchSubmit" class="search-submit-icon">-->
-      <i id="databaseSearchSubmit" class="fa fa-search"></i>
     </div>
   </div>
 
@@ -638,14 +639,14 @@ if (list.length > 0) {
 
 <script id="demoView.ejs" type="text/template">
   <div class="headerBar">
-    <div class="pull-left">
-      <a class="arangoHeader">Demo</a>
-    </div>
     <div class="search-field">
       <input type="text" id="demoSearchInput" class="search-input" placeholder="Search...">
       <i id="demoSearchSubmit" class="fa fa-search"></i>
       <!-- <img id="demoSearchSubmit" class="search-submit-icon"> -->
       <!--<div id="searchResults" class="demo-dropdown-menu"><ul></ul></div>-->
+    </div>
+    <div class="pull-left">
+      <a class="arangoHeader">Demo</a>
     </div>
     <div class="styled-select">
       <select id="flightQuerySelect" class="query-select" style="margin-top: 5px; height: 25px">
@@ -665,8 +666,8 @@ if (list.length > 0) {
 
   </div>
 
+  <div class="innerContent">
 
-  <div id="tableDiv" class="innerContent">
     <div class="document-info">
 
       <div class="document-type-container">
@@ -699,12 +700,19 @@ if (list.length > 0) {
         </div>
 
       </div>
+
     </div>
+
+  </div>
+
+  <div id="tableDiv" class="innerContent">
+
     <div id="documentEditor" class="document-editor"></div>
+    <div class="bottomButtonBar">
       <button id="saveDocumentButton" class="button-success pull-right">Save</button>
       <button id="deleteDocumentButton" class="button-danger pull-right">Delete</button>
-    <div class="pull-left shortcuts showHotkeyHelp">
     </div>
+    <div class="pull-left shortcuts showHotkeyHelp"></div>
 	</div>
 
 </script>
@@ -771,7 +779,7 @@ if (list.length > 0) {
   </div>
 </div>
 
-<div class="arangoDropdown">
+<div class="arangoDropdown documentsDropdown">
   <div id="filterHeader" class="headerDropdown">
     <div class="queryline">
        <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0" class="filterSelect">
@@ -1172,7 +1180,7 @@ if (list.length > 0) {
 </div>
 
 <div class="footer-center">
-  <p>Show Help <i class="fa fa-keyboard-o"></i></p>
+  <p>Help <i class="fa fa-keyboard-o"></i></p>
 </div>
 
 <div class="footer-right">
@@ -1320,6 +1328,11 @@ if (list.length > 0) {
 
 <script id="graphManagementView.ejs" type="text/template">
   <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <i id="graphManagementSearchSubmit" class="fa fa-search"></i>
+      <!-- <img id="graphManagementSearchSubmit" class="search-submit-icon"> -->
+    </div>
      <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li class="enabled">
@@ -1331,11 +1344,6 @@ if (list.length > 0) {
       </div>
     <div class="pull-left">
       <a class="arangoHeader">Graphs</a>
-    </div>
-    <div class="search-field">
-      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/>
-      <i id="graphManagementSearchSubmit" class="fa fa-search"></i>
-      <!-- <img id="graphManagementSearchSubmit" class="search-submit-icon"> -->
     </div>
   </div>
 
@@ -2443,7 +2451,7 @@ if (list.length > 0) {
     </div>
   </div>
 
-  <div id="queryContent">
+  <div id="queryContent" class="innerContent">
     <ul class="arango-tab">
       <li><a href="#result" data-toggle="pill" id="result-switch">Result</a></li>
       <!--<li><a href="#explain" data-toggle="pill" id="explain-switch">Explain</a></li>-->
@@ -2461,7 +2469,6 @@ if (list.length > 0) {
     <div class="tab-content" id="tabContentQuery">
       <div class="tab-pane active" id="query">
         <div id="queryDiv" class="query-div">
-          <div id="editorLabel" class="editor-label"></div>
           <div id="editorToolbar" class="query-toolbar editor-toolbar">
             <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearInput"/>
             <span class="icon_arangodb icon_arangodb_adddoc queryTooltips" title="Save current query" id="addAQL"/>
@@ -2479,7 +2486,7 @@ if (list.length > 0) {
               <div id="shortcutDiv" class="shortcuts shortcut-div showHotkeyHelp">
               </div>
             </div>
-            <div>
+            <div class="queryBottomActions">
 
               <button id="submitQueryButton" class="button-success query-button">Execute</button>
               <button id="explainQueryButton" class="button-success query-button">Explain</button>
@@ -2501,7 +2508,6 @@ if (list.length > 0) {
     <div class="tab-content" id="tabContentExplain">
 
       <div class="tab-pane" id="explain">
-        <div id="editorLabel" class="editor-label"></div>
         <div id="outputToolbar" class="query-toolbar output-toolbar">
         </div>
         <div class="explain-warnings"></div>
@@ -2515,7 +2521,6 @@ if (list.length > 0) {
     <div class="tab-content" id="tabContentResult">
 
       <div class="tab-pane" id="result">
-        <div id="editorLabel" class="editor-label"></div>
         <div id="outputToolbar" class="query-toolbar output-toolbar">
           <!--
           <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearOutput"></span>
@@ -2525,7 +2530,9 @@ if (list.length > 0) {
         <div id="queryOutput" class="contentDiv query-output">
         </div>
         <div class="pull-left queryExecutionTime"></div>
-        <button id="downloadQueryResult" class="button-success query-button">Download</button>
+        <div class="queryBottomActions">
+          <button id="downloadQueryResult" style="margin-bottom: 5px" class="button-success query-button">Download</button>
+        </div>
       </div>
 
     </div>
@@ -2662,6 +2669,11 @@ var cutByResolution = function (str) {
 
 <script id="userManagementView.ejs" type="text/template">
   <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="userManagementSearchSubmit" class="search-submit-icon"> -->
+      <i id="userManagementSearchSubmit" class="fa fa-search"></i>
+    </div>
     <div class="headerButtonBar">
       <ul class="headerButtonList">
         <li class="enabled">
@@ -2674,11 +2686,6 @@ var cutByResolution = function (str) {
 
     <div class="pull-left">
       <a class="arangoHeader">User Management</a>
-    </div>
-    <div class="search-field">
-      <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/>
-      <!-- <img id="userManagementSearchSubmit" class="search-submit-icon"> -->
-      <i id="userManagementSearchSubmit" class="fa fa-search"></i>
     </div>
   </div>
 
@@ -2791,7 +2798,7 @@ var cutByResolution = function (str) {
   <nav class="navbar">
     <div class="resizecontainer">
       <div class="navlogo">
-        <a class="logo" href="#"><img src="img/logo_arangodb_white.png"/></a>
+        <a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"/></a>
       </div>
       <div id="progressPlaceholderIcon"></div>
         <div class="statmenu" id="statisticBar">

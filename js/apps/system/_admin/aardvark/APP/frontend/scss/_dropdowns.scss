@@ -1,5 +1,6 @@
 div.headerDropdown {
   background-color: $c-white;
+  border-radius: 4px;
   display: none;
   padding: 10px;
   position: relative;
@@ -113,6 +114,7 @@ div.queryline {
 
 div.dropdownImport {
   background-color: $c-white;
+  border-radius: 4px;
   display: none;
   padding: {
     top: 10px;

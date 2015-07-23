@@ -1,5 +1,10 @@
 <script id="graphManagementView.ejs" type="text/template">
   <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <i id="graphManagementSearchSubmit" class="fa fa-search"></i>
+      <!-- <img id="graphManagementSearchSubmit" class="search-submit-icon"> -->
+    </div>
      <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li class="enabled">
@@ -11,11 +16,6 @@
       </div>
     <div class="pull-left">
       <a class="arangoHeader">Graphs</a>
-    </div>
-    <div class="search-field">
-      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/>
-      <i id="graphManagementSearchSubmit" class="fa fa-search"></i>
-      <!-- <img id="graphManagementSearchSubmit" class="search-submit-icon"> -->
     </div>
   </div>
 

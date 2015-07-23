@@ -503,7 +503,7 @@ div.centralRow {
 
 div.centralContent {
   @extend %pull-left;
-  background-color: $c-content-transp;
+  background-color: rgba(0,0,0,0);
   height: 100%;
   margin-left: -5px;
   margin-right: -5px;

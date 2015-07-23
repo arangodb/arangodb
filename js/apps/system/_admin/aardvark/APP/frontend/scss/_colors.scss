@@ -1,5 +1,8 @@
 $c-body-color: #333;
 
+$c-lightgreen-bg: rgba(222, 233, 207, 1);
+$c-lightgreen-transp-bg: rgba(222, 233, 207, 0.8);
+
 $c-positive: #8aa051;
 $c-positive-hover: #788f3d;
 
@@ -32,7 +35,7 @@ $c-white: #fff;
 
 $c-c2grey: #c2c2c2;
 
-$c-nav-bg: #333232;
+$c-nav-bg: $c-white;
 $c-bar-bg: #686766;
 
 $c-grey: #e5e5e5;
@@ -116,7 +119,8 @@ $c-api-docs-bg: #f4f3f3;
 $c-api-docs-bg-input: #8f8d8c;
 
 $c-breadcrumb-bg: #f5f5f5;
-$c-breadcrumb-a-active-bread: #b9d375;
+$c-breadcrumb-a-active-bread: rgba(185, 211, 117, 1);
+$c-breadcrumb-a-active-bread-transp: rgba(185, 211, 117, 0.2);
 
 $c-logs-table-id-thead-bg: #f9f9f9;
 

@@ -1,5 +1,6 @@
 body {
-  background-color: #fff !important;
+  /*background-color: $c-white !important;*/
+  background: #DEE8D0 !important;
   color: #333;
   display: block;
   font-family: 'Open Sans', sans-serif !important;
@@ -1765,10 +1766,10 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-medium:before {
   content: "\f23a"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
   float: left; }
 
-div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .dashboard-sub-bar-menu, .query-button, .arango-tab li, .show-save-state, div.gv_colour_list, .docsThirdCol {
+div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, .search-field, div.headerBar > div.headerButtonBar, .fixedDropdown button, .dashboard-sub-bar-menu, .query-button, .arango-tab li, .show-save-state, div.gv_colour_list, .docsThirdCol {
   float: right; }
 
 div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after, .document-info .document-info-container .document-inner-info-container .document-attribute:after {
@@ -1783,7 +1784,7 @@ ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerBut
   cursor: pointer; }
 
 nav.navbar, footer.footer {
-  background-color: #333232;
+  background-color: rgba(222, 233, 207, 0.8);
   color: #fff;
   left: 0;
   position: fixed;
@@ -1888,7 +1889,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dro
     height: 1px;
     margin: 10px 1px; }
   ul.link-dropdown-menu a, ul.user-dropdown-menu a, ul.script-dropdown-menu a, ul.gv-dropdown-menu a {
-    color: #333232;
+    color: #fff;
     padding: 0 20px; }
   ul.link-dropdown-menu:before, ul.user-dropdown-menu:before, ul.script-dropdown-menu:before, ul.gv-dropdown-menu:before {
     position: absolute;
@@ -1923,6 +1924,9 @@ nav.navbar {
   height: 38px;
   margin-bottom: 3px;
   top: 0; }
+  nav.navbar .arangodbLogo {
+    width: 32%;
+    height: auto; }
   nav.navbar .nav > .active > a {
     background-color: #8aa051;
     color: #fff;
@@ -1930,10 +1934,10 @@ nav.navbar {
     -moz-box-shadow: 0 0 0 transparent inset;
     box-shadow: 0 0 0 transparent inset; }
   nav.navbar .nav > li > a:focus {
-    background-color: #333232; }
+    background-color: #fff; }
   nav.navbar .nav > li > a:hover {
     background-color: #8aa051;
-    color: #fff; }
+    color: #686766; }
 
 div.navlogo {
   margin-left: 5px;
@@ -1945,9 +1949,6 @@ ul.navlist {
   ul.navlist li {
     margin-left: 1px; }
     ul.navlist li.navbar-spacer {
-      -webkit-box-shadow: 1px 0 0 #c8c8c8;
-      -moz-box-shadow: 1px 0 0 #c8c8c8;
-      box-shadow: 1px 0 0 #c8c8c8;
       background-color: #a0a0a0;
       height: 21px;
       margin-top: 9px;
@@ -1960,17 +1961,26 @@ ul.navlist {
         margin-right: 5px; }
       ul.navlist li.navbar-spacer:hover {
         background-color: #a0a0a0; }
+  ul.navlist li.active {
+    font-weight: bold; }
+    ul.navlist li.active .tab {
+      border-bottom: 2px solid #8aa051;
+      padding-bottom: 4px; }
   ul.navlist > li.active, ul.navlist li.dropdown-item:hover, ul.navlist > li:hover {
-    background-color: #8aa051; }
+    background-color: transparent; }
+    ul.navlist > li.active a, ul.navlist li.dropdown-item:hover a, ul.navlist > li:hover a {
+      color: #000; }
   ul.navlist li.dropdown-item {
     margin-left: 0; }
     ul.navlist li.dropdown-item a {
-      display: block; }
+      display: block;
+      border-bottom: 0; }
     ul.navlist li.dropdown-item a:hover {
-      color: #fff; }
+      color: #686766;
+      background-color: #dee9cf; }
 
 a.tab {
-  color: #fff;
+  color: #686766;
   display: block;
   padding-top: 9px;
   padding-left: 10px;
@@ -1997,7 +2007,7 @@ ul.gv-dropdown-menu {
   margin-right: -20px;
   margin-top: 6px; }
   ul.gv-dropdown-menu:after {
-    border-bottom-color: #333232; }
+    border-bottom-color: #fff; }
   ul.gv-dropdown-menu li:hover {
     background-color: #8aa051;
     background-image: none; }
@@ -2019,7 +2029,7 @@ ul.gv-dropdown-menu {
 
 .caret {
   border-left: 5px solid transparent;
-  border-top: 5px solid #fff;
+  border-top: 5px solid #686766;
   border-right: 5px solid transparent;
   content: '';
   display: inline-block;
@@ -2037,7 +2047,6 @@ ul.gv-dropdown-menu {
     margin-left: 22px; }
 
 .footer {
-  background-color: #333232;
   bottom: 0;
   font-size: 14px;
   left: 0;
@@ -2052,23 +2061,25 @@ footer.footer {
   footer.footer p {
     margin-bottom: 0;
     padding-bottom: 10px;
-    padding-top: 10px; }
+    padding-top: 10px;
+    font-weight: 100;
+    font-size: 10pt; }
 
 div.footer-left {
-  background: none repeat scroll 0 0 #333232;
-  color: #fff;
+  background: none repeat scroll 0 0 transparent;
+  color: #686766;
   width: 45%; }
 
 div.footer-center {
-  background: none repeat scroll 0 0 #333232;
-  color: #fff;
+  background: none repeat scroll 0 0 transparent;
+  color: #686766;
   width: 10%; }
   div.footer-center p:hover {
     cursor: pointer; }
 
 div.footer-right {
-  background: none repeat scroll 0 0 #333232;
-  color: #333232;
+  background: none repeat scroll 0 0 transparent;
+  color: #686766;
   width: 45%; }
   div.footer-right p {
     color: #fff; }
@@ -2076,7 +2087,7 @@ div.footer-right {
     color: #da4f49;
     font-size: 18px; }
   div.footer-right a {
-    color: #fff;
+    color: #686766;
     margin-left: 5px;
     position: relative;
     top: -1px; }
@@ -2176,11 +2187,11 @@ div.toolbox {
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
   border-radius: 2px;
-  border: 3px solid #333232;
+  border: 3px solid #fff;
   margin-right: 5px;
   position: absolute; }
   div.toolbox div.gv_action_button {
-    background-color: #333232;
+    background-color: #fff;
     color: #fff;
     height: 50px;
     margin-bottom: 2px;
@@ -2373,6 +2384,12 @@ a.button-gui {
     .clusterDownBtn button.green:hover {
       background-color: #8ba142; }
 
+.bottomButtonBar {
+  background-color: #fff;
+  border-top: 1px solid #c2c2c2;
+  height: 30px;
+  padding: 5px; }
+
 div.tileList {
   margin-left: -6px;
   margin-right: -6px; }
@@ -2383,7 +2400,8 @@ div .tile, div .bigtile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: #fff;
+  border-radius: 4px;
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -2412,6 +2430,12 @@ div .tile, div .bigtile {
       margin-left: 1px; }
     div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
       font-size: 8px; }
+  div .tile .collection-type-icon, div .bigtile .collection-type-icon {
+    color: #666;
+    font-size: 30pt;
+    margin-top: 12pt; }
+  div .tile .collection-type-icon:hover, div .bigtile .collection-type-icon:hover {
+    cursor: pointer; }
   div .tile img.icon, div .bigtile img.icon {
     height: 50px;
     width: 50px; }
@@ -2488,11 +2512,14 @@ div .tile, div .bigtile {
       margin-right: 5px; }
     div .tile div.tileBadge span, div .bigtile div.tileBadge span {
       display: inline-block;
-      line-height: 13px; }
+      line-height: 15px; }
       div .tile div.tileBadge span div.corneredBadge, div .bigtile div.tileBadge span div.corneredBadge {
-        border-left: 17px solid transparent;
+        border-left: 5px solid transparent;
         border-bottom-style: solid;
         border-bottom-width: 17px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        margin-right: 5px;
         color: #fff;
         height: 0;
         padding-left: 4px;
@@ -2521,6 +2548,8 @@ div .bigtile {
 
 .collectionName {
   bottom: 0;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
   font-weight: 300;
   left: 0;
   position: absolute;
@@ -4325,7 +4354,7 @@ div.centralRow {
   margin-bottom: 40px; }
 
 div.centralContent {
-  background-color: rgba(0, 0, 0, 0.0675);
+  background-color: transparent;
   height: 100%;
   margin-left: -5px;
   margin-right: -5px;
@@ -4386,6 +4415,7 @@ li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
 
 div.headerDropdown {
   background-color: #fff;
+  border-radius: 4px;
   display: none;
   padding: 10px;
   position: relative;
@@ -4454,7 +4484,7 @@ div.queryline {
       -moz-border-radius: 0;
       -webkit-border-radius: 0;
       border-radius: 0;
-      background-color: #333232;
+      background-color: #fff;
       color: #fff;
       display: none;
       left: 0;
@@ -4464,6 +4494,7 @@ div.queryline {
 
 div.dropdownImport {
   background-color: #fff;
+  border-radius: 4px;
   display: none;
   padding-top: 10px;
   padding-left: 10px;
@@ -4513,23 +4544,29 @@ input.search-input {
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
   border-radius: 2px;
-  border: 0;
+  background-color: #fff !important;
+  border: 1px solid #eeeeee;
+  box-shadow: none;
   height: 18px;
   line-height: 18px;
-  margin-top: 5px;
-  width: 115px; }
+  margin-top: 4px;
+  margin-right: -6px;
+  width: 115px;
+  outline: none;
+  outline-color: transparent;
+  outline-style: none; }
   input.search-input:focus {
-    -webkit-box-shadow: 0 0 10px #8aa051;
-    -moz-box-shadow: 0 0 10px #8aa051;
-    box-shadow: 0 0 10px #8aa051;
-    border-color: #8aa051;
-    outline: none; }
+    border-color: #999999;
+    box-shadow: none;
+    outline: none;
+    outline-color: transparent;
+    outline-style: none; }
 
 .search-field {
-  margin-left: 15px; }
+  margin-left: 10px; }
   .search-field .fa-search {
-    color: #555;
-    margin-left: -25px;
+    color: #d2d2d2;
+    margin-left: -22px;
     font-size: 15pt;
     opacity: 0.5; }
     .search-field .fa-search:hover {
@@ -4554,7 +4591,8 @@ input.search-input {
   margin-top: 6px; }
 
 div.headerBar {
-  background-color: #686766;
+  background-color: #fff;
+  border-radius: 4px;
   color: #fff;
   font-size: 16px;
   height: 36px;
@@ -4603,7 +4641,7 @@ div.headerBar {
     background: url('../img/check_radio_sheet.png') -57px top no-repeat; }
 
 div.headerBar a.arangoHeader {
-  color: #fff;
+  color: #000;
   font-size: 16px;
   left: 5px;
   position: relative;
@@ -4619,7 +4657,7 @@ div.headerBar > div.headerButtonBar {
   border-radius: 0;
   padding: 8px 0; }
   .breadcrumb .disabledBread {
-    color: #fff;
+    color: #c2c2c2;
     float: left;
     padding-left: 5px; }
   .breadcrumb .activeBread {
@@ -4645,6 +4683,7 @@ div.headerBar > div.headerButtonBar {
 
 .modal-header, .modal-dashboard-header {
   background-color: #686766;
+  border-radius: 4px;
   border-bottom: 0 !important;
   margin-top: 5px;
   padding-left: 5px;
@@ -4762,7 +4801,9 @@ div.headerBar > div.headerButtonBar {
   opacity: .4; }
 
 .modal {
-  border-radius: 0 !important; }
+  box-shadow: none;
+  border: 0 !important;
+  border-radius: 4px !important; }
   .modal .fade.in {
     top: 12.1% !important; }
   .modal table tr:last-child {
@@ -4927,17 +4968,17 @@ pre.gv-object-view {
     width: auto !important; }
 
 #stat_hd {
-  -moz-border-radius: 3px;
-  -webkit-border-radius: 3px;
-  border-radius: 3px;
-  background-color: #333232;
-  border: 2px solid #8aa051;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  background-color: #fff;
+  border: 2px solid #fff;
   height: 24px;
   margin-top: 2px;
   text-align: center;
   width: 24px; }
   #stat_hd #stat_hd_counter {
-    color: #fff;
+    color: #000;
     line-height: 24px;
     margin-left: 0; }
 
@@ -5021,7 +5062,9 @@ pre.gv-object-view {
   white-space: nowrap; }
 
 .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container {
-  border-left: 0 solid #000; }
+  border-left: 0 solid #000;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px; }
   .dashboard-large-chart .dashboard-large-chart-inner:first-child, .dashboard-small-chart .dashboard-small-chart-inner:first-child, .dashboard-medium-chart:first-child, .dashboard-tendency-container:first-child, .dashboard-bar-chart-container:first-child {
     margin-left: 0; }
 
@@ -5039,18 +5082,18 @@ pre.gv-object-view {
   margin-right: 12px; }
   .dashboard-large-chart .dashboard-large-chart-inner {
     background-color: #fff;
-    border-left: 5px solid #e1e1e1;
-    border-right: 5px solid #e1e1e1;
-    border-top: 5px solid #e1e1e1;
+    border-left: 5px solid #fff;
+    border-right: 5px solid #fff;
+    border-top: 5px solid #fff;
     padding-top: 5px; }
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       margin-bottom: 0; }
 
 .dashboard-small-chart .dashboard-small-chart-inner {
   background-color: #fff;
-  border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1; }
+  border-left: 5px solid #fff;
+  border-right: 5px solid #fff;
+  border-top: 5px solid #fff; }
   .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
     fill-opacity: .15;
     stroke-opacity: 1;
@@ -5058,9 +5101,9 @@ pre.gv-object-view {
 
 .dashboard-medium-chart {
   background-color: #fff;
-  border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1;
+  border-left: 5px solid #fff;
+  border-right: 5px solid #fff;
+  border-top: 5px solid #fff;
   padding-top: 5px; }
   .dashboard-medium-chart:first-child {
     margin-right: 12px; }
@@ -5087,9 +5130,12 @@ pre.gv-object-view {
 
 .dashboard-tendency-container .dashboard-tendency-chart {
   background-color: #fff;
-  border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1; }
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  border-top: 5px solid #fff;
+  border-left: 5px solid #fff;
+  border-right: 5px solid #fff;
+  border-top: 5px solid #fff; }
   .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency {
     background-color: #fff;
     margin-top: 5px;
@@ -5104,9 +5150,11 @@ pre.gv-object-view {
 
 .dashboard-bar-chart-container .dashboard-bar-chart {
   background-color: #fff;
-  border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1; }
+  border-left: 5px solid #fff;
+  border-right: 5px solid #fff;
+  border-top: 5px solid #fff;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px; }
   .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
     margin-top: 5px;
     padding: 0 8px; }
@@ -5124,6 +5172,8 @@ pre.gv-object-view {
 
 .dashboard-sub-bar {
   background-color: #686766;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
   color: #fff;
   height: 24px;
   line-height: 24px;
@@ -5281,7 +5331,7 @@ pre.gv-object-view {
 .login-input {
   width: 387px; }
 
-.query-toolbar, .aql-editor {
+toolbar {
   background-color: #f0f0f0;
   border-bottom: 0;
   border-style: solid;
@@ -5291,23 +5341,32 @@ pre.gv-object-view {
   margin-left: 0;
   margin-right: 0; }
 
+.queryBottomActions {
+  padding: 5px;
+  border-top: 1px solid #c2c2c2; }
+
 .editor-toolbar {
   border-color: #a0a0a0;
-  margin-top: 5px; }
+  margin-top: 3px; }
   .editor-toolbar span {
     float: right;
     margin-left: 5px;
     margin-right: 5px;
     position: relative;
-    top: 2px; }
+    top: 0px; }
   .editor-toolbar i {
     margin-right: 5px;
     margin-top: 3px; }
     .editor-toolbar i:hover {
       cursor: pointer; }
+  .editor-toolbar .icon_arangodb {
+    font-size: 15pt; }
+  .editor-toolbar .icon_arangodb_trash {
+    margin-left: -2px; }
   .editor-toolbar .fa-comment, .editor-toolbar .fa-comment-o {
-    font-size: 18px;
+    font-size: 17px;
     position: relative;
+    margin-right: -1px;
     top: -2px; }
   .editor-toolbar .arango-icon-disk {
     margin-top: 1px; }
@@ -5335,10 +5394,9 @@ pre.gv-object-view {
 
 .query-output {
   background-color: #fff;
-  border: 1px solid #c0c0c0;
+  border: 0;
   border-top-width: 0;
   height: 200px;
-  margin-bottom: 10px;
   margin-left: 0;
   margin-right: 0;
   min-height: 100px;
@@ -5359,8 +5417,8 @@ pre.gv-object-view {
   width: 220px; }
   .styled-select select {
     background: #fff;
-    border: 0;
-    border-radius: 0;
+    border: 1px solid #c2c2c2 !important;
+    border-radius: 4px !important;
     font-size: 14px;
     font-weight: 300;
     height: 30px;
@@ -5378,7 +5436,8 @@ pre.gv-object-view {
   height: 30px !important; }
 
 .wide-button-div {
-  height: 20px;
+  margin-top: -10px;
+  height: 26px;
   margin-bottom: 15px;
   padding-top: 5px;
   width: 100%; }
@@ -5469,10 +5528,12 @@ pre.gv-object-view {
   width: 130px !important;
   z-index: 9999 !important; }
 
-#queryContent .arango-tab a {
-  border-bottom-color: #ddd; }
-#queryContent .arango-tab .active {
-  border-bottom-color: #fff !important; }
+#queryContent {
+  margin-top: 18px; }
+  #queryContent .arango-tab a {
+    border-bottom-color: #ddd; }
+  #queryContent .arango-tab .active {
+    border-bottom-color: #fff !important; }
 
 .query-div {
   display: none;
@@ -5538,6 +5599,8 @@ svg.explain-tree {
   margin-top: 0; }
 
 .innerContent {
+  background-color: #fff;
+  border-radius: 4px;
   padding-top: 13px; }
 
 .container {
@@ -5548,9 +5611,8 @@ svg.explain-tree {
 .arango-tab {
   border-bottom: 1px solid #ddd;
   list-style: none;
-  margin-bottom: -1px;
   margin-left: 0;
-  margin-right: 15px;
+  padding-right: 10px;
   padding-bottom: 0; }
   .arango-tab a {
     -moz-border-radius: 0;
@@ -5559,6 +5621,8 @@ svg.explain-tree {
     background-color: #f1f0ee;
     border: 1px solid transparent;
     border-bottom-color: #888;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
     color: #000;
     display: block;
     font-size: 13px;
@@ -5576,7 +5640,8 @@ svg.explain-tree {
     z-index: 900; }
     .arango-tab li.active a {
       background: #fff;
-      border-bottom-color: #fff;
+      border-bottom-color: #fff !important;
+      /* <-- is important */
       border-left-color: #888;
       border-right-color: #888;
       border-top-color: #888;
@@ -5585,13 +5650,27 @@ svg.explain-tree {
 
 .jsoneditor {
   background-color: #fff !important;
-  border: 1px solid rgba(0, 0, 0, 0.2) !important; }
+  border: 0px solid rgba(0, 0, 0, 0.2) !important; }
   .jsoneditor .menu {
-    background-color: #686766 !important;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.2) !important; }
+    background-color: #fff !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-top: 0 !important;
+    border-bottom: 1px solid #c2c2c2 !important; }
+    .jsoneditor .menu button {
+      border: 0 !important; }
+    .jsoneditor .menu button:hover {
+      background-color: #8aa051;
+      color: #fff; }
   .jsoneditor .search .frame {
     border: 0 !important;
     margin: 3px !important; }
+    .jsoneditor .search .frame input {
+      border: 1px solid #c2c2c2 !important;
+      border-radius: 4px;
+      margin-top: -2px;
+      margin-left: 5px;
+      margin-right: 5px; }
   .jsoneditor .search .results {
     color: #fff !important;
     margin-top: 3px !important; }
@@ -5687,6 +5766,8 @@ svg.explain-tree {
 
 .shell_workspace {
   margin-top: 13px; }
+  .shell_workspace ::-webkit-scrollbar {
+    display: none; }
 
 .replShell {
   background-color: #fff;
@@ -5694,7 +5775,10 @@ svg.explain-tree {
   height: 100%;
   min-width: 100px;
   position: relative;
+  overflow-y: hidden;
   width: 100%; }
+  .replShell > div {
+    border-radius: 4px; }
   .replShell pre {
     border-bottom: 0;
     border-left: 0;
@@ -5883,7 +5967,7 @@ div.gv_zoom_widget {
     height: 40px;
     margin-bottom: 20px; }
   div.gv_zoom_widget div.gv_zoom_slider {
-    background: #333232;
+    background: #fff;
     height: 200px;
     margin: 0 17px;
     width: 4px; }
@@ -5894,7 +5978,7 @@ div.gv_zoom_widget {
     left: -.55em;
     outline: none; }
     div.gv_zoom_widget a.ui-slider-handle.ui-state-hover {
-      outline-color: #333232; }
+      outline-color: #fff; }
   div.gv_zoom_widget .ui-state-default {
     background: #f6f6f6; }
 
@@ -6063,19 +6147,33 @@ input.gv-radio-button {
   .snippet-no-num .prettify {
     font-size: 1.2em; }
   .snippet-no-num .sh_number {
-    color: #044; }
+    color: #044;
+    font-weight: 100;
+    margin-left: 5px; }
   .snippet-no-num .sh_symbol {
-    color: #00f; }
+    color: #00f;
+    font-weight: 100;
+    margin-left: 5px; }
   .snippet-no-num .sh_cbracket {
-    color: #c7a317; }
+    color: #c7a317;
+    font-weight: 100;
+    margin-left: 5px; }
   .snippet-no-num .sh_keyword {
-    color: #c12dad; }
+    color: #c12dad;
+    font-weight: 100;
+    margin-left: 5px; }
   .snippet-no-num .sh_string {
-    color: #ce2f30; }
+    color: #ce2f30;
+    font-weight: 100;
+    margin-left: 5px; }
   .snippet-no-num .sh_object {
-    color: #00f; }
+    color: #00f;
+    font-weight: 100;
+    margin-left: 5px; }
   .snippet-no-num .sh_array {
-    color: #00f; }
+    color: #00f;
+    font-weight: 100;
+    margin-left: 5px; }
 
 @media (max-width: 798px) {
   .arango-collection-ul {
@@ -6096,7 +6194,7 @@ input.gv-radio-button {
 
 .document-info {
   background-color: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
   margin-bottom: 8px;
   margin-top: -10px;
   min-height: 65px;
@@ -6122,6 +6220,8 @@ input.gv-radio-button {
     font-size: 11pt; }
   .document-info .document-type-container div {
     float: left; }
+  .document-info .document-type-container #document-id {
+    margin-left: 10px; }
 
 .document-link:hover {
   cursor: pointer;
@@ -6144,7 +6244,7 @@ input.gv-radio-button {
 .progress-view {
   background-color: #363c39;
   border-radius: 2px;
-  color: #333232;
+  color: #fff;
   height: 188px;
   left: 50%;
   margin: -100px 0 0 -150px;
@@ -6157,7 +6257,7 @@ input.gv-radio-button {
     .progress-view .progress-content .fa-spinner {
       font-size: 100pt; }
   .progress-view .progress-message {
-    background-color: #333232;
+    background-color: #fff;
     border-radius: 0 0 2px 2px;
     color: #fff;
     font-weight: 200;
@@ -6166,6 +6266,7 @@ input.gv-radio-button {
     padding-top: 3px;
     text-align: center; }
   .progress-view .progress-text {
+    color: #000;
     float: left;
     margin-left: 5px;
     margin-top: 10px; }
@@ -6592,7 +6693,7 @@ input.gv-radio-button {
   .arango-table tbody tr:nth-child(even) {
     background-color: #fff; }
   .arango-table tbody tr:nth-child(odd) {
-    background: #f1f0ee; }
+    background: rgba(222, 233, 207, 0.8); }
   .arango-table tbody td {
     padding: 10px 18px; }
 
@@ -6606,7 +6707,7 @@ input.gv-radio-button {
     height: 27px;
     width: 82px; }
   .arango-tabbar .arango-active-tab {
-    background-color: #fff;
+    background-color: rgba(222, 233, 207, 0.8);
     border-left: 1px solid #000;
     border-right: 1px solid #000;
     border-top: 1px solid #000; }
@@ -6632,6 +6733,7 @@ input.gv-radio-button {
   .arangoDataTable td {
     padding: 10px 18px !important; }
   .arangoDataTable .key {
+    font-weight: 100;
     margin-top: 4px; }
   .arangoDataTable .dataTable .noPointer tr {
     cursor: default; }
@@ -6648,7 +6750,7 @@ input.gv-radio-button {
   background-color: #fff; }
 
 .api-container #resources > li.resource:nth-child(odd), table.arangoDataTable tr.odd {
-  background-color: #f1f0ee; }
+  background-color: rgba(185, 211, 117, 0.2); }
 
 #tableDiv table.dataTable td {
   padding: 12px 18px !important; }
@@ -6678,7 +6780,8 @@ input.gv-radio-button {
   white-space: nowrap !important; }
 
 .totalDocuments {
-  color: #000;
+  color: #666;
+  font-weight: 100;
   float: left;
   margin-top: -58px !important;
   padding-left: 10px; }
@@ -6759,13 +6862,24 @@ table .sorting {
   margin-top: -3px;
   padding-right: 10px; }
 
+.documentsDropdown .dropdownImport, .documentsDropdown .headerDropdown {
+  margin-bottom: 5px; }
+
 .documents-size {
   float: right;
-  /*margin-top: -58px;*/
-  height: 24px;
-  margin-left: 20px;
-  margin-top: 2px;
-  width: 115px; }
+  border-radius: 2px;
+  background-color: #fff !important;
+  border: 1px solid #eeeeee;
+  box-shadow: none;
+  height: 28px;
+  line-height: 18px;
+  margin-right: -2px;
+  margin-left: 10px;
+  margin-top: 0px;
+  width: 115px;
+  outline: none;
+  outline-color: transparent;
+  outline-style: none; }
 
 .queryline .fa-info-circle:hover {
   cursor: pointer; }
@@ -6774,12 +6888,17 @@ table .sorting {
   background: none !important; }
 
 #exportHeader .fa-exclamation-circle {
-  color: #333232;
+  color: #fff;
   font-size: 13pt;
   margin-right: 10px; }
 
 .totalDocuments:hover {
   color: #000; }
+
+#documentsToolbarFL {
+  border-top: 1px solid #c2c2c2; }
+  #documentsToolbarFL #documentsToolbarF {
+    margin-top: 5px; }
 
 .ajax-file-upload-statusbar {
   -moz-border-radius: 2px;
