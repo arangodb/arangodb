@@ -1530,7 +1530,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::unordered_set<Variable*> vars = _expression->variables();
+          std::unordered_set<Variable*> vars(std::move(_expression->variables()));
           std::vector<Variable const*> v;
           v.reserve(vars.size());
 
