@@ -28,11 +28,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerJob.h"
+
 #include "Basics/MutexLocker.h"
 #include "Basics/logging.h"
 #include "Cluster/HeartbeatThread.h"
-#include "V8Server/ApplicationV8.h"
+#include "Dispatcher/DispatcherQueue.h"
 #include "V8/v8-utils.h"
+#include "V8Server/ApplicationV8.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
@@ -116,8 +118,17 @@ Job::status_t ServerJob::work () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ServerJob::cancel (bool running) {
+bool ServerJob::cancel () {
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerJob::cleanup (DispatcherQueue* queue) {
+  queue->removeJob(this);
+  delete this;
 }
 
 // -----------------------------------------------------------------------------
@@ -137,7 +148,7 @@ bool ServerJob::execute () {
     return false;
   }
 
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
 
   if (context == nullptr) {
     TRI_ReleaseDatabaseServer(_server, vocbase);

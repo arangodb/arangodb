@@ -1,6 +1,10 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* removed createNamedQueue and addJob from org/arangodb/tasks
+
+* moved dispatcher to atmoic implementation
+
 * removed configure option `--enable-timings`
 
   This option did not have an effect.

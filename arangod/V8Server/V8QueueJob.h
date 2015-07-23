@@ -42,9 +42,8 @@ namespace triagens {
     class ApplicationV8;
 
     class V8QueueJob : public rest::Job {
-      private:
-        V8QueueJob (V8QueueJob const&) = delete;
-        V8QueueJob& operator= (V8QueueJob const&) = delete;
+      V8QueueJob (V8QueueJob const&) = delete;
+      V8QueueJob& operator= (V8QueueJob const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -56,7 +55,7 @@ namespace triagens {
 /// @brief constructs a new V8 queue job
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8QueueJob (std::string const& queue,
+        V8QueueJob (size_t queue,
                     TRI_vocbase_t*,
                     ApplicationV8*,
                     const TRI_json_t*);
@@ -77,7 +76,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const& queue () const override;
+        size_t queue () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -89,25 +88,19 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool cancel (bool running) override;
+        bool cancel () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cleanup ();
+        void cleanup (rest::DispatcherQueue*) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool beginShutdown ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void handleError (basics::Exception const& ex);
+        void handleError (basics::Exception const& ex) override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -119,7 +112,7 @@ namespace triagens {
 /// @brief queue name
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _queue;
+        const size_t _queue;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase

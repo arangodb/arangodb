@@ -214,17 +214,6 @@ bool ApplicationDispatcher::start () {
 
   buildDispatcherReporter();
 
-  bool ok = _dispatcher->start();
-
-  if (! ok) {
-    LOG_FATAL_AND_EXIT("cannot start dispatcher");
-  }
-
-  while (! _dispatcher->isStarted()) {
-    LOG_DEBUG("waiting for dispatcher to start");
-    usleep(500 * 1000);
-  }
-
   return true;
 }
 
@@ -233,15 +222,7 @@ bool ApplicationDispatcher::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::open () {
-  if (_disabled) {
-    return true;
-  }
-
-  if (_dispatcher != nullptr) {
-    return _dispatcher->open();
-  }
-
-  return false;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,15 +253,7 @@ void ApplicationDispatcher::stop () {
   }
 
   if (_dispatcher != nullptr) {
-    static size_t const MAX_TRIES = 50; // 10 seconds (50 * 200 ms)
-
-    for (size_t count = 0;  count < MAX_TRIES && _dispatcher->isRunning();  ++count) {
-      LOG_TRACE("waiting for dispatcher to stop");
-      usleep(200 * 1000);
-    }
-
     _dispatcher->shutdown();
-
     delete _dispatcher;
     _dispatcher = nullptr;
   }

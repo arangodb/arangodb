@@ -30,6 +30,7 @@
 
 #include "Basics/json.h"
 #include "Basics/logging.h"
+#include "Dispatcher/DispatcherQueue.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -48,7 +49,7 @@ using namespace triagens::arango;
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8QueueJob::V8QueueJob (std::string const& queue,
+V8QueueJob::V8QueueJob (size_t queue,
                         TRI_vocbase_t* vocbase,
                         ApplicationV8* v8Dealer,
                         TRI_json_t const* parameters)
@@ -84,7 +85,7 @@ V8QueueJob::~V8QueueJob () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& V8QueueJob::queue () const {
+size_t V8QueueJob::queue () const {
   return _queue;
 }
 
@@ -97,7 +98,7 @@ Job::status_t V8QueueJob::work () {
     return status_t(JOB_DONE);
   }
 
-  ApplicationV8::V8Context* context = _v8Dealer->enterContext(_queue, _vocbase, false);
+  ApplicationV8::V8Context* context = _v8Dealer->enterContext(_vocbase, false);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
@@ -164,11 +165,8 @@ Job::status_t V8QueueJob::work () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8QueueJob::cancel (bool running) {
-  if (running) {
-    _canceled = 1;
-  }
-
+bool V8QueueJob::cancel () {
+  _canceled = 1;
   return true;
 }
 
@@ -176,16 +174,9 @@ bool V8QueueJob::cancel (bool running) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8QueueJob::cleanup () {
+void V8QueueJob::cleanup (DispatcherQueue* queue) {
+  queue->removeJob(this);
   delete this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool V8QueueJob::beginShutdown () {
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
