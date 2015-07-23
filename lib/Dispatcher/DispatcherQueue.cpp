@@ -389,8 +389,6 @@ void DispatcherQueue::startQueueThread () {
   {
     MUTEX_LOCKER(_threadsLock);
 
-    size_t nrRunning = _nrRunning;
-
     if (! notEnoughThreads()) {
       delete thread;
       return;
