@@ -1582,7 +1582,7 @@ static AqlValue VertexIdsToAqlValue (triagens::arango::AqlTransaction* trx,
                                      CollectionNameResolver const* resolver,
                                      std::unordered_set<VertexId>& ids,
                                      bool includeData = false) {
-  Json* result = new Json(Json::Array);
+  Json* result = new Json(Json::Array, ids.size());
 
   if (includeData) {
     for (auto& it : ids) {
@@ -1609,7 +1609,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   basics::traverser::NeighborsOptions opts;
 
   if (n < 4 || n > 6) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS", (int) 4, (int) 6);
   }
 
   auto resolver = trx->resolver();
@@ -1654,9 +1654,30 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       opts.start = v;
     }
   }
+  else if (vertexInfo.isObject()) {
+    if (!vertexInfo.has("_id")) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+    vertexId = basics::JsonHelper::getStringValue(vertexInfo.get("_id").json(), "");
+    // TODO tmp can be replaced by Traversal::IdStringToVertexId
+    size_t split;
+    char const* str = vertexId.c_str();
+
+    if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
+
+    std::string const collectionName = vertexId.substr(0, split);
+    auto coli = resolver->getCollectionStruct(collectionName);
+    if (coli == nullptr || collectionName.compare(vColName) != 0) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+    VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
+    opts.start = v;
+  }
   else {
     // TODO FIXME
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
 
   Json direction = ExtractFunctionParameter(trx, parameters, 3, false);
@@ -1681,9 +1702,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
   }
 
-  /* Ignored for now
-  auto examples = ExtractFunctionParameter(trx, parameters, 4, false);
-  */
 
   bool includeData = false;
 
@@ -1700,25 +1718,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     } else {
       opts.maxDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "maxDepth", opts.minDepth);
     }
-    /*
-    if (options.has("includeData")) {
-      Json incl = options.get("includeData");
-      if (! incl.isBoolean() ) {
-        //TODO Correct Error Message
-        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
-      }
-      includeData = incl.json()->_value._boolean;
-    }
-    if (options.has("minDepth")) {
-      Json min = options.get("minDepth");
-    }
-    if (options.has("maxDepth")) {
-    }
-    */
   }
-
-  // TODO Parse VertexInfo {_id},"v/1","1" are all valid
-
 
   std::unordered_set<VertexId> neighbors;
 
@@ -1733,12 +1733,24 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   };
 
   TRI_voc_cid_t eCid = resolver->getCollectionId(eColName);
+
+
+  // Function to return constant distance
   auto wc = [](TRI_doc_mptr_copy_t& edge) -> double { return 1; };
-  edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
+  EdgeCollectionInfo* eci = new EdgeCollectionInfo(
     eCid,
     trx->documentCollection(eCid),
     wc
-  ));
+  );
+
+  edgeCollectionInfos.emplace_back(eci);
+
+  if (n > 4) {
+    auto edgeExamples = ExtractFunctionParameter(trx, parameters, 4, false);
+    if (! (edgeExamples.isArray() && edgeExamples.size() == 0) ) {
+      opts.addEdgeFilter(edgeExamples, eci->getShaper(), eCid); 
+    }
+  }
 
   TRI_RunNeighborsSearch(
     edgeCollectionInfos,

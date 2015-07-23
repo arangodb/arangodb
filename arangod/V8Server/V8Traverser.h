@@ -171,6 +171,10 @@ namespace triagens {
                               TRI_voc_cid_t const& cid,
                               std::string& errorMessage);
 
+          void addEdgeFilter (Json const& example,
+                              TRI_shaper_t* shaper,
+                              TRI_voc_cid_t const& cid);
+
           void addVertexFilter (v8::Isolate* isolate,
                                 v8::Handle<v8::Value> const& example,
                                 triagens::arango::ExplicitTransaction* trx,
