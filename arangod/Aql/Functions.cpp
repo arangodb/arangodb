@@ -1617,14 +1617,13 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   Json vertexCol = ExtractFunctionParameter(trx, parameters, 0, false);
 
   if (!vertexCol.isString()) {
-    // TODO FIXME
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
+  std::string vColName = basics::JsonHelper::getStringValue(vertexCol.json(), "");
 
   Json edgeCol = ExtractFunctionParameter(trx, parameters, 1, false);
   if (!edgeCol.isString()) {
-    // TODO FIXME
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
   std::string eColName = basics::JsonHelper::getStringValue(edgeCol.json(), "");
 
@@ -1639,19 +1638,18 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       char const* str = vertexId.c_str();
 
       if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-        throw TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
       }
 
       std::string const collectionName = vertexId.substr(0, split);
       auto coli = resolver->getCollectionStruct(collectionName);
-      if (coli == nullptr) {
-        throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      if (coli == nullptr || collectionName.compare(vColName) != 0) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       }
       VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
       opts.start = v;
     }
     else {
-      std::string vColName = basics::JsonHelper::getStringValue(vertexCol.json(), "");
       VertexId v(resolver->getCollectionId(vColName), vertexId.c_str());
       opts.start = v;
     }
@@ -1662,6 +1660,26 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   }
 
   Json direction = ExtractFunctionParameter(trx, parameters, 3, false);
+  if (direction.isString()) {
+    std::string const dir = basics::JsonHelper::getStringValue(direction.json(), "");
+    if (dir.compare("outbound") == 0) {
+      opts.direction = TRI_EDGE_OUT;
+    }
+    else if (dir.compare("inbound") == 0) {
+      opts.direction = TRI_EDGE_IN;
+    }
+    else if (dir.compare("any") == 0) {
+      opts.direction = TRI_EDGE_ANY;
+    }
+    else {
+      // TODO FIXME
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
+    }
+  }
+  else {
+    // TODO FIXME
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS");
+  }
 
   /* Ignored for now
   auto examples = ExtractFunctionParameter(trx, parameters, 4, false);
