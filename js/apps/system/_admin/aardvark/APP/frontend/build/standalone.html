@@ -310,8 +310,9 @@
       <a class="arangoHeader">Collections</a>
     </div>
     <div class="search-field">
-      <input type="text" id="searchInput" class="search-input" placeholder="Search..."/><img id="searchSubmit"
-                                                                                            class="search-submit-icon"/>
+      <input type="text" id="searchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="searchSubmit" class="search-submit-icon"/> -->
+      <i id="searchSubmit" class="fa fa-search"></i>
     </div>
   </div>
 
@@ -552,7 +553,9 @@
       <a class="arangoHeader">Databases</a>
     </div>
     <div class="search-field">
-      <input type="text" value="<%=searchString%>" id="databaseSearchInput" class="search-input" placeholder="Search..."/><img id="databaseSearchSubmit" class="search-submit-icon">
+      <input type="text" value="<%=searchString%>" id="databaseSearchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="databaseSearchSubmit" class="search-submit-icon">-->
+      <i id="databaseSearchSubmit" class="fa fa-search"></i>
     </div>
   </div>
 
@@ -639,7 +642,9 @@ if (list.length > 0) {
       <a class="arangoHeader">Demo</a>
     </div>
     <div class="search-field">
-      <input type="text" id="demoSearchInput" class="search-input" placeholder="Search..."><img id="demoSearchSubmit" class="search-submit-icon">
+      <input type="text" id="demoSearchInput" class="search-input" placeholder="Search...">
+      <i id="demoSearchSubmit" class="fa fa-search"></i>
+      <!-- <img id="demoSearchSubmit" class="search-submit-icon"> -->
       <!--<div id="searchResults" class="demo-dropdown-menu"><ul></ul></div>-->
     </div>
     <div class="styled-select">
@@ -711,6 +716,7 @@ if (list.length > 0) {
 
   <!-- remove marker for docupdiv-->
   <ul class="headerButtonList">
+    <!-- Mark: removed prev/next collection button
     <li class="enabled">
       <a id="collectionNext" class="headerButton">
         <span class="icon_arangodb_arrowright" title="Next collection"></span>
@@ -721,6 +727,20 @@ if (list.length > 0) {
         <span class="icon_arangodb_arrowleft" title="Previous collection"></span>
       </a>
     </li>
+    -->
+    <li class="enabled">
+        <select id="documentSize" class="documents-size">
+          <option value="10" selected="">10 results</option>
+          <option value="20">20 results</option>
+          <option value="50">50 results</option>
+          <option value="100">100 results</option>
+          <option value="500">500 results</option>
+          <option value="1000">1000 results</option>
+          <option value="2500">2500 results</option>
+          <option value="5000">5000 results</option>
+          <option value="all">All results</option>
+        </select>
+      </a>
     <li class="enabled">
       <a id="markDocuments" class="headerButton">
         <span class="icon_arangodb_edit" title="Edit documents"></span>
@@ -1048,17 +1068,6 @@ if (list.length > 0) {
     <div id="documentsToolbarFL">
       <div id="documentsToolbarF" class="pagination-line">
       </div>
-        <select id="documentSize" class="documents-size">
-          <option value="10" selected="">10 results</option>
-          <option value="20">20 results</option>
-          <option value="50">50 results</option>
-          <option value="100">100 results</option>
-          <option value="500">500 results</option>
-          <option value="1000">1000 results</option>
-          <option value="2500">2500 results</option>
-          <option value="5000">5000 results</option>
-          <option value="all">All results</option>
-        </select>
     </div>
 
 <!-- Delete Modal -->
@@ -1324,7 +1333,9 @@ if (list.length > 0) {
       <a class="arangoHeader">Graphs</a>
     </div>
     <div class="search-field">
-      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/><img id="graphManagementSearchSubmit" class="search-submit-icon">
+      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <i id="graphManagementSearchSubmit" class="fa fa-search"></i>
+      <!-- <img id="graphManagementSearchSubmit" class="search-submit-icon"> -->
     </div>
   </div>
 
@@ -2373,9 +2384,12 @@ if (list.length > 0) {
 
 <script id="progressBase.ejs" type="text/template">
   <div class="progress-view">
-    <p class="progress-content">
-      <i class="fa fa-spinner fa-spin"></i>
-    </p>
+    <div class="progress-content">
+      <!--<i style="visibility:hidden" class="fa fa-spinner fa-spin"></i>-->
+      <div class="pong-loader">
+        Loading…
+      </div>
+    </div>
     <div class="progress-message">
       <div class="progress-text"></div>
       <div class="progress-action"></div>
@@ -2565,7 +2579,7 @@ var cutByResolution = function (str) {
 <thead>
   <tr role="row">
     <th class="sorting_disabled docsFirstCol" role="columnheader" rowspan="1" colspan="1">Content</th>
-    <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1"></th>
+    <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1">_key</th>
     <th class="sorting_disabled docsThirdCol" role="columnheader" rowspan="1" colspan="1">
       <a id="addDocumentButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a document"></span></a>
     </th>
@@ -2662,7 +2676,9 @@ var cutByResolution = function (str) {
       <a class="arangoHeader">User Management</a>
     </div>
     <div class="search-field">
-      <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/><img id="userManagementSearchSubmit" class="search-submit-icon">
+      <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="userManagementSearchSubmit" class="search-submit-icon"> -->
+      <i id="userManagementSearchSubmit" class="fa fa-search"></i>
     </div>
   </div>
 
@@ -2806,7 +2822,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1437482893191"></script>
+<script src="app.js?version=1437574394680"></script>
 
   </body>
 </html>

@@ -15,6 +15,7 @@
     el2: "#progressPlaceholderIcon",
 
     toShow: false,
+    lastDelay: 0,
 
     action: function(){},
 
@@ -31,14 +32,15 @@
     },
 
     showWithDelay: function(delay, msg, action, button) {
-    var self = this;
+      var self = this;
       self.toShow = true;
+      self.lastDelay = delay;
 
-      setTimeout(function(delay) {
+      setTimeout(function() {
         if (self.toShow === true) {
           self.show(msg, action, button);
         }
-      }, delay);
+      }, self.lastDelay);
     },
 
     show: function(msg, action, button) {
@@ -54,9 +56,12 @@
     },
 
     hide: function() {
+      var self = this;
+      self.toShow = false;
+
       $(this.el).hide();
+
       this.action = function(){};
-      //$(this.el2).html('');
     }
 
   });
