@@ -2315,21 +2315,24 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
 static v8::Handle<v8::Value> VertexIdsToV8 (v8::Isolate* isolate, 
                                             ExplicitTransaction* trx,
                                             CollectionNameResolver const* resolver,
-                                            vector<VertexId>& ids,
+                                            unordered_set<VertexId>& ids,
                                             unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
                                             bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
   uint32_t const vn = static_cast<uint32_t>(ids.size());
   v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
 
+  uint32_t j = 0;
   if (includeData) {
-    for (uint32_t j = 0;  j < vn;  ++j) {
-      vertices->Set(j, VertexIdToData(isolate, resolver, trx, ditches, ids[j]));
+    for (auto& it: ids) {
+      vertices->Set(j, VertexIdToData(isolate, resolver, trx, ditches, it));
+      ++j;
     }
   } 
   else {
-    for (uint32_t j = 0;  j < vn;  ++j) {
-      vertices->Set(j, VertexIdToString(isolate, resolver, ids[j]));
+    for (auto& it: ids) {
+      vertices->Set(j, VertexIdToString(isolate, resolver, it));
+      ++j;
     }
   }
   return scope.Escape<v8::Value>(vertices);
@@ -2510,8 +2513,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     }
   }
 
-  unordered_set<VertexId> distinctNeighbors;
-  vector<VertexId> neighbors;
+  unordered_set<VertexId> neighbors;
 
   if (opts.useEdgeFilter) {
     string errorMessage;
@@ -2556,7 +2558,6 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       TRI_RunNeighborsSearch(
         edgeCollectionInfos,
         opts,
-        distinctNeighbors,
         neighbors
       );
     } 
