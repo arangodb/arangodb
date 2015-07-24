@@ -1,6 +1,10 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* removed createNamedQueue and addJob from org/arangodb/tasks
+
+* moved dispatcher to atmoic implementation
+
 * added shorthand notation for attribute names in AQL object literals:
 
       LET name = "Peter"

@@ -293,6 +293,7 @@ void BasicOptions::addEdgeFilter (v8::Isolate* isolate,
                                   TRI_shaper_t* shaper,
                                   TRI_voc_cid_t const& cid,
                                   string& errorMessage) {
+  useEdgeFilter = true;
   auto it = _edgeFilter.find(cid);
 
   if (example->IsArray()) {
@@ -305,6 +306,21 @@ void BasicOptions::addEdgeFilter (v8::Isolate* isolate,
     if (it == _edgeFilter.end()) {
       _edgeFilter.emplace(cid, new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example), shaper, errorMessage));
     }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a new edge matcher object
+////////////////////////////////////////////////////////////////////////////////
+
+void BasicOptions::addEdgeFilter (Json const& example,
+                                  TRI_shaper_t* shaper,
+                                  TRI_voc_cid_t const& cid,
+                                  CollectionNameResolver const* resolver) {
+  useEdgeFilter = true;
+  auto it = _edgeFilter.find(cid);
+  if (it == _edgeFilter.end()) {
+    _edgeFilter.emplace(cid, new ExampleMatcher(example.json(), shaper, resolver));
   }
 }
 
@@ -506,7 +522,6 @@ static void InboundNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
                               unordered_set<VertexId>& startVertices,
                               unordered_set<VertexId>& visited,
                               unordered_set<VertexId>& distinct,
-                              vector<VertexId>& result,
                               uint64_t depth = 1) {
 
   TRI_edge_direction_e dir = TRI_EDGE_IN;
@@ -527,10 +542,7 @@ static void InboundNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
           visited.emplace(v);
           if (depth >= opts.minDepth) {
             if (opts.matchesVertex(v)) {
-              auto p = distinct.emplace(v);
-              if (p.second) {
-                result.emplace_back(*p.first);
-              }
+              distinct.emplace(v);
             }
           }
           if (depth < opts.maxDepth) {
@@ -542,7 +554,7 @@ static void InboundNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
   }
 
   if (! nextDepth.empty()) {
-    InboundNeighbors(collectionInfos, opts, nextDepth, visited, distinct, result, depth + 1);
+    InboundNeighbors(collectionInfos, opts, nextDepth, visited, distinct, depth + 1);
   }
 }
 
@@ -555,7 +567,6 @@ static void OutboundNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
                                unordered_set<VertexId>& startVertices,
                                unordered_set<VertexId>& visited,
                                unordered_set<VertexId>& distinct,
-                               vector<VertexId>& result,
                                uint64_t depth = 1) {
 
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
@@ -576,10 +587,7 @@ static void OutboundNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
           visited.emplace(v);
           if (depth >= opts.minDepth) {
             if (opts.matchesVertex(v)) {
-              auto p = distinct.emplace(v);
-              if (p.second) {
-                result.emplace_back(*p.first);
-              }
+              distinct.emplace(v);
             }
           }
           if (depth < opts.maxDepth) {
@@ -590,7 +598,7 @@ static void OutboundNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
     }
   }
   if (! nextDepth.empty()) {
-    OutboundNeighbors(collectionInfos, opts, nextDepth, visited, distinct, result, depth + 1);
+    OutboundNeighbors(collectionInfos, opts, nextDepth, visited, distinct, depth + 1);
   }
 }
 
@@ -603,7 +611,6 @@ static void AnyNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
                           unordered_set<VertexId>& startVertices,
                           unordered_set<VertexId>& visited,
                           unordered_set<VertexId>& distinct,
-                          vector<VertexId>& result,
                           uint64_t depth = 1) {
 
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
@@ -625,10 +632,7 @@ static void AnyNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
           visited.emplace(v);
           if (depth >= opts.minDepth) {
             if (opts.matchesVertex(v)) {
-              auto p = distinct.emplace(v);
-              if (p.second) {
-                result.emplace_back(*p.first);
-              }
+              distinct.emplace(v);
             }
           }
           if (depth < opts.maxDepth) {
@@ -649,10 +653,7 @@ static void AnyNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
           visited.emplace(v);
           if (depth >= opts.minDepth) {
             if (opts.matchesVertex(v)) {
-              auto p = distinct.emplace(v);
-              if (p.second) {
-                result.emplace_back(*p.first);
-              }
+              distinct.emplace(v);
             }
           }
           if (depth < opts.maxDepth) {
@@ -663,7 +664,7 @@ static void AnyNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
     }
   }
   if (! nextDepth.empty()) {
-    AnyNeighbors(collectionInfos, opts, nextDepth, visited, distinct, result, depth + 1);
+    AnyNeighbors(collectionInfos, opts, nextDepth, visited, distinct, depth + 1);
   }
 }
 
@@ -674,8 +675,7 @@ static void AnyNeighbors (vector<EdgeCollectionInfo*>& collectionInfos,
 void TRI_RunNeighborsSearch (
     vector<EdgeCollectionInfo*>& collectionInfos,
     NeighborsOptions& opts,
-    unordered_set<VertexId>& distinct,
-    vector<VertexId>& result) {
+    unordered_set<VertexId>& result) {
   unordered_set<VertexId> startVertices;
   unordered_set<VertexId> visited;
   startVertices.emplace(opts.start);
@@ -683,13 +683,13 @@ void TRI_RunNeighborsSearch (
 
   switch (opts.direction) {
     case TRI_EDGE_IN:
-      InboundNeighbors(collectionInfos, opts, startVertices, visited, distinct, result);
+      InboundNeighbors(collectionInfos, opts, startVertices, visited, result);
       break;
     case TRI_EDGE_OUT:
-      OutboundNeighbors(collectionInfos, opts, startVertices, visited, distinct, result);
+      OutboundNeighbors(collectionInfos, opts, startVertices, visited, result);
       break;
     case TRI_EDGE_ANY:
-      AnyNeighbors(collectionInfos, opts, startVertices, visited, distinct, result);
+      AnyNeighbors(collectionInfos, opts, startVertices, visited, result);
       break;
   }
 }

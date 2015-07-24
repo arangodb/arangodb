@@ -50,21 +50,10 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
                                       action_options_t* data)
   : RestVocbaseBaseHandler(request),
     _action(nullptr),
-    _queue(),
     _dataLock(),
     _data(nullptr) {
 
   _action = TRI_LookupActionVocBase(request);
-
-  // use the queue from options if an action is known
-  if (_action != nullptr) {
-    _queue = data->_queue;
-  }
-
-  // must have a queue
-  if (_queue.empty()) {
-    _queue = "STANDARD";
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -77,14 +66,6 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
 
 bool RestActionHandler::isDirect () const {
   return _action == nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const& RestActionHandler::queue () const {
-  return _queue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,14 +134,8 @@ HttpHandler::status_t RestActionHandler::execute () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestActionHandler::cancel (bool running) {
-  if (running) {
-    return _action->cancel(&_dataLock, &_data);
-  }
-  else {
-    generateCanceled();
-    return true;
-  }
+bool RestActionHandler::cancel () {
+  return _action->cancel(&_dataLock, &_data);
 }
 
 // -----------------------------------------------------------------------------

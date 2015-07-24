@@ -95,14 +95,8 @@ HttpHandler::status_t RestCursorHandler::execute () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCursorHandler::cancel (bool running) {
-  if (running) {
-    cancelQuery();
-    return true;
-  }
-
-  generateCanceled();
-  return true;
+bool RestCursorHandler::cancel () {
+  return cancelQuery();
 }
 
 // -----------------------------------------------------------------------------
