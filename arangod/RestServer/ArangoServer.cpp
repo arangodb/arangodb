@@ -959,7 +959,6 @@ int ArangoServer::startupServer () {
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = vocbase;
-  httpOptions._queue = "STANDARD";
 
   if (startServer) {
 
@@ -1237,7 +1236,7 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
 
   auto isolate = context->isolate;
 
@@ -1293,7 +1292,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 
 int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
   bool ok = false;
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
   auto isolate = context->isolate;
 
   {

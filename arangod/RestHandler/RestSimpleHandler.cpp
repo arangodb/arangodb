@@ -105,14 +105,8 @@ HttpHandler::status_t RestSimpleHandler::execute () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestSimpleHandler::cancel (bool running) {
-  if (running) {
-    cancelQuery();
-    return true;
-  }
-
-  generateCanceled();
-  return true;
+bool RestSimpleHandler::cancel () {
+  return cancelQuery();
 }
 
 // -----------------------------------------------------------------------------
