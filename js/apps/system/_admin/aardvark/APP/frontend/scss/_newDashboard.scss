@@ -1,8 +1,8 @@
 %dashboard-chart-box {
   @extend %pull-left;
   border-left: 0 solid $c-black;
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
 
   &:first-child {
     margin-left: 0;
@@ -51,6 +51,7 @@
     border-right: $dashboard-borderwidth solid $c-white;
     border-top: $dashboard-borderwidth solid $c-white;
     padding-top: $dashboard-padding;
+    padding-bottom: $dashboard-padding;
 
     .dashboard-interior-chart {
       @extend %pull-left;
@@ -70,6 +71,7 @@
     border-left: $dashboard-borderwidth solid $c-white;
     border-right: $dashboard-borderwidth solid $c-white;
     border-top: $dashboard-borderwidth solid $c-white;
+    padding-bottom: $dashboard-padding;
 
     .dashboard-interior-chart {
       @extend %pull-left;
@@ -92,7 +94,8 @@
   border-right: $dashboard-borderwidth solid $c-white;
   border-top: $dashboard-borderwidth solid $c-white;
   padding-top: $dashboard-padding;
-  
+  padding-bottom: $dashboard-padding;
+
   &:first-child {
     margin-right: 12px;
   }
@@ -121,6 +124,7 @@
   .dashboard-medium-chart-inner {
     @extend %clear-float;
     padding-top: $dashboard-padding;
+    padding-bottom: $dashboard-padding;
   }
 
   .clusterChart .slice path {
@@ -139,12 +143,13 @@
   .dashboard-tendency-chart {
     @extend %clear-float;
     background-color: $c-white;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
     border-top: $dashboard-borderwidth solid $c-white;
     border-left: 5px solid $c-white;
     border-right: 5px solid $c-white;
     border-top: 5px solid $c-white;
+    padding-bottom: $dashboard-padding-tendency;
 
     .dashboard-tendency {
       @extend %pull-left;
@@ -181,8 +186,9 @@
     border-left: 5px solid $c-white;
     border-right: 5px solid $c-white;
     border-top: 5px solid $c-white;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding-bottom: $dashboard-padding-tendency;
 
     .dashboard-bar-chart-title {
       @extend %pull-left;
@@ -225,8 +231,8 @@
 .dashboard-sub-bar {
   @extend %pull-left;
   background-color: $c-bar-bg;
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
   color: $c-white;
   height: 24px;
   line-height: 24px;
@@ -257,7 +263,6 @@
 
     .dashboard-legend-inner {
       padding-left: 20px;
-      padding-top: 20px;
     }
   }
 
