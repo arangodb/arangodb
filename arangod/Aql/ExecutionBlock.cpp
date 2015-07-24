@@ -6824,7 +6824,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
   auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
 
   if (currentThread != nullptr) {
-    triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+    triagens::rest::DispatcherThread::currentDispatcherThread->block();
   }
 
   auto result = cc->syncRequest(clientTransactionId,
@@ -6839,7 +6839,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
                                 defaultTimeOut);
 
   if (currentThread != nullptr) {
-    triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+    triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
   }
 
   return result;

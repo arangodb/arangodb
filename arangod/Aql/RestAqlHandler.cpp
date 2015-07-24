@@ -699,7 +699,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
 
     if (currentThread != nullptr) {
-      triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+      triagens::rest::DispatcherThread::currentDispatcherThread->block();
     }
     int res = TRI_ERROR_INTERNAL;
     try {
@@ -708,14 +708,14 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     catch (...) {
       LOG_ERROR("lock lead to an exception");
       if (currentThread != nullptr) {
-        triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+        triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
       }
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "lock lead to an exception");
       return;
     }
     if (currentThread != nullptr) {
-      triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+      triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
     }
     answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
               ("code", Json(static_cast<double>(res)));
