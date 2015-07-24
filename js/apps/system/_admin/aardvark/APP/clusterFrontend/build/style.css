@@ -1778,7 +1778,7 @@ ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerBut
   cursor: pointer; }
 
 nav.navbar, footer.footer {
-  background-color: #F5F8F0;
+  background-color: rgba(245, 248, 240, 0.95);
   color: #fff;
   left: 0;
   position: fixed;

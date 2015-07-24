@@ -1789,7 +1789,7 @@ ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerBut
   cursor: pointer; }
 
 nav.navbar, footer.footer {
-  background-color: #F5F8F0;
+  background-color: rgba(245, 248, 240, 0.95);
   color: #fff;
   left: 0;
   position: fixed;
@@ -6314,6 +6314,9 @@ input.gv-radio-button {
 @media (min-width: 1042px) and (max-width: 1284px) {
   .arango-collection-ul a {
     font-size: 13px; } }
+
+#documentsDiv {
+  padding-top: 1px; }
 
 .document-info-div {
   margin-top: 20px;
