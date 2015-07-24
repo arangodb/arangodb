@@ -171,6 +171,11 @@ namespace triagens {
                               TRI_voc_cid_t const& cid,
                               std::string& errorMessage);
 
+          void addEdgeFilter (Json const& example,
+                              TRI_shaper_t* shaper,
+                              TRI_voc_cid_t const& cid,
+                              triagens::arango::CollectionNameResolver const* resolver);
+
           void addVertexFilter (v8::Isolate* isolate,
                                 v8::Handle<v8::Value> const& example,
                                 triagens::arango::ExplicitTransaction* trx,
@@ -368,7 +373,6 @@ std::unique_ptr<ArangoDBConstDistancePathFinder::Path> TRI_RunSimpleShortestPath
 
 void TRI_RunNeighborsSearch (std::vector<EdgeCollectionInfo*>& collectionInfos,
                              triagens::basics::traverser::NeighborsOptions& opts,
-                             std::unordered_set<VertexId>& distinct,
-                             std::vector<VertexId>& result);
+                             std::unordered_set<VertexId>& distinct);
 
 #endif

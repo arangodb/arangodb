@@ -112,6 +112,7 @@ SERVER_OPT := \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
+	--log.level error \
         --wal.reserve-logfiles 1 \
 	--server.threads 4 \
 	$(SERVER_START)
@@ -119,6 +120,7 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
+	--log.level error \
 	--no-colors \
 	--quiet
 

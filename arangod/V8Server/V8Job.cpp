@@ -30,6 +30,7 @@
 
 #include "Basics/json.h"
 #include "Basics/logging.h"
+#include "Dispatcher/DispatcherQueue.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -90,7 +91,7 @@ Job::status_t V8Job::work () {
     return status_t(JOB_DONE);
   }
 
-  ApplicationV8::V8Context* context = _v8Dealer->enterContext("STANDARD", _vocbase, _allowUseDatabase);
+  ApplicationV8::V8Context* context = _v8Dealer->enterContext(_vocbase, _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
@@ -165,11 +166,8 @@ Job::status_t V8Job::work () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8Job::cancel (bool running) {
-  if (running) {
-    _canceled = 1;
-  }
-
+bool V8Job::cancel () {
+  _canceled = 1;
   return true;
 }
 
@@ -177,16 +175,9 @@ bool V8Job::cancel (bool running) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Job::cleanup () {
+void V8Job::cleanup (DispatcherQueue* queue) {
+  queue->removeJob(this);
   delete this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool V8Job::beginShutdown () {
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

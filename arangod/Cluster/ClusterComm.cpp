@@ -539,7 +539,7 @@ ClusterCommResult* ClusterComm::wait (
 
   // tell Dispatcher that we are waiting:
   if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-    triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+    triagens::rest::DispatcherThread::currentDispatcherThread->block();
   }
 
   if (0 != operationID) {
@@ -560,7 +560,7 @@ ClusterCommResult* ClusterComm::wait (
           res->status = CL_COMM_DROPPED;
           // tell Dispatcher that we are back in business
           if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-            triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+            triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
           }
           return res;
         }
@@ -576,7 +576,7 @@ ClusterCommResult* ClusterComm::wait (
           res = static_cast<ClusterCommResult*>(op);
           // tell Dispatcher that we are back in business
           if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-            triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+            triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
           }
           return res;
         }
@@ -613,7 +613,7 @@ ClusterCommResult* ClusterComm::wait (
             res = static_cast<ClusterCommResult*>(op);
             // tell Dispatcher that we are back in business
             if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-              triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+              triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
             }
             return res;
           }
@@ -641,7 +641,7 @@ ClusterCommResult* ClusterComm::wait (
         res->status = CL_COMM_DROPPED;
         // tell Dispatcher that we are back in business
         if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-          triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+          triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
         }
         return res;
       }
@@ -663,7 +663,7 @@ ClusterCommResult* ClusterComm::wait (
   res->status = CL_COMM_TIMEOUT;
   // tell Dispatcher that we are back in business
   if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-    triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+    triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
   }
   return res;
 }

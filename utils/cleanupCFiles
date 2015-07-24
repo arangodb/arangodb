@@ -263,7 +263,7 @@ sub formatFile ($$$) {
 	$headerSeen = 1;
 	$fileSeen = 1;
       }
-      elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d)/) {
+      elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d).*ArangoDB/) {
         my $y = $1;
 	$headerSeen = 1;
 	$copyrightSeen = 1;
@@ -277,7 +277,7 @@ sub formatFile ($$$) {
 	  }
         }
       }
-      elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d)-(\d\d\d\d)/) {
+      elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d)-(\d\d\d\d).*ArangoDB/) {
         my $y1 = $1;
         my $y2 = $2;
 	$headerSeen = 1;
@@ -288,16 +288,13 @@ sub formatFile ($$$) {
 	    $line = "/// \@author Copyright 2014-$year, ArangoDB GmbH, Cologne, Germany";
 	  }
 	  else {
-	    $line = "/// \@author Copyright $year, ArangoDB GmbH, Cologne, Germany";
-	  }
-
-	  if ($y1 != $y2) {
-	    $line = "/// \@author Copyright $y1-$y2, triAGENS GmbH, Cologne, Germany";
-	  }
-	  else {
-	    $line = "/// \@author Copyright $y1, triAGENS GmbH, Cologne, Germany";
+	    $line = "/// \@author Copyright 2014, ArangoDB GmbH, Cologne, Germany";
 	  }
         }
+      }
+      elsif ($line =~ /^\/\/\/ \@author Copyright.*triAGENS/) {
+	$headerSeen = 1;
+        $copyrightSeen = 1;
       }
       elsif ($line =~ /^\/\/\/ \@author Copyright/) {
 	die "cannot parse copyright line '$line'";
