@@ -2095,6 +2095,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   
+  TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+  
   if (res == TRI_ERROR_NO_ERROR && writeMarker) {
     // now log the operation
     try {
@@ -2118,8 +2120,6 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
       LOG_WARNING("could not save collection rename marker in log: %s", TRI_errno_string(res));
     }
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
   return res;
 }
