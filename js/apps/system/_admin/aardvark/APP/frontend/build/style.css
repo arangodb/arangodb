@@ -2405,7 +2405,7 @@ div .tile, div .bigtile {
   -moz-box-shadow: none;
   box-shadow: none;
   background-color: #fff;
-  border-radius: 4px;
+  border-radius: 3px;
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -2521,7 +2521,7 @@ div .tile, div .bigtile {
         border-left: 5px solid transparent;
         border-bottom-style: solid;
         border-bottom-width: 17px;
-        border-radius: 4px;
+        border-radius: 3px;
         margin-bottom: 4px;
         margin-right: 5px;
         color: #fff;
@@ -4545,9 +4545,9 @@ span.gv_caret {
   margin-top: 2px !important; }
 
 input.search-input {
-  -moz-border-radius: 2px;
-  -webkit-border-radius: 2px;
-  border-radius: 2px;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
   background-color: #fff !important;
   border: 1px solid #eeeeee;
   box-shadow: none;
@@ -4599,7 +4599,7 @@ input.search-input {
 
 div.headerBar {
   background-color: #fff;
-  border-radius: 4px;
+  border-radius: 3px;
   color: #fff;
   font-size: 16px;
   height: 36px;
@@ -4690,7 +4690,7 @@ div.headerBar > div.headerButtonBar {
 
 .modal-header, .modal-dashboard-header {
   background-color: #686766;
-  border-radius: 4px;
+  border-radius: 3px;
   border-bottom: 0 !important;
   margin-top: 5px;
   padding-left: 5px;
@@ -4810,7 +4810,7 @@ div.headerBar > div.headerButtonBar {
 .modal {
   box-shadow: none;
   border: 0 !important;
-  border-radius: 4px !important; }
+  border-radius: 3px !important; }
   .modal .fade.in {
     top: 12.1% !important; }
   .modal table tr:last-child {
@@ -5439,7 +5439,7 @@ toolbar {
   .styled-select select {
     background: #fff;
     border: 1px solid #c2c2c2 !important;
-    border-radius: 4px !important;
+    border-radius: 3px !important;
     font-size: 14px;
     font-weight: 300;
     height: 30px;
@@ -5622,7 +5622,7 @@ svg.explain-tree {
 .innerContent {
   min-height: 200px;
   background-color: #fff;
-  border-radius: 4px;
+  border-radius: 3px;
   padding-top: 13px; }
 
 .container {
@@ -5809,7 +5809,7 @@ svg.explain-tree {
   overflow-y: hidden;
   width: 100%; }
   .replShell > div {
-    border-radius: 4px; }
+    border-radius: 3px; }
   .replShell pre {
     border-bottom: 0;
     border-left: 0;
@@ -5859,7 +5859,7 @@ svg.explain-tree {
 
 .swagger-ui-wrap {
   background-color: #fff;
-  border-radius: 4px; }
+  border-radius: 3px; }
 
 .swagger-ui-wrap #resources li.resource {
   background-color: #f4f3f3; }
