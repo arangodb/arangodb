@@ -949,7 +949,12 @@
         );
         total = $('#totalDocuments');
       }
-      total.html(this.collection.getTotal() + " document(s)");
+      if (this.type === 'document') {
+        total.html(this.collection.getTotal() + " document(s)");
+      }
+      if (this.type === 'edge') {
+        total.html(this.collection.getTotal() + " edge(s)");
+      }
     },
 
     breadcrumb: function () {

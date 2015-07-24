@@ -219,7 +219,7 @@
 %dropdown-menu {
   @extend %pull-left;
 
-  background-color: #e4ecd9;
+  background-color: $c-lightgreen-transp-bg;
   border: {
     color: $c-darker-grey;
     style: solid;

@@ -1876,7 +1876,7 @@ a.inactive.coordinator, a.inactive.dbserver {
     fill: #d3d3d3; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu {
-  background-color: #e4ecd9;
+  background-color: #F5F8F0;
   border-color: #666;
   border-style: solid;
   border-width: 1px;
@@ -1915,7 +1915,8 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dro
     background: #788f3d; }
 
 nav.navbar {
-  height: 38px;
+  padding-top: 6px;
+  height: 44px;
   margin-bottom: 3px;
   top: 0; }
   nav.navbar .arangodbLogo {
@@ -2400,7 +2401,7 @@ div .tile, div .bigtile {
   box-shadow: none;
   background-color: #fff;
   border-radius: 3px;
-  border: 1px solid rgba(243, 247, 237, 0.75);
+  border: 1px solid rgba(104, 103, 102, 0.1);
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -4661,10 +4662,11 @@ input.search-input {
 div.headerBar {
   background-color: #fff;
   border-radius: 3px;
-  border: 1px solid rgba(243, 247, 237, 0.75);
+  border: 1px solid rgba(104, 103, 102, 0.1);
   color: #fff;
   font-size: 16px;
   height: 36px;
+  margin-top: 6px;
   margin-bottom: 5px;
   padding-left: 5px;
   padding-right: 5px;
@@ -4726,11 +4728,11 @@ div.headerBar > div.headerButtonBar {
   border-radius: 0;
   padding: 8px 0; }
   .breadcrumb .disabledBread {
-    color: #c2c2c2;
+    color: #666;
     float: left;
     padding-left: 5px; }
   .breadcrumb .activeBread {
-    color: #b9d375;
+    color: #7da817;
     float: left;
     padding-left: 5px; }
 
@@ -5100,7 +5102,7 @@ div .tile, div .bigtile {
   box-shadow: none;
   background-color: #fff;
   border-radius: 3px;
-  border: 1px solid rgba(243, 247, 237, 0.75);
+  border: 1px solid rgba(104, 103, 102, 0.1);
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -5274,7 +5276,7 @@ div .bigtile {
 
 .dashboard-large-chart {
   margin-right: 12px;
-  border: 1px solid rgba(243, 247, 237, 0.75);
+  border: 1px solid rgba(104, 103, 102, 0.1);
   border-radius: 3px; }
   .dashboard-large-chart .dashboard-large-chart-inner {
     background-color: #fff;
@@ -5287,7 +5289,7 @@ div .bigtile {
       margin-bottom: 0; }
 
 .dashboard-small-chart {
-  border: 1px solid rgba(243, 247, 237, 0.75);
+  border: 1px solid rgba(104, 103, 102, 0.1);
   border-radius: 3px; }
   .dashboard-small-chart .dashboard-small-chart-inner {
     background-color: #fff;
@@ -5315,7 +5317,7 @@ div .bigtile {
   .dashboard-medium-chart .dashboard-interior-chart {
     margin-bottom: 0; }
   .dashboard-medium-chart .dashboard-medium-chart-outer {
-    border: 1px solid rgba(243, 247, 237, 0.75);
+    border: 1px solid rgba(104, 103, 102, 0.1);
     border-radius: 3px; }
   .dashboard-medium-chart .dashboard-medium-chart-menu {
     -moz-border-radius: 2px;
@@ -5337,7 +5339,7 @@ div .bigtile {
     stroke-width: 1.5px; }
 
 .dashboard-tendency-container {
-  border: 1px solid rgba(243, 247, 237, 0.75);
+  border: 1px solid rgba(104, 103, 102, 0.1);
   border-radius: 3px; }
   .dashboard-tendency-container .dashboard-tendency-chart {
     background-color: #fff;
@@ -5361,7 +5363,7 @@ div .bigtile {
         text-align: center; }
 
 .dashboard-bar-chart-container {
-  border: 1px solid rgba(243, 247, 237, 0.75);
+  border: 1px solid rgba(125, 168, 23, 0.01);
   border-radius: 3px; }
   .dashboard-bar-chart-container .dashboard-bar-chart {
     background-color: #fff;

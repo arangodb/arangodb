@@ -42,7 +42,7 @@
 .dashboard-large-chart {
   @extend %dashboard-chart-basic;
   margin-right: 12px;
-  border: 1px solid rgba(243,247,237,0.75);
+  border: 1px solid rgba(104, 103, 102, 0.10);
   border-radius: 3px;
 
   .dashboard-large-chart-inner {
@@ -65,7 +65,7 @@
 
 .dashboard-small-chart {
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(243,247,237,0.75);
+  border: 1px solid rgba(104, 103, 102, 0.10);
   border-radius: 3px;
 
   .dashboard-small-chart-inner {
@@ -114,7 +114,7 @@
   }
 
   .dashboard-medium-chart-outer {
-    border: 1px solid rgba(243,247,237,0.75);
+    border: 1px solid rgba(104, 103, 102, 0.10);
     border-radius: 3px;
   }
 
@@ -151,7 +151,7 @@
 .dashboard-tendency-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(243,247,237,0.75);
+  border: 1px solid rgba(104, 103, 102, 0.10);
   border-radius: 3px;
 
   .dashboard-tendency-chart {
@@ -193,7 +193,7 @@
 .dashboard-bar-chart-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(243,247,237,0.75);
+  border: 1px solid rgba(125, 168, 23, 0.01);
   border-radius: 3px;
 
   .dashboard-bar-chart {

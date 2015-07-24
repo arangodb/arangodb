@@ -16613,7 +16613,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
           tempColor = "red";
         }
         else {
-          tempColor = "green";
+          tempColor = "#7da817";
           p = "+";
         }
         $("#" + a).html(self.history[self.server][a][0] + '<br/><span class="dashboard-figurePer" style="color: '
