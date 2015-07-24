@@ -15,7 +15,7 @@ $iconsize: 50px;
   @include box-shadow(none);
 
   background-color: $c-white;
-  border-radius: 4px;
+  border-radius: 3px;
   font-size: 14px;
   list-style: none;
   margin: {
@@ -208,7 +208,7 @@ $iconsize: 50px;
             width: 17px;
           }
         }
-        border-radius: 4px;
+        border-radius: 3px;
         margin-bottom: 4px;
         margin-right: 5px;
         color: #fff;

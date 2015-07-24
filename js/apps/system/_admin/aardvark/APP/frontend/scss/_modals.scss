@@ -1,6 +1,6 @@
 %modal-header {
   background-color: $c-bar-bg;
-  border-radius: 4px;
+  border-radius: 3px;
   border-bottom: 0 !important;
   margin-top: 5px;
   padding-left: 5px;
@@ -213,7 +213,7 @@
 .modal {
   box-shadow: none;
   border: 0 !important;
-  border-radius: 4px !important;
+  border-radius: 3px !important;
 
   .fade.in {
     top: 12.1% !important;

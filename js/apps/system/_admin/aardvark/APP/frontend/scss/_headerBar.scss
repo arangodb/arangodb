@@ -1,5 +1,5 @@
 input.search-input {
-  @include border-radius(2px);
+  @include border-radius(3px);
   background-color: $c-white !important;
   border: 1px solid #eeeeee;
   box-shadow: none;
@@ -73,7 +73,7 @@ input.search-input {
 // The bar on top of each page
 div.headerBar {
   background-color: $c-white;
-  border-radius: 4px;
+  border-radius: 3px;
   color: $c-white;
   font-size: 16px;
   height: 36px;
