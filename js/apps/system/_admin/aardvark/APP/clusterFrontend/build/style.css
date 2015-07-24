@@ -1773,7 +1773,7 @@ ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerBut
   cursor: pointer; }
 
 nav.navbar, footer.footer {
-  background-color: rgba(222, 233, 207, 0.8);
+  background-color: #e4ecd9;
   color: #fff;
   left: 0;
   position: fixed;
@@ -2021,7 +2021,7 @@ ul.gv-dropdown-menu {
   -webkit-border-radius: 0;
   border-radius: 0;
   background-color: rgba(0, 0, 0, 0.7);
-  border: solid 1px #686766;
+  border: solid 1px #c2c2c2;
   margin-right: -20px;
   margin-top: 6px; }
   ul.gv-dropdown-menu:after {
@@ -5251,8 +5251,7 @@ div .bigtile {
   border-left: 5px solid #fff;
   border-right: 5px solid #fff;
   border-top: 5px solid #fff;
-  padding-top: 10px;
-  padding-bottom: 10px; }
+  padding-top: 10px; }
   .dashboard-medium-chart:first-child {
     margin-right: 12px; }
   .dashboard-medium-chart .dashboard-interior-chart {

@@ -38,9 +38,9 @@ toolbar {
 
   span {
     float: right;
-    margin-left: 5px;
-    margin-right: 5px;
     position: relative;
+    padding: 5px;
+    margin-left: 10px;
     top: 0px;
   }
 
@@ -58,7 +58,6 @@ toolbar {
   }
 
   .icon_arangodb_trash {
-    margin-left: -2px;
   }
 
   .fa-comment,

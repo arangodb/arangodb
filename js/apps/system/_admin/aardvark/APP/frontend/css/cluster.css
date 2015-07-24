@@ -1513,29 +1513,6 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   ul.link-dropdown-menu a, ul.user-dropdown-menu a, ul.gv-dropdown-menu a {
     color: #333232;
     padding: 0 20px; }
-  ul.link-dropdown-menu:before, ul.user-dropdown-menu:before, ul.gv-dropdown-menu:before {
-    position: absolute;
-    border-width: 7px;
-    border-style: solid;
-    border-color: transparent;
-    border-top: none;
-    border-bottom-color: rgba(0, 0, 0, 0.2);
-    display: inline-block;
-    content: '';
-    position: absolute;
-    right: 7px;
-    top: -7px; }
-  ul.link-dropdown-menu:after, ul.user-dropdown-menu:after, ul.gv-dropdown-menu:after {
-    position: absolute;
-    border-width: 7px;
-    border-style: solid;
-    border-color: transparent;
-    border-top: none;
-    border-bottom-color: white;
-    display: inline-block;
-    content: '';
-    right: 8px;
-    top: -6px; }
 
 .navbar .nav li.dropdown .active > .dropdown-toggle,
 .navbar .nav li.dropdown .open > .dropdown-toggle,

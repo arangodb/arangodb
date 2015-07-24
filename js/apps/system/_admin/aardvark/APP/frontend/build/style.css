@@ -1,6 +1,6 @@
 body {
-  /*background-color: $c-white !important;*/
-  background: #DEE8D0 !important;
+  /*background: #DEE8D0 !important;*/
+  background: #e4ecd9 !important;
   color: #333;
   display: block;
   font-family: 'Open Sans', sans-serif !important;
@@ -1784,7 +1784,7 @@ ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerBut
   cursor: pointer; }
 
 nav.navbar, footer.footer {
-  background-color: rgba(222, 233, 207, 0.8);
+  background-color: #e4ecd9;
   color: #fff;
   left: 0;
   position: fixed;
@@ -1891,29 +1891,6 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dro
   ul.link-dropdown-menu a, ul.user-dropdown-menu a, ul.script-dropdown-menu a, ul.gv-dropdown-menu a {
     color: #fff;
     padding: 0 20px; }
-  ul.link-dropdown-menu:before, ul.user-dropdown-menu:before, ul.script-dropdown-menu:before, ul.gv-dropdown-menu:before {
-    position: absolute;
-    border-width: 7px;
-    border-style: solid;
-    border-color: transparent;
-    border-top: none;
-    border-bottom-color: rgba(0, 0, 0, 0.2);
-    display: inline-block;
-    content: '';
-    position: absolute;
-    right: 7px;
-    top: -7px; }
-  ul.link-dropdown-menu:after, ul.user-dropdown-menu:after, ul.script-dropdown-menu:after, ul.gv-dropdown-menu:after {
-    position: absolute;
-    border-width: 7px;
-    border-style: solid;
-    border-color: transparent;
-    border-top: none;
-    border-bottom-color: #fff;
-    display: inline-block;
-    content: '';
-    right: 8px;
-    top: -6px; }
 
 .navbar {
   -webkit-font-smoothing: subpixel-antialiased; }
@@ -2007,7 +1984,7 @@ ul.gv-dropdown-menu {
   -webkit-border-radius: 0;
   border-radius: 0;
   background-color: rgba(0, 0, 0, 0.7);
-  border: solid 1px #686766;
+  border: solid 1px #c2c2c2;
   margin-right: -20px;
   margin-top: 6px; }
   ul.gv-dropdown-menu:after {
@@ -5113,8 +5090,7 @@ pre.gv-object-view {
   border-left: 5px solid #fff;
   border-right: 5px solid #fff;
   border-top: 5px solid #fff;
-  padding-top: 10px;
-  padding-bottom: 10px; }
+  padding-top: 10px; }
   .dashboard-medium-chart:first-child {
     margin-right: 12px; }
   .dashboard-medium-chart .dashboard-interior-chart {
@@ -5376,9 +5352,9 @@ toolbar {
   margin-top: 3px; }
   .editor-toolbar span {
     float: right;
-    margin-left: 5px;
-    margin-right: 5px;
     position: relative;
+    padding: 5px;
+    margin-left: 10px;
     top: 0px; }
   .editor-toolbar i {
     margin-right: 5px;
@@ -5387,8 +5363,6 @@ toolbar {
       cursor: pointer; }
   .editor-toolbar .icon_arangodb {
     font-size: 15pt; }
-  .editor-toolbar .icon_arangodb_trash {
-    margin-left: -2px; }
   .editor-toolbar .fa-comment, .editor-toolbar .fa-comment-o {
     font-size: 17px;
     position: relative;
