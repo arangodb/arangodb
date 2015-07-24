@@ -6,7 +6,7 @@ input.search-input {
   height: 18px;
   line-height: 18px;
   margin-top: 4px;
-  margin-right: -6px;
+  margin-right: -1px;
   width: 115px;
   outline: none;
     outline-color: $c-transp;
@@ -27,10 +27,13 @@ input.search-input {
   margin-left: 10px;
 
   .fa-search {
-    color: #d2d2d2;
+    color: #D2D2D2;
     margin-left: -22px;
     font-size: 15pt;
     opacity: 0.5;
+    position: absolute;
+    right: 7px;
+    top: 7px;
 
     &:hover {
       opacity: 1;

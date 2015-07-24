@@ -4568,7 +4568,7 @@ input.search-input {
   height: 18px;
   line-height: 18px;
   margin-top: 4px;
-  margin-right: -6px;
+  margin-right: -1px;
   width: 115px;
   outline: none;
   outline-color: transparent;
@@ -4583,10 +4583,13 @@ input.search-input {
 .search-field {
   margin-left: 10px; }
   .search-field .fa-search {
-    color: #d2d2d2;
+    color: #D2D2D2;
     margin-left: -22px;
     font-size: 15pt;
-    opacity: 0.5; }
+    opacity: 0.5;
+    position: absolute;
+    right: 7px;
+    top: 7px; }
     .search-field .fa-search:hover {
       opacity: 1;
       cursor: pointer; }
@@ -4795,7 +4798,7 @@ div.headerBar > div.headerButtonBar {
   .modal-body .tab-content {
     min-height: 200px; }
     .modal-body .tab-content .tab-pane {
-      border-top: 1px solid #888 !important;
+      border-top: 1px solid #666 !important;
       margin-left: 0 !important;
       padding-top: 10px; }
     .modal-body .tab-content #appstore {
