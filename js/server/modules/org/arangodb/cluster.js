@@ -879,7 +879,9 @@ var wait = function (data, shards) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var isCluster = function () {
-  return (typeof global.ArangoServerState !== "undefined");
+  var role = global.ArangoServerState.role();
+  
+  return (role !== undefined && role !== "SINGLE");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -887,10 +889,6 @@ var isCluster = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var isCoordinator = function () {
-  if (! isCluster()) {
-    return false;
-  }
-
   return global.ArangoServerState.isCoordinator();
 };
 
@@ -899,11 +897,12 @@ var isCoordinator = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var role = function () {
-  if (! isCluster()) {
-    return undefined;
-  }
+  var role = global.ArangoServerState.role();
 
-  return global.ArangoServerState.role();
+  if (role !== "SINGLE") {
+    return role;
+  }
+  return undefined;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
