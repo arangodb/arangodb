@@ -3084,7 +3084,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 298px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 232px;
+        height: 227px;
         width: 298px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           fill: #666;
@@ -3244,7 +3244,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 378px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 267px;
+        height: 262px;
         width: 378px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           fill: #666;
@@ -3404,7 +3404,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 458px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 297px;
+        height: 292px;
         width: 458px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           fill: #666;
@@ -3564,7 +3564,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 538px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 337px;
+        height: 332px;
         width: 538px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           fill: #666;
@@ -3724,7 +3724,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 618px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 397px;
+        height: 392px;
         width: 618px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           fill: #666;
@@ -3884,7 +3884,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 698px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 297px;
+        height: 292px;
         width: 698px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           fill: #666;
@@ -4044,7 +4044,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 778px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 297px;
+        height: 292px;
         width: 778px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           fill: #666;
@@ -4204,7 +4204,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 858px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 297px;
+        height: 292px;
         width: 858px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           fill: #666;
@@ -5077,7 +5077,8 @@ pre.gv-object-view {
   border-left: 5px solid #fff;
   border-right: 5px solid #fff;
   border-top: 5px solid #fff;
-  padding-bottom: 10px; }
+  padding-bottom: 10px;
+  padding-top: 5px; }
   .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
     fill-opacity: .15;
     stroke-opacity: 1;
@@ -5106,7 +5107,6 @@ pre.gv-object-view {
   .dashboard-medium-chart .dashboard-medium-chart-menu:hover {
     color: rgba(0, 0, 0, 0.7); }
   .dashboard-medium-chart .dashboard-medium-chart-inner {
-    padding-top: 10px;
     padding-bottom: 10px; }
   .dashboard-medium-chart .clusterChart .slice path {
     fill-opacity: .15;
