@@ -89,7 +89,7 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
 void DispatcherThread::run () {
   currentDispatcherThread = this;
   double worked = 0;
-  double grace = 0.1;
+  double grace = 0.2;
 
   // iterate until we are shutting down
   while (! _queue->_stopping.load(memory_order_relaxed)) {
@@ -133,7 +133,7 @@ void DispatcherThread::run () {
       }
       else if (worked < now) {
 	uintptr_t n = (uintptr_t) this;
-	usleep((n >> 2) % 100);
+	usleep(1 + ((n >> 2) % 20));
       }
     }
   }
