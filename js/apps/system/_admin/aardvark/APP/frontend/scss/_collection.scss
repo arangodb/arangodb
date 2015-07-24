@@ -125,8 +125,9 @@
 #infoTab a,
 #collectionTab a {
   background-color: $c-tab-inactive;
-  border-bottom: 1px solid $c-collection-tab-border-bottom;
-  border-radius: 0 !important;
+  border-bottom: 1px solid $c-darker-grey;
+  border-top-left-radius: 4px !important;
+  border-top-right-radius: 4px !important;
   color: $c-black;
   font-size: 13px !important;
   height: 21px;
