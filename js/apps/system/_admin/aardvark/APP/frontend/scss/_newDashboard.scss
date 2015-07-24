@@ -72,6 +72,7 @@
     border-right: $dashboard-borderwidth solid $c-white;
     border-top: $dashboard-borderwidth solid $c-white;
     padding-bottom: $dashboard-padding;
+    padding-top: $dashboard-padding - 5px;
 
     .dashboard-interior-chart {
       @extend %pull-left;
@@ -122,7 +123,6 @@
 
   .dashboard-medium-chart-inner {
     @extend %clear-float;
-    padding-top: $dashboard-padding;
     padding-bottom: $dashboard-padding;
   }
 
