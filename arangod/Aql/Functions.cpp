@@ -1496,17 +1496,14 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
   return AqlValue(jr);
 }
 
-
-
-
 // TODO DELETE THESE HELPER FUNCTIONS.
 
-static inline Json TRI_ExpandShapedJson (
-    TRI_shaper_t* shaper,
-    CollectionNameResolver const* resolver,
-    TRI_voc_cid_t const& cid,
-    TRI_df_marker_t const* marker
-    ) {
+static inline Json TRI_ExpandShapedJson (TRI_shaper_t* shaper,
+                                         CollectionNameResolver const* resolver,
+                                         TRI_voc_cid_t const& cid,
+                                         TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
   Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
@@ -1533,16 +1530,6 @@ static inline Json TRI_ExpandShapedJson (
   return json;
 }
 
-static inline Json TRI_ExpandShapedJson (
-    TRI_shaper_t* shaper,
-    CollectionNameResolver const* resolver,
-    TRI_voc_cid_t const& cid,
-    TRI_doc_mptr_t const* mptr
-    ) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
-  return TRI_ExpandShapedJson(shaper, resolver, cid, marker);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms VertexId to Json
 ////////////////////////////////////////////////////////////////////////////////
@@ -1553,9 +1540,11 @@ static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
   TRI_doc_mptr_copy_t mptr;
   auto collection = trx->trxCollection(id.cid);
   int res = trx->readSingle(collection, &mptr, id.key); 
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   return TRI_ExpandShapedJson(
     collection->_collection->_collection->getShaper(),
     resolver,
@@ -1581,7 +1570,7 @@ static AqlValue VertexIdsToAqlValue (triagens::arango::AqlTransaction* trx,
                                      CollectionNameResolver const* resolver,
                                      std::unordered_set<VertexId>& ids,
                                      bool includeData = false) {
-  Json* result = new Json(Json::Array, ids.size());
+  std::unique_ptr<Json> result(new Json(Json::Array, ids.size()));
 
   if (includeData) {
     for (auto& it : ids) {
@@ -1593,7 +1582,10 @@ static AqlValue VertexIdsToAqlValue (triagens::arango::AqlTransaction* trx,
       result->add(Json(VertexIdToString(resolver, it)));
     }
   }
-  AqlValue v(result);
+
+  AqlValue v(result.get());
+  result.release();
+
   return v;
 }
 
@@ -1615,13 +1607,14 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
 
   Json vertexCol = ExtractFunctionParameter(trx, parameters, 0, false);
 
-  if (!vertexCol.isString()) {
+  if (! vertexCol.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
   std::string vColName = basics::JsonHelper::getStringValue(vertexCol.json(), "");
 
   Json edgeCol = ExtractFunctionParameter(trx, parameters, 1, false);
-  if (!edgeCol.isString()) {
+
+  if (! edgeCol.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
   std::string eColName = basics::JsonHelper::getStringValue(edgeCol.json(), "");
@@ -1642,9 +1635,11 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
 
       std::string const collectionName = vertexId.substr(0, split);
       auto coli = resolver->getCollectionStruct(collectionName);
+
       if (coli == nullptr || collectionName.compare(vColName) != 0) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       }
+
       VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
       opts.start = v;
     }
@@ -1654,7 +1649,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     }
   }
   else if (vertexInfo.isObject()) {
-    if (!vertexInfo.has("_id")) {
+    if (! vertexInfo.has("_id")) {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
     }
     vertexId = basics::JsonHelper::getStringValue(vertexInfo.get("_id").json(), "");
@@ -1668,9 +1663,11 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
 
     std::string const collectionName = vertexId.substr(0, split);
     auto coli = resolver->getCollectionStruct(collectionName);
+
     if (coli == nullptr || collectionName.compare(vColName) != 0) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
+
     VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
     opts.start = v;
   }
@@ -1710,7 +1707,8 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     opts.minDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "minDepth", 1);
     if (opts.minDepth == 0) {
       opts.maxDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "maxDepth", 1);
-    } else {
+    } 
+    else {
       opts.maxDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "maxDepth", opts.minDepth);
     }
   }
@@ -1732,13 +1730,13 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
 
   // Function to return constant distance
   auto wc = [](TRI_doc_mptr_copy_t& edge) -> double { return 1; };
-  EdgeCollectionInfo* eci = new EdgeCollectionInfo(
+
+  std::unique_ptr<EdgeCollectionInfo> eci(new EdgeCollectionInfo(
     eCid,
     trx->documentCollection(eCid),
     wc
-  );
-
-  edgeCollectionInfos.emplace_back(eci);
+  ));
+  
 
   if (n > 4) {
     auto edgeExamples = ExtractFunctionParameter(trx, parameters, 4, false);
@@ -1746,6 +1744,9 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       opts.addEdgeFilter(edgeExamples, eci->getShaper(), eCid, resolver); 
     }
   }
+  
+  edgeCollectionInfos.emplace_back(eci.get());
+  eci.release();
 
   TRI_RunNeighborsSearch(
     edgeCollectionInfos,
