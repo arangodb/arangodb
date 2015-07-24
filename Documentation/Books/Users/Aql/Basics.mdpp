@@ -112,6 +112,7 @@ The current list of keywords is:
 - NULL
 - TRUE
 - FALSE
+- DISTINCT
 
 Additional keywords may be added in future versions of ArangoDB. 
 

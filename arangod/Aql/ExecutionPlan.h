@@ -328,16 +328,45 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a calculation node for an arbitrary expression
+/// @brief creates an anonymous calculation node for an arbitrary expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        CalculationNode* createTemporaryCalculation (AstNode const*);
+        ExecutionNode* createTemporaryCalculation (AstNode const*,
+                                                   ExecutionNode*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a calculation node
+////////////////////////////////////////////////////////////////////////////////
+
+         ExecutionNode* createCalculation (Variable*,
+                                           Variable const*,
+                                           AstNode const*,
+                                           ExecutionNode*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the subquery node from an expression
+/// this will return a nullptr if the expression does not refer to a subquery
+////////////////////////////////////////////////////////////////////////////////
+      
+        SubqueryNode* getSubqueryFromExpression (AstNode const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the output variable from a node
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* getOutVariable (ExecutionNode const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an anonymous COLLECT node (for a DISTINCT)
+////////////////////////////////////////////////////////////////////////////////
+
+        AggregateNode* createAnonymousCollect (CalculationNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create modification options from an AST node

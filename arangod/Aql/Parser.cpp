@@ -53,7 +53,7 @@ Parser::Parser (Query* query)
     _type(AQL_QUERY_READ),
     _writeNode(nullptr) {
   
-  _stack.reserve(16);
+  _stack.reserve(4);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

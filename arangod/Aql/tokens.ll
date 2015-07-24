@@ -89,6 +89,10 @@ namespace triagens {
   return T_LIMIT;
 }
 
+(?i:DISTINCT) {
+  return T_DISTINCT;
+}
+
 (?i:ASC) {
   return T_ASC;
 }

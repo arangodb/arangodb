@@ -476,6 +476,18 @@ AstNode* Ast::createNodeUpsert (AstNodeType type,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST distinct node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeDistinct (AstNode const* value) {
+  AstNode* node = createNode(NODE_TYPE_DISTINCT);
+
+  node->addMember(value);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1258,11 +1270,12 @@ AstNode* Ast::replaceVariableReference (AstNode* node,
 /// optimizations saves one extra pass over the AST
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 void Ast::validateAndOptimize () {
   struct TraversalContext {
+    int64_t stopOptimizationRequests = 0;
     bool isInFilter       = false;
     bool hasSeenWriteNode = false;
-    int64_t stopOptimizationRequests = 0;
   };
 
   auto preVisitor = [&](AstNode const* node, void* data) -> bool {
@@ -1408,7 +1421,7 @@ void Ast::validateAndOptimize () {
       }
       return node;
     }
-
+    
     // example
     if (node->type == NODE_TYPE_EXAMPLE) {
       return this->makeConditionFromExample(node);

@@ -7,16 +7,11 @@
 %error-verbose
 
 %{
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <Basics/Common.h>
-#include <Basics/conversions.h>
-#include <Basics/tri-strings.h>
-
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
+#include "Basics/conversions.h"
+#include "Basics/tri-strings.h"
 %}
 
 %union {
@@ -74,6 +69,7 @@ void Aqlerror (YYLTYPE* locp,
 %token T_IN "IN keyword"
 %token T_WITH "WITH keyword"
 %token T_INTO "INTO keyword"
+%token T_DISTINCT "DISTINCT modifier"
 
 %token T_REMOVE "REMOVE command"
 %token T_INSERT "INSERT command"
@@ -126,7 +122,8 @@ void Aqlerror (YYLTYPE* locp,
 
 
 /* define operator precedence */
-%left T_COMMA 
+%left T_COMMA
+%left T_DISTINCT
 %right T_QUESTION T_COLON
 %right T_ASSIGN
 %left T_WITH
@@ -163,6 +160,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <strval> count_into;
 %type <node> expression;
 %type <node> expression_or_query;
+%type <node> distinct_expression;
 %type <node> operator_unary;
 %type <node> operator_binary;
 %type <node> operator_ternary;
@@ -568,7 +566,7 @@ limit_statement:
   ;
 
 return_statement:
-    T_RETURN expression {
+    T_RETURN distinct_expression {
       auto node = parser->ast()->createNodeReturn($2);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
@@ -685,7 +683,7 @@ upsert_statement:
       parser->ast()->startSubQuery();
       
       scopes->start(triagens::aql::AQL_SCOPE_FOR);
-      std::string const variableName = parser->ast()->variables()->nextName();
+      std::string const variableName = std::move(parser->ast()->variables()->nextName());
       auto forNode = parser->ast()->createNodeFor(variableName.c_str(), $8, false);
       parser->ast()->addOperation(forNode);
 
@@ -705,7 +703,7 @@ upsert_statement:
       AstNode* subqueryNode = parser->ast()->endSubQuery();
       scopes->endCurrent();
       
-      std::string const subqueryName = parser->ast()->variables()->nextName();
+      std::string const subqueryName = std::move(parser->ast()->variables()->nextName());
       auto subQuery = parser->ast()->createNodeLet(subqueryName.c_str(), subqueryNode, false);
       parser->ast()->addOperation(subQuery);
       
@@ -716,6 +714,22 @@ upsert_statement:
       auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(Variable::NAME_OLD), $5, $7, $8, $9);
       parser->ast()->addOperation(node);
       parser->setWriteNode(node);
+    }
+  ;
+
+distinct_expression:
+    T_DISTINCT {
+      auto const scopeType = parser->ast()->scopes()->type();
+
+      if (scopeType == AQL_SCOPE_MAIN ||
+          scopeType == AQL_SCOPE_SUBQUERY) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "cannot use DISTINCT modifier on top-level query element", yylloc.first_line, yylloc.first_column);
+      }
+    } expression {
+      $$ = parser->ast()->createNodeDistinct($3);
+    }
+  | expression {
+      $$ = $1;
     }
   ;
 
@@ -863,7 +877,7 @@ expression_or_query:
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      std::string const variableName = parser->ast()->variables()->nextName();
+      std::string const variableName = std::move(parser->ast()->variables()->nextName());
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), node, false);
       parser->ast()->addOperation(subQuery);
 
@@ -1107,7 +1121,7 @@ reference:
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      std::string const variableName = parser->ast()->variables()->nextName();
+      std::string const variableName = std::move(parser->ast()->variables()->nextName());
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), node, false);
       parser->ast()->addOperation(subQuery);
 

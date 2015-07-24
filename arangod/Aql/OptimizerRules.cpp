@@ -1215,6 +1215,12 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
   
   for (auto const& n : nodes) {
     auto collectNode = static_cast<AggregateNode*>(n);
+
+    if (collectNode->isSpecialized()) {
+      // already specialized this node
+      continue;
+    }
+
     auto const& aggregateVariables = collectNode->aggregateVariables();
 
     // test if we can use an alternative version of COLLECT with a hash table
@@ -1233,34 +1239,51 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
       // specialize the AggregateNode so it will become a HashAggregateBlock later
       // additionally, add a SortNode BEHIND the AggregateNode (to sort the final result)
       newCollectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH);
+      newCollectNode->specialized();
 
-      std::vector<std::pair<Variable const*, bool>> sortElements;
-      for (auto const& v : newCollectNode->aggregateVariables()) {
-        sortElements.emplace_back(std::make_pair(v.first, true));
-      }
+      if (! collectNode->isDistinctCommand()) {
+        // add the post-SORT
+        std::vector<std::pair<Variable const*, bool>> sortElements;
+        for (auto const& v : newCollectNode->aggregateVariables()) {
+          sortElements.emplace_back(std::make_pair(v.first, true));
+        }  
 
-      auto sortNode = new SortNode(newPlan.get(), newPlan->nextId(), sortElements, false);
-      newPlan->registerNode(sortNode);
+        auto sortNode = new SortNode(newPlan.get(), newPlan->nextId(), sortElements, false);
+        newPlan->registerNode(sortNode);
         
-      auto const& parents = newCollectNode->getParents();
-      TRI_ASSERT(parents.size() == 1);
+        auto const& parents = newCollectNode->getParents();
+        TRI_ASSERT(parents.size() == 1);
 
-      sortNode->addDependency(newCollectNode);
-      parents[0]->replaceDependency(newCollectNode, sortNode);
-
+        sortNode->addDependency(newCollectNode);
+        parents[0]->replaceDependency(newCollectNode, sortNode);
+      }
       newPlan->findVarUsage();
       
-      opt->addPlan(newPlan.release(), rule, true);
+      if (nodes.size() > 1) {
+        // this will tell the optimizer to optimize the cloned plan with this specific rule again
+        opt->addPlan(newPlan.release(), rule, true, static_cast<int>(rule->level - 1));
+      }
+      else {
+        // no need to run this specific rule again on the cloned plan
+        opt->addPlan(newPlan.release(), rule, true);
+      }
     }
     
-
-    // finally, adjust the original plan and create a sorted version of COLLECT    
+    // mark node as specialized, so we do not process it again
+    collectNode->specialized();
+    
+    if (collectNode->isDistinctCommand()) {
+      collectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH);
+      continue;
+    }
       
+    // finally, adjust the original plan and create a sorted version of COLLECT    
+    
     // specialize the AggregateNode so it will become a SortedAggregateBlock later
-    // insert a SortNode IN FRONT OF the AggregateNode
     collectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_SORTED);
-
-    if (! aggregateVariables.empty()) {
+      
+    // insert a SortNode IN FRONT OF the AggregateNode
+    if (! aggregateVariables.empty()) { 
       std::vector<std::pair<Variable const*, bool>> sortElements;
       for (auto const& v : aggregateVariables) {
         sortElements.emplace_back(std::make_pair(v.second, true));
