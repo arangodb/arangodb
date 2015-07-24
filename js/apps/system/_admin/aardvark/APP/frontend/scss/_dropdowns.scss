@@ -47,7 +47,7 @@ div.dropdownInner {
 
   & ul {
     @extend %pull-left;
-    border-left: 1px solid $c-black;
+    border-left: 1px solid $c-c2grey;
     display: inline;
     margin-top: 10px;
     min-height: 105px;
