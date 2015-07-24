@@ -42,6 +42,8 @@
 .dashboard-large-chart {
   @extend %dashboard-chart-basic;
   margin-right: 12px;
+  border: 1px solid rgba(243,247,237,0.75);
+  border-radius: 3px;
 
   .dashboard-large-chart-inner {
     @extend %dashboard-chart-box;
@@ -50,7 +52,7 @@
     border-left: $dashboard-borderwidth solid $c-white;
     border-right: $dashboard-borderwidth solid $c-white;
     border-top: $dashboard-borderwidth solid $c-white;
-    padding-top: $dashboard-padding;
+    padding-top: $dashboard-padding + 2px;
     padding-bottom: $dashboard-padding;
 
     .dashboard-interior-chart {
@@ -63,6 +65,8 @@
 
 .dashboard-small-chart {
   @extend %dashboard-chart-basic;
+  border: 1px solid rgba(243,247,237,0.75);
+  border-radius: 3px;
 
   .dashboard-small-chart-inner {
     @extend %dashboard-chart-box;
@@ -86,7 +90,11 @@
   }
 }
 
-
+.dashboard-medium-chart-outer {
+  &:first-child {
+    margin-right: 25px;
+  }
+}
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
@@ -104,7 +112,12 @@
     @extend %pull-left;
     margin-bottom: 0;
   }
-  
+
+  .dashboard-medium-chart-outer {
+    border: 1px solid rgba(243,247,237,0.75);
+    border-radius: 3px;
+  }
+
   .dashboard-medium-chart-menu {
     @extend %clear-float;
     @include border-radius(2px);
@@ -138,6 +151,8 @@
 .dashboard-tendency-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
+  border: 1px solid rgba(243,247,237,0.75);
+  border-radius: 3px;
 
   .dashboard-tendency-chart {
     @extend %clear-float;
@@ -178,6 +193,8 @@
 .dashboard-bar-chart-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
+  border: 1px solid rgba(243,247,237,0.75);
+  border-radius: 3px;
 
   .dashboard-bar-chart {
     @extend %clear-float;
@@ -246,7 +263,7 @@
 
 
 .headerBar.dashboard-headerbar {
-  margin: 15px 0 10px;
+  margin: 15px 0 20px;
 }
 
 

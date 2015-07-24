@@ -7,7 +7,7 @@ input.search-input {
   line-height: 18px;
   margin-top: 4px;
   margin-right: -1px;
-  width: 115px;
+  width: 80px;
   outline: none;
     outline-color: $c-transp;
     outline-style: none;
@@ -74,6 +74,7 @@ input.search-input {
 div.headerBar {
   background-color: $c-white;
   border-radius: 3px;
+  border: 1px solid rgba(243,247,237,0.75);
   color: $c-white;
   font-size: 16px;
   height: 36px;

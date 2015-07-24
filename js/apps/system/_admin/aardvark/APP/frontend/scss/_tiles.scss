@@ -16,6 +16,7 @@ $iconsize: 50px;
 
   background-color: $c-white;
   border-radius: 3px;
+  border: 1px solid rgba(243,247,237,0.75);
   font-size: 14px;
   list-style: none;
   margin: {
@@ -241,7 +242,7 @@ div {
   & .tile {
     @extend %tile;
     height: 100px;
-    width: $tile-width - 12px;
+    width: $tile-width - 14px;
   }
 
   & .tile-graph {
@@ -254,7 +255,7 @@ div {
     @extend %clickable;
     @extend %tile;
     height: 309px;
-    width: 2 * ($tile-width - 12px);
+    width: 2 * ($tile-width - 14px);
 
     div.shardContainer {
       font-size: 30px;
