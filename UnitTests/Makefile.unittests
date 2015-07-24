@@ -562,6 +562,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-call-apply.js \
 			@top_srcdir@/js/server/tests/aql-complex.js \
 			@top_srcdir@/js/server/tests/aql-cross.js \
+			@top_srcdir@/js/server/tests/aql-distinct.js \
 			@top_srcdir@/js/server/tests/aql-dynamic-attributes.js \
 			@top_srcdir@/js/server/tests/aql-edges-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-escaping.js \
