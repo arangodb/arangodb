@@ -4467,7 +4467,7 @@ div.dropdownInner {
     color: #000;
     font-weight: 300; }
   div.dropdownInner ul {
-    border-left: 1px solid #000;
+    border-left: 1px solid #c2c2c2;
     display: inline;
     margin-top: 10px;
     min-height: 105px;
