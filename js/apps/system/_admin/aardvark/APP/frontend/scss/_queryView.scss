@@ -7,10 +7,16 @@ toolbar {
   height: 27px;
   margin-left: 0;
   margin-right: 0;
+
+  span:hover {
+    background-color: red;
+    color: white;
+  }
+
 }
 
 .queryBottomActions {
-  padding: 5px;
+  padding: 10px;
   border-top: 1px solid $c-c2grey;
 }
 
@@ -37,11 +43,22 @@ toolbar {
   margin-top: 3px;
 
   span {
+    border-radius: 3px;
     float: right;
+    width: 25px;
+    height: 18px;
     position: relative;
-    padding: 5px;
-    margin-left: 10px;
+    padding-top: 5px;
+    padding-right: 4px;
+    padding-left: 10px;
+    padding-bottom: 8px;
+    margin-left: 3px;
     top: 0px;
+  }
+
+  span:hover {
+    background-color: $c-positive;
+    color: white;
   }
 
   i {
@@ -58,6 +75,8 @@ toolbar {
   }
 
   .icon_arangodb_trash {
+    margin-left: 5px;
+    margin-right: 10px;
   }
 
   .fa-comment,
@@ -168,7 +187,7 @@ toolbar {
 
 .wide-button-div {
   margin-top: -10px;
-  height: 26px;
+  height: 36px;
   margin-bottom: 15px;
   padding-top: 5px;
   width: 100%;

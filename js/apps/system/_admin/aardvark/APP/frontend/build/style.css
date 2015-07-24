@@ -5326,9 +5326,12 @@ toolbar {
   height: 27px;
   margin-left: 0;
   margin-right: 0; }
+  toolbar span:hover {
+    background-color: red;
+    color: white; }
 
 .queryBottomActions {
-  padding: 5px;
+  padding: 10px;
   border-top: 1px solid #c2c2c2; }
 
 #queryManagementContent {
@@ -5349,11 +5352,20 @@ toolbar {
   border-color: #a0a0a0;
   margin-top: 3px; }
   .editor-toolbar span {
+    border-radius: 3px;
     float: right;
+    width: 25px;
+    height: 18px;
     position: relative;
-    padding: 5px;
-    margin-left: 10px;
+    padding-top: 5px;
+    padding-right: 4px;
+    padding-left: 10px;
+    padding-bottom: 8px;
+    margin-left: 3px;
     top: 0px; }
+  .editor-toolbar span:hover {
+    background-color: #8aa051;
+    color: white; }
   .editor-toolbar i {
     margin-right: 5px;
     margin-top: 3px; }
@@ -5361,6 +5373,9 @@ toolbar {
       cursor: pointer; }
   .editor-toolbar .icon_arangodb {
     font-size: 15pt; }
+  .editor-toolbar .icon_arangodb_trash {
+    margin-left: 5px;
+    margin-right: 10px; }
   .editor-toolbar .fa-comment, .editor-toolbar .fa-comment-o {
     font-size: 17px;
     position: relative;
@@ -5435,7 +5450,7 @@ toolbar {
 
 .wide-button-div {
   margin-top: -10px;
-  height: 26px;
+  height: 36px;
   margin-bottom: 15px;
   padding-top: 5px;
   width: 100%; }
