@@ -2038,7 +2038,8 @@ namespace triagens {
                        Variable const* outVariable,
                        std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
-                       bool count)
+                       bool count,
+                       bool isDistinctCommand)
           : ExecutionNode(plan, id), 
             _options(options),
             _aggregateVariables(aggregateVariables), 
@@ -2046,7 +2047,9 @@ namespace triagens {
             _outVariable(outVariable),
             _keepVariables(keepVariables),
             _variableMap(variableMap),
-            _count(count) {
+            _count(count), 
+            _isDistinctCommand(isDistinctCommand),
+            _specialized(false) {
 
           // outVariable can be a nullptr, but only if _count is not set
           TRI_ASSERT(! _count || _outVariable != nullptr);
@@ -2059,7 +2062,8 @@ namespace triagens {
                        std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
                        std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
-                       bool count);
+                       bool count,
+                       bool isDistinctCommand);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2067,6 +2071,30 @@ namespace triagens {
 
         NodeType getType () const override final {
           return AGGREGATE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node requires an additional post SORT
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isDistinctCommand () const {
+          return _isDistinctCommand;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node is specialized
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isSpecialized () const {
+          return _specialized;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specialize the node
+////////////////////////////////////////////////////////////////////////////////
+
+        void specialized () {
+          _specialized = true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2262,6 +2290,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _count;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node requires an additional post-SORT
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _isDistinctCommand;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node is specialized
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _specialized;
     };
 
 // -----------------------------------------------------------------------------

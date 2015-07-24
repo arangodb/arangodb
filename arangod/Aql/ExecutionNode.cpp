@@ -192,15 +192,27 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       }
 
       bool count = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
+      bool isDistinctCommand = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "isDistinctCommand");
 
-      return new AggregateNode(plan,
-                               oneNode,
-                               expressionVariable,
-                               outVariable,
-                               keepVariables,
-                               plan->getAst()->variables()->variables(false),
-                               aggregateVariables,  
-                               count);
+      auto node = new AggregateNode(
+        plan,
+        oneNode,
+        expressionVariable,
+        outVariable,
+        keepVariables,
+        plan->getAst()->variables()->variables(false),
+        aggregateVariables,  
+        count,
+        isDistinctCommand
+      );
+      
+      // specialize the node if required
+      bool specialized = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "specialized");
+      if (specialized) {
+        node->specialized();
+      }
+
+      return node;
     }
     case INSERT:
       return new InsertNode(plan, oneNode);
@@ -2319,7 +2331,8 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
                               std::vector<Variable const*> const& keepVariables,
                               std::unordered_map<VariableId, std::string const> const& variableMap,
                               std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
-                              bool count)
+                              bool count,
+                              bool isDistinctCommand)
   : ExecutionNode(plan, base),
     _options(base),
     _aggregateVariables(aggregateVariables), 
@@ -2327,7 +2340,8 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
     _outVariable(outVariable),
     _keepVariables(keepVariables),
     _variableMap(variableMap),
-    _count(count) {
+    _count(count),
+    _isDistinctCommand(isDistinctCommand) {
 
 }
 
@@ -2376,6 +2390,8 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   json("count", triagens::basics::Json(_count));
+  json("isDistinctCommand", triagens::basics::Json(_isDistinctCommand));
+  json("specialized", triagens::basics::Json(_specialized));
   
   _options.toJson(json, zone);
 
@@ -2413,15 +2429,23 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
     }
   }
 
-  auto c = new AggregateNode(plan, 
-                             _id,
-                             _options, 
-                             aggregateVariables, 
-                             expressionVariable, 
-                             outVariable, 
-                             _keepVariables, 
-                             _variableMap,
-                             _count);
+  auto c = new AggregateNode(
+    plan, 
+    _id,
+    _options, 
+    aggregateVariables, 
+    expressionVariable, 
+    outVariable, 
+    _keepVariables, 
+    _variableMap,
+    _count,
+    _isDistinctCommand
+  );
+
+  // specialize the cloned node
+  if (isSpecialized()) {
+    c->specialized();
+  }
 
   cloneHelper(c, plan, withDependencies, withProperties);
 
