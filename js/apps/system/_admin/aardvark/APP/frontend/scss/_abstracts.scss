@@ -220,9 +220,9 @@
   @extend %pull-left;
   @include border-radius(3px);
 
-  background-color: $c-white;
+  background-color: #e4ecd9;
   border: {
-    color: $c-semi-transp;
+    color: $c-darker-grey;
     style: solid;
     width: 1px;
   }
@@ -264,21 +264,6 @@
   a {
     color: $c-nav-bg;
     padding: 0 20px;
-  }
-
-  &:before {
-    @include border-triangle(7px, $c-semi-transp);
-
-    position: absolute;
-    right: 7px;
-    top: -7px;
-  }
-
-  &:after {
-    @include border-triangle(7px, $c-white);
-
-    right: 8px;
-    top: -6px;
   }
 
 }
