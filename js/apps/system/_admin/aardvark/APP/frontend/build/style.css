@@ -6248,7 +6248,7 @@ input.gv-radio-button {
   height: 21px;
   margin-bottom: -1px;
   margin-right: 4px;
-  padding: 4px !important; }
+  padding: 2px 15px !important; }
 
 #infoTab .active > a, #collectionTab .active > a {
   background-color: #fff;
