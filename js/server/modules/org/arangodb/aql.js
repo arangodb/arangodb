@@ -6736,32 +6736,38 @@ function AQL_NEIGHBORS (vertexCollection,
 
   vertex = TO_ID(vertex, vertexCollection);
   options = CLONE(options) || {};
-  if (isCoordinator) {
-    // Fallback to JS if we are in the cluster
-    let edges = AQL_EDGES(edgeCollection, vertex, direction);
-    let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
-    let vertices = [];
-    let distinct = new Set();
-    for (let i = 0; i < tmp.length; ++i) {
-      let v = tmp[i].vertex;
-      if (!distinct.has(v._id)) {
-        distinct.add(v._id);
-        if (options.includeData) {
-          vertices.push(v);
-        } else {
-          vertices.push(v._id);
+  // Fallback to JS if we are in the cluster
+  // Improve the examples. LocalServer can match String -> _id
+  if (examples !== undefined) {
+    if (typeof examples === "string") {
+      examples = [{_id: examples}];
+    }
+    if (Array.isArray(examples)) {
+      examples = examples.map(function(e) {
+        if (typeof e === "string") {
+          return {_id: e};
         }
+        return e;
+      });
+    }
+  }
+  let edges = AQL_EDGES(edgeCollection, vertex, direction);
+  let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
+  let vertices = [];
+  let distinct = new Set();
+  for (let i = 0; i < tmp.length; ++i) {
+    let v = tmp[i].vertex;
+    if (!distinct.has(v._id)) {
+      distinct.add(v._id);
+      if (options.includeData) {
+        vertices.push(v);
+      } else {
+        vertices.push(v._id);
       }
     }
-    distinct.clear();
-    return vertices;
   }
-
-  options.direction = direction;
-  if (examples !== undefined && Array.isArray(examples) && examples.length > 0) {
-    options.filterEdges = examples;
-  }
-  return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, options);
+  distinct.clear();
+  return vertices;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
