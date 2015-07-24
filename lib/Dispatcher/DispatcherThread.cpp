@@ -30,6 +30,8 @@
 
 #include "DispatcherThread.h"
 
+#include <iostream>
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
@@ -86,18 +88,20 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
 
 void DispatcherThread::run () {
   currentDispatcherThread = this;
+  double worked = 0;
+  double grace = 0.1;
 
   // iterate until we are shutting down
   while (! _queue->_stopping.load(memory_order_relaxed)) {
+    double now = TRI_microtime();
 
     // drain the job queue
     {
       Job* job = nullptr;
-      bool worked = false;
 
       while (_queue->_readyJobs.pop(job)) {
         if (job != nullptr) {
-          worked = true;
+          worked = now;
           handleJob(job);
         }
       }
@@ -107,7 +111,7 @@ void DispatcherThread::run () {
       // using "memory_order_seq_cst", this guaranties that we do not
       // miss a signal.
 
-      if (! worked) {
+      if (worked + grace < now) {
         ++_queue->_nrWaiting;
 
         CONDITION_LOCKER(guard, _queue->_waitLock);
@@ -120,14 +124,17 @@ void DispatcherThread::run () {
         // wait at most 100ms
         _queue->_waitLock.wait(100 * 1000);
         --_queue->_nrWaiting;
-      }
-    }
-      
 
-    // there is a chance, that we created more threads than necessary because
-    // we ignore race conditions for the statistic variables
-    if (_queue->tooManyThreads()) {
-      break;
+	// there is a chance, that we created more threads than necessary because
+	// we ignore race conditions for the statistic variables
+	if (_queue->tooManyThreads()) {
+	  break;
+	}
+      }
+      else if (worked < now) {
+	uintptr_t n = (uintptr_t) this;
+	usleep((n >> 2) % 100);
+      }
     }
   }
 

@@ -431,11 +431,15 @@ void DispatcherQueue::removeStartedThread (DispatcherThread* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::tooManyThreads () {
-  if ((ssize_t)(_nrThreads + _nrBlocked) <  _nrRunning) {
-    double now = TRI_microtime();
+  size_t nrRunning = _nrRunning.load(memory_order_relaxed);
+  size_t nrBlocked = (size_t) _nrBlocked.load(memory_order_relaxed);
 
-    if (_lastChanged + _gracePeriod < now) {
-      _lastChanged = now;
+  if ((_nrThreads + nrBlocked) <  nrRunning) {
+    double now = TRI_microtime();
+    double lastChanged = _lastChanged.load(memory_order_relaxed);
+
+    if (lastChanged + _gracePeriod < now) {
+      _lastChanged.store(now, memory_order_relaxed);
       return true;
     }
 
@@ -450,9 +454,10 @@ bool DispatcherQueue::tooManyThreads () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::notEnoughThreads () {
-  size_t nrRunning = _nrRunning;
+  size_t nrRunning = _nrRunning.load(memory_order_relaxed);
+  size_t nrBlocked = (size_t) _nrBlocked.load(memory_order_relaxed);
 
-  return nrRunning <= _nrThreads - 1 || nrRunning <= (size_t) _nrBlocked.load();
+  return nrRunning <= _nrThreads - 1 || nrRunning <= nrBlocked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
