@@ -22,7 +22,7 @@
 }
 
 %fixedbar {
-  background-color: #e4ecd9;
+  background-color: $c-lightgreen-2-transp-bg;
   color: $c-white;
   left: 0;
   position: fixed;
@@ -218,13 +218,13 @@
 
 %dropdown-menu {
   @extend %pull-left;
-  @include border-radius(3px);
 
   background-color: #e4ecd9;
   border: {
     color: $c-darker-grey;
     style: solid;
     width: 1px;
+    radius: 3px;
   }
   display: none;
   list-style: none;
@@ -236,7 +236,7 @@
   z-index: 1000;
 
   li {
-    line-height: 20px;
+    line-height: 23px;
     white-space: nowrap;
     width: 100%;
   }
@@ -256,9 +256,9 @@
   }
 
   li.divider {
-    background-color: $c-grey;
+    background-color: $c-darker-grey;
     height: 1px;
-    margin: 10px 1px;
+    margin: 10px 0px;
   }
 
   a {

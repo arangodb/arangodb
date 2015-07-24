@@ -67,7 +67,7 @@
         active = currentUser.get("active");
       }
       if (! img) {
-        img = "img/arangodblogoAvatar_24.png";
+        img = "img/arangodb_logo_small.png";
       } 
       else {
         img = "https://s.gravatar.com/avatar/" + img + "?s=24";

@@ -256,7 +256,7 @@
             expect (collectionDummy.whoAmI).toHaveBeenCalled();
             expect (collectionDummy.findWhere).toHaveBeenCalledWith({user: "userName"});
             expect(view.template.render).toHaveBeenCalledWith({
-                img : "img/arangodblogoAvatar_24.png",
+                img : "img/arangodb_logo_small.png",
                 name : "",
                 username : "userName",
                 active : true
