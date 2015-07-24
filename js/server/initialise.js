@@ -65,6 +65,9 @@ require("org/arangodb");
 // load the actions from the actions directory
 require("org/arangodb/actions").startup();
 
+// initialize AQL
+require("org/arangodb/aql");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
