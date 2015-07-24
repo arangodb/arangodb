@@ -15,7 +15,8 @@
 
 nav.navbar {
   @extend %fixedbar;
-  height: 38px;
+  padding-top: 6px;
+  height: 44px;
   margin-bottom: 3px;
   top: 0;
 

@@ -67,7 +67,7 @@ table.arangoDataTable tr.even {
 
 .api-container #resources > li.resource:nth-child(odd),
 table.arangoDataTable tr.odd {
-  background-color: $c-breadcrumb-a-active-bread-transp;
+  background-color: $c-table-odd-color;
 }
 
 // TODO Hard cleanup
@@ -114,7 +114,7 @@ table.arangoDataTable tr.odd {
   color: $c-darker-grey;
   font-weight: 100;
   float: left;
-  margin-top: -56px !important;
+  margin-top: -37px !important;
   padding-left: 10px;
 }
 

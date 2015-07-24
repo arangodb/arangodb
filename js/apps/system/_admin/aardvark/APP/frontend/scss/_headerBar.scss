@@ -74,10 +74,11 @@ input.search-input {
 div.headerBar {
   background-color: $c-white;
   border-radius: 3px;
-  border: 1px solid rgba(243,247,237,0.75);
+  border: 1px solid rgba(104, 103, 102, 0.10);
   color: $c-white;
   font-size: 16px;
   height: 36px;
+  margin-top: 6px;
   margin-bottom: 5px;
   padding-left: 5px;
   padding-right: 5px;
@@ -172,7 +173,7 @@ div.headerBar > div.headerButtonBar {
 
   // Disabled breadcrumb
   .disabledBread {
-    color: $c-c2grey;
+    color: $c-darker-grey;
     float: left;
     padding-left: 5px;
   }
