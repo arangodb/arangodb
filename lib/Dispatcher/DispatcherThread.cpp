@@ -122,7 +122,9 @@ void DispatcherThread::run () {
         }
 
         // wait at most 100ms
-        _queue->_waitLock.wait(100 * 1000);
+        uintptr_t n = (uintptr_t) this;
+        _queue->_waitLock.wait((1 + ((n >> 3) % 9)) * 100 * 1000);
+
         --_queue->_nrWaiting;
 
 	// there is a chance, that we created more threads than necessary because
@@ -133,7 +135,7 @@ void DispatcherThread::run () {
       }
       else if (worked < now) {
 	uintptr_t n = (uintptr_t) this;
-	usleep(1 + ((n >> 2) % 20));
+	usleep(1 + ((n >> 3) % 19));
       }
     }
   }
