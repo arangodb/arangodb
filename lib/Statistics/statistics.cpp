@@ -649,12 +649,8 @@ void TRI_InitialiseStatistics () {
 
 void TRI_ShutdownStatistics (void) {
   Shutdown = true;
-#ifdef TRI_ENABLE_MAINTAINER_MODE    
-  int res = TRI_JoinThread(&StatisticsThread);
+  int res TRI_UNUSED = TRI_JoinThread(&StatisticsThread);
   TRI_ASSERT(res == 0);
-#else
-  TRI_JoinThread(&StatisticsThread);
-#endif
 }
 
 // -----------------------------------------------------------------------------
