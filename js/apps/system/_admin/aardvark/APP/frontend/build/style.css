@@ -2171,23 +2171,30 @@ a.headerButton {
     cursor: not-allowed; }
 
 div.toolbox {
-  -moz-border-radius: 2px;
-  -webkit-border-radius: 2px;
-  border-radius: 2px;
-  border: 3px solid #fff;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
+  background-color: #fff;
+  border: 1px solid rgba(104, 103, 102, 0.1);
   margin-right: 5px;
+  margin-top: -3px;
+  padding-top: 5px;
+  padding-bottom: 5px;
   position: absolute; }
   div.toolbox div.gv_action_button {
     background-color: #fff;
-    color: #fff;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+    color: #000;
     height: 50px;
-    margin-bottom: 2px;
-    margin-top: 2px;
+    margin: 5px;
     position: relative;
     text-align: center;
     width: 50px; }
     div.toolbox div.gv_action_button.active {
-      background-color: #8aa051; }
+      background-color: #8aa051;
+      color: #fff; }
     div.toolbox div.gv_action_button:first-child {
       margin-top: 0; }
     div.toolbox div.gv_action_button:last-child {
@@ -2265,20 +2272,28 @@ button.btn-zoom {
   width: 16px; }
 
 button.btn-zoom-top {
+  border: 0;
+  box-shadow: none;
   left: 13px;
-  top: 0; }
+  top: 1; }
 
 button.btn-zoom-left {
+  border: 0;
+  box-shadow: none;
   left: 0;
-  top: 12px; }
+  top: 13px; }
 
 button.btn-zoom-bottom {
+  border: 0;
+  box-shadow: none;
   left: 13px;
-  top: 24px; }
+  top: 25px; }
 
 button.btn-zoom-right {
+  border: 0;
+  box-shadow: none;
   right: 0;
-  top: 12px; }
+  top: 13px; }
 
 button.gv-zoom-btn {
   background-size: 14px 14px;
@@ -2295,9 +2310,9 @@ button.gv-zoom-btn {
     background-image: url('../img/gv_arrow_bottom.png'); }
 
 a.pagination-button, ul.arango-pagination a {
-  -moz-border-radius: 2px;
-  -webkit-border-radius: 2px;
-  border-radius: 2px; }
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px; }
 
 .badge, .label, .btn {
   text-shadow: none !important; }
@@ -2345,9 +2360,9 @@ a.button-gui {
   padding-top: 10px;
   text-align: center; }
   .clusterDownBtn button {
-    -moz-border-radius: 2px;
-    -webkit-border-radius: 2px;
-    border-radius: 2px;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
     background-color: #f1f1f1;
     border: 1px solid rgba(0, 0, 0, 0.1875);
     color: #333;
@@ -2372,8 +2387,8 @@ a.button-gui {
       background-color: #8ba142; }
 
 .bottomButtonBar {
+  border-top: 1px solid rgba(104, 103, 102, 0.1);
   background-color: #fff;
-  border-top: 1px solid #c2c2c2;
   height: 30px;
   padding: 10px; }
 
@@ -4670,13 +4685,14 @@ div.headerBar {
   padding-right: 5px;
   position: relative; }
   div.headerBar .infoField {
-    background-color: white;
+    background-color: #f5f8f0;
+    border: 1px solid lightgrey;
+    border-radius: 3px !important;
     color: black;
     float: right;
     font-size: 12px;
-    margin-top: 8px;
+    margin-top: 7px;
     margin-right: 7px;
-    border-radius: 20px;
     padding-left: 5px;
     padding-right: 5px; }
     div.headerBar .infoField .fa {
@@ -5056,7 +5072,7 @@ pre.gv-object-view {
   #stat_hd #stat_hd_counter {
     color: #000;
     line-height: 24px;
-    margin-left: 0; }
+    margin-left: 2px; }
 
 .fullNotification {
   background-color: #c00 !important;
@@ -5830,7 +5846,7 @@ svg.explain-tree {
   padding-top: 12px;
   text-align: center;
   margin-top: 0;
-  border-top: 1px solid grey;
+  border-top: 1px solid rgba(104, 103, 102, 0.1);
   background-color: white;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px; }
@@ -5846,9 +5862,9 @@ svg.explain-tree {
     padding: 2px 10px;
     text-decoration: none; }
   .pagination-line ul {
-    -moz-border-radius: 4px;
-    -webkit-border-radius: 4px;
-    border-radius: 4px;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
     display: inline-block;
     margin-bottom: 0;
     margin-left: 0; }
@@ -6115,15 +6131,18 @@ div.gv_zoom_widget {
     background: #fff;
     height: 200px;
     margin: 0 17px;
-    width: 4px; }
+    width: 4px;
+    border-radius: 3px; }
   div.gv_zoom_widget a.ui-slider-handle {
-    background: #fff;
-    border-color: #686766;
+    border: 1px solid rgba(104, 103, 102, 0.1);
+    background-color: #000;
     height: .5em;
     left: -.55em;
     outline: none; }
     div.gv_zoom_widget a.ui-slider-handle.ui-state-hover {
       outline-color: #fff; }
+  div.gv_zoom_widget a.ui-slider-handle:hover {
+    cursor: pointer; }
   div.gv_zoom_widget .ui-state-default {
     background: #f6f6f6; }
 
@@ -6142,10 +6161,11 @@ div.gv_colour_list {
 
 svg.graph-viewer {
   background-color: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.125);
+  border-radius: 3px;
+  border: 1px solid rgba(104, 103, 102, 0.1);
   left: 74px;
   position: absolute;
-  top: 12px;
+  top: 10px;
   z-index: 0; }
   svg.graph-viewer text {
     font-size: 16px;
@@ -6155,21 +6175,37 @@ div.gv-background {
   position: relative; }
 
 .link > line {
-  stroke-width: 2; }
+  stroke-width: 1; }
 
 div.gv-colour-list {
-  border: 1px solid #686766;
-  border-radius: 2px;
-  max-height: 680px;
-  overflow: auto;
+  border-radius: 3px;
   position: absolute;
   right: 8px;
   text-align: right;
   top: 20px;
-  z-index: 1; }
+  z-index: 1;
+  max-height: 350px;
+  overflow-y: auto;
+  overflow-x: none;
+  max-width: 130px; }
   div.gv-colour-list li {
     float: none;
     padding: 2px 6px; }
+  div.gv-colour-list ul ul {
+    border-left: 1px solid rgba(104, 103, 102, 0.1);
+    border-right: 1px solid rgba(104, 103, 102, 0.1); }
+  div.gv-colour-list ul ul:first-child {
+    border-top: 1px solid rgba(104, 103, 102, 0.1);
+    border-left: 1px solid rgba(104, 103, 102, 0.1);
+    border-right: 1px solid rgba(104, 103, 102, 0.1);
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px; }
+  div.gv-colour-list ul ul:last-child {
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    border-bottom: 1px solid rgba(104, 103, 102, 0.1);
+    border-left: 1px solid rgba(104, 103, 102, 0.1);
+    border-right: 1px solid rgba(104, 103, 102, 0.1); }
 
 div.gv-manage-button-container {
   margin-top: 10px; }
