@@ -1,9 +1,14 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
-* removed createNamedQueue and addJob from org/arangodb/tasks
+* add `RETURN DISTINCT` for AQL queries to return unique results:
 
-* moved dispatcher to atmoic implementation
+      FOR doc IN collection
+        RETURN DISTINCT doc.status 
+
+* removed `createNamedQueue()` and `addJob()` from org/arangodb/tasks
+
+* moved dispatcher to atomic implementation
 
 * added shorthand notation for attribute names in AQL object literals:
 
@@ -19,11 +24,11 @@ v2.7.0 (XXXX-XX-XX)
 
 * removed configure option `--enable-timings`
 
-  This option did not have an effect.
+  This option did not have any effect.
 
 * removed configure option `--enable-figures`
 
-  This option was removed to simplify statistics code.
+  This option was removed to simplify some statistics code.
 
 * removed run-time manipulation methods for server endpoints:
 

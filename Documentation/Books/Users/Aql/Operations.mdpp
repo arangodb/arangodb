@@ -56,17 +56,18 @@ further processing in the variable *u* and *l*.
 
 !SUBSECTION RETURN 
 
-The *RETURN* statement can (and must) be used to produce the result of a query.
+The *RETURN* statement can be used to produce the result of a query.
 It is mandatory to specify a *RETURN* statement at the end of each block in a
-query, otherwise the query result would be undefined.
+data-selection query, otherwise the query result would be undefined. Using 
+*RETURN* on the main level in data-modification queries is optional.
 
-The general syntax for *return* is:
+The general syntax for *RETURN* is:
 
 ```
 RETURN expression
 ```
 
-The *expression* returned by *RETURN* is produced for each iteration the
+The *expression* returned by *RETURN* is produced for each iteration in the block the
 *RETURN* statement is placed in. That means the result of a *RETURN* statement
 is always an array (this includes the empty array).  To return all elements from
 the currently iterated array without modification, the following simple form can
@@ -81,8 +82,39 @@ As *RETURN* allows specifying an expression, arbitrary computations can be
 performed to calculate the result elements. Any of the variables valid in the
 scope the *RETURN* is placed in can be used for the computations.
 
-Note: Return will close the current scope and eliminate all local variables in
+Note: *RETURN* will close the current scope and eliminate all local variables in
 it.
+
+!SUBSUBSECTION RETURN DISTINCT
+
+Since ArangoDB 2.7, *RETURN* can optionally be followed by the *DISTINCT* keyword.
+The *DISTINCT* keyword will ensure uniqueness of the values returned by the
+*RETURN* statement:
+
+```
+FOR variable-name IN expression
+  RETURN DISTINCT expression
+```
+
+If the *DISTINCT* is applied on an expression that itself is an array or a subquery, 
+the *DISTINCT* will not make the values in each array or subquery result unique, but instead
+ensure that the result contains only distinct arrays or subquery results. To make
+the result of an array or a subquery unique, simply apply the *DISTINCT* for the
+array of the subquery:
+
+```
+FOR variable-name IN expression
+  RETURN (
+    FOR sub IN expression
+      RETURN DISTINCT sub
+  )
+```
+
+The order of results is undefined for *RETURN DISTINCT*.
+
+Note: *RETURN DISTINCT* is not allowed on the top-level of a query if there is no *FOR* 
+loop in front of it.
+
 
 !SUBSECTION FILTER
 
@@ -230,7 +262,7 @@ FOR u IN users
 !SUBSECTION COLLECT
 
 The *COLLECT* keyword can be used to group an array by one or multiple group
-criteria.  
+criteria. 
 
 The *COLLECT* statement will eliminate all local variables in the current
 scope. After *COLLECT* only the variables introduced by *COLLECT* itself are
@@ -465,6 +497,28 @@ OPTIONS { method: "sorted" }
 Note that specifying *hash* as method will not make the optimizer use the *hash* variant. This is
 because the *hash* variant is not eligible for all queries. Instead, if no options or any other method
 than *sorted* are specified in *OPTIONS*, the optimizer will use its regular cost estimations.
+
+
+!SUBSUBSECTION COLLECT vs. RETURN DISTINCT
+
+In order to make a result set unique, one can either use *COLLECT* or *RETURN DISTINCT*. Behind the
+scenes, both variants will work by creating an *AggregateNode*. For both variants, the optimizer
+may try the sorted and the hashed variant of *COLLECT*. The difference is therefore mainly syntactical,
+with *RETURN DISTINCT* saving a bit of typing when compared to an equivalent *COLLECT*:
+
+```
+FOR u IN users
+  RETURN DISTINCT u.age
+```
+
+```
+FOR u IN users
+  COLLECT age = u.age
+  RETURN age
+```
+
+However, *COLLECT* is vastly more flexible than *RETURN DISTINCT*. Additionally, the order of results is 
+undefined for a *RETURN DISTINCT*, whereas for a *COLLECT* the results will be sorted.
 
 
 !SUBSECTION REMOVE
