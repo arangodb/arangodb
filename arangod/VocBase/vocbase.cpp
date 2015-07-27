@@ -609,7 +609,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   WRITE_LOCKER(vocbase->_collectionsLock);
 
   try {
-    // reserve room for collection
+    // reserve room for the new collection
     vocbase->_collections.reserve(vocbase->_collections.size() + 1);
     vocbase->_deadCollections.reserve(vocbase->_deadCollections.size() + 1);
   }
@@ -1820,7 +1820,6 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
   }
   else {
     // collection not found. now create it
-    TRI_vocbase_col_t* collection;
     TRI_col_info_t parameter;
 
     TRI_InitCollectionInfo(vocbase,
@@ -1829,7 +1828,8 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
                            (TRI_col_type_e) type,
                            (TRI_voc_size_t) vocbase->_settings.defaultMaximalSize,
                            nullptr);
-    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, true);
+
+    TRI_vocbase_col_t* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, true);
     TRI_FreeCollectionInfoOptions(&parameter);
 
     return collection;
@@ -2246,7 +2246,7 @@ void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
   // decrease the reference counter by 2. 
   // this is because we use odd values to indicate that the database has been
   // marked as deleted
-  #ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   auto oldValue = vocbase->_refCount.fetch_sub(2, std::memory_order_release);
   TRI_ASSERT(oldValue >= 2);
 #else
