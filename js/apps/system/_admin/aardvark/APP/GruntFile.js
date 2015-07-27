@@ -166,6 +166,20 @@
         }
       },
 
+      imagemin: {
+        dist: {
+          options: {
+            optimizationLevel: 7
+          },
+          files: [{
+             expand: true,
+             cwd: 'frontend/img',
+             src: ['**/*.{png,jpg,gif}'],
+             dest: 'frontend/img/compressed-img'
+          }]
+        }
+      },
+
       concat: {
         css: {
           src: ['<%=project.shared.css %>'],
@@ -326,6 +340,17 @@
           ],
           tasks: ['sass:dev']
         },
+        imagemin: {
+          files: [
+            'frontend/img/*.gif',
+            'frontend/img/*.png',
+            'frontend/img/*.jpg',
+            'frontend/img/*.jpeg'
+          ],
+          tasks: [
+            'imagemin'
+          ]
+        },
         concat_in_order: {
           files: [
             'frontend/js/{,*/}*.js',
@@ -353,6 +378,7 @@
     });
 
     grunt.loadNpmTasks("grunt-sass");
+    grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks("grunt-contrib-concat");
 
     require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
@@ -362,6 +388,7 @@
       'sass:dev',
       'jshint:default',
       'replace',
+      'imagemin',
       'concat',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',

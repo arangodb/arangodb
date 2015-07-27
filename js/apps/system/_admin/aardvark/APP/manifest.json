@@ -51,7 +51,7 @@
     "/api-docs.json": "api-docs.json",
     "/api-docs": "api-docs",
     "/fonts": "frontend/fonts",
-    "/img" : "frontend/img",
+    "/img" : "frontend/img/compressed-img",
     "/ammapLibs" : "frontend/js/lib/ammap/plugins/export/libs",
     "/data" : "frontend/data",
     "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
