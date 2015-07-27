@@ -109,6 +109,7 @@
       $(this.id).html(this.tabbar.render({content: this.tabbarElements}));
       $(this.id).append(this.table.render({content: this.tableDescription}));
       $('#' + this.currentLoglevel).addClass('arango-active-tab');
+      $('#logContent').append('<div id="logPaginationDiv" class="pagination-line"></div>');
       this.renderPagination();
       return this;
     },

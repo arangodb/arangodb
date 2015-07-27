@@ -5070,9 +5070,9 @@ pre.gv-object-view {
   text-align: center;
   width: 24px; }
   #stat_hd #stat_hd_counter {
-    color: #000;
+    color: #c2c2c2;
     line-height: 24px;
-    margin-left: 2px; }
+    margin-left: 1px; }
 
 .fullNotification {
   background-color: #c00 !important;
