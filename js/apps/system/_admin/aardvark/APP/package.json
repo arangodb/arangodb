@@ -12,6 +12,7 @@
     "grunt-cli": "^0.1.13",
     "grunt-concat-in-order": "^0.1.6",
     "grunt-contrib-concat": "^0.5.1",
+    "grunt-contrib-cssmin": "^0.12.3",
     "grunt-contrib-imagemin": "^0.9.4",
     "grunt-contrib-jshint": "^0.11.0",
     "grunt-contrib-sass": "^0.8.1",

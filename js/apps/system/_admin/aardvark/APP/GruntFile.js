@@ -166,6 +166,20 @@
         }
       },
 
+      cssmin: {
+        dist: {
+          options: {
+            banner: '/* arangodb */'
+          },
+          files: {
+            'frontend/build/style-minified.css': ['frontend/build/style.css'],
+            'build/extra-minified.css': ['build/extra.css'],
+            'frontend/scss/cluster-minified.css': ['frontend/scss/cluster.css'],
+            'clusterFrontend/build/style-minified.css': ['clusterFrontend/build/style.css']
+          }
+        }
+      },
+
       imagemin: {
         dist: {
           options: {
@@ -175,7 +189,7 @@
              expand: true,
              cwd: 'frontend/img',
              src: ['**/*.{png,jpg,gif}'],
-             dest: 'frontend/img/compressed-img'
+             dest: 'frontend/compressed-img/'
           }]
         }
       },
@@ -338,7 +352,7 @@
             'frontend/scss/{,*/}*.{scss,sass}',
             'clusterFrontend/scss/{,*/}*.{scss,sass}',
           ],
-          tasks: ['sass:dev']
+          tasks: ['sass:dev', 'cssmin']
         },
         imagemin: {
           files: [
@@ -379,6 +393,7 @@
 
     grunt.loadNpmTasks("grunt-sass");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
+    grunt.loadNpmTasks('grunt-contrib-cssmin');
     grunt.loadNpmTasks("grunt-contrib-concat");
 
     require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
@@ -389,6 +404,7 @@
       'jshint:default',
       'replace',
       'imagemin',
+      'cssmin',
       'concat',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',

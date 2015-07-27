@@ -16611,7 +16611,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
         }
 
         if (v < 0) {
-          tempColor = "red";
+          tempColor = "#d05448";
         }
         else {
           tempColor = "#7da817";
