@@ -35,7 +35,14 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 
-int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, size_t numOfBytesToFlush, int flags) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes changes made in memory back to disk
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_FlushMMFile (int fileDescriptor, 
+                     void* startingAddress, 
+                     size_t numOfBytesToFlush, 
+                     int flags) {
 
   // ...........................................................................
   // Possible flags to send are (based upon the Ubuntu Linux ASM include files:
@@ -62,15 +69,11 @@ int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, 
     return TRI_ERROR_NO_ERROR;
   }
 
-
   // ...........................................................................
   // Attempt to convert file descriptor into an operating system file handle
   // ...........................................................................
 
-  //printf("oreste:_get_osfhandle _get_osfhandle 1000:BEFORE:#############################:file=%d\n",fileDescriptor);
   fileHandle = (HANDLE)_get_osfhandle(fileDescriptor);
-  //printf("oreste:_get_osfhandle _get_osfhandle 1000:AFTER:#############################:file=%d\n",fileDescriptor);
-
 
   // ...........................................................................
   // An invalid file system handle was returned.
@@ -85,15 +88,26 @@ int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, 
   if (result && ((flags & MS_SYNC) == MS_SYNC)) {
     result = FlushFileBuffers(fileHandle);
   }
+
   if (result) {
     return TRI_ERROR_NO_ERROR;
   }
+
   return TRI_ERROR_SYS_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maps a file on disk onto memory
+////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryProtection,
-               int flags,  int fileDescriptor,  void** mmHandle, int64_t offset,  void** result) {
+int TRI_MMFile (void* memoryAddress, 
+                size_t numOfBytesToInitialise, 
+                int memoryProtection,
+                int flags, 
+                int fileDescriptor, 
+                void** mmHandle, 
+                int64_t offset,  
+                void** result) {
 
   DWORD objectProtection = PAGE_READONLY;
   DWORD viewProtection   = FILE_MAP_READ;
@@ -106,13 +120,10 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
 
   mmLength.QuadPart = numOfBytesToInitialise;
 
-
   // ...........................................................................
   // Whenever we talk to the memory map functions, we require a file handle
   // rather than a file descriptor.
   // ...........................................................................
-
-
 
   if (fileDescriptor < 0) {
     // .........................................................................
@@ -123,10 +134,8 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
     fileHandle = INVALID_HANDLE_VALUE;
     if ((flags & MAP_ANONYMOUS) != MAP_ANONYMOUS) {
       LOG_DEBUG("File descriptor is invalid however memory map flag is not anonymous");
-      LOG_TRACE("File descriptor is invalid however memory map flag is not anonymous");
       return TRI_ERROR_SYS_ERROR;
     }
-
   }
 
   else {
@@ -142,10 +151,8 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
 
     if (fileHandle == INVALID_HANDLE_VALUE ) {
       LOG_DEBUG("File descriptor converted to an invalid handle");
-      LOG_TRACE("File descriptor converted to an invalid handle");
       return TRI_ERROR_SYS_ERROR;
     }
-
   }
 
   // ...........................................................................
@@ -221,13 +228,11 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
   // TODO: map windows error codes to triagens.
   // We do however output some trace information with the errorcode
   // ...........................................................................
-  if (*mmHandle == NULL) {
+  if (*mmHandle == nullptr) {
     DWORD errorCode = GetLastError();
     LOG_DEBUG("File descriptor converted to an invalid handle",errorCode);
-    LOG_TRACE("File descriptor converted to an invalid handle",errorCode);
     return TRI_ERROR_SYS_ERROR;
   }
-
 
   // ........................................................................
   // We have a valid mm handle, now map the view. We let the OS decide
@@ -236,7 +241,6 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
 
   //TODO: fix the viewProtection above *result = MapViewOfFile(*mmHandle, viewProtection, 0, 0, 0);
   *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0, numOfBytesToInitialise);
-
 
   // ........................................................................
   // The map view of file has failed.
@@ -249,19 +253,23 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
     // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD WINAPI GetLastError(void) );
     if (errorCode == ERROR_NOT_ENOUGH_MEMORY) {
       LOG_DEBUG("MapViewOfFile failed with out of memory error %d",errorCode);
-      LOG_TRACE("MapViewOfFile failed with out of memory error %d",errorCode);
       return TRI_ERROR_OUT_OF_MEMORY;
     }
     LOG_DEBUG("MapViewOfFile failed with error code = %d",errorCode);
-    LOG_TRACE("MapViewOfFile failed with error code = %d",errorCode);
     return TRI_ERROR_SYS_ERROR;
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 'unmaps' or removes memory associated with a memory mapped file
+////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile(void* memoryAddress,  size_t numOfBytesToUnMap, int fileDescriptor, void** mmHandle) {
+int TRI_UNMMFile (void* memoryAddress,
+                  size_t numOfBytesToUnMap, 
+                  int fileDescriptor, 
+                  void** mmHandle) {
   // UnmapViewOfFile: If the function succeeds, the return value is nonzero.
   bool ok = (UnmapViewOfFile(memoryAddress) != 0);
   ok = (CloseHandle(*mmHandle) && ok);
@@ -271,16 +279,17 @@ int TRI_UNMMFile(void* memoryAddress,  size_t numOfBytesToUnMap, int fileDescrip
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets various protection levels with the memory mapped file
+////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ProtectMMFile(void* memoryAddress,  size_t numOfBytesToProtect, int flags, int fileDescriptor, void** mmHandle) {
+int TRI_ProtectMMFile (void* memoryAddress, 
+                       size_t numOfBytesToProtect, 
+                       int flags, 
+                       int fileDescriptor, 
+                       void** mmHandle) {
   DWORD objectProtection = PAGE_READONLY;
   DWORD viewProtection   = FILE_MAP_READ;
-//  LARGE_INTEGER mmLength;
-
-
-  // ...........................................................................
-  // TODO:
-  // ...........................................................................
 
   if ((flags & PROT_READ) == PROT_READ) {
 
@@ -323,9 +332,7 @@ int TRI_ProtectMMFile(void* memoryAddress,  size_t numOfBytesToProtect, int flag
     viewProtection   = FILE_MAP_ALL_ACCESS;
   }
 
-
   return TRI_ERROR_NO_ERROR;
-
 }
 
 
