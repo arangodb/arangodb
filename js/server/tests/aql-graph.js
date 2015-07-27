@@ -407,11 +407,11 @@ function ahuacatlQueryNeighborsTestSuite () {
       assertEqual(actual, [ v4, v6 ]);
 
       // Should be able to handle an id as string
-      actual = getQueryResults(query, {startId: v3, examples: "UnitTestAhuacatlEdge/v3_v6"});
+      actual = getQueryResults(query, {startId: v3, examples: "UnitTestsAhuacatlEdge/v3_v6"});
       assertEqual(actual, [ v6 ]);
 
       // Should be able to handle a mix of id and objects
-      actual = getQueryResults(query, {startId: v3, examples: ["UnitTestAhuacatlEdge/v3_v6", {what: "v3->v4"}]});
+      actual = getQueryResults(query, {startId: v3, examples: ["UnitTestsAhuacatlEdge/v3_v6", {what: "v3->v4"}]});
       assertEqual(actual, [ v4, v6 ]);
 
       // Should be able to handle internal attributes
