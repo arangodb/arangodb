@@ -1748,15 +1748,11 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 
   TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
 
-  char* name;
   if (found == nullptr) {
-    name = nullptr;
-  }
-  else {
-    name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found->_name);
+    return nullptr;
   }
 
-  return name;
+  return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1765,7 +1761,7 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 
 TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase,
                                                       char const* name) {
-  const char c = *name;
+  char const c = *name;
 
   // if collection name is passed as a stringified id, we'll use the lookupbyid function
   // this is safe because collection names must not start with a digit
