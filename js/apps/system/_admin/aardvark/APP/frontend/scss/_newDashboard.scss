@@ -91,8 +91,11 @@
 }
 
 .dashboard-medium-chart-outer {
+  border: 1px solid rgba(104, 103, 102, 0.10);
+  border-radius: 3px;
+
   &:first-child {
-    margin-right: 25px;
+    margin-right: 10px;
   }
 }
 .dashboard-medium-chart {
@@ -103,6 +106,7 @@
   border-right: $dashboard-borderwidth solid $c-white;
   border-top: $dashboard-borderwidth solid $c-white;
   padding-top: $dashboard-padding;
+  margin-bottom: 0;
 
   &:first-child {
     margin-right: 12px;
@@ -193,7 +197,7 @@
 .dashboard-bar-chart-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(125, 168, 23, 0.01);
+  border: 1px solid rgba(104, 103, 102, 0.10);
   border-radius: 3px;
 
   .dashboard-bar-chart {
@@ -263,7 +267,7 @@
 
 
 .headerBar.dashboard-headerbar {
-  margin: 15px 0 20px;
+  margin: 15px 0 10px;
 }
 
 

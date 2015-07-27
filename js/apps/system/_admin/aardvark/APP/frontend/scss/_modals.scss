@@ -40,6 +40,14 @@
   font-size: 14px;
   font-weight: 300;
 
+  .select2-choices {
+    border-radius: 3px;
+  }
+
+  .nav-tabs {
+    margin-top: 15px;
+  }
+
   input,
   select,
   textarea {
@@ -179,14 +187,16 @@
     }
 
     #appstore {
-      max-height: 300px;
+      max-height: 290px;
     }
 
   }
 
   .errorMessage {
+    background-color: #fff;
     color: #f00;
     font-size: 9pt;
+    font-weight: 400;
     margin-bottom: 5px;
     margin-top: -9px;
     position: absolute;
@@ -194,6 +204,7 @@
 
   .nav img.tab-icon {
     margin-right: 5px;
+    margin-top: -3px;
     width: 20px;
   }
 

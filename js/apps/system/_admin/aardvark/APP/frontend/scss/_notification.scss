@@ -91,11 +91,11 @@
 }
 
 #stat_hd {
-  @include border-radius(4px);
+  @include border-radius(3px);
   background-color: $c-nav-bg;
-  border: 2px solid $c-nav-bg;
+  border: 1px solid rgba(104, 103, 102, 0.10);
   height: 24px;
-  margin-top: 2px;
+  margin-top: 3px;
   text-align: center;
   width: 24px;
 
