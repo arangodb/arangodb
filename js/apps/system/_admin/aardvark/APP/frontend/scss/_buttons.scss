@@ -173,24 +173,29 @@ a.headerButton {
 //Graph Viewer
 
 div.toolbox {
-  @include border-radius(2px);
-  border: 3px solid $c-nav-bg;
+  @include border-radius(3px);
+  background-color: $c-white;
+  border: 1px solid rgba(104, 103, 102, 0.1);
   margin-right: 5px;
+  margin-top: -3px;
+  padding-top: 5px;
+  padding-bottom: 5px;
   position: absolute;
 
   div.gv_action_button {
     @extend %clickable;
-    background-color: $c-nav-bg;
-    color: $c-white;
+    background-color: $c-white;
+    @include border-radius(3px);
+    color: $c-black;
     height: 50px;
-    margin-bottom: 2px;
-    margin-top: 2px;
+    margin: 5px;
     position: relative;
     text-align: center;
     width: 50px;
 
     &.active {
       background-color: $c-positive;
+      color: $c-white;
     }
 
     &:first-child {
@@ -295,23 +300,31 @@ button.btn-zoom {
 }
 
 button.btn-zoom-top {
+  border: 0;
+  box-shadow: none;
   left: 13px;
-  top: 0;
+  top: 1;
 }
 
 button.btn-zoom-left {
+  border: 0;
+  box-shadow: none;
   left: 0;
-  top: 12px;
+  top: 13px;
 }
 
 button.btn-zoom-bottom {
+  border: 0;
+  box-shadow: none;
   left: 13px;
-  top: 24px;
+  top: 25px;
 }
 
 button.btn-zoom-right {
+  border: 0;
+  box-shadow: none;
   right: 0;
-  top: 12px;
+  top: 13px;
 }
 
 button.gv-zoom-btn {
@@ -339,7 +352,7 @@ button.gv-zoom-btn {
 
 a.pagination-button,
 ul.arango-pagination a {
-  @include border-radius(2px);
+  @include border-radius(3px);
 }
 
 .badge,
@@ -407,7 +420,7 @@ a.button-gui {
 
   %cluster-button {
     @extend %clickable;
-    @include border-radius(2px);
+    @include border-radius(3px);
 
     background-color: $c-cluster-button-grey;
     border: 1px solid $c-cluster-button-grey-border;
@@ -445,8 +458,8 @@ a.button-gui {
 }
 
 .bottomButtonBar {
+  border-top: 1px solid rgba(104, 103, 102, 0.1);
   background-color: $c-white;
-  border-top: 1px solid $c-c2grey;
   height: 30px;
   padding: 10px;
 }

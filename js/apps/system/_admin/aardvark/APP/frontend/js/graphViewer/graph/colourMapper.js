@@ -36,6 +36,19 @@ function ColourMapper() {
     self = this,
     nextColour = 0;
 
+  colours.push({back: "#388E3C", front: "white"});
+  colours.push({back: "#4CAF50", front: "white"});
+  colours.push({back: "#C8E6C9", front: "black"});
+  colours.push({back: "#8aa249", front: "white"});
+  colours.push({back: "#8BC34A", front: "black"});
+  colours.push({back: "#212121", front: "white"});
+  colours.push({back: "#727272", front: "white"});
+  colours.push({back: "#B6B6B6", front: "black"});
+  colours.push({back: "#e5f0a3", front: "black"});
+  colours.push({back: "#6c4313", front: "white"});
+  colours.push({back: "#9d8564", front: "white"});
+
+  /*
   colours.push({back: "navy", front: "white"});
   colours.push({back: "green", front: "white"});
   colours.push({back: "gold", front: "black"});
@@ -56,6 +69,7 @@ function ColourMapper() {
   colours.push({back: "teal", front: "black"});
   colours.push({back: "peru", front: "black"});
   colours.push({back: "maroon", front: "white"});
+  */
 
   this.getColour = function(value) {
     if (mapping[value] === undefined) {

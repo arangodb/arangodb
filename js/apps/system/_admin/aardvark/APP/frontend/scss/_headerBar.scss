@@ -84,13 +84,14 @@ div.headerBar {
   position: relative;
 
   .infoField {
-    background-color: white;
+    background-color: #f5f8f0;
+    border: 1px solid lightgrey;
+    border-radius: 3px !important;
     color: black;
     float: right;
     font-size: 12px;
-    margin-top: 8px;
+    margin-top: 7px;
     margin-right: 7px;
-    border-radius: 20px;
     padding-left: 5px;
     padding-right: 5px;
 

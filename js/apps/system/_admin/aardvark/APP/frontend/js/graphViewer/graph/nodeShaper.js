@@ -349,7 +349,7 @@ function NodeShaper(parent, flags, idfunc) {
               var chunks = splitLabel(label(d));
               d3.select(this).append("tspan")
                 .attr("x", "0")
-                .attr("dy", "-4")
+                .attr("dy", "5")
                 .text(chunks[0]);
               if (chunks.length === 2) {
                 d3.select(this).append("tspan")
@@ -369,7 +369,7 @@ function NodeShaper(parent, flags, idfunc) {
             var chunks = splitLabel(findFirstValue(label, d._data));
             d3.select(this).append("tspan")
               .attr("x", "0")
-              .attr("dy", "-4")
+              .attr("dy", "5")
               .text(chunks[0]);
             if (chunks.length === 2) {
               d3.select(this).append("tspan")
@@ -427,7 +427,7 @@ function NodeShaper(parent, flags, idfunc) {
              }).attr("stroke", function(n) {
                if (!n._expanded) {
                  // if node is not expanded
-                 return "#000";
+                 return "transparent";
                }
                // if node is expanded
                return "#fff";
