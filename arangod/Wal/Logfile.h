@@ -40,6 +40,15 @@
 #include "ShapedJson/shaped-json.h"
 #include "Wal/Marker.h"
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of cache buckets
+/// TODO: convert to a C++11 constexpr once Visual Studio supports it
+/// (Visual Studio 2015?)
+////////////////////////////////////////////////////////////////////////////////
+
+#define LOGFILE_LEGEND_CACHE_BUCKETS 8
+
+
 namespace triagens {
   namespace wal {
 
@@ -402,15 +411,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void* lookupLegend (TRI_voc_cid_t cid, TRI_shape_sid_t sid) {
-          CidSid cs(cid,sid);
-          READ_LOCKER(_legendCacheLock);
-          auto it = _legendCache.find(cs);
-          if (it != _legendCache.end()) {
+          CidSid cs(cid, sid);
+  
+          size_t const i = cs.hash() % LOGFILE_LEGEND_CACHE_BUCKETS;
+
+          READ_LOCKER(_legendCacheLock[i]);
+
+          auto it = _legendCache[i].find(cs);
+
+          if (it != _legendCache[i].end()) {
             return it->second;
           }
-          else {
-            return nullptr;
-          }
+          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -418,11 +430,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void cacheLegend (TRI_voc_cid_t cid, TRI_shape_sid_t sid, void* l) {
-          CidSid cs(cid,sid);
-          WRITE_LOCKER(_legendCacheLock);
-          auto it = _legendCache.find(cs);
-          if (it == _legendCache.end()) {
-            _legendCache.emplace(std::make_pair(cs,l));
+          CidSid cs(cid, sid);
+
+          size_t const i = cs.hash() % LOGFILE_LEGEND_CACHE_BUCKETS;
+          
+          WRITE_LOCKER(_legendCacheLock[i]);
+
+          auto it = _legendCache[i].find(cs);
+
+          if (it == _legendCache[i].end()) {
+            _legendCache[i].emplace(cs, l);
           }
         }
 
@@ -464,17 +481,24 @@ namespace triagens {
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief legend cache, key type with hash function
 ////////////////////////////////////////////////////////////////////////////////
-
-      private:
 
         struct CidSid {
           TRI_voc_cid_t cid;
           TRI_shape_sid_t sid;
           CidSid (TRI_voc_cid_t c, TRI_shape_sid_t s)
-            : cid(c), sid(s) {}
+            : cid(c), sid(s) {
+          }
+
+          size_t hash () const {
+            CidSidHash h;
+            return h(this);
+          }
+
           bool operator== (CidSid const& a) const {
             return this->cid == a.cid && this->sid == a.sid;
           }
@@ -485,19 +509,24 @@ namespace triagens {
             return   std::hash<TRI_voc_cid_t>()(cs.cid) 
                    ^ std::hash<TRI_shape_sid_t>()(cs.sid);
           }
+          
+          size_t operator() (CidSid const* cs) const {
+            return   std::hash<TRI_voc_cid_t>()(cs->cid) 
+                   ^ std::hash<TRI_shape_sid_t>()(cs->sid);
+          }
         };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief legend cache
+/// @brief legend cache, split into buckets
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<CidSid, void*, CidSidHash> _legendCache;
+        std::unordered_map<CidSid, void*, CidSidHash> _legendCache[LOGFILE_LEGEND_CACHE_BUCKETS];
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief legend cache, lock
+/// @brief legend cache, locks, split into buckets
 ////////////////////////////////////////////////////////////////////////////////
 
-        basics::ReadWriteLock _legendCacheLock;
+        basics::ReadWriteLock _legendCacheLock[LOGFILE_LEGEND_CACHE_BUCKETS];
 
     };
 
