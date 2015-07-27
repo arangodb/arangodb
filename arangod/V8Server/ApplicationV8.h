@@ -128,7 +128,7 @@ namespace triagens {
 /// @brief get code for a method
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string const getCode (MethodType type) {
+        static char const* getCode (MethodType type) {
           switch (type) {
             case TYPE_RELOAD_ROUTING:
               return CodeReloadRouting;
@@ -148,10 +148,10 @@ namespace triagens {
 /// @brief static strings with the code for each method
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string const CodeReloadRouting;
-        static std::string const CodeReloadAql;
-        static std::string const CodeBootstrapCoordinator;
-        static std::string const CodeWarmupExports;
+        static char const* CodeReloadRouting;
+        static char const* CodeReloadAql;
+        static char const* CodeBootstrapCoordinator;
+        static char const* CodeWarmupExports;
     };
 
 // -----------------------------------------------------------------------------
@@ -608,7 +608,7 @@ namespace triagens {
 /// @brief V8 busy contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::set<V8Context*> _busyContexts;
+        std::unordered_set<V8Context*> _busyContexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown in progress
