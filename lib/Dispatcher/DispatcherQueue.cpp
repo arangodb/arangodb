@@ -271,7 +271,7 @@ void DispatcherQueue::beginShutdown () {
     }
   }
 
-  // no try to get rid of the remaining jobs
+  // now try to get rid of the remaining jobs
   MUTEX_LOCKER(_hazardLock);
 
   for (size_t i = 0;  i < _maxSize;  ++i) {
@@ -302,7 +302,6 @@ void DispatcherQueue::beginShutdown () {
       _hazardPointer = nullptr;
 
       removeJob(job);
-      delete job;
     }
   }
 
@@ -361,6 +360,15 @@ void DispatcherQueue::shutdown () {
 
     for (auto& it : _startedThreads) {
       delete it;
+    }
+  }
+
+  // and delete old jobs
+  for (size_t i = 0;  i < _maxSize;  ++i) {
+    Job* job = _jobs[i];
+
+    if (job != nullptr) {
+      delete job;
     }
   }
 }
