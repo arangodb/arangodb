@@ -64,7 +64,7 @@
         </ul>
       </div>
       <div class="breadcrumb">
-        <a class="activeBread" href="#applications">Applications</a>
+        <a class="activeBread" href="#applications">Services</a>
         <span class="disabledBread">&gt;</span>
         <span class="disabledBread">
           <%= app.attributes.mount %>
@@ -80,7 +80,7 @@
     <section class="info">
       <div class="header">
         <div class="header-icon-container">
-          <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for App" class="icon" />
+          <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for Service" class="icon" />
         </div>
         <div class="header_left">
           <input type="button" class="open button-success" disabled="true" value="Open" />
@@ -232,7 +232,7 @@
   <div id="installed">
     <div id="installedList" class="tileList">
       <div class="tile">
-        <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Application</a>
+        <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
       </div>
     </div>
   </div>
@@ -1191,7 +1191,7 @@ if (list.length > 0) {
 </script>
 
 <script id="foxxActiveView.ejs" type="text/template">
-  <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for App" class="icon">
+  <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
     <% if (model.needsAttention()) { %>
       <span class="warning-icons">
         <% if (model.isBroken()) { %>
@@ -1224,7 +1224,7 @@ if (list.length > 0) {
 <div id="change-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Modify Application</a>
+    <a class="arangoHeader">Modify Service</a>
   </div>
   <div class="modal-body">
     <table>
@@ -1288,7 +1288,7 @@ if (list.length > 0) {
 <div id="install-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Install Application</a>
+    <a class="arangoHeader">Install Service</a>
   </div>
   <div class="modal-body">
     <table>
@@ -1498,7 +1498,7 @@ if (list.length > 0) {
   </table>
 
   <ul id="infoTab" class="nav nav-tabs">
-    <li class="active"><a href="#newApp" data-toggle="tab" id="tab-new">New App</a></li>
+    <li class="active"><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
     <li><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
     <li><a href="#github" data-toggle="tab" id="tab-git">Github</a></li>
     <li><a href="#zip" data-toggle="tab" id="tab-zip">Zip</a></li>
@@ -1521,7 +1521,7 @@ if (list.length > 0) {
             Name*:
           </th>
           <th class="collectionInfoTh">
-            <input type="text" id="new-app-name" value="" placeholder="Name of the App">
+            <input type="text" id="new-app-name" value="" placeholder="Name of the Service">
           </th>
         </tr>
         <tr class="tableRow">
@@ -1529,7 +1529,7 @@ if (list.length > 0) {
             Description*:
           </th>
           <th class="collectionInfoTh">
-            <input type="text" id="new-app-description" value="" placeholder="Please describe your App here">
+            <input type="text" id="new-app-description" value="" placeholder="Please describe your Service here">
           </th>
         </tr>
         <tr class="tableRow">
@@ -1558,7 +1558,7 @@ if (list.length > 0) {
             <input type="hidden" id="new-app-collections" value="" placeholder="Collections"></input>
           </th>
           <th>
-            <a class="modalTooltips" title="A list of collections that will be created specifically for this App. A CRUD API for these will be generated.">
+            <a class="modalTooltips" title="A list of collections that will be created specifically for this Service. A CRUD API for these will be generated.">
               <span class="arangoicon icon_arangodb_info"></span>
             </a>
           </th>
@@ -1601,7 +1601,7 @@ if (list.length > 0) {
       <div>
         <p>
           Upload a ZIP-packed foxx application to ArangoDB.
-          The ZIP file has to be created from the folder containing the manifest.json file of your App, do not include the databases folder structure created by ArangoDB.
+          The ZIP file has to be created from the folder containing the manifest.json file of your Service, do not include the databases folder structure created by ArangoDB.
           This is also compatible with the download format for ZIP files on <a href="https://www.github.com">github.com</a>.
           Remember to change to a new version number in the manifest.json when uploading an update.
         </p>
@@ -1920,7 +1920,7 @@ if (list.length > 0) {
 
 <script id="modalDownloadFoxx.ejs" type="text/template">
   <div>
-    Your new Foxx Application is ready for download.
+    Your new Foxx Service is ready for download.
     You can edit it on your local system and repack it in a zip file to publish it on ArangoDB.
   </div>
 </script>
@@ -2347,7 +2347,7 @@ if (list.length > 0) {
 
     <option value="#collections">Collections</option>
     <option value="#demo">Demo</option>
-    <option value="#applications">Applications</option>
+    <option value="#applications">Services</option>
     <option value="#graph">Graph</option>
     <option value="#query">AQL Editor</option>
     <option value="#shell">JS Shell</option>

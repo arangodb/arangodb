@@ -155,15 +155,27 @@ $iconsize: 50px;
     span {
       @extend %clickable;
       @extend %pull-right;
+      border-radius: 3px;
+      color: $c-black;
       font-size: 18px;
-      opacity: .5;
-      padding-left: 7px;
+      padding-top: 2px;
+      padding-bottom: 2px;
+      padding-left: 3px;
+      padding-right: 3px;
 
       &:hover {
-        opacity: 1.0;
+        background-color: $c-positive;
+        color: $c-white;
       }
 
       &.disabled {
+        cursor: default;
+        opacity: .2;
+      }
+
+      &.disabled:hover {
+        background-color: $c-white;
+        color: $c-black;
         cursor: default;
         opacity: .2;
       }
@@ -214,8 +226,8 @@ $iconsize: 50px;
         margin-right: 5px;
         color: #fff;
         height: 0;
-        padding-left: 4px;
-        padding-right: 9px;
+        padding-left: 1px;
+        padding-right: 6px;
 
         &.loading {
           border-bottom-color: $c-unloaded;

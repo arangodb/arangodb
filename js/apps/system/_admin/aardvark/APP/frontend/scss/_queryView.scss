@@ -48,10 +48,10 @@ toolbar {
     width: 25px;
     height: 18px;
     position: relative;
-    padding-top: 5px;
-    padding-right: 4px;
-    padding-left: 10px;
-    padding-bottom: 8px;
+    padding-top: 3px;
+    padding-right: 0;
+    padding-left: 5px;
+    padding-bottom: 6px;
     margin-left: 3px;
     top: 0px;
   }
@@ -71,7 +71,7 @@ toolbar {
   }
 
   .icon_arangodb {
-    font-size: 15pt;
+    font-size: 14pt;
   }
 
   .icon_arangodb_trash {
@@ -81,9 +81,9 @@ toolbar {
 
   .fa-comment,
   .fa-comment-o {
-    font-size: 17px;
+    font-size: 15px;
     position: relative;
-    margin-right: -1px;
+    right: -2px;
     top: -2px;
   }
 

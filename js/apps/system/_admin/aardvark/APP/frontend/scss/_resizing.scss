@@ -165,7 +165,7 @@ div.resizecontainer {
     }
 
     .dashboard-medium-chart-outer {
-      $int-width: ($content-size / 2) - 16px - 2px;
+      $int-width: ($content-size / 2) - 16px - 2px + 10px;
       width: $int-width;
       float: left;
     }
@@ -176,7 +176,7 @@ div.resizecontainer {
 
       .dashboard-sub-bar {
         margin-left: -5px;
-        width: $int-width - 2px;
+        width: $int-width - 1px;
       }
 
       .dashboard-interior-chart {

@@ -1906,8 +1906,10 @@ nav.navbar {
   margin-bottom: 3px;
   top: 0; }
   nav.navbar .arangodbLogo {
-    width: 32%;
-    height: auto; }
+    height: auto;
+    margin-left: -5px;
+    margin-top: -1px;
+    width: 40%; }
   nav.navbar .nav > .active > a {
     background-color: #8aa051;
     color: #fff;
@@ -1922,7 +1924,7 @@ nav.navbar {
 
 div.navlogo {
   margin-left: 5px;
-  margin-right: 1px;
+  margin-right: -1px;
   padding-top: 3px; }
 
 ul.navlist {
@@ -2473,12 +2475,22 @@ div .tile, div .bigtile {
     right: 5px;
     top: 5px; }
     div .tile div.iconSet span, div .bigtile div.iconSet span {
+      border-radius: 3px;
+      color: #000;
       font-size: 18px;
-      opacity: .5;
-      padding-left: 7px; }
+      padding-top: 2px;
+      padding-bottom: 2px;
+      padding-left: 3px;
+      padding-right: 3px; }
       div .tile div.iconSet span:hover, div .bigtile div.iconSet span:hover {
-        opacity: 1.0; }
+        background-color: #8aa051;
+        color: #fff; }
       div .tile div.iconSet span.disabled, div .bigtile div.iconSet span.disabled {
+        cursor: default;
+        opacity: .2; }
+      div .tile div.iconSet span.disabled:hover, div .bigtile div.iconSet span.disabled:hover {
+        background-color: #fff;
+        color: #000;
         cursor: default;
         opacity: .2; }
   div .tile .badge-success, div .bigtile .badge-success {
@@ -2508,8 +2520,8 @@ div .tile, div .bigtile {
         margin-right: 5px;
         color: #fff;
         height: 0;
-        padding-left: 4px;
-        padding-right: 9px; }
+        padding-left: 1px;
+        padding-right: 6px; }
         div .tile div.tileBadge span div.corneredBadge.loading, div .bigtile div.tileBadge span div.corneredBadge.loading {
           border-bottom-color: #ff8f35; }
         div .tile div.tileBadge span div.corneredBadge.loaded, div .bigtile div.tileBadge span div.corneredBadge.loaded {
@@ -2575,13 +2587,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 96px;
+    width: 106px;
     float: left; }
   .dashboard-medium-chart {
     width: 96px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 94px; }
+      width: 95px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 185px;
       width: 96px; }
@@ -2746,13 +2758,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 216px;
+    width: 226px;
     float: left; }
   .dashboard-medium-chart {
     width: 216px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 214px; }
+      width: 215px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 185px;
       width: 216px; }
@@ -2917,13 +2929,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 336px;
+    width: 346px;
     float: left; }
   .dashboard-medium-chart {
     width: 336px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 334px; }
+      width: 335px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 185px;
       width: 336px; }
@@ -3086,13 +3098,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 13px; }
   .dashboard-medium-chart-outer {
-    width: 456px;
+    width: 466px;
     float: left; }
   .dashboard-medium-chart {
     width: 456px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 454px; }
+      width: 455px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 220px;
       width: 336px; }
@@ -3252,13 +3264,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 576px;
+    width: 586px;
     float: left; }
   .dashboard-medium-chart {
     width: 576px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 574px; }
+      width: 575px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 255px;
       width: 446px; }
@@ -3418,13 +3430,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 696px;
+    width: 706px;
     float: left; }
   .dashboard-medium-chart {
     width: 696px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 694px; }
+      width: 695px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 285px;
       width: 556px; }
@@ -3584,13 +3596,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 16px; }
   .dashboard-medium-chart-outer {
-    width: 816px;
+    width: 826px;
     float: left; }
   .dashboard-medium-chart {
     width: 816px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 814px; }
+      width: 815px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 325px;
       width: 656px; }
@@ -3750,13 +3762,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 936px;
+    width: 946px;
     float: left; }
   .dashboard-medium-chart {
     width: 936px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 934px; }
+      width: 935px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 385px;
       width: 766px; }
@@ -3916,13 +3928,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1056px;
+    width: 1066px;
     float: left; }
   .dashboard-medium-chart {
     width: 1056px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 1054px; }
+      width: 1055px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 285px;
       width: 916px; }
@@ -4082,13 +4094,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1176px;
+    width: 1186px;
     float: left; }
   .dashboard-medium-chart {
     width: 1176px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 1174px; }
+      width: 1175px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 285px;
       width: 1036px; }
@@ -4248,13 +4260,13 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1296px;
+    width: 1306px;
     float: left; }
   .dashboard-medium-chart {
     width: 1296px; }
     .dashboard-medium-chart .dashboard-sub-bar {
       margin-left: -5px;
-      width: 1294px; }
+      width: 1295px; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 285px;
       width: 1156px; }
@@ -4467,6 +4479,7 @@ li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
 
 div.headerDropdown {
   background-color: #fff;
+  border: 1px solid rgba(104, 103, 102, 0.1);
   border-radius: 3px;
   display: none;
   padding: 10px;
@@ -4599,11 +4612,11 @@ input.search-input {
   background-color: #fff !important;
   border: 1px solid #eeeeee;
   box-shadow: none;
-  height: 18px;
+  height: 14px;
   line-height: 18px;
-  margin-top: 4px;
+  margin-top: 6px;
   margin-right: -1px;
-  width: 80px;
+  width: 120px;
   outline: none;
   outline-color: transparent;
   outline-style: none; }
@@ -4618,12 +4631,11 @@ input.search-input {
   margin-left: 10px; }
   .search-field .fa-search {
     color: #D2D2D2;
-    margin-left: -22px;
-    font-size: 15pt;
+    font-size: 13pt;
     opacity: 0.5;
     position: absolute;
     right: 7px;
-    top: 7px; }
+    top: 9px; }
     .search-field .fa-search:hover {
       opacity: 1;
       cursor: pointer; }
@@ -4652,7 +4664,7 @@ div.headerBar {
   color: #fff;
   font-size: 16px;
   height: 36px;
-  margin-top: 6px;
+  margin-top: 15px;
   margin-bottom: 5px;
   padding-left: 5px;
   padding-right: 5px;
@@ -4700,7 +4712,7 @@ div.headerBar {
 div.headerBar a.arangoHeader {
   color: #000;
   font-size: 16px;
-  left: 5px;
+  left: 0px;
   position: relative;
   top: 7px; }
 
@@ -4716,11 +4728,11 @@ div.headerBar > div.headerButtonBar {
   .breadcrumb .disabledBread {
     color: #666;
     float: left;
-    padding-left: 5px; }
+    padding-left: 5px;
+    padding-right: 5px; }
   .breadcrumb .activeBread {
     color: #7da817;
-    float: left;
-    padding-left: 5px; }
+    float: left; }
 
 .arangoHeader {
   font-weight: 400; }
@@ -4767,6 +4779,10 @@ div.headerBar > div.headerButtonBar {
   font-family: 'Open Sans', sans-serif !important;
   font-size: 14px;
   font-weight: 300; }
+  .modal-body .select2-choices {
+    border-radius: 3px; }
+  .modal-body .nav-tabs {
+    margin-top: 15px; }
   .modal-body input, .modal-body select, .modal-body textarea {
     margin-top: 10px; }
   .modal-body input[type='checkbox'] {
@@ -4838,15 +4854,18 @@ div.headerBar > div.headerButtonBar {
       margin-left: 0 !important;
       padding-top: 10px; }
     .modal-body .tab-content #appstore {
-      max-height: 300px; }
+      max-height: 290px; }
   .modal-body .errorMessage {
+    background-color: #fff;
     color: #f00;
     font-size: 9pt;
+    font-weight: 400;
     margin-bottom: 5px;
     margin-top: -9px;
     position: absolute; }
   .modal-body .nav img.tab-icon {
     margin-right: 5px;
+    margin-top: -3px;
     width: 20px; }
 
 .modal-text {
@@ -5025,13 +5044,13 @@ pre.gv-object-view {
     width: auto !important; }
 
 #stat_hd {
-  -moz-border-radius: 4px;
-  -webkit-border-radius: 4px;
-  border-radius: 4px;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
   background-color: #fff;
-  border: 2px solid #fff;
+  border: 1px solid rgba(104, 103, 102, 0.1);
   height: 24px;
-  margin-top: 2px;
+  margin-top: 3px;
   text-align: center;
   width: 24px; }
   #stat_hd #stat_hd_counter {
@@ -5164,15 +5183,19 @@ pre.gv-object-view {
       stroke-opacity: 1;
       stroke-width: 1px; }
 
-.dashboard-medium-chart-outer:first-child {
-  margin-right: 25px; }
+.dashboard-medium-chart-outer {
+  border: 1px solid rgba(104, 103, 102, 0.1);
+  border-radius: 3px; }
+  .dashboard-medium-chart-outer:first-child {
+    margin-right: 10px; }
 
 .dashboard-medium-chart {
   background-color: #fff;
   border-left: 5px solid #fff;
   border-right: 5px solid #fff;
   border-top: 5px solid #fff;
-  padding-top: 10px; }
+  padding-top: 10px;
+  margin-bottom: 0; }
   .dashboard-medium-chart:first-child {
     margin-right: 12px; }
   .dashboard-medium-chart .dashboard-interior-chart {
@@ -5224,7 +5247,7 @@ pre.gv-object-view {
         text-align: center; }
 
 .dashboard-bar-chart-container {
-  border: 1px solid rgba(125, 168, 23, 0.01);
+  border: 1px solid rgba(104, 103, 102, 0.1);
   border-radius: 3px; }
   .dashboard-bar-chart-container .dashboard-bar-chart {
     background-color: #fff;
@@ -5263,7 +5286,7 @@ pre.gv-object-view {
   margin: 0 12px; }
 
 .headerBar.dashboard-headerbar {
-  margin: 15px 0 20px; }
+  margin: 15px 0 10px; }
 
 .modal-chart-detail .modal-dashboard-legend .dashboard-legend-inner {
   padding-left: 20px; }
@@ -5449,10 +5472,10 @@ toolbar {
     width: 25px;
     height: 18px;
     position: relative;
-    padding-top: 5px;
-    padding-right: 4px;
-    padding-left: 10px;
-    padding-bottom: 8px;
+    padding-top: 3px;
+    padding-right: 0;
+    padding-left: 5px;
+    padding-bottom: 6px;
     margin-left: 3px;
     top: 0px; }
   .editor-toolbar span:hover {
@@ -5464,14 +5487,14 @@ toolbar {
     .editor-toolbar i:hover {
       cursor: pointer; }
   .editor-toolbar .icon_arangodb {
-    font-size: 15pt; }
+    font-size: 14pt; }
   .editor-toolbar .icon_arangodb_trash {
     margin-left: 5px;
     margin-right: 10px; }
   .editor-toolbar .fa-comment, .editor-toolbar .fa-comment-o {
-    font-size: 17px;
+    font-size: 15px;
     position: relative;
-    margin-right: -1px;
+    right: -2px;
     top: -2px; }
   .editor-toolbar .arango-icon-disk {
     margin-top: 1px; }
@@ -7096,12 +7119,15 @@ table .sorting {
   padding: 6px 10px 4px; }
 
 .ajax-upload-dragdrop {
-  border: 2px dotted #8f8d8c;
+  border: 1px dotted #8f8d8c;
   color: #736b68;
   padding: 10px 10px 0;
   text-align: left;
   vertical-align: middle;
   width: 506px; }
+  .ajax-upload-dragdrop span {
+    position: relative;
+    top: -22px; }
 
 div.demo-dropdown-menu {
   -moz-border-radius: 0 0 5px 5px;

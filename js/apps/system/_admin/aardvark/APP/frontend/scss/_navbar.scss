@@ -21,8 +21,10 @@ nav.navbar {
   top: 0;
 
   .arangodbLogo {
-    width: 32%;
     height: auto;
+    margin-left: -5px;
+    margin-top: -1px;
+    width: 40%;
   }
 
   .nav {
@@ -53,7 +55,7 @@ nav.navbar {
 div.navlogo {
   @extend %pull-left;
   margin-left: 5px;
-  margin-right: 1px;
+  margin-right: -1px;
   padding-top: 3px;
 }
 
