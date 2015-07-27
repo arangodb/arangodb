@@ -2466,6 +2466,13 @@ div .tile, div .bigtile {
     color: #686766;
     font-size: 50px;
     line-height: 1.2; }
+  div .tile span.icon_arangodb_edge5-2, div .bigtile span.icon_arangodb_edge5-2 {
+    position: relative;
+    top: 15px;
+    -webkit-transform: rotate(80deg);
+    -moz-transform: rotate(80deg);
+    -o-transform: rotate(80deg);
+    display: inline-block; }
   div .tile h5, div .bigtile h5 {
     background: #686766;
     color: #fff;
@@ -4513,6 +4520,9 @@ div.headerDropdown {
       vertical-align: middle; }
     div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
       background-position: 0 -15px; }
+
+div.dropdown-title {
+  margin-bottom: 10px; }
 
 div.dropdownInner {
   -webkit-box-shadow: 0;
