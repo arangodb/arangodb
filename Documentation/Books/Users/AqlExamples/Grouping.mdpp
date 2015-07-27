@@ -4,12 +4,44 @@ To group results by arbitrary criteria, AQL provides the *COLLECT* keyword.
 *COLLECT* will perform a grouping, but no aggregation. Aggregation can still be
 added in the query if required.
 
-!SUBSECTION Grouping by criteria
+!SUBSECTION Ensuring uniqueness
 
-To group users by age, and result the names of the users with the highest ages,
+*COLLECT* can be used to make a result set unique. The following query will return each distinct
+`age` attribute value only once:
+
+```
+FOR u IN users 
+  COLLECT age = u.age
+  RETURN age
+```
+
+This is grouping without tracking the group values, but just the group criterion (*age*) value.
+
+Grouping can also be done on multiple levels using *COLLECT*:
+
+```
+FOR u IN users 
+  COLLECT status = u.status, age = u.age
+  RETURN { status, age }
+```
+
+
+Alternatively *RETURN DISTINCT* can be used to make a result set unique. *RETURN DISTINCT* supports a 
+single criterion only:
+
+```
+FOR u IN users
+  RETURN DISTINCT u.age
+```
+
+Note: the order of results is undefined for *RETURN DISTINCT*.
+
+!SUBSECTION Fetching group values
+
+To group users by age, and return the names of the users with the highest ages,
 we'll issue a query like this:
 
-```js
+```
 FOR u IN users 
   FILTER u.active == true 
   COLLECT age = u.age INTO usersByAge 
@@ -63,7 +95,6 @@ the *COLLECT* statement.
 
 !SUBSECTION Variable Expansion
 
-
 The *usersByAge* variable contains the full documents found, and as we're only 
 interested in user names, we'll use the expansion operator <i>[\*]</i> to extract just the 
 *name* attribute of all user documents in each group.
@@ -71,7 +102,7 @@ interested in user names, we'll use the expansion operator <i>[\*]</i> to extrac
 The <i>[\*]</i> expansion operator is just a handy short-cut. Instead of <i>usersByAge[\*].u.name</i>
 we could also write:
 
-```js
+```
 FOR temp IN usersByAge
   RETURN temp.u.name
 ```
@@ -82,7 +113,7 @@ To group by multiple criteria, we'll use multiple arguments in the *COLLECT* cla
 For example, to group users by *ageGroup* (a derived value we need to calculate first)
 and then by *gender*, we'll do:
 
-```js
+```
 FOR u IN users 
   FILTER u.active == true
   COLLECT ageGroup = FLOOR(u.age / 5) * 5, 
@@ -127,7 +158,7 @@ So far we only grouped data without aggregation. Adding aggregation is simple in
 as all that needs to be done is to run an aggregate function on the array created by
 the *INTO* clause of a *COLLECT* statement:
 
-```js
+```
 FOR u IN users 
   FILTER u.active == true
   COLLECT ageGroup = FLOOR(u.age / 5) * 5, 
@@ -189,7 +220,7 @@ statement.
 
 For example, to get the 3 *ageGroup*s with the most users in them:
 
-```js
+```
 FOR u IN users 
   FILTER u.active == true 
   COLLECT ageGroup = FLOOR(u.age / 5) * 5 INTO group 
@@ -242,4 +273,4 @@ FOR u IN users
 ```
 
 To increase readability, the repeated expression *LENGTH(group)* was put into a variable
-*numUsers*. The *FILTER* on *numUsers* is the SQL HAVING equivalent.
+*numUsers*. The *FILTER* on *numUsers* is the equivalent an SQL *HAVING* caluse.

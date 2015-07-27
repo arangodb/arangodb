@@ -1206,7 +1206,7 @@ int triagens::aql::fuseCalculationsRule (Optimizer* opt,
 /// add a sort node for each COLLECT (note: the sort may be removed later) 
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 int triagens::aql::specializeCollectRule (Optimizer* opt, 
                                           ExecutionPlan* plan, 
                                           Optimizer::Rule const* rule) {
@@ -1272,16 +1272,11 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
     // mark node as specialized, so we do not process it again
     collectNode->specialized();
     
-    if (collectNode->isDistinctCommand()) {
-      collectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH);
-      continue;
-    }
-      
     // finally, adjust the original plan and create a sorted version of COLLECT    
     
     // specialize the AggregateNode so it will become a SortedAggregateBlock later
     collectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_SORTED);
-      
+     
     // insert a SortNode IN FRONT OF the AggregateNode
     if (! aggregateVariables.empty()) { 
       std::vector<std::pair<Variable const*, bool>> sortElements;
