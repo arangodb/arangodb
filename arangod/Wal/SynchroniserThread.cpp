@@ -59,7 +59,7 @@ SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager,
     _waiting(0),
     _stop(0),
     _syncInterval(syncInterval),
-    _logfileCache() {
+    _logfileCache({ 0, -1 }) {
 
   allowAsynchronousCancelation();
 }
@@ -202,9 +202,8 @@ int SynchroniserThread::doSync (bool& checkMore) {
   // get the logfile's file descriptor
   int fd = getLogfileDescriptor(region.logfileId);
   TRI_ASSERT(fd >= 0);
-  void** mmHandle = nullptr;
 
-  bool result = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
+  bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
 
   LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
             (unsigned long long) id,

@@ -329,7 +329,6 @@ TRI_voc_tick_t TRI_CurrentTickServer (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_MSync (int,
-                void*,
                 char const*,
                 char const*);
 

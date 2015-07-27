@@ -59,11 +59,7 @@
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                            THREAD
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                    MEMORY MAPPING
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,11 +67,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_FlushMMFile (int fileDescriptor,
-                     void** mmHandle,
                      void* startingAddress,
                      size_t numOfBytesToFlush,
                      int flags);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maps a file on disk onto memory
@@ -90,7 +84,6 @@ int TRI_MMFile (void* memoryAddress,
                 int64_t offset,
                 void** result);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 'unmaps' or removes memory associated with a memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +92,6 @@ int TRI_UNMMFile (void* memoryAddress,
                   size_t numOfBytesToUnMap,
                   int fileDescriptor,
                   void** mmHandle);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets various protection levels with the memory mapped file
