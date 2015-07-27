@@ -122,6 +122,15 @@ $iconsize: 50px;
     line-height: 1.2;
   }
 
+  span.icon_arangodb_edge5-2 {
+    position: relative;
+    top: 15px;
+    -webkit-transform:rotate(80deg);
+    -moz-transform:rotate(80deg);
+    -o-transform:rotate(80deg);
+    display: inline-block;
+  }
+
   h5 {
     background: $c-bar-bg;
     color: $c-white;

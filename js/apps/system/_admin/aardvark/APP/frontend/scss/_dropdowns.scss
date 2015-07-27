@@ -29,6 +29,10 @@ div.headerDropdown {
   }
 }
 
+div.dropdown-title {
+  margin-bottom: 10px;
+}
+
 div.dropdownInner {
   @include box-shadow(0);
   min-height: 125px;
