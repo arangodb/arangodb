@@ -28,30 +28,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-collection.h"
-#include "v8-vocbaseprivate.h"
-#include "v8-wrapshapedjson.h"
-
+#include "Aql/Query.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
-#include "V8/v8-conv.h"
+#include "Cluster/ClusterMethods.h"
 #include "Utils/transactions.h"
-#include "Utils/V8TransactionContext.h"
-
-#include "Aql/Query.h"
 #include "Utils/V8ResolverGuard.h"
+#include "Utils/V8TransactionContext.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
-#include "Wal/LogfileManager.h"
-
+#include "V8Server/v8-shape-conv.h"
+#include "V8Server/v8-vocbase.h"
+#include "V8Server/v8-vocbaseprivate.h"
+#include "V8Server/v8-vocindex.h"
+#include "V8Server/v8-wrapshapedjson.h"
 #include "VocBase/auth.h"
 #include "VocBase/KeyGenerator.h"
-
-#include "Cluster/ClusterMethods.h"
+#include "Wal/LogfileManager.h"
 
 #include "unicode/timezone.h"
-
-#include "v8-vocbase.h"
-#include "v8-vocindex.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -880,7 +876,7 @@ static void ReplaceVocbaseCol (bool useCollection,
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx here
+  TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx here
 
   TRI_doc_mptr_copy_t mptr;
 
@@ -1029,7 +1025,7 @@ static void InsertVocbaseCol (TRI_vocbase_col_t* col,
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx from above
+  TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx from above
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(isolate, args[0], document->getShaper(), true);  // PROTECTED by trx from above
 
@@ -1217,7 +1213,7 @@ static void UpdateVocbaseCol (bool useCollection,
 
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx here
+  TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx here
 
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr.getDataPtr());  // PROTECTED by trx here
@@ -1233,7 +1229,7 @@ static void UpdateVocbaseCol (bool useCollection,
     const string cidString = StringUtils::itoa(document->_info._planId);
 
     if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
-      TRI_FreeJson(document->getShaper()->_memoryZone, old);  // PROTECTED by trx here
+      TRI_FreeJson(document->getShaper()->memoryZone(), old);  // PROTECTED by trx here
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
@@ -3060,7 +3056,7 @@ static void InsertEdgeCol (TRI_vocbase_col_t* col,
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx from above
+  TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx from above
   
   // fetch a barrier so nobody unlinks datafiles with the shapes & attributes we might
   // need for this document

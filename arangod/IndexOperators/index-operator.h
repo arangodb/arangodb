@@ -31,11 +31,11 @@
 #define ARANGODB_INDEX_OPERATORS_INDEX__OPERATOR_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/json.h"
-#include "ShapedJson/json-shaper.h"
-#include "ShapedJson/shaped-json.h"
+#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
+
+class VocShaper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -101,7 +101,7 @@ TRI_index_operator_type_e;
 
 typedef struct TRI_index_operator_s {
   TRI_index_operator_type_e _type;
-  TRI_shaper_t* _shaper;
+  VocShaper* _shaper;
 }
 TRI_index_operator_t;
 
@@ -144,7 +144,7 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e,
                                                TRI_index_operator_t*,
                                                TRI_index_operator_t*,
                                                TRI_json_t*,
-                                               TRI_shaper_t*,
+                                               VocShaper*,
                                                size_t);
 
 ////////////////////////////////////////////////////////////////////////////////

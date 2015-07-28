@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief geo index
+/// @brief shape accessor
 ///
 /// @file
 ///
@@ -24,76 +24,66 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GEO_INDEX_GEO__INDEX_H
-#define ARANGODB_GEO_INDEX_GEO__INDEX_H 1
+#ifndef ARANGODB_VOC_BASE_SHAPE__ACCESSOR_H
+#define ARANGODB_VOC_BASE_SHAPE__ACCESSOR_H 1
 
 #include "Basics/Common.h"
+#include "Basics/json.h"
+#include "VocBase/shaped-json.h"
+
+class VocShaper;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                         GEO INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a geo-index for lists
+/// @brief json shape access
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo1Index (struct TRI_document_collection_t*,
-                                  TRI_idx_iid_t,
-                                  char const*,
-                                  TRI_shape_pid_t,
-                                  bool);
+typedef struct TRI_shape_access_s {
+  TRI_shape_sid_t _sid;                 // shaped identifier of the shape we are looking at
+  TRI_shape_pid_t _pid;                 // path identifier of the attribute path
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a geo-index for arrays
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_CreateGeo2Index (struct TRI_document_collection_t*,
-                                  TRI_idx_iid_t,
-                                  char const*,
-                                  TRI_shape_pid_t ,
-                                  char const*,
-                                  TRI_shape_pid_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyGeoIndex (TRI_index_t* idx);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeGeoIndex (TRI_index_t* idx);
+  TRI_shape_sid_t _resultSid;           // resulting shape
+  void const** _code;                   // bytecode
+}
+TRI_shape_access_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up all points within a given radius
+/// @brief free a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* TRI_WithinGeoIndex (TRI_index_t* idx,
-                                    double lat,
-                                    double lon,
-                                    double radius);
+void TRI_FreeShapeAccessor (TRI_shape_access_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up the nearest points
+/// @brief creates a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t* idx,
-                                     double lat,
-                                     double lon,
-                                     size_t count);
+TRI_shape_access_t* TRI_ShapeAccessor (VocShaper* shaper,
+                                       TRI_shape_sid_t sid,
+                                       TRI_shape_pid_t pid);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a shape accessor
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
+                               TRI_shaped_json_t const* shaped,
+                               TRI_shaped_json_t* result);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a TRI_shape_t for debugging
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_PrintShapeAccessor (TRI_shape_access_t*);
 
 #endif
 

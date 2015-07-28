@@ -28,98 +28,196 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_VOC__SHAPER_H
-#define ARANGODB_VOC_BASE_VOC__SHAPER_H 1
+#ifndef ARANGODB_VOC_BASE_VOC_SHAPER_H
+#define ARANGODB_VOC_BASE_VOC_SHAPER_H 1
 
 #include "Basics/Common.h"
-
-#include "ShapedJson/json-shaper.h"
-#include "ShapedJson/shape-accessor.h"
-#include "ShapedJson/shaped-json.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/shape-accessor.h"
+#include "VocBase/shaped-json.h"
+#include "VocBase/Shaper.h"
 #include "Wal/Marker.h"
 
-struct TRI_document_collection_t;
+#define NUM_SHAPE_ACCESSORS 8
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         VocShaper
+// -----------------------------------------------------------------------------
+
+class VocShaper : public Shaper {
+
+  public:
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a shaper
-////////////////////////////////////////////////////////////////////////////////
+    VocShaper (VocShaper const&);
+    VocShaper& operator= (VocShaper const&);
 
-TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*,
-                                   struct TRI_document_collection_t*);
+    VocShaper (TRI_memory_zone_t*,
+               TRI_document_collection_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a shaper, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyVocShaper (TRI_shaper_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a shaper and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeVocShaper (TRI_shaper_t*);
+    ~VocShaper ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
+  public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vocshaper
+/// @brief return the shaper's memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitVocShaper (TRI_shaper_t*);
+    TRI_memory_zone_t* memoryZone () const {
+      return _memoryZone;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a shape by identifier
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shape_t const* lookupShapeId (TRI_shape_sid_t) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an attribute name by identifier
+////////////////////////////////////////////////////////////////////////////////
+
+    char const* lookupAttributeId (TRI_shape_aid_t) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an attribute path by identifier
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shape_path_t const* lookupAttributePathByPid (TRI_shape_pid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an attribute path by identifier
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shape_pid_t findOrCreateAttributePathByName (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an attribute path by identifier
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shape_pid_t lookupAttributePathByName (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the attribute name for an attribute path
+////////////////////////////////////////////////////////////////////////////////
+
+    char const* attributeNameShapePid (TRI_shape_pid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an attribute identifier by name
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shape_aid_t lookupAttributeByName (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds or creates an attribute identifier by name
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shape_aid_t findOrCreateAttributeByName (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a shape
+/// if the function returns non-nullptr, the return value is a pointer to an
+/// already existing shape and the value must not be freed
+/// if the function returns nullptr, it has not found the shape and was not able
+/// to create it. The value must then be freed by the caller
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shape_t const* findShape (TRI_shape_t*,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move a shape marker, called during compaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MoveMarkerVocShaper (TRI_shaper_t*,
-                             TRI_df_marker_t*,
-                             void*);
+    int moveMarker (TRI_df_marker_t*,
+                    void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a shape, called when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertShapeVocShaper (TRI_shaper_t*,
-                              TRI_df_marker_t const*,
-                              bool);
+    int insertShape (TRI_df_marker_t const*,
+                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert an attribute, called when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertAttributeVocShaper (TRI_shaper_t*,
-                                  TRI_df_marker_t const*,
-                                  bool);
+    int insertAttribute (TRI_df_marker_t const*,
+                         bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t*,
-                                                     TRI_shape_sid_t,
-                                                     TRI_shape_pid_t);
+    TRI_shape_access_t const* findAccessor (TRI_shape_sid_t,
+                                            TRI_shape_pid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a sub-shape
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* s,
-                                     TRI_shaped_json_t const* document,
-                                     TRI_shape_sid_t sid,
-                                     TRI_shape_pid_t pid,
-                                     TRI_shaped_json_t* result,
-                                     TRI_shape_t const** shape);
+    bool extractShapedJson (TRI_shaped_json_t const* document,
+                            TRI_shape_sid_t sid,
+                            TRI_shape_pid_t pid,
+                            TRI_shaped_json_t* result,
+                            TRI_shape_t const** shape);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+  private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper method for recursion for comparison
+/// @brief looks up a shape path by identifier
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shape_path_t const* findShapePathByName (char const* name,
+                                                 bool create);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+  private:
+    
+    TRI_memory_zone_t*              _memoryZone;
+    
+    TRI_associative_synced_t        _attributePathsByName;
+    TRI_associative_synced_t        _attributePathsByPid;
+
+    TRI_shape_pid_t                 _nextPid;
+    triagens::basics::Mutex         _attributePathLock;
+
+    TRI_associative_synced_t        _attributeNames;
+    TRI_associative_synced_t        _attributeIds;
+    TRI_associative_synced_t        _shapeDictionary;
+    TRI_associative_synced_t        _shapeIds;
+
+    std::atomic<TRI_shape_aid_t>    _nextAid;
+    std::atomic<TRI_shape_sid_t>    _nextSid;
+
+    TRI_document_collection_t*      _collection;
+
+    triagens::basics::Mutex         _shapeLock;
+    triagens::basics::Mutex         _attributeLock;
+  
+    triagens::basics::ReadWriteLock _accessorLock[NUM_SHAPE_ACCESSORS];
+    TRI_associative_pointer_t       _accessors[NUM_SHAPE_ACCESSORS];
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper method for recursive shapes comparison
 ///
 /// You must either supply (leftDocument, leftObject) or leftShaped.
 /// You must either supply (rightDocument, rightObject) or rightShaped.
@@ -128,11 +226,11 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* s,
 int TRI_CompareShapeTypes (char const* leftDocument,
                            TRI_shaped_sub_t const* leftObject,
                            TRI_shaped_json_t const* leftShaped,
-                           TRI_shaper_t* leftShaper,
+                           VocShaper* leftShaper,
                            char const* rightDocument,
                            TRI_shaped_sub_t const* rightObject,
                            TRI_shaped_json_t const* rightShaped,
-                           TRI_shaper_t* rightShaper);
+                           VocShaper* rightShaper);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the shape identifier pointer from a marker

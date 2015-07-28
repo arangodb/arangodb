@@ -31,11 +31,9 @@
 #define ARANGODB_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-
-#include "ShapedJson/shaped-json.h"
+#include "VocBase/shaped-json.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"

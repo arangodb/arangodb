@@ -41,7 +41,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -542,7 +542,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write shape marker to compactor file: %s", TRI_last_error());
     }
 
-    res = TRI_MoveMarkerVocShaper(document->getShaper(), result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
+    res = document->getShaper()->moveMarker(result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
@@ -562,7 +562,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write attribute marker to compactor file: %s", TRI_last_error());
     }
 
-    res = TRI_MoveMarkerVocShaper(document->getShaper(), result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
+    res = document->getShaper()->moveMarker(result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");

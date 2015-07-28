@@ -33,6 +33,8 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
 
+class VocShaper;
+
 namespace triagens {
   namespace aql {
 
@@ -210,7 +212,7 @@ namespace triagens {
 
         TRI_index_operator_t* toIndexOperator (bool high, 
                                                triagens::basics::Json parameters,
-                                               TRI_shaper_t* shaper) const {
+                                               VocShaper* shaper) const {
 
           TRI_ASSERT(_isConstant);
 
