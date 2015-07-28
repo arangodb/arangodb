@@ -101,7 +101,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
 
       if (object->_value._string.length > 0) {
         // optimisation for the empty string
-        res =  TRI_AppendJsonEncodedStringStringBuffer(buffer, object->_value._string.data, false);
+        res =  TRI_AppendJsonEncodedStringStringBuffer(buffer, object->_value._string.data, object->_value._string.length - 1, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           return TRI_ERROR_OUT_OF_MEMORY;

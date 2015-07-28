@@ -1,14 +1,14 @@
 arangosh> db.example.insert({ Hello : "World" });
 { 
   "error" : false, 
-  "_id" : "example/1005653526", 
-  "_rev" : "1005653526", 
-  "_key" : "1005653526" 
+  "_id" : "example/1007275839", 
+  "_rev" : "1007275839", 
+  "_key" : "1007275839" 
 }
 arangosh> db.example.insert({ Hello : "World" }, true);
 { 
   "error" : false, 
-  "_id" : "example/1005850134", 
-  "_rev" : "1005850134", 
-  "_key" : "1005850134" 
+  "_id" : "example/1007472447", 
+  "_rev" : "1007472447", 
+  "_key" : "1007472447" 
 }

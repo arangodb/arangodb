@@ -234,49 +234,55 @@ int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t*,
 /// @brief appends character
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendCharStringBuffer (TRI_string_buffer_t * self, char chr);
+int TRI_AppendCharStringBuffer (TRI_string_buffer_t* self, char chr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str);
+int TRI_AppendStringStringBuffer (TRI_string_buffer_t* self, char const* str);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len);
+int TRI_AppendString2StringBuffer (TRI_string_buffer_t* self, char const* str, size_t len);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text);
+int TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t* self, TRI_string_buffer_t const* text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a blob
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendBlobStringBuffer (TRI_string_buffer_t * self, TRI_blob_t const * text);
+int TRI_AppendBlobStringBuffer (TRI_string_buffer_t* self, TRI_blob_t const* text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends eol character
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendEolStringBuffer (TRI_string_buffer_t * self);
+int TRI_AppendEolStringBuffer (TRI_string_buffer_t* self);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters but url-encode the string
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUrlEncodedStringStringBuffer (TRI_string_buffer_t * self, char const * str);
+int TRI_AppendUrlEncodedStringStringBuffer (TRI_string_buffer_t* self, char const* str);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends characters but json-encode the null-terminated string
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AppendJsonEncodedStringStringBuffer (TRI_string_buffer_t* self, char const* str, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters but json-encode the string
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendJsonEncodedStringStringBuffer (TRI_string_buffer_t * self, char const * str, bool);
+int TRI_AppendJsonEncodedStringStringBuffer (TRI_string_buffer_t* self, char const* str, size_t, bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 INTEGER APPENDERS

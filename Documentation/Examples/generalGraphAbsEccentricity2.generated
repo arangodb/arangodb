@@ -5,8 +5,8 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 [ 
   { 
     "germanCity/Berlin" : 1200, 
-    "germanCity/Cologne" : 850, 
     "germanCity/Hamburg" : 1200, 
+    "germanCity/Cologne" : 850, 
     "frenchCity/Paris" : 1200, 
     "frenchCity/Lyon" : 1200 
   } 

@@ -1,3 +1,18 @@
+v2.5.6 (2015-07-21)
+-------------------
+
+* alter windows build infrastructure so we can properly store pdb files.
+
+* potentially fixed issue #1313: Wrong metric calculation at dashboard
+
+  Escape whitespace in process name when scanning /proc/pid/stats
+    
+  This fixes statistics values read from that file
+
+* Fixed variable naming in AQL `COLLECT INTO` results in case the COLLECT is placed 
+  in a subquery which itself is followed by other constructs that require variables
+
+
 v2.5.5 (2015-05-29)
 -------------------
 
@@ -498,7 +513,15 @@ v2.5.0-beta2 (2015-02-23)
 * Standard errors can now contain custom messages.
 
 
-v2.4.7 (XXXX-XX-XX)
+v2.4.8 (2015-05-29)
+-------------------
+
+* issue #1289: Foxx models created from database documents expose an internal method
+
+* fixed vulnerability in JWT implementation.
+
+
+v2.4.7 (2015-03-23)
 -------------------
 
 * fixed issue #1282: Geo WITHIN_RECTANGLE for nested lat/lng 

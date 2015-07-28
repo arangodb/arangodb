@@ -205,7 +205,6 @@ static int WriteDropCollectionMarker (TRI_vocbase_t* vocbase,
 static bool UnregisterCollection (TRI_vocbase_t* vocbase,
                                   TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(collection->_name != nullptr);
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 

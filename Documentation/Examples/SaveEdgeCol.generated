@@ -1,30 +1,30 @@
 arangosh> v1 = db.vertex.insert({ name : "vertex 1" });
 { 
   "error" : false, 
-  "_id" : "vertex/527961622", 
-  "_rev" : "527961622", 
-  "_key" : "527961622" 
+  "_id" : "vertex/531681087", 
+  "_rev" : "531681087", 
+  "_key" : "531681087" 
 }
 arangosh> v2 = db.vertex.insert({ name : "vertex 2" });
 { 
   "error" : false, 
-  "_id" : "vertex/528158230", 
-  "_rev" : "528158230", 
-  "_key" : "528158230" 
+  "_id" : "vertex/531877695", 
+  "_rev" : "531877695", 
+  "_key" : "531877695" 
 }
 arangosh> e1 = db.relation.insert(v1, v2, { label : "knows" });
 { 
   "error" : false, 
-  "_id" : "relation/528485910", 
-  "_rev" : "528485910", 
-  "_key" : "528485910" 
+  "_id" : "relation/532205375", 
+  "_rev" : "532205375", 
+  "_key" : "532205375" 
 }
 arangosh> db._document(e1);
 { 
   "label" : "knows", 
-  "_id" : "relation/528485910", 
-  "_rev" : "528485910", 
-  "_key" : "528485910", 
-  "_from" : "vertex/527961622", 
-  "_to" : "vertex/528158230" 
+  "_id" : "relation/532205375", 
+  "_rev" : "532205375", 
+  "_key" : "532205375", 
+  "_from" : "vertex/531681087", 
+  "_to" : "vertex/531877695" 
 }
