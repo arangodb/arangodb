@@ -506,7 +506,7 @@
             'frontend/scss/{,*/}*.{scss,sass}',
             'clusterFrontend/scss/{,*/}*.{scss,sass}',
           ],
-          tasks: ['sass:dev', 'cssmin', 'gzip']
+          tasks: ['sass:dev', 'cssmin', 'compress']
         },
         imagemin: {
           files: [
@@ -529,6 +529,7 @@
             'concat_in_order:sharedLibs',
             'concat_in_order:default',
             'concat_in_order:jsCluster',
+            'compress',
           ]
         },
         html: {
@@ -540,6 +541,7 @@
           tasks: [
             'concat_in_order:htmlCluster',
             'concat_in_order:htmlStandalone',
+            'compress',
             'htmlmin'
           ]
         }
