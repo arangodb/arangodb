@@ -300,7 +300,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
         int res2 = trx.read(&previous, keyJson->_value._string.data);
 
         if (res2 == TRI_ERROR_NO_ERROR) {
-          TRI_shaper_t* shaper = trx.documentCollection()->getShaper();  // PROTECTED by trx here
+          auto shaper = trx.documentCollection()->getShaper();  // PROTECTED by trx here
 
           TRI_shaped_json_t shapedJson;
           TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, previous.getDataPtr()); // PROTECTED by trx here

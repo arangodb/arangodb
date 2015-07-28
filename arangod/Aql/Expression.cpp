@@ -39,8 +39,8 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
-#include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/shaped-json.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;

@@ -27,7 +27,7 @@
 /// @author Copyright 2014-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ShapedJson/Legends.h"
+#include "Legends.h"
 
 using namespace std;
 using namespace triagens;
@@ -103,11 +103,13 @@ void JsonLegend::clear () {
 
 int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
   auto it = _have_attribute.find(aid);
+
   if (it != _have_attribute.end()) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  char const* p = _shaper->lookupAttributeId(_shaper, aid);
+  char const* p = _shaper->lookupAttributeId(aid);
+
   if (nullptr == p) {
     return TRI_ERROR_AID_NOT_FOUND;
   }
@@ -116,6 +118,7 @@ int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
   size_t len = strlen(p);
   _attribs.emplace_back(aid, _att_data.length());
   _att_data.appendText(p, len + 1);   // including the zero byte
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -135,13 +138,13 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
   TRI_shape_t const* shape = nullptr;
 
   // First the trivial cases:
-  if (sid < TRI_FirstCustomShapeIdShaper()) {
-    shape = TRI_LookupSidBasicShapeShaper(sid);
+  if (sid < Shaper::firstCustomShapeId()) {
+    shape = Shaper::lookupSidBasicShape(sid);
 
     TRI_ASSERT(shape != nullptr);
   }
   else {
-    shape = _shaper->lookupShapeId(_shaper, sid);
+    shape = _shaper->lookupShapeId(sid);
 
     if (nullptr == shape) {
       return TRI_ERROR_LEGEND_INCOMPLETE;

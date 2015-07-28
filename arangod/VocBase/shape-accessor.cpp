@@ -30,8 +30,8 @@
 #include "shape-accessor.h"
 #include "Basics/logging.h"
 #include "Basics/vector.h"
-#include "ShapedJson/json-shaper.h"
-#include "ShapedJson/shaped-json.h"
+#include "VocBase/shaped-json.h"
+#include "VocBase/VocShaper.h"
 
 // #define DEBUG_SHAPE_ACCESSOR 1
 
@@ -58,10 +58,10 @@ TRI_shape_ac_bc_e;
 /// @brief computes a byte-code sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, 
+static bool BytecodeShapeAccessor (VocShaper* shaper, 
                                    TRI_shape_access_t* accessor) {
   // find the shape
-  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, accessor->_sid);
+  TRI_shape_t const* shape = shaper->lookupShapeId(accessor->_sid);
 
   if (shape == nullptr) {
     LOG_ERROR("unknown shape id %llu", (unsigned long long) accessor->_sid);
@@ -79,7 +79,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
   }
 
   // find the attribute path
-  TRI_shape_path_t const* path = shaper->lookupAttributePathByPid(shaper, accessor->_pid);
+  TRI_shape_path_t const* path = shaper->lookupAttributePathByPid(accessor->_pid);
 
   if (path == nullptr) {
     LOG_ERROR("unknown attribute path %llu", (unsigned long long) accessor->_pid);
@@ -132,7 +132,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
                     (unsigned long) offsetsF[0],
                     (unsigned long) offsetsF[1]);
 
-          shape = shaper->lookupShapeId(shaper, sid);
+          shape = shaper->lookupShapeId(sid);
 
           if (shape == nullptr) {
             LOG_ERROR("unknown shape id '%llu' for attribute id '%llu'",
@@ -173,7 +173,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper,
                     (unsigned long long) *paids,
                     (unsigned long long) sid);
 
-          shape = shaper->lookupShapeId(shaper, sid);
+          shape = shaper->lookupShapeId(sid);
 
           if (shape == nullptr) {
             LOG_ERROR("unknown shape id '%llu' for attribute id '%llu'",
@@ -301,7 +301,7 @@ void TRI_FreeShapeAccessor (TRI_shape_access_t* accessor) {
 /// @brief creates a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
+TRI_shape_access_t* TRI_ShapeAccessor (VocShaper* shaper,
                                        TRI_shape_sid_t sid,
                                        TRI_shape_pid_t pid) {
   TRI_shape_access_t* accessor = static_cast<TRI_shape_access_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_access_t), false));

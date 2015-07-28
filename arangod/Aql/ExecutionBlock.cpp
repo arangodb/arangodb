@@ -2146,10 +2146,10 @@ void IndexRangeBlock::readEdgeIndex (size_t atMost) {
 
 void IndexRangeBlock::destroyHashIndexSearchValues () {
   if (_hashIndexSearchValue._values != nullptr) {
-    TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
+    auto shaper = _collection->documentCollection()->getShaper(); 
 
     for (size_t i = 0; i < _hashIndexSearchValue._length; ++i) {
-      TRI_DestroyShapedJson(shaper->_memoryZone, &_hashIndexSearchValue._values[i]);
+      TRI_DestroyShapedJson(shaper->memoryZone(), &_hashIndexSearchValue._values[i]);
     }
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, _hashIndexSearchValue._values);
@@ -2169,7 +2169,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
   auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
   auto const& paths = hashIndex->paths();
 
-  TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
+  auto shaper = _collection->documentCollection()->getShaper(); 
 
   size_t const n = paths.size();
 
@@ -2190,7 +2190,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
     TRI_shape_pid_t pid = paths[i];
     TRI_ASSERT(pid != 0);
    
-    char const* name = TRI_AttributeNameShapePid(shaper, pid);
+    char const* name = shaper->attributeNameShapePid(pid);
     std::string const lookFor(name);
 
     for (auto const& x : range) {
@@ -2209,7 +2209,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
 
         _hashIndexSearchValue._values[i] = *shaped;
         // free only the pointer, but not the internals
-        TRI_Free(shaper->_memoryZone, shaped);
+        TRI_Free(shaper->memoryZone(), shaped);
         break; 
       }
     }
@@ -2323,7 +2323,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   auto idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
 
-  TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
+  auto shaper = _collection->documentCollection()->getShaper(); 
   TRI_ASSERT(shaper != nullptr);
 
   TRI_index_operator_t* skiplistOperator = nullptr; 

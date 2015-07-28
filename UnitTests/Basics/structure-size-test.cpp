@@ -29,7 +29,7 @@
 
 #include "arangod/VocBase/datafile.h"
 #include "arangod/VocBase/document-collection.h"
-#include "arangod/VocBase/voc-shaper.h"
+#include "arangod/VocBase/VocShaper.h"
 #include "arangod/Wal/Marker.h"
 
 template<typename T, typename U> size_t offsetOf (U T::*member) {

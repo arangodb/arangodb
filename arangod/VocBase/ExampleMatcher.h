@@ -31,7 +31,6 @@
 #define ARANGODB_EXAMPLE_MATCHER_H 1
 
 #include "v8.h"
-#include "ShapedJson/json-shaper.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
@@ -40,6 +39,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_doc_mptr_t;
+class VocShaper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Matching Method
@@ -74,7 +74,7 @@ namespace triagens {
         std::vector<TRI_shaped_json_t*> _values;
       };
 
-      TRI_shaper_t* _shaper;
+      VocShaper* _shaper;
       std::vector<ExampleDefinition> definitions;
 
       void fillExampleDefinition (TRI_json_t const* example,
@@ -92,16 +92,16 @@ namespace triagens {
 
         ExampleMatcher (v8::Isolate* isolate,
                         v8::Handle<v8::Object> const example,
-                        TRI_shaper_t* shaper,
+                        VocShaper* shaper,
                         std::string& errorMessage);
 
         ExampleMatcher (v8::Isolate* isolate,
                         v8::Handle<v8::Array> const examples,
-                        TRI_shaper_t* shaper,
+                        VocShaper* shaper,
                         std::string& errorMessage);
 
         ExampleMatcher (TRI_json_t const* example,
-                        TRI_shaper_t* shaper,
+                        VocShaper* shaper,
                         triagens::arango::CollectionNameResolver const* resolver);
 
         ~ExampleMatcher () {

@@ -34,7 +34,7 @@
 #include "Indexes/Index.h"
 #include "IndexOperators/index-operator.h"
 #include "SkipLists/skiplistIndex.h"
-#include "ShapedJson/shaped-json.h"
+#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 

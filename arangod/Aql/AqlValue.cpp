@@ -29,8 +29,9 @@
 #include "Aql/AqlItemBlock.h"
 #include "Basics/json-utilities.h"
 #include "V8/v8-conv.h"
+#include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-wrapshapedjson.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -661,10 +662,10 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
 
-      TRI_shaper_t* shaper = document->getShaper();
+      auto shaper = document->getShaper();
       TRI_shaped_json_t shaped;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
-      Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
+      Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
 
       // append the internal attributes
 
@@ -756,10 +757,10 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
 
-      TRI_shaper_t* shaper = document->getShaper();
+      auto shaper = document->getShaper();
       TRI_shaped_json_t shaped;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
-      Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
+      Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
 
       // append the internal attributes
 
@@ -917,7 +918,7 @@ Json AqlValue::extractObjectMember (triagens::arango::AqlTransaction* trx,
 
       auto shaper = document->getShaper();
 
-      TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, name);
+      TRI_shape_pid_t pid = shaper->lookupAttributePathByName(name);
 
       if (pid != 0) {
         // attribute exists
@@ -927,7 +928,7 @@ Json AqlValue::extractObjectMember (triagens::arango::AqlTransaction* trx,
         TRI_shaped_json_t json;
         TRI_shape_t const* shape;
 
-        bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+        bool ok = shaper->extractShapedJson(&document, 0, pid, &json, &shape);
 
         if (ok && shape != nullptr) {
           return Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &json));

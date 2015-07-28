@@ -28,11 +28,10 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHAPED_JSON_SHAPED_JSON_H
-#define ARANGODB_SHAPED_JSON_SHAPED_JSON_H 1
+#ifndef ARANGODB_VOC_BASE_SHAPED_JSON_H
+#define ARANGODB_VOC_BASE_SHAPED_JSON_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/json.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,8 +166,8 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_memory_zone_s;
-struct TRI_shaper_s;
 struct TRI_string_buffer_s;
+class VocShaper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -916,7 +915,7 @@ TRI_shape_path_t;
 /// @brief performs a deep copy of a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_CopyShapedJson (struct TRI_shaper_s*, TRI_shaped_json_t*);
+TRI_shaped_json_t* TRI_CopyShapedJson (VocShaper*, TRI_shaped_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
@@ -946,7 +945,7 @@ void TRI_SortShapeValues (TRI_shape_value_t* values,
 /// @brief converts a json object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*,
+TRI_shaped_json_t* TRI_ShapedJsonJson (VocShaper*,
                                        TRI_json_t const*,
                                        bool);
 
@@ -954,7 +953,7 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*,
 /// @brief converts a shaped json object into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonShapedJson (struct TRI_shaper_s*,
+TRI_json_t* TRI_JsonShapedJson (VocShaper*,
                                 TRI_shaped_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -962,7 +961,8 @@ TRI_json_t* TRI_JsonShapedJson (struct TRI_shaper_s*,
 /// this can only be used to stringify shapes of type array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StringifyArrayShapedJson (struct TRI_shaper_s*,
+template<typename T>
+bool TRI_StringifyArrayShapedJson (T*,
                                    struct TRI_string_buffer_s*,
                                    TRI_shaped_json_t const*,
                                    bool);
@@ -971,7 +971,7 @@ bool TRI_StringifyArrayShapedJson (struct TRI_shaper_s*,
 /// @brief prints a shaped json to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StringifyShapedJson (struct TRI_shaper_s* shaper,
+bool TRI_StringifyShapedJson (VocShaper*,
                               struct TRI_string_buffer_s*,
                               TRI_shaped_json_t const*);
 
@@ -979,7 +979,7 @@ bool TRI_StringifyShapedJson (struct TRI_shaper_s* shaper,
 /// @brief prints a shaped json to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StringifyAugmentedShapedJson (struct TRI_shaper_s* shaper,
+bool TRI_StringifyAugmentedShapedJson (VocShaper*,
                                        struct TRI_string_buffer_s*,
                                        TRI_shaped_json_t const*,
                                        TRI_json_t const*);
@@ -1040,7 +1040,7 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 /// @brief prints a TRI_shape_t for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintShape (struct TRI_shaper_s* shaper,
+void TRI_PrintShape (VocShaper*,
                      TRI_shape_t const* shape,
                      int indent);
 
@@ -1059,7 +1059,7 @@ bool TRI_StringValueShapedJson (TRI_shape_t const*,
 /// @brief stringifies a data blob into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StringifyJsonShapeData (struct TRI_shaper_s*,
+bool TRI_StringifyJsonShapeData (VocShaper*,
                                  struct TRI_string_buffer_s*,
                                  TRI_shape_t const*,
                                  char const*,
@@ -1069,20 +1069,20 @@ bool TRI_StringifyJsonShapeData (struct TRI_shaper_s*,
 /// @brief iterate over a shaped json array, using a callback function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IterateShapeDataArray (struct TRI_shaper_s*,
+void TRI_IterateShapeDataArray (VocShaper*,
                                 TRI_shape_t const*,
                                 char const*,
-                                bool (*)(struct TRI_shaper_s*, TRI_shape_t const*, char const*, char const*, uint64_t, void*),
+                                bool (*)(VocShaper*, TRI_shape_t const*, char const*, char const*, uint64_t, void*),
                                 void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over a shaped json list, using a callback function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IterateShapeDataList (struct TRI_shaper_s*,
+void TRI_IterateShapeDataList (VocShaper*,
                                TRI_shape_t const*,
                                char const*,
-                               bool (*)(struct TRI_shaper_s*, TRI_shape_t const*, char const*, uint64_t, void*),
+                               bool (*)(VocShaper*, TRI_shape_t const*, char const*, uint64_t, void*),
                                void*);
 
 ////////////////////////////////////////////////////////////////////////////////

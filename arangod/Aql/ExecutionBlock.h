@@ -38,10 +38,10 @@
 #include "Aql/ExecutionStats.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterComm.h"
-#include "ShapedJson/shaped-json.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
+#include "VocBase/shaped-json.h"
 
 struct TRI_df_marker_s;
 struct TRI_doc_mptr_copy_t;
