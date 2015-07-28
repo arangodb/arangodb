@@ -259,41 +259,6 @@ void ExecutionBlock::throwIfKilled () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief functionality to walk an execution block recursively
-////////////////////////////////////////////////////////////////////////////////
-
-bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
-  // Only do every node exactly once:
-  if (worker->done(this)) {
-    return false;
-  }
-
-  if (worker->before(this)) {
-    return true;
-  }
-
-  // Now the children in their natural order:
-  for (auto& c : _dependencies) {
-    if (c->walk(worker)) {
-      return true;
-    }
-  }
-  // Now handle a subquery:
-  if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
-    auto p = static_cast<SubqueryBlock*>(this);
-    if (worker->enterSubquery(this, p->getSubquery())) {
-      bool abort = p->getSubquery()->walk(worker);
-      worker->leaveSubquery(this, p->getSubquery());
-      if (abort) {
-        return true;
-      }
-    }
-  }
-  worker->after(this);
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1373,7 +1338,8 @@ int IndexRangeBlock::initialize () {
     _inRegs.emplace_back();
     std::vector<RegisterId>& inRegsCur = _inRegs.back();
 
-    std::unordered_set<Variable*>&& inVars = expression->variables();
+    std::unordered_set<Variable*> inVars;
+    expression->variables(inVars);
 
     for (auto const& v : inVars) {
       inVarsCur.emplace_back(v);
@@ -2794,7 +2760,9 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
     _inRegs(),
     _outReg(ExecutionNode::MaxRegisterId) {
 
-  std::unordered_set<Variable*> const& inVars = _expression->variables();
+  std::unordered_set<Variable*> inVars;
+  _expression->variables(inVars);
+
   _inVars.reserve(inVars.size());
   _inRegs.reserve(inVars.size());
 
@@ -6053,7 +6021,6 @@ bool BlockWithClients::skipForShard (size_t number,
 size_t BlockWithClients::getClientId (std::string const& shardId) {
   ENTER_BLOCK
   if (shardId.empty()) {
-    TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got empty shard id");
   }
 

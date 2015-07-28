@@ -250,7 +250,7 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(block != nullptr);
 
     // Now add dependencies:
-    std::vector<ExecutionNode*> const& deps = en->getDependencies();
+    std::vector<ExecutionNode*> const& deps = en->getDependenciesReference();
 
     for (auto const& it : deps) {
       auto it2 = cache.find(it);
@@ -258,7 +258,7 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
       block->addDependency(it2->second);
     }
 
-    cache.emplace(std::make_pair(en, block));
+    cache.emplace(en, block);
   }
 
 };
@@ -702,7 +702,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           throw;
         }
         
-        std::vector<ExecutionNode*> deps = (*en)->getDependencies();
+        std::vector<ExecutionNode*> deps = (*en)->getDependenciesReference();
 
         for (auto dep = deps.begin(); dep != deps.end(); ++dep) {
           auto d = cache.find(*dep);

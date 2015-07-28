@@ -598,7 +598,8 @@ namespace triagens {
 /// @brief determines the variables referenced in an expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::unordered_set<Variable*> getReferencedVariables (AstNode const*);
+        static void getReferencedVariables (AstNode const*,
+                                            std::unordered_set<Variable*>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines the top-level attributes in an expression, grouped by
