@@ -79,7 +79,7 @@ namespace triagens {
 
       public:
 
-        enum NodeType {
+        enum NodeType : int {
           ILLEGAL                 =  0,
           SINGLETON               =  1, 
           ENUMERATE_COLLECTION    =  2, 
@@ -196,10 +196,26 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get all dependencies, as a const reference
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<ExecutionNode*> const& getDependenciesReference () const {
+          return _dependencies;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get all parents
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<ExecutionNode*> getParents () const {
+          return _parents;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all parents, as a const reference
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<ExecutionNode*> const& getParentsReference () const {
           return _parents;
         }
 
@@ -276,6 +292,7 @@ namespace triagens {
               }
               return true;
             }
+
             ++it;
           }
           return false;
@@ -302,6 +319,7 @@ namespace triagens {
               break;
             }
           }
+
           if (! ok) {
             return false;
           }
@@ -353,8 +371,6 @@ namespace triagens {
                                       bool withDependencies,
                                       bool withProperties) const = 0;
         
-          // make class abstract
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execution Node clone utility to be called by derives
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,7 +421,7 @@ namespace triagens {
             nrItems = _estimatedNrItems;
           }
           return _estimatedCost;
-        };
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this actually estimates the costs as well as the number of items
@@ -457,8 +473,10 @@ namespace triagens {
 
         std::unordered_set<VariableId> getVariableIdsUsedHere () const  {
           auto&& v = getVariablesUsedHere();
+
           std::unordered_set<VariableId> ids;
           ids.reserve(v.size());
+
           for (auto& it : v) {
             ids.emplace(it->id);
           }
@@ -919,7 +937,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Variable const*> getVariablesSetHere () const override final{
+        std::vector<Variable const*> getVariablesSetHere () const override final {
           return std::vector<Variable const*>{ _outVariable };
         }
 
@@ -1530,11 +1548,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::unordered_set<Variable*> vars(std::move(_expression->variables()));
+          std::unordered_set<Variable*> vars;
+          _expression->variables(vars);
+
           std::vector<Variable const*> v;
           v.reserve(vars.size());
 
-          for (auto& vv : vars) {
+          for (auto const& vv : vars) {
             v.emplace_back(vv);
           }
 
@@ -1550,8 +1570,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesSetHere () const override final {
-          std::vector<Variable const*> v{ _outVariable };
-          return v;
+          return std::vector<Variable const*>{ _outVariable };
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3006,8 +3025,7 @@ namespace triagens {
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           // Please do not change the order here without adjusting the 
           // optimizer rule distributeInCluster as well!
-          std::vector<Variable const*> v{ _inDocVariable, _insertVariable, _updateVariable };
-          return v;
+          return std::vector<Variable const*>({ _inDocVariable, _insertVariable, _updateVariable });
         }
 
 // -----------------------------------------------------------------------------
@@ -3593,6 +3611,8 @@ namespace triagens {
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
+          v.reserve(_elements.size());
+
           for (auto const& p : _elements) {
             v.emplace_back(p.first);
           }
