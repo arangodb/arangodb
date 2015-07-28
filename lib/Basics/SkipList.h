@@ -57,16 +57,16 @@ namespace triagens {
         void* _doc;
         int _height;
       public:
-        void* document () {
+        void* document () const {
           return _doc;
         }
-        SkipListNode* nextNode () {
+        SkipListNode* nextNode () const {
           return _next[0];
         }
         // Note that the prevNode of the first data node is the artificial
         // _start node not containing data. This is contrary to the prevNode
         // method of the SkipList class, which returns nullptr in that case.
-        SkipListNode* prevNode () {
+        SkipListNode* prevNode () const {
           return _prev;
         }
     };

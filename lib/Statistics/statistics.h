@@ -61,6 +61,24 @@ struct TRI_request_statistics_t {
       _ignore(false) {
   }
 
+  void reset () {
+    _readStart     = 0.0;
+    _readEnd       = 0.0;
+    _queueStart    = 0.0;
+    _queueEnd      = 0.0;
+    _requestStart  = 0.0;
+    _requestEnd    = 0.0;
+    _writeStart    = 0.0;
+    _writeEnd      = 0.0;
+    _receivedBytes = 0.0;
+    _sentBytes     = 0.0;
+    _requestType   = triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL;
+    _async         = false;
+    _tooLarge      = false;
+    _executeError  = false;
+    _ignore        = false;
+  }
+
   double _readStart;
   double _readEnd;
   double _queueStart;
@@ -91,6 +109,13 @@ struct TRI_connection_statistics_t {
       _connEnd(0.0),
       _http(false),
       _error(false) {
+  }
+
+  void reset () {
+    _connStart = 0.0;
+    _connEnd   = 0.0;
+    _http      = false;
+    _error     = false;
   }
   
   double _connStart;
