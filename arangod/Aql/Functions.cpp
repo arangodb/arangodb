@@ -1715,15 +1715,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
 
   std::unordered_set<VertexId> neighbors;
 
-  std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
-  triagens::basics::ScopeGuard guard{
-    []() -> void { },
-    [&edgeCollectionInfos]() -> void {
-      for (auto& p : edgeCollectionInfos) {
-        delete p;
-      }
-    }
-  };
 
   TRI_voc_cid_t eCid = resolver->getCollectionId(eColName);
 
@@ -1736,6 +1727,9 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     trx->documentCollection(eCid),
     wc
   ));
+  TRI_IF_FAILURE("EdgeCollectionInfoOOM1") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   
 
   if (n > 4) {
@@ -1745,8 +1739,20 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     }
   }
   
+  std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&edgeCollectionInfos]() -> void {
+      for (auto& p : edgeCollectionInfos) {
+        delete p;
+      }
+    }
+  };
   edgeCollectionInfos.emplace_back(eci.get());
   eci.release();
+  TRI_IF_FAILURE("EdgeCollectionInfoOOM2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   TRI_RunNeighborsSearch(
     edgeCollectionInfos,

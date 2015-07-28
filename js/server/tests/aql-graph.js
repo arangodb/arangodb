@@ -1793,28 +1793,6 @@ function ahuacatlQueryNeighborsErrorsSuite () {
 /// @brief checks error handling in NEIGHBORS()
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNeighborsNoVocbase : function () {
-      var v1 = vn + "/A";
-      var v2 = vn + "/B";
-
-      var queryStart = "FOR n IN NEIGHBORS(" + vn + " , " + en + ", '";
-      var queryEnd = "', 'outbound', [{_id: '" + en + "/AB'}]) SORT n RETURN n";
-
-      var actual = getQueryResults(queryStart + v1 + queryEnd);
-      // Positive Check
-      assertEqual(actual, [ v2 ]);
-
-      internal.debugSetFailAt("ExampleNoContextVocbase");
-
-      // Negative Check
-      try {
-        actual = getQueryResults(queryStart + v1 + queryEnd);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code);
-      }
-    },
-
     testNeighborsDitchesOOM : function () {
       var v1 = vn + "/A";
       var v2 = vn + "/B";
@@ -1828,7 +1806,7 @@ function ahuacatlQueryNeighborsErrorsSuite () {
       assertEqual(actual, [ v2, v3 ]);
 
       internal.debugClearFailAt();
-      internal.debugSetFailAt("VertexCollectionDitchOOM");
+      internal.debugSetFailAt("EdgeCollectionInfoOOM1");
 
       // Negative Check
       try {
@@ -1839,7 +1817,7 @@ function ahuacatlQueryNeighborsErrorsSuite () {
       }
 
       internal.debugClearFailAt();
-      internal.debugSetFailAt("EdgeCollectionDitchOOM");
+      internal.debugSetFailAt("EdgeCollectionInfoOOM2");
 
       // Negative Check
       try {
@@ -1848,8 +1826,8 @@ function ahuacatlQueryNeighborsErrorsSuite () {
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
       }
+      internal.debugClearFailAt();
     }
-
   };
 }
 
