@@ -254,7 +254,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/cluster.js'],
+            src: ['clusterFrontend/build/cluster.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -491,8 +491,11 @@
       uglify: {
         dist: {
           files: {
-            /*'frontend/build/templates-minified.js': ['frontend/js/templates/*.ejs']*/
-            'frontend/build/app.min.js': 'frontend/build/app.js'
+            'frontend/build/app.min.js': 'frontend/build/app.js',
+            'build/documentation.min.js': 'build/documentation.js',
+            'clusterFrontend/build/cluster.min.js': 'clusterFrontend/build/cluster.js',
+            'frontend/src/ace.min.js': 'frontend/src/ace.js',
+            'build/sharedLibs.min.js': 'build/sharedLibs.js'
           }
         }
       },

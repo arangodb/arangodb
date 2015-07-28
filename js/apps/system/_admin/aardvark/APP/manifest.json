@@ -36,7 +36,7 @@
 
   "files": {
     "/documentation.js": {
-      "path": "build/documentation.js",
+      "path": "build/documentation.min.js",
       "gzip": true
     },
     "/documentation.html": {
@@ -68,15 +68,15 @@
       "gzip": true
     },
     "/cluster.js": {
-      "path": "clusterFrontend/build/cluster.js",
+      "path": "clusterFrontend/build/cluster.min.js",
       "gzip": true
     },
     "/ace.js": {
-      "path": "frontend/src/ace.js",
+      "path": "frontend/src/ace.min.js",
       "gzip": true
     },
     "/sharedLibs.js": {
-      "path": "build/sharedLibs.js",
+      "path": "build/sharedLibs.min.js",
       "gzip": true
     },
     "/app.js": {
