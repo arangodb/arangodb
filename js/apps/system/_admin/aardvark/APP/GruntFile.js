@@ -226,6 +226,17 @@
             ext: '.css.gz'
           }]
         },
+        standaloneJSMinified: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['frontend/build/app.min.js'],
+            dest: '.',
+            ext: '.min.js.gz'
+          }]
+        },
         standaloneJS: {
           options: {
             mode: 'gzip'
@@ -233,6 +244,39 @@
           files: [{
             expand: true,
             src: ['frontend/build/app.js'],
+            dest: '.',
+            ext: '.js.gz'
+          }]
+        },
+        clusterJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['frontend/build/cluster.js'],
+            dest: '.',
+            ext: '.js.gz'
+          }]
+        },
+        aceJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['frontend/src/ace.js'],
+            dest: '.',
+            ext: '.js.gz'
+          }]
+        },
+        workerJSON: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['frontend/src/worker-json.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -522,6 +566,7 @@
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
       'cssmin',
+      'uglify',
       'htmlmin',
       'compress',
       'watch'
