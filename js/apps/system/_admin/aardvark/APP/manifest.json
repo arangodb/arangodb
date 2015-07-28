@@ -53,19 +53,19 @@
     },
     "/css/sass.css": {
       "path": "frontend/build/style-minified.css",
-      "gzip": false
+      "gzip": true
     },
     "/css/style.css": {
       "path": "build/extra-minified.css",
-      "gzip": false
+      "gzip": true
     },
     "/css/cluster.css": {
-      "path": "frontend/scss/cluster-minified.css",
-      "gzip": false
+      "path": "clusterFrontend/build/cluster-minified.css",
+      "gzip": true
     },
     "/css/cluster2.css": {
       "path": "clusterFrontend/build/style-minified.css",
-      "gzip": false
+      "gzip": true
     },
     "/cluster.js": {
       "path": "clusterFrontend/build/cluster.js",

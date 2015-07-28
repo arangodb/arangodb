@@ -1,7 +1,0 @@
-{
-"version": 3,
-"mappings": ";AAAA,YAAa;EACX,KAAK,ECCS,OAAO;;ADEvB,aAAc;EACZ,KAAK,ECFU,OAAO;;ADKxB,UAAW;EACT,KAAK,ECLO,OAAO;;ACJrB,OAAQ;EAEN,MAAM,EAAE,eAAe;EAEvB,sBAAe;IACb,gBAAgB,EAAE,OAAO;IACzB,MAAM,EAAE,IAAI;IACZ,WAAW,EAAE,IAAI;IACjB,KAAK,EAAE,IAAI;IAEX,yBAAG;MAED,WAAW,EAAE,GAAG;MAEhB,4BAAG;QACD,KAAK,EAAE,IAAI;QACX,YAAY,EAAE,IAAI;;AChB1B,cAAe;EACb,UAAU,EAAE,KAAK;;ACDnB,OAAQ;EACN,WAAW,EAAE,GAAG",
-"sources": ["../scss/_states.scss","../scss/_colors.scss","../scss/_clusterNavbar.scss","../scss/_clusterLayout.scss","../scss/_clusterFooter.scss"],
-"names": [],
-"file": "clusterV2.css"
-}
