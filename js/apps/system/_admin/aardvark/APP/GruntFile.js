@@ -193,6 +193,39 @@
             ext: '.html.gz'
           }]
         },
+        standaloneCSS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['frontend/build/*.css'],
+            dest: '.',
+            ext: '.css.gz'
+          }]
+        },
+        clusterCSS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['clusterFrontend/build/*.css'],
+            dest: '.',
+            ext: '.css.gz'
+          }]
+        },
+        sharedCSS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['build/*.css'],
+            dest: '.',
+            ext: '.css.gz'
+          }]
+        },
         standaloneJS: {
           options: {
             mode: 'gzip'
@@ -247,7 +280,7 @@
           files: {
             'frontend/build/style-minified.css': ['frontend/build/style.css'],
             'build/extra-minified.css': ['build/extra.css'],
-            'frontend/scss/cluster-minified.css': ['frontend/scss/cluster.css'],
+            'clusterFrontend/build/cluster-minified.css': ['frontend/scss/cluster.css'],
             'clusterFrontend/build/style-minified.css': ['clusterFrontend/build/style.css']
           }
         }
