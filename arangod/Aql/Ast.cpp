@@ -1439,8 +1439,9 @@ void Ast::validateAndOptimize () {
 /// @brief determines the variables referenced in an expression
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) {
-  auto visitor = [&](AstNode const* node, void* data) -> void {
+void Ast::getReferencedVariables (AstNode const* node,
+                                  std::unordered_set<Variable*>& result) {
+  auto visitor = [](AstNode const* node, void* data) -> void {
     if (node == nullptr) {
       return;
     }
@@ -1455,15 +1456,12 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
 
       if (variable->needsRegister()) {
         auto result = static_cast<std::unordered_set<Variable*>*>(data);
-        result->insert(variable);
+        result->emplace(variable);
       }
     }
   };
 
-  std::unordered_set<Variable*> result;  
   traverseReadOnly(node, visitor, &result); 
-
-  return result;
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -2477,7 +2475,7 @@ AstNode* Ast::traverseAndModify (AstNode* node,
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
       AstNode* result = traverseAndModify(member, preVisitor, visitor, postVisitor, data);
@@ -2508,7 +2506,7 @@ AstNode* Ast::traverseAndModify (AstNode* node,
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
       AstNode* result = traverseAndModify(member, visitor, data);
@@ -2539,7 +2537,7 @@ void Ast::traverseReadOnly (AstNode const* node,
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
       traverseReadOnly(member, preVisitor, visitor, postVisitor, data);
@@ -2564,7 +2562,7 @@ void Ast::traverseReadOnly (AstNode const* node,
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
       traverseReadOnly(const_cast<AstNode const*>(member), visitor, data);

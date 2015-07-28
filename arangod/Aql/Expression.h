@@ -157,7 +157,7 @@ namespace triagens {
 /// @brief return all variables used in the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<Variable*> variables () const;
+        void variables (std::unordered_set<Variable*>&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a Json representation of the expression

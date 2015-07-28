@@ -41,8 +41,6 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
 
-#include <iostream>
-
 using namespace triagens::aql;
 using namespace triagens::basics;
 using JsonHelper = triagens::basics::JsonHelper;
@@ -62,7 +60,7 @@ ExecutionPlan::ExecutionPlan (Ast* ast)
     _nextId(0),
     _ast(ast),
     _lastLimitNode(nullptr),
-    _subQueries() {
+    _subqueries() {
 
 }
 
@@ -71,7 +69,7 @@ ExecutionPlan::ExecutionPlan (Ast* ast)
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionPlan::~ExecutionPlan () {
-  for (auto& x : _ids){
+  for (auto& x : _ids) {
     delete x.second;
   }
 }
@@ -91,23 +89,18 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
   TRI_ASSERT(root != nullptr);
   TRI_ASSERT(root->type == NODE_TYPE_ROOT);
 
-  auto plan = new ExecutionPlan(ast);
+  std::unique_ptr<ExecutionPlan> plan(new ExecutionPlan(ast));
 
-  try {
-    plan->_root = plan->fromNode(root);
+  plan->_root = plan->fromNode(root);
 
-    // insert fullCount flag
-    if (plan->_lastLimitNode != nullptr && ast->query()->getBooleanOption("fullCount", false)) {
-      static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
-    }
-    plan->findVarUsage();
-    return plan;
-    // just for debugging
+  // insert fullCount flag
+  if (plan->_lastLimitNode != nullptr && ast->query()->getBooleanOption("fullCount", false)) {
+    static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
   }
-  catch (...) {
-    delete plan;
-    throw;
-  }
+
+  plan->findVarUsage();
+
+  return plan.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,21 +138,16 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& json) {
   TRI_ASSERT(ast != nullptr);
 
-  auto plan = new ExecutionPlan(ast);
+  std::unique_ptr<ExecutionPlan> plan(new ExecutionPlan(ast));
 
-  try {
-    plan->_root = plan->fromJson(json);
-    plan->_varUsageComputed = true;
-    return plan;
-  }
-  catch (...) {
-    delete plan;
-    throw;
-  }
+  plan->_root = plan->fromJson(json);
+  plan->_varUsageComputed = true;
+
+  return plan.release();
 }
 
-ExecutionPlan* ExecutionPlan::clone (Query& onThatQuery) {
-  std::unique_ptr<ExecutionPlan> otherPlan(new ExecutionPlan(onThatQuery.ast()));
+ExecutionPlan* ExecutionPlan::clone (Query const& query) {
+  std::unique_ptr<ExecutionPlan> otherPlan(new ExecutionPlan(query.ast()));
 
   for (auto const& it: _ids) {
     otherPlan->registerNode(it.second->clone(otherPlan.get(), false, true));
@@ -301,9 +289,9 @@ SubqueryNode* ExecutionPlan::getSubqueryFromExpression (AstNode const* expressio
     return nullptr;
   }
         
-  auto it = _subQueries.find(referencedVariable->id);
+  auto it = _subqueries.find(referencedVariable->id);
 
-  if (it == _subQueries.end()) {
+  if (it == _subqueries.end()) {
     return nullptr;
   }
 
@@ -637,7 +625,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
     }
 
     en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
-    _subQueries[static_cast<SubqueryNode*>(en)->outVariable()->id] = en;
+    _subqueries[static_cast<SubqueryNode*>(en)->outVariable()->id] = en;
   }
   else {
     // check if the LET is a reference to a subquery
@@ -1439,9 +1427,8 @@ ExecutionNode* ExecutionPlan::fromNode (AstNode const* node) {
 /// @brief find nodes of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
-                                  ExecutionNode::NodeType type,
-                                  bool enterSubqueries) {
+std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (ExecutionNode::NodeType type,
+                                                            bool enterSubqueries) {
 
   std::vector<ExecutionNode*> result;
   NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
@@ -1555,19 +1542,23 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
       auto&& usedHere = en->getVariablesUsedHere();
+
       for (auto& v : usedHere) {
         _usedLater.emplace(v);
       }
+
       return false;
     }
 
     void after (ExecutionNode* en) override final {
       // Add variables set here to _valid:
       auto&& setHere = en->getVariablesSetHere();
+
       for (auto& v : setHere) {
         _valid.emplace(v);
-        _varSetBy->emplace(std::make_pair(v->id, en));
+        _varSetBy->emplace(v->id, en);
       }
+
       en->setVarsValid(_valid);
       en->setVarUsageValid();
     }
@@ -1590,6 +1581,7 @@ void ExecutionPlan::findVarUsage () {
   ::VarUsageFinder finder;
   root()->walk(&finder);
   _varSetBy = *finder._varSetBy;
+
   _varUsageComputed = true;
 }
 
@@ -1606,9 +1598,9 @@ bool ExecutionPlan::varUsageComputed () const {
 /// nodes and that one cannot remove the root node of the plan.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*>& toRemove) {
-  for (auto& x : toRemove) {
-    unlinkNode(x);
+void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*> const& toRemove) {
+  for (auto& node : toRemove) {
+    unlinkNode(node);
   }
 }
 
@@ -1620,6 +1612,7 @@ void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*>& toRemove) {
 void ExecutionPlan::unlinkNode (ExecutionNode* node,
                                 bool allowUnlinkingRoot) {
   auto parents = node->getParents();
+
   if (parents.empty()) {
     if (! allowUnlinkingRoot) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1630,15 +1623,19 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node,
   }
 
   auto dep = node->getDependencies();  // Intentionally copy the vector!
+
   for (auto* p : parents) {
     p->removeDependency(node);
+
     for (auto* x : dep) {
       p->addDependency(x);
     }
   }
+
   for (auto* x : dep) {
     node->removeDependency(x);
   }
+
   _varUsageComputed = false;
 }
 
@@ -1654,8 +1651,8 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode != _root);
 
+  // Intentional copy
   std::vector<ExecutionNode*> deps = oldNode->getDependencies();
-    // Intentional copy
  
   for (auto* x : deps) {
     newNode->addDependency(x);
@@ -1663,6 +1660,7 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
   }
   
   auto oldNodeParents = oldNode->getParents();  // Intentional copy
+
   for (auto* oldNodeParent : oldNodeParents) {
     if (! oldNodeParent->replaceDependency(oldNode, newNode)){
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1687,6 +1685,7 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
   TRI_ASSERT(oldNode->getDependencies().size() == 1);
 
   auto oldDeps = oldNode->getDependencies();  // Intentional copy
+
   if (! oldNode->replaceDependency(oldDeps[0], newNode)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                 "Could not replace dependencies of an old node");
@@ -1708,11 +1707,14 @@ class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
 
     bool success;
 
-    CloneNodeAdder (ExecutionPlan* plan) : _plan(plan), success(true) {}
+    CloneNodeAdder (ExecutionPlan* plan) 
+      : _plan(plan), 
+        success(true) {
+    }
     
     ~CloneNodeAdder (){}
 
-    bool before (ExecutionNode* node){
+    bool before (ExecutionNode* node) override final {
       // We need to catch exceptions because the walk has to finish
       // and either register the nodes or delete them.
       try {
@@ -1730,27 +1732,23 @@ class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionPlan* ExecutionPlan::clone () {
-  auto plan = new ExecutionPlan(_ast);
+  std::unique_ptr<ExecutionPlan> plan(new ExecutionPlan(_ast));
 
-  try {
-    plan->_root = _root->clone(plan, true, false);
-    plan->_nextId = _nextId;
-    plan->_appliedRules = _appliedRules;
-    CloneNodeAdder adder(plan);
-    plan->_root->walk(&adder);
-    if (! adder.success) {
-      delete plan;
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan");
-    }
-    // plan->findVarUsage();
-    // Let's not do it here, because supposedly the plan is modified as
-    // the very next thing anyway!
-    return plan;
+  plan->_root = _root->clone(plan.get(), true, false);
+  plan->_nextId = _nextId;
+  plan->_appliedRules = _appliedRules;
+
+  CloneNodeAdder adder(plan.get());
+  plan->_root->walk(&adder);
+
+  if (! adder.success) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan");
   }
-  catch (...) {
-    delete plan;
-    throw;
-  }
+  // plan->findVarUsage();
+  // Let's not do it here, because supposedly the plan is modified as
+  // the very next thing anyway!
+
+  return plan.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1830,8 +1828,9 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
 
 bool ExecutionPlan::isDeadSimple () const {
   auto current = _root;
+
   while (current != nullptr) {
-    auto deps = current->getDependencies();
+    auto const& deps = current->getDependenciesReference();
 
     if (deps.size() != 1) {
       break;
@@ -1853,6 +1852,10 @@ bool ExecutionPlan::isDeadSimple () const {
   return true;
 }
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+
+#include <iostream>
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief show an overview over the plan
 ////////////////////////////////////////////////////////////////////////////////
@@ -1860,7 +1863,8 @@ bool ExecutionPlan::isDeadSimple () const {
 struct Shower : public WalkerWorker<ExecutionNode> {
   int indent;
 
-  Shower () : indent(0) {
+  Shower () 
+    : indent(0) {
   }
 
   ~Shower () {
@@ -1891,6 +1895,8 @@ void ExecutionPlan::show () {
   Shower shower;
   _root->walk(&shower);
 }
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
