@@ -2213,14 +2213,14 @@ function rewriteRequest (req, res, options, next) {
 function pathHandler (req, res, options, next) {
   'use strict';
 
-  var filename;
+  var filename, encodedFilename;
   filename = fs.join(options.path, fs.join.apply(fs.join, req.suffix));
 
   if (options.hasOwnProperty('root')) {
     var root = options.root;
 
     filename = fs.join(root, filename);
-    var encodedFilename = filename;
+    encodedFilename = filename;
   }
   if (fs.exists(filename)) {
     res.responseCode = exports.HTTP_OK;
