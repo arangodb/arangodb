@@ -1137,7 +1137,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         bool isWriteCollection = false;
         if (_writeCollection != nullptr && 
             _writeCollection->type == NODE_TYPE_PARAMETER &&
-            strcmp(param, _writeCollection->getStringValue()) == 0) {
+            ::strcmp(param, _writeCollection->getStringValue()) == 0) {
           isWriteCollection = true;
         }
 

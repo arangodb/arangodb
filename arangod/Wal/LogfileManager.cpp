@@ -1373,9 +1373,6 @@ Logfile* LogfileManager::getRemovableLogfile () {
 
   Logfile::IdType minId = UINT64_MAX;
 
-  uint32_t numberOfLogfiles = 0;
-  Logfile* first = nullptr;
-
   {
     READ_LOCKER(_transactionsLock);
 
@@ -1390,6 +1387,9 @@ Logfile* LogfileManager::getRemovableLogfile () {
   }
 
   {
+    uint32_t numberOfLogfiles = 0;
+    Logfile* first = nullptr;
+
     READ_LOCKER(_logfilesLock);
 
     for (auto& it : _logfiles) {
