@@ -2222,7 +2222,7 @@ void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase,
 bool TRI_IsDeletedVocBase (TRI_vocbase_t* vocbase) {
   auto refCount = vocbase->_refCount.load();
   // if the stored value is odd, it means the database has been marked as deleted
-  return (refCount % 1 == 1);
+  return (refCount % 2 == 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2235,7 +2235,7 @@ bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
   // marked as deleted
   auto oldValue = vocbase->_refCount.fetch_add(2, std::memory_order_release);
   // check if the deleted bit is set
-  return (oldValue % 1 != 1); 
+  return (oldValue % 2 != 1); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2261,7 +2261,7 @@ void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
 bool TRI_DropVocBase (TRI_vocbase_t* vocbase) {
   auto oldValue = vocbase->_refCount.fetch_or(1, std::memory_order_release);
   // if the previously stored value is odd, it means the database has already been marked as deleted
-  return (oldValue % 1 == 0);
+  return (oldValue % 2 == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
