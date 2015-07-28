@@ -2155,14 +2155,14 @@ TRI_json_t* TRI_ObjectToJsonSimple (v8::Isolate* isolate,
 /// @brief converts a V8 object to a string
 ////////////////////////////////////////////////////////////////////////////////
 
-string TRI_ObjectToString (v8::Handle<v8::Value> const value) {
+std::string TRI_ObjectToString (v8::Handle<v8::Value> const value) {
   TRI_Utf8ValueNFC utf8Value(TRI_UNKNOWN_MEM_ZONE, value);
 
   if (*utf8Value == nullptr) {
     return "";
   }
   
-  return string(*utf8Value, utf8Value.length());
+  return std::string(*utf8Value, utf8Value.length());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

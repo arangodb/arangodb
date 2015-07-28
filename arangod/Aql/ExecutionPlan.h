@@ -101,7 +101,7 @@ namespace triagens {
 ///   keep the memory of the plan on the query object specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* clone(Query &onThatQuery);
+        ExecutionPlan* clone (Query const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
@@ -206,7 +206,9 @@ namespace triagens {
 /// @brief show an overview over the plan
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
         void show ();
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the node where variable with id <id> is introduced . . .
@@ -214,6 +216,7 @@ namespace triagens {
 
         ExecutionNode* getVarSetBy (VariableId id) const {
           auto it = _varSetBy.find(id);
+
           if( it == _varSetBy.end()){
             return nullptr;
           }
@@ -275,7 +278,7 @@ namespace triagens {
 /// nodes and that one cannot remove the root node of the plan.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void unlinkNodes (std::unordered_set<ExecutionNode*>& toUnlink);
+        void unlinkNodes (std::unordered_set<ExecutionNode*> const& toUnlink);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinkNode, note that this does not delete the removed
@@ -491,6 +494,10 @@ namespace triagens {
   
         ExecutionNode* fromNode (AstNode const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan from JSON
+////////////////////////////////////////////////////////////////////////////////
+
         ExecutionNode* fromJson (triagens::basics::Json const& Json);
 
 // -----------------------------------------------------------------------------
@@ -509,7 +516,7 @@ namespace triagens {
 /// @brief root node of the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode*               _root;
+        ExecutionNode* _root;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the node where a variable is introducted.
@@ -552,8 +559,8 @@ namespace triagens {
 /// @brief a lookup map for all subqueries created
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<VariableId, ExecutionNode*> _subQueries;
-        
+        std::unordered_map<VariableId, ExecutionNode*> _subqueries;
+
     };
 
   }

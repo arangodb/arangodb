@@ -129,14 +129,14 @@ static void EnvDeleter (v8::Local<v8::String> property,
                         const v8::PropertyCallbackInfo<v8::Boolean>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-  bool rc = true;
 #ifndef _WIN32
   v8::String::Utf8Value key(property);
-  rc = getenv(*key) != nullptr;
+  bool rc = getenv(*key) != nullptr;
   if (rc) {
     unsetenv(*key);
   }
 #else
+  bool rc = true;
   v8::String::Value key(property);
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
   if (key_ptr[0] == L'=' || !SetEnvironmentVariableW(key_ptr, nullptr)) {
