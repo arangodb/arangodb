@@ -2214,19 +2214,40 @@ function pathHandler (req, res, options, next) {
   'use strict';
 
   var filename;
-
   filename = fs.join(options.path, fs.join.apply(fs.join, req.suffix));
 
   if (options.hasOwnProperty('root')) {
     var root = options.root;
 
     filename = fs.join(root, filename);
+    var encodedFilename = filename;
   }
-
   if (fs.exists(filename)) {
     res.responseCode = exports.HTTP_OK;
     res.contentType = arangodb.guessContentType(filename);
-    res.bodyFromFile = filename;
+    if (options.hasOwnProperty('gzip')) {
+      if (options.gzip === true) {
+
+        //check if client is capable of gzip encoding
+        if (req.hasOwnProperty('headers')) {
+          if (req.headers.hasOwnProperty('accept-encoding')) {
+            var encoding = req.headers['accept-encoding'];
+            if (encoding.indexOf('gzip') > -1) {
+
+              //check if gzip file is available
+              encodedFilename = encodedFilename + '.gz';
+              if (fs.exists(encodedFilename)) {
+                if (!res.hasOwnProperty('headers')) {
+                  res.headers = {};
+                }
+                res.headers['Content-Encoding'] = "gzip";
+              }
+            }
+          }
+        }
+      }
+    }
+    res.bodyFromFile = encodedFilename;
   }
   else {
     res.responseCode = exports.HTTP_NOT_FOUND;

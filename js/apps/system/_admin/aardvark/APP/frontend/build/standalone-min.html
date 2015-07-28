@@ -1,31 +1,11 @@
-<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/html">
-
-<head>
-    <!-- ArangoDB web interface -->
-    <meta charset="utf-8">
-    <title>ArangoDB Web Interface</title>
-    <meta name="description" content="ArangoDB Admin Web Interface">
-    <meta name="author" content="Heiko Kernbach, Michael Hackstein">
-    <link href="css/style.css" rel="stylesheet">
-    <link href="css/sass.css" rel="stylesheet">
-    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
-
-<!-- obsolete file -->
-
-<script id="apiView.ejs" type="text/template">
-<div class="headerBar">
+<!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/html"><head><meta charset="utf-8"><title>ArangoDB Web Interface</title><meta name="description" content="ArangoDB Admin Web Interface"><meta name="author" content="Heiko Kernbach, Michael Hackstein"><link href="css/style.css" rel="stylesheet"><link href="css/sass.css" rel="stylesheet"><link rel="shortcut icon" type="image/x-icon" href="favicon.ico"><script id="apiView.ejs" type="text/template"><div class="headerBar">
   <a class="arangoHeader">Core - API - Documentation</a>
 </div>
 <div class="form-actions api-actions">
   <div id="swagger-ui-container" class="swagger-ui-wrap api-container">
 
   </div>
-</div>
-</script>
-
-<script id="applicationDetailView.ejs" type="text/template">
-  <div class="application-detail-view">
+</div></script><script id="applicationDetailView.ejs" type="text/template"><div class="application-detail-view">
     <div class="headerBar">
       <div class="headerButtonBar">
         <ul class="headerButtonList">
@@ -167,11 +147,7 @@
         </dd>
       </dl>
     </aside>
-  </div>
-</script>
-
-<script id="applicationListView.ejs" type="text/template">
-  <tr class="foxx-store-row">
+  </div></script><script id="applicationListView.ejs" type="text/template"><tr class="foxx-store-row">
     <td class="foxx-store-main">
       <div class="foxx-name"><%=name%></div>
       <div class="foxx-author"><%=author%></div>
@@ -183,11 +159,7 @@
     <td class="foxx-store-install">
       <button class="button-success install-app" appId="<%=name %>" appVersion="<%=latestVersion %>">Install</button>
     </td>
-  </tr>
-</script>
-
-<script id="applicationsView.ejs" type="text/template">
-<div class="headerBar">
+  </tr></script><script id="applicationsView.ejs" type="text/template"><div class="headerBar">
   <a class="arangoHeader">Services</a>
   <div class="headerButtonBar">
     <ul class="headerButtonList">
@@ -236,21 +208,13 @@
       </div>
     </div>
   </div>
-</div>
-</script>
-
-<script id="arangoTabbar.ejs" type="text/template">
-<div class="arango-tabbar" id="<%=content.id%>">
+</div></script><script id="arangoTabbar.ejs" type="text/template"><div class="arango-tabbar" id="<%=content.id%>">
   <% _.each(content.titles, function(k,v) { %>
   <% var name = content.titles[v][0];  %>
   <% var elid = content.titles[v][1];  %>
   <button class="arangodb-tabbar" id="<%=elid%>"><%=name%></button>
   <%});%>
-</div>
-</script>
-
-<script id="arangoTable.ejs" type="text/template">
-<table class="arango-table" id="<%=content.id%>">
+</div></script><script id="arangoTable.ejs" type="text/template"><table class="arango-table" id="<%=content.id%>">
 
   <thead>
     <tr>
@@ -270,11 +234,7 @@
       </tr>
     <%});%>
   </tbody>
-</table>
-</script>
-
-<script id="collectionsItemView.ejs" type="text/template">
-<div class="iconSet">
+</table></script><script id="collectionsItemView.ejs" type="text/template"><div class="iconSet">
   <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
   <% if(model.get('status') === "loaded") { %>
     <span id="info_<%=model.get('name')%>" class="spanInfo icon_arangodb_info" title="Show collection properties"></span>
@@ -292,11 +252,7 @@
     </div>
   </span>
 </div>
-<h5 class="collectionName"><%= model.get('name') %></h5>
-</script>
-
-<script id="collectionsView.ejs" type="text/template">
-  <div class="headerBar">
+<h5 class="collectionName"><%= model.get('name') %></h5></script><script id="collectionsView.ejs" type="text/template"><div class="headerBar">
     <div class="search-field">
       <input type="text" id="searchInput" class="search-input" placeholder="Search..."/>
       <!-- <img id="searchSubmit" class="search-submit-icon"/> -->
@@ -398,11 +354,7 @@
           <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
         </div>
       </div>
-  </div>
-</script>
-
-<script id="dashboardView.ejs" type="text/template">
-  <% var subBar = function(title) { %>
+  </div></script><script id="dashboardView.ejs" type="text/template"><% var subBar = function(title) { %>
     <div class="dashboard-sub-bar">
       <div  class="dashboard-sub-bar-title"><%= title %></div>
     </div>
@@ -537,11 +489,7 @@
   <div class="dashboard-row">
     <% mediumChart("pageFaultsChart", "Major Page Faults") %>
     <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
-  </div>
-</script>
-
-<script id="databaseView.ejs" type="text/template">
-  <div class="headerBar">
+  </div></script><script id="databaseView.ejs" type="text/template"><div class="headerBar">
     <div class="search-field">
       <input type="text" value="<%=searchString%>" id="databaseSearchInput" class="search-input" placeholder="Search..."/>
       <!-- <img id="databaseSearchSubmit" class="search-submit-icon">-->
@@ -604,12 +552,7 @@
     </div>
       <%});%>
      </div>
-  </div>
-
-</script>
-
-<script id="dbSelectionView.ejs" type="text/template">
-<a href="#" class="tab" id="dbselection"></span><div class="dbselection">DB: <%=current%></div> <b class="caret"></b></a>
+  </div></script><script id="dbSelectionView.ejs" type="text/template"><a href="#" class="tab" id="dbselection"></span><div class="dbselection">DB: <%=current%></div> <b class="caret"></b></a>
 <ul class="link-dropdown-menu" id="dbs_dropdown">
 <%
 if (list.length > 0) {
@@ -636,11 +579,7 @@ if (list.length > 0) {
       <a id="databases" class="tab" href="#databases">Manage DBs</a>
     </li>
     <% } %>
-</ul>
-</script>
-
-<script id="demoView.ejs" type="text/template">
-  <div class="headerBar">
+</ul></script><script id="demoView.ejs" type="text/template"><div class="headerBar">
     <div class="search-field">
       <input type="text" id="demoSearchInput" class="search-input" placeholder="Search...">
       <i id="demoSearchSubmit" class="fa fa-search"></i>
@@ -660,11 +599,7 @@ if (list.length > 0) {
 
   <div id="demoContent" class="innerContent">
     <div id="demo-mapdiv" style="width: 100%; height: 490px;"><div id="demo-mapdiv-info"></div></div>
-  </div>
-</script>
-
-<script id="documentView.ejs" type="text/template">
-  <div id="transparentHeader" class="headerBar">
+  </div></script><script id="documentView.ejs" type="text/template"><div id="transparentHeader" class="headerBar">
 
   </div>
 
@@ -715,12 +650,7 @@ if (list.length > 0) {
       <button id="deleteDocumentButton" class="button-danger pull-right">Delete</button>
     </div>
     <div class="pull-left shortcuts showHotkeyHelp"></div>
-	</div>
-
-</script>
-
-<script id="documentsView.ejs" type="text/template">
-<div id="transparentHeader" class="headerBar">
+	</div></script><script id="documentsView.ejs" type="text/template"><div id="transparentHeader" class="headerBar">
   <div id="documentsToolbar" class="headerButtonBar">
 
 
@@ -1108,12 +1038,7 @@ if (list.length > 0) {
     <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
     <button id="confirmDeleteIndexBtn" class="button-danger" style="float:right">Delete</button>
   </div>
-</div>
-
-</script>
-
-<script id="edgeDefinitionTable.ejs" type="text/template">
-  <tr class="tableRow" id="row_newEdgeDefinitions<%= number%>">
+</div></script><script id="edgeDefinitionTable.ejs" type="text/template"><tr class="tableRow" id="row_newEdgeDefinitions<%= number%>">
     <th class="collectionTh">Edge definitions*:</th>
     <th class="collectionTh">
       <input type="hidden" id="newEdgeDefinitions<%= number%>" value="" placeholder="Edge definitions" tabindex="-1" class="select2-offscreen">
@@ -1143,11 +1068,7 @@ if (list.length > 0) {
       <span class="arangoicon icon_arangodb_info"></span>
     </a>
   </th>
-  </tr>
-</script>
-
-<script id="editListEntryView.ejs" type="text/template">
-<td class="writable sorting_1">
+  </tr></script><script id="editListEntryView.ejs" type="text/template"><td class="writable sorting_1">
   <% if (isReadOnly) { %>
     <span class="key"><%=key%></span>
   <% } else { %>
@@ -1166,11 +1087,7 @@ if (list.length > 0) {
   <a class="deleteAttribute">
     <span class="icon_arangodb_roundminus" data-original-title="Delete attribute"></span>
   </a>
-</td>
-</script>
-
-<script id="footerView.ejs" type="text/template">
-<%
+</td></script><script id="footerView.ejs" type="text/template"><%
   var n,v,db;
   if (name) {
     n = name || "";
@@ -1187,11 +1104,7 @@ if (list.length > 0) {
 
 <div class="footer-right">
   <p><% if(n) { %><i class="isOnline fa fa-check-circle-o serverStatusIndicator"></i><a><%=n%> <%=v%> <% } %></a></i></p>
-</div>
-</script>
-
-<script id="foxxActiveView.ejs" type="text/template">
-  <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
+</div></script><script id="foxxActiveView.ejs" type="text/template"><img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
     <% if (model.needsAttention()) { %>
       <span class="warning-icons">
         <% if (model.isBroken()) { %>
@@ -1216,11 +1129,7 @@ if (list.length > 0) {
   <% } %>
   <h5 class="collectionName">
     <%= model.get("mount") %>
-  </h5>
-</script>
-
-<script id="foxxEditView.ejs" type="text/template">
-<%var appInfos = attributes.app.split(":"); %>
+  </h5></script><script id="foxxEditView.ejs" type="text/template"><%var appInfos = attributes.app.split(":"); %>
 <div id="change-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -1281,11 +1190,7 @@ if (list.length > 0) {
     <%}%>
     
   </div>
-</div>
-</script>
-
-<script id="foxxMountView.ejs" type="text/template">
-<div id="install-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+</div></script><script id="foxxMountView.ejs" type="text/template"><div id="install-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
     <a class="arangoHeader">Install Service</a>
@@ -1325,11 +1230,7 @@ if (list.length > 0) {
     <button class="button-success pull-right installFoxx">Install</button>    
     <button id="cancel" class="button-danger pull-right">Cancel</button>
   </div>
-</div>
-</script>
-
-<script id="graphManagementView.ejs" type="text/template">
-  <div class="headerBar">
+</div></script><script id="graphManagementView.ejs" type="text/template"><div class="headerBar">
     <div class="search-field">
       <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/>
       <i id="graphManagementSearchSubmit" class="fa fa-search"></i>
@@ -1394,12 +1295,7 @@ if (list.length > 0) {
     </div>
       <%});%>
      </div>
-  </div>
-
-</script>
-
-<script id="graphTestView.ejs" type="text/template">
-  <div class="headerBar">
+  </div></script><script id="graphTestView.ejs" type="text/template"><div class="headerBar">
     <div class="pull-left">
       <a class="arangoHeader">Graphs</a>
     </div>
@@ -1407,31 +1303,19 @@ if (list.length > 0) {
 
   <div class="contentDiv" id="graphTest">
     <div id="graphContainer" style="height: 100px"></div>
-</div>
-
-</script>
-
-<script id="graphViewGroupByEntry.ejs" type="text/template">
-<div class="control-group">
+</div></script><script id="graphViewGroupByEntry.ejs" type="text/template"><div class="control-group">
   <label for="<%=type %>_<%=id%>" class="control-label">Attribute <%=id%></label>
   <div class="controls">
     <input id="<%=type %>_<%=id%>" type="text" name="<%=type %>_<%=id%>" placeholder="Attribute" maxlength="75" class="input-xlarge">
     <button id="remove_<%=type %>_<%=id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete" />
   </div>
-</div>
-</script>
-
-<script id="lineChartDetailView.ejs" type="text/template">
-	<div id="lineChartDetail" class="modal hide fade modal-chart-detail" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+</div></script><script id="lineChartDetailView.ejs" type="text/template"><div id="lineChartDetail" class="modal hide fade modal-chart-detail" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
 		<div class="modal-header">
 			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
 			<a class="arangoHeader"><%=figure%></a>
 		</div>
 		<div id="dashboardDetailedLineChart" class="dashboardDetailChart" style="position: absolute"></div>
-	</div>
-</script>
-<script id="loadingTableView.ejs" type="text/template">
-<thead>
+	</div></script><script id="loadingTableView.ejs" type="text/template"><thead>
   <tr role="row">
     <th class="sorting_disabled docsFirstCol" role="columnheader" rowspan="1" colspan="1">Content</th>
     <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1">_key</th>
@@ -1444,12 +1328,7 @@ if (list.length > 0) {
   <tr class="odd">
     <td valign="top" colspan="3" class="dataTables_empty">Loading...</td>
   </tr>
-</tbody>
-</script>
-
-
-<script id="loginView.ejs" type="text/template">
-<div class="loginFixedWindow">
+</tbody></script><script id="loginView.ejs" type="text/template"><div class="loginFixedWindow">
   <div id="loginWindow" class="login-window">
     <div id="loginSpace" class="login-space"/>
     <img id="loginLogo" src="img/logo_arangodb_transp.png"/>
@@ -1460,21 +1339,13 @@ if (list.length > 0) {
       <button id="submitLogin" class="button-success pull-right">Login</button>
     </form>
   </div>
-</div>
-</script>
-
-<script id="logsView.ejs" type="text/template">
-  <div class="headerBar">
+</div></script><script id="logsView.ejs" type="text/template"><div class="headerBar">
     <a class="arangoHeader">Logs</a>
   </div>
 
   <div id="logContent" class="log-content-id innerContent">
   </div>
-  <!-- <div id="logPaginationDiv" class="pagination-line"></div> -->
-</script>
-
-<script id="modalApplicationMount.ejs" type="text/template">
-  <table>
+  <!-- <div id="logPaginationDiv" class="pagination-line"></div> --></script><script id="modalApplicationMount.ejs" type="text/template"><table>
     <tr class="tableRow">
       <% if (content === true) { %>
         <th class="collectionInfoTh">
@@ -1610,11 +1481,7 @@ if (list.length > 0) {
       </div>
       <div id="upload-foxx-zip">Upload Foxx.zip</div>
     </div>
-  </div>
-</script>
-
-<script id="modalBase.ejs" type="text/template">
-  <div id="modal-dialog" class="modal hide fade createModalDialog" tabindex="-1" role="dialog"
+  </div></script><script id="modalBase.ejs" type="text/template"><div id="modal-dialog" class="modal hide fade createModalDialog" tabindex="-1" role="dialog"
        aria-labelledby="myModalLabel" aria-hidden="true">
    <% if (title !== null) { %>
    <div class="modal-header">
@@ -1645,11 +1512,7 @@ if (list.length > 0) {
       <button id="modal-confirm-delete" class="button-danger pull-right modal-confirm-delete">Yes</button>
       <button id="modal-abort-delete" class="button-neutral pull-right">No</button>
     </div>
-  </div>
-</script>
-
-<script id="modalCollectionInfo.ejs" type="text/template">
-<%
+  </div></script><script id="modalCollectionInfo.ejs" type="text/template"><%
     var roundNumber = function(number, n) {
       var factor;
       factor = Math.pow(10,n);
@@ -1917,27 +1780,15 @@ if (list.length > 0) {
         </table>
 			</div>
 
-	  </div>
-</script>
-
-<script id="modalDownloadFoxx.ejs" type="text/template">
-  <div>
+	  </div></script><script id="modalDownloadFoxx.ejs" type="text/template"><div>
     Your new Foxx Service is ready for download.
     You can edit it on your local system and repack it in a zip file to publish it on ArangoDB.
-  </div>
-</script>
-
-<script id="modalGraph.ejs" type="text/template">
-	<div class="detail-chart">
+  </div></script><script id="modalGraph.ejs" type="text/template"><div class="detail-chart">
 		<div id="lineChartDetail" class="modal-inner-detail"></div>
 		<div class="modal-dashboard-legend">
 			<div class="dashboard-legend-inner" id="detailLegend"></div>
 		</div>
-	</div>
-</script>
-
-<script id="modalGraphTable.ejs" type="text/template">
-  <%
+	</div></script><script id="modalGraphTable.ejs" type="text/template"><%
   var createTR = function(row, disableSubmitOnEnter) {
     var mandatory = '';
     if (row.mandatory) {
@@ -2056,11 +1907,7 @@ if (list.length > 0) {
     </div>
     <%
     }
-    %>
-</script>
-<script id="modalHotkeys.ejs" type="text/template">
-
-  <ul class="hotkeysList">
+    %></script><script id="modalHotkeys.ejs" type="text/template"><ul class="hotkeysList">
   <% _.each(content, function(categories) { %>
 
     <li class="hotkeysLabel"><%=categories.name%></li>
@@ -2071,12 +1918,7 @@ if (list.length > 0) {
 
 
   <% }); %>
-  <ul>
-
-</script>
-
-<script id="modalTable.ejs" type="text/template">
-  <%
+  <ul></script><script id="modalTable.ejs" type="text/template"><%
   var createTR = function(row) {
     var mandatory = '';
     if (row.mandatory) {
@@ -2192,11 +2034,7 @@ if (list.length > 0) {
         </div>
       </div>
     </div>
-  <% } %>
-</script>
-
-<script id="modalTestResults.ejs" type="text/template">
-<%
+  <% } %></script><script id="modalTestResults.ejs" type="text/template"><%
   function createSuite(suite) {
     %>
     <dt class="tests-result-spec-suite-title">
@@ -2270,11 +2108,7 @@ if (list.length > 0) {
         <% } %>
       </div>
     <% } %>
-  </div>
-</script>
-
-<script id="navigationView.ejs" type="text/template">
-  <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
+  </div></script><script id="navigationView.ejs" type="text/template"><ul class="navlist arango-collection-ul" id="arangoCollectionUl">
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
     <li class="demo-menu"><a id="demo" class="tab" href="#demo">Demo</a></li>
@@ -2361,11 +2195,7 @@ if (list.length > 0) {
       <% } %>
 
     <option value="#api">Api</option>
-  </select>
-</script>
-
-<script id="notificationItem.ejs" type="text/template">
-<% notifications.forEach(function(n) { %>
+  </select></script><script id="notificationItem.ejs" type="text/template"><% notifications.forEach(function(n) { %>
   <li class="dropdown-item">
     <div class="notificationItem">
       <a class="notificationItemTitle"><%=n.get("title")%></a>
@@ -2373,11 +2203,7 @@ if (list.length > 0) {
       <i id="<%=n.cid%>" class="fa fa-times-circle-o"></i>
     </div>
   </li>
-<%  }); %>
-</script>
-
-<script id="notificationView.ejs" type="text/template">
-<ul class="navlist" id="notificationViewUl">
+<%  }); %></script><script id="notificationView.ejs" type="text/template"><ul class="navlist" id="notificationViewUl">
 
   <div class="navlogo">
     <div id="stat_hd" class="notificationButton"><a id="stat_hd_counter">0</a></div>
@@ -2391,11 +2217,7 @@ if (list.length > 0) {
     </ul>
   </li>
 
-</ul>
-</script>
-
-<script id="progressBase.ejs" type="text/template">
-  <div class="progress-view">
+</ul></script><script id="progressBase.ejs" type="text/template"><div class="progress-view">
     <div class="progress-content">
       <!--<i style="visibility:hidden" class="fa fa-spinner fa-spin"></i>-->
       <div class="pong-loader">
@@ -2406,20 +2228,12 @@ if (list.length > 0) {
       <div class="progress-text"></div>
       <div class="progress-action"></div>
     </div>
-  </div>
-</script>
-
-<script id="queryManagementViewActive.ejs" type="text/template">
-  <div class="headerBar">
+  </div></script><script id="queryManagementViewActive.ejs" type="text/template"><div class="headerBar">
     <a class="arangoHeader">Query Management</a>
   </div>
 
   <div id="queryManagementContent" class="innerContent">
-  </div>
-</script>
-
-<script id="queryManagementViewSlow.ejs" type="text/template">
-  <div class="headerBar">
+  </div></script><script id="queryManagementViewSlow.ejs" type="text/template"><div class="headerBar">
     <a class="arangoHeader">Query Management</a>
   </div>
 
@@ -2428,11 +2242,7 @@ if (list.length > 0) {
 
   <div class="queryManagementBottomActions">
     <button id="deleteSlowQueryHistory" class="button-danger query-button">Delete History</button>
-  </div>
-</script>
-
-<script id="queryView.ejs" type="text/template">
-  <div class="headerBar">
+  </div></script><script id="queryView.ejs" type="text/template"><div class="headerBar">
     <a class="arangoHeader">AQL Editor</a>
 
     <div id="queryToolbar" class="headerButtonBar">
@@ -2541,22 +2351,13 @@ if (list.length > 0) {
 
     </div>
 
-  </div>
-
-</script>
-
-<script id="shellView.ejs" type="text/template">
-  <div class="headerBar">
+  </div></script><script id="shellView.ejs" type="text/template"><div class="headerBar">
     <a class="arangoHeader">JS Shell</a>
   </div>
   <div id="shell_workspace_header"/>
   <div id="shell_workspace" class="shell_workspace">
     <div id="replShell" class="replShell"/>
-  </div>
-</script>
-
-<script id="statisticBarView.ejs" type="text/template">
-  <div class="navlogo display-none">
+  </div></script><script id="statisticBarView.ejs" type="text/template"><div class="navlogo display-none">
     <a href="#dashboard" style="padding-left: 15px;">
       <img class="svg stat_cpu"
         src="img/cpu.svg"
@@ -2570,11 +2371,7 @@ if (list.length > 0) {
         style="background-color: #8aa051; margin-top: 9px;"
       />
     </a>
-  </div>
-</script>
-
-<script id="tableView.ejs" type="text/template">
-<%
+  </div></script><script id="tableView.ejs" type="text/template"><%
 var escaped = function (value) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -2630,22 +2427,12 @@ var cutByResolution = function (str) {
     odd = !odd;
     });
   %>
-</tbody>
-</script>
-
-<script id="testView.ejs" type="text/template">
-<h1>Text File Reader</h1>
+</tbody></script><script id="testView.ejs" type="text/template"><h1>Text File Reader</h1>
     <div>
           Select a text file: 
                 <input type="file" id="fileInput">
                     </div>
-                        <pre id="fileDisplayArea"><pre>
-
-
-</script>
-
-<script id="userBarView.ejs" type="text/template">
-<ul class="navlist" id="userBarUl">
+                        <pre id="fileDisplayArea"><pre></script><script id="userBarView.ejs" type="text/template"><ul class="navlist" id="userBarUl">
 
   <li class="dropdown user-menu userImg">
     <a href="#" class="tab userImg" id="user" >
@@ -2668,11 +2455,7 @@ var cutByResolution = function (str) {
     </ul>
   </li>
 
-</ul>
-</script>
-
-<script id="userManagementView.ejs" type="text/template">
-  <div class="headerBar">
+</ul></script><script id="userManagementView.ejs" type="text/template"><div class="headerBar">
     <div class="search-field">
       <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/>
       <!-- <img id="userManagementSearchSubmit" class="search-submit-icon"> -->
@@ -2782,11 +2565,7 @@ var cutByResolution = function (str) {
       </div>
       <%});%>
      </div>
-  </div>
-</script>
-
-<script id="warningList.ejs" type="text/template">
-  <% if (warnings.length > 0) { %>
+  </div></script><script id="warningList.ejs" type="text/template"><% if (warnings.length > 0) { %>
     <div>
       <ul>
         <% console.log(warnings); _.each(warnings, function(w) { console.log(w);%>
@@ -2794,46 +2573,4 @@ var cutByResolution = function (str) {
         <% }); %>
       </ul>
     </div>
-  <% } %>
-</script>
-
-</head>
-<body>
-  <nav class="navbar">
-    <div class="resizecontainer">
-      <div class="navlogo">
-        <a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"/></a>
-      </div>
-      <div id="progressPlaceholderIcon"></div>
-        <div class="statmenu" id="statisticBar">
-        </div>
-        <div class="usermenu" id="userBar" style="float:right;">
-        </div>
-        <div class="notificationmenu" id="notificationBar" style="float:right;">
-        </div>
-        <div class="navmenu" id="navigationBar">
-        </div>
-    </div>
-  </nav>
-
-  <div class="centralRow resizecontainer">
-    <div id="content" class="centralContent"></div>
-  </div>
-
-  <div id="modalPlaceholder">
-  </div>
-
-  <div id="progressPlaceholder" style="display:none">
-  </div>
-
-  </div>
-
-  <footer class="footer">
-    <div class="resizecontainer" id="footerBar">
-    </div>
-  </footer>
-
-<script src="app.js?version=1438080367130"></script>
-
-  </body>
-</html>
+  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><script src="app.js?version=1438080367130"></script></body></html>

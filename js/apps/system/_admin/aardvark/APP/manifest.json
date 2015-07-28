@@ -35,27 +35,90 @@
   },
 
   "files": {
-    "/documentation.js": "build/documentation.js",
-    "/documentation.html": "frontend/html/documentation.html",
-    "/standalone.html": "frontend/build/standalone.html",
-    "/cluster.html": "clusterFrontend/build/cluster.html",
-    "/css/sass.css": "frontend/build/style-minified.css",
-    "/css/style.css": "build/extra-minified.css",
-    "/css/cluster.css": "frontend/scss/cluster-minified.css",
-    "/css/cluster2.css": "clusterFrontend/build/style-minified.css",
-    "/cluster.js": "clusterFrontend/build/cluster.js",
-    "/ace.js": "frontend/src/ace.js",
-    "/sharedLibs.js": "build/sharedLibs.js",
-    "/app.js": "frontend/build/app.js",
-    "/favicon.ico" : "favicon.ico",
-    "/api-docs.json": "api-docs.json",
-    "/api-docs": "api-docs",
-    "/fonts": "frontend/fonts",
-    "/img" : "frontend/compressed-img",
-    "/ammapLibs" : "frontend/js/lib/ammap/plugins/export/libs",
-    "/data" : "frontend/data",
-    "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
-    "/worker-json.js" : "frontend/src/worker-json.js"
+    "/documentation.js": {
+      "path": "build/documentation.js",
+      "gzip": true
+    },
+    "/documentation.html": {
+      "path": "build/documentation-min.html",
+      "gzip": true
+    },
+    "/standalone.html": {
+      "path": "frontend/build/standalone-min.html",
+      "gzip": true
+    },
+    "/cluster.html": {
+      "path": "clusterFrontend/build/cluster-min.html",
+      "gzip": false
+    },
+    "/css/sass.css": {
+      "path": "frontend/build/style-minified.css",
+      "gzip": false
+    },
+    "/css/style.css": {
+      "path": "build/extra-minified.css",
+      "gzip": false
+    },
+    "/css/cluster.css": {
+      "path": "frontend/scss/cluster-minified.css",
+      "gzip": false
+    },
+    "/css/cluster2.css": {
+      "path": "clusterFrontend/build/style-minified.css",
+      "gzip": false
+    },
+    "/cluster.js": {
+      "path": "clusterFrontend/build/cluster.js",
+      "gzip": false
+    },
+    "/ace.js": {
+      "path": "frontend/src/ace.js",
+      "gzip": false
+    },
+    "/sharedLibs.js": {
+      "path": "build/sharedLibs.js",
+      "gzip": true
+    },
+    "/app.js": {
+      "path": "frontend/build/app.js",
+      "gzip": true
+    },
+    "/favicon.ico": {
+      "path": "favicon.ico",
+      "gzip": false
+    },
+    "/api-docs.json": {
+      "path": "api-docs.json",
+      "gzip": false
+    },
+    "/api-docs": {
+      "path": "api-docs",
+      "gzip": false
+    },
+    "/fonts": {
+      "path": "frontend/fonts",
+      "gzip": false
+    },
+    "/img": {
+      "path": "frontend/compressed-img",
+      "gzip": false
+    },
+    "/ammapLibs": {
+      "path": "frontend/js/lib/ammap/plugins/export/libs",
+      "gzip": false
+    },
+    "/data": {
+      "path": "frontend/data",
+      "gzip": false
+    },
+    "/js/arango/aqltemplates.json": {
+      "path": "frontend/aqltemplates.json",
+      "gzip": false
+    },
+    "/worker-json.js": {
+      "path": "frontend/src/worker-json.js",
+      "gzip": false
+    }
   },
 
   "lib": "."
