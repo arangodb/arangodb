@@ -143,7 +143,7 @@ describe ArangoDB do
         # check response code
         doc.code.should eq(200)
         # check whether HTML result contains expected title
-        doc.response.body.should include("<!-- ArangoDB web interface -->")
+        doc.response.body.should include("ArangoDB Web Interface")
       end
   
       it "checks whether the admin interface is available at /" do
