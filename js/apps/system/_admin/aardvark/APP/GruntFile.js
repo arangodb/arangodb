@@ -166,6 +166,79 @@
         }
       },
 
+      htmlmin: {
+        dist: {
+          options: {
+            minifyJS: true,
+            removeComments: true,
+            collapseWhitespace: true
+          },
+          files: {
+            'frontend/build/standalone-min.html' : 'frontend/build/standalone.html',
+            'clusterFrontend/build/cluster-min.html' : 'clusterFrontend/build/cluster.html',
+            'frontend/build/documentation-min.html' : 'frontend/html/documentation.html'
+          }
+        }
+      },
+
+      compress: {
+        main: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['frontend/build/*min*.html'],
+            dest: '.',
+            ext: '.html.gz'
+          }]
+        },
+        standaloneJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['frontend/build/app.js'],
+            dest: '.',
+            ext: '.js.gz'
+          }]
+        },
+        sharedJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['build/sharedLibs.js'],
+            dest: '.',
+            ext: '.js.gz'
+          }]
+        },
+        docuJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['build/documentation.js'],
+            dest: '.',
+            ext: '.js.gz'
+          }]
+        },
+        docuHTML: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['build/documentation-min.html'],
+            dest: '.',
+            ext: '.html.gz'
+          }]
+        }
+      },
+
       cssmin: {
         dist: {
           options: {
@@ -337,10 +410,11 @@
           '<%=project.standalone.js %>'
         ]
       },
-      
+
       uglify: {
         dist: {
           files: {
+            /*'frontend/build/templates-minified.js': ['frontend/js/templates/*.ejs']*/
             'frontend/build/app.min.js': 'frontend/build/app.js'
           }
         }
@@ -352,7 +426,7 @@
             'frontend/scss/{,*/}*.{scss,sass}',
             'clusterFrontend/scss/{,*/}*.{scss,sass}',
           ],
-          tasks: ['sass:dev', 'cssmin']
+          tasks: ['sass:dev', 'cssmin', 'gzip']
         },
         imagemin: {
           files: [
@@ -385,7 +459,8 @@
           ],
           tasks: [
             'concat_in_order:htmlCluster',
-            'concat_in_order:htmlStandalone'
+            'concat_in_order:htmlStandalone',
+            'htmlmin'
           ]
         }
       }
@@ -394,7 +469,10 @@
     grunt.loadNpmTasks("grunt-sass");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks('grunt-contrib-cssmin');
+    grunt.loadNpmTasks('grunt-contrib-compress');
     grunt.loadNpmTasks("grunt-contrib-concat");
+    grunt.loadNpmTasks('grunt-contrib-htmlmin')
+    grunt.loadNpmTasks('grunt-contrib-uglify')
 
     require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
     grunt.loadNpmTasks('grunt-text-replace');
@@ -404,13 +482,15 @@
       'jshint:default',
       'replace',
       'imagemin',
-      'cssmin',
       'concat',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
+      'cssmin',
+      'htmlmin',
+      'compress',
       'watch'
     ]);
 

@@ -135,7 +135,7 @@ var manifestSchema = {
   files: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.string().required())
+    .pattern(RE_NOT_EMPTY, joi.alternatives().try(joi.string().required(), joi.object().required()))
   ),
   isSystem: joi.boolean().default(false),
   keywords: joi.array().optional(),
@@ -301,6 +301,7 @@ var checkManifest = function(filename, manifest) {
   var validationErrors = [];
 
   Object.keys(manifestSchema).forEach(function (key) {
+
     var schema = manifestSchema[key];
     var value = manifest[key];
     var result = joi.validate(value, schema);

@@ -225,7 +225,20 @@ var installAssets = function (app, routes) {
   if (desc.hasOwnProperty('files')) {
     for (path in desc.files) {
       if (desc.files.hasOwnProperty(path)) {
-        var directory = desc.files[path];
+        var directory, gzip = false;
+
+        if (desc.files[path].hasOwnProperty('path')) {
+          directory = desc.files[path].path;
+        }
+        else {
+          directory = desc.files[path];
+        }
+
+        if (desc.files[path].hasOwnProperty('gzip')) {
+          if (desc.files[path].gzip === true) {
+            gzip = true;
+          }
+        }
 
         normalized = arangodb.normalizeURL("/" + path);
 
@@ -235,7 +248,8 @@ var installAssets = function (app, routes) {
             "do": "org/arangodb/actions/pathHandler",
             "options": {
               root: app._root,
-              path: fs.join(app._path, directory)
+              path: fs.join(app._path, directory),
+              gzip: gzip
             }
           }
         };

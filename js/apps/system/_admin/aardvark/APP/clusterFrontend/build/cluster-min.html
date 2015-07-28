@@ -1,0 +1,673 @@
+<!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/html"><head><meta charset="utf-8"><title>ArangoDB Cluster Interface</title><meta name="description" content="ArangoDB Cluster Interface"><meta name="author" content="Florian Bartels, Michael Hackstein, gschwab"><link href="css/style.css" rel="stylesheet"><link href="css/cluster.css" rel="stylesheet"><link href="css/cluster2.css" rel="stylesheet"><link rel="shortcut icon" type="image/x-icon" href="favicon.ico"><script id="dashboardView.ejs" type="text/template"><% var subBar = function(title) { %>
+    <div class="dashboard-sub-bar">
+      <div  class="dashboard-sub-bar-title"><%= title %></div>
+    </div>
+  <% }
+  var enlargeButton = function(name, arrows) {
+    if (arrows) { %>
+      <div class="dashboard-sub-bar-menu">
+        <i class="fa fa-arrows-alt dashboard-sub-bar-menu-sign" id="<%= name %>Button"></i>
+      </div>
+    <% }
+  } %>
+
+  <% var largeChart = function(name, title, arrows) { %>
+    <div class="dashboard-large-chart">
+      <% enlargeButton(name, true); %>
+      <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div id="<%= name %>" class="dashboard-interior-chart"></div>
+        <div class="dashboard-legend">
+          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+        </div>
+      </div>
+      <% subBar(title) %>
+    </div>
+  <% } %>
+
+  <% var mediumChart = function(name, title, arrows) { %>
+    <div class="dashboard-medium-chart-outer">
+      <div class="dashboard-medium-chart">
+        <% enlargeButton(name, true); %>
+        <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
+          <div id="<%= name %>" class="dashboard-interior-chart"></div>
+          <div class="dashboard-legend">
+            <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+          </div>
+        </div>
+        <% subBar(title) %>
+      </div>
+    </div>
+  <% } %>
+
+  <% var smallChart = function(name, title, arrows) { %>
+    <div class="dashboard-small-chart">
+      <% enlargeButton(name, arrows); %>
+      <div class="dashboard-small-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div id="<%= name %>" class="dashboard-interior-chart">
+          <svg></svg>
+        </div>
+      </div>
+      <% subBar(title) %>
+    </div>
+  <% } %>
+
+  <% var tendency = function(title, name, arrows) { %>
+    <div class="dashboard-tendency-container">
+      <div class="dashboard-tendency-chart">
+        <% enlargeButton(name, arrows); %>
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">sync</div>
+            <div class="dashboard-figure">
+              <span id="syncPerSecondCurrent"></span>
+          <%} else {%>
+            <div class="dashboard-subtitle-bar">current</div>
+            <div class="dashboard-figure">
+              <span id="<%= name %>Current"></span>
+          <% } %>
+          </div>
+        </div>
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">async</div>
+            <div class="dashboard-figure">
+              <span id="asyncPerSecondCurrent"></span>
+          <%} else {%>
+            <div class="dashboard-subtitle-bar">15-min-avg</div>
+            <div class="dashboard-figure">
+              <span id="<%= name %>Average"></span>
+          <% } %>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar"><%= title %></div>
+    </div>
+  <% } %>
+
+  <div class="headerBar">
+    <a class="arangoHeader">Request Statistics</a>
+  </div>
+  <div class="contentDiv">
+    <div class="dashboard-row">
+      <% largeChart("requestsChart", "Requests per Second") %>
+
+      <% tendency("Request Types", "asyncRequests", false); %>
+      <% tendency("Number of Client Connections", "clientConnections", false); %>
+    </div>
+    
+    <div class="dashboard-row">
+      <% largeChart("dataTransferChart", "Transfer Size per Second (bytes)") %>
+      <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)", false) %>
+    </div>
+    
+    <div class="dashboard-row">
+      <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
+      <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
+    </div>
+  </div>
+
+  <div class="dashboard-headerbar headerBar">
+    <a class="arangoHeader">System Resources</a>
+  </div>
+
+  <div class="dashboard-row">
+    <% tendency("Number of threads", "numberOfThreads", false); %>
+
+    <div class="dashboard-bar-chart-container dashboard-spacer">
+      <div class="dashboard-bar-chart">
+        <div class="dashboard-bar-chart-title">
+          <div class="percentage"></div>
+          <div class="absolut"></div>
+        </div>
+        <div class="dashboard-bar-chart-chart" id="residentSizeChartContainer">
+          <div id="residentSizeChart">
+            <svg></svg>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar"">Resident Size</div>
+    </div>
+
+    <% tendency("Virtual Size in GB", "virtualSize", false); %>
+  </div>
+  <div class="dashboard-row">
+    <% mediumChart("pageFaultsChart", "Major Page Faults") %>
+    <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
+  </div></script><script id="modalBase.ejs" type="text/template"><div id="modal-dialog" class="modal hide fade createModalDialog" tabindex="-1" role="dialog"
+       aria-labelledby="myModalLabel" aria-hidden="true">
+   <% if (title !== null) { %>
+   <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader"><%=title%></a>
+   </div>
+   <%}%>
+
+    <div class="modal-body">
+    </div>
+    <% if (!hideFooter) { %>
+    <div class="modal-footer">
+      <%
+      _.each(buttons, function(value, key){
+        var type = value.type,
+          title = value.title,
+          disabled = '';
+          if (value.disabled) {
+            disabled = 'disabled';
+          }
+        %>
+      <button id="modalButton<%=key%>" class="button-<%=type%>" <%=disabled%>><%=title%></button>
+      <%});%>
+    </div>
+    <% } %>
+    <div class="alert alert-error modal-delete-confirmation" id="modal-delete-confirmation">
+      <strong><%=confirm||'Really delete?'%></strong>
+      <button id="modal-confirm-delete" class="button-danger pull-right modal-confirm-delete">Yes</button>
+      <button id="modal-abort-delete" class="button-neutral pull-right">No</button>
+    </div>
+  </div></script><script id="footerView.ejs" type="text/template"><%
+  var n,v,db;
+  if (name) {
+    n = name || "";
+    v = version || "";
+  }
+%>
+<div class="footer-left">
+  <p>Copyright (c) ArangoDB GmbH</p>
+</div>
+
+<div class="footer-center">
+  <p>Help <i class="fa fa-keyboard-o"></i></p>
+</div>
+
+<div class="footer-right">
+  <p><% if(n) { %><i class="isOnline fa fa-check-circle-o serverStatusIndicator"></i><a><%=n%> <%=v%> <% } %></a></i></p>
+</div></script><script id="modalGraph.ejs" type="text/template"><div class="detail-chart">
+		<div id="lineChartDetail" class="modal-inner-detail"></div>
+		<div class="modal-dashboard-legend">
+			<div class="dashboard-legend-inner" id="detailLegend"></div>
+		</div>
+	</div></script><script id="lineChartDetailView.ejs" type="text/template"><div id="lineChartDetail" class="modal hide fade modal-chart-detail" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<a class="arangoHeader"><%=figure%></a>
+		</div>
+		<div id="dashboardDetailedLineChart" class="dashboardDetailChart" style="position: absolute"></div>
+	</div></script><script id="clusterDown.ejs" type="text/template"><div class="headerBar">
+  <a class="arangoHeader">Cluster Down</a>
+</div>
+
+<div class="clusterDownBtn">
+  <button class="green" id="relaunchCluster">
+    Relaunch Cluster
+  </button>
+</div>
+<% if(canUpgrade) { %>
+  <div class="clusterDownBtn">
+    <button class="green" id="upgradeCluster">
+      Upgrade and Relaunch Cluster
+    </button>
+  </div>
+<% } %>
+<div class="clusterDownBtn">
+  <button id="editPlan">
+    Edit Cluster Plan
+  </button>
+</div>
+<div class="clusterDownBtn">
+  <button id="deletePlan">
+    Delete Cluster Plan
+  </button>
+</div>
+
+<div id="editPlanModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Edit Cluster Plan</a>
+  </div>
+
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th>An edited plan can not be restored. Really edit?</th>
+        <th></th>
+      </tr>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="submitEditPlan" class="button-danger pull-right">Edit</button>
+  </div>
+</div>
+
+<div id="deletePlanModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Delete Cluster Plan</a>
+  </div>
+
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th>A deleted plan can not be restored. Really delete?</th>
+        <th></th>
+      </tr>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="submitDeletePlan" class="button-danger pull-right">Delete</button>
+  </div>
+</div></script><script id="clusterUnreachable.ejs" type="text/template"><div class="headerBar">
+  <a class="arangoHeader">Cluster Unreachable</a>
+</div>
+
+<div class="cluster-unreachable-info">
+  <p>
+    None of your Coordinators is reachable.
+    However your DBServers are still running.
+    This might be a network problem.
+  </p>
+  Please check the your network connection to the following servers:
+  </p>
+  <% if(coordinators.length > 0) { %>
+  <ul>
+    <% _.each(coordinators, function(c) { %>
+      <li><b><%=c %></b></li>
+    <% }); %>
+  </ul>
+  <% } %>
+  <p>
+    If none of these servers is reachable they are either located behind a firewall and not accessable to the outside, or there is a network disconnection.
+  </p>
+  <p>
+    If at least of these servers is reachable the coordinator potentially crashed, please have a look in the log files.
+    In this case you can shutdown the cluster and relaunch it again.
+  </p>
+  <p>
+    <button id="clusterShutdown" class="button-danger shutdown">Shutdown Cluster</button>
+  </p>
+  <p>
+  If you want to file a bug, please use <a href="https://github.com/arangodb/arangodb/issues">our issue tracker</a>. Or feel free to ask a question on <a href="https://groups.google.com/forum/#!forum/arangodb">our google group</a>.
+</div></script><script id="detailView.ejs" type="text/template"><div id="lineChartDetail" class="modal hide fade modalChartDetail" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader"><%=figure%></a>
+  </div>
+
+  <div id="detailGraph" class="dashboardDetailChart" style="position: absolute"></div>
+
+
+</div></script><script id="loginModal.ejs" type="text/template"><div id="loginModalLayer" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Coordinator User invalid</a>
+  </div>
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th colspan="2">The overview requires a valid login to the cluster's _system database:</th>
+      <tr>
+        <th class="collectionTh">Username:</th>
+        <th class="collectionThSec"><input type="text" id="username" name="name" value="" class="modalInput" placeholder="Username" /></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Password:</th>
+        <th class="collectionThSec"><input type="password" id="password" name="passwd" value="" class="modalInput" placeholder="Password"/></th>
+      </tr>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="confirmLogin" class="button-success" style="float:right">Login</button>
+  </div>
+</div></script><script id="modalDashboardDummy.ejs" type="text/template"><div id="dbServerModal" class="modal hide fade dashboardModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false"></div></script><script id="planScenarioSelector.ejs" type="text/template"><% var box = function(c, btm) { %>
+    <div class="scenarioBox<%=btm?' bottomBox':''%>">
+      <div class="scenarioBoxText"><%=c%></div>
+    </div>
+  <% } 
+  var row = function(c, d, nr) { %>
+        <div class="scenarioMachine">
+          <% if (nr) { %>
+            <div class="scenarioBoxHeader">Machine <%=nr%></div>
+          <% } %>
+          <%
+            if (c) {box("Coordinator");}
+            if (d) {box("DBServer", true);}
+          %>
+        </div>
+     <% 
+    }
+  %>
+
+
+  <div class="headerBar">
+    <a class="arangoHeader">Cluster Management</a>
+  </div>
+
+  <div class="tileList">
+    <legend class="gv_inner">Please select a cluster scenario:</legend>
+
+    <li class="bigtile informationtile">
+      <div class="informationText">
+        <p>A <b>Coordinator</b> receives requests, distributes them to the DBServers,
+        executes AQL queries and returns the result to the clients. The
+        coordinator also exposes information about cluster health and cluster
+        statistics.
+        </p>
+        <p>
+        A <b>DBServer</b> can both store sharded and non-sharded collections. A
+        database and a coordinator can live on the same server.
+        </p>
+
+        <p>
+        <b>Development setup</b>
+        This setup is useful for development/testing purposes. It lets you
+        define a coordinator and several database nodes on the save server with
+        a few clicks.
+        </p>
+        <p>
+        <b>Production setup</b>
+        This setup is used in production. It lets you configure the different
+        servers and how you want to distribute coordinators and database nodes
+        among the cluster.</p>
+      </div>
+      <h5 class="collectionName">Information</h5>
+    </li>
+    <li class="bigtile"  id="singleServer">
+      <div id="singleMachine" class="machineClass">
+        <div class="scenarioSingleMachine">
+          <div class="scenarioBoxHeader">Single Machine</div>
+            <%
+              row(true, true);
+              row(true, true);
+              row(false, true);
+            %>
+        </div>
+      </div>
+      <h5 class="collectionName">Single Machine / Development</h5>
+    </li>
+    </li>
+    <li class="bigtile" id="multiServerAsymmetrical">
+      <div id="multiMachineAsym" class="machineClass">
+        <%
+          row(false, true, 1);
+          row(true, false, 2);
+          row(false, true, "X");
+        %>
+      </div>
+    <h5 class="collectionName">Multi Machine / Production</h5>
+    </li>
+  </div></script><script id="serverEntry.ejs" type="text/template"><div class="control-group dispatcher">
+  <label class="control-label">Dispatcher:</label>
+  <div class="controls">
+    <input type="text" placeholder="Dispatcher" class="input-xlarge host" value="<%=host?host:''%>"></input>
+    <span class="searchEqualsLabel">:</span>
+    <input type="text" maxlength="5" class="input-mini port" placeholder="port"  value="<%=port?port:''%>"></input>
+    <span class="searchEqualsLabel">User:</span>
+    <input type="text" class="input-large user" placeholder="auth user"  value="<%=user?user:''%>"></input>
+    <span class="searchEqualsLabel">Password:</span>
+    <input type="password" class="input-large passwd" placeholder="auth password"  value="<%=passwd?passwd:''%>"></input>
+    <% if (isFirst) {%>
+      <button class="graphViewer-icon-button gv-icon-small add"></button>
+    <% } else { %>
+      <button class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+    <% } %>
+  </div>
+  <% if (!isSymmetric) { %>
+  <div class="controls">
+    <label class="checkbox inline">
+      <input type="checkbox" value="isCoordinator" class="isCoordinator" <%=isCoordinator?'checked="checked"':''%>> Coordinator
+    </label>
+    <label class="checkbox inline">
+      <input type="checkbox" value="isDBServer" class="isDBServer" <%=isDBServer?'checked="checked"':''%>> DBServer
+    </label>
+  </div>
+  <% } %>
+</div></script><script id="showCluster.ejs" type="text/template"><% var statusClass = function(s) {
+    switch (s) {
+      case "ok":
+        return "success";
+      case "warning": 
+        return "warning";
+      case "critical":
+        return "danger";
+      case "missing":
+        return "inactive";
+    }
+  };
+
+  var createID = function (input) {
+    var id = input.replace(/\./g,'-');
+    id = id.replace(/\:/g,'_');
+    id = "id" + id;
+    return id;
+  };
+
+  var buttonClass = function(s) {
+    if (s === "ok") {
+      return "";
+    }
+    return " button-gui-disabled";
+  };
+%>
+<div class="headerBar">
+  <a class="arangoHeader">Cluster Dashboard</a>
+  <div class="headerButtonBar pull-right">
+    <select id="selectDB">
+    </select>
+    <select id="selectCol">
+    </select>
+  </div>
+</div>
+<div id="clusterLayout" class="tileList">
+  <% if(type === "testPlan") {
+    _.each(byAddress, function(s, a) {
+      var id;
+      _.each(s.coords, function(c) {
+        var url = c.get("protocol")
+          + "://"
+          + c.get("address")
+          + "/_db/_system/_admin/aardvark/standalone.html"
+          + "#collections";
+        id = createID(c.get("address"));
+
+    %>
+      <li class="tile">
+        <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=id%>">
+          <span class="fa fa-compass icon"></span>
+        </a>
+        <h5 class="collectionName"><%=c.get("name")%> <a href="<%=url%>" target="_blank" class="button-gui<%=buttonClass(c.get('status'))%>">GUI</a></h5>
+      </li>
+    <%
+      });
+      _.each(s.dbs, function(c) {
+        id = createID(c.get("address"));
+    %>
+      <li class="tile">
+        <a class="dbserver single <%=statusClass(c.get('status'))%>" id="<%=id%>">
+          <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
+        </a>
+        <h5 class="collectionName"><%=c.get("name")%> (Shards: <span id="<%=c.get("name")%>Shards" class="shardCounter"/>)</h5>
+      </li>
+    <%
+        });
+      });
+    } else { 
+      _.each(byAddress, function(s, a) { 
+        var url;
+        var id;
+        var type = "single";
+        if (s.coords && s.dbs) {
+          type = "double";
+        }
+  %>
+      <li class="tile">
+        <% _.each(s.coords, function(c) {
+          url = c.get("protocol")
+            + "://"
+            + c.get("address")
+            + "/_db/_system/_admin/aardvark/standalone.html"
+            + "#collections";
+            id = createID(c.get("address"));
+        %>
+          <a class="coordinator <%=type%> <%=statusClass(c.get('status'))%>" id="<%=id%>" title="<%=c.get('name')%>">
+            <span class="fa fa-compass icon"></span>
+          </a>
+        <% });
+          var dbName = "";
+          _.each(s.dbs, function(c) {
+            dbName = c.get("name");
+            id = createID(c.get("address"));
+        %>
+          <a class="dbserver <%=type%> <%=statusClass(c.get('status'))%>" id="<%=id%>" title="<%=c.get('name')%>">
+            <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
+          </a>
+        <% }); %>
+        <% if (s.coords) { %>
+          <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%><a class="button-gui<%=buttonClass(_.first(s.coords).get('status'))%>" href="<%=url%>" target="_blank">GUI</a></h5>
+        <% } else { %>
+          <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%></h5>
+         <% } %>
+      </li>
+    <%
+    });
+  }
+  %>
+</div>
+
+<div class="headerBar">
+  <a class="arangoHeader">Cluster Statistics</a>
+</div>
+<div class="dashboard-row">
+  <div class="dashboard-medium-chart">
+    <div class="dashboard-medium-chart-inner dashboard-chart" id="TestContainer">
+      <div id="clusterGraphs" class="dashboard-interior-chart"><svg></svg></div>
+    </div>
+    <div class="dashboard-sub-bar">
+      <div  class="dashboard-sub-bar-title">Virtual Memory Size in GB</div>
+    </div>
+  </div>
+  <div class="dashboard-medium-chart">
+    <div class="dashboard-medium-chart-inner dashboard-chart" id="TestContainer">
+      <div id="lineGraph" class="dashboard-interior-chart"></div>
+      <div class="dashboard-legend">
+        <div class="dashboard-legend-inner" id="lineGraphLegend"></div>
+      </div>
+    </div>
+    <div class="dashboard-sub-bar">
+      <div  class="dashboard-sub-bar-title">Requests per Second</div>
+    </div>
+  </div>
+</div>
+
+<!--
+<div class="resizecontainer">
+  <div class="dashboardChart">
+    <div id="clusterGraphs" class="innerDashboardChart">
+      <div>Virtual Memory Size in GB</div>
+    </div>
+  </div>
+  <div class="dashboardChart">
+    <div id="lineGraph" class="innerDashboardChart"></div>
+  </div>
+</div>
+--></script><script id="showShards.ejs" type="text/template"><div class="headerBar">
+  <a class="arangoHeader">Shard Overview</a>
+  <div class="headerButtonBar pull-right">
+    <select id="selectDB">
+      <% _.each(dbs, function(d) { %>
+        <option id="<%=d%>" <%=(d === "_system")?"checked":""%> ><%=d%></option>
+      <% }); %>
+    </select>
+    <select id="selectCol">
+    </select>
+  </div>
+</div>
+<ul id="clusterServers" class="tileList">
+  <% 
+    _.each(names, function(n) { 
+  %>
+    <li class="bigtile">
+      <div class="shardContainer" id="<%=n%>Shards">
+      </div>
+      <h5 class="collectionName"><%=n%></h5>
+    </li>
+  <%
+    });
+  %>
+</ul></script><script id="shutdownButtonView.ejs" type="text/template"><button id="clusterShutdown" class="button-danger shutdown">Shutdown Cluster</button></script><script id="symmetricPlan.ejs" type="text/template"><div class="headerBar">
+    <% if (isSymmetric) { %>
+      <a class="arangoHeader">Plan a symmetric cluster</a>
+    <% } else { %>
+      <a class="arangoHeader">Plan a asymmetric cluster</a>
+    <% } %>
+  </div>
+  <div class="innerContent">
+
+    <form action="javascript:void(0);" autocomplete="on" class="form-horizontal">
+			<div class="control-group">
+					<label class="control-label">SSL enabled:</label>
+					<div class="controls">
+						<label class="checkbox inline">
+								<input type="checkbox" value="useSSLonDBservers" class="useSSLonDBservers" <%=useSSLonDBservers?'checked="checked"':''%>> on DBServers
+						</label>
+						<label class="checkbox inline">
+								<input type="checkbox" disabled=true value="useSSLonCoordinators" class="useSSLonCoordinators" <%=useSSLonCoordinators?'checked="checked"':''%>> on Coordinators
+						</label>
+					</div>
+			</div>
+      <fieldset id="server_list">
+      </fieldset>
+      <div class="control-group">
+        <div class="controls">
+          <button class="button-close" id="cancel">Cancel</button>
+          <button class="button-notification" id="test-all-connections">Test all connections</button>
+          <button class="button-neutral" id="startSymmetricPlan">Launch Cluster</button>
+				</div>
+      </div>
+    </form>
+  </div></script><script id="testPlan.ejs" type="text/template"><div class="headerBar">
+  <a class="arangoHeader">Plan a single server test configuration</a>
+</div>
+<form action="javascript:void(0);" autocomplete="on" class="form-horizontal">
+  <fieldset>
+    <div class="control-group">
+      <label for="host" class="control-label">Dispatcher:</label>
+      <div class="controls">
+        <input type="text" id="host" placeholder="Dispatcher" class="input-xlarge" value="<%=hostname%>"></input>
+          <span class="searchEqualsLabel">:</span>
+          <input type="text" maxlength="5" class="input-mini" id="port" placeholder="port" value="<%=port%>" ></input>
+      </div>
+    </div>
+    <div class="control-group">
+      <label for="coordinators" class="control-label">Coordinators:</label>
+      <div class="controls">
+        <input type="text" id="coordinators" placeholder="Number of Coordinators" class="input-xlarge" value="<%=coords%>" ></input>
+      </div>
+    </div>
+    <div class="control-group">
+      <label for="dbs" class="control-label">DB Servers:</label>
+      <div class="controls">
+        <input type="text" id="dbs" placeholder="Number of DBServers" class="input-xlarge" value="<%=dbs%>"></input>
+      </div>
+    </div>
+  </fieldset>
+  <div class="control-group">
+    <div class="controls">
+      <button class="button-close" id="cancel">Cancel</button>
+      <button class="button-success" id="startTestPlan">Launch Cluster</button>
+    </div>
+  </div>
+</form></script><script id="waitModal.ejs" type="text/template"><div id="waitModalLayer" class="modal hide fade waitModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div>
+      <div class="modal-content">
+        <div>
+          <div class="waitModal icon">
+           <i class="fa fa-spinner fa-spin"></i>
+          </div>
+          <div id="waitModalMessage" class="waitModal message" />
+        </div>
+      </div>
+    </div>
+  </div></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><script src="sharedLibs.js"></script><script src="cluster.js"></script></body></html>
