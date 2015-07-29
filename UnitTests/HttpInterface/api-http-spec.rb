@@ -155,8 +155,7 @@ describe ArangoDB do
       it "checks handling of an request, with gzip support" do
         require 'uri'
         require 'net/http'
-        uri = URI.parse("http://127.0.0.1/_db/_system/_admin/aardvark/standalone.html")
-        uri.port = 8529
+        uri = URI.parse(ArangoDB.base_uri + "/_db/_system/_admin/aardvark/standalone.html")
         http = Net::HTTP.new(uri.host, uri.port)
 
         request = Net::HTTP::Get.new(uri.request_uri)
