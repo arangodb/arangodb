@@ -27,10 +27,20 @@ You can also go to our [cookbook](https://docs.arangodb.com/cookbook) and look t
 
 !SUBSECTION Community
 
-If you have any questions don't hesitate to ask on:
+If you have questions regarding Arangodb, Foxx, drivers, or this documentation don't hesitate to contact us on:
 
-- [github](https://github.com/arangodb/arangodb/issues)
-- [google groups](https://groups.google.com/forum/?hl=de#!forum/arangodb)
-- [stackoverflow](http://stackoverflow.com/questions/tagged/arangodb)
+- [github](https://github.com/arangodb/arangodb/issues) for issues and missbehaviour or [pull requests](https://www.arangodb.com/community/)
+- [google groups](https://groups.google.com/forum/?hl=de#!forum/arangodb) for discussions about ArangoDB in general or to anounce your new Foxx App
+- [stackoverflow](http://stackoverflow.com/questions/tagged/arangodb) for questions about AQL, usage scenarios etc.
+
+Please describe:
+
+- the environment you run ArangoDB in
+- the ArangoDB version you use
+- whether you're using Foxx
+- the client you're using
+- which parts of the Documentation you're working with (link)
+- what you expect to happen
+- whats actualy happening
 
 We will respond as soon as possible.
