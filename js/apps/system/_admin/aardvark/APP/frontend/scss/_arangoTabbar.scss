@@ -3,7 +3,8 @@
   width: 100%;
 
   button {
-    background: #f1f0ee;
+    background-color: $c-new-grey;
+    color: $c-white;
     border: 0;
     float: right;
     height: 27px;
@@ -19,9 +20,12 @@
 
   .arango-active-tab {
     background-color: $c-white;
+    color: $c-black;
     border-left: 1px solid $c-c2grey;
     border-right: 1px solid $c-c2grey;
     border-top: 1px solid $c-c2grey;
     border-bottom: 1px solid #fff;
+    margin-bottom: -1px;
+    height: 28px;
   }
 }

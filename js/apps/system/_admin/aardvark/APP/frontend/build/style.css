@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /*
 $c-lightgreen-2-bg: #e4ecd9;;
 $c-lightgreen-transp-bg: rgba(222, 233, 207, 0.8);
@@ -1965,6 +1966,8 @@ ul.navlist {
 a.tab {
   color: #686766;
   display: block;
+  font-size: 12pt;
+  font-weight: 100;
   padding-top: 9px;
   padding-left: 10px;
   padding-bottom: 10px;
@@ -2056,6 +2059,40 @@ div.footer-left {
   background: none repeat scroll 0 0 transparent;
   color: #686766;
   width: 45%; }
+  div.footer-left .social-icons {
+    margin-top: 5px; }
+    div.footer-left .social-icons a {
+      width: 25px;
+      display: block;
+      height: 25px;
+      float: left; }
+    div.footer-left .social-icons p {
+      font-size: 12pt;
+      background: #fff;
+      border: 1px solid rgba(104, 103, 102, 0.1);
+      border-radius: 20px;
+      height: 25px;
+      width: 25px;
+      padding: 0;
+      margin-right: 10px; }
+    div.footer-left .social-icons p:hover {
+      cursor: pointer;
+      background: #8c8a89; }
+      div.footer-left .social-icons p:hover i  {
+        color: #fff; }
+    div.footer-left .social-icons i {
+      color: #000;
+      position: absolute;
+      margin-top: 4px; }
+      div.footer-left .social-icons i.fa-twitter {
+        margin-left: -7px; }
+      div.footer-left .social-icons i.fa-envelope {
+        margin-left: -20px; }
+      div.footer-left .social-icons i.fa-google {
+        margin-top: 6px;
+        margin-left: -18px; }
+      div.footer-left .social-icons i.fa-stack-overflow {
+        margin-left: -18px; }
 
 div.footer-center {
   background: none repeat scroll 0 0 transparent;
@@ -4737,10 +4774,11 @@ div.headerBar {
 
 div.headerBar a.arangoHeader {
   color: #000;
-  font-size: 16px;
+  font-size: 13pt;
+  font-weight: 100;
   left: 0px;
   position: relative;
-  top: 8px; }
+  top: 7px; }
 
 div.headerBar > div.headerButtonBar {
   margin: 4px 0;
@@ -4750,13 +4788,20 @@ div.headerBar > div.headerButtonBar {
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 8px 0; }
+  padding: 7px 0; }
   .breadcrumb .disabledBread {
+    font-size: 13pt;
+    font-weight: 100;
     color: #666;
     float: left;
-    padding-left: 5px;
-    padding-right: 5px; }
+    padding-right: 5px;
+    position: relative; }
+    .breadcrumb .disabledBread i {
+      font-size: 10pt;
+      margin-left: 10px; }
   .breadcrumb .activeBread {
+    font-size: 13pt;
+    font-weight: 100;
     color: #7da817;
     float: left; }
 
@@ -4786,7 +4831,8 @@ div.headerBar > div.headerButtonBar {
   padding-top: 4px; }
   .modal-header .arangoHeader, .modal-dashboard-header .arangoHeader {
     color: #000;
-    font-size: 16px;
+    font-size: 13pt;
+    font-weight: 100;
     left: 5px;
     position: relative;
     top: 2px; }
@@ -5776,12 +5822,12 @@ svg.explain-tree {
     -moz-border-radius: 0;
     -webkit-border-radius: 0;
     border-radius: 0;
-    background-color: #f1f0ee;
+    background-color: #8c8a89;
     border: 1px solid transparent;
     border-bottom-color: #888;
     border-top-left-radius: 3px;
     border-top-right-radius: 3px;
-    color: #000;
+    color: #fff;
     display: block;
     font-size: 13px;
     line-height: 20px;
@@ -5803,6 +5849,7 @@ svg.explain-tree {
       border-left-color: #c2c2c2;
       border-right-color: #c2c2c2;
       border-top-color: #c2c2c2;
+      color: #000;
       height: 21px;
       margin-top: -1px; }
 
@@ -6906,7 +6953,8 @@ input.gv-radio-button {
   height: 27px;
   width: 100%; }
   .arango-tabbar button {
-    background: #f1f0ee;
+    background-color: #8c8a89;
+    color: #fff;
     border: 0;
     float: right;
     height: 27px;
@@ -6918,10 +6966,13 @@ input.gv-radio-button {
     margin-right: 10px; }
   .arango-tabbar .arango-active-tab {
     background-color: #fff;
+    color: #000;
     border-left: 1px solid #c2c2c2;
     border-right: 1px solid #c2c2c2;
     border-top: 1px solid #c2c2c2;
-    border-bottom: 1px solid #fff; }
+    border-bottom: 1px solid #fff;
+    margin-bottom: -1px;
+    height: 28px; }
 
 .arangoDataTable {
   border-spacing: 0 0;

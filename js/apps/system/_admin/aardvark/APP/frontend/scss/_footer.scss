@@ -31,6 +31,60 @@ div.footer-left {
   p {
     @extend %pull-left;
   }
+
+  .social-icons {
+
+    margin-top: 5px;
+
+    a {
+      width: 25px;
+      display: block;
+      height: 25px;
+      float: left;
+    }
+
+    p {
+      font-size: 12pt;
+      background: $c-white;
+      border: 1px solid rgba(104, 103, 102, 0.1);
+      border-radius: 20px;
+      height: 25px;
+      width: 25px;
+      padding: 0;
+      margin-right: 10px;
+    }
+
+    p:hover {
+      cursor: pointer;
+      background: $c-new-grey;
+
+      i {
+        color: $c-white;
+      }
+    }
+
+    i {
+      color: $c-black;
+      position: absolute;
+      margin-top: 4px;
+
+      &.fa-twitter {
+        margin-left: -7px;
+      }
+      &.fa-envelope {
+        margin-left: -20px;
+      }
+      &.fa-google {
+        margin-top: 6px;
+        margin-left: -18px;
+      }
+      &.fa-stack-overflow {
+        margin-left: -18px;
+      }
+    }
+
+
+  }
 }
 
 div.footer-center {

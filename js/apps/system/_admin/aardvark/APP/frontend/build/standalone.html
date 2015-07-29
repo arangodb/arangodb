@@ -65,7 +65,7 @@
       </div>
       <div class="breadcrumb">
         <a class="activeBread" href="#applications">Services</a>
-        <span class="disabledBread">&gt;</span>
+        <span class="disabledBread"><i class="fa fa-chevron-right"></i></span>
         <span class="disabledBread">
           <%= app.attributes.mount %>
         </span>
@@ -1178,7 +1178,12 @@ if (list.length > 0) {
   }
 %>
 <div class="footer-left">
-  <p>Copyright (c) ArangoDB GmbH</p>
+  <div class="social-icons">
+    <p><a href="https://twitter.com/arangodb" target="_blank"><i class="fa fa-twitter"></i></a></p>
+    <p><a href="https://www.arangodb.com/community" target="_blank"></a><i class="fa fa-envelope"></i></a></p>
+    <p><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank"></a><i class="fa fa-stack-overflow"></i></a></p>
+    <p><a href="https://groups.google.com/group/arangodb" target="_blank"></a><i class="fa fa-google"></i></a></p>
+  </div>
 </div>
 
 <div class="footer-center">
@@ -2324,15 +2329,6 @@ if (list.length > 0) {
         <li class="dropdown-item"><a href="https://github.com/arangodb/arangodb" target="_blank">GitHub
           Repository</a></li>
         <li class="dropdown-item"><a href="https://www.arangodb.com" target="_blank">ArangoDB.com</a></li>
-        <li class="divider"></li>
-        <li class="dropdown-header">Social</li>
-        <li class="dropdown-item"><a href="https://twitter.com/arangodb" target="_blank">Twitter</a></li>
-        <li class="dropdown-item"><a href="https://www.arangodb.com/community" target="_blank">Contact</a>
-        </li>
-        <li class="dropdown-item"><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank">StackOverflow</a>
-        </li>
-        <li class="dropdown-item"><a href="https://groups.google.com/group/arangodb" target="_blank">Google
-          Groups</a></li>
       </ul>
     </li>
   </ul>
@@ -2833,7 +2829,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1438180273365"></script>
+<script src="app.js?version=1438188485247"></script>
 
   </body>
 </html>
