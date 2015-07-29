@@ -925,13 +925,15 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
   
   for (auto const& n : nodes) {
     auto nn = static_cast<CalculationNode*>(n);
+
     if (nn->expression()->canThrow() || 
         ! nn->expression()->isDeterministic()) {
       // we will only move expressions up that cannot throw and that are deterministic
       continue;
     }
 
-    auto const neededVars = n->getVariablesUsedHere();
+    std::unordered_set<Variable const*> neededVars;
+    n->getVariablesUsedHere(neededVars);
 
     std::vector<ExecutionNode*> stack;
 
@@ -943,14 +945,11 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 
       bool found = false;
 
-      auto&& varsSet = current->getVariablesSetHere();
-      for (auto const& v : varsSet) {
-        for (auto it = neededVars.begin(); it != neededVars.end(); ++it) {
-          if ((*it)->id == v->id) {
-            // shared variable, cannot move up any more
-            found = true;
-            break;
-          }
+      for (auto const& v : current->getVariablesSetHere()) {
+        if (neededVars.find(v) != neededVars.end()) {
+          // shared variable, cannot move up any more
+          found = true;
+          break;
         }
       }
 
@@ -1466,7 +1465,7 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
 }
 
 
-class triagens::aql::RedundantCalculationsReplacer : public WalkerWorker<ExecutionNode> {
+class triagens::aql::RedundantCalculationsReplacer final : public WalkerWorker<ExecutionNode> {
 
   public:
 
@@ -1483,7 +1482,7 @@ class triagens::aql::RedundantCalculationsReplacer : public WalkerWorker<Executi
 
     void replaceInCalculation (ExecutionNode* en) {
       auto node = static_cast<CalculationNode*>(en);
-      std::unordered_set<Variable*> variables;
+      std::unordered_set<Variable const*> variables;
       node->expression()->variables(variables);
           
       // check if the calculation uses any of the variables that we want to replace
@@ -1797,19 +1796,16 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
       FindVarAndAttr(plan, rhs, enumCollVar, attr);
 
       if (enumCollVar != nullptr) {
-        std::unordered_set<Variable*> varsUsed;
+        std::unordered_set<Variable const*> varsUsed;
         Ast::getReferencedVariables(lhs, varsUsed);
 
-        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
+        if (varsUsed.find(enumCollVar) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
           foundSomething = true;
-          
           rim->insert(enumCollVar->name, 
                       attr.substr(0, attr.size() - 1), 
-                      RangeInfoBound(lhs, true), 
-                      RangeInfoBound(lhs, true), 
-                      true);
+                      RangeInfoBound(lhs, true)); 
 
           enumCollVar = nullptr;
           attr.clear();
@@ -1821,19 +1817,17 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
       FindVarAndAttr(plan, lhs, enumCollVar, attr);
 
       if (enumCollVar != nullptr) {
-        std::unordered_set<Variable*> varsUsed;
+        std::unordered_set<Variable const*> varsUsed;
         Ast::getReferencedVariables(rhs, varsUsed);
 
-        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
+        if (varsUsed.find(enumCollVar) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
           foundSomething = true;
-
           rim->insert(enumCollVar->name, 
                       attr.substr(0, attr.size() - 1), 
-                      RangeInfoBound(rhs, true), 
-                      RangeInfoBound(rhs, true), 
-                      true);
+                      RangeInfoBound(rhs, true));
+
           enumCollVar = nullptr;
           attr.clear();
         }
@@ -1954,10 +1948,10 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
       FindVarAndAttr(plan, lhs, enumCollVar, attr);
 
       if (enumCollVar != nullptr) {
-        std::unordered_set<Variable*> varsUsed;
+        std::unordered_set<Variable const*> varsUsed;
         Ast::getReferencedVariables(rhs, varsUsed);
 
-        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) == varsUsed.end()) {
+        if (varsUsed.find(enumCollVar) == varsUsed.end()) {
           // Found a multiple attribute access of a variable and an
           // expression which does not involve that variable:
           foundSomething = true;
@@ -2040,41 +2034,58 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
 /// @brief prefer IndexRange nodes over EnumerateCollection nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
-  RangeInfoMapVec* _rangeInfoMapVec;
-  ExecutionPlan* _plan;
-  std::unordered_set<VariableId> _varIds;
-  bool _modified;
-  bool _canThrow; 
-  // The following maps ids of EnumerateCollectionNodes in the original
-  // plan to an index in the (outer vector) of the _changes container.
-  std::unordered_map<size_t, size_t>& _changesPlaces;
-  // The outer vector is for the different ids of EnumerateCollectionNodes
-  // in the original plan that could be replaced. For each one, the pair
-  // contains the id of the node in the original plan and a vector 
-  // that holds the possible replacements.
-  std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& _changes;
+class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
+
+  public:
+
+    typedef std::unordered_map<ExecutionNode const*, std::unordered_set<triagens::aql::Index const*>> IndexCache;
+
+  private:
+
+    RangeInfoMapVec* _rangeInfoMapVec;
+    ExecutionPlan* _plan;
+    std::unordered_set<VariableId> _varIds;
+    bool _modified;
+    bool _canThrow; 
+    // The following maps ids of EnumerateCollectionNodes in the original
+    // plan to an index in the (outer vector) of the _changes container.
+    std::unordered_map<size_t, size_t>& _changesPlaces;
+    // The outer vector is for the different ids of EnumerateCollectionNodes
+    // in the original plan that could be replaced. For each one, the pair
+    // contains the id of the node in the original plan and a vector 
+    // that holds the possible replacements.
+    std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& _changes;
+
+    // a reference to the CollectionNodes for which all indexes have been processed
+    std::unordered_set<ExecutionNode const*>& _doneCollections;
+    
+    // a reference to the indexes processed for CollectionNodes
+    IndexCache& _doneIndexes;
   
   public:
 
     FilterToEnumCollFinder (ExecutionPlan* plan,
                             Variable const* var,
                             std::unordered_map<size_t, size_t>& changesPlaces,
-                            std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& changes) 
+                            std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& changes,
+                            std::unordered_set<ExecutionNode const*>& doneCollections, 
+                            IndexCache& doneIndexes)
       : _rangeInfoMapVec(nullptr),
         _plan(plan), 
         _varIds({ var->id }),
         _modified(false),
         _canThrow(false),
         _changesPlaces(changesPlaces),
-        _changes(changes) {
+        _changes(changes),
+        _doneCollections(doneCollections),
+        _doneIndexes(doneIndexes) {
 
     }
 
     ~FilterToEnumCollFinder () {
       delete _rangeInfoMapVec;
     }
-    
+
     bool modified () const {
       return _modified;
     }
@@ -2084,6 +2095,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
       switch (en->getType()) {
         case EN::ENUMERATE_LIST:
+        case EN::SUBQUERY:        
+        case EN::SORT:
+        case EN::INDEX_RANGE:
           break;
 
         case EN::CALCULATION: {
@@ -2129,9 +2143,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           break;
         }
 
-        case EN::SUBQUERY:        
-          break;
-
         case EN::FILTER: {
           std::vector<Variable const*>&& inVar = en->getVariablesUsedHere();
           TRI_ASSERT(inVar.size() == 1);
@@ -2148,6 +2159,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           // that we have taken care of nodes that could throw exceptions
           // above.
           break;
+
         case EN::SINGLETON:
         case EN::INSERT:
         case EN::REMOVE:
@@ -2159,20 +2171,24 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::ILLEGAL:
           // in all these cases something is seriously wrong and we better abort
           return true;
+
         case EN::LIMIT:           
           // if we meet a limit node between a filter and an enumerate
           // collection, we abort . . .
           return true;
-        case EN::SORT:
-        case EN::INDEX_RANGE:
-          break;
-        case EN::ENUMERATE_COLLECTION: {
-          auto node = static_cast<EnumerateCollectionNode*>(en);
-          auto var = node->getVariablesSetHere()[0];  // should only be 1
 
+        case EN::ENUMERATE_COLLECTION: {
           if (_rangeInfoMapVec == nullptr) {
             break;
           }
+
+          if (_doneCollections.find(en) != _doneCollections.end()) {
+            // all indexes for this collection have been used. done
+            break;
+          }
+
+          auto const node = static_cast<EnumerateCollectionNode*>(en);
+          auto var = node->getVariablesSetHere()[0];  // should only be 1
 
           // check if we have any ranges with this var
           std::unordered_map<std::string, RangeInfo>* map = _rangeInfoMapVec->find(var->name, 0);        
@@ -2188,7 +2204,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             }
 
             size_t pos = 0;
-            std::unordered_set<Variable*> varsUsed; 
+            std::unordered_set<Variable const*> varsUsed; 
             do {
               for (auto& x : *map) {
                 auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
@@ -2254,16 +2270,31 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   // make one new plan for every index in <idxs> that replaces the
                   // enumerate collection node with a IndexRangeNode ... 
 
-                  for (size_t i = 0; i < idxs.size(); i++) {
-                    // initialize all conditions with empty ranges
-                    IndexOrCondition indexOrCondition(validPos.size());
-
+                  for (size_t i = 0; i < idxs.size(); ++i) {
                     // ranges must be valid and all comparisons == if hash
                     // index or == followed by a single <, >, >=, or <=
                     // if a skip index in the order of the fields of the
                     // index.
                     auto const idx = idxs.at(i);
                     TRI_ASSERT(idx != nullptr);
+
+                    {
+                      // prevent duplicate usage of the same index for the same collection node
+                      auto p1 = _doneIndexes.find(en);
+
+                      if (p1 != _doneIndexes.end()) {
+                        auto p2 = (*p1).second.find(idx);
+
+                        if (p2 != (*p1).second.end()) {
+                          // already processed this index for this collection node
+                          continue;
+                        }
+                      } 
+                    }
+
+                    // initialize all conditions with empty ranges
+                    IndexOrCondition indexOrCondition(validPos.size());
+
 
                     if (idx->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
@@ -2459,6 +2490,26 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     }
 
                     if (! isEmpty) {
+                      // enter index into the index cache
+                      {
+                        size_t indexesUsed;
+                        auto p1 = _doneIndexes.find(en);
+
+                        if (p1 != _doneIndexes.end()) {
+                          indexesUsed = (*p1).second.size() + 1;
+                          (*p1).second.emplace(idx);
+                        }
+                        else {
+                          _doneIndexes.emplace(en, std::unordered_set<triagens::aql::Index const*>{ idx });
+                          indexesUsed = 1;
+                        }
+
+                        if (indexesUsed == idxs.size()) {
+                          // we processed all usable indexes for this CollectionNode
+                          _doneCollections.emplace(en);
+                        }
+                      }
+
                       auto indexRangeNode = new IndexRangeNode(
                         _plan, 
                         _plan->nextId(), 
@@ -2509,6 +2560,26 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 int triagens::aql::useIndexRangeRule (Optimizer* opt, 
                                       ExecutionPlan* plan, 
                                       Optimizer::Rule const* rule) {
+  std::vector<ExecutionNode::NodeType> const types = {
+    EN::ENUMERATE_COLLECTION,
+    EN::FILTER
+  };
+
+  // These are all the EnumerateCollection and Filter nodes in the query
+  std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(types, true);
+
+  size_t numCollections = 0;
+  for (auto& it : nodes) {
+    if (it->getType() == EN::ENUMERATE_COLLECTION) {
+      ++numCollections;
+    } 
+  }
+
+  if (numCollections == 0) {
+    // shortcut
+    opt->addPlan(plan, rule, false);
+    return TRI_ERROR_NO_ERROR;
+  }
   
   // The following maps ids of EnumerateCollectionNodes in the original
   // plan to an index in the (outer vector) of the _changes container.
@@ -2529,21 +2600,32 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
     changesPlaces.clear();
   };
 
-  // These are all the FILTER nodes where we start:
-  std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::FILTER, true);
-
   bool modified = false;
   // In the following loop we only collect changes, maybe we introduce some
   // NoResultsNode, possibly in subqueries.
 
   try {
+    std::unordered_set<ExecutionNode const*> doneCollections;
+    FilterToEnumCollFinder::IndexCache doneIndexes;
+
     for (auto const& n : nodes) {
+      if (n->getType() != EN::FILTER) {
+        // only process FILTER nodes, not ENUMERATE_COLLECTION here!
+        continue;
+      }
+
       auto nn = static_cast<FilterNode*>(n);
       auto invars = nn->getVariablesUsedHere();
       TRI_ASSERT(invars.size() == 1);
-      FilterToEnumCollFinder finder(plan, invars[0], changesPlaces, changes);
+
+      FilterToEnumCollFinder finder(plan, invars[0], changesPlaces, changes, doneCollections, doneIndexes);
       nn->walk(&finder);
       modified |= finder.modified();
+
+      if (doneCollections.size() == numCollections) {
+        // handled all possible combinations already
+        break;
+      }
     }
   }
   catch (...) {
@@ -2665,8 +2747,7 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
       std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
       for (size_t l = 0; l < i; l++) {
         if (changes[l].second.size() >= 2) {
-          ExecutionNode* newNode 
-              = changes[l].second[v[l]]->clone(newPlan.get(), true, false);
+          ExecutionNode* newNode = changes[l].second[v[l]]->clone(newPlan.get(), true, false);
           newPlan->registerNode(newNode);
           newPlan->replaceNode(newPlan->getNodeById(changes[l].first), newNode);
         }
@@ -2806,7 +2887,7 @@ public:
   }
 };
 
-class SortToIndexNode : public WalkerWorker<ExecutionNode> {
+class SortToIndexNode final : public WalkerWorker<ExecutionNode> {
   using ECN = triagens::aql::EnumerateCollectionNode;
 
   ExecutionPlan*       _plan;
@@ -4011,7 +4092,7 @@ int triagens::aql::removeUnnecessaryRemoteScatterRule (Optimizer* opt,
 /// WalkerWorker for undistributeRemoveAfterEnumColl
 ////////////////////////////////////////////////////////////////////////////////
 
-class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
+class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   std::unordered_set<ExecutionNode*>& _toUnlink;
   bool _remove;
@@ -4407,7 +4488,7 @@ int triagens::aql::replaceOrWithInRule (Optimizer* opt,
     }
 
     auto fn = static_cast<FilterNode*>(n);
-    auto inVar  = fn->getVariablesUsedHere();
+    auto inVar = fn->getVariablesUsedHere();
     
     auto cn = static_cast<CalculationNode*>(dep);
     auto outVar = cn->getVariablesSetHere();
@@ -4596,9 +4677,8 @@ int triagens::aql::removeRedundantOrRule (Optimizer* opt,
       continue;
     }
 
-
     auto fn = static_cast<FilterNode*>(n);
-    auto inVar  = fn->getVariablesUsedHere();
+    auto inVar = fn->getVariablesUsedHere();
     
     auto cn = static_cast<CalculationNode*>(dep);
     auto outVar = cn->getVariablesSetHere();

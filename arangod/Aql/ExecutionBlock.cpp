@@ -1338,11 +1338,11 @@ int IndexRangeBlock::initialize () {
     _inRegs.emplace_back();
     std::vector<RegisterId>& inRegsCur = _inRegs.back();
 
-    std::unordered_set<Variable*> inVars;
+    std::unordered_set<Variable const*> inVars;
     expression->variables(inVars);
 
     for (auto const& v : inVars) {
-      inVarsCur.emplace_back(v);
+      inVarsCur.emplace_back(const_cast<Variable*>(v));
       auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getPlanNode()->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
@@ -2760,15 +2760,15 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
     _inRegs(),
     _outReg(ExecutionNode::MaxRegisterId) {
 
-  std::unordered_set<Variable*> inVars;
+  std::unordered_set<Variable const*> inVars;
   _expression->variables(inVars);
 
   _inVars.reserve(inVars.size());
   _inRegs.reserve(inVars.size());
 
-  for (auto it = inVars.begin(); it != inVars.end(); ++it) {
-    _inVars.emplace_back(*it);
-    auto it2 = en->getRegisterPlan()->varInfo.find((*it)->id);
+  for (auto& it : inVars) {
+    _inVars.emplace_back(const_cast<Variable*>(it));
+    auto it2 = en->getRegisterPlan()->varInfo.find(it->id);
 
     TRI_ASSERT(it2 != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it2->second.registerId < ExecutionNode::MaxRegisterId);

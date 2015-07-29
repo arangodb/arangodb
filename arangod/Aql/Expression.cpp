@@ -148,7 +148,7 @@ Expression::~Expression () {
 /// @brief return all variables used in the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-void Expression::variables (std::unordered_set<Variable*>& result) const {
+void Expression::variables (std::unordered_set<Variable const*>& result) const {
   return Ast::getReferencedVariables(_node, result);
 }
 

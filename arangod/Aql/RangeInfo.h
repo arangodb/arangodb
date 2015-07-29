@@ -91,6 +91,7 @@ namespace triagens {
                                                              "isConstant")),
             _defined(false),
             _expressionAst(nullptr) {
+
           triagens::basics::Json bound = json.get("bound");
 
           if (! bound.isEmpty()) {
@@ -120,6 +121,7 @@ namespace triagens {
             _isConstant(false), 
             _defined(false),
             _expressionAst(nullptr) {
+
         }
 
         RangeInfoBound (RangeInfoBound const& copy) 
@@ -128,6 +130,7 @@ namespace triagens {
             _isConstant(copy._isConstant), 
             _defined(copy._defined),
             _expressionAst(nullptr) {
+
         } 
           
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,12 +449,14 @@ namespace triagens {
             _valid(true), 
             _defined(true),
             _equality(false) {
+
         }
 
         RangeInfo () 
           : _valid(false), 
             _defined(false), 
             _equality(false) {
+
         }
         
         RangeInfo (basics::Json const& json);
@@ -758,13 +763,21 @@ namespace triagens {
                      bool equality);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief  insert an equality
+////////////////////////////////////////////////////////////////////////////////
+        
+        void insert (std::string const& var, 
+                     std::string const& name, 
+                     RangeInfoBound const& bound); 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert, directly using a RangeInfo structure
 ////////////////////////////////////////////////////////////////////////////////
 
         void insert (RangeInfo const& range);
        
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief insert, directly using a RangeInfo structure
+/// @brief erase
 ////////////////////////////////////////////////////////////////////////////////
 
         void erase (RangeInfo*);

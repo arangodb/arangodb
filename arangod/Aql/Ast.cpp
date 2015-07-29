@@ -1440,7 +1440,7 @@ void Ast::validateAndOptimize () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ast::getReferencedVariables (AstNode const* node,
-                                  std::unordered_set<Variable*>& result) {
+                                  std::unordered_set<Variable const*>& result) {
   auto visitor = [](AstNode const* node, void* data) -> void {
     if (node == nullptr) {
       return;
@@ -1448,14 +1448,14 @@ void Ast::getReferencedVariables (AstNode const* node,
 
     // reference to a variable
     if (node->type == NODE_TYPE_REFERENCE) {
-      auto variable = static_cast<Variable*>(node->getData());
+      auto variable = static_cast<Variable const*>(node->getData());
 
       if (variable == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
       if (variable->needsRegister()) {
-        auto result = static_cast<std::unordered_set<Variable*>*>(data);
+        auto result = static_cast<std::unordered_set<Variable const*>*>(data);
         result->emplace(variable);
       }
     }

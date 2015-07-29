@@ -476,7 +476,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(2, indexNodes);
-      assertEqual(4, explain.stats.plansCreated);
+      assertEqual(2, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
@@ -515,7 +515,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(2, indexNodes);
-      assertEqual(2, explain.stats.plansCreated);
+      assertEqual(1, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
@@ -558,7 +558,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(3, indexNodes);
-      assertEqual(18, explain.stats.plansCreated);
+      assertEqual(4, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
@@ -597,10 +597,11 @@ function optimizerIndexesTestSuite () {
       };
 
       var indexNodes = 0, collectionNodes = 0;
+        
       walker(plan.nodes, function (node) {
         if (node.type === "IndexRangeNode") {
           ++indexNodes;
-          if (indexNodes < 5) {
+          if (indexNodes < 5 || indexNodes === 6) {
             assertEqual("hash", node.index.type);
           }
           else {
@@ -614,7 +615,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(20, indexNodes);
-      assertEqual(64, explain.stats.plansCreated);
+      assertEqual(32, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);

@@ -313,6 +313,16 @@ void RangeInfoMap::insert (std::string const& var,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief  insert an equality
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoMap::insert (std::string const& var, 
+                           std::string const& name, 
+                           RangeInfoBound const& bound) {
+  insert(RangeInfo(var, name, bound));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
 /// and attribute <name>, and otherwise intersection with existing range
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,15 +334,15 @@ void RangeInfoMap::insert (RangeInfo const& newRange) {
 
   if (oldMap == nullptr) {
     std::unordered_map<std::string, RangeInfo> newMap;
-    newMap.emplace(std::make_pair(newRange._attr, newRange));
-    _ranges.emplace(std::make_pair(newRange._var, newMap));
+    newMap.emplace(newRange._attr, newRange);
+    _ranges.emplace(newRange._var, newMap);
     return;
   }
   
   auto it = oldMap->find(newRange._attr); 
   
   if (it == oldMap->end()) {
-    oldMap->emplace(std::make_pair(newRange._attr, newRange));
+    oldMap->emplace(newRange._attr, newRange);
     return;
   }
 
@@ -340,6 +350,10 @@ void RangeInfoMap::insert (RangeInfo const& newRange) {
 
   oldRange.fuse(newRange);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief erase
+////////////////////////////////////////////////////////////////////////////////
 
 void RangeInfoMap::erase (RangeInfo* ri) {
   auto it = find(ri->_var);

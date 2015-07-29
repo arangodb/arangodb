@@ -146,6 +146,66 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
   return plan.release();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone the plan by recursively cloning starting from the root
+////////////////////////////////////////////////////////////////////////////////
+
+class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
+    ExecutionPlan* _plan;
+  
+  public:
+
+    bool success;
+
+    CloneNodeAdder (ExecutionPlan* plan) 
+      : _plan(plan), 
+        success(true) {
+    }
+    
+    ~CloneNodeAdder (){}
+
+    bool before (ExecutionNode* node) override final {
+      // We need to catch exceptions because the walk has to finish
+      // and either register the nodes or delete them.
+      try {
+        _plan->registerNode(node);
+      }
+      catch (...) {
+        success = false;
+      }
+      return false;
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone an existing execution plan
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionPlan* ExecutionPlan::clone () {
+  std::unique_ptr<ExecutionPlan> plan(new ExecutionPlan(_ast));
+
+  plan->_root = _root->clone(plan.get(), true, false);
+  plan->_nextId = _nextId;
+  plan->_appliedRules = _appliedRules;
+
+  CloneNodeAdder adder(plan.get());
+  plan->_root->walk(&adder);
+
+  if (! adder.success) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan");
+  }
+  // plan->findVarUsage();
+  // Let's not do it here, because supposedly the plan is modified as
+  // the very next thing anyway!
+
+  return plan.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan identical to this one
+///   keep the memory of the plan on the query object specified.
+////////////////////////////////////////////////////////////////////////////////
+
 ExecutionPlan* ExecutionPlan::clone (Query const& query) {
   std::unique_ptr<ExecutionPlan> otherPlan(new ExecutionPlan(query.ast()));
 
@@ -1510,7 +1570,7 @@ void ExecutionPlan::checkLinkage () {
 /// @brief helper struct for findVarUsage
 ////////////////////////////////////////////////////////////////////////////////
 
-struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
+struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
     std::unordered_set<Variable const*> _usedLater;
     std::unordered_set<Variable const*> _valid;
     std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
@@ -1541,11 +1601,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       en->invalidateVarUsage();
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
-      auto&& usedHere = en->getVariablesUsedHere();
-
-      for (auto& v : usedHere) {
-        _usedLater.emplace(v);
-      }
+      en->getVariablesUsedHere(_usedLater);
 
       return false;
     }
@@ -1697,61 +1753,6 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone the plan by recursively cloning starting from the root
-////////////////////////////////////////////////////////////////////////////////
-
-class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
-    ExecutionPlan* _plan;
-  
-  public:
-
-    bool success;
-
-    CloneNodeAdder (ExecutionPlan* plan) 
-      : _plan(plan), 
-        success(true) {
-    }
-    
-    ~CloneNodeAdder (){}
-
-    bool before (ExecutionNode* node) override final {
-      // We need to catch exceptions because the walk has to finish
-      // and either register the nodes or delete them.
-      try {
-        _plan->registerNode(node);
-      }
-      catch (...) {
-        success = false;
-      }
-      return false;
-    }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone an existing execution plan
-////////////////////////////////////////////////////////////////////////////////
-
-ExecutionPlan* ExecutionPlan::clone () {
-  std::unique_ptr<ExecutionPlan> plan(new ExecutionPlan(_ast));
-
-  plan->_root = _root->clone(plan.get(), true, false);
-  plan->_nextId = _nextId;
-  plan->_appliedRules = _appliedRules;
-
-  CloneNodeAdder adder(plan.get());
-  plan->_root->walk(&adder);
-
-  if (! adder.success) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan");
-  }
-  // plan->findVarUsage();
-  // Let's not do it here, because supposedly the plan is modified as
-  // the very next thing anyway!
-
-  return plan.release();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a plan from the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1860,7 +1861,7 @@ bool ExecutionPlan::isDeadSimple () const {
 /// @brief show an overview over the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-struct Shower : public WalkerWorker<ExecutionNode> {
+struct Shower final : public WalkerWorker<ExecutionNode> {
   int indent;
 
   Shower () 
