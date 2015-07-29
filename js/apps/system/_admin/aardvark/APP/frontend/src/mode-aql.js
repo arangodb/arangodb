@@ -88,7 +88,7 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|sort|limit|let|collect|asc|desc|if|in|into|insert|update|remove|replace|options|with|and|or|not"
+        "for|return|filter|sort|limit|let|collect|asc|desc|if|in|into|insert|update|remove|replace|options|with|and|or|not|distinct"
     );
 
     var builtinFunctions = (
@@ -104,7 +104,7 @@ var AqlHighlightRules = function() {
         "graph_absolute_betweenness|graph_absolute_closeness|graph_diameter|graph_radius|date_now|" +
         "date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +
         "date_minute|date_second|date_millisecond|fail|passthru|sleep|not_null|" +
-        "first_list|first_document|parse_identifier|skiplist|current_user|current_database|" +
+        "first_list|first_document|parse_identifier|current_user|current_database|" +
         "collections|document|union|union_distinct|intersection|flatten|" +
         "ltrim|rtrim|find_first|find_last|split|substitute|assemble|md5|sha1|random_token|AQL_LAST_ENTRY)"
     );
