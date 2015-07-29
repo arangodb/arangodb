@@ -38,7 +38,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/associative.h"
 #include "Basics/hashes.h"
-#include "Basics/locks.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
@@ -301,7 +300,6 @@ static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array,
 
   return TRI_EqualString(k, e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t));
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         VocShaper
