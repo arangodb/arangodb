@@ -232,7 +232,7 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
       // do we need to adjust the root node?
       auto const nodeType = en->getType();
 
-      if (en->getParents().empty()) {
+      if (! en->hasParent()) {
         // yes. found a new root!
         root = eb.get();
       }
@@ -250,9 +250,7 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(block != nullptr);
 
     // Now add dependencies:
-    std::vector<ExecutionNode*> const& deps = en->getDependenciesReference();
-
-    for (auto const& it : deps) {
+    for (auto const& it : en->getDependencies()) {
       auto it2 = cache.find(it);
       TRI_ASSERT(it2 != cache.end());
       block->addDependency(it2->second);
@@ -702,10 +700,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           throw;
         }
         
-        std::vector<ExecutionNode*> deps = (*en)->getDependenciesReference();
-
-        for (auto dep = deps.begin(); dep != deps.end(); ++dep) {
-          auto d = cache.find(*dep);
+        for (auto const& dep : (*en)->getDependencies()) {
+          auto d = cache.find(dep);
 
           if (d != cache.end()) {
             // add regular dependencies

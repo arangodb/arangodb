@@ -196,11 +196,32 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all dependencies, as a const reference
+/// @brief returns the first dependency, or a nullptr if none present
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ExecutionNode*> const& getDependenciesReference () const {
-          return _dependencies;
+        ExecutionNode* getFirstDependency () const {
+          if (_dependencies.empty()) {
+            return nullptr;
+          }
+          return _dependencies[0];
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node has a dependency
+////////////////////////////////////////////////////////////////////////////////
+
+        bool hasDependency () const {
+          return (_dependencies.size() == 1);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add the node dependencies to a vector
+////////////////////////////////////////////////////////////////////////////////
+        
+        void addDependencies (std::vector<ExecutionNode*>& result) const {
+          for (auto const& it : _dependencies) {
+            result.emplace_back(it);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,11 +233,21 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all parents, as a const reference
+/// @brief whether or not the node has a parent
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ExecutionNode*> const& getParentsReference () const {
-          return _parents;
+        bool hasParent () const {
+          return (_parents.size() == 1);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add the node parents to a vector
+////////////////////////////////////////////////////////////////////////////////
+        
+        void addParents (std::vector<ExecutionNode*>& result) const {
+          for (auto const& it : _parents) {
+            result.emplace_back(it);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
