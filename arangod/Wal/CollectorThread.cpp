@@ -39,7 +39,7 @@
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
@@ -684,11 +684,11 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
       }
       else if (walMarker->_type == TRI_WAL_MARKER_ATTRIBUTE) {
         // move the pointer to the attribute from WAL to the datafile
-        TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker), (void*) walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
+        document->getShaper()->moveMarker(const_cast<TRI_df_marker_t*>(marker), (void*) walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
       }
       else if (walMarker->_type == TRI_WAL_MARKER_SHAPE) {
         // move the pointer to the shape from WAL to the datafile
-        TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker), (void*) walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
+        document->getShaper()->moveMarker(const_cast<TRI_df_marker_t*>(marker), (void*) walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
       }
       else {
         // a marker we won't care about

@@ -32,8 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/locks.h"
-#include "ShapedJson/shaped-json.h"
-
+#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 
 ////////////////////////////////////////////////////////////////////////////////

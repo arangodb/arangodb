@@ -61,6 +61,7 @@
 #include "V8Server/V8Traverser.h"
 #include "VocBase/auth.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/VocShaper.h"
 #include "Wal/LogfileManager.h"
 
 #include <unicode/timezone.h>
@@ -1956,16 +1957,16 @@ class AttributeWeightCalculator {
 
   TRI_shape_pid_t _shapePid;
   double _defaultWeight;
-  TRI_shaper_t* _shaper;
+  VocShaper* _shaper;
 
   public: 
     AttributeWeightCalculator (string const& keyWeight,
                                double defaultWeight,
-                               TRI_shaper_t* shaper) : 
+                               VocShaper* shaper) : 
       _defaultWeight(defaultWeight),
       _shaper(shaper) {
 
-      _shapePid = _shaper->lookupAttributePathByName(_shaper, keyWeight.c_str());
+      _shapePid = _shaper->lookupAttributePathByName(keyWeight.c_str());
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1979,7 +1980,7 @@ class AttributeWeightCalculator {
 
       TRI_shape_sid_t sid;
       TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, edge.getDataPtr());
-      TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(_shaper, sid, _shapePid);
+      TRI_shape_access_t const* accessor = _shaper->findAccessor(sid, _shapePid);
       TRI_shaped_json_t shapedJson;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, edge.getDataPtr());
       TRI_shaped_json_t resultJson;

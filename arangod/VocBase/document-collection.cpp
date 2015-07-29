@@ -46,7 +46,6 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex2.h"
 #include "RestServer/ArangoServer.h"
-#include "ShapedJson/shape-accessor.h"
 #include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
@@ -55,8 +54,9 @@
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/server.h"
+#include "VocBase/shape-accessor.h"
 #include "VocBase/update-policy.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
@@ -249,7 +249,7 @@ triagens::arango::Index* TRI_document_collection_t::lookupIndex (TRI_idx_iid_t i
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-TRI_shaper_t* TRI_document_collection_t::getShaper () const {
+VocShaper* TRI_document_collection_t::getShaper () const {
   if (! _ditches.contains(triagens::arango::Ditch::TRI_DITCH_DOCUMENT)) {
     TransactionBase::assertSomeTrxInScope();
   }
@@ -1703,7 +1703,7 @@ static int OpenIteratorHandleShapeMarker (TRI_df_marker_t const* marker,
                                           open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
 
-  int res = TRI_InsertShapeVocShaper(document->getShaper(), marker, true);  // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
+  int res = document->getShaper()->insertShape(marker, true);  // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (state->_fid != datafile->_fid) {
@@ -1729,7 +1729,7 @@ static int OpenIteratorHandleAttributeMarker (TRI_df_marker_t const* marker,
                                               open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
 
-  int res = TRI_InsertAttributeVocShaper(document->getShaper(), marker, true);   // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
+  int res = document->getShaper()->insertAttribute(marker, true);   // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (state->_fid != datafile->_fid) {
@@ -2043,7 +2043,7 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InitBaseDocumentCollection (TRI_document_collection_t* document,
-                                       TRI_shaper_t* shaper) {
+                                       VocShaper* shaper) {
   TRI_ASSERT(document != nullptr);
 
   document->setShaper(shaper);
@@ -2084,7 +2084,7 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
   {
     TransactionBase trx(true);  // just to protect the following call
     if (document->getShaper() != nullptr) {  // PROTECTED by trx here
-      TRI_FreeVocShaper(document->getShaper());  // PROTECTED by trx here
+      delete document->getShaper();  // PROTECTED by trx here
     }
   }
 
@@ -2114,7 +2114,7 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool InitDocumentCollection (TRI_document_collection_t* document,
-                                    TRI_shaper_t* shaper) {
+                                    VocShaper* shaper) {
   TRI_ASSERT(document != nullptr);
 
   document->_cleanupIndexes     = false;
@@ -2307,16 +2307,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_shaper_t* shaper = TRI_CreateVocShaper(vocbase, document);
-
-  if (shaper == nullptr) {
-    LOG_ERROR("cannot create shaper");
-
-    TRI_CloseCollection(collection);
-    TRI_DestroyCollection(collection);
-    delete document;
-    return nullptr;
-  }
+  auto shaper = new VocShaper(TRI_UNKNOWN_MEM_ZONE, document);
 
   // create document collection and shaper
   if (false == InitDocumentCollection(document, shaper)) {
@@ -3045,16 +3036,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_shaper_t* shaper = TRI_CreateVocShaper(vocbase, document);
-
-  if (shaper == nullptr) {
-    LOG_ERROR("cannot create shaper");
-
-    TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection);
-
-    return nullptr;
-  }
+  auto shaper = new VocShaper(TRI_UNKNOWN_MEM_ZONE, document);
 
   // create document collection and shaper
   if (false == InitDocumentCollection(document, shaper)) {
@@ -3113,8 +3095,6 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
   TRI_ASSERT(document->getShaper() != nullptr);  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
-  TRI_InitVocShaper(document->getShaper());  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
-
   if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
     TRI_FillIndexesDocumentCollection(col, document);
   }
@@ -3148,7 +3128,7 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t* document,
   int res = TRI_CloseCollection(document);
 
   TransactionBase trx(true);  // just to protect the following call
-  TRI_FreeVocShaper(document->getShaper());  // ONLY IN CLOSECOLLECTION, PROTECTED by fake trx here
+  delete document->getShaper();  // ONLY IN CLOSECOLLECTION, PROTECTED by fake trx here
   document->setShaper(nullptr);
 
   return res;
@@ -3646,7 +3626,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
-                                     TRI_shaper_t* shaper,
+                                     VocShaper* shaper,
                                      std::vector<TRI_shape_pid_t>& pids,
                                      std::vector<std::string>& names,
                                      bool sorted,
@@ -3668,10 +3648,10 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
       TRI_shape_pid_t pid;
 
       if (create) {
-        pid = shaper->findOrCreateAttributePathByName(shaper, name.c_str());
+        pid = shaper->findOrCreateAttributePathByName(name.c_str());
       }
       else {
-        pid = shaper->lookupAttributePathByName(shaper, name.c_str());
+        pid = shaper->lookupAttributePathByName(name.c_str());
       }
 
       if (pid == 0) {
@@ -3701,10 +3681,10 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
       TRI_shape_pid_t pid;
     
       if (create) {
-        pid = shaper->findOrCreateAttributePathByName(shaper, name.c_str());
+        pid = shaper->findOrCreateAttributePathByName(name.c_str());
       }
       else {
-        pid = shaper->lookupAttributePathByName(shaper, name.c_str());
+        pid = shaper->lookupAttributePathByName(name.c_str());
       }
 
       if (pid == 0) {
@@ -3906,10 +3886,10 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
   TRI_shape_pid_t lon = 0;
   TRI_shape_pid_t loc = 0;
 
-  TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (! location.empty()) {
-    loc = shaper->findOrCreateAttributePathByName(shaper, location.c_str());
+    loc = shaper->findOrCreateAttributePathByName(location.c_str());
 
     if (loc == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -3918,7 +3898,7 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
   }
 
   if (! latitude.empty()) {
-    lat = shaper->findOrCreateAttributePathByName(shaper, latitude.c_str());
+    lat = shaper->findOrCreateAttributePathByName(latitude.c_str());
 
     if (lat == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -3927,7 +3907,7 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
   }
 
   if (! longitude.empty()) {
-    lon = shaper->findOrCreateAttributePathByName(shaper, longitude.c_str());
+    lon = shaper->findOrCreateAttributePathByName(longitude.c_str());
 
     if (lon == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4129,9 +4109,9 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 triagens::arango::Index* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* document,
                                                                 std::string const& location,
                                                                 bool geoJson) {
-  TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  TRI_shape_pid_t loc = shaper->lookupAttributePathByName(shaper, location.c_str());
+  TRI_shape_pid_t loc = shaper->lookupAttributePathByName(location.c_str());
 
   if (loc == 0) {
     return nullptr;
@@ -4157,10 +4137,10 @@ triagens::arango::Index* TRI_LookupGeoIndex1DocumentCollection (TRI_document_col
 triagens::arango::Index* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* document,
                                                                 std::string const& latitude,
                                                                 std::string const& longitude) {
-  TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  TRI_shape_pid_t lat = shaper->lookupAttributePathByName(shaper, latitude.c_str());
-  TRI_shape_pid_t lon = shaper->lookupAttributePathByName(shaper, longitude.c_str());
+  TRI_shape_pid_t lat = shaper->lookupAttributePathByName(latitude.c_str());
+  TRI_shape_pid_t lon = shaper->lookupAttributePathByName(longitude.c_str());
 
   if (lat == 0 || lon == 0) {
     return nullptr;
@@ -4821,7 +4801,7 @@ CountingAggregation* TRI_AggregateBySingleAttribute (
 
   CountingAggregation* agg = new CountingAggregation();
 
-  TRI_shaper_t* shaper = document->getShaper();
+  auto shaper = document->getShaper();
 
   // do a full scan
   auto primaryIndex = document->primaryIndex()->internals();
@@ -4833,8 +4813,7 @@ CountingAggregation* TRI_AggregateBySingleAttribute (
       TRI_doc_mptr_t* m = *ptr;
       TRI_shape_sid_t sid;
       TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, m->getDataPtr());
-      TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(shaper, 
-                                                                     sid, pid);
+      TRI_shape_access_t const* accessor = shaper->findAccessor(sid, pid);
       TRI_shaped_json_t shapedJson;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, m->getDataPtr());
       TRI_shaped_json_t resultJson;

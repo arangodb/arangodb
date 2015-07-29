@@ -35,9 +35,9 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/datafile.h"
-#include "ShapedJson/shaped-json.h"
+#include "VocBase/shaped-json.h"
+#include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
 ////////////////////////////////////////////////////////////////////////////////

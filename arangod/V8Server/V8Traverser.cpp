@@ -38,6 +38,8 @@
 #include "V8Server/v8-vocindex.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/VocShaper.h"
+
 #include <v8.h>
 
 using namespace std;
@@ -228,7 +230,7 @@ void BasicOptions::addVertexFilter (v8::Isolate* isolate,
                                     v8::Handle<v8::Value> const& example,
                                     ExplicitTransaction* trx,
                                     TRI_transaction_collection_t* col,
-                                    TRI_shaper_t* shaper,
+                                    VocShaper* shaper,
                                     TRI_voc_cid_t const& cid,
                                     string& errorMessage) {
 
@@ -290,7 +292,7 @@ bool BasicOptions::matchesVertex (VertexId const& v) const {
 
 void BasicOptions::addEdgeFilter (v8::Isolate* isolate,
                                   v8::Handle<v8::Value> const& example,
-                                  TRI_shaper_t* shaper,
+                                  VocShaper* shaper,
                                   TRI_voc_cid_t const& cid,
                                   string& errorMessage) {
   useEdgeFilter = true;
@@ -314,7 +316,7 @@ void BasicOptions::addEdgeFilter (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 void BasicOptions::addEdgeFilter (Json const& example,
-                                  TRI_shaper_t* shaper,
+                                  VocShaper* shaper,
                                   TRI_voc_cid_t const& cid,
                                   CollectionNameResolver const* resolver) {
   useEdgeFilter = true;
