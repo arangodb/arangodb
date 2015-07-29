@@ -1753,7 +1753,7 @@ static void AddDitch (ExplicitTransaction* trx,
   auto ditch = trx->orderDitch(col);
 
   if (ditch == nullptr) {
-    throw TRI_ERROR_OUT_OF_MEMORY;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   ditches.emplace(cid, CollectionDitchInfo(ditch, col));
@@ -1791,7 +1791,7 @@ static ExplicitTransaction* BeginTransaction (TRI_vocbase_t* vocbase,
 
   if (res != TRI_ERROR_NO_ERROR) {
     trx->finish(res);
-    throw res;
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   // Get all ditches at once
@@ -1830,8 +1830,9 @@ static v8::Handle<v8::Value> PathIdsToV8 (v8::Isolate* isolate,
     vector<TRI_voc_cid_t> writeCollections;
     unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
 
-    std::unique_ptr<ExplicitTransaction> trx(BeginTransaction(vocbase, readCollections,
-                                                              writeCollections, resolver, ditches));
+    std::unique_ptr<ExplicitTransaction> trx;
+    trx.reset(BeginTransaction(vocbase, readCollections,
+                               writeCollections, resolver, ditches));
     for (uint32_t j = 0;  j < vn;  ++j) {
       vertices->Set(j, VertexIdToData(isolate, resolver, trx.get(), ditches, p.vertices[j]));
     }
@@ -1881,8 +1882,9 @@ static v8::Handle<v8::Value> PathIdsToV8 (v8::Isolate* isolate,
     vector<TRI_voc_cid_t> writeCollections;
     unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
 
-    std::unique_ptr<ExplicitTransaction> trx(BeginTransaction(vocbase, readCollections,
-                                                              writeCollections, resolver, ditches));
+    std::unique_ptr<ExplicitTransaction> trx;
+    trx.reset(BeginTransaction(vocbase, readCollections,
+                               writeCollections, resolver, ditches));
     for (uint32_t j = 0;  j < vn;  ++j) {
       vertices->Set(j, VertexIdToData(isolate, resolver, trx.get(), ditches, p.vertices[j]));
     }
@@ -2008,14 +2010,14 @@ static VertexId IdStringToVertexId (CollectionNameResolver const* resolver,
   char const* str = vertex.c_str();
 
   if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    throw TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
   string const collectionName = vertex.substr(0, split);
   auto coli = resolver->getCollectionStruct(collectionName);
 
   if (coli == nullptr) {
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   return VertexId(coli->_cid, const_cast<char*>(str + split + 1));
@@ -2148,7 +2150,14 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
   // Start the transaction and order ditches
   unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
   
-  std::unique_ptr<ExplicitTransaction> trx(BeginTransaction(vocbase, readCollections, writeCollections, resolver, ditches));
+  std::unique_ptr<ExplicitTransaction> trx;
+
+  try {
+    trx.reset(BeginTransaction(vocbase, readCollections,
+                               writeCollections, resolver, ditches));
+  } catch (Exception& e) {
+    TRI_V8_THROW_EXCEPTION(e.code());
+  }
   
   vector<EdgeCollectionInfo*> edgeCollectionInfos;
   vector<VertexCollectionInfo*> vertexCollectionInfos;
@@ -2205,10 +2214,10 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       try {
         opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(), errorMessage);
       } 
-      catch (int e) {
+      catch (Exception& e) {
         // ELEMENT not found is expected, if there is no shape of this type in this collection
-        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
-          TRI_V8_THROW_EXCEPTION(e);
+        if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          TRI_V8_THROW_EXCEPTION(e.code());
         }
       }
     }
@@ -2220,10 +2229,10 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       try {
         opts.addVertexFilter(isolate, vertexExample, trx.get(), it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
       } 
-      catch (int e) {
+      catch (Exception& e) {
         // ELEMENT not found is expected, if there is no shape of this type in this collection
-        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
-          TRI_V8_THROW_EXCEPTION(e);
+        if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          TRI_V8_THROW_EXCEPTION(e.code());
         }
       }
     }
@@ -2233,10 +2242,10 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     opts.start = IdStringToVertexId(resolver, startVertex);
     opts.end   = IdStringToVertexId(resolver, targetVertex);
   } 
-  catch (int e) {
+  catch (Exception& e) {
     // Id string might have illegal collection name
-    trx->finish(e);
-    TRI_V8_THROW_EXCEPTION(e);
+    trx->finish(e.code());
+    TRI_V8_THROW_EXCEPTION(e.code());
   }
   
   if (opts.useVertexFilter || opts.useEdgeFilter || opts.useWeight) {
@@ -2249,9 +2258,9 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
         opts
       );
     } 
-    catch (int e) {
-      trx->finish(e);
-      TRI_V8_THROW_EXCEPTION(e);
+    catch (Exception& e) {
+      trx->finish(e.code());
+      TRI_V8_THROW_EXCEPTION(e.code());
     }
 
     // Lift the result to v8
@@ -2269,8 +2278,13 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     // Adding additional locks on vertex collections at this point to the transaction
     // would cause dead-locks.
     // Will be fixed automatically with new MVCC version.
-    auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
-    TRI_V8_RETURN(result);
+    try {
+      auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
+      TRI_V8_RETURN(result);
+    } 
+    catch (Exception& e) {
+      TRI_V8_THROW_EXCEPTION(e.code());
+    }
   } else {
     // No Data reading required for this path. Use shortcuts.
     // Compute the path
@@ -2282,9 +2296,9 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
         opts
       );
     } 
-    catch (int e) {
-      trx->finish(e);
-      TRI_V8_THROW_EXCEPTION(e);
+    catch (Exception& e) {
+      trx->finish(e.code());
+      TRI_V8_THROW_EXCEPTION(e.code());
     }
 
     // Lift the result to v8
@@ -2302,8 +2316,13 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     // Adding additional locks on vertex collections at this point to the transaction
     // would cause dead-locks.
     // Will be fixed automatically with new MVCC version.
-    auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
-    TRI_V8_RETURN(result);
+      try {
+        auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
+        TRI_V8_RETURN(result);
+      } 
+      catch (Exception& e) {
+        TRI_V8_THROW_EXCEPTION(e.code());
+      }
   }
   TRI_V8_TRY_CATCH_END
 }
@@ -2469,7 +2488,13 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
   // Start the transaction
-  std::unique_ptr<ExplicitTransaction> trx(BeginTransaction(vocbase, readCollections, writeCollections, resolver, ditches));
+  std::unique_ptr<ExplicitTransaction> trx;
+  try {
+    trx.reset(BeginTransaction(vocbase, readCollections,
+                               writeCollections, resolver, ditches));
+  } catch (Exception& e) {
+    TRI_V8_THROW_EXCEPTION(e.code());
+  }
   
   vector<EdgeCollectionInfo*> edgeCollectionInfos;
   vector<VertexCollectionInfo*> vertexCollectionInfos;
@@ -2521,10 +2546,10 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       try {
         opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(), errorMessage);
       } 
-      catch (int e) {
+      catch (Exception& e) {
         // ELEMENT not found is expected, if there is no shape of this type in this collection
-        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
-          TRI_V8_THROW_EXCEPTION(e);
+        if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          TRI_V8_THROW_EXCEPTION(e.code());
         }
       }
     }
@@ -2536,10 +2561,10 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
       try {
         opts.addVertexFilter(isolate, vertexExample, trx.get(), it->getCollection(), it->getShaper(), it->getCid(), errorMessage);
       } 
-      catch (int e) {
+      catch (Exception& e) {
         // ELEMENT not found is expected, if there is no shape of this type in this collection
-        if (e != TRI_RESULT_ELEMENT_NOT_FOUND) {
-          TRI_V8_THROW_EXCEPTION(e);
+        if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          TRI_V8_THROW_EXCEPTION(e.code());
         }
       }
     }
@@ -2549,10 +2574,10 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     try {
       opts.start = IdStringToVertexId(resolver, startVertex);
     } 
-    catch (int e) {
+    catch (Exception& e) {
       // Id string might have illegal collection name
-      trx->finish(e);
-      TRI_V8_THROW_EXCEPTION(e);
+      trx->finish(e.code());
+      TRI_V8_THROW_EXCEPTION(e.code());
     }
     try {
       TRI_RunNeighborsSearch(
@@ -2561,9 +2586,9 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
         neighbors
       );
     } 
-    catch (int e) {
-      trx->finish(e);
-      TRI_V8_THROW_EXCEPTION(e);
+    catch (Exception& e) {
+      trx->finish(e.code());
+      TRI_V8_THROW_EXCEPTION(e.code());
     }
   }
 
