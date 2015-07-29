@@ -27,15 +27,14 @@
 /// @author Copyright 2014-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHAPED_JSON_LEGENDS_H
-#define ARANGODB_SHAPED_JSON_LEGENDS_H 1
+#ifndef ARANGODB_VOCBASE_LEGENDS_H
+#define ARANGODB_VOCBASE_LEGENDS_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/structures.h"
 #include "Basics/StringBuffer.h"
-#include "ShapedJson/shaped-json.h"
-#include "ShapedJson/json-shaper.h"
+#include "VocBase/shaped-json.h"
+#include "VocBase/Shaper.h"
 
 namespace triagens {
   namespace basics {
@@ -49,7 +48,10 @@ namespace triagens {
       TRI_shape_size_t offset;
 
       AttributeId (TRI_shape_aid_t a, TRI_shape_size_t o)
-        : aid(a), offset(o) {}
+        : aid(a), 
+          offset(o) {
+
+      }
 
     };
 
@@ -64,10 +66,13 @@ namespace triagens {
       TRI_shape_size_t size;
 
       Shape (TRI_shape_sid_t sid, TRI_shape_size_t o, TRI_shape_size_t siz)
-        : sid(sid), offset(o), size(siz) {}
+        : sid(sid), 
+          offset(o), 
+          size(siz) {
+
+      }
 
     };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a legend for one or more shaped json objects
@@ -87,8 +92,9 @@ namespace triagens {
 /// @brief constructor, taking a shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-        JsonLegend (TRI_shaper_t* shaper)
-          : _shaper(shaper), _att_data(TRI_UNKNOWN_MEM_ZONE),
+        JsonLegend (Shaper* shaper)
+          : _shaper(shaper), 
+            _att_data(TRI_UNKNOWN_MEM_ZONE),
             _shape_data(TRI_UNKNOWN_MEM_ZONE) {
         }
 
@@ -97,13 +103,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~JsonLegend () {
-        };
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear all data and register a new shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-        void reset (TRI_shaper_t* shaper) {
+        void reset (Shaper* shaper) {
           clear();
           _shaper = shaper;
         }
@@ -125,8 +131,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int addShape (TRI_shaped_json_t const* sh_json) {
-          return addShape(sh_json->_sid, sh_json->_data.data,
-                          sh_json->_data.length);
+          return addShape(sh_json->_sid, sh_json->_data.data, sh_json->_data.length);
         }
 
         int addShape (TRI_shape_sid_t sid, TRI_blob_t const* blob) {
@@ -153,7 +158,7 @@ namespace triagens {
 /// @brief the underlying shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_shaper_t* _shaper;
+        Shaper* _shaper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to sort attribute ID table by attribute ID
@@ -163,7 +168,8 @@ namespace triagens {
           bool operator() (AttributeId const& a, AttributeId const& b) {
             return a.aid < b.aid;
           }
-        } AttributeComparerObject;
+        } 
+        AttributeComparerObject;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to sort shapes by shape ID
@@ -215,42 +221,11 @@ namespace triagens {
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief some functions to let function pointers point to
-////////////////////////////////////////////////////////////////////////////////
-
-    static TRI_shape_aid_t FailureFunction (TRI_shaper_t*, char const*) {
-      TRI_ASSERT(false);
-      return 0;
-    }
-
-    static TRI_shape_t const* FailureFunction (TRI_shaper_t*, TRI_shape_t*, bool) {
-      TRI_ASSERT(false);
-      return nullptr;
-    }
-
-    static TRI_shape_path_t const* FailureFunction2 (TRI_shaper_t*, TRI_shape_pid_t) {
-      TRI_ASSERT(false);
-      return nullptr;
-    }
-
-    static TRI_shape_pid_t FailureFunction2 (TRI_shaper_t*, char const*) {
-      TRI_ASSERT(false);
-      return 0;
-    }
-
-    static char const* lookupAttributeIdFunction (TRI_shaper_t* s,
-                                                  TRI_shape_aid_t a);
-
-    static TRI_shape_t const* lookupShapeIdFunction (TRI_shaper_t* s,
-                                                     TRI_shape_sid_t x);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a class to read a legend
 ////////////////////////////////////////////////////////////////////////////////
 
-
-    class LegendReader : public TRI_shaper_t {
-        // This inherits from TRI_shaper_t, note however, that at least
+    class LegendReader : public Shaper {
+        // This inherits from Shaper, note however, that at least
         // for the time being it only implements lookupAttributeId and
         // lookupShapeId.
 
@@ -261,7 +236,10 @@ namespace triagens {
         Shape const* _shapes;
 
       public:
-        LegendReader (char const* l) : _legend(l) {
+        LegendReader (char const* l) 
+          : Shaper(),
+            _legend(l) {
+
           auto p = reinterpret_cast<TRI_shape_size_t const*>(l);
           _numberAttributes = *p++;
           _aids = reinterpret_cast<AttributeId const*>(p);
@@ -269,23 +247,13 @@ namespace triagens {
                               (_aids + _numberAttributes);
           _numberShapes = *p++;
           _shapes = reinterpret_cast<Shape const*>(p);
-
-          // Now disable unimplemented methods of the base class:
-          findOrCreateAttributeByName = FailureFunction;
-          lookupAttributeByName = FailureFunction;
-          lookupAttributeId = lookupAttributeIdFunction;
-          findShape = FailureFunction;
-          lookupShapeId = lookupShapeIdFunction;
-          lookupAttributePathByPid = FailureFunction2;
-          findOrCreateAttributePathByName = FailureFunction2;
-          lookupAttributePathByName = FailureFunction2;
         }
 
         ~LegendReader () {
           // nothing to do
         }
 
-        char const* lookupAttributeIdMethod (TRI_shape_aid_t const aid) const {
+        char const* lookupAttributeId (TRI_shape_aid_t aid) override final {
           // binary search in AttributeIds
           TRI_shape_size_t low = 0;
           TRI_shape_size_t high = _numberAttributes;
@@ -300,7 +268,7 @@ namespace triagens {
             // Once low == high, we have either found it or found nothing
             mid = (low + high) / 2;
             if (_aids[mid].aid < aid) {
-              low = mid+1;
+              low = mid + 1;
             }
             else {  // Note: aids[mid].aid == aid possible,
                     //       thus ind == high possible as well
@@ -311,15 +279,13 @@ namespace triagens {
               _aids[low].aid == aid) {
             return _legend + _aids[low].offset;
           }
-          else {
-            return nullptr;
-          }
+          return nullptr;
         }
 
-        TRI_shape_t const* lookupShapeIdMethod (TRI_shape_sid_t const sid) const {
+        TRI_shape_t const* lookupShapeId (TRI_shape_sid_t sid) override final {
           // Is it a builtin basic one?
-          if (sid < TRI_FirstCustomShapeIdShaper()) {
-            return TRI_LookupSidBasicShapeShaper(sid);
+          if (sid < Shaper::firstCustomShapeId()) {
+            return Shaper::lookupSidBasicShape(sid);
           }
 
           // binary search in Shapes
@@ -336,7 +302,7 @@ namespace triagens {
             // Once low == high, we have either found it or found nothing
             mid = (low + high) / 2;
             if (_shapes[mid].sid < sid) {
-              low = mid+1;
+              low = mid + 1;
             }
             else {  // Note: _shapes[mid].sid == sid possible,
                     //       thus ind == high possible as well
@@ -348,24 +314,10 @@ namespace triagens {
             return reinterpret_cast<TRI_shape_t const*>
                                    (_legend + _shapes[low].offset);
           }
-          else {
-            return nullptr;
-          }
+          return nullptr;
         }
 
     };
-
-    static char const* lookupAttributeIdFunction (TRI_shaper_t* s,
-                                                         TRI_shape_aid_t a) {
-      LegendReader* me = static_cast<LegendReader*>(s);
-      return me->lookupAttributeIdMethod(a);
-    }
-
-    static TRI_shape_t const* lookupShapeIdFunction (TRI_shaper_t* s,
-                                                     TRI_shape_sid_t x) {
-      LegendReader* me = static_cast<LegendReader*>(s);
-      return me->lookupShapeIdMethod(x);
-    }
 
   }
 }

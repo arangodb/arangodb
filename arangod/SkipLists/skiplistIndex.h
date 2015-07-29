@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/SkipList.h"
 #include "IndexOperators/index-operator.h"
-#include "ShapedJson/shaped-json.h"
+#include "VocBase/shaped-json.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

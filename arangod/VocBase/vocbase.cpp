@@ -609,7 +609,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   WRITE_LOCKER(vocbase->_collectionsLock);
 
   try {
-    // reserve room for collection
+    // reserve room for the new collection
     vocbase->_collections.reserve(vocbase->_collections.size() + 1);
     vocbase->_deadCollections.reserve(vocbase->_deadCollections.size() + 1);
   }
@@ -1748,15 +1748,11 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 
   TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
 
-  char* name;
   if (found == nullptr) {
-    name = nullptr;
-  }
-  else {
-    name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found->_name);
+    return nullptr;
   }
 
-  return name;
+  return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1765,7 +1761,7 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 
 TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase,
                                                       char const* name) {
-  const char c = *name;
+  char const c = *name;
 
   // if collection name is passed as a stringified id, we'll use the lookupbyid function
   // this is safe because collection names must not start with a digit
@@ -1824,7 +1820,6 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
   }
   else {
     // collection not found. now create it
-    TRI_vocbase_col_t* collection;
     TRI_col_info_t parameter;
 
     TRI_InitCollectionInfo(vocbase,
@@ -1833,7 +1828,8 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
                            (TRI_col_type_e) type,
                            (TRI_voc_size_t) vocbase->_settings.defaultMaximalSize,
                            nullptr);
-    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, true);
+
+    TRI_vocbase_col_t* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, true);
     TRI_FreeCollectionInfoOptions(&parameter);
 
     return collection;
@@ -2095,6 +2091,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   
+  TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+  
   if (res == TRI_ERROR_NO_ERROR && writeMarker) {
     // now log the operation
     try {
@@ -2118,8 +2116,6 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
       LOG_WARNING("could not save collection rename marker in log: %s", TRI_errno_string(res));
     }
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
   return res;
 }
@@ -2226,7 +2222,7 @@ void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase,
 bool TRI_IsDeletedVocBase (TRI_vocbase_t* vocbase) {
   auto refCount = vocbase->_refCount.load();
   // if the stored value is odd, it means the database has been marked as deleted
-  return (refCount % 1 == 1);
+  return (refCount % 2 == 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2239,7 +2235,7 @@ bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
   // marked as deleted
   auto oldValue = vocbase->_refCount.fetch_add(2, std::memory_order_release);
   // check if the deleted bit is set
-  return (oldValue % 1 != 1); 
+  return (oldValue % 2 != 1); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2250,7 +2246,7 @@ void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
   // decrease the reference counter by 2. 
   // this is because we use odd values to indicate that the database has been
   // marked as deleted
-  #ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   auto oldValue = vocbase->_refCount.fetch_sub(2, std::memory_order_release);
   TRI_ASSERT(oldValue >= 2);
 #else
@@ -2265,7 +2261,7 @@ void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
 bool TRI_DropVocBase (TRI_vocbase_t* vocbase) {
   auto oldValue = vocbase->_refCount.fetch_or(1, std::memory_order_release);
   // if the previously stored value is odd, it means the database has already been marked as deleted
-  return (oldValue % 1 == 0);
+  return (oldValue % 2 == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

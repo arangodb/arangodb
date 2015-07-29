@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @brief dispatcher queue
 ///
 /// @file
@@ -28,15 +28,13 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #include "DispatcherQueue.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/logging.h"
 #include "Dispatcher/DispatcherThread.h"
+#include "Dispatcher/Job.h"
 
 using namespace std;
 using namespace triagens::rest;
@@ -51,34 +49,42 @@ using namespace triagens::rest;
 
 DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
                                   Dispatcher* dispatcher,
-                                  std::string const& name,
+                                  size_t id,
                                   Dispatcher::newDispatcherThread_fptr creator,
-                                  void* threadData,
                                   size_t nrThreads,
                                   size_t maxSize)
-  : _name(name),
-    _threadData(threadData),
-    _accessQueue(),
-    _readyJobs(),
-    _runningJobs(),
+  : _id(id),
+    _nrThreads(nrThreads),
     _maxSize(maxSize),
-    _stopping(0),
+    _waitLock(),
+    _readyJobs(maxSize),
+    _hazardLock(),
+    _hazardPointer(nullptr),
+    _stopping(false),
+    _threadsLock(),
     _startedThreads(),
-    _stoppedThreads(),
-    _nrStarted(0),
-    _nrUp(0),
+    _stoppedThreads(0),
     _nrRunning(0),
     _nrWaiting(0),
-    _nrStopped(0),
     _nrBlocked(0),
-    _nrThreads(nrThreads),
     _lastChanged(0.0),
     _gracePeriod(5.0),
     _scheduler(scheduler),
     _dispatcher(dispatcher),
     createDispatcherThread(creator),
     _affinityCores(),
-    _affinityPos(0) {
+    _affinityPos(0),
+    _jobs(),
+    _jobPositions(_maxSize) {
+
+  // keep a list of all jobs
+  _jobs = new atomic<Job*>[maxSize];
+
+  // and a list of positions into this array
+  for (size_t i = 0;  i < maxSize;  ++i) {
+    _jobPositions.push(i);
+    _jobs[i] = nullptr;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,10 +92,13 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
 ////////////////////////////////////////////////////////////////////////////////
 
 DispatcherQueue::~DispatcherQueue () {
-  if (_stopping == 0) {
-    beginShutdown();
-  }
+  beginShutdown();
+  delete[] _jobs;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -99,36 +108,65 @@ DispatcherQueue::~DispatcherQueue () {
 /// @brief adds a job
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DispatcherQueue::addJob (Job* job) {
+int DispatcherQueue::addJob (Job* job) {
   TRI_ASSERT(job != nullptr);
 
-  CONDITION_LOCKER(guard, _accessQueue);
+  // get next free slot, return false is queue is full
+  size_t pos;
 
-  // queue is full
-  if (_readyJobs.size() >= _maxSize) {
-    return false;
+  if (! _jobPositions.pop(pos)) {
+    return TRI_ERROR_QUEUE_FULL;
+  }
+  
+  _jobs[pos] = job;
+
+  // set the position inside the job
+  job->setQueuePosition(pos);
+
+  // add the job to the list of ready jobs
+  bool ok = _readyJobs.push(job);
+
+  if (! ok) {
+    LOG_WARNING("cannot insert job into ready queue, giving up");
+
+    removeJob(job);
+    delete job;
+
+    return TRI_ERROR_QUEUE_FULL;
   }
 
-  // if all threads are blocked, we start new threads
-  if (0 == _nrWaiting && _nrRunning + _nrStarted <= _nrBlocked) {
+  // wake up the _dispatcher queue threads - only if someone is waiting
+  if (0 < _nrWaiting) {
+    _waitLock.signal();
+  }
+
+  // if all threads are blocked, start a new one - we ignore race conditions
+  else if (notEnoughThreads()) {
     startQueueThread();
   }
 
-  // add the job to the list of ready jobs
-  try {
-    _readyJobs.emplace_back(job);
-  }
-  catch (...) { 
-    // could not add job
-    return false;
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a job
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherQueue::removeJob (Job* job) {
+  size_t pos = job->queuePosition();
+
+  // clear the entry
+  _jobs[pos] = nullptr;
+
+  // wait until we are done with the job in another thread
+  while (_hazardPointer == job) {
+    usleep(1000);
   }
 
-  // wake up the _dispatcher queue threads
-  if (0 < _nrWaiting) {
-    guard.broadcast();
-  }
+  // reuse the position
+  _jobPositions.push(pos);
 
-  return true;
+  // the caller will now delete the job
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,46 +178,44 @@ bool DispatcherQueue::cancelJob (uint64_t jobId) {
     return false;
   }
 
-  CONDITION_LOCKER(guard, _accessQueue);
+  // and wait until we get set the hazard pointer
+  MUTEX_LOCKER(_hazardLock);
 
-  // job is already running, try to cancel it
-  for (auto& job : _runningJobs) {
-    if (job->id() == jobId) {
-      job->cancel(true);
-      return true;
-    }
-  }
+  // first find the job
+  Job* job = nullptr;
 
-  // maybe there is a waiting job with this it, try to remove it
-  for (list<Job*>::iterator it = _readyJobs.begin();  it != _readyJobs.end();  ++it) {
-    Job* job = *it;
+  for (size_t i = 0;  i < _maxSize;  ++i) {
+    while (true) {
+      job = _jobs[i];
 
-    if (job->id() == jobId) {
-      bool canceled = job->cancel(false);
-
-      if (canceled) {
-        try {
-          job->setDispatcherThread(nullptr);
-          job->cleanup();
-        }
-        catch (...) {
-#ifdef TRI_HAVE_POSIX_THREADS
-          if (_stopping != 0) {
-            LOG_WARNING("caught cancellation exception during cleanup");
-            throw;
-          }
-#endif
-
-          LOG_WARNING("caught error while cleaning up!");
-        }
-
-        _readyJobs.erase(it);
+      if (job == nullptr) {
+        break;
       }
 
+      _hazardPointer = job;
+      Job* job2 = _jobs[i];
+
+      if (job == job2) {
+        break;
+      }
+    }
+
+    if (job != nullptr && job->id() == jobId) {
+
+      // cancel the job
+      try {
+        job->cancel();
+      }
+      catch (...) {
+        job = nullptr;
+      }
+  
+      _hazardPointer = nullptr;
       return true;
     }
   }
 
+  _hazardPointer = nullptr;
   return false;
 }
 
@@ -187,43 +223,18 @@ bool DispatcherQueue::cancelJob (uint64_t jobId) {
 /// @brief indicates that thread is doing a blocking operation
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::blockThread (DispatcherThread* thread) {
-  CONDITION_LOCKER(guard, _accessQueue);
-
-  _nrBlocked++;
+void DispatcherQueue::blockThread () {
+  ++_nrBlocked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates that thread has resumed work
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::unblockThread (DispatcherThread* thread) {
-  CONDITION_LOCKER(guard, _accessQueue);
-
-  if (_nrBlocked == 0) {
-    LOG_ERROR("unblocking too many threads");
+void DispatcherQueue::unblockThread () {
+  if (--_nrBlocked < 0) {
+    LOG_ERROR("internal error, unblocking too many threads");
   }
-  else {
-    _nrBlocked--;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a queue
-////////////////////////////////////////////////////////////////////////////////
-
-bool DispatcherQueue::start () {
-  CONDITION_LOCKER(guard, _accessQueue);
-
-  for (size_t i = 0;  i < _nrThreads;  ++i) {
-    bool ok = startQueueThread();
-
-    if (! ok) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,60 +242,92 @@ bool DispatcherQueue::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherQueue::beginShutdown () {
-  if (_stopping != 0) {
+  if (_stopping) {
     return;
   }
 
-  LOG_DEBUG("beginning shutdown sequence of dispatcher queue '%s'", _name.c_str());
+  LOG_DEBUG("beginning shutdown sequence of dispatcher queue '%lu'", (unsigned long) _id);
 
   // broadcast the we want to stop
   size_t const MAX_TRIES = 10;
 
-  _stopping = 1;
+  _stopping = true;
   
-  // kill all jobs in the queue that were not yet executed
+  // kill all jobs in the queue
   {
-    CONDITION_LOCKER(guard, _accessQueue);
+    Job* job = nullptr;
     
-    for (auto it = _readyJobs.begin();  it != _readyJobs.end();  ++it) {
-      Job* job = *it;
-
-      bool canceled = job->cancel(false);
-
-      if (canceled) {
+    while(_readyJobs.pop(job)) {
+      if (job != nullptr) {
         try {
-          job->setDispatcherThread(nullptr);
-          job->cleanup();
+          job->cancel();
         }
         catch (...) {
         }
+
+        removeJob(job);
+        delete job;
       }
     }
-    _readyJobs.clear();
   }
 
+  // now try to get rid of the remaining jobs
+  MUTEX_LOCKER(_hazardLock);
 
-  for (size_t count = 0;  count < MAX_TRIES;  ++count) {
-    {
-      CONDITION_LOCKER(guard, _accessQueue);
+  for (size_t i = 0;  i < _maxSize;  ++i) {
+    Job* job = nullptr;
 
-      LOG_TRACE("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads",
-                _name.c_str(),
-                (int) _nrRunning,
-                (int) _nrWaiting);
+    while (true) {
+      job = _jobs[i];
 
-      if (0 == _nrRunning + _nrWaiting) {
+      if (job == nullptr) {
         break;
       }
 
+      _hazardPointer = job;
+      Job* job2 = _jobs[i];
+
+      if (job == job2) {
+        break;
+      }
+    }
+
+    if (job != nullptr) {
+      try {
+        job->cancel();
+      }
+      catch (...) {
+      }
+
+      _hazardPointer = nullptr;
+
+      removeJob(job);
+    }
+  }
+
+  _hazardPointer = nullptr;
+
+  // wait for threads to shutdown
+  for (size_t count = 0;  count < MAX_TRIES;  ++count) {
+    LOG_TRACE("shutdown sequence dispatcher queue '%lu', status: %d running threads, %d waiting threads",
+              (unsigned long) _id,
+              (int) _nrRunning,
+              (int) _nrWaiting);
+
+    if (0 == _nrRunning + _nrWaiting) {
+      break;
+    }
+
+    {
+      CONDITION_LOCKER(guard, _waitLock);
       guard.broadcast();
     }
 
-    usleep(10000);
+    usleep(10 * 1000);
   }
 
-  LOG_DEBUG("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads",
-            _name.c_str(),
+  LOG_DEBUG("shutdown sequence dispatcher queue '%lu', status: %d running threads, %d waiting threads",
+            (unsigned long) _id,
             (int) _nrRunning,
             (int) _nrWaiting);
 }
@@ -294,55 +337,48 @@ void DispatcherQueue::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherQueue::shutdown () {
-  LOG_DEBUG("shutting down the dispatcher queue '%s'", _name.c_str());
+  LOG_DEBUG("shutting down the dispatcher queue '%lu'", (unsigned long) _id);
 
   // try to stop threads forcefully
-  set<DispatcherThread*> threads;
-
   {
-    CONDITION_LOCKER(guard, _accessQueue);
+    MUTEX_LOCKER(_threadsLock);
 
-    threads.insert(_startedThreads.begin(), _startedThreads.end());
-    threads.insert(_stoppedThreads.begin(), _stoppedThreads.end());
+    for (auto& it : _startedThreads) {
+      it->stop();
+    }
   }
 
-  for (auto& it : threads) {
-    it->stop();
+  // wait a little while
+  usleep(100 * 1000);
+
+  // delete all old threads
+  deleteOldThreads();
+
+  // and butcher the remaining threads
+  {
+    MUTEX_LOCKER(_threadsLock);
+
+    for (auto& it : _startedThreads) {
+      delete it;
+    }
   }
 
-  usleep(10000);
+  // and delete old jobs
+  for (size_t i = 0;  i < _maxSize;  ++i) {
+    Job* job = _jobs[i];
 
-  for (auto& it : threads) {
-    delete it;
+    if (job != nullptr) {
+      delete job;
+    }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the dispatcher thread is up and running
-////////////////////////////////////////////////////////////////////////////////
-
-bool DispatcherQueue::isStarted () {
-  CONDITION_LOCKER(guard, _accessQueue);
-
-  return (_nrStarted + _nrRunning) <= _nrUp;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief is the queue still active
-////////////////////////////////////////////////////////////////////////////////
-
-bool DispatcherQueue::isRunning () {
-  CONDITION_LOCKER(guard, _accessQueue);
-
-  return 0 < (_nrStarted + _nrRunning);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a new queue thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DispatcherQueue::startQueueThread () {
-  DispatcherThread * thread = (*createDispatcherThread)(this, _threadData);
+void DispatcherQueue::startQueueThread () {
+  DispatcherThread * thread = (*createDispatcherThread)(this);
 
   if (! _affinityCores.empty()) {
     size_t c = _affinityCores[_affinityPos];
@@ -358,17 +394,78 @@ bool DispatcherQueue::startQueueThread () {
     }
   }
 
+  {
+    MUTEX_LOCKER(_threadsLock);
+
+    if (! notEnoughThreads()) {
+      delete thread;
+      return;
+    }
+
+    _startedThreads.insert(thread);
+
+    ++_nrRunning;
+  }
+
   bool ok = thread->start();
 
   if (! ok) {
     LOG_FATAL_AND_EXIT("cannot start dispatcher thread");
   }
   else {
-    _nrStarted++;
     _lastChanged = TRI_microtime();
   }
 
-  return ok;
+  deleteOldThreads();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called when a thread has stopped
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherQueue::removeStartedThread (DispatcherThread* thread) {
+  {
+    MUTEX_LOCKER(_threadsLock);
+    _startedThreads.erase(thread);
+  }
+
+  --_nrRunning;
+
+  _stoppedThreads.push(thread);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if we have too many threads
+////////////////////////////////////////////////////////////////////////////////
+
+bool DispatcherQueue::tooManyThreads () {
+  size_t nrRunning = _nrRunning.load(memory_order_relaxed);
+  size_t nrBlocked = (size_t) _nrBlocked.load(memory_order_relaxed);
+
+  if ((_nrThreads + nrBlocked) <  nrRunning) {
+    double now = TRI_microtime();
+    double lastChanged = _lastChanged.load(memory_order_relaxed);
+
+    if (lastChanged + _gracePeriod < now) {
+      _lastChanged.store(now, memory_order_relaxed);
+      return true;
+    }
+
+    return false;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if we have enough threads
+////////////////////////////////////////////////////////////////////////////////
+
+bool DispatcherQueue::notEnoughThreads () {
+  size_t nrRunning = _nrRunning.load(memory_order_relaxed);
+  size_t nrBlocked = (size_t) _nrBlocked.load(memory_order_relaxed);
+
+  return nrRunning <= _nrThreads - 1 || nrRunning <= nrBlocked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,6 +474,24 @@ bool DispatcherQueue::startQueueThread () {
 
 void DispatcherQueue::setProcessorAffinity (const vector<size_t>& cores) {
   _affinityCores = cores;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes old threads
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherQueue::deleteOldThreads () {
+  DispatcherThread* thread;
+
+  while (_stoppedThreads.pop(thread)) {
+    if (thread != nullptr) {
+      delete thread;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------

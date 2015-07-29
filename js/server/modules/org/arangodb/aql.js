@@ -35,6 +35,7 @@ var ArangoError = require("org/arangodb").ArangoError;
 var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("org/arangodb/cluster").isCoordinator();
 var underscore = require("underscore");
+var graphModule = require("org/arangodb/general-graph");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -6150,8 +6151,7 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
     options.filterEdges = options.edgeExamples;
   }
 
-  let graph_module = require("org/arangodb/general-graph");
-  let graph = graph_module._graph(graphName);
+  let graph = graphModule._graph(graphName);
   let edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
   if (options.hasOwnProperty("edgeCollectionRestriction")) {
     if (!Array.isArray(options.edgeCollectionRestriction)) {
@@ -6736,32 +6736,38 @@ function AQL_NEIGHBORS (vertexCollection,
 
   vertex = TO_ID(vertex, vertexCollection);
   options = CLONE(options) || {};
-  if (isCoordinator) {
-    // Fallback to JS if we are in the cluster
-    let edges = AQL_EDGES(edgeCollection, vertex, direction);
-    let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
-    let vertices = [];
-    let distinct = new Set();
-    for (let i = 0; i < tmp.length; ++i) {
-      let v = tmp[i].vertex;
-      if (!distinct.has(v._id)) {
-        distinct.add(v._id);
-        if (options.includeData) {
-          vertices.push(v);
-        } else {
-          vertices.push(v._id);
+  // Fallback to JS if we are in the cluster
+  // Improve the examples. LocalServer can match String -> _id
+  if (examples !== undefined) {
+    if (typeof examples === "string") {
+      examples = [{_id: examples}];
+    }
+    if (Array.isArray(examples)) {
+      examples = examples.map(function(e) {
+        if (typeof e === "string") {
+          return {_id: e};
         }
+        return e;
+      });
+    }
+  }
+  let edges = AQL_EDGES(edgeCollection, vertex, direction);
+  let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
+  let vertices = [];
+  let distinct = new Set();
+  for (let i = 0; i < tmp.length; ++i) {
+    let v = tmp[i].vertex;
+    if (!distinct.has(v._id)) {
+      distinct.add(v._id);
+      if (options.includeData) {
+        vertices.push(v);
+      } else {
+        vertices.push(v._id);
       }
     }
-    distinct.clear();
-    return vertices;
   }
-
-  options.direction = direction;
-  if (examples !== undefined && Array.isArray(examples) && examples.length > 0) {
-    options.filterEdges = examples;
-  }
-  return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, options);
+  distinct.clear();
+  return vertices;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6944,8 +6950,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     }
   }
 
-  let graph_module = require("org/arangodb/general-graph");
-  let graph = graph_module._graph(graphName);
+  let graph = graphModule._graph(graphName);
   let edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
   if (options.hasOwnProperty("edgeCollectionRestriction")) {
     if (!Array.isArray(options.edgeCollectionRestriction)) {
@@ -7296,8 +7301,7 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
     options1.includeData = true;
   }
 
-  let graph_module = require("org/arangodb/general-graph");
-  let graph = graph_module._graph(graphName);
+  let graph = graphModule._graph(graphName);
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
   let vertices1 = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, vertex1Examples);
   let vertices2;
@@ -8099,8 +8103,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 
   // Make sure we ONLY extract _ids
   options.includeData = false;
-  let graph_module = require("org/arangodb/general-graph");
-  let graph = graph_module._graph(graphName);
+  let graph = graphModule._graph(graphName);
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
   let vertexIds = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, {});
   let result = {};

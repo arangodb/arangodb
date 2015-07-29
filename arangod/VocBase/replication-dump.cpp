@@ -34,7 +34,7 @@
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-
+#include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
@@ -42,11 +42,10 @@
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
-#include "Cluster/ServerState.h"
 
 using namespace triagens;
 

@@ -102,9 +102,6 @@ static void DestroyDatafile (TRI_datafile_t* const datafile) {
 static bool SyncDatafile (const TRI_datafile_t* const datafile,
                           char const* begin,
                           char const* end) {
-  // TODO: remove
-  void** mmHandle = nullptr;
-
   if (datafile->_filename == nullptr) {
     // anonymous regions do not need to be synced
     return true;
@@ -117,7 +114,7 @@ static bool SyncDatafile (const TRI_datafile_t* const datafile,
     return true;
   }
 
-  return TRI_MSync(datafile->_fd, mmHandle, begin, end);
+  return TRI_MSync(datafile->_fd, begin, end);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -476,6 +476,18 @@ AstNode* Ast::createNodeUpsert (AstNodeType type,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST distinct node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeDistinct (AstNode const* value) {
+  AstNode* node = createNode(NODE_TYPE_DISTINCT);
+
+  node->addMember(value);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1125,7 +1137,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         bool isWriteCollection = false;
         if (_writeCollection != nullptr && 
             _writeCollection->type == NODE_TYPE_PARAMETER &&
-            strcmp(param, _writeCollection->getStringValue()) == 0) {
+            ::strcmp(param, _writeCollection->getStringValue()) == 0) {
           isWriteCollection = true;
         }
 
@@ -1258,11 +1270,12 @@ AstNode* Ast::replaceVariableReference (AstNode* node,
 /// optimizations saves one extra pass over the AST
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 void Ast::validateAndOptimize () {
   struct TraversalContext {
+    int64_t stopOptimizationRequests = 0;
     bool isInFilter       = false;
     bool hasSeenWriteNode = false;
-    int64_t stopOptimizationRequests = 0;
   };
 
   auto preVisitor = [&](AstNode const* node, void* data) -> bool {
@@ -1408,7 +1421,7 @@ void Ast::validateAndOptimize () {
       }
       return node;
     }
-
+    
     // example
     if (node->type == NODE_TYPE_EXAMPLE) {
       return this->makeConditionFromExample(node);
@@ -1426,8 +1439,9 @@ void Ast::validateAndOptimize () {
 /// @brief determines the variables referenced in an expression
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) {
-  auto visitor = [&](AstNode const* node, void* data) -> void {
+void Ast::getReferencedVariables (AstNode const* node,
+                                  std::unordered_set<Variable*>& result) {
+  auto visitor = [](AstNode const* node, void* data) -> void {
     if (node == nullptr) {
       return;
     }
@@ -1442,15 +1456,12 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
 
       if (variable->needsRegister()) {
         auto result = static_cast<std::unordered_set<Variable*>*>(data);
-        result->insert(variable);
+        result->emplace(variable);
       }
     }
   };
 
-  std::unordered_set<Variable*> result;  
   traverseReadOnly(node, visitor, &result); 
-
-  return result;
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -2464,7 +2475,7 @@ AstNode* Ast::traverseAndModify (AstNode* node,
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
       AstNode* result = traverseAndModify(member, preVisitor, visitor, postVisitor, data);
@@ -2495,7 +2506,7 @@ AstNode* Ast::traverseAndModify (AstNode* node,
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
       AstNode* result = traverseAndModify(member, visitor, data);
@@ -2526,7 +2537,7 @@ void Ast::traverseReadOnly (AstNode const* node,
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
       traverseReadOnly(member, preVisitor, visitor, postVisitor, data);
@@ -2551,7 +2562,7 @@ void Ast::traverseReadOnly (AstNode const* node,
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
       traverseReadOnly(const_cast<AstNode const*>(member), visitor, data);

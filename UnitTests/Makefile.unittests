@@ -112,6 +112,7 @@ SERVER_OPT := \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
+	--log.level error \
         --wal.reserve-logfiles 1 \
 	--server.threads 4 \
 	$(SERVER_START)
@@ -119,6 +120,7 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
+	--log.level error \
 	--no-colors \
 	--quiet
 
@@ -346,7 +348,6 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/hashes-test.cpp \
 	UnitTests/Basics/associative-pointer-test.cpp \
 	UnitTests/Basics/associative-multi-pointer-test.cpp \
-	UnitTests/Basics/associative-synced-test.cpp \
 	UnitTests/Basics/skiplist-test.cpp \
 	UnitTests/Basics/priorityqueue-test.cpp \
 	UnitTests/Basics/string-buffer-test.cpp \
@@ -560,6 +561,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-call-apply.js \
 			@top_srcdir@/js/server/tests/aql-complex.js \
 			@top_srcdir@/js/server/tests/aql-cross.js \
+			@top_srcdir@/js/server/tests/aql-distinct.js \
 			@top_srcdir@/js/server/tests/aql-dynamic-attributes.js \
 			@top_srcdir@/js/server/tests/aql-edges-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-escaping.js \
@@ -628,6 +630,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-refaccess-attribute.js \
 			@top_srcdir@/js/server/tests/aql-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/aql-relational.js \
+			@top_srcdir@/js/server/tests/aql-simple-attributes.js \
 			@top_srcdir@/js/server/tests/aql-skiplist-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-subquery.js \
 			@top_srcdir@/js/server/tests/aql-ternary.js \

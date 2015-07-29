@@ -39,8 +39,8 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
-#include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/shaped-json.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -148,8 +148,8 @@ Expression::~Expression () {
 /// @brief return all variables used in the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_set<Variable*> Expression::variables () const {
-  return Ast::getReferencedVariables(_node);
+void Expression::variables (std::unordered_set<Variable*>& result) const {
+  return Ast::getReferencedVariables(_node, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

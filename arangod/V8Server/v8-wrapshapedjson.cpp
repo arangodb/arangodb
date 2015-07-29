@@ -28,13 +28,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-wrapshapedjson.h"
-#include "v8-vocbaseprivate.h"
-
 #include "Basics/conversions.h"
-#include "V8/v8-conv.h"
-#include "VocBase/KeyGenerator.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
+#include "V8/v8-conv.h"
+#include "V8Server/v8-shape-conv.h"
+#include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/KeyGenerator.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -283,12 +283,12 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
 
   if (doCopy) {
     // we'll create a full copy of the document
-    TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by trx from above
+    auto shaper = collection->getShaper();  // PROTECTED by trx from above
 
     TRI_shaped_json_t json;
     TRI_EXTRACT_SHAPED_JSON_MARKER(json, marker);  // PROTECTED by trx from above
 
-    TRI_shape_t const* shape = shaper->lookupShapeId(shaper, json._sid);
+    TRI_shape_t const* shape = shaper->lookupShapeId(json._sid);
 
     if (shape == nullptr) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) json._sid);
@@ -365,15 +365,15 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
   auto ditch = static_cast<triagens::arango::DocumentDitch*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))->Value());
   TRI_document_collection_t* collection = ditch->collection();
 
-  // check for array shape
-  TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
+  // check for object shape
+  auto shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
 
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
   TRI_shape_aid_t const* aids;
   TRI_shape_size_t n;
-  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, sid);
+  TRI_shape_t const* shape = shaper->lookupShapeId(sid);
 
   if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
     n = 0;
@@ -416,7 +416,7 @@ static void KeysOfShapedJson (const v8::PropertyCallbackInfo<v8::Array>& args) {
   }
 
   for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
-    char const* att = shaper->lookupAttributeId(shaper, *aids);
+    char const* att = shaper->lookupAttributeId(*aids);
 
     if (att != nullptr) {
       result->Set(count++, TRI_V8_STRING(att));
@@ -467,13 +467,13 @@ static void CopyAttributes (v8::Isolate* isolate,
 
   // finally insert the dynamic attributes from the shaped json
 
-  // check for array shape
-  TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
+  // check for object shape
+  auto shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
 
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
-  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, sid);
+  TRI_shape_t const* shape = shaper->lookupShapeId(sid);
 
   if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
     LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
@@ -502,14 +502,14 @@ static void CopyAttributes (v8::Isolate* isolate,
   TRI_shaped_json_t json;
 
   for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
-    char const* att = shaper->lookupAttributeId(shaper, *aids);
+    char const* att = shaper->lookupAttributeId(*aids);
 
     if (att != nullptr && 
         (excludeAttribute == nullptr || strcmp(att, excludeAttribute) != 0)) {
-      TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, att);
+      TRI_shape_pid_t pid = shaper->lookupAttributePathByName(att);
       
       if (pid != 0) {
-        bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+        bool ok = shaper->extractShapedJson(&document, 0, pid, &json, &shape);
   
         if (ok && shape != nullptr) {
           /// TODO: avoid strlen
@@ -592,8 +592,8 @@ static void MapGetNamedShapedJson (v8::Local<v8::String> name,
     TRI_document_collection_t* collection = ditch->collection();
 
     // get shape accessor
-    TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by trx here
-    TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, key.c_str());
+    auto shaper = collection->getShaper();  // PROTECTED by trx here
+    TRI_shape_pid_t pid = shaper->lookupAttributePathByName(key.c_str());
 
     if (pid == 0) {
       TRI_V8_RETURN(v8::Handle<v8::Value>());
@@ -605,7 +605,7 @@ static void MapGetNamedShapedJson (v8::Local<v8::String> name,
     TRI_shaped_json_t json;
     TRI_shape_t const* shape;
 
-    bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+    bool ok = shaper->extractShapedJson(&document, 0, pid, &json, &shape);
 
     if (ok && shape != nullptr) {
       TRI_V8_RETURN(TRI_JsonShapeData(isolate, shaper, shape, json._data.data, json._data.length));
@@ -756,8 +756,8 @@ static void PropertyQueryShapedJson (v8::Local<v8::String> name,
     TRI_document_collection_t* collection = ditch->collection();
 
     // get shape accessor
-    TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
-    TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, key.c_str());
+    auto shaper = collection->getShaper();  // PROTECTED by BARRIER, checked by RUNTIME
+    TRI_shape_pid_t pid = shaper->lookupAttributePathByName(key.c_str());
 
     if (pid == 0) {
       TRI_V8_RETURN(v8::Handle<v8::Integer>());
@@ -774,7 +774,7 @@ static void PropertyQueryShapedJson (v8::Local<v8::String> name,
       TRI_V8_RETURN(v8::Handle<v8::Integer>());
     }
 
-    TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
+    TRI_shape_access_t const* acc = shaper->findAccessor(sid, pid);
 
     // key not found
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {

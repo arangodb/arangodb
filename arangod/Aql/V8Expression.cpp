@@ -36,6 +36,7 @@
 #include "Basics/json-utilities.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8Server/v8-shape-conv.h"
 
 using namespace triagens::aql;
 

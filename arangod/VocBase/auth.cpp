@@ -34,11 +34,11 @@
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Rest/SslInterface.h"
-#include "ShapedJson/shape-accessor.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/shape-accessor.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 #include "Utils/transactions.h"
 
 using namespace triagens::arango;
@@ -224,7 +224,7 @@ static TRI_vocbase_auth_t* AuthFromJson (TRI_json_t const* json) {
 static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
                                             TRI_document_collection_t* document,
                                             TRI_doc_mptr_t const* mptr) {
-  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
+  auto shaper = document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
 
   TRI_shaped_json_t shapedJson;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME

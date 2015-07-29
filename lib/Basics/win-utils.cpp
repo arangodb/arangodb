@@ -172,8 +172,6 @@ static void InvalidParameterHandler (const wchar_t* expression, // expression se
 
 int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
                      const char* data) {
-  int result = 0;
-
   // ............................................................................
   // The data is used to transport information from the calling function to here
   // it may be NULL (and will be in most cases)
@@ -181,7 +179,7 @@ int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
 
   switch (finaliseWhat) {
     case TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL: {
-      result = WSACleanup();     // could this cause error on server termination?
+      int result = WSACleanup();     // could this cause error on server termination?
 
       if (result != 0) {
         // can not use LOG_ etc here since the logging may have terminated

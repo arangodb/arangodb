@@ -329,6 +329,18 @@ function optimizerCollectMethodsTestSuite () {
         assertEqual(1, aggregateNodes);
         assertEqual(1, sortNodes);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple collects in single query
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultipleCollectsInSingleQuery : function () {
+      // this will tell the optimizer to optimize the cloned plan with this specific rule again
+      var result = AQL_EXECUTE("LET values1 = (FOR i IN 1..4 COLLECT x = i RETURN x)  LET values2 = (FOR i IN 2..6 COLLECT x = i RETURN x) RETURN [ values1, values2 ]").json[0];
+
+      assertEqual([ 1, 2, 3, 4 ], result[0]);
+      assertEqual([ 2, 3, 4, 5, 6 ], result[1]);
     }
 
   };

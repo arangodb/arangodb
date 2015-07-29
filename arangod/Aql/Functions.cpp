@@ -34,12 +34,17 @@
 #include "Basics/fpconv.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Rest/SslInterface.h"
+#include "V8Server/V8Traverser.h"
+#include "VocBase/KeyGenerator.h"
+#include "VocBase/VocShaper.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
+using CollectionNameResolver = triagens::arango::CollectionNameResolver;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -1488,6 +1493,273 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
   return AqlValue(jr);
+}
+
+// TODO DELETE THESE HELPER FUNCTIONS.
+
+static inline Json TRI_ExpandShapedJson (VocShaper* shaper,
+                                         CollectionNameResolver const* resolver,
+                                         TRI_voc_cid_t const& cid,
+                                         TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+
+  TRI_shaped_json_t shaped;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
+  Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
+  char const* key = TRI_EXTRACT_MARKER_KEY(marker);
+  std::string id(resolver->getCollectionName(cid));
+  id.push_back('/');
+  id.append(key);
+  json(TRI_VOC_ATTRIBUTE_ID, Json(id));
+  json(TRI_VOC_ATTRIBUTE_REV, Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+  json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
+
+  if (TRI_IS_EDGE_MARKER(marker)) {
+    std::string from(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(marker)));
+    from.push_back('/');
+    from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
+    json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
+    std::string to(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
+
+    to.push_back('/');
+    to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
+    json(TRI_VOC_ATTRIBUTE_TO, Json(to));
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to Json
+////////////////////////////////////////////////////////////////////////////////
+
+static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
+                            CollectionNameResolver const* resolver,
+                            VertexId const& id) {
+  TRI_doc_mptr_copy_t mptr;
+  auto collection = trx->trxCollection(id.cid);
+  int res = trx->readSingle(collection, &mptr, id.key); 
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return TRI_ExpandShapedJson(
+    collection->_collection->_collection->getShaper(),
+    resolver,
+    id.cid,
+    &mptr
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to std::string
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string VertexIdToString (CollectionNameResolver const* resolver,
+                                     VertexId const& id) {
+  return resolver->getCollectionName(id.cid) + "/" + std::string(id.key);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms an unordered_map<VertexId> to AQL json values
+////////////////////////////////////////////////////////////////////////////////
+
+static AqlValue VertexIdsToAqlValue (triagens::arango::AqlTransaction* trx,
+                                     CollectionNameResolver const* resolver,
+                                     std::unordered_set<VertexId>& ids,
+                                     bool includeData = false) {
+  std::unique_ptr<Json> result(new Json(Json::Array, ids.size()));
+
+  if (includeData) {
+    for (auto& it : ids) {
+      result->add(Json(VertexIdToJson(trx, resolver, it)));
+    }
+  } 
+  else {
+    for (auto& it : ids) {
+      result->add(Json(VertexIdToString(resolver, it)));
+    }
+  }
+
+  AqlValue v(result.get());
+  result.release();
+
+  return v;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function NEIGHBORS
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Neighbors (triagens::aql::Query* query,
+                               triagens::arango::AqlTransaction* trx,
+                               FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  basics::traverser::NeighborsOptions opts;
+
+  if (n < 4 || n > 6) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS", (int) 4, (int) 6);
+  }
+
+  auto resolver = trx->resolver();
+
+  Json vertexCol = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! vertexCol.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+  std::string vColName = basics::JsonHelper::getStringValue(vertexCol.json(), "");
+
+  Json edgeCol = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  if (! edgeCol.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+  std::string eColName = basics::JsonHelper::getStringValue(edgeCol.json(), "");
+
+  Json vertexInfo = ExtractFunctionParameter(trx, parameters, 2, false);
+  std::string vertexId;
+  if (vertexInfo.isString()) {
+    vertexId = basics::JsonHelper::getStringValue(vertexInfo.json(), "");
+    if (vertexId.find("/") != std::string::npos) {
+      
+      // TODO tmp can be replaced by Traversal::IdStringToVertexId
+      size_t split;
+      char const* str = vertexId.c_str();
+
+      if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+      }
+
+      std::string const collectionName = vertexId.substr(0, split);
+      auto coli = resolver->getCollectionStruct(collectionName);
+
+      if (coli == nullptr || collectionName.compare(vColName) != 0) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      }
+
+      VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
+      opts.start = v;
+    }
+    else {
+      VertexId v(resolver->getCollectionId(vColName), vertexId.c_str());
+      opts.start = v;
+    }
+  }
+  else if (vertexInfo.isObject()) {
+    if (! vertexInfo.has("_id")) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+    vertexId = basics::JsonHelper::getStringValue(vertexInfo.get("_id").json(), "");
+    // TODO tmp can be replaced by Traversal::IdStringToVertexId
+    size_t split;
+    char const* str = vertexId.c_str();
+
+    if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
+
+    std::string const collectionName = vertexId.substr(0, split);
+    auto coli = resolver->getCollectionStruct(collectionName);
+
+    if (coli == nullptr || collectionName.compare(vColName) != 0) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+
+    VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
+    opts.start = v;
+  }
+  else {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+
+  Json direction = ExtractFunctionParameter(trx, parameters, 3, false);
+  if (direction.isString()) {
+    std::string const dir = basics::JsonHelper::getStringValue(direction.json(), "");
+    if (dir.compare("outbound") == 0) {
+      opts.direction = TRI_EDGE_OUT;
+    }
+    else if (dir.compare("inbound") == 0) {
+      opts.direction = TRI_EDGE_IN;
+    }
+    else if (dir.compare("any") == 0) {
+      opts.direction = TRI_EDGE_ANY;
+    }
+    else {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+  }
+  else {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+
+
+  bool includeData = false;
+
+  if (n > 5) {
+    auto options = ExtractFunctionParameter(trx, parameters, 5, false);
+    if (! options.isObject()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+    includeData = basics::JsonHelper::getBooleanValue(options.json(), "includeData", false);
+    opts.minDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "minDepth", 1);
+    if (opts.minDepth == 0) {
+      opts.maxDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "maxDepth", 1);
+    } 
+    else {
+      opts.maxDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "maxDepth", opts.minDepth);
+    }
+  }
+
+  std::unordered_set<VertexId> neighbors;
+
+
+  TRI_voc_cid_t eCid = resolver->getCollectionId(eColName);
+
+
+  // Function to return constant distance
+  auto wc = [](TRI_doc_mptr_copy_t& edge) -> double { return 1; };
+
+  std::unique_ptr<EdgeCollectionInfo> eci(new EdgeCollectionInfo(
+    eCid,
+    trx->documentCollection(eCid),
+    wc
+  ));
+  TRI_IF_FAILURE("EdgeCollectionInfoOOM1") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  
+
+  if (n > 4) {
+    auto edgeExamples = ExtractFunctionParameter(trx, parameters, 4, false);
+    if (! (edgeExamples.isArray() && edgeExamples.size() == 0) ) {
+      opts.addEdgeFilter(edgeExamples, eci->getShaper(), eCid, resolver); 
+    }
+  }
+  
+  std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&edgeCollectionInfos]() -> void {
+      for (auto& p : edgeCollectionInfos) {
+        delete p;
+      }
+    }
+  };
+  edgeCollectionInfos.emplace_back(eci.get());
+  eci.release();
+  TRI_IF_FAILURE("EdgeCollectionInfoOOM2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  TRI_RunNeighborsSearch(
+    edgeCollectionInfos,
+    opts,
+    neighbors
+  );
+
+  return VertexIdsToAqlValue(trx, resolver, neighbors, includeData);
 }
 
 // -----------------------------------------------------------------------------

@@ -1405,7 +1405,8 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
     UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
 
     // if a write query, clear the query cache for the participating collections
-    if (trx->_type == TRI_TRANSACTION_WRITE) { 
+    if (trx->_type == TRI_TRANSACTION_WRITE &&
+        triagens::aql::QueryCache::instance()->mayBeActive()) {
       ClearQueryCache(trx);
     }
 

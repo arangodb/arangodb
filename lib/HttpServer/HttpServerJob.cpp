@@ -29,7 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpServerJob.h"
+
 #include "Basics/logging.h"
+#include "Dispatcher/DispatcherQueue.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/HttpHandler.h"
@@ -93,7 +95,7 @@ bool HttpServerJob::isDetached () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const& HttpServerJob::queue () const {
+size_t HttpServerJob::queue () const {
   return _handler->queue();
 }
 
@@ -144,15 +146,15 @@ Job::status_t HttpServerJob::work () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServerJob::cancel (bool running) {
-  return _handler->cancel(running);
+bool HttpServerJob::cancel () {
+  return _handler->cancel();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServerJob::cleanup () {
+void HttpServerJob::cleanup (DispatcherQueue* queue) {
   if (isDetached()) {
     _server->jobManager()->finishAsyncJob(this);
   }
@@ -168,6 +170,8 @@ void HttpServerJob::cleanup () {
     _isInCleanup.store(false, std::memory_order_relaxed);
   }
 
+  queue->removeJob(this);
+
   if (--_refCount == 0) {
     delete this;
   }
@@ -177,7 +181,8 @@ void HttpServerJob::cleanup () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServerJob::beginShutdown () {
+void HttpServerJob::beginShutdown () {
+
   // must wait until cleanup procedure is finished
   while (_isInCleanup.load()) {
     usleep(1000);
@@ -189,7 +194,6 @@ bool HttpServerJob::beginShutdown () {
   if (--_refCount == 0) {
     delete this;
   }
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

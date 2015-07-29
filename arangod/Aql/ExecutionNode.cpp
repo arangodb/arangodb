@@ -192,15 +192,27 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       }
 
       bool count = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
+      bool isDistinctCommand = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "isDistinctCommand");
 
-      return new AggregateNode(plan,
-                               oneNode,
-                               expressionVariable,
-                               outVariable,
-                               keepVariables,
-                               plan->getAst()->variables()->variables(false),
-                               aggregateVariables,  
-                               count);
+      auto node = new AggregateNode(
+        plan,
+        oneNode,
+        expressionVariable,
+        outVariable,
+        keepVariables,
+        plan->getAst()->variables()->variables(false),
+        aggregateVariables,  
+        count,
+        isDistinctCommand
+      );
+      
+      // specialize the node if required
+      bool specialized = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "specialized");
+      if (specialized) {
+        node->specialized();
+      }
+
+      return node;
     }
     case INSERT:
       return new InsertNode(plan, oneNode);
@@ -601,10 +613,14 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
-  // Only do every node exactly once:
+#ifdef TRI_ENABLE_FAILURE_TESTS
+  // Only do every node exactly once
+  // note: this check is not required normally because execution
+  // plans do not contain cycles
   if (worker->done(this)) {
     return false;
   }
+#endif
 
   if (worker->before(this)) {
     return true;
@@ -620,10 +636,13 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   // Now handle a subquery:
   if (getType() == SUBQUERY) {
     auto p = static_cast<SubqueryNode*>(this);
-    if (worker->enterSubquery(this, p->getSubquery())) {
-      bool abort = p->getSubquery()->walk(worker);
-      worker->leaveSubquery(this, p->getSubquery());
-      if (abort) {
+    auto subquery = p->getSubquery();
+
+    if (worker->enterSubquery(this, subquery)) {
+      bool shouldAbort = subquery->walk(worker);
+      worker->leaveSubquery(this, subquery);
+
+      if (shouldAbort) {
         return true;
       }
     }
@@ -765,8 +784,12 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 ////////////////////////////////////////////////////////////////////////////////
 
 struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
-  RegisterPlanningDebugger () : indent(0) {};
-  ~RegisterPlanningDebugger () {};
+  RegisterPlanningDebugger () 
+    : indent(0) {
+  }
+
+  ~RegisterPlanningDebugger () {
+  }
 
   int indent;
 
@@ -809,6 +832,7 @@ struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
 void ExecutionNode::planRegisters (ExecutionNode* super) {
   // The super is only for the case of subqueries.
   shared_ptr<RegisterPlan> v;
+
   if (super == nullptr) {
     v.reset(new RegisterPlan());
   }
@@ -896,8 +920,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
       auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(make_pair(ep->_outVariable->id,
-                               VarInfo(depth, totalNrRegs)));
+      varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
     }
@@ -912,8 +935,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
       auto ep = static_cast<EnumerateListNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(make_pair(ep->_outVariable->id,
-                               VarInfo(depth, totalNrRegs)));
+      varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
     }
@@ -923,8 +945,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs[depth]++;
       auto ep = static_cast<CalculationNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(make_pair(ep->_outVariable->id,
-                               VarInfo(depth, totalNrRegs)));
+      varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
     }
@@ -934,8 +955,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs[depth]++;
       auto ep = static_cast<SubqueryNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(make_pair(ep->_outVariable->id,
-                               VarInfo(depth, totalNrRegs)));
+      varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       subQueryNodes.emplace_back(en);
       break;
@@ -957,15 +977,13 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
         // frame:
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(make_pair(p.first->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(p.first->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(make_pair(ep->_outVariable->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -993,8 +1011,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(make_pair(ep->getOutVariableOld()->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1012,8 +1029,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(make_pair(ep->getOutVariableNew()->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1031,15 +1047,13 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(make_pair(ep->getOutVariableOld()->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(make_pair(ep->getOutVariableNew()->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1050,6 +1064,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegsHere.emplace_back(0);
       // create a copy of the last value here
       // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      // when from the same underyling object (at least it does in Visual Studio 2013)
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -1057,15 +1072,13 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(make_pair(ep->getOutVariableOld()->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(make_pair(ep->getOutVariableNew()->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1083,8 +1096,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(make_pair(ep->getOutVariableNew()->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1739,33 +1751,27 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
-  std::vector<Variable const*> v;
-  std::unordered_set<Variable const*> s;
-
+  std::unordered_set<Variable*> s;
+      
   for (auto const& x : _ranges) {
     for (RangeInfo const& y : x) {
-      auto inserter = [&] (RangeInfoBound const& b) -> void {
-        AstNode const* a = b.getExpressionAst(_plan->getAst());
-        std::unordered_set<Variable*> vars = Ast::getReferencedVariables(a);
-        for (auto const& vv : vars) {
-          s.emplace(vv);
-        }
-      };
-
       for (RangeInfoBound const& z : y._lows) {
-        inserter(z);
+        AstNode const* a = z.getExpressionAst(_plan->getAst());
+        Ast::getReferencedVariables(a, s);
       }
       for (RangeInfoBound const& z : y._highs) {
-        inserter(z);
+        AstNode const* a = z.getExpressionAst(_plan->getAst());
+        Ast::getReferencedVariables(a, s);
       }
     }
   }
 
   // Copy set elements into vector:
+  std::vector<Variable const*> v;
   v.reserve(s.size());
 
   for (auto const& vv : s) {
-    v.emplace_back(vv);
+    v.emplace_back(const_cast<Variable*>(vv));
   }
   return v;
 }
@@ -2319,7 +2325,8 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
                               std::vector<Variable const*> const& keepVariables,
                               std::unordered_map<VariableId, std::string const> const& variableMap,
                               std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
-                              bool count)
+                              bool count,
+                              bool isDistinctCommand)
   : ExecutionNode(plan, base),
     _options(base),
     _aggregateVariables(aggregateVariables), 
@@ -2327,7 +2334,8 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
     _outVariable(outVariable),
     _keepVariables(keepVariables),
     _variableMap(variableMap),
-    _count(count) {
+    _count(count),
+    _isDistinctCommand(isDistinctCommand) {
 
 }
 
@@ -2376,6 +2384,8 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   json("count", triagens::basics::Json(_count));
+  json("isDistinctCommand", triagens::basics::Json(_isDistinctCommand));
+  json("specialized", triagens::basics::Json(_specialized));
   
   _options.toJson(json, zone);
 
@@ -2413,15 +2423,23 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
     }
   }
 
-  auto c = new AggregateNode(plan, 
-                             _id,
-                             _options, 
-                             aggregateVariables, 
-                             expressionVariable, 
-                             outVariable, 
-                             _keepVariables, 
-                             _variableMap,
-                             _count);
+  auto c = new AggregateNode(
+    plan, 
+    _id,
+    _options, 
+    aggregateVariables, 
+    expressionVariable, 
+    outVariable, 
+    _keepVariables, 
+    _variableMap,
+    _count,
+    _isDistinctCommand
+  );
+
+  // specialize the cloned node
+  if (isSpecialized()) {
+    c->specialized();
+  }
 
   cloneHelper(c, plan, withDependencies, withProperties);
 
@@ -2433,8 +2451,13 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct UserVarFinder : public WalkerWorker<ExecutionNode> {
-  UserVarFinder (int mindepth) : mindepth(mindepth), depth(-1) {};
-  ~UserVarFinder () {};
+  UserVarFinder (int mindepth) 
+    : mindepth(mindepth), depth(-1) { 
+  }
+
+  ~UserVarFinder () {
+  }
+
   std::vector<Variable const*> userVars;
   int mindepth;   // minimal depth to consider
   int depth;
@@ -2455,7 +2478,7 @@ struct UserVarFinder : public WalkerWorker<ExecutionNode> {
     }
     // Now depth is set correct for this node.
     if (depth >= mindepth) {
-      auto vars = en->getVariablesSetHere();
+      auto const& vars = en->getVariablesSetHere();
       for (auto const& v : vars) {
         if (v->isUserDefined()) {
           userVars.emplace_back(v);

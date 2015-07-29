@@ -2086,7 +2086,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     TRI_ASSERT(json != nullptr);
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx in trxCollection
+    TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx in trxCollection
     TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true);  // PROTECTED by trx in trxCollection
 
     if (shaped == nullptr) {

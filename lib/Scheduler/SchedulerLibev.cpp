@@ -44,7 +44,7 @@
 
 using namespace triagens::basics;
 using namespace triagens::rest;
-
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             libev
 // -----------------------------------------------------------------------------
@@ -224,6 +224,16 @@ namespace {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                          private static variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the allocator was switched
+////////////////////////////////////////////////////////////////////////////////
+
+bool SchedulerLibev::SwitchedAllocator = false;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
@@ -242,20 +252,16 @@ int SchedulerLibev::availableBackends () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::switchAllocator () {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  static bool switched = false;
+  if (! SwitchedAllocator) {
+    SwitchedAllocator = true;
 
-  if (! switched) {
     // set the libev allocator to our own allocator
     ev_set_allocator(
 #ifdef EV_THROW
       reinterpret_cast<void *(*)(void *ptr, long size) EV_THROW>
 #endif
       (&TRI_WrappedReallocate));
-
-    switched = true;
   }
-#endif
 }
 
 // -----------------------------------------------------------------------------

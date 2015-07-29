@@ -141,7 +141,6 @@ class v8_action_t : public TRI_action_t {
       }
 
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(
-        "STANDARD",
         vocbase,
         allowUseDatabaseInRestActions
       );

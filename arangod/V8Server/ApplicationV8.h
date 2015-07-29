@@ -128,7 +128,7 @@ namespace triagens {
 /// @brief get code for a method
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string const getCode (MethodType type) {
+        static char const* getCode (MethodType type) {
           switch (type) {
             case TYPE_RELOAD_ROUTING:
               return CodeReloadRouting;
@@ -148,10 +148,10 @@ namespace triagens {
 /// @brief static strings with the code for each method
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string const CodeReloadRouting;
-        static std::string const CodeReloadAql;
-        static std::string const CodeBootstrapCoordinator;
-        static std::string const CodeWarmupExports;
+        static char const* CodeReloadRouting;
+        static char const* CodeReloadAql;
+        static char const* CodeBootstrapCoordinator;
+        static char const* CodeWarmupExports;
     };
 
 // -----------------------------------------------------------------------------
@@ -178,12 +178,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct V8Context {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name
-////////////////////////////////////////////////////////////////////////////////
-
-          std::string _name;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief identifier
@@ -312,8 +306,7 @@ namespace triagens {
 /// @brief enters an context
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Context* enterContext (std::string const& name,
-                                 TRI_vocbase_t*,
+        V8Context* enterContext (TRI_vocbase_t*,
                                  bool useDatabase);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -374,14 +367,6 @@ namespace triagens {
 
         void prepareServer ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares named contexts
-////////////////////////////////////////////////////////////////////////////////
-
-        bool prepareNamedContexts (const std::string& name,
-                                   size_t concurrency,
-                                   const std::string& worker);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
@@ -440,30 +425,25 @@ namespace triagens {
 /// @brief prepares a V8 instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool prepareV8Instance (const std::string& name, size_t i, bool useActions);
+        bool prepareV8Instance (size_t i, bool useActions);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares a V8 instance, multi-threaded version calling the above
 ////////////////////////////////////////////////////////////////////////////////
 
-        void prepareV8InstanceInThread (const std::string& name, size_t i,
-                                        bool useAction) {
-          if (! prepareV8Instance(name, i, useAction)) {
-            _ok = false;
-          }
-        }
+        void prepareV8InstanceInThread (size_t i, bool useAction);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares the V8 server
 ////////////////////////////////////////////////////////////////////////////////
 
-        void prepareV8Server (const std::string& name, size_t i, const std::string& startupFile);
+        void prepareV8Server (size_t i, const std::string& startupFile);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down a V8 instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        void shutdownV8Instance (const std::string& name, size_t i);
+        void shutdownV8Instance (size_t i);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -598,13 +578,13 @@ namespace triagens {
 /// @brief number of instances to create
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<std::string, size_t> _nrInstances;
+        size_t _nrInstances;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<std::string, V8Context**> _contexts;
+        V8Context** _contexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 contexts queue lock
@@ -616,25 +596,25 @@ namespace triagens {
 /// @brief V8 free contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<std::string, std::vector<V8Context*>> _freeContexts;
+        std::vector<V8Context*> _freeContexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 dirty contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<std::string, std::vector<V8Context*>> _dirtyContexts;
+        std::vector<V8Context*> _dirtyContexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 busy contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<std::string, std::set<V8Context*>> _busyContexts;
+        std::unordered_set<V8Context*> _busyContexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown in progress
 ////////////////////////////////////////////////////////////////////////////////
 
-        volatile sig_atomic_t _stopping;
+        std::atomic<bool> _stopping;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief garbage collection thread
@@ -676,8 +656,7 @@ namespace triagens {
 /// @brief indicates whether gc thread is done
 ////////////////////////////////////////////////////////////////////////////////
           
-        volatile bool _gcFinished;
-
+        std::atomic<bool> _gcFinished;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the V8 platform object

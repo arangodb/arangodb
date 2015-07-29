@@ -117,7 +117,7 @@ namespace triagens {
 
       ~Profile ();
 
-      void enter (ExecutionState);
+      void setDone (ExecutionState);
 
       TRI_json_t* toJson (TRI_memory_zone_t*);
 

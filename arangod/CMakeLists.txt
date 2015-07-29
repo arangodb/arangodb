@@ -154,7 +154,6 @@ add_executable(
     Utils/TransactionContext.cpp
     Utils/V8TransactionContext.cpp
     V8Server/ApplicationV8.cpp
-    V8Server/V8DispatcherThread.cpp
     V8Server/V8Job.cpp
     V8Server/V8PeriodicTask.cpp
     V8Server/V8QueueJob.cpp
@@ -166,6 +165,7 @@ add_executable(
     V8Server/v8-dispatcher.cpp
     V8Server/v8-query.cpp
     V8Server/v8-replication.cpp
+    V8Server/v8-shape-conv.cpp
     V8Server/v8-user-structures.cpp
     V8Server/v8-util.cpp
     V8Server/v8-vocbase.cpp
@@ -183,15 +183,19 @@ add_executable(
     VocBase/edge-collection.cpp
     VocBase/headers.cpp
     VocBase/KeyGenerator.cpp
+    VocBase/Legends.cpp
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
     VocBase/replication-dump.cpp
     VocBase/replication-master.cpp
     VocBase/server.cpp
+    VocBase/shape-accessor.cpp
+    VocBase/shaped-json.cpp
+    VocBase/Shaper.cpp
     VocBase/transaction.cpp
-    VocBase/voc-shaper.cpp
     VocBase/vocbase.cpp
     VocBase/vocbase-defaults.cpp
+    VocBase/VocShaper.cpp
     Wal/AllocatorThread.cpp
     Wal/CollectorThread.cpp
     Wal/LogfileManager.cpp

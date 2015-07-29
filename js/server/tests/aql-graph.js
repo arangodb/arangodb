@@ -172,6 +172,58 @@ function ahuacatlQueryEdgesTestSuite () {
       assertEqual(actual, [ ]);
       
       assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "FOR e IN EDGES(UnitTestsAhuacatlEdge, 'thefox/thefox', 'outbound') SORT e.what RETURN e.what");
+    }
+
+  };
+}
+
+function ahuacatlQueryNeighborsTestSuite () {
+  var vertex = null;
+  var edge   = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop("UnitTestsAhuacatlVertex");
+      db._drop("UnitTestsAhuacatlEdge");
+
+      vertex = db._create("UnitTestsAhuacatlVertex");
+      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
+
+      vertex.save({ _key: "v1", name: "v1" });
+      vertex.save({ _key: "v2", name: "v2" });
+      vertex.save({ _key: "v3", name: "v3" });
+      vertex.save({ _key: "v4", name: "v4" });
+      vertex.save({ _key: "v5", name: "v5" });
+      vertex.save({ _key: "v6", name: "v6" });
+      vertex.save({ _key: "v7", name: "v7" });
+
+      function makeEdge (from, to) {
+        edge.save("UnitTestsAhuacatlVertex/" + from, "UnitTestsAhuacatlVertex/" + to, { what: from + "->" + to, _key: from + "_" + to });
+      }
+
+      makeEdge("v1", "v2");
+      makeEdge("v1", "v3");
+      makeEdge("v2", "v3");
+      makeEdge("v3", "v4");
+      makeEdge("v3", "v6");
+      makeEdge("v3", "v7");
+      makeEdge("v4", "v2");
+      makeEdge("v7", "v3");
+      makeEdge("v6", "v3");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop("UnitTestsAhuacatlVertex");
+      db._drop("UnitTestsAhuacatlEdge");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -327,6 +379,44 @@ function ahuacatlQueryEdgesTestSuite () {
         return x.name;
       });
       assertEqual(actual, ["v4", "v6", "v7"]);
+    },
+
+    testNeighborsEdgeExamples : function () {
+      var actual;
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var query = "FOR n IN NEIGHBORS(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, @startId"
+                + ", 'outbound', @examples) SORT n RETURN n";
+
+      // An empty array should let all edges through
+      actual = getQueryResults(query, {startId: v3, examples: []});
+      assertEqual(actual, [ v4, v6, v7 ]);
+
+      // Should be able to handle exactly one object
+      actual = getQueryResults(query, {startId: v3, examples: {what: "v3->v4"}});
+      assertEqual(actual, [ v4 ]);
+
+      // Should be able to handle a list of a single object
+      actual = getQueryResults(query, {startId: v3, examples: [{what: "v3->v4"}]});
+      assertEqual(actual, [ v4 ]);
+
+      // Should be able to handle a list of objects
+      actual = getQueryResults(query, {startId: v3, examples: [{what: "v3->v4"}, {what: "v3->v6"}]});
+      assertEqual(actual, [ v4, v6 ]);
+
+      // Should be able to handle an id as string
+      actual = getQueryResults(query, {startId: v3, examples: "UnitTestsAhuacatlEdge/v3_v6"});
+      assertEqual(actual, [ v6 ]);
+
+      // Should be able to handle a mix of id and objects
+      actual = getQueryResults(query, {startId: v3, examples: ["UnitTestsAhuacatlEdge/v3_v6", {what: "v3->v4"}]});
+      assertEqual(actual, [ v4, v6 ]);
+
+      // Should be able to handle internal attributes
+      actual = getQueryResults(query, {startId: v3, examples: {_to: v4}});
+      assertEqual(actual, [ v4 ]);
     }
 
   };
@@ -1703,28 +1793,6 @@ function ahuacatlQueryNeighborsErrorsSuite () {
 /// @brief checks error handling in NEIGHBORS()
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNeighborsNoVocbase : function () {
-      var v1 = vn + "/A";
-      var v2 = vn + "/B";
-
-      var queryStart = "FOR n IN NEIGHBORS(" + vn + " , " + en + ", '";
-      var queryEnd = "', 'outbound', [{_id: '" + en + "/AB'}]) SORT n RETURN n";
-
-      var actual = getQueryResults(queryStart + v1 + queryEnd);
-      // Positive Check
-      assertEqual(actual, [ v2 ]);
-
-      internal.debugSetFailAt("ExampleNoContextVocbase");
-
-      // Negative Check
-      try {
-        actual = getQueryResults(queryStart + v1 + queryEnd);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code);
-      }
-    },
-
     testNeighborsDitchesOOM : function () {
       var v1 = vn + "/A";
       var v2 = vn + "/B";
@@ -1738,7 +1806,7 @@ function ahuacatlQueryNeighborsErrorsSuite () {
       assertEqual(actual, [ v2, v3 ]);
 
       internal.debugClearFailAt();
-      internal.debugSetFailAt("VertexCollectionDitchOOM");
+      internal.debugSetFailAt("EdgeCollectionInfoOOM1");
 
       // Negative Check
       try {
@@ -1749,7 +1817,7 @@ function ahuacatlQueryNeighborsErrorsSuite () {
       }
 
       internal.debugClearFailAt();
-      internal.debugSetFailAt("EdgeCollectionDitchOOM");
+      internal.debugSetFailAt("EdgeCollectionInfoOOM2");
 
       // Negative Check
       try {
@@ -1758,8 +1826,8 @@ function ahuacatlQueryNeighborsErrorsSuite () {
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
       }
+      internal.debugClearFailAt();
     }
-
   };
 }
 
@@ -1862,6 +1930,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryEdgesTestSuite);
+jsunity.run(ahuacatlQueryNeighborsTestSuite);
 jsunity.run(ahuacatlQueryPathsTestSuite);
 jsunity.run(ahuacatlQueryShortestPathTestSuite);
 jsunity.run(ahuacatlQueryTraversalFilterTestSuite);

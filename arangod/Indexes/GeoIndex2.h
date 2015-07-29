@@ -33,9 +33,11 @@
 #include "Basics/Common.h"
 #include "GeoIndex/GeoIndex.h"
 #include "Indexes/Index.h"
-#include "ShapedJson/shaped-json.h"
+#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+
+class VocShaper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    class GeoIndex
@@ -142,18 +144,22 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a double value from an object
+////////////////////////////////////////////////////////////////////////////////
+
+        bool extractDoubleObject (VocShaper*,
+                                  struct TRI_shaped_json_s const*,
+                                  int,
+                                  double*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a double value from an array
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool extractDoubleArray (struct TRI_shaper_s*,
+        bool extractDoubleArray (VocShaper*,
                                  struct TRI_shaped_json_s const*,
-                                 int,
+                                 double*,
                                  double*);
-
-        bool extractDoubleList (struct TRI_shaper_s*,
-                                struct TRI_shaped_json_s const*,
-                                double*,
-                                double*);
         
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
