@@ -172,8 +172,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
           string const key(keyStr);
           auto jsonValue = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
           if (! TRI_IsStringJson(jsonValue)) {
-            // TODO FIXME incorrect Error here
-            throw TRI_RESULT_ELEMENT_NOT_FOUND;
+            throw TRI_ERROR_TYPE_ERROR;
           }
           string keyVal(jsonValue->_value._string.data);
           if (TRI_VOC_ATTRIBUTE_KEY == key) {
