@@ -40,7 +40,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              COLLECTION MIGRATION
@@ -79,7 +78,7 @@ static bool UpgradeShapeIterator (TRI_df_marker_t const* marker,
     TRI_shape_t const* shape = (TRI_shape_t const*) ((char const*) marker + sizeof(TRI_df_shape_marker_t));
 
     // if the shape is of basic type, don't copy it
-    if (TRI_LookupSidBasicShapeShaper(shape->_sid) != nullptr) {
+    if (Shaper::lookupSidBasicShape(shape->_sid) != nullptr) {
       return true;
     }
 

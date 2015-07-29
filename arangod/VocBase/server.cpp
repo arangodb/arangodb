@@ -2778,7 +2778,6 @@ TRI_voc_tick_t TRI_CurrentTickServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_MSync (int fd,
-                void* mmHandle,
                 char const* begin,
                 char const* end) {
   uintptr_t p = (intptr_t) begin;
@@ -2788,7 +2787,7 @@ bool TRI_MSync (int fd,
   char* b = (char*)( (p / g) * g );
   char* e = (char*)( ((q + g - 1) / g) * g );
 
-  int res = TRI_FlushMMFile(fd, &mmHandle, b, e - b, MS_SYNC);
+  int res = TRI_FlushMMFile(fd, b, e - b, MS_SYNC);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);

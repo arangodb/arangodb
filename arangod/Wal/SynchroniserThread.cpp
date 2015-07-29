@@ -59,7 +59,7 @@ SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager,
     _waiting(0),
     _stop(0),
     _syncInterval(syncInterval),
-    _logfileCache() {
+    _logfileCache({ 0, -1 }) {
 
   allowAsynchronousCancelation();
 }
@@ -112,17 +112,18 @@ void SynchroniserThread::signalSync () {
 
 void SynchroniserThread::run () {
   uint64_t iterations = 0;
+  uint32_t waiting;
+    
+  {
+    // fetch initial value for waiting
+    CONDITION_LOCKER(guard, _condition);
+    waiting = _waiting;
+  }
+
+  // go on without the lock
 
   while (true) {
     int stop = (int) _stop;
-    uint32_t waiting = 0;
-
-    {
-      CONDITION_LOCKER(guard, _condition);
-      waiting = _waiting;
-    }
-
-    // go on without the lock
 
     if (waiting > 0 || ++iterations == 10) {
       iterations = 0;
@@ -155,14 +156,17 @@ void SynchroniserThread::run () {
       _waiting -= waiting;
     }
 
-    if (_waiting == 0 && stop == 0) {
+    // update value of waiting
+    waiting = _waiting;
+
+    if (waiting == 0) {
+      if (stop > 0) {
+        // stop requested and all synced, we can exit
+        break;
+      }
+
       // sleep if nothing to do
       guard.wait(_syncInterval);
-    }
-
-    if (stop > 0 && _waiting == 0) {
-      // stop requested and all synced, we can exit
-      break;
     }
 
     // next iteration
@@ -198,8 +202,8 @@ int SynchroniserThread::doSync (bool& checkMore) {
   // get the logfile's file descriptor
   int fd = getLogfileDescriptor(region.logfileId);
   TRI_ASSERT(fd >= 0);
-  void** mmHandle = nullptr;
-  bool result = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
+
+  bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
 
   LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
             (unsigned long long) id,

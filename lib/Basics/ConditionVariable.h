@@ -73,8 +73,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class  ConditionVariable {
-        ConditionVariable (ConditionVariable const&);
-        ConditionVariable& operator= (ConditionVariable const&);
+      ConditionVariable (ConditionVariable const&) = delete;
+      ConditionVariable& operator= (ConditionVariable const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

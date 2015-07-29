@@ -41,7 +41,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_FlushMMFile (int fileDescriptor,
-                     void** mmHandle,
                      void* startingAddress,
                      size_t numOfBytesToFlush,
                      int flags) {
@@ -52,15 +51,9 @@ int TRI_FlushMMFile (int fileDescriptor,
   // #define MS_INVALIDATE   2               /* invalidate the caches */
   // #define MS_SYNC         4               /* synchronous memory sync */
   // Note: under windows all flushes are achieved synchronously
-  //
-  // *mmHandle should always be NULL
   // ...........................................................................
 
-  int res;
-
-  TRI_ASSERT(*mmHandle == NULL);
-
-  res = msync(startingAddress, numOfBytesToFlush, flags);
+  int res = msync(startingAddress, numOfBytesToFlush, flags);
 
 #ifdef __APPLE__
   if (res == 0) {
@@ -100,7 +93,7 @@ int TRI_MMFile (void* memoryAddress,
 
   off_t offsetRetyped = (off_t)(offset);
 
-  *mmHandle = NULL; // only useful for windows
+  *mmHandle = nullptr; // only useful for Windows
 
   *result = mmap(memoryAddress, numOfBytesToInitialise, memoryProtection, flags, fileDescriptor, offsetRetyped);
 
@@ -123,13 +116,11 @@ int TRI_UNMMFile (void* memoryAddress,
                   size_t numOfBytesToUnMap,
                   int fileDescriptor,
                   void** mmHandle) {
-  int result;
+  TRI_ASSERT(*mmHandle == nullptr); // only useful for Windows
 
-  TRI_ASSERT(*mmHandle == NULL);
+  int res = munmap(memoryAddress, numOfBytesToUnMap);
 
-  result = munmap(memoryAddress, numOfBytesToUnMap);
-
-  if (result == 0) {
+  if (res == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -149,13 +140,11 @@ int TRI_ProtectMMFile (void* memoryAddress,
                        int flags,
                        int fileDescriptor,
                        void** mmHandle) {
-  int result;
+  TRI_ASSERT(*mmHandle == nullptr); // only useful for Windows
 
-  TRI_ASSERT(*mmHandle == NULL);
+  int res = mprotect(memoryAddress, numOfBytesToProtect, flags);
 
-  result = mprotect(memoryAddress, numOfBytesToProtect, flags);
-
-  if (result == 0) {
+  if (res == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 

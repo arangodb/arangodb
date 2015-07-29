@@ -28,25 +28,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExampleMatcher.h"
-#include "V8Server/v8-vocbaseprivate.h"
-#include "voc-shaper.h"
-#include "V8/v8-utils.h"
-#include "V8/v8-conv.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "Utils/V8ResolverGuard.h"
+#include "V8/v8-utils.h"
+#include "V8/v8-conv.h"
+#include "V8Server/v8-shape-conv.h"
+#include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/VocShaper.h"
 
 using namespace std;
 using namespace triagens::arango;
 using namespace triagens::basics;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up the example object
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExampleMatcher::cleanup () {
-  auto zone = _shaper->_memoryZone;
+  auto zone = _shaper->memoryZone();
   // clean shaped json objects
   for (auto& def : definitions) {
     for (auto& it : def._values) {
@@ -61,12 +61,15 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
                                             size_t& n,
                                             std::string& errorMessage,
                                             ExampleDefinition& def) {
+  def._pids.reserve(n);
+  def._values.reserve(n);
+
   for (size_t i = 0;  i < n;  ++i) {
     v8::Handle<v8::Value> key = names->Get((uint32_t) i);
     v8::Handle<v8::Value> val = example->Get(key);
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
     if (*keyStr != nullptr) {
-      auto pid = _shaper->lookupAttributePathByName(_shaper, *keyStr);
+      auto pid = _shaper->lookupAttributePathByName(*keyStr);
 
       if (pid == 0) {
         // Internal attributes do have pid == 0.
@@ -88,7 +91,7 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
             }
             if (vocbase == nullptr) {
               // This should never be thrown as we are already in a transaction
-              TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
             }
             V8ResolverGuard resolverGuard(vocbase);
             CollectionNameResolver const* resolver = resolverGuard.getResolver();
@@ -105,13 +108,13 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
             } 
             else {
               // no attribute path found. this means the result will be empty
-              throw TRI_RESULT_ELEMENT_NOT_FOUND;
+              THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
             }
           }
         } 
         else {
           // no attribute path found. this means the result will be empty
-          throw TRI_RESULT_ELEMENT_NOT_FOUND;
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
       } 
       else {
@@ -120,17 +123,108 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
         auto value = TRI_ShapedJsonV8Object(isolate, val, _shaper, false);
 
         if (value == nullptr) {
-          throw TRI_RESULT_ELEMENT_NOT_FOUND;
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
         def._values.push_back(value);
       }
     }
     else {
       errorMessage = "cannot convert attribute path to UTF8";
-      throw TRI_ERROR_BAD_PARAMETER;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
   }
 }
+
+void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
+                                            CollectionNameResolver const* resolver,
+                                            ExampleDefinition& def) {
+
+  if ( TRI_IsStringJson(example) ) {
+    // Example is an _id value
+    char const* _key = strchr(example->_value._string.data, '/');
+    if (_key != nullptr) {
+      _key += 1;
+      def._internal.insert(make_pair(internalAttr::key, DocumentId(0, _key)));
+      return;
+    } else {
+      THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
+    }
+  }
+  TRI_vector_t objects = example->_value._objects;
+
+  // Trolololol std::vector in C... ;(
+  size_t n = TRI_LengthVector(&objects); 
+
+  def._pids.reserve(n);
+  def._values.reserve(n);
+
+  try { 
+    for (size_t i = 0; i < n; i += 2) {
+      auto keyObj = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i));
+      TRI_ASSERT(TRI_IsStringJson(keyObj));
+      char const* keyStr = keyObj->_value._string.data;
+      auto pid = _shaper->lookupAttributePathByName(keyStr);
+
+      if (pid == 0) {
+        // Internal attributes do have pid == 0.
+        if (strncmp("_", keyStr, 1) == 0) {
+          string const key(keyStr);
+          auto jsonValue = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
+          if (! TRI_IsStringJson(jsonValue)) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+          }
+          string keyVal(jsonValue->_value._string.data);
+          if (TRI_VOC_ATTRIBUTE_KEY == key) {
+            def._internal.insert(make_pair(internalAttr::key, DocumentId(0, keyVal)));
+          } 
+          else if (TRI_VOC_ATTRIBUTE_REV == key) {
+            def._internal.insert(make_pair(internalAttr::rev, DocumentId(0, keyVal)));
+          } 
+          else {
+            string colName = keyVal.substr(0, keyVal.find("/"));
+            keyVal = keyVal.substr(keyVal.find("/") + 1, keyVal.length());
+            if (TRI_VOC_ATTRIBUTE_ID == key) {
+              def._internal.insert(make_pair(internalAttr::id, DocumentId(resolver->getCollectionId(colName), keyVal)));
+            } 
+            else if (TRI_VOC_ATTRIBUTE_FROM == key) {
+              def._internal.insert(make_pair(internalAttr::from, DocumentId(resolver->getCollectionId(colName), keyVal)));
+            } 
+            else if (TRI_VOC_ATTRIBUTE_TO == key) {
+              def._internal.insert(make_pair(internalAttr::to, DocumentId(resolver->getCollectionId(colName), keyVal)));
+            } 
+            else {
+              // no attribute path found. this means the result will be empty
+              THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
+            }
+ 
+          }
+        }
+        else {
+          // no attribute path found. this means the result will be empty
+          ExampleMatcher::cleanup();
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
+        }
+      }
+      else {
+        def._pids.push_back(pid);
+        auto jsonValue = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
+        auto value = TRI_ShapedJsonJson(_shaper, jsonValue, false);
+
+        if (value == nullptr) {
+          ExampleMatcher::cleanup();
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
+        }
+
+        def._values.push_back(value);
+      }
+    }
+  } 
+  catch (bad_alloc&) {
+    ExampleMatcher::cleanup();
+    throw;
+  }
+}
+ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor using a v8::Object example
@@ -138,7 +232,7 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
  
 ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
                                 v8::Handle<v8::Object> const example,
-                                TRI_shaper_t* shaper,
+                                VocShaper* shaper,
                                 std::string& errorMessage) 
   : _shaper(shaper) {
 
@@ -146,9 +240,6 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
   size_t n = names->Length();
 
   ExampleDefinition def;
-
-  def._pids.reserve(n);
-  def._values.reserve(n);
 
   try { 
     ExampleMatcher::fillExampleDefinition(isolate, example, names, n, errorMessage, def);
@@ -166,7 +257,7 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
  
 ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
                                 v8::Handle<v8::Array> const examples,
-                                TRI_shaper_t* shaper,
+                                VocShaper* shaper,
                                 std::string& errorMessage) 
   : _shaper(shaper) {
 
@@ -183,9 +274,6 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
 
     ExampleDefinition def;
 
-    def._pids.reserve(n);
-    def._values.reserve(n);
-
     try { 
       ExampleMatcher::fillExampleDefinition(isolate, example, names, n, errorMessage, def);
     } 
@@ -201,52 +289,36 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
 /// @brief Constructor using a TRI_json_t object
 ////////////////////////////////////////////////////////////////////////////////
 
-ExampleMatcher::ExampleMatcher (TRI_json_t* const example,
-                                TRI_shaper_t* shaper) 
+ExampleMatcher::ExampleMatcher (TRI_json_t const* example,
+                                VocShaper* shaper,
+                                CollectionNameResolver const* resolver) 
   : _shaper(shaper) {
 
-  // Just make sure we are talking about objects
-  TRI_ASSERT(TRI_IsObjectJson(example));
-
-  TRI_vector_t objects = example->_value._objects;
-
-  ExampleDefinition def;
-
-  // Trolololol std::vector in C... ;(
-  size_t n = TRI_LengthVector(&objects); 
-
-  def._pids.reserve(n);
-  def._values.reserve(n);
-
-  try { 
-    for (size_t i = 0; i < n; i += 2) {
-      auto keyObj = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i));
-      TRI_ASSERT(TRI_IsStringJson(keyObj));
-      auto pid = _shaper->lookupAttributePathByName(_shaper, keyObj->_value._string.data);
-
-      if (pid == 0) {
-        // no attribute path found. this means the result will be empty
-        ExampleMatcher::cleanup();
-        throw TRI_RESULT_ELEMENT_NOT_FOUND;
-      }
-
-      def._pids.push_back(pid);
-      auto jsonValue = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
-      auto value = TRI_ShapedJsonJson(_shaper, jsonValue, false);
-
-
-      if (value == nullptr) {
-        ExampleMatcher::cleanup();
-        throw TRI_RESULT_ELEMENT_NOT_FOUND;
-      }
-      def._values.push_back(value);
+  if (TRI_IsObjectJson(example) || TRI_IsStringJson(example)) {
+    ExampleDefinition def;
+    try { 
+      ExampleMatcher::fillExampleDefinition(example, resolver, def);
+    } 
+    catch (...) {
+      ExampleMatcher::cleanup();
+      throw;
     }
-  } 
-  catch (bad_alloc&) {
-    ExampleMatcher::cleanup();
-    throw;
+    definitions.emplace_back(move(def)); 
   }
-  definitions.emplace_back(move(def)); 
+  else if (TRI_IsArrayJson(example)) {
+    size_t size = TRI_LengthArrayJson(example);
+    for (size_t i = 0; i < size; ++i) {
+      ExampleDefinition def;
+      try { 
+        ExampleMatcher::fillExampleDefinition(TRI_LookupArrayJson(example, i), resolver, def);
+      } 
+      catch (...) {
+        ExampleMatcher::cleanup();
+        throw;
+      }
+      definitions.emplace_back(move(def)); 
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,12 +384,11 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
     for (size_t i = 0;  i < def._values.size();  ++i) {
       TRI_shaped_json_t* example = def._values[i];
 
-      bool ok = TRI_ExtractShapedJsonVocShaper(_shaper,
-                                               &document,
-                                               example->_sid,
-                                               def._pids[i],
-                                               &result,
-                                               &shape);
+      bool ok = _shaper->extractShapedJson(&document,
+                                           example->_sid,
+                                           def._pids[i],
+                                           &result,
+                                           &shape);
 
       if (! ok || shape == nullptr) {
         goto nextExample;

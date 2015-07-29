@@ -94,7 +94,7 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
   bool block = (found && StringUtils::boolean(blockStr));
 
   if (block && _dispatcherThread != nullptr) {
-    _dispatcherThread->blockThread();
+    _dispatcherThread->block();
   }
 
   if (0 < s) {
@@ -102,7 +102,7 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
   }
 
   if (block && _dispatcherThread != nullptr) {
-    _dispatcherThread->unblockThread();
+    _dispatcherThread->unblock();
   }
 
   TRI_json_t sleepNumber;

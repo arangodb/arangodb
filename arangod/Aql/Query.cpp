@@ -49,6 +49,7 @@
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8Server/ApplicationV8.h"
+#include "V8Server/v8-shape-conv.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;
@@ -92,7 +93,7 @@ static_assert(sizeof(StateNames) / sizeof(std::string) == static_cast<size_t>(Ex
       
 Profile::Profile (Query* query) 
   : query(query),
-    results(static_cast<size_t>(INVALID_STATE)),
+    results(),
     stamp(TRI_microtime()),
     tracked(false) {
 
@@ -127,15 +128,15 @@ Profile::~Profile () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enter a state
+/// @brief sets a state to done
 ////////////////////////////////////////////////////////////////////////////////
 
-void Profile::enter (ExecutionState state) {
+void Profile::setDone (ExecutionState state) {
   double const now = TRI_microtime();
 
   if (state != ExecutionState::INVALID_STATE) {
     // record duration of state
-    results.emplace_back(std::make_pair(state, now - stamp)); 
+    results.emplace_back(state, now - stamp); 
   }
 
   // set timestamp
@@ -1111,7 +1112,7 @@ char* Query::registerString (std::string const& p,
 void Query::enterContext () {
   if (! _contextOwnedByExterior) {
     if (_context == nullptr) {
-      _context = _applicationV8->enterContext("STANDARD", _vocbase, false);
+      _context = _applicationV8->enterContext(_vocbase, false);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot enter V8 context");
@@ -1395,20 +1396,10 @@ std::vector<std::string> Query::getRulesFromOptions () const {
 
 void Query::enterState (ExecutionState state) {
   if (_profile != nullptr) {
-    _profile->enter(_state);
+    // record timing for previous state
+    _profile->setDone(_state);
   }
-
-#if 0
-  // Just for debugging:
-  std::cout << "enterState: " << state;
-  if (_queryString != nullptr) {
-    std::cout << _queryString << std::endl;
-  }
-  else {
-    std::cout << "no querystring" << std::endl;
-  }
-#endif
-
+  
   // and adjust the state
   _state = state;
 }

@@ -35,9 +35,9 @@
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
-#include "ShapedJson/shaped-json.h"
 #include "Utils/DocumentHelper.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/VocShaper.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -305,7 +305,7 @@ void RestVocbaseBaseHandler::generateNotModified (TRI_voc_rid_t rid) {
 void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransaction& trx,
                                                TRI_voc_cid_t cid,
                                                TRI_doc_mptr_copy_t const& mptr,
-                                               TRI_shaper_t* shaper,
+                                               VocShaper* shaper,
                                                bool generateBody) {
 
   CollectionNameResolver const* resolver = trx.resolver();

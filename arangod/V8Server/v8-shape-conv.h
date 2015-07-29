@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shape accessor
+/// @brief V8 utility functions
 ///
 /// @file
 ///
@@ -27,62 +27,63 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHAPED_JSON_SHAPE__ACCESSOR_H
-#define ARANGODB_SHAPED_JSON_SHAPE__ACCESSOR_H 1
+#ifndef ARANGODB_V8_SERVER_V8_SHAPE_CONV_H
+#define ARANGODB_V8_SERVER_V8_SHAPE_CONV_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/json.h"
-#include "ShapedJson/shaped-json.h"
+#include "V8/v8-globals.h"
+#include "VocBase/shaped-json.h"
+
+class VocShaper;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                              CONVERSION FUNCTIONS
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief json shape access
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_shape_access_s {
-  TRI_shape_sid_t _sid;                 // shaped identifier of the shape we are looking at
-  TRI_shape_pid_t _pid;                 // path identifier of the attribute path
-
-  TRI_shape_sid_t _resultSid;           // resulting shape
-  void const** _code;                   // bytecode
-}
-TRI_shape_access_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free a shape accessor
+/// @brief converts a TRI_shaped_json_t into an existing V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShapeAccessor (TRI_shape_access_t*);
+v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
+                                         v8::Handle<v8::Value>,
+                                         VocShaper*,
+                                         TRI_shape_t const*,
+                                         char const* data,
+                                         size_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a shape accessor
+/// @brief converts a TRI_shaped_json_t into a new V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_access_t* TRI_ShapeAccessor (struct TRI_shaper_s* shaper,
-                                       TRI_shape_sid_t sid,
-                                       TRI_shape_pid_t pid);
+v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
+                                         VocShaper*,
+                                         TRI_shape_t const*,
+                                         char const* data,
+                                         size_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a shape accessor
+/// @brief converts an V8 object to a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
-                               TRI_shaped_json_t const* shaped,
-                               TRI_shaped_json_t* result);
+TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Isolate* isolate,
+                                           v8::Handle<v8::Value> const,
+                                           VocShaper*,
+                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a TRI_shape_t for debugging
+/// @brief converts a V8 object to a TRI_shaped_json_t in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintShapeAccessor (TRI_shape_access_t*);
+int TRI_FillShapedJsonV8Object (v8::Isolate* isolate,
+                                v8::Handle<v8::Value> const,
+                                TRI_shaped_json_t*,
+                                VocShaper*,
+                                bool);
 
 #endif
 

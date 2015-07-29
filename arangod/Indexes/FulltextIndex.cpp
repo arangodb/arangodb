@@ -34,7 +34,7 @@
 #include "FulltextIndex/fulltext-wordlist.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 using namespace triagens::arango;
 
@@ -48,14 +48,14 @@ using namespace triagens::arango;
 
 struct TextExtractorContext {
   std::vector<std::pair<char const*, size_t>>* _positions;
-  TRI_shaper_t*                                _shaper;
+  VocShaper*                                   _shaper;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief walk over an array shape and extract the string values
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ArrayTextExtractor (TRI_shaper_t* shaper, 
+static bool ArrayTextExtractor (VocShaper* shaper, 
                                 TRI_shape_t const* shape, 
                                 char const*, 
                                 char const* shapedJson, 
@@ -80,7 +80,7 @@ static bool ArrayTextExtractor (TRI_shaper_t* shaper,
 /// @brief walk over a list shape and extract the string values
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ListTextExtractor (TRI_shaper_t* shaper, 
+static bool ListTextExtractor (VocShaper* shaper, 
                                TRI_shape_t const* shape, 
                                char const* shapedJson, 
                                uint64_t length, 
@@ -129,8 +129,8 @@ FulltextIndex::FulltextIndex (TRI_idx_iid_t iid,
   TRI_ASSERT(iid != 0);
 
   // look up the attribute
-  TRI_shaper_t* shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  _pid = shaper->findOrCreateAttributePathByName(shaper, attribute.c_str());
+  auto shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  _pid = shaper->findOrCreateAttributePathByName(attribute.c_str());
 
   if (_pid == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -231,10 +231,10 @@ TRI_fulltext_wordlist_t* FulltextIndex::wordlist (TRI_doc_mptr_t const* document
   TRI_shape_t const* shape;
 
   // extract the shape
-  TRI_shaper_t* shaper = _collection->getShaper();
+  auto shaper = _collection->getShaper();
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &shaped, 0, _pid, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  bool ok = shaper->extractShapedJson(&shaped, 0, _pid, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (! ok || shape == nullptr) {
     return nullptr;

@@ -30,14 +30,10 @@
 
 #include "Job.h"
 
+#include "Dispatcher/Dispatcher.h"
+
 using namespace triagens::rest;
 using namespace std;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  static variables
-// -----------------------------------------------------------------------------
-
-std::string const Job::QUEUE_NAME{ "STANDARD" };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -49,7 +45,8 @@ std::string const Job::QUEUE_NAME{ "STANDARD" };
 
 Job::Job (string const& name)
   : _name(name),
-    _id(0) {
+    _id(0),
+    _queuePosition((size_t) -1) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,8 +64,8 @@ Job::~Job () {
 /// @brief returns the queue name to use
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const& Job::queue () const {
-  return QUEUE_NAME;
+size_t Job::queue () const {
+  return Dispatcher::STANDARD_QUEUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

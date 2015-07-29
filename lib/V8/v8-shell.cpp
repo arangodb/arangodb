@@ -36,8 +36,6 @@
 #include "Basics/shell-colors.h"
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
-#include "ShapedJson/shaped-json.h"
-
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-json.h"

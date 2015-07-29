@@ -38,10 +38,10 @@
 #include "Aql/ExecutionStats.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterComm.h"
-#include "ShapedJson/shaped-json.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
+#include "VocBase/shaped-json.h"
 
 struct TRI_df_marker_s;
 struct TRI_doc_mptr_copy_t;
@@ -146,24 +146,18 @@ namespace triagens {
         void throwIfKilled ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief functionality to walk an execution block recursively
-////////////////////////////////////////////////////////////////////////////////
-
-        bool walk (WalkerWorker<ExecutionBlock>* worker);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a dependency
 ////////////////////////////////////////////////////////////////////////////////
 
         void addDependency (ExecutionBlock* ep) {
-          _dependencies.push_back(ep);
+          _dependencies.emplace_back(ep);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ExecutionBlock*> getDependencies () {
+        std::vector<ExecutionBlock*> getDependencies () const {
           return _dependencies;
         }
 

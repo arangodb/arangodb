@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/collection.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
 
@@ -726,7 +726,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         TRI_document_collection_t* document = trx->documentCollection();
 
         // re-insert the attribute
-        int res = TRI_InsertAttributeVocShaper(document->getShaper(), marker, false);
+        int res = document->getShaper()->insertAttribute(marker, false);
         return res;
       });
 
@@ -755,7 +755,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         TRI_document_collection_t* document = trx->documentCollection();
      
         // re-insert the shape
-        int res = TRI_InsertShapeVocShaper(document->getShaper(), marker, false);
+        int res = document->getShaper()->insertShape(marker, false);
         return res;
       });
 

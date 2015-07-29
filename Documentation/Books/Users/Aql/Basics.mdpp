@@ -112,6 +112,7 @@ The current list of keywords is:
 - NULL
 - TRUE
 - FALSE
+- DISTINCT
 
 Additional keywords may be added in future versions of ArangoDB. 
 
@@ -296,8 +297,30 @@ Each attribute in an object is a name / value pair. Name and value of an
 attribute are separated using the *:* symbol.
 
 The attribute name is mandatory and must be specified as a quoted or unquoted
-string. If a keyword is to be used as an attribute name, the name must be
-quoted.
+string. If a keyword is used as an attribute name, the attribute name must be quoted:
+    
+    { return : 1 }     /* won't work */
+    { "return" : 1 }   /* works ! */
+    { `return` : 1 }   /* works, too! */
+
+Since ArangoDB 2.6, object attribute names can be computed using dynamic expressions, too.
+To disambiguate regular attribute names from attribute name expressions, computed
+attribute names must be enclosed in *[* and *]*:
+
+    { [ CONCAT("test/", "bar") ] : "someValue" }
+
+Since ArangoDB 2.7, there is also shorthand notation for attributes which is handy for
+returning existing variables easily:
+    
+    LET name = "Peter"
+    LET age = 42
+    RETURN { name, age }
+
+The above is the shorthand equivalent for the generic form:
+
+    LET name = "Peter"
+    LET age = 42
+    RETURN { name : name, age : age }
 
 Any valid expression can be used as an attribute value. That also means nested
 objects can be used as attribute values:

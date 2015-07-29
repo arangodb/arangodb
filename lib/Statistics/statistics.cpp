@@ -120,8 +120,7 @@ static void ProcessRequestStatistics (TRI_request_statistics_t* statistics) {
   }
 
   // clear statistics
-  memset(statistics, 0, sizeof(TRI_request_statistics_t));
-  statistics->_requestType = triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL;
+  statistics->reset(); 
 
   // put statistics item back onto the freelist
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -269,7 +268,7 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
   }
 
   // clear statistics
-  memset(statistics, 0, sizeof(TRI_connection_statistics_t));
+  statistics->reset();
 
   // put statistics item back onto the freelist
 #ifdef TRI_ENABLE_MAINTAINER_MODE  
@@ -649,12 +648,8 @@ void TRI_InitialiseStatistics () {
 
 void TRI_ShutdownStatistics (void) {
   Shutdown = true;
-#ifdef TRI_ENABLE_MAINTAINER_MODE    
-  int res = TRI_JoinThread(&StatisticsThread);
+  int res TRI_UNUSED = TRI_JoinThread(&StatisticsThread);
   TRI_ASSERT(res == 0);
-#else
-  TRI_JoinThread(&StatisticsThread);
-#endif
 }
 
 // -----------------------------------------------------------------------------

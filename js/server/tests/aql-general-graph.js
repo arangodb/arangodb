@@ -2634,7 +2634,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
   var c2;
   var t2;
  
-  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e.vertex._id, e.path.edges[0].what RETURN e";
+  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e._id RETURN e";
 
   return {
 
@@ -2722,8 +2722,8 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 2);
-      assertEqual(actual[0]._id, t2);
-      assertEqual(actual[1]._id, t1);
+      assertEqual(actual[0]._id, t1);
+      assertEqual(actual[1]._id, t2);
     }
   };
 }
