@@ -42,7 +42,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     template<typename T>
-    class NodeFinder : public WalkerWorker<ExecutionNode> {
+    class NodeFinder final : public WalkerWorker<ExecutionNode> {
 
         T _lookingFor;
 

@@ -783,7 +783,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 /// @brief static analysis debugger
 ////////////////////////////////////////////////////////////////////////////////
 
-struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
+struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
   RegisterPlanningDebugger () 
     : indent(0) {
   }
@@ -1747,26 +1747,15 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
-  std::unordered_set<Variable*> s;
-      
-  for (auto const& x : _ranges) {
-    for (RangeInfo const& y : x) {
-      for (RangeInfoBound const& z : y._lows) {
-        AstNode const* a = z.getExpressionAst(_plan->getAst());
-        Ast::getReferencedVariables(a, s);
-      }
-      for (RangeInfoBound const& z : y._highs) {
-        AstNode const* a = z.getExpressionAst(_plan->getAst());
-        Ast::getReferencedVariables(a, s);
-      }
-    }
-  }
+  std::unordered_set<Variable const*> s;
+  // actual work is done by that method  
+  getVariablesUsedHere(s); 
 
-  // Copy set elements into vector:
+  // copy result into vector
   std::vector<Variable const*> v;
   v.reserve(s.size());
 
@@ -1774,6 +1763,25 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
     v.emplace_back(const_cast<Variable*>(vv));
   }
   return v;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const {
+  for (auto const& x : _ranges) {
+    for (RangeInfo const& y : x) {
+      for (RangeInfoBound const& z : y._lows) {
+        AstNode const* a = z.getExpressionAst(_plan->getAst());
+        Ast::getReferencedVariables(a, vars);
+      }
+      for (RangeInfoBound const& z : y._highs) {
+        AstNode const* a = z.getExpressionAst(_plan->getAst());
+        Ast::getReferencedVariables(a, vars);
+      }
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -1983,7 +1991,7 @@ double SubqueryNode::estimateCost (size_t& nrItems) const {
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
 ////////////////////////////////////////////////////////////////////////////////
 
-struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
+struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
   std::unordered_set<Variable const*> _usedLater;
   std::unordered_set<Variable const*> _valid;
 
@@ -2028,7 +2036,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
@@ -2041,7 +2049,23 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
       v.emplace_back((*it));
     }
   }
+
   return v;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+void SubqueryNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const {
+  SubqueryVarUsageFinder finder;
+  _subquery->walk(&finder);
+      
+  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end(); ++it) {
+    if (finder._valid.find(*it) == finder._valid.end()) {
+      vars.emplace((*it));
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2049,7 +2073,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
 /// subquery plan can throw.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct CanThrowFinder : public WalkerWorker<ExecutionNode> {
+struct CanThrowFinder final : public WalkerWorker<ExecutionNode> {
   bool _canThrow;
 
   CanThrowFinder () 
@@ -2450,7 +2474,7 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-struct UserVarFinder : public WalkerWorker<ExecutionNode> {
+struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
   UserVarFinder (int mindepth) 
     : mindepth(mindepth), depth(-1) { 
   }
@@ -2488,14 +2512,35 @@ struct UserVarFinder : public WalkerWorker<ExecutionNode> {
   }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, returning a vector
+////////////////////////////////////////////////////////////////////////////////
+
 std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
   std::unordered_set<Variable const*> v;
+  // actual work is done by that method
+  getVariablesUsedHere(v);
+
+  // copy result into vector
+  std::vector<Variable const*> vv;
+  vv.reserve(v.size());
+  for (auto const& x : v) {
+    vv.emplace_back(x);
+  }
+  return vv;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+void AggregateNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const {
   for (auto const& p : _aggregateVariables) {
-    v.emplace(p.second);
+    vars.emplace(p.second);
   }
 
   if (_expressionVariable != nullptr) {
-    v.emplace(_expressionVariable);
+    vars.emplace(_expressionVariable);
   }
 
   if (_outVariable != nullptr && ! _count) {
@@ -2514,22 +2559,15 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
         myselfAsNonConst->walk(&finder);
       }
       for (auto& x : finder.userVars) {
-        v.emplace(x);
+        vars.emplace(x);
       }
     }
     else {
       for (auto& x : _keepVariables) {
-        v.emplace(x);
+        vars.emplace(x);
       }
     }
   }
-
-  std::vector<Variable const*> vv;
-  vv.reserve(v.size());
-  for (auto const& x : v) {
-    vv.emplace_back(x);
-  }
-  return vv;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

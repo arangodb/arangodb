@@ -124,6 +124,7 @@ namespace triagens {
             _depth(0),
             _varUsageValid(false),
             _plan(plan) {
+
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,11 +484,19 @@ namespace triagens {
                                    bool) const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const  {
           return std::vector<Variable const*>();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void getVariablesUsedHere (std::unordered_set<Variable const*>&) const  {
+          // do nothing!
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -593,7 +602,7 @@ namespace triagens {
           }
         };
 
-        struct RegisterPlan : public WalkerWorker<ExecutionNode> {
+        struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
           // The following are collected for global usage in the ExecutionBlock,
           // although they are stored here in the node:
 
@@ -1125,11 +1134,19 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           return std::vector<Variable const*>{ _inVariable };
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
+          vars.emplace(_inVariable);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1270,10 +1287,16 @@ namespace triagens {
         }
         
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
@@ -1575,11 +1598,11 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::unordered_set<Variable*> vars;
+          std::unordered_set<Variable const*> vars;
           _expression->variables(vars);
 
           std::vector<Variable const*> v;
@@ -1594,6 +1617,18 @@ namespace triagens {
           }
 
           return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
+          _expression->variables(vars);
+
+          if (_conditionVariable != nullptr) {
+            vars.emplace(_conditionVariable);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1730,10 +1765,16 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
@@ -1839,11 +1880,19 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           return std::vector<Variable const*>{ _inVariable };
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final { 
+          vars.emplace(_inVariable);
         }
 
       private:
@@ -1996,7 +2045,7 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
@@ -2007,6 +2056,16 @@ namespace triagens {
             v.emplace_back(p.first);
           }
           return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final { 
+          for (auto& p : _elements) {
+            vars.emplace(p.first);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2270,10 +2329,16 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
@@ -2416,12 +2481,20 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           return std::vector<Variable const*>{ _inVariable };
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
+          vars.emplace(_inVariable);
+        } 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -2677,12 +2750,20 @@ namespace triagens {
                               bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           return std::vector<Variable const*>{ _inVariable };
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
+          vars.emplace(_inVariable);
+        } 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -2760,12 +2841,20 @@ namespace triagens {
                               bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           return std::vector<Variable const*>{ _inVariable };
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
+          vars.emplace(_inVariable);
+        } 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -2846,7 +2935,7 @@ namespace triagens {
                               bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
@@ -2859,6 +2948,18 @@ namespace triagens {
           }
           return v;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
+          vars.emplace(_inDocVariable);
+
+          if (_inKeyVariable != nullptr) {
+            vars.emplace(_inKeyVariable);
+          }
+        } 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -2945,7 +3046,7 @@ namespace triagens {
                               bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
@@ -2957,6 +3058,18 @@ namespace triagens {
             v.emplace_back(_inKeyVariable);
           }
           return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
+          vars.emplace(_inDocVariable);
+
+          if (_inKeyVariable != nullptr) {
+            vars.emplace(_inKeyVariable);
+          }
         }
 
 // -----------------------------------------------------------------------------
@@ -3050,13 +3163,23 @@ namespace triagens {
                               bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
           // Please do not change the order here without adjusting the 
           // optimizer rule distributeInCluster as well!
           return std::vector<Variable const*>({ _inDocVariable, _insertVariable, _updateVariable });
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
+          vars.emplace(_inDocVariable);
+          vars.emplace(_insertVariable);
+          vars.emplace(_updateVariable);
         }
 
 // -----------------------------------------------------------------------------
@@ -3637,7 +3760,7 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
       
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
@@ -3648,6 +3771,16 @@ namespace triagens {
             v.emplace_back(p.first);
           }
           return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
+          for (auto const& p : _elements) {
+            vars.emplace(p.first);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -291,15 +291,30 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
 std::vector<std::string> Optimizer::translateRules (std::vector<int> const& rules) {
   std::vector<std::string> names;
+  names.reserve(rules.size());
 
-  for (auto const& r : rules) {
-    auto it = _rules.find(r);
+  for (auto const& rule : rules) {
+    char const* name = translateRule(rule);
 
-    if (it != _rules.end()) {
-      names.emplace_back((*it).second.name);
+    if (name !=  nullptr) {
+      names.emplace_back(std::string(name));
     }
   }
   return names;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translate a single rule
+////////////////////////////////////////////////////////////////////////////////
+
+char const* Optimizer::translateRule (int rule) {
+  auto it = _rules.find(rule);
+
+  if (it != _rules.end()) {
+    return (*it).second.name.c_str();
+  }
+
+  return nullptr;
 }
 
 // -----------------------------------------------------------------------------
