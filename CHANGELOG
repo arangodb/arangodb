@@ -568,7 +568,7 @@ v2.6.0 (2015-06-20)
 
 * 'EDGES' AQL Function
 
-  The AQL function EDGES got a new fifth option parameter.
+  The AQL function `EDGES` got a new fifth option parameter.
   Right now only one option is available: 'includeVertices'. This is a boolean parameter
   that allows to modify the result of the `EDGES` function.
   Default is 'includeVertices: false' which does not have any effect.
@@ -1301,7 +1301,7 @@ v2.5.0-beta2 (2015-02-23)
 
 * use exclusive native SRWLocks on Windows instead of native mutexes
 
-* added AQL functions MD5, SHA1, and RANDOM_TOKEN.
+* added AQL functions `MD5`, `SHA1`, and `RANDOM_TOKEN`.
 
 * reduced number of string allocations when parsing certain AQL queries
 
