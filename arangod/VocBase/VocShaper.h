@@ -192,28 +192,43 @@ class VocShaper : public Shaper {
   private:
     
     TRI_memory_zone_t*              _memoryZone;
-    
-    TRI_associative_synced_t        _attributePathsByName;
-    TRI_associative_synced_t        _attributePathsByPid;
+    TRI_document_collection_t*      _collection;
+
+    // attribute paths   
+    triagens::basics::Mutex         _attributePathsCreateLock;
+
+    triagens::basics::ReadWriteLock _attributePathsByNameLock; 
+    TRI_associative_pointer_t       _attributePathsByName;
+
+    triagens::basics::ReadWriteLock _attributePathsByPidLock; 
+    TRI_associative_pointer_t       _attributePathsByPid;
+
+    // attributes 
+    triagens::basics::Mutex         _attributeCreateLock;
+
+    triagens::basics::ReadWriteLock _attributeNamesLock; 
+    TRI_associative_pointer_t       _attributeNames;
+
+    triagens::basics::ReadWriteLock _attributeIdsLock; 
+    TRI_associative_pointer_t       _attributeIds;
+
+    // shapes 
+    triagens::basics::Mutex         _shapeCreateLock;
+
+    triagens::basics::ReadWriteLock _shapeDictionaryLock; 
+    TRI_associative_pointer_t       _shapeDictionary;
+
+    triagens::basics::ReadWriteLock _shapeIdsLock; 
+    TRI_associative_pointer_t       _shapeIds;
+
+    // accessors
+    triagens::basics::ReadWriteLock _accessorLock[NUM_SHAPE_ACCESSORS];
+    TRI_associative_pointer_t       _accessors[NUM_SHAPE_ACCESSORS];
 
     TRI_shape_pid_t                 _nextPid;
-    triagens::basics::Mutex         _attributePathLock;
-
-    TRI_associative_synced_t        _attributeNames;
-    TRI_associative_synced_t        _attributeIds;
-    TRI_associative_synced_t        _shapeDictionary;
-    TRI_associative_synced_t        _shapeIds;
-
     std::atomic<TRI_shape_aid_t>    _nextAid;
     std::atomic<TRI_shape_sid_t>    _nextSid;
 
-    TRI_document_collection_t*      _collection;
-
-    triagens::basics::Mutex         _shapeLock;
-    triagens::basics::Mutex         _attributeLock;
-  
-    triagens::basics::ReadWriteLock _accessorLock[NUM_SHAPE_ACCESSORS];
-    TRI_associative_pointer_t       _accessors[NUM_SHAPE_ACCESSORS];
 };
 
 ////////////////////////////////////////////////////////////////////////////////
