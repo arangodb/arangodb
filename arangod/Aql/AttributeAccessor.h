@@ -89,7 +89,7 @@ namespace triagens {
         AqlValue get (triagens::arango::AqlTransaction* trx,
                       AqlItemBlock const*,
                       size_t,
-                      std::vector<Variable*> const&,
+                      std::vector<Variable const*> const&,
                       std::vector<RegisterId> const&);
 
 // -----------------------------------------------------------------------------
