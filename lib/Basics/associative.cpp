@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "associative.h"
-
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 
@@ -106,14 +105,16 @@ static bool ResizeAssociativePointer (TRI_associative_pointer_t* array,
 
   array->_nrUsed = 0;
 
-  // table is already cleared by allocate, copy old data
-  for (j = 0; j < oldAlloc; j++) {
-    if (oldTable[j] != nullptr) {
-      AddNewElementPointer(array, oldTable[j]);
+  if (oldTable != nullptr) {
+    // table is already cleared by allocate, copy old data
+    for (j = 0; j < oldAlloc; j++) {
+      if (oldTable[j] != nullptr) {
+        AddNewElementPointer(array, oldTable[j]);
+      }
     }
-  }
 
-  TRI_Free(array->_memoryZone, oldTable);
+    TRI_Free(array->_memoryZone, oldTable);
+  }
 
   return true;
 }
@@ -142,12 +143,6 @@ int TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrUsed  = 0;
   array->_table   = nullptr;
 
-  if (nullptr == (array->_table = static_cast<void**>(TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true)))) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  array->_nrAlloc = INITIAL_SIZE;
-
 #ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
   array->_nrAdds = 0;
@@ -158,6 +153,12 @@ int TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
 #endif
+  
+  if (nullptr == (array->_table = static_cast<void**>(TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true)))) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  array->_nrAlloc = INITIAL_SIZE;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -237,16 +238,13 @@ bool TRI_ReserveAssociativePointer (TRI_associative_pointer_t* array,
 
 void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
                                          void const* key) {
-  uint64_t hash;
-  uint64_t i;
-
   if (array->_nrUsed == 0) {
     return nullptr;
   }
 
   // compute the hash
-  hash = array->hashKey(array, key);
-  i = hash % array->_nrAlloc;
+  uint64_t hash = array->hashKey(array, key);
+  uint64_t i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -410,7 +408,7 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
-/// returns a status code, and *found will contain a found element (if any)
+/// returns a status code, and *found will contain the found element (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
@@ -600,435 +598,6 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array,
 
 size_t TRI_GetLengthAssociativePointer (const TRI_associative_pointer_t* const array) {
   return array->_nrUsed;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                ASSOCIATIVE SYNCED
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new element
-///
-/// Note: this function must be called while the write-lock is held
-////////////////////////////////////////////////////////////////////////////////
-
-static void AddNewElementSynced (TRI_associative_synced_t* array, void* element) {
-  uint64_t hash;
-  uint64_t i;
-
-  // compute the hash
-  hash = array->hashElement(array, element);
-
-  // search the table
-  i = hash % array->_nrAlloc;
-
-  while (array->_table[i] != nullptr) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-#ifdef TRI_INTERNAL_STATS
-    array->_nrProbesR++;
-#endif
-  }
-
-  // add a new element to the associative array
-  array->_table[i] = element;
-  array->_nrUsed++;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resizes the array
-///
-/// Note: this function must be called while the write-lock is held
-////////////////////////////////////////////////////////////////////////////////
-
-static void ResizeAssociativeSynced (TRI_associative_synced_t* array,
-                                     uint32_t targetSize) {
-  void** oldTable;
-  uint32_t oldAlloc;
-  uint32_t j;
-
-  oldTable = array->_table;
-  oldAlloc = array->_nrAlloc;
-
-  array->_nrAlloc = targetSize;
-#ifdef TRI_INTERNAL_STATS
-  array->_nrResizes++;
-#endif
-
-  array->_table = static_cast<void**>(TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true));
-
-  if (array->_table == nullptr) {
-    array->_nrAlloc = oldAlloc;
-    array->_table = oldTable;
-
-    return;
-  }
-
-  array->_nrUsed = 0;
-
-  // table is already cleared by allocate, copy old data
-  for (j = 0; j < oldAlloc; j++) {
-    if (oldTable[j] != nullptr) {
-      AddNewElementSynced(array, oldTable[j]);
-    }
-  }
-
-  TRI_Free(array->_memoryZone, oldTable);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises an array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
-                               TRI_memory_zone_t* zone,
-                               uint64_t (*hashKey) (TRI_associative_synced_t*, void const*),
-                               uint64_t (*hashElement) (TRI_associative_synced_t*, void const*),
-                               bool (*isEqualKeyElement) (TRI_associative_synced_t*, void const*, void const*),
-                               bool (*isEqualElementElement) (TRI_associative_synced_t*, void const*, void const*)) {
-  array->hashKey = hashKey;
-  array->hashElement = hashElement;
-  array->isEqualKeyElement = isEqualKeyElement;
-  array->isEqualElementElement = isEqualElementElement;
-
-  array->_memoryZone = zone;
-  array->_nrAlloc = 0;
-  array->_nrUsed  = 0;
-  array->_table   = nullptr;
-
-  if (nullptr == (array->_table = static_cast<void**>(TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true)))) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  array->_nrAlloc = INITIAL_SIZE;
-
-  TRI_InitReadWriteLock(&array->_lock);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyAssociativeSynced (TRI_associative_synced_t* array) {
-  if (array->_table != nullptr) {
-    TRI_Free(array->_memoryZone, array->_table);
-    array->_table = nullptr;
-  }
-
-  TRI_DestroyReadWriteLock(&array->_lock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeAssociativeSynced (TRI_memory_zone_t* zone, TRI_associative_synced_t* array) {
-  TRI_DestroyAssociativeSynced(array);
-  TRI_Free(zone, array);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an element given a key
-////////////////////////////////////////////////////////////////////////////////
-
-void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
-                                              void const* key) {
-  void const* result;
-
-  // compute the hash
-  uint64_t const hash = array->hashKey(array, key);
-
-  // search the table
-  TRI_ReadLockReadWriteLock(&array->_lock);
-  uint64_t const n = array->_nrAlloc;
-  uint64_t i, k;
-
-  i = k = hash % n;
-
-  for (; i < n && array->_table[i] != nullptr && ! array->isEqualKeyElement(array, key, array->_table[i]); ++i);
-
-  if (i == n) {
-    for (i = 0; i < k && array->_table[i] != nullptr && ! array->isEqualKeyElement(array, key, array->_table[i]); ++i);
-  }
-
-  result = array->_table[i];
-
-  TRI_ReadUnlockReadWriteLock(&array->_lock);
-
-  // return whatever we found
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an element given an element
-////////////////////////////////////////////////////////////////////////////////
-
-void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* array,
-                                                  void const* element) {
-  void const* result;
-
-  // compute the hash
-  uint64_t const hash = array->hashElement(array, element);
-
-  // search the table
-  TRI_ReadLockReadWriteLock(&array->_lock);
-  uint64_t const n = array->_nrAlloc;
-  uint64_t i, k;
-
-  i = k = hash % n;
-
-  for (; i < n && array->_table[i] != nullptr && ! array->isEqualElementElement(array, element, array->_table[i]); ++i);
-
-  if (i == n) {
-    for (i = 0; i < k && array->_table[i] != nullptr && ! array->isEqualElementElement(array, element, array->_table[i]); ++i);
-  }
-
-  result = array->_table[i];
-
-  TRI_ReadUnlockReadWriteLock(&array->_lock);
-
-  // return whatever we found
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an element to the array
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
-                                          void* element,
-                                          bool overwrite) {
-  uint64_t hash;
-  uint64_t i;
-  void* old;
-
-  // compute the hash
-  hash = array->hashElement(array, element);
-
-  TRI_WriteLockReadWriteLock(&array->_lock);
-
-  // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed && ! overwrite) {
-    TRI_WriteUnlockReadWriteLock(&array->_lock);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
-
-  i = hash % array->_nrAlloc;
-
-  // search the table
-  while (array->_table[i] != nullptr && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  old = array->_table[i];
-
-  // if we found an element, return
-  if (old != nullptr) {
-    if (overwrite) {
-      array->_table[i] = element;
-    }
-    TRI_WriteUnlockReadWriteLock(&array->_lock);
-    return old;
-  }
-
-  // add a new element to the associative array
-  array->_table[i] = element;
-  array->_nrUsed++;
-
-  // if we were adding and the table is more than half full, extend it
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeAssociativeSynced(array, (uint32_t) (2 * array->_nrAlloc + 1));
-  }
-
-  TRI_WriteUnlockReadWriteLock(&array->_lock);
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an key/element to the array
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
-                                      void const* key,
-                                      void* element,
-                                      bool overwrite) {
-  uint64_t hash;
-  uint64_t i;
-  void* old;
-
-  // compute the hash
-  hash = array->hashKey(array, key);
-
-  // search the table
-  TRI_WriteLockReadWriteLock(&array->_lock);
-
-  // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed && ! overwrite) {
-    TRI_WriteUnlockReadWriteLock(&array->_lock);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
-
-  i = hash % array->_nrAlloc;
-
-  while (array->_table[i] != nullptr && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  old = array->_table[i];
-
-  // if we found an element, return
-  if (old != nullptr) {
-    if (overwrite) {
-      array->_table[i] = element;
-    }
-    TRI_WriteUnlockReadWriteLock(&array->_lock);
-    return old;
-  }
-
-  // add a new element to the associative array
-  array->_table[i] = element;
-  array->_nrUsed++;
-
-  // if we were adding and the table is more than half full, extend it
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeAssociativeSynced(array, (uint32_t) (2 * array->_nrAlloc + 1));
-  }
-
-  TRI_WriteUnlockReadWriteLock(&array->_lock);
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the array
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array,
-                                          void const* element) {
-  uint64_t hash;
-  uint64_t i;
-  uint64_t k;
-  void* old;
-
-  hash = array->hashElement(array, element);
-
-  TRI_WriteLockReadWriteLock(&array->_lock);
-  i = hash % array->_nrAlloc;
-
-  // search the table
-  while (array->_table[i] != nullptr && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  // if we did not find such an item return 0
-  if (array->_table[i] == nullptr) {
-    TRI_WriteUnlockReadWriteLock(&array->_lock);
-    return nullptr;
-  }
-
-  // remove item
-  old = array->_table[i];
-  array->_table[i] = nullptr;
-  array->_nrUsed--;
-
-  // and now check the following places for items to move here
-  k = TRI_IncModU64(i, array->_nrAlloc);
-
-  while (array->_table[k] != nullptr) {
-    uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
-
-    if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
-      array->_table[i] = array->_table[k];
-      array->_table[k] = nullptr;
-      i = k;
-    }
-
-    k = TRI_IncModU64(k, array->_nrAlloc);
-  }
-
-  // return success
-  TRI_WriteUnlockReadWriteLock(&array->_lock);
-  return old;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an key/element to the array
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
-                                      void const* key) {
-  uint64_t hash;
-  uint64_t i;
-  uint64_t k;
-  void* old;
-
-  hash = array->hashKey(array, key);
-
-  TRI_WriteLockReadWriteLock(&array->_lock);
-  i = hash % array->_nrAlloc;
-
-  // search the table
-  while (array->_table[i] != nullptr && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  // if we did not find such an item return false
-  if (array->_table[i] == nullptr) {
-    TRI_WriteUnlockReadWriteLock(&array->_lock);
-    return nullptr;
-  }
-
-  // remove item
-  old = array->_table[i];
-  array->_table[i] = nullptr;
-  array->_nrUsed--;
-
-  // and now check the following places for items to move here
-  k = TRI_IncModU64(i, array->_nrAlloc);
-
-  while (array->_table[k] != nullptr) {
-    uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
-
-    if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
-      array->_table[i] = array->_table[k];
-      array->_table[k] = nullptr;
-      i = k;
-    }
-
-    k = TRI_IncModU64(k, array->_nrAlloc);
-  }
-
-  // return success
-  TRI_WriteUnlockReadWriteLock(&array->_lock);
-  return old;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of elements from the array
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_GetLengthAssociativeSynced (TRI_associative_synced_t* const array) {
-  uint32_t result;
-
-  TRI_ReadLockReadWriteLock(&array->_lock);
-  result = array->_nrUsed;
-  TRI_ReadUnlockReadWriteLock(&array->_lock);
-
-  return (size_t) result;
 }
 
 // -----------------------------------------------------------------------------

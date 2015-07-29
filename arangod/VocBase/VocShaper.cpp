@@ -90,16 +90,15 @@ static inline char const* GetAttributeName (void const* marker) {
 /// @brief hashs the attribute name of a key
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKeyAttributeName (TRI_associative_synced_t* array, void const* key) {
-  char const* k = (char const*) key;
-  return TRI_FnvHashString(k);
+static uint64_t HashKeyAttributeName (TRI_associative_pointer_t*, void const* key) {
+  return TRI_FnvHashString((char const*) key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs the attribute name of an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementAttributeName (TRI_associative_synced_t* array, void const* element) {
+static uint64_t HashElementAttributeName (TRI_associative_pointer_t*, void const* element) {
   return TRI_FnvHashString(GetAttributeName(element));
 }
 
@@ -107,17 +106,15 @@ static uint64_t HashElementAttributeName (TRI_associative_synced_t* array, void 
 /// @brief compares an attribute name and an attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* key, void const* element) {
-  char const* k = (char const*) key;
-
-  return TRI_EqualString(k, GetAttributeName(element));
+static bool EqualKeyAttributeName (TRI_associative_pointer_t*, void const* key, void const* element) {
+  return TRI_EqualString((char const*) key, GetAttributeName(element));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the attribute id
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const* key) {
+static uint64_t HashKeyAttributeId (TRI_associative_pointer_t*, void const* key) {
   TRI_shape_aid_t const* k = static_cast<TRI_shape_aid_t const*>(key);
   return TRI_FnvHashPointer(k, sizeof(TRI_shape_aid_t));
 }
@@ -126,7 +123,7 @@ static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const*
 /// @brief hashes the attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void const* element) {
+static uint64_t HashElementAttributeId (TRI_associative_pointer_t*, void const* element) {
   TRI_shape_aid_t aid = GetAttributeId(element);
   return TRI_FnvHashPointer(&aid, sizeof(TRI_shape_aid_t));
 }
@@ -135,7 +132,7 @@ static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void co
 /// @brief compares an attribute name and an attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* key, void const* element) {
+static bool EqualKeyAttributeId (TRI_associative_pointer_t*, void const* key, void const* element) {
   TRI_shape_aid_t const* k = static_cast<TRI_shape_aid_t const*>(key);
   TRI_shape_aid_t aid = GetAttributeId(element);
 
@@ -146,8 +143,7 @@ static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* ke
 /// @brief hashes the shapes
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementShape (TRI_associative_synced_t* array,
-                                  void const* element) {
+static uint64_t HashElementShape (TRI_associative_pointer_t*, void const* element) {
   auto shape = static_cast<TRI_shape_t const*>(element);
   TRI_ASSERT(shape != nullptr);
   char const* s = reinterpret_cast<char const*>(shape);
@@ -158,9 +154,7 @@ static uint64_t HashElementShape (TRI_associative_synced_t* array,
 /// @brief compares shapes
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualElementShape (TRI_associative_synced_t* array,
-                               void const* left,
-                               void const* right) {
+static bool EqualElementShape (TRI_associative_pointer_t*, void const* left, void const* right) {
   auto l = static_cast<TRI_shape_t const*>(left);
   auto r = static_cast<TRI_shape_t const*>(right);
   char const* ll = reinterpret_cast<char const*>(l);
@@ -176,8 +170,7 @@ static bool EqualElementShape (TRI_associative_synced_t* array,
 /// @brief hashes the shape id
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKeyShapeId (TRI_associative_synced_t* array,
-                                void const* key) {
+static uint64_t HashKeyShapeId (TRI_associative_pointer_t*, void const* key) {
   auto k = static_cast<TRI_shape_sid_t const*>(key);
   return TRI_FnvHashPointer(k, sizeof(TRI_shape_sid_t));
 }
@@ -186,8 +179,7 @@ static uint64_t HashKeyShapeId (TRI_associative_synced_t* array,
 /// @brief hashes the shape
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementShapeId (TRI_associative_synced_t* array,
-                                    void const* element) {
+static uint64_t HashElementShapeId (TRI_associative_pointer_t*, void const* element) {
   auto shape = static_cast<TRI_shape_t const*>(element);
   TRI_ASSERT(shape != nullptr);
   return TRI_FnvHashPointer(&shape->_sid, sizeof(TRI_shape_sid_t));
@@ -197,9 +189,7 @@ static uint64_t HashElementShapeId (TRI_associative_synced_t* array,
 /// @brief compares a shape id and a shape
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualKeyShapeId (TRI_associative_synced_t* array,
-                             void const* key,
-                             void const* element) {
+static bool EqualKeyShapeId (TRI_associative_pointer_t*, void const* key, void const* element) {
   auto k = static_cast<TRI_shape_sid_t const*>(key);
   auto shape = static_cast<TRI_shape_t const*>(element);
   TRI_ASSERT(shape != nullptr);
@@ -211,7 +201,7 @@ static bool EqualKeyShapeId (TRI_associative_synced_t* array,
 /// @brief hashes the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementAccessor (TRI_associative_pointer_t* array, void const* element) {
+static uint64_t HashElementAccessor (TRI_associative_pointer_t*, void const* element) {
   auto ee = static_cast<TRI_shape_access_t const*>(element);
   uint64_t v[2];
 
@@ -225,7 +215,7 @@ static uint64_t HashElementAccessor (TRI_associative_pointer_t* array, void cons
 /// @brief compares an accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualElementAccessor (TRI_associative_pointer_t* array, void const* left, void const* right) {
+static bool EqualElementAccessor (TRI_associative_pointer_t*, void const* left, void const* right) {
   auto l = static_cast<TRI_shape_access_t const*>(left);
   auto r = static_cast<TRI_shape_access_t const*>(right);
 
@@ -236,8 +226,7 @@ static bool EqualElementAccessor (TRI_associative_pointer_t* array, void const* 
 /// @brief hashes the attribute path identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashPidKeyAttributePath (TRI_associative_synced_t* array, 
-                                         void const* key) {
+static uint64_t HashPidKeyAttributePath (TRI_associative_pointer_t*, void const* key) {
   return TRI_FnvHashPointer(key, sizeof(TRI_shape_pid_t));
 }
 
@@ -245,8 +234,7 @@ static uint64_t HashPidKeyAttributePath (TRI_associative_synced_t* array,
 /// @brief hashs the attribute path
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashPidElementAttributePath (TRI_associative_synced_t* array, 
-                                             void const* element) {
+static uint64_t HashPidElementAttributePath (TRI_associative_pointer_t*, void const* element) {
   auto e = static_cast<TRI_shape_path_t const*>(element);
 
   return TRI_FnvHashPointer(&e->_pid, sizeof(TRI_shape_pid_t));
@@ -256,9 +244,7 @@ static uint64_t HashPidElementAttributePath (TRI_associative_synced_t* array,
 /// @brief compares an attribute path identifier and an attribute path
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualPidKeyAttributePath (TRI_associative_synced_t* array, 
-                                      void const* key, 
-                                      void const* element) {
+static bool EqualPidKeyAttributePath (TRI_associative_pointer_t*, void const* key, void const* element) {
   auto k = static_cast<TRI_shape_pid_t const*>(key);
   auto e = static_cast<TRI_shape_path_t const*>(element);
 
@@ -269,8 +255,7 @@ static bool EqualPidKeyAttributePath (TRI_associative_synced_t* array,
 /// @brief hashs the attribute path name
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashNameKeyAttributePath (TRI_associative_synced_t* array, 
-                                          void const* key) {
+static uint64_t HashNameKeyAttributePath (TRI_associative_pointer_t*, void const* key) {
   return TRI_FnvHashString(static_cast<char const*>(key));
 }
 
@@ -278,8 +263,7 @@ static uint64_t HashNameKeyAttributePath (TRI_associative_synced_t* array,
 /// @brief hashs the attribute path
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashNameElementAttributePath (TRI_associative_synced_t* array, 
-                                              void const* element) {
+static uint64_t HashNameElementAttributePath (TRI_associative_pointer_t*, void const* element) {
   char const* e = static_cast<char const*>(element);
   TRI_shape_path_t const* ee = static_cast<TRI_shape_path_t const*>(element);
 
@@ -291,9 +275,7 @@ static uint64_t HashNameElementAttributePath (TRI_associative_synced_t* array,
 /// @brief compares an attribute name and an attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, 
-                                       void const* key, 
-                                       void const* element) {
+static bool EqualNameKeyAttributePath (TRI_associative_pointer_t*, void const* key, void const* element) {
   char const* k = static_cast<char const*>(key);
   char const* e = static_cast<char const*>(element);
   TRI_shape_path_t const* ee = static_cast<TRI_shape_path_t const*>(element);
@@ -317,39 +299,39 @@ VocShaper::VocShaper (TRI_memory_zone_t* memoryZone,
                       TRI_document_collection_t* document)
   : Shaper(),
     _memoryZone(memoryZone),
+    _collection(document),
     _nextPid(1), 
     _nextAid(1),                                // id of next attribute to hand out
-    _nextSid(Shaper::firstCustomShapeId()),     // id of next shape to hand out
-    _collection(document) {
+    _nextSid(Shaper::firstCustomShapeId()) {    // id of next shape to hand out
 
-  TRI_InitAssociativeSynced(&_attributeNames,
-                            TRI_UNKNOWN_MEM_ZONE,
-                            HashKeyAttributeName,
-                            HashElementAttributeName,
-                            EqualKeyAttributeName,
-                            0);
+  TRI_InitAssociativePointer(&_attributeNames,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             HashKeyAttributeName,
+                             HashElementAttributeName,
+                             EqualKeyAttributeName,
+                             0);
   
-  TRI_InitAssociativeSynced(&_attributeIds,
-                            TRI_UNKNOWN_MEM_ZONE,
-                            HashKeyAttributeId,
-                            HashElementAttributeId,
-                            EqualKeyAttributeId,
-                            0);
+  TRI_InitAssociativePointer(&_attributeIds,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             HashKeyAttributeId,
+                             HashElementAttributeId,
+                             EqualKeyAttributeId,
+                             0);
 
   
-  TRI_InitAssociativeSynced(&_shapeDictionary,
-                            TRI_UNKNOWN_MEM_ZONE,
-                            0,
-                            HashElementShape,
-                            0,
-                            EqualElementShape);
+  TRI_InitAssociativePointer(&_shapeDictionary,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             0,
+                             HashElementShape,
+                             0,
+                             EqualElementShape);
   
-  TRI_InitAssociativeSynced(&_shapeIds,
-                            TRI_UNKNOWN_MEM_ZONE,
-                            HashKeyShapeId,
-                            HashElementShapeId,
-                            EqualKeyShapeId,
-                            0);
+  TRI_InitAssociativePointer(&_shapeIds,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             HashKeyShapeId,
+                             HashElementShapeId,
+                             EqualKeyShapeId,
+                             0);
 
   for (size_t i = 0; i < NUM_SHAPE_ACCESSORS; ++i) {
     TRI_InitAssociativePointer(&_accessors[i],
@@ -360,19 +342,19 @@ VocShaper::VocShaper (TRI_memory_zone_t* memoryZone,
                                EqualElementAccessor);
   }
   
-  TRI_InitAssociativeSynced(&_attributePathsByName,
-                            _memoryZone,
-                            HashNameKeyAttributePath,
-                            HashNameElementAttributePath,
-                            EqualNameKeyAttributePath,
-                            0);
+  TRI_InitAssociativePointer(&_attributePathsByName,
+                             _memoryZone,
+                             HashNameKeyAttributePath,
+                             HashNameElementAttributePath,
+                             EqualNameKeyAttributePath,
+                             0);
 
-  TRI_InitAssociativeSynced(&_attributePathsByPid,
-                            _memoryZone,
-                            HashPidKeyAttributePath,
-                            HashPidElementAttributePath,
-                            EqualPidKeyAttributePath,
-                            0);
+  TRI_InitAssociativePointer(&_attributePathsByPid,
+                             _memoryZone,
+                             HashPidKeyAttributePath,
+                             HashPidElementAttributePath,
+                             EqualPidKeyAttributePath,
+                             0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,13 +374,13 @@ VocShaper::~VocShaper () {
     }
   }
 
-  TRI_DestroyAssociativeSynced(&_attributePathsByName);
-  TRI_DestroyAssociativeSynced(&_attributePathsByPid);
+  TRI_DestroyAssociativePointer(&_attributePathsByName);
+  TRI_DestroyAssociativePointer(&_attributePathsByPid);
 
-  TRI_DestroyAssociativeSynced(&_attributeNames);
-  TRI_DestroyAssociativeSynced(&_attributeIds);
-  TRI_DestroyAssociativeSynced(&_shapeDictionary);
-  TRI_DestroyAssociativeSynced(&_shapeIds);
+  TRI_DestroyAssociativePointer(&_attributeNames);
+  TRI_DestroyAssociativePointer(&_attributeIds);
+  TRI_DestroyAssociativePointer(&_shapeDictionary);
+  TRI_DestroyAssociativePointer(&_shapeIds);
 
   for (size_t i = 0; i < NUM_SHAPE_ACCESSORS; ++i) {
     for (size_t j = 0; j < _accessors[i]._nrAlloc; ++j) {
@@ -424,7 +406,9 @@ TRI_shape_t const* VocShaper::lookupShapeId (TRI_shape_sid_t sid) {
   TRI_shape_t const* shape = Shaper::lookupSidBasicShape(sid);
 
   if (shape == nullptr) {
-    shape = static_cast<TRI_shape_t const*>(TRI_LookupByKeyAssociativeSynced(&_shapeIds, &sid));
+    READ_LOCKER(_shapeIdsLock);
+
+    shape = static_cast<TRI_shape_t const*>(TRI_LookupByKeyAssociativePointer(&_shapeIds, &sid));
   }
 
   return shape;
@@ -435,14 +419,17 @@ TRI_shape_t const* VocShaper::lookupShapeId (TRI_shape_sid_t sid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* VocShaper::lookupAttributeId (TRI_shape_aid_t aid) {
-  std::function<char const*(void const*)> callback = [](void const* element) -> char const* {
-    if (element == nullptr) {
-      return nullptr;
-    }
-    return GetAttributeName(element);
-  };
+  {
+    READ_LOCKER(_attributeIdsLock);
+  
+    auto element = static_cast<void const*>(TRI_LookupByKeyAssociativePointer(&_attributeIds, &aid));
 
-  return TRI_ProcessByKeyAssociativeSynced<char const*>(&_attributeIds, &aid, callback);
+    if (element != nullptr) {
+      return GetAttributeName(element);
+    }
+  }
+
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,7 +437,9 @@ char const* VocShaper::lookupAttributeId (TRI_shape_aid_t aid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shape_path_t const* VocShaper::lookupAttributePathByPid (TRI_shape_pid_t pid) {
-  return static_cast<TRI_shape_path_t const*>(TRI_LookupByKeyAssociativeSynced(&_attributePathsByPid, &pid));
+  READ_LOCKER(_attributePathsByPidLock);
+
+  return static_cast<TRI_shape_path_t const*>(TRI_LookupByKeyAssociativePointer(&_attributePathsByPid, &pid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,14 +480,17 @@ char const* VocShaper::attributeNameShapePid (TRI_shape_pid_t pid) {
 TRI_shape_aid_t VocShaper::lookupAttributeByName (char const* name) {
   TRI_ASSERT(name != nullptr);
 
-  std::function<TRI_shape_aid_t(void const*)> callback = [](void const* element) -> TRI_shape_aid_t {
-    if (element == nullptr) {
-      return 0;
-    }
-    return GetAttributeId(element);
-  };
+  {
+    READ_LOCKER(_attributeNamesLock);
+  
+    auto element = static_cast<void const*>(TRI_LookupByKeyAssociativePointer(&_attributeNames, name));
 
-  return TRI_ProcessByKeyAssociativeSynced<TRI_shape_aid_t>(&_attributeNames, name, callback);
+    if (element != nullptr) {
+      return GetAttributeId(element);
+    }
+  }
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,8 +517,13 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName (char const* name) {
 
     // lock the index and check that the element is still missing
     {
-      MUTEX_LOCKER(_attributeLock);
-      void const* p = TRI_LookupByKeyAssociativeSynced(&_attributeNames, name);
+      MUTEX_LOCKER(_attributeCreateLock);
+
+      void const* p;
+      {
+        READ_LOCKER(_attributeNamesLock);
+        p = TRI_LookupByKeyAssociativePointer(&_attributeNames, name);
+      }
 
       // if the element appeared, return the aid
       if (p != nullptr) {
@@ -545,11 +542,18 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName (char const* name) {
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
       }
 
-      void* f TRI_UNUSED = TRI_InsertKeyAssociativeSynced(&_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
+      void* f;
+      {
+        WRITE_LOCKER(_attributeIdsLock);
+        f = TRI_InsertKeyAssociativePointer(&_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
+      }
       TRI_ASSERT(f == nullptr);
 
       // enter into the dictionaries
-      f = TRI_InsertKeyAssociativeSynced(&_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
+      {
+        WRITE_LOCKER(_attributeNamesLock);
+        f = TRI_InsertKeyAssociativePointer(&_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
+      }
       TRI_ASSERT(f == nullptr);
     }
 
@@ -580,7 +584,8 @@ TRI_shape_t const* VocShaper::findShape (TRI_shape_t* shape,
   TRI_shape_t const* found = Shaper::lookupBasicShape(shape);
 
   if (found == nullptr) {
-    found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativeSynced(&_shapeDictionary, shape));
+    READ_LOCKER(_shapeDictionaryLock);
+    found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativePointer(&_shapeDictionary, shape));
   }
 
   // shape found, free argument and return
@@ -607,9 +612,12 @@ TRI_shape_t const* VocShaper::findShape (TRI_shape_t* shape,
     triagens::wal::ShapeMarker marker(document->_vocbase->_id, document->_info._cid, shape);
 
     // lock the index and check the element is still missing
-    MUTEX_LOCKER(_shapeLock);
+    MUTEX_LOCKER(_shapeCreateLock);
 
-    found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativeSynced(&_shapeDictionary, shape));
+    {
+      READ_LOCKER(_shapeDictionaryLock);
+      found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativePointer(&_shapeDictionary, shape));
+    }
 
     if (found != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
@@ -631,17 +639,27 @@ TRI_shape_t const* VocShaper::findShape (TRI_shape_t* shape,
     char const* m = static_cast<char const*>(slotInfo.mem) + sizeof(triagens::wal::shape_marker_t);
     TRI_shape_t const* result = reinterpret_cast<TRI_shape_t const*>(m);
 
-    void* f = TRI_InsertKeyAssociativeSynced(&_shapeIds, &sid, (void*) m, false);
-    if (f != nullptr) {
-      LOG_ERROR("logic error when inserting shape into id dictionary");
-    }
-    TRI_ASSERT(f == nullptr);
+    {
+      WRITE_LOCKER(_shapeIdsLock);
+      void* f = TRI_InsertKeyAssociativePointer(&_shapeIds, &sid, (void*) m, false);
 
-    f = TRI_InsertElementAssociativeSynced(&_shapeDictionary, (void*) m, false);
-    if (f != nullptr) {
-      LOG_ERROR("logic error when inserting shape into dictionary");
+      if (f != nullptr) {
+        LOG_ERROR("logic error when inserting shape into id dictionary");
+      }
+
+      TRI_ASSERT(f == nullptr); // will abort here
     }
-    TRI_ASSERT(f == nullptr);
+
+    {
+      WRITE_LOCKER(_shapeDictionaryLock);
+      void* f = TRI_InsertElementAssociativePointer(&_shapeDictionary, (void*) m, false);
+
+      if (f != nullptr) {
+        LOG_ERROR("logic error when inserting shape into dictionary");
+      }
+
+      TRI_ASSERT(f == nullptr); // will abort here
+    }
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     return result;
@@ -669,13 +687,16 @@ int VocShaper::moveMarker (TRI_df_marker_t* marker,
   if (marker->_type == TRI_DF_MARKER_SHAPE) {
     char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
     TRI_shape_t* l = (TRI_shape_t*) p;
-    void* f;
 
-    MUTEX_LOCKER(_shapeLock);
+    MUTEX_LOCKER(_shapeCreateLock);
 
     if (expectedOldPosition != nullptr) {
       char* old = static_cast<char*>(expectedOldPosition);
-      void const* found = TRI_LookupByKeyAssociativeSynced(&_shapeIds, &l->_sid);
+      void const* found;
+      {
+        READ_LOCKER(_shapeIdsLock);
+        found = TRI_LookupByKeyAssociativePointer(&_shapeIds, &l->_sid);
+      }
 
       if (found != nullptr) {
         if (old + sizeof(TRI_df_shape_marker_t) != found &&
@@ -691,7 +712,11 @@ int VocShaper::moveMarker (TRI_df_marker_t* marker,
 
     // remove the old marker
     // and re-insert the marker with the new pointer
-    f = TRI_InsertKeyAssociativeSynced(&_shapeIds, &l->_sid, l, true);
+    void* f;
+    {
+      WRITE_LOCKER(_shapeIdsLock);
+      f = TRI_InsertKeyAssociativePointer(&_shapeIds, &l->_sid, l, true);
+    }
 
     // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred
     // into the collection datafile yet
@@ -702,7 +727,10 @@ int VocShaper::moveMarker (TRI_df_marker_t* marker,
 
     // same for the shape dictionary
     // delete and re-insert
-    f = TRI_InsertElementAssociativeSynced(&_shapeDictionary, l, true);
+    {
+      WRITE_LOCKER(_shapeDictionaryLock);
+      f = TRI_InsertElementAssociativePointer(&_shapeDictionary, l, true);
+    }
 
     // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred
     // into the collection datafile yet
@@ -714,12 +742,15 @@ int VocShaper::moveMarker (TRI_df_marker_t* marker,
   else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
     TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
     char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
-    void* f;
 
-    MUTEX_LOCKER(_attributeLock);
+    MUTEX_LOCKER(_attributeCreateLock);
     
     if (expectedOldPosition != nullptr) {
-      void const* found = TRI_LookupByKeyAssociativeSynced(&_attributeNames, p);
+      void const* found;
+      {
+        READ_LOCKER(_attributeNamesLock);
+        found = TRI_LookupByKeyAssociativePointer(&_attributeNames, p);
+      }
 
       if (found != nullptr && found != expectedOldPosition) {
         // do not insert if position doesn't match the expectation
@@ -733,7 +764,11 @@ int VocShaper::moveMarker (TRI_df_marker_t* marker,
     // remove attribute by name (p points to new location of name, but names
     // are identical in old and new marker)
     // and re-insert same attribute with adjusted pointer
-    f = TRI_InsertKeyAssociativeSynced(&_attributeNames, p, m, true);
+    void* f;
+    {
+      WRITE_LOCKER(_attributeNamesLock);
+      f = TRI_InsertKeyAssociativePointer(&_attributeNames, p, m, true);
+    }
 
     // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred
     // into the collection datafile yet
@@ -744,7 +779,10 @@ int VocShaper::moveMarker (TRI_df_marker_t* marker,
 
     // same for attribute ids
     // delete and re-insert same attribute with adjusted pointer
-    f = TRI_InsertKeyAssociativeSynced(&_attributeIds, &m->_aid, m, true);
+    {
+      WRITE_LOCKER(_attributeIdsLock);
+      f = TRI_InsertKeyAssociativePointer(&_attributeIds, &m->_aid, m, true);
+    }
 
     // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred
     // into the collection datafile yet
@@ -779,10 +817,14 @@ int VocShaper::insertShape (TRI_df_marker_t const* marker,
 
   LOG_TRACE("found shape %lu", (unsigned long) l->_sid);
 
-  MUTEX_LOCKER(_shapeLock);
+  MUTEX_LOCKER(_shapeCreateLock);
 
   void* f;
-  f = TRI_InsertElementAssociativeSynced(&_shapeDictionary, l, false);
+  {
+    WRITE_LOCKER(_shapeDictionaryLock);
+    f = TRI_InsertElementAssociativePointer(&_shapeDictionary, l, false);
+  }
+
   if (warnIfDuplicate && f != nullptr) {
     char const* name = _collection->_info._name;
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -793,7 +835,11 @@ int VocShaper::insertShape (TRI_df_marker_t const* marker,
 #endif
   }
 
-  f = TRI_InsertKeyAssociativeSynced(&_shapeIds, &l->_sid, l, false);
+  {
+    WRITE_LOCKER(_shapeIdsLock);
+    f = TRI_InsertKeyAssociativePointer(&_shapeIds, &l->_sid, l, false);
+  }
+
   if (warnIfDuplicate && f != nullptr) {
     char const* name = _collection->_info._name;
 
@@ -837,10 +883,13 @@ int VocShaper::insertAttribute (TRI_df_marker_t const* marker,
   LOG_TRACE("found attribute '%s', aid: %lu", name, (unsigned long) aid);
    
   // remove an existing temporary attribute if present
-  MUTEX_LOCKER(_attributeLock);
+  MUTEX_LOCKER(_attributeCreateLock);
 
   void* found;
-  found = TRI_InsertKeyAssociativeSynced(&_attributeNames, name, (void*) marker, false);
+  {
+    WRITE_LOCKER(_attributeNamesLock);
+    found = TRI_InsertKeyAssociativePointer(&_attributeNames, name, (void*) marker, false);
+  }
 
   if (warnIfDuplicate && found != nullptr) {
     char const* cname = _collection->_info._name;
@@ -852,7 +901,10 @@ int VocShaper::insertAttribute (TRI_df_marker_t const* marker,
 #endif
   }
 
-  found = TRI_InsertKeyAssociativeSynced(&_attributeIds, &aid, (void*) marker, false);
+  {
+    WRITE_LOCKER(_attributeIdsLock);
+    found = TRI_InsertKeyAssociativePointer(&_attributeIds, &aid, (void*) marker, false);
+  }
 
   if (warnIfDuplicate && found != nullptr) {
     char const* cname = _collection->_info._name;
@@ -905,7 +957,6 @@ TRI_shape_access_t const* VocShaper::findAccessor (TRI_shape_sid_t sid,
 
   {
     WRITE_LOCKER(_accessorLock[i]);
-
     found = static_cast<TRI_shape_access_t const*>(TRI_InsertElementAssociativePointer(&_accessors[i], const_cast<void*>(static_cast<void const*>(accessor)), false));
   }
 
@@ -1006,7 +1057,11 @@ TRI_shape_path_t const* VocShaper::findShapePathByName (char const* name,
 
   TRI_ASSERT(name != nullptr);
 
-  void const* p = TRI_LookupByKeyAssociativeSynced(&_attributePathsByName, name);
+  void const* p;
+  {
+    READ_LOCKER(_attributePathsByNameLock);
+    p = TRI_LookupByKeyAssociativePointer(&_attributePathsByName, name);
+  }
 
   if (p != nullptr) {
     return (TRI_shape_path_t const*) p;
@@ -1016,10 +1071,13 @@ TRI_shape_path_t const* VocShaper::findShapePathByName (char const* name,
   size_t len = strlen(name);
 
   // lock the index and check that the element is still missing
-  MUTEX_LOCKER(_attributePathLock);
+  MUTEX_LOCKER(_attributePathsCreateLock);
 
   // if the element appeared, return the pid
-  p = TRI_LookupByKeyAssociativeSynced(&_attributePathsByName, name);
+  {
+    READ_LOCKER(_attributePathsByNameLock);
+    p = TRI_LookupByKeyAssociativePointer(&_attributePathsByName, name);
+  }
 
   if (p != nullptr) {
     return (TRI_shape_path_t const*) p;
@@ -1091,20 +1149,29 @@ TRI_shape_path_t const* VocShaper::findShapePathByName (char const* name,
 
   TRI_Free(_memoryZone, aids);
 
-  void const* f = TRI_InsertKeyAssociativeSynced(&_attributePathsByName, name, result, false);
-  if (f != nullptr) {
-    LOG_WARNING("duplicate shape path %lu", (unsigned long) result->_pid);
-  }
-  TRI_ASSERT(f == nullptr);
+  {
+    WRITE_LOCKER(_attributePathsByNameLock);
+    void const* f = TRI_InsertKeyAssociativePointer(&_attributePathsByName, name, result, false);
 
-  f = TRI_InsertKeyAssociativeSynced(&_attributePathsByPid, &result->_pid, result, false);
-  if (f != nullptr) {
-    LOG_WARNING("duplicate shape path %lu", (unsigned long)result->_pid);
+    if (f != nullptr) {
+      LOG_WARNING("duplicate shape path %lu", (unsigned long) result->_pid);
+    }
+
+    TRI_ASSERT(f == nullptr); // will abort here
   }
-  TRI_ASSERT(f == nullptr);
+
+  {
+    WRITE_LOCKER(_attributePathsByPidLock);
+    void const* f = TRI_InsertKeyAssociativePointer(&_attributePathsByPid, &result->_pid, result, false);
+
+    if (f != nullptr) {
+      LOG_WARNING("duplicate shape path %lu", (unsigned long)result->_pid);
+    }
+
+    TRI_ASSERT(f == nullptr); // will abort here
+  }
 
   // return pid
-
   return result;
 }
 
