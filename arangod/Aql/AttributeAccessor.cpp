@@ -108,7 +108,7 @@ AttributeAccessor::~AttributeAccessor () {
 AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
                                  AqlItemBlock const* argv,
                                  size_t startPos,
-                                 std::vector<Variable*> const& vars,
+                                 std::vector<Variable const*> const& vars,
                                  std::vector<RegisterId> const& regs) {
 
   size_t i = 0;

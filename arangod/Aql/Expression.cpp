@@ -159,7 +159,7 @@ void Expression::variables (std::unordered_set<Variable const*>& result) const {
 AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
                               AqlItemBlock const* argv,
                               size_t startPos,
-                              std::vector<Variable*> const& vars,
+                              std::vector<Variable const*> const& vars,
                               std::vector<RegisterId> const& regs,
                               TRI_document_collection_t const** collection) {
 
@@ -462,7 +462,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               triagens::arango::AqlTransaction* trx,
                                               AqlItemBlock const* argv,
                                               size_t startPos,
-                                              std::vector<Variable*> const& vars,
+                                              std::vector<Variable const*> const& vars,
                                               std::vector<RegisterId> const& regs,
                                               bool doCopy) {
   if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {

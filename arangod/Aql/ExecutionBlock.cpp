@@ -1334,7 +1334,7 @@ int IndexRangeBlock::initialize () {
 
     // Prepare _inVars and _inRegs:
     _inVars.emplace_back();
-    std::vector<Variable*>& inVarsCur = _inVars.back();
+    std::vector<Variable const*>& inVarsCur = _inVars.back();
     _inRegs.emplace_back();
     std::vector<RegisterId>& inRegsCur = _inRegs.back();
 
@@ -1342,7 +1342,7 @@ int IndexRangeBlock::initialize () {
     expression->variables(inVars);
 
     for (auto const& v : inVars) {
-      inVarsCur.emplace_back(const_cast<Variable*>(v));
+      inVarsCur.emplace_back(v);
       auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getPlanNode()->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
@@ -2767,7 +2767,7 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
   _inRegs.reserve(inVars.size());
 
   for (auto& it : inVars) {
-    _inVars.emplace_back(const_cast<Variable*>(it));
+    _inVars.emplace_back(it);
     auto it2 = en->getRegisterPlan()->varInfo.find(it->id);
 
     TRI_ASSERT(it2 != en->getRegisterPlan()->varInfo.end());

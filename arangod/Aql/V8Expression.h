@@ -92,7 +92,7 @@ namespace triagens {
                         triagens::arango::AqlTransaction*,
                         AqlItemBlock const*,
                         size_t,
-                        std::vector<Variable*> const&,
+                        std::vector<Variable const*> const&,
                         std::vector<RegisterId> const&);
 
 // -----------------------------------------------------------------------------

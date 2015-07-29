@@ -790,7 +790,7 @@ namespace triagens {
 /// a vector of Variable*, used to execute the expression
 /////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<std::vector<Variable*>> _inVars;
+        std::vector<std::vector<Variable const*>> _inVars;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _inRegs, a vector containing for each expression above
@@ -1018,7 +1018,7 @@ namespace triagens {
 /// @brief info about input variables
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Variable*> _inVars;
+        std::vector<Variable const*> _inVars;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief info about input registers
