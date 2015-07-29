@@ -1,5 +1,5 @@
 %modal-header {
-  background-color: $c-bar-bg;
+  background-color: $c-white;
   border-radius: 3px;
   border-bottom: 0 !important;
   margin-top: 5px;
@@ -8,7 +8,7 @@
   padding-top: 4px;
 
   .arangoHeader {
-    color: $c-white;
+    color: $c-black;
     font-size: 16px;
     left: 5px;
     position: relative;
@@ -52,6 +52,8 @@
   select,
   textarea {
     margin-top: 10px;
+    border-radius: 3px;
+    box-shadow: none;
   }
 
   input[type='checkbox'] {

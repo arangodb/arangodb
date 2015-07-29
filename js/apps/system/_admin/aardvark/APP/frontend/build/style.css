@@ -2474,7 +2474,7 @@ div .tile, div .bigtile {
     -o-transform: rotate(80deg);
     display: inline-block; }
   div .tile h5, div .bigtile h5 {
-    background: #686766;
+    background: #8c8a89;
     color: #fff;
     font-size: 12px;
     margin: 0;
@@ -4777,7 +4777,7 @@ div.headerBar > div.headerButtonBar {
   background-image: url('../img/dark-check-green-round.png'); }
 
 .modal-header, .modal-dashboard-header {
-  background-color: #686766;
+  background-color: #fff;
   border-radius: 3px;
   border-bottom: 0 !important;
   margin-top: 5px;
@@ -4785,7 +4785,7 @@ div.headerBar > div.headerButtonBar {
   padding-right: 10px;
   padding-top: 4px; }
   .modal-header .arangoHeader, .modal-dashboard-header .arangoHeader {
-    color: #fff;
+    color: #000;
     font-size: 16px;
     left: 5px;
     position: relative;
@@ -4810,7 +4810,9 @@ div.headerBar > div.headerButtonBar {
   .modal-body .nav-tabs {
     margin-top: 15px; }
   .modal-body input, .modal-body select, .modal-body textarea {
-    margin-top: 10px; }
+    margin-top: 10px;
+    border-radius: 3px;
+    box-shadow: none; }
   .modal-body input[type='checkbox'] {
     margin-bottom: 10px; }
   .modal-body input[type='text'].invalid-input {
@@ -6308,11 +6310,11 @@ input.gv-radio-button {
   float: right; }
 
 #infoTab a, #collectionTab a {
-  background-color: #f1f0ee;
+  background-color: #8c8a89;
   border-bottom: 1px solid #666;
   border-top-left-radius: 3px !important;
   border-top-right-radius: 3px !important;
-  color: #000;
+  color: #fff;
   font-size: 13px !important;
   height: 21px;
   margin-bottom: -1px;
@@ -6320,6 +6322,7 @@ input.gv-radio-button {
   padding: 2px 15px !important; }
 
 #infoTab .active > a, #collectionTab .active > a {
+  color: #000;
   background-color: #fff;
   border-color: #888 #888 transparent !important; }
 
