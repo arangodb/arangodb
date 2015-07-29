@@ -1359,15 +1359,15 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
   try {
     matcher.reset(new ExampleMatcher(isolate, example, shaper, errorMessage));
   } 
-  catch (int e) {
-    if (e == TRI_RESULT_ELEMENT_NOT_FOUND) {
+  catch (Exception& e) {
+    if (e.code() == TRI_RESULT_ELEMENT_NOT_FOUND) {
       // empty result
       TRI_V8_RETURN(EmptyResult(isolate));
     }
     if (errorMessage.empty()) {
-      TRI_V8_THROW_EXCEPTION(res);
+      TRI_V8_THROW_EXCEPTION(e.code());
     }
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMessage);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(e.code(), errorMessage);
   }
 
   // setup result

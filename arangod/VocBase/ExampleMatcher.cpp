@@ -91,7 +91,7 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
             }
             if (vocbase == nullptr) {
               // This should never be thrown as we are already in a transaction
-              TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
             }
             V8ResolverGuard resolverGuard(vocbase);
             CollectionNameResolver const* resolver = resolverGuard.getResolver();
@@ -108,13 +108,13 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
             } 
             else {
               // no attribute path found. this means the result will be empty
-              throw TRI_RESULT_ELEMENT_NOT_FOUND;
+              THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
             }
           }
         } 
         else {
           // no attribute path found. this means the result will be empty
-          throw TRI_RESULT_ELEMENT_NOT_FOUND;
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
       } 
       else {
@@ -123,14 +123,14 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
         auto value = TRI_ShapedJsonV8Object(isolate, val, _shaper, false);
 
         if (value == nullptr) {
-          throw TRI_RESULT_ELEMENT_NOT_FOUND;
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
         def._values.push_back(value);
       }
     }
     else {
       errorMessage = "cannot convert attribute path to UTF8";
-      throw TRI_ERROR_BAD_PARAMETER;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
   }
 }
@@ -147,8 +147,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
       def._internal.insert(make_pair(internalAttr::key, DocumentId(0, _key)));
       return;
     } else {
-      // Correct error
-      throw TRI_RESULT_ELEMENT_NOT_FOUND;
+      THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
     }
   }
   TRI_vector_t objects = example->_value._objects;
@@ -172,7 +171,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
           string const key(keyStr);
           auto jsonValue = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
           if (! TRI_IsStringJson(jsonValue)) {
-            throw TRI_ERROR_TYPE_ERROR;
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
           }
           string keyVal(jsonValue->_value._string.data);
           if (TRI_VOC_ATTRIBUTE_KEY == key) {
@@ -195,7 +194,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
             } 
             else {
               // no attribute path found. this means the result will be empty
-              throw TRI_RESULT_ELEMENT_NOT_FOUND;
+              THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
             }
  
           }
@@ -203,7 +202,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
         else {
           // no attribute path found. this means the result will be empty
           ExampleMatcher::cleanup();
-          throw TRI_RESULT_ELEMENT_NOT_FOUND;
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
       }
       else {
@@ -213,7 +212,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
 
         if (value == nullptr) {
           ExampleMatcher::cleanup();
-          throw TRI_RESULT_ELEMENT_NOT_FOUND;
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
 
         def._values.push_back(value);
