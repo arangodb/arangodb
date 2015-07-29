@@ -31,12 +31,11 @@
 #define ARANGODB_VOC_BASE_REPLICATION__DUMP_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/associative.h"
 #include "Basics/string-buffer.h"
 #include "Basics/Exceptions.h"
-#include "ShapedJson/shaped-json.h"
 #include "VocBase/replication-common.h"
+#include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

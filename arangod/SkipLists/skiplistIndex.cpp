@@ -29,15 +29,12 @@
 
 #include "skiplistIndex.h"
 #include "Basics/Utf8Helper.h"
-#include "ShapedJson/json-shaper.h"
-#include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/shaped-json.h"
+#include "VocBase/VocShaper.h"
 
 //------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
 // Common private methods
-//------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
 // .............................................................................
@@ -66,7 +63,7 @@
 static int CompareKeyElement (TRI_shaped_json_t const* left,
                               TRI_skiplist_index_element_t const* right,
                               size_t rightPosition,
-                              TRI_shaper_t* shaper) {
+                              VocShaper* shaper) {
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
 
@@ -90,7 +87,7 @@ static int CompareElementElement (TRI_skiplist_index_element_t const* left,
                                   size_t leftPosition,
                                   TRI_skiplist_index_element_t const* right,
                                   size_t rightPosition,
-                                  TRI_shaper_t* shaper) {
+                                  VocShaper* shaper) {
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
   
@@ -118,7 +115,6 @@ static int CmpElmElm (void* sli,
 
   auto leftElement = static_cast<TRI_skiplist_index_element_t const*>(left);
   auto rightElement = static_cast<TRI_skiplist_index_element_t const*>(right);
-  TRI_shaper_t* shaper;
 
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
@@ -133,7 +129,7 @@ static int CmpElmElm (void* sli,
   }
 
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
-  shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   for (size_t j = 0;  j < skiplistindex->_numFields;  j++) {
     int compareResult = CompareElementElement(leftElement,
                                               j,
@@ -185,7 +181,7 @@ static int CmpKeyElm (void* sli,
   TRI_ASSERT(nullptr != right);
 
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
-  TRI_shaper_t* shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   // Note that the key might contain fewer fields than there are indexed
   // attributes, therefore we only run the following loop to

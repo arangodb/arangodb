@@ -31,9 +31,7 @@
 #define ARANGODB_V8_V8__CONV_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/json.h"
-#include "ShapedJson/json-shaper.h"
 #include "V8/v8-globals.h"
 
 // -----------------------------------------------------------------------------
@@ -64,46 +62,6 @@ v8::Handle<v8::Value> TRI_ValuesJson (v8::Isolate* isolate,
 
 v8::Handle<v8::Value> TRI_ObjectJson (v8::Isolate* isolate,
                                       TRI_json_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_shaped_json_t into an existing V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
-                                         v8::Handle<v8::Value>,
-                                         TRI_shaper_t*,
-                                         TRI_shape_t const*,
-                                         char const* data,
-                                         size_t size);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_shaped_json_t into a new V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
-                                         TRI_shaper_t*,
-                                         TRI_shape_t const*,
-                                         char const* data,
-                                         size_t size);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a TRI_shaped_json_t
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Isolate* isolate,
-                                           v8::Handle<v8::Value> const,
-                                           TRI_shaper_t*,
-                                           bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a V8 object to a TRI_shaped_json_t in place
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_FillShapedJsonV8Object (v8::Isolate* isolate,
-                                v8::Handle<v8::Value> const,
-                                TRI_shaped_json_t*,
-                                TRI_shaper_t*,
-                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to a json_t value

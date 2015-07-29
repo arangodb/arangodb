@@ -34,14 +34,13 @@
 #include "Basics/fpconv.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Rest/SslInterface.h"
-
-// Introduced for Neighbors. Subject to Change
-#include "Basics/ScopeGuard.h"
-#include "VocBase/KeyGenerator.h"
 #include "V8Server/V8Traverser.h"
+#include "VocBase/KeyGenerator.h"
+#include "VocBase/VocShaper.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -1498,7 +1497,7 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
 
 // TODO DELETE THESE HELPER FUNCTIONS.
 
-static inline Json TRI_ExpandShapedJson (TRI_shaper_t* shaper,
+static inline Json TRI_ExpandShapedJson (VocShaper* shaper,
                                          CollectionNameResolver const* resolver,
                                          TRI_voc_cid_t const& cid,
                                          TRI_doc_mptr_t const* mptr) {
@@ -1506,7 +1505,7 @@ static inline Json TRI_ExpandShapedJson (TRI_shaper_t* shaper,
 
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
-  Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
+  Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
   char const* key = TRI_EXTRACT_MARKER_KEY(marker);
   std::string id(resolver->getCollectionName(cid));
   id.push_back('/');

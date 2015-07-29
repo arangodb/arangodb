@@ -28,20 +28,15 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHAPED_JSON_JSON__SHAPER_H
-#define ARANGODB_SHAPED_JSON_JSON__SHAPER_H 1
+#ifndef ARANGODB_VOC_BASE_SHAPER_H
+#define ARANGODB_VOC_BASE_SHAPER_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/json.h"
-#include "ShapedJson/shaped-json.h"
+#include "VocBase/shaped-json.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       JSON SHAPER
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                       BasicShapes
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,88 +63,64 @@ struct BasicShapes {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                            Shaper
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_shaper_s {
-  TRI_shape_aid_t (*findOrCreateAttributeByName) (struct TRI_shaper_s*, char const*);
-  TRI_shape_aid_t (*lookupAttributeByName) (struct TRI_shaper_s*, char const*);
-  char const* (*lookupAttributeId) (struct TRI_shaper_s*, TRI_shape_aid_t);
-  TRI_shape_t const* (*findShape) (struct TRI_shaper_s*, TRI_shape_t*, bool);
-  TRI_shape_t const* (*lookupShapeId) (struct TRI_shaper_s*, TRI_shape_sid_t);
-  TRI_shape_path_t const* (*lookupAttributePathByPid) (struct TRI_shaper_s*, TRI_shape_pid_t);
-  TRI_shape_pid_t (*findOrCreateAttributePathByName) (struct TRI_shaper_s*, char const*);
-  TRI_shape_pid_t (*lookupAttributePathByName) (struct TRI_shaper_s*, char const*);
-
-  TRI_associative_synced_t _attributePathsByName;
-  TRI_associative_synced_t _attributePathsByPid;
-
-  TRI_shape_pid_t _nextPid;
-  TRI_mutex_t _attributePathLock;
-
-  TRI_memory_zone_t* _memoryZone;
-}
-TRI_shaper_t;
+class Shaper {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                            SHAPER
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates the attribute path
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_AttributeNameShapePid (TRI_shaper_t*, TRI_shape_pid_t);
+  public:
+    Shaper (Shaper const&) = delete;
+    Shaper& operator= (Shaper const&) = delete;
+    Shaper ();
+    virtual ~Shaper ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the shaper
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InitShaper (TRI_shaper_t*, TRI_memory_zone_t*);
+  public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the shaper
+/// @brief looks up a shape by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyShaper (TRI_shaper_t* shaper);
+    virtual TRI_shape_t const* lookupShapeId (TRI_shape_sid_t) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the shaper
+/// @brief looks up an attribute name by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShaper (TRI_shaper_t* shaper);
+    virtual char const* lookupAttributeId (TRI_shape_aid_t) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a shape is of primitive type
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_t const* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t);
+    static TRI_shape_t const* lookupSidBasicShape (TRI_shape_sid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a shape is of primitive type
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_t const* TRI_LookupBasicShapeShaper (TRI_shape_t const*);
+    static TRI_shape_t const* lookupBasicShape (TRI_shape_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the first id for user-defined shapes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_shape_sid_t TRI_FirstCustomShapeIdShaper (void) {
-  return BasicShapes::TRI_SHAPE_SID_LIST + 1;
-}
+    static inline TRI_shape_sid_t firstCustomShapeId () {
+      return BasicShapes::TRI_SHAPE_SID_LIST + 1;
+    }
+
+};
 
 #endif
 

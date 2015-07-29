@@ -37,7 +37,7 @@
 #include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        COMPARISON

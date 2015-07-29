@@ -28,25 +28,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExampleMatcher.h"
-#include "V8Server/v8-vocbaseprivate.h"
-#include "voc-shaper.h"
-#include "V8/v8-utils.h"
-#include "V8/v8-conv.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "Utils/V8ResolverGuard.h"
+#include "V8/v8-utils.h"
+#include "V8/v8-conv.h"
+#include "V8Server/v8-shape-conv.h"
+#include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/VocShaper.h"
 
 using namespace std;
 using namespace triagens::arango;
 using namespace triagens::basics;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up the example object
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExampleMatcher::cleanup () {
-  auto zone = _shaper->_memoryZone;
+  auto zone = _shaper->memoryZone();
   // clean shaped json objects
   for (auto& def : definitions) {
     for (auto& it : def._values) {
@@ -69,7 +69,7 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
     v8::Handle<v8::Value> val = example->Get(key);
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
     if (*keyStr != nullptr) {
-      auto pid = _shaper->lookupAttributePathByName(_shaper, *keyStr);
+      auto pid = _shaper->lookupAttributePathByName(*keyStr);
 
       if (pid == 0) {
         // Internal attributes do have pid == 0.
@@ -163,7 +163,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
       auto keyObj = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i));
       TRI_ASSERT(TRI_IsStringJson(keyObj));
       char const* keyStr = keyObj->_value._string.data;
-      auto pid = _shaper->lookupAttributePathByName(_shaper, keyStr);
+      auto pid = _shaper->lookupAttributePathByName(keyStr);
 
       if (pid == 0) {
         // Internal attributes do have pid == 0.
@@ -232,7 +232,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
  
 ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
                                 v8::Handle<v8::Object> const example,
-                                TRI_shaper_t* shaper,
+                                VocShaper* shaper,
                                 std::string& errorMessage) 
   : _shaper(shaper) {
 
@@ -257,7 +257,7 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
  
 ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
                                 v8::Handle<v8::Array> const examples,
-                                TRI_shaper_t* shaper,
+                                VocShaper* shaper,
                                 std::string& errorMessage) 
   : _shaper(shaper) {
 
@@ -290,7 +290,7 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExampleMatcher::ExampleMatcher (TRI_json_t const* example,
-                                TRI_shaper_t* shaper,
+                                VocShaper* shaper,
                                 CollectionNameResolver const* resolver) 
   : _shaper(shaper) {
 
@@ -319,7 +319,6 @@ ExampleMatcher::ExampleMatcher (TRI_json_t const* example,
       definitions.emplace_back(move(def)); 
     }
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,12 +384,11 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
     for (size_t i = 0;  i < def._values.size();  ++i) {
       TRI_shaped_json_t* example = def._values[i];
 
-      bool ok = TRI_ExtractShapedJsonVocShaper(_shaper,
-                                               &document,
-                                               example->_sid,
-                                               def._pids[i],
-                                               &result,
-                                               &shape);
+      bool ok = _shaper->extractShapedJson(&document,
+                                           example->_sid,
+                                           def._pids[i],
+                                           &result,
+                                           &shape);
 
       if (! ok || shape == nullptr) {
         goto nextExample;

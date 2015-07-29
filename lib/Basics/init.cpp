@@ -35,7 +35,6 @@
 #include "Basics/process-utils.h"
 #include "Basics/random.h"
 #include "Basics/socket-utils.h"
-#include "ShapedJson/json-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

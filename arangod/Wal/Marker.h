@@ -32,9 +32,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/tri-strings.h"
-#include "ShapedJson/Legends.h"
-#include "ShapedJson/shaped-json.h"
 #include "VocBase/datafile.h"
+#include "VocBase/Legends.h"
+#include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"
 
 namespace triagens {

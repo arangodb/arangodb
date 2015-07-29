@@ -1830,12 +1830,6 @@ bool ExecutionPlan::isDeadSimple () const {
   auto current = _root;
 
   while (current != nullptr) {
-    auto const& deps = current->getDependenciesReference();
-
-    if (deps.size() != 1) {
-      break;
-    }
-
     auto const nodeType = current->getType();
 
     if (nodeType == ExecutionNode::SUBQUERY ||
@@ -1845,8 +1839,14 @@ bool ExecutionPlan::isDeadSimple () const {
       // these node types are not simple
       return false;
     }
+    
+    auto dep = current->getFirstDependency();
 
-    current = deps[0];
+    if (dep == nullptr) {
+      break;
+    }
+
+    current = dep;
   }
 
   return true;

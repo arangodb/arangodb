@@ -583,7 +583,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
-  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
+  auto shaper = document->getShaper();  // PROTECTED by trx here
 
   res = trx.finish(res);
 
@@ -1447,7 +1447,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_voc_rid_t rid = 0;
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
-  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
+  auto shaper = document->getShaper();  // PROTECTED by trx here
 
   string const&& cidString = StringUtils::itoa(document->_info._planId);
 
@@ -1521,7 +1521,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     if (ServerState::instance()->isDBServer()) {
       // compare attributes in shardKeys
       if (shardKeysChanged(_request->databaseName(), cidString, old, json, true)) {
-        TRI_FreeJson(shaper->_memoryZone, old);
+        TRI_FreeJson(shaper->memoryZone(), old);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         trx.abort();
@@ -1532,7 +1532,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     }
 
     TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove, mergeObjects);
-    TRI_FreeJson(shaper->_memoryZone, old);
+    TRI_FreeJson(shaper->memoryZone(), old);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     if (patchedJson == nullptr) {
@@ -1580,7 +1580,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
       if (shardKeysChanged(_request->databaseName(), cidString, old, json, false)) {
-        TRI_FreeJson(shaper->_memoryZone, old);
+        TRI_FreeJson(shaper->memoryZone(), old);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         trx.abort();
@@ -1590,7 +1590,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       }
 
       if (old != nullptr) {
-        TRI_FreeJson(shaper->_memoryZone, old);
+        TRI_FreeJson(shaper->memoryZone(), old);
       }
     }
 
