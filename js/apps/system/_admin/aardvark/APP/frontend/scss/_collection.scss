@@ -124,11 +124,11 @@
 
 #infoTab a,
 #collectionTab a {
-  background-color: $c-tab-inactive;
+  background-color: $c-new-grey;
   border-bottom: 1px solid $c-darker-grey;
   border-top-left-radius: 3px !important;
   border-top-right-radius: 3px !important;
-  color: $c-black;
+  color: $c-white;
   font-size: 13px !important;
   height: 21px;
   margin-bottom: -1px;
@@ -138,6 +138,7 @@
 
 #infoTab .active > a,
 #collectionTab .active > a {
+  color: $c-black;
   background-color: $c-modal-header;
   border-color: $c-collection-tab-border-bottom $c-collection-tab-border-bottom transparent !important;
 }
