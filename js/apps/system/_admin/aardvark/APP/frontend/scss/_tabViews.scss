@@ -11,12 +11,12 @@
     @extend %clickable;
     @include border-radius(0);
 
-    background-color: $c-tab-inactive;
+    background-color: $c-new-grey;
     border: 1px solid $c-transp;
     border-bottom-color: $c-tab-border;
     border-top-left-radius: 3px;
     border-top-right-radius: 3px;
-    color: $c-black;
+    color: $c-white;
     display: block;
     font-size: 13px;
     line-height: 20px;
@@ -42,6 +42,7 @@
       border-left-color: $c-c2grey;
       border-right-color: $c-c2grey;
       border-top-color: $c-c2grey;
+      color: $c-black;
       height: 21px;
       margin-top: -1px;
     }

@@ -147,10 +147,11 @@ div.headerBar {
 
 div.headerBar a.arangoHeader {
   color: $c-black;
-  font-size: 16px;
+  font-size: 13pt;
+  font-weight: 100;
   left: 0px;
   position: relative;
-  top: 8px;
+  top: 7px;
 }
 
 // The buttons on the right side
@@ -169,17 +170,27 @@ div.headerBar > div.headerButtonBar {
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 8px 0;
+  padding: 7px 0;
 
   // Disabled breadcrumb
   .disabledBread {
+    font-size: 13pt;
+    font-weight: 100;
     color: $c-darker-grey;
     float: left;
-    padding-left: 5px;
     padding-right: 5px;
+    position: relative;
+
+    i {
+      font-size: 10pt;
+      margin-left: 10px;
+    }
+
   }
 
   .activeBread {
+    font-size: 13pt;
+    font-weight: 100;
     color: $c-breadcrumb-a-active-bread;
     float: left;
   }
