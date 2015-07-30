@@ -265,20 +265,32 @@ void SslClientConnection::disconnectSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::prepare (double timeout, bool isWrite) const {
-  struct timeval tv;
-  fd_set fdset;
-  int res;
-
-  #ifndef LINUX
+#ifndef LINUX
   double start = TRI_microtime();
-  #endif
+#endif
 
+  struct timeval tv;
   tv.tv_sec = (long) timeout;
   tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
+  int res;
+  fd_set fdset;
+
   do {
+    auto const fd = TRI_get_fd_or_handle_of_socket(_socket);
+    
+    // An fd_set is a fixed size buffer. 
+    // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE 
+    // will result in undefined behavior. Moreover, POSIX requires fd to be a valid file descriptor.
+    if (fd < 0 || fd >= FD_SETSIZE) {
+      // invalid or too high file descriptor value...
+      // if we call FD_ZERO() or FD_SET() with it, the program behavior will be undefined
+      _errorDetails = std::string("file descriptor value too high");
+      return false;
+    }
+
     FD_ZERO(&fdset);
-    FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
+    FD_SET(fd, &fdset);
 
     fd_set* readFds = nullptr;
     fd_set* writeFds = nullptr;
@@ -290,7 +302,7 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
       readFds = &fdset;
     }
 
-    int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
+    int sockn = (int) (fd + 1);
     res = select(sockn, readFds, writeFds, nullptr, &tv);
 
     #ifndef LINUX
