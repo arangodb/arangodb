@@ -349,7 +349,7 @@ var transformControllerToRoute = function (routeInfo, route, isDevel) {
         }
       }
       // Default Error Handler
-      if (!e.statusCode) {
+      if (! e.statusCode) {
         console.errorLines(
           "Error in foxx route '%s': '%s', Stacktrace:\n%s",
           route,
@@ -570,8 +570,9 @@ var routeBrokenApp = function(app, err) {
           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
           res.contentType = "text/html; charset=utf-8";
           if (app._isDevelopment) {
-            res.body = "<html><head><title>" + escapeHTML(String(err)) +
-                     "</title></head><body><pre>" + escapeHTML(String(err.stack)) + "</pre></body></html>";
+            var errToPrint = err.cause ? err.cause : err;
+            res.body = "<html><head><title>" + escapeHTML(String(errToPrint)) +
+                     "</title></head><body><pre>" + escapeHTML(String(errToPrint.stack)) + "</pre></body></html>";
           } else {
             res.body = "<html><head><title>Service Unavailable</title></head><body><p>" +
             "This service is temporarily not available. Please check the log file for errors.</p></body></html>";
