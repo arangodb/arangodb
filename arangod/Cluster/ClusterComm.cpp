@@ -378,7 +378,7 @@ ClusterCommResult* ClusterComm::syncRequest (
       // std::cout << std::endl;
       std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
         new triagens::httpclient::SimpleHttpClient(
-                                connection->connection,
+                                connection->_connection,
                                 endTime - currentTime, false)
       );
       client->keepConnectionOnDestruction(true);
@@ -804,7 +804,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 
   std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
     new triagens::httpclient::SimpleHttpClient(
-                             connection->connection, 3600.0, false)
+                             connection->_connection, 3600.0, false)
   );
   client->keepConnectionOnDestruction(true);
 
@@ -1099,7 +1099,7 @@ void ClusterCommThread::run () {
 
               std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
                 new triagens::httpclient::SimpleHttpClient(
-                                      connection->connection,
+                                      connection->_connection,
                                       op->endTime-currentTime, false)
               );
 
