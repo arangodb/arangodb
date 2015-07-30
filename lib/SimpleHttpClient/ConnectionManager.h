@@ -243,7 +243,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         // We keep connections to servers open:
-        std::map<std::string, ServerConnections*> _allConnections;
+        std::unordered_map<std::string, ServerConnections*> _allConnections;
         triagens::basics::ReadWriteLock _allLock;
 
     };

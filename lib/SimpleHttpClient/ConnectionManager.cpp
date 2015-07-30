@@ -204,6 +204,8 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection (s
     // do not yet have a connections list for this endpoint, so let's create one!
     std::unique_ptr<ServerConnections> sc(new ServerConnections());
 
+    sc->_connections.reserve(16);
+
     // note that it is possible for a concurrent thread to have created
     // a list for the same endpoint. this case is handled below
 
