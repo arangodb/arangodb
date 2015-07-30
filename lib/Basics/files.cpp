@@ -285,16 +285,13 @@ static void ListTreeRecursively (char const* full,
 ////////////////////////////////////////////////////////////////////////////////
 
 static char* LocateConfigDirectoryEnv (void) {
-  char const* v;
-  char* r;
+  char const* v = getenv("ARANGODB_CONFIG_PATH");
 
-  v = getenv("ARANGODB_CONFIG_PATH");
-
-  if (v == NULL) {
-    return NULL;
+  if (v == nullptr) {
+    return nullptr;
   }
 
-  r = TRI_DuplicateString(v);
+  char* r = TRI_DuplicateString(v);
 
   NormalizePath(r);
 
@@ -440,7 +437,7 @@ bool TRI_IsSymbolicLink (char const* path) {
 #ifdef _WIN32
 
 bool TRI_ExistsFile (char const* path) {
-  if (path == NULL) {
+  if (path == nullptr) {
     return false;
   }
   else {
@@ -454,7 +451,7 @@ bool TRI_ExistsFile (char const* path) {
     if (len > 0 && path[len - 1] == TRI_DIR_SEPARATOR_CHAR) {
       char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
 
-      if (copy == NULL) {
+      if (copy == nullptr) {
         return false;
       }
 
@@ -1095,7 +1092,7 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone,
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    return NULL;
+    return nullptr;
   }
 
   TRI_InitStringBuffer(&result, zone);
@@ -1111,7 +1108,7 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone,
       TRI_AnnihilateStringBuffer(&result);
 
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      return NULL;
+      return nullptr;
     }
 
     n = TRI_READ(fd, (void*) TRI_EndStringBuffer(&result), READBUFFER_SIZE);
@@ -1126,13 +1123,13 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone,
       TRI_AnnihilateStringBuffer(&result);
 
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      return NULL;
+      return nullptr;
     }
 
     TRI_IncreaseLengthStringBuffer(&result, (size_t) n);
   }
 
-  if (length != NULL) {
+  if (length != nullptr) {
     *length = TRI_LengthStringBuffer(&result);
   }
 
@@ -1503,8 +1500,8 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   // Check that fileName actually makes some sense
   // ...........................................................................
 
-  if (fileName == NULL || *fileName == '\0') {
-    return NULL;
+  if (fileName == nullptr || *fileName == '\0') {
+    return nullptr;
   }
 
 
@@ -1534,8 +1531,8 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   // Check that the currentWorkingDirectory makes sense
   // ...........................................................................
 
-  if (currentWorkingDirectory == NULL || *currentWorkingDirectory == '\0') {
-    return NULL;
+  if (currentWorkingDirectory == nullptr || *currentWorkingDirectory == '\0') {
+    return nullptr;
   }
 
 
@@ -1556,7 +1553,7 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   }
 
   if (! ok) {
-    return NULL;
+    return nullptr;
   }
 
 
@@ -1600,14 +1597,13 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
 char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
   char* ptr;
   size_t cwdLength;
-  bool isAbsolute;
 
-  if (file == NULL || *file == '\0') {
-    return NULL;
+  if (file == nullptr || *file == '\0') {
+    return nullptr;
   }
 
   // name is absolute if starts with either forward or backslash
-  isAbsolute = (*file == '/' || *file == '\\');
+  bool isAbsolute = (*file == '/' || *file == '\\');
 
   // file is also absolute if contains a colon
   for (ptr = (char*) file; *ptr; ++ptr) {
@@ -1621,9 +1617,9 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
     return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, file);
   }
 
-  if (cwd == NULL || *cwd == '\0') {
+  if (cwd == nullptr || *cwd == '\0') {
     // no absolute path given, must abort
-    return NULL;
+    return nullptr;
   }
 
   cwdLength = strlen(cwd);
@@ -1631,7 +1627,7 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 
   char* result = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + strlen(file) + 2) * sizeof(char), false));
 
-  if (result != NULL) {
+  if (result != nullptr) {
     ptr = result;
     memcpy(ptr, cwd, cwdLength);
     ptr += cwdLength;
@@ -1761,7 +1757,7 @@ string TRI_LocateBinaryPath (char const* argv0) {
         TRI_FreeString(TRI_CORE_MEM_ZONE, full);
       }
 
-      if (binaryPath == NULL) {
+      if (binaryPath == nullptr) {
         binaryPath = TRI_DuplicateString(".");
       }
 
@@ -2041,13 +2037,13 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
   bufferSize = 4096;
   buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) bufferSize, false);
 
-  if (buffer == NULL) {
+  if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   fin = fopen(path, "rb");
 
-  if (fin == NULL) {
+  if (fin == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     return TRI_ERROR_FILE_NOT_FOUND;
@@ -2093,7 +2089,7 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
 /// call to TRI_GetTempPath
 ////////////////////////////////////////////////////////////////////////////////
 
-static char const* TRI_ApplicationName = NULL;
+static char const* TRI_ApplicationName = nullptr;
 
 void TRI_SetApplicationName (char const* name) {
   TRI_ASSERT(strlen(name) <= 13);
@@ -2202,7 +2198,7 @@ char* TRI_GetTempPath () {
     size_t pathSize = _tcsclen(tempPathName);
     char* temp = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
 
-    if (temp == NULL) {
+    if (temp == nullptr) {
       LOG_FATAL_AND_EXIT("Out of memory");
     }
 
@@ -2257,13 +2253,12 @@ int TRI_GetTempName (char const* directory,
                      long &systemError,
                      std::string &errorMessage) {
   char* dir;
-  char* temp;
   int tries;
   int res;
 
-  temp = TRI_GetUserTempPath();
+  char* temp = TRI_GetUserTempPath();
 
-  if (directory != NULL) {
+  if (directory != nullptr) {
     dir = TRI_Concatenate2File(temp, directory);
   }
   else {
@@ -2314,7 +2309,7 @@ int TRI_GetTempName (char const* directory,
       if (createFile) {
         FILE* fd = fopen(filename, "wb");
 
-        if (fd != NULL) {
+        if (fd != nullptr) {
           fclose(fd);
           TRI_Free(TRI_CORE_MEM_ZONE, dir);
           *result = filename;
@@ -2344,7 +2339,7 @@ int TRI_GetTempName (char const* directory,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetUserTempPath (void) {
-  if (TempPath == NULL) {
+  if (TempPath == nullptr) {
     return TRI_GetTempPath();
   }
 
@@ -2356,13 +2351,13 @@ char* TRI_GetUserTempPath (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetUserTempPath (char* path) {
-  if (TempPath != NULL) {
+  if (TempPath != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, TempPath);
   }
 
-  if (path == NULL) {
+  if (path == nullptr) {
     // unregister user-defined temp path
-    TempPath = NULL;
+    TempPath = nullptr;
   }
   else {
     // copy the user-defined temp path
@@ -2393,11 +2388,9 @@ string TRI_LocateInstallDirectory () {
 #if _WIN32
 
 char* TRI_LocateConfigDirectory () {
-  char* v;
+  char* v = LocateConfigDirectoryEnv();
 
-  v = LocateConfigDirectoryEnv();
-
-  if (v != NULL) {
+  if (v != nullptr) {
     return v;
   }
 
@@ -2423,12 +2416,12 @@ char* TRI_LocateConfigDirectory () {
 
   v = LocateConfigDirectoryEnv();
 
-  if (v != NULL) {
+  if (v != nullptr) {
     return v;
   }
 
   if (*dir == '\0') {
-    return NULL;
+    return nullptr;
   }
 
   len = strlen(dir);
@@ -2461,7 +2454,7 @@ char* TRI_LocateConfigDirectory () {
 
 void TRI_InitialiseFiles (void) {
   // clear user-defined temp path
-  TempPath = NULL;
+  TempPath = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2471,7 +2464,7 @@ void TRI_InitialiseFiles (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles (void) {
-  if (TempPath != NULL) {
+  if (TempPath != nullptr) {
     // free any user-defined temp-path
     TRI_FreeString(TRI_CORE_MEM_ZONE, TempPath);
   }
