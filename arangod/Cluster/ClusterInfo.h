@@ -580,7 +580,7 @@ namespace triagens {
             TRI_json_t* _json = it->second;
             s = triagens::basics::JsonHelper::getNumericValue
                           <TRI_voc_size_t> (_json, "journalSize", 0);
-            m.insert(make_pair(it->first,s));
+            m.insert(make_pair(it->first, s));
           }
           return m;
         }
