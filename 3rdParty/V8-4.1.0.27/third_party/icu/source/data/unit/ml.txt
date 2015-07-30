@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ml.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ml.xml
+ */
+ml{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ദിവസം"}
+                one{"{0} ദിവസം"}
+                other{"{0} ദിവസം"}
+            }
+            hour{
+                dnam{"മണിക്കൂർ"}
+                one{"{0} മണിക്കൂർ"}
+                other{"{0} മണിക്കൂർ"}
+                per{"{0} / മണിക്കൂർ"}
+            }
+            microsecond{
+                dnam{"മൈക്രോസെക്കൻഡ്"}
+                one{"{0} മൈക്രോസെക്കൻഡ്"}
+                other{"{0} മൈക്രോസെക്കൻഡ്"}
+            }
+            millisecond{
+                dnam{"മില്ലിസെക്കൻഡ്"}
+                one{"{0} മില്ലിസെക്കൻഡ്"}
+                other{"{0} മില്ലിസെക്കൻഡ്"}
+            }
+            minute{
+                dnam{"മിനിറ്റ്"}
+                one{"{0} മിനിറ്റ്"}
+                other{"{0} മിനിറ്റ്"}
+            }
+            month{
+                dnam{"മാസം"}
+                one{"{0} മാസം"}
+                other{"{0} മാസം"}
+            }
+            nanosecond{
+                dnam{"നാനോസെക്കൻഡ്"}
+                one{"{0} നാനോസെക്കൻഡ്"}
+                other{"{0} നാനോസെക്കൻഡ്"}
+            }
+            second{
+                dnam{"സെക്കൻഡ്"}
+                one{"{0} സെക്കൻഡ്"}
+                other{"{0} സെക്കൻഡ്"}
+                per{"{0} / സെക്കൻഡ്"}
+            }
+            week{
+                dnam{"ആഴ്ച"}
+                one{"{0} ആഴ്ച"}
+                other{"{0} ആഴ്ച"}
+            }
+            year{
+                dnam{"വർഷം"}
+                one{"{0} വർഷം"}
+                other{"{0} വർഷം"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ദിവസം"}
+                one{"{0} ദി"}
+                other{"{0} ദി"}
+            }
+            hour{
+                dnam{"മണിക്കൂർ"}
+                one{"{0} മ"}
+                other{"{0} മ"}
+            }
+            millisecond{
+                dnam{"മി.സെ."}
+                one{"{0} മി.സെ."}
+                other{"{0} മി.സെ."}
+            }
+            minute{
+                dnam{"മിനിറ്റ്"}
+                one{"{0} മി."}
+                other{"{0} മി."}
+            }
+            month{
+                dnam{"മാസം"}
+                one{"{0} മാ"}
+                other{"{0} മാ"}
+            }
+            second{
+                dnam{"സെ."}
+                one{"{0} സെ."}
+                other{"{0} സെ."}
+            }
+            week{
+                dnam{"ആ"}
+                one{"{0} ആ"}
+                other{"{0} ആ"}
+            }
+            year{
+                dnam{"വർഷം"}
+                one{"{0} വ"}
+                other{"{0} വ"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ദിവസം"}
+                one{"{0} ദിവസം‌"}
+                other{"{0} ദിവസം‌"}
+            }
+            hour{
+                dnam{"മണിക്കൂർ"}
+                one{"{0} മ"}
+                other{"{0} മ"}
+                per{"{0}/മ."}
+            }
+            microsecond{
+                dnam{"μ.സെ."}
+                one{"{0} μ.സെ."}
+                other{"{0} μ.സെ."}
+            }
+            millisecond{
+                dnam{"മില്ലിസെക്കൻഡ്"}
+                one{"{0} മി.സെ."}
+                other{"{0} മി.സെ."}
+            }
+            minute{
+                dnam{"മിനിറ്റ്"}
+                one{"{0} മിനിറ്റ്"}
+                other{"{0} മിനിറ്റ്"}
+            }
+            month{
+                dnam{"മാസം"}
+                one{"{0} മാസം"}
+                other{"{0} മാസം"}
+            }
+            nanosecond{
+                dnam{"നാനോസെക്കൻഡ്"}
+                one{"{0} നാ.സെ."}
+                other{"{0} നാ.സെ."}
+            }
+            second{
+                dnam{"സെക്കൻഡ്"}
+                one{"{0} സെ."}
+                other{"{0} സെ."}
+                per{"{0}/സെ."}
+            }
+            week{
+                dnam{"ആഴ്ച"}
+                one{"{0} ആ"}
+                other{"{0} ആ"}
+            }
+            year{
+                dnam{"വർഷം"}
+                one{"{0} വ"}
+                other{"{0} വ"}
+            }
+        }
+    }
+}

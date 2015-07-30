@@ -1,0 +1,235 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/he.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/he.xml
+ */
+he{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} לכל {1}"}
+        }
+        duration{
+            day{
+                dnam{"ימים"}
+                many{"{0} יום"}
+                one{"יום"}
+                other{"{0} ימים"}
+                two{"יומיים"}
+            }
+            hour{
+                dnam{"שעות"}
+                many{"{0} שעות"}
+                one{"שעה"}
+                other{"{0} שעות"}
+                per{"{0} לשעה"}
+                two{"שעתיים"}
+            }
+            microsecond{
+                dnam{"מיליוניות שנייה"}
+                many{"{0} מיליוניות שנייה"}
+                one{"{0} מיליונית שנייה"}
+                other{"{0} מיליוניות שנייה"}
+                two{"{0} מיליוניות שנייה"}
+            }
+            millisecond{
+                dnam{"אלפיות השניה"}
+                many{"{0} אלפיות שנייה"}
+                one{"אלפית שנייה {0}"}
+                other{"{0} אלפיות שנייה"}
+                two{"{0} אלפיות שנייה"}
+            }
+            minute{
+                dnam{"דקות"}
+                many{"{0} דקות"}
+                one{"דקה"}
+                other{"{0} דקות"}
+                two{"שתי דקות"}
+            }
+            month{
+                dnam{"חודשים"}
+                many{"{0} חודשים"}
+                one{"חודש"}
+                other{"{0} חודשים"}
+                two{"חודשיים"}
+            }
+            nanosecond{
+                dnam{"ננו שניות"}
+                many{"{0} ננו שניות"}
+                one{"{0} ננו שנייה"}
+                other{"{0} ננו שניות"}
+                two{"{0} ננו שניות"}
+            }
+            second{
+                dnam{"שניות"}
+                many{"‏{0} שניות"}
+                one{"שניה"}
+                other{"{0} שניות"}
+                per{"{0} לשניה"}
+                two{"שתי שניות"}
+            }
+            week{
+                dnam{"שבועות"}
+                many{"{0} שבועות"}
+                one{"שבוע"}
+                other{"{0} שבועות"}
+                two{"שבועיים"}
+            }
+            year{
+                dnam{"שנים"}
+                many{"{0} שנה"}
+                one{"שנה"}
+                other{"{0} שנים"}
+                two{"שנתיים"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"יום"}
+                many{"{0} י׳"}
+                one{"י׳"}
+                other{"{0} י׳"}
+                two{"יומיים"}
+            }
+            hour{
+                dnam{"שע׳"}
+                many{"{0} שע׳"}
+                one{"שעה"}
+                other{"{0} שע׳"}
+                two{"שעתיים"}
+            }
+            millisecond{
+                dnam{"ms"}
+                many{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+                two{"{0} ms"}
+            }
+            minute{
+                dnam{"דק׳"}
+                many{"{0} דק׳"}
+                one{"דקה"}
+                other{"{0} דק׳"}
+                two{"שתי דק׳"}
+            }
+            month{
+                dnam{"ח׳"}
+                many{"{0} ח׳"}
+                one{"חודש {0}"}
+                other{"{0} ח׳"}
+                two{"{0} ח׳"}
+            }
+            second{
+                dnam{"שנ׳"}
+                many{"{0} שנ׳"}
+                one{"שניה"}
+                other{"{0} שנ׳"}
+                two{"שתי שנ׳"}
+            }
+            week{
+                dnam{"שב׳"}
+                many{"{0} שבועות"}
+                one{"שבוע {0}"}
+                other{"{0} שבועות"}
+                two{"{0} שבועות"}
+            }
+            year{
+                dnam{"ש׳"}
+                many{"{0} שנים"}
+                one{"שנה {0}"}
+                other{"{0} שנים"}
+                two{"{0} שנים"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ימים"}
+                many{"{0} ימ׳"}
+                one{"יום"}
+                other{"{0} ימ׳"}
+                two{"יומיים"}
+            }
+            hour{
+                dnam{"שע׳"}
+                many{"{0} שע׳"}
+                one{"שעה"}
+                other{"{0} שע׳"}
+                per{"{0}/שעה"}
+                two{"שעתיים"}
+            }
+            microsecond{
+                dnam{"μsecs"}
+                many{"{0} μs"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+                two{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                many{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+                two{"{0} ms"}
+            }
+            minute{
+                dnam{"דק׳"}
+                many{"{0} דק׳"}
+                one{"דקה"}
+                other{"{0} דק׳"}
+                two{"שתי דק׳"}
+            }
+            month{
+                dnam{"חודשים"}
+                many{"{0} ח׳"}
+                one{"חודש"}
+                other{"{0} ח׳"}
+                two{"חודשיים"}
+            }
+            nanosecond{
+                dnam{"ננו שניות"}
+                many{"{0} ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+                two{"{0} ns"}
+            }
+            second{
+                dnam{"שנ׳"}
+                many{"{0} שנ׳"}
+                one{"שנ׳"}
+                other{"{0} שנ׳"}
+                per{"{0}/שנ׳"}
+                two{"שתי שנ׳"}
+            }
+            week{
+                dnam{"שבועות"}
+                many{"{0} שבועות"}
+                one{"שבוע {0}"}
+                other{"{0} שבועות"}
+                two{"{0} שבועות"}
+            }
+            year{
+                dnam{"שנים"}
+                many{"{0} שנה"}
+                one{"שנה"}
+                other{"{0} שנים"}
+                two{"שנתיים"}
+            }
+        }
+    }
+}

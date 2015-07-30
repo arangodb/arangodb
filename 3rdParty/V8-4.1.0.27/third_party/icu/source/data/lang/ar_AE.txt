@@ -1,0 +1,19 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ar_AE.xml
+// *
+// ***************************************************************************
+ar_AE{
+    Languages{
+        shi{"تكلحيت"}
+    }
+    Types{
+        collation{
+            ducet{"الإفتراضي Unicode ترتيب"}
+        }
+    }
+    Version{"2.1.8.19"}
+}

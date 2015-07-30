@@ -1,0 +1,1245 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/gd.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/gd.xml
+ */
+gd{
+    Currencies{
+        AED{
+            "AED",
+            "Dirham nan Iomaratan Arabach Aonaichte",
+        }
+        AFN{
+            "AFN",
+            "Afghani Afghanach",
+        }
+        ALL{
+            "ALL",
+            "Lek Albàineach",
+        }
+        AMD{
+            "AMD",
+            "Dram Airmeineach",
+        }
+        AOA{
+            "AOA",
+            "Kwanza Angòlach",
+        }
+        ARS{
+            "ARS",
+            "Peso Argantaineach",
+        }
+        AUD{
+            "A$",
+            "Dolar Astràilianach",
+        }
+        AZN{
+            "AZN",
+            "Manat Asarbaideànach",
+        }
+        BAM{
+            "BAM",
+            "Mark iompachail Bhosna agus Hearsagobhana",
+        }
+        BDT{
+            "BDT",
+            "Taka Bangladaiseach",
+        }
+        BGN{
+            "BGN",
+            "Lev Bulgarach",
+        }
+        BHD{
+            "BHD",
+            "Dinar Bachraineach",
+        }
+        BND{
+            "BND",
+            "Dolar Brùnaigheach",
+        }
+        BOB{
+            "BOB",
+            "Boliviano Boilibhiach",
+        }
+        BRL{
+            "R$",
+            "Real Braisileach",
+        }
+        BWP{
+            "BWP",
+            "Pula Botsuanach",
+        }
+        BYR{
+            "BYR",
+            "Rùbal Bealaruiseach",
+        }
+        CAD{
+            "CA$",
+            "Dolar Canadach",
+        }
+        CDF{
+            "CDF",
+            "Franc Congothach",
+        }
+        CHF{
+            "CHF",
+            "Franc Eilbheiseach",
+        }
+        CLP{
+            "CLP",
+            "Peso Sileach",
+        }
+        CNY{
+            "CN¥",
+            "Yuan Sìneach",
+        }
+        COP{
+            "COP",
+            "Peso Coloimbeach",
+        }
+        CRC{
+            "CRC",
+            "Colón Costa Rìceach",
+        }
+        CZK{
+            "CZK",
+            "Koruna Seiceach",
+        }
+        DKK{
+            "DKK",
+            "Krone Danmhairgeach",
+        }
+        DOP{
+            "DOP",
+            "Peso Doiminiceach",
+        }
+        DZD{
+            "DZD",
+            "Dinar Aildireach",
+        }
+        EGP{
+            "EGP",
+            "Punnd Èipheiteach",
+        }
+        ETB{
+            "ETB",
+            "Birr Itiopach",
+        }
+        EUR{
+            "€",
+            "Eòro",
+        }
+        GBP{
+            "£",
+            "Punnd Sasannach",
+        }
+        GEL{
+            "GEL",
+            "Lari Cairtbheileach",
+        }
+        GHS{
+            "GHS",
+            "Cedi Gànach",
+        }
+        GNF{
+            "GNF",
+            "Franc Ginitheach",
+        }
+        GTQ{
+            "GTQ",
+            "Quetzal Guatamalach",
+        }
+        HKD{
+            "HK$",
+            "Dolar Hong Kong",
+        }
+        HNL{
+            "HNL",
+            "Lempira Hondùrach",
+        }
+        HRK{
+            "HRK",
+            "Kuna Cròthaiseach",
+        }
+        HTG{
+            "HTG",
+            "Gourde Haidhteach",
+        }
+        HUF{
+            "HUF",
+            "Forint Ungaireach",
+        }
+        IDR{
+            "IDR",
+            "Rupiah Innd-Innseach",
+        }
+        ILS{
+            "₪",
+            "Sheqel ùr Iosraeleach",
+        }
+        INR{
+            "Rs.",
+            "Rupee Innseanach",
+        }
+        IQD{
+            "IQD",
+            "Dinar Ioràcach",
+        }
+        IRR{
+            "IRR",
+            "Rial Iorànach",
+        }
+        ISK{
+            "ISK",
+            "Króna Innis Tìleach",
+        }
+        JMD{
+            "JMD",
+            "Dolar Diameugach",
+        }
+        JOD{
+            "JOD",
+            "Dinar Iòrdanach",
+        }
+        JPY{
+            "JP¥",
+            "Yen Seapanach",
+        }
+        KES{
+            "KES",
+            "Shilling Ceineach",
+        }
+        KGS{
+            "KGS",
+            "Som Cìorgasach",
+        }
+        KHR{
+            "KHR",
+            "Riel Cambuideach",
+        }
+        KRW{
+            "₩",
+            "Won Choirèa a Deas",
+        }
+        KWD{
+            "KWD",
+            "Dinar Cuibhèiteach",
+        }
+        KZT{
+            "KZT",
+            "Tenge Casachach",
+        }
+        LAK{
+            "LAK",
+            "Kip Làthosach",
+        }
+        LBP{
+            "LBP",
+            "Punnd Leabanach",
+        }
+        LKR{
+            "LKR",
+            "Rupee Sri Lancach",
+        }
+        LTL{
+            "LTL",
+            "Litas Liotuaineach",
+        }
+        LYD{
+            "LYD",
+            "Dinar Libitheach",
+        }
+        MAD{
+            "MAD",
+            "Dirham Morocach",
+        }
+        MDL{
+            "MDL",
+            "Leu Moldobhach",
+        }
+        MGA{
+            "MGA",
+            "Ariary Madagasgarach",
+        }
+        MKD{
+            "MKD",
+            "Denar Masadonach",
+        }
+        MNT{
+            "MNT",
+            "Tugrik Mongolach",
+        }
+        MRO{
+            "MRO",
+            "Ouguiya Moratàineach",
+        }
+        MUR{
+            "MUR",
+            "Rupee Moiriseasach",
+        }
+        MWK{
+            "MWK",
+            "Kwacha Malabhaidheach",
+        }
+        MXN{
+            "MX$",
+            "Peso Meagsagach",
+        }
+        MYR{
+            "MYR",
+            "Ringgit Malaidheach",
+        }
+        MZN{
+            "MZN",
+            "Metical Mòsaimbiceach",
+        }
+        NAD{
+            "NAD",
+            "Dolar Naimibitheach",
+        }
+        NGN{
+            "NGN",
+            "Naira Nigèiriach",
+        }
+        NIO{
+            "NIO",
+            "Córdoba Niocaragach",
+        }
+        NOK{
+            "NOK",
+            "Krone Nirribheach",
+        }
+        NPR{
+            "NPR",
+            "Rupee Neapàlach",
+        }
+        NZD{
+            "NZ$",
+            "Dolar Shealainn Nuaidh",
+        }
+        OMR{
+            "OMR",
+            "Rial Omànach",
+        }
+        PAB{
+            "PAB",
+            "Balboa Panamach",
+        }
+        PEN{
+            "PEN",
+            "Sol ùr Pearùthach",
+        }
+        PGK{
+            "PGK",
+            "Kina Ghini Nuaidh Paputhaiche",
+        }
+        PHP{
+            "PHP",
+            "Peso Filipineach",
+        }
+        PKR{
+            "PKR",
+            "Rupee Pagastànach",
+        }
+        PLN{
+            "PLN",
+            "Złoty Pòlainneach",
+        }
+        PYG{
+            "PYG",
+            "Guaraní Paraguaidheach",
+        }
+        QAR{
+            "QAR",
+            "Rial Catarach",
+        }
+        RON{
+            "RON",
+            "Leu Romàineach",
+        }
+        RSD{
+            "RSD",
+            "Dinar Sèirbeach",
+        }
+        RUB{
+            "RUB",
+            "Rùbal Ruiseach",
+        }
+        RWF{
+            "RWF",
+            "Franc Rubhandach",
+        }
+        SAR{
+            "SAR",
+            "Riyal Sabhdach",
+        }
+        SDG{
+            "SDG",
+            "Punnd Sudànach",
+        }
+        SEK{
+            "SEK",
+            "Krona Suaineach",
+        }
+        SGD{
+            "SGD",
+            "Dolar Singeapòrach",
+        }
+        SLL{
+            "SLL",
+            "Leone Siarra Leòmhannach",
+        }
+        SSP{
+            "SSP",
+            "Punnd Sudàin a Deas",
+        }
+        THB{
+            "฿",
+            "Baht Tàidheach",
+        }
+        TJS{
+            "TJS",
+            "Somoni Taidigeach",
+        }
+        TMT{
+            "TMT",
+            "Manat Turcmanach",
+        }
+        TND{
+            "TND",
+            "Dinar Tuiniseach",
+        }
+        TRY{
+            "TRY",
+            "Lira Turcach",
+        }
+        TTD{
+            "TTD",
+            "Dolar Thrianaid agus Thobago",
+        }
+        TWD{
+            "NT$",
+            "Dolar ùr Taidh-Bhànach",
+        }
+        TZS{
+            "TZS",
+            "Shilling Tansanaidheach",
+        }
+        UAH{
+            "UAH",
+            "Hryvnia Ucràineach",
+        }
+        UGX{
+            "UGX",
+            "Shilling Ugandach",
+        }
+        USD{
+            "$",
+            "Dolar nan Stàitean Aonaichte",
+        }
+        UYU{
+            "UYU",
+            "Peso Uruguaidheach",
+        }
+        UZS{
+            "UZS",
+            "Som Usbagach",
+        }
+        VEF{
+            "VEF",
+            "Bolívar Bheinisealach",
+        }
+        VND{
+            "₫",
+            "Dong Bhiet-Namach",
+        }
+        XAF{
+            "FCFA",
+            "Franc CFA Meadhan-Afragach",
+        }
+        XDR{
+            "XDR",
+            "Còir tarraing shònraichte",
+        }
+        XOF{
+            "CFA",
+            "Franc CFA Afraga an Iar",
+        }
+        YER{
+            "YER",
+            "Rial Eamanach",
+        }
+        ZAR{
+            "ZAR",
+            "Rand Afraga a Deas",
+        }
+        ZMW{
+            "ZMW",
+            "Kwacha Sàimbitheach",
+        }
+    }
+    Currencies%narrow{
+        ARS{"$"}
+        AUD{"$"}
+        BDT{"৳"}
+        BND{"$"}
+        BRL{"R$"}
+        BYR{"р."}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        DOP{"$"}
+        EUR{"€"}
+        GBP{"£"}
+        HKD{"$"}
+        ILS{"₪"}
+        INR{"₹"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KRW{"₩"}
+        KZT{"₸"}
+        LAK{"₭"}
+        MNT{"₮"}
+        MXN{"$"}
+        NAD{"$"}
+        NGN{"₦"}
+        NZD{"$"}
+        PHP{"₱"}
+        PYG{"₲"}
+        SGD{"$"}
+        SSP{"£"}
+        TRY{"₺"}
+        TTD{"$"}
+        TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VND{"₫"}
+    }
+    CurrencyPlurals{
+        AED{
+            few{"dirham nan IAA"}
+            one{"dirham nan IAA"}
+            other{"dirham nan IAA"}
+            two{"dhirham nan IAA"}
+        }
+        AFN{
+            few{"afghani Afghanach"}
+            one{"afghani Afghanach"}
+            other{"afghani Afghanach"}
+            two{"afghani Afghanach"}
+        }
+        ALL{
+            few{"lek Albàineach"}
+            one{"lek Albàineach"}
+            other{"lek Albàineach"}
+            two{"lek Albàineach"}
+        }
+        AMD{
+            few{"dram Airmeineach"}
+            one{"dram Airmeineach"}
+            other{"dram Airmeineach"}
+            two{"dhram Airmeineach"}
+        }
+        AOA{
+            few{"kwanza Angòlach"}
+            one{"kwanza Angòlach"}
+            other{"kwanza Angòlach"}
+            two{"kwanza Angòlach"}
+        }
+        ARS{
+            few{"pesothan Argantaineach"}
+            one{"pheso Argantaineach"}
+            other{"peso Argantaineach"}
+            two{"pheso Argantaineach"}
+        }
+        AUD{
+            few{"dolaran Astràilianach"}
+            one{"dolar Astràilianach"}
+            other{"dolar Astràilianach"}
+            two{"dholar Astràilianach"}
+        }
+        AZN{
+            few{"manat Asarbaideànach"}
+            one{"mhanat Asarbaideànach"}
+            other{"manat Asarbaideànach"}
+            two{"mhanat Asarbaideànach"}
+        }
+        BAM{
+            few{"mark iompachail Bhosna agus Hearsagobhana"}
+            one{"mhark iompachail Bhosna agus Hearsagobhana"}
+            other{"mark iompachail Bhosna agus Hearsagobhana"}
+            two{"mhark iompachail Bhosna agus Hearsagobhana"}
+        }
+        BDT{
+            few{"taka Bangladaiseach"}
+            one{"taka Bangladaiseach"}
+            other{"taka Bangladaiseach"}
+            two{"thaka Bangladaiseach"}
+        }
+        BGN{
+            few{"lev Bulgarach"}
+            one{"lev Bulgarach"}
+            other{"lev Bulgarach"}
+            two{"lev Bulgarach"}
+        }
+        BHD{
+            few{"dinar Bachraineach"}
+            one{"dinar Bachraineach"}
+            other{"dinar Bachraineach"}
+            two{"dhinar Bachraineach"}
+        }
+        BND{
+            few{"dolaran Brùnaigheach"}
+            one{"dolar Brùnaigheach"}
+            other{"dolar Brùnaigheach"}
+            two{"dholar Brùnaigheach"}
+        }
+        BOB{
+            few{"boliviano Boilibhiach"}
+            one{"bholiviano Boilibhiach"}
+            other{"boliviano Boilibhiach"}
+            two{"bholiviano Boilibhiach"}
+        }
+        BRL{
+            few{"real Braisileach"}
+            one{"real Braisileach"}
+            other{"real Braisileach"}
+            two{"real Braisileach"}
+        }
+        BWP{
+            few{"pula Botsuanach"}
+            one{"phula Botsuanach"}
+            other{"pula Botsuanach"}
+            two{"phula Botsuanach"}
+        }
+        BYR{
+            few{"rùbalan Bealaruiseach"}
+            one{"rùbal Bealaruiseach"}
+            other{"rùbal Bealaruiseach"}
+            two{"rùbal Bealaruiseach"}
+        }
+        CAD{
+            few{"dolaran Canadach"}
+            one{"dolar Canadach"}
+            other{"dolar Canadach"}
+            two{"dholar Canadach"}
+        }
+        CDF{
+            few{"franc Congothach"}
+            one{"fhranc Congothach"}
+            other{"franc Congothach"}
+            two{"fhranc Congothach"}
+        }
+        CHF{
+            few{"franc Eilbheiseach"}
+            one{"fhranc Eilbheiseach"}
+            other{"franc Eilbheiseach"}
+            two{"fhranc Eilbheiseach"}
+        }
+        CLP{
+            few{"pesothan Sileach"}
+            one{"pheso Sileach"}
+            other{"peso Sileach"}
+            two{"pheso Sileach"}
+        }
+        CNY{
+            few{"yuan Sìneach"}
+            one{"yuan Sìneach"}
+            other{"yuan Sìneach"}
+            two{"yuan Sìneach"}
+        }
+        COP{
+            few{"pesothan Coloimbeach"}
+            one{"pheso Coloimbeach"}
+            other{"peso Coloimbeach"}
+            two{"pheso Coloimbeach"}
+        }
+        CRC{
+            few{"colón Costa Rìceach"}
+            one{"cholón Chosta Rìcea"}
+            other{"colón Costa Rìceach"}
+            two{"cholón Costa Rìceach"}
+        }
+        CZK{
+            few{"koruna Seiceach"}
+            one{"koruna Seiceach"}
+            other{"koruna Seiceach"}
+            two{"koruna Seiceach"}
+        }
+        DKK{
+            few{"kroner Danmhairgeach"}
+            one{"krone Danmhairgeach"}
+            other{"krone Danmhairgeach"}
+            two{"krone Danmhairgeach"}
+        }
+        DOP{
+            few{"pesothan Doiminiceach"}
+            one{"pheso Doiminiceach"}
+            other{"peso Doiminiceach"}
+            two{"pheso Doiminiceach"}
+        }
+        DZD{
+            few{"dinar Aildireach"}
+            one{"dinar Aildireach"}
+            other{"dinar Aildireach"}
+            two{"dhinar Aildireach"}
+        }
+        EGP{
+            few{"puinnd Èipheiteach"}
+            one{"phunnd Èipheiteach"}
+            other{"punnd Èipheiteach"}
+            two{"phunnd Èipheiteach"}
+        }
+        ETB{
+            few{"birr Itiopach"}
+            one{"bhirr Itiopach"}
+            other{"birr Itiopach"}
+            two{"bhirr Itiopach"}
+        }
+        EUR{
+            few{"Eòrothan"}
+            one{"Eòro"}
+            other{"Eòro"}
+            two{"Eòro"}
+        }
+        GBP{
+            few{"puinnd Shasannach"}
+            one{"phunnd Sasannach"}
+            other{"punnd Sasannach"}
+            two{"phunnd Sasannach"}
+        }
+        GEL{
+            few{"lari Cairtbheileach"}
+            one{"lari Cairtbheileach"}
+            other{"lari Cairtbheileach"}
+            two{"lari Cairtbheileach"}
+        }
+        GHS{
+            few{"cedi Gànach"}
+            one{"chedi Gànach"}
+            other{"cedi Gànach"}
+            two{"chedi Gànach"}
+        }
+        GNF{
+            few{"franc Ginitheach"}
+            one{"fhranc Ginitheach"}
+            other{"franc Ginitheach"}
+            two{"fhranc Ginitheach"}
+        }
+        GTQ{
+            few{"quetzal Guatamalach"}
+            one{"quetzal Guatamalach"}
+            other{"quetzal Guatamalach"}
+            two{"quetzal Guatamalach"}
+        }
+        HKD{
+            few{"dolaran Hong Kong"}
+            one{"dolar Hong Kong"}
+            other{"dolar Hong Kong"}
+            two{"dholar Hong Kong"}
+        }
+        HNL{
+            few{"lempira Hondùrach"}
+            one{"lempira Hondùrach"}
+            other{"lempira Hondùrach"}
+            two{"lempira Hondùrach"}
+        }
+        HRK{
+            few{"kuna Cròthaiseach"}
+            one{"kuna Cròthaiseach"}
+            other{"kuna Cròthaiseach"}
+            two{"kuna Cròthaiseach"}
+        }
+        HTG{
+            few{"gourde Haidhteach"}
+            one{"ghourde Haidhteach"}
+            other{"gourde Haidhteach"}
+            two{"ghourde Haidhteach"}
+        }
+        HUF{
+            few{"forint Ungaireach"}
+            one{"fhorint Ungaireach"}
+            other{"forint Ungaireach"}
+            two{"fhorint Ungaireach"}
+        }
+        IDR{
+            few{"rupiah Innd-Innseach"}
+            one{"rupiah Innd-Innseach"}
+            other{"rupiah Innd-Innseach"}
+            two{"rupiah Innd-Innseach"}
+        }
+        ILS{
+            few{"sheqel ùr Iosraeleach"}
+            one{"sheqel ùr Iosraeleach"}
+            other{"sheqel ùr Iosraeleach"}
+            two{"sheqel ùr Iosraeleach"}
+        }
+        INR{
+            few{"rupee Innseanach"}
+            one{"rupee Innseanach"}
+            other{"rupee Innseanach"}
+            two{"rupee Innseanach"}
+        }
+        IQD{
+            few{"dinar Ioràcach"}
+            one{"dinar Ioràcach"}
+            other{"dinar Ioràcach"}
+            two{"dhinar Ioràcach"}
+        }
+        IRR{
+            few{"rial Iorànach"}
+            one{"rial Iorànach"}
+            other{"rial Iorànach"}
+            two{"rial Iorànach"}
+        }
+        ISK{
+            few{"krónur Innis Tìleach"}
+            one{"króna Innis Tìleach"}
+            other{"króna Innis Tìleach"}
+            two{"króna Innis Tìleach"}
+        }
+        JMD{
+            few{"dolaran Diameugach"}
+            one{"dolar Diameugach"}
+            other{"dolar Diameugach"}
+            two{"dholar Diameugach"}
+        }
+        JOD{
+            few{"dinar Iòrdanach"}
+            one{"dinar Iòrdanach"}
+            other{"dinar Iòrdanach"}
+            two{"dhinar Iòrdanach"}
+        }
+        JPY{
+            few{"yen Seapanach"}
+            one{"yen Seapanach"}
+            other{"yen Seapanach"}
+            two{"yen Seapanach"}
+        }
+        KES{
+            few{"shilling Ceineach"}
+            one{"shilling Ceineach"}
+            other{"shilling Ceineach"}
+            two{"shilling Ceineach"}
+        }
+        KGS{
+            few{"som Cìorgasach"}
+            one{"som Cìorgasach"}
+            other{"som Cìorgasach"}
+            two{"shom Cìorgasach"}
+        }
+        KHR{
+            few{"riel Cambuideach"}
+            one{"riel Cambuideach"}
+            other{"riel Cambuideach"}
+            two{"riel Cambuideach"}
+        }
+        KRW{
+            few{"won Choirèa a Deas"}
+            one{"won Choirèa a Deas"}
+            other{"won Choirèa a Deas"}
+            two{"won Choirèa a Deas"}
+        }
+        KWD{
+            few{"dinar Cuibhèiteach"}
+            one{"dinar Cuibhèiteach"}
+            other{"dinar Cuibhèiteach"}
+            two{"dhinar Cuibhèiteach"}
+        }
+        KZT{
+            few{"tenge Casachach"}
+            one{"tenge Casachach"}
+            other{"tenge Casachach"}
+            two{"thenge Casachach"}
+        }
+        LAK{
+            few{"kip Làthosach"}
+            one{"kip Làthosach"}
+            other{"kip Làthosach"}
+            two{"kip Làthosach"}
+        }
+        LBP{
+            few{"puinnd Leabanach"}
+            one{"phunnd Leabanach"}
+            other{"punnd Leabanach"}
+            two{"phunnd Leabanach"}
+        }
+        LKR{
+            few{"rupee Sri Lancach"}
+            one{"rupee Sri Lancach"}
+            other{"rupee Sri Lancach"}
+            two{"rupee Sri Lancach"}
+        }
+        LTL{
+            few{"litas Liotuaineach"}
+            one{"litas Liotuaineach"}
+            other{"litas Liotuaineach"}
+            two{"litas Liotuaineach"}
+        }
+        LYD{
+            few{"dinar Libitheach"}
+            one{"dinar Libitheach"}
+            other{"dinar Libitheach"}
+            two{"dhinar Libitheach"}
+        }
+        MAD{
+            few{"dirham Morocach"}
+            one{"dirham Morocach"}
+            other{"dirham Morocach"}
+            two{"dhirham Morocach"}
+        }
+        MDL{
+            few{"leu Moldobhach"}
+            one{"leu Moldobhach"}
+            other{"leu Moldobhach"}
+            two{"leu Moldobhach"}
+        }
+        MGA{
+            few{"ariary Madagasgarach"}
+            one{"ariary Madagasgarach"}
+            other{"ariary Madagasgarach"}
+            two{"ariary Madagasgarach"}
+        }
+        MKD{
+            few{"denar Masadonach"}
+            one{"denar Masadonach"}
+            other{"denar Masadonach"}
+            two{"dhenar Masadonach"}
+        }
+        MNT{
+            few{"tugrik Mongolach"}
+            one{"tugrik Mongolach"}
+            other{"tugrik Mongolach"}
+            two{"thugrik Mongolach"}
+        }
+        MRO{
+            few{"ouguiya Moratàineach"}
+            one{"ouguiya Moratàineach"}
+            other{"ouguiya Moratàineach"}
+            two{"ouguiya Moratàineach"}
+        }
+        MUR{
+            few{"rupee Moiriseasach"}
+            one{"rupee Moiriseasach"}
+            other{"rupee Moiriseasach"}
+            two{"rupee Moiriseasach"}
+        }
+        MWK{
+            few{"kwacha Malabhaidheach"}
+            one{"kwacha Malabhaidheach"}
+            other{"kwacha Malabhaidheach"}
+            two{"kwacha Malabhaidheach"}
+        }
+        MXN{
+            few{"pesothan Meagsagach"}
+            one{"pheso Meagsagach"}
+            other{"peso Meagsagach"}
+            two{"pheso Meagsagach"}
+        }
+        MYR{
+            few{"ringgit Malaidheach"}
+            one{"ringgit Malaidheach"}
+            other{"ringgit Malaidheach"}
+            two{"ringgit Malaidheach"}
+        }
+        MZN{
+            few{"metical Mòsaimbiceach"}
+            one{"mhetical Mòsaimbiceach"}
+            other{"metical Mòsaimbiceach"}
+            two{"mhetical Mòsaimbiceach"}
+        }
+        NAD{
+            few{"dolaran Naimibitheach"}
+            one{"dolar Naimibitheach"}
+            other{"dolar Naimibitheach"}
+            two{"dholar Naimibitheach"}
+        }
+        NGN{
+            few{"naira Nigèiriach"}
+            one{"naira Nigèiriach"}
+            other{"naira Nigèiriach"}
+            two{"naira Nigèiriach"}
+        }
+        NIO{
+            few{"córdoba Niocaragach"}
+            one{"chórdoba Niocaragach"}
+            other{"córdoba Niocaragach"}
+            two{"chórdoba Niocaragach"}
+        }
+        NOK{
+            few{"kroner Nirribheach"}
+            one{"krone Nirribheach"}
+            other{"krone Nirribheach"}
+            two{"krone Nirribheach"}
+        }
+        NPR{
+            few{"rupee Neapàlach"}
+            one{"rupee Neapàlach"}
+            other{"rupee Neapàlach"}
+            two{"rupee Neapàlach"}
+        }
+        NZD{
+            few{"dolaran Shealainn Nuaidh"}
+            one{"dolar Shealainn Nuaidh"}
+            other{"dolar Shealainn Nuaidh"}
+            two{"dholar Shealainn Nuaidh"}
+        }
+        OMR{
+            few{"rial Omànach"}
+            one{"rial Omànach"}
+            other{"rial Omànach"}
+            two{"rial Omànach"}
+        }
+        PAB{
+            few{"balboa Panamach"}
+            one{"bhalboa Panamach"}
+            other{"balboa Panamach"}
+            two{"bhalboa Panamach"}
+        }
+        PEN{
+            few{"sol ùra Pearùthach"}
+            one{"sol ùr Pearùthach"}
+            other{"sol ùr Pearùthach"}
+            two{"shol ùr Pearùthach"}
+        }
+        PGK{
+            few{"kina Ghini Nuaidh Paputhaiche"}
+            one{"kina Ghini Nuaidh Paputhaiche"}
+            other{"kina Ghini Nuaidh Paputhaiche"}
+            two{"kina Ghini Nuaidh Paputhaiche"}
+        }
+        PHP{
+            few{"pesothan Filipineach"}
+            one{"pheso Filipineach"}
+            other{"peso Filipineach"}
+            two{"pheso Filipineach"}
+        }
+        PKR{
+            few{"rupee Pagastànach"}
+            one{"rupee Pagastànach"}
+            other{"rupee Pagastànach"}
+            two{"rupee Pagastànach"}
+        }
+        PLN{
+            few{"złoty Pòlainneach"}
+            one{"złoty Pòlainneach"}
+            other{"złoty Pòlainneach"}
+            two{"złoty Pòlainneach"}
+        }
+        PYG{
+            few{"guaraní Paraguaidheach"}
+            one{"ghuaraní Paraguaidheach"}
+            other{"guaraní Paraguaidheach"}
+            two{"ghuaraní Paraguaidheach"}
+        }
+        QAR{
+            few{"rial Catarach"}
+            one{"rial Catarach"}
+            other{"rial Catarach"}
+            two{"rial Catarach"}
+        }
+        RON{
+            few{"leu Romàineach"}
+            one{"leu Romàineach"}
+            other{"leu Romàineach"}
+            two{"leu Romàineach"}
+        }
+        RSD{
+            few{"dinar Sèirbeach"}
+            one{"dinar Sèirbeach"}
+            other{"dinar Sèirbeach"}
+            two{"dhinar Sèirbeach"}
+        }
+        RUB{
+            few{"rùbalan Ruiseach"}
+            one{"rùbal Ruiseach"}
+            other{"rùbal Ruiseach"}
+            two{"rùbal Ruiseach"}
+        }
+        RWF{
+            few{"franc Rubhandach"}
+            one{"fhranc Rubhandach"}
+            other{"franc Rubhandach"}
+            two{"fhranc Rubhandach"}
+        }
+        SAR{
+            few{"riyal Sabhdach"}
+            one{"riyal Sabhdach"}
+            other{"riyal Sabhdach"}
+            two{"riyal Sabhdach"}
+        }
+        SDG{
+            few{"puinnd Shudànach"}
+            one{"phunnd Sudànach"}
+            other{"punnd Sudànach"}
+            two{"phunnd Sudànach"}
+        }
+        SEK{
+            few{"kronor Suaineach"}
+            one{"krona Suaineach"}
+            other{"krona Suaineach"}
+            two{"krona Suaineach"}
+        }
+        SGD{
+            few{"dolaran Singeapòrach"}
+            one{"dolar Singeapòrach"}
+            other{"dolar Singeapòrach"}
+            two{"dholar Singeapòrach"}
+        }
+        SLL{
+            few{"leone Siarra Leòmhannach"}
+            one{"leone Siarra Leòmhannach"}
+            other{"leone Siarra Leòmhannach"}
+            two{"leone Siarra Leòmhannach"}
+        }
+        SSP{
+            few{"puinnd Shudàin a Deas"}
+            one{"phunnd Sudàin a Deas"}
+            other{"punnd Sudàin a Deas"}
+            two{"phunnd Sudàin a Deas"}
+        }
+        THB{
+            few{"baht Tàidheach"}
+            one{"bhaht Tàidheach"}
+            other{"baht Tàidheach"}
+            two{"bhaht Tàidheach"}
+        }
+        TJS{
+            few{"somoni Taidigeach"}
+            one{"somoni Taidigeach"}
+            other{"somoni Taidigeach"}
+            two{"shomoni Taidigeach"}
+        }
+        TMT{
+            few{"manat Turcmanach"}
+            one{"mhanat Turcmanach"}
+            other{"manat Turcmanach"}
+            two{"mhanat Turcmanach"}
+        }
+        TND{
+            few{"dinar Tuiniseach"}
+            one{"dinar Tuiniseach"}
+            other{"dinar Tuiniseach"}
+            two{"dhinar Tuiniseach"}
+        }
+        TRY{
+            few{"lira Turcach"}
+            one{"lira Turcach"}
+            other{"lira Turcach"}
+            two{"lira Turcach"}
+        }
+        TTD{
+            few{"dolaran Thrianaid agus Thobago"}
+            one{"dolar Thrianaid agus Thobago"}
+            other{"dolar Thrianaid agus Thobago"}
+            two{"dholar Thrianaid agus Thobago"}
+        }
+        TWD{
+            few{"dolaran ùra Taidh-Bhànach"}
+            one{"dolar ùr Taidh-Bhànach"}
+            other{"dolar ùr Taidh-Bhànach"}
+            two{"dholar ùr Taidh-Bhànach"}
+        }
+        TZS{
+            few{"shilling Tansanaidheach"}
+            one{"shilling Tansanaidheach"}
+            other{"shilling Tansanaidheach"}
+            two{"shilling Tansanaidheach"}
+        }
+        UAH{
+            few{"hryvnia Ucràineach"}
+            one{"hryvnia Ucràineach"}
+            other{"hryvnia Ucràineach"}
+            two{"hryvnia Ucràineach"}
+        }
+        UGX{
+            few{"shilling Ugandach"}
+            one{"shilling Ugandach"}
+            other{"shilling Ugandach"}
+            two{"shilling Ugandach"}
+        }
+        USD{
+            few{"dolaran nan Stàitean Aonaichte"}
+            one{"dolar nan Stàitean Aonaichte"}
+            other{"dolar nan Stàitean Aonaichte"}
+            two{"dholar nan Stàitean Aonaichte"}
+        }
+        UYU{
+            few{"pesothan Uruguaidheach"}
+            one{"pheso Uruguaidheach"}
+            other{"peso Uruguaidheach"}
+            two{"pheso Uruguaidheach"}
+        }
+        UZS{
+            few{"som Usbagach"}
+            one{"som Usbagach"}
+            other{"som Usbagach"}
+            two{"shom Usbagach"}
+        }
+        VEF{
+            few{"bolívar Bheinisealach"}
+            one{"bholívar Bheinisealach"}
+            other{"bolívar Bheinisealach"}
+            two{"bholívar Bheinisealach"}
+        }
+        VND{
+            few{"dong Bhiet-Namach"}
+            one{"dong Bhiet-Namach"}
+            other{"dong Bhiet-Namach"}
+            two{"dhong Bhiet-Namach"}
+        }
+        XAF{
+            few{"franc CFA Meadhan-Afragach"}
+            one{"fhranc CFA Meadhan-Afragach"}
+            other{"franc CFA Meadhan-Afragach"}
+            two{"fhranc CFA Meadhan-Afragach"}
+        }
+        XDR{
+            few{"còirichean tarraing sònraichte"}
+            one{"chòir tarraing shònraichte"}
+            other{"còir tarraing shònraichte"}
+            two{"chòir tarraing shònraichte"}
+        }
+        XOF{
+            few{"franc CFA Afraga an Iar"}
+            one{"fhranc CFA Afraga an Iar"}
+            other{"franc CFA Afraga an Iar"}
+            two{"fhranc CFA Afraga an Iar"}
+        }
+        YER{
+            few{"rial Eamanach"}
+            one{"rial Eamanach"}
+            other{"rial Eamanach"}
+            two{"rial Eamanach"}
+        }
+        ZAR{
+            few{"rand Afraga a Deas"}
+            one{"rand Afraga a Deas"}
+            other{"rand Afraga a Deas"}
+            two{"rand Afraga a Deas"}
+        }
+        ZMW{
+            few{"kwacha Sàimbitheach"}
+            one{"kwacha Sàimbitheach"}
+            other{"kwacha Sàimbitheach"}
+            two{"kwacha Sàimbitheach"}
+        }
+    }
+    CurrencyUnitPatterns{
+        few{"{0} {1}"}
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+        two{"{0} {1}"}
+    }
+    Version{"2.1.8.9"}
+}

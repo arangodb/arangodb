@@ -1,0 +1,51 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/smn.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/smn.xml
+ */
+smn{
+    Version{"2.1.8.11"}
+    units{
+        duration{
+            day{
+                dnam{"peeivih"}
+            }
+            hour{
+                dnam{"tiijmeh"}
+            }
+            microsecond{
+                dnam{"mikrosekunteh"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+                two{"{0} μs"}
+            }
+            millisecond{
+                dnam{"millisekunteh"}
+            }
+            minute{
+                dnam{"minutteh"}
+            }
+            month{
+                dnam{"mánuppajeh"}
+            }
+            nanosecond{
+                dnam{"nanosekunteh"}
+            }
+            second{
+                dnam{"sekunteh"}
+            }
+            week{
+                dnam{"ohoh"}
+            }
+            year{
+                dnam{"iveh"}
+            }
+        }
+    }
+}

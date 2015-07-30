@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fil.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/fil.xml
+ */
+fil{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} bawat {1}"}
+        }
+        duration{
+            day{
+                dnam{"araw"}
+                one{"{0} araw"}
+                other{"{0} araw"}
+            }
+            hour{
+                dnam{"oras"}
+                one{"{0} oras"}
+                other{"{0} oras"}
+                per{"{0} kada oras"}
+            }
+            microsecond{
+                dnam{"mikrosegundo"}
+                one{"{0} mikrosegundo"}
+                other{"{0} mikrosegundo"}
+            }
+            millisecond{
+                dnam{"milisegundo"}
+                one{"{0} milisegundo"}
+                other{"{0} milisegundo"}
+            }
+            minute{
+                dnam{"minuto"}
+                one{"{0} minuto"}
+                other{"{0} minuto"}
+            }
+            month{
+                dnam{"buwan"}
+                one{"{0} buwan"}
+                other{"{0} buwan"}
+            }
+            nanosecond{
+                dnam{"nanosegundo"}
+                one{"{0} nanosegundo"}
+                other{"{0} nanosegundo"}
+            }
+            second{
+                dnam{"segundo"}
+                one{"{0} segundo"}
+                other{"{0} segundo"}
+                per{"{0} kada segundo"}
+            }
+            week{
+                dnam{"linggo"}
+                one{"{0} linggo"}
+                other{"{0} linggo"}
+            }
+            year{
+                dnam{"taon"}
+                one{"{0} taon"}
+                other{"{0} taon"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"araw"}
+                one{"{0} araw"}
+                other{"{0}d"}
+            }
+            hour{
+                dnam{"oras"}
+                one{"{0}h"}
+                other{"{0}h"}
+            }
+            millisecond{
+                dnam{"mseg"}
+                one{"{0}ms"}
+                other{"{0}ms"}
+            }
+            minute{
+                dnam{"min."}
+                one{"{0}m"}
+                other{"{0}m"}
+            }
+            month{
+                dnam{"buwan"}
+                one{"{0}m"}
+                other{"{0}m"}
+            }
+            second{
+                dnam{"seg."}
+                one{"{0}s"}
+                other{"{0}s"}
+            }
+            week{
+                dnam{"wk"}
+                one{"{0}w"}
+                other{"{0}w"}
+            }
+            year{
+                dnam{"yr"}
+                one{"{0}y"}
+                other{"{0}y"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"araw"}
+                one{"{0} araw"}
+                other{"{0} araw"}
+            }
+            hour{
+                dnam{"oras"}
+                one{"{0} hr"}
+                other{"{0} hrs"}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"μseg"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"miliseg"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min."}
+                one{"{0} min."}
+                other{"{0} min."}
+            }
+            month{
+                dnam{"buwan"}
+                one{"{0} mth"}
+                other{"{0} mths"}
+            }
+            nanosecond{
+                dnam{"nanoseg"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"seg."}
+                one{"{0} seg."}
+                other{"{0} seg."}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"linggo"}
+                one{"{0} wk"}
+                other{"{0} wks"}
+            }
+            year{
+                dnam{"taon"}
+                one{"{0} yr"}
+                other{"{0} yrs"}
+            }
+        }
+    }
+}

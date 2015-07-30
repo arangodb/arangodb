@@ -1,0 +1,235 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/pl.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/pl.xml
+ */
+pl{
+    Version{"2.1.8.95"}
+    units{
+        compound{
+            per{"{0} na {1}"}
+        }
+        duration{
+            day{
+                dnam{"dni"}
+                few{"{0} dni"}
+                many{"{0} dni"}
+                one{"{0} dzień"}
+                other{"{0} dnia"}
+            }
+            hour{
+                dnam{"godziny"}
+                few{"{0} godziny"}
+                many{"{0} godzin"}
+                one{"{0} godzina"}
+                other{"{0} godzin"}
+                per{"{0} na godzinę"}
+            }
+            microsecond{
+                dnam{"mikrosekundy"}
+                few{"{0} mikrosekundy"}
+                many{"{0} mikrosekund"}
+                one{"{0} mikrosekunda"}
+                other{"{0} mikrosekundy"}
+            }
+            millisecond{
+                dnam{"milisekundy"}
+                few{"{0} milisekundy"}
+                many{"{0} milisekund"}
+                one{"{0} milisekunda"}
+                other{"{0} milisekundy"}
+            }
+            minute{
+                dnam{"minuty"}
+                few{"{0} minuty"}
+                many{"{0} minut"}
+                one{"{0} minuta"}
+                other{"{0} minuty"}
+            }
+            month{
+                dnam{"miesiące"}
+                few{"{0} miesiące"}
+                many{"{0} miesięcy"}
+                one{"{0} miesiąc"}
+                other{"{0} miesiąca"}
+            }
+            nanosecond{
+                dnam{"nanosekundy"}
+                few{"{0} nanosekundy"}
+                many{"{0} nanosekund"}
+                one{"{0} nanosekunda"}
+                other{"{0} nanosekundy"}
+            }
+            second{
+                dnam{"sekundy"}
+                few{"{0} sekundy"}
+                many{"{0} sekund"}
+                one{"{0} sekunda"}
+                other{"{0} sekundy"}
+                per{"{0} na sekundę"}
+            }
+            week{
+                dnam{"tygodnie"}
+                few{"{0} tygodnie"}
+                many{"{0} tygodni"}
+                one{"{0} tydzień"}
+                other{"{0} tygodnia"}
+            }
+            year{
+                dnam{"lata"}
+                few{"{0} lata"}
+                many{"{0} lat"}
+                one{"{0} rok"}
+                other{"{0} roku"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"dzień"}
+                few{"{0} dn."}
+                many{"{0} dn."}
+                one{"{0} d."}
+                other{"{0} dn."}
+            }
+            hour{
+                dnam{"godzina"}
+                few{"{0} godz."}
+                many{"{0} godz."}
+                one{"{0} godz."}
+                other{"{0} godz."}
+            }
+            millisecond{
+                dnam{"ms"}
+                few{"{0} ms"}
+                many{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"minuty"}
+                few{"{0} min"}
+                many{"{0} min"}
+                one{"{0} min"}
+                other{"{0} min"}
+            }
+            month{
+                dnam{"miesiąc"}
+                few{"{0} m-ce"}
+                many{"{0} m-cy"}
+                one{"{0} m-c"}
+                other{"{0} m-ca"}
+            }
+            second{
+                dnam{"sekundy"}
+                few{"{0} s"}
+                many{"{0} s"}
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+            week{
+                dnam{"tydzień"}
+                few{"{0} tyg."}
+                many{"{0} tyg."}
+                one{"{0} tydz."}
+                other{"{0} tyg."}
+            }
+            year{
+                dnam{"rok"}
+                few{"{0} l."}
+                many{"{0} l."}
+                one{"{0} r."}
+                other{"{0} r."}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"dni"}
+                few{"{0} dni"}
+                many{"{0} dni"}
+                one{"{0} dzień"}
+                other{"{0} dnia"}
+            }
+            hour{
+                dnam{"godziny"}
+                few{"{0} godz."}
+                many{"{0} godz."}
+                one{"{0} godz."}
+                other{"{0} godz."}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"μs"}
+                few{"{0} μs"}
+                many{"{0} μs"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"milisekundy"}
+                few{"{0} ms"}
+                many{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"minuty"}
+                few{"{0} min"}
+                many{"{0} min"}
+                one{"{0} min"}
+                other{"{0} min"}
+            }
+            month{
+                dnam{"miesiące"}
+                few{"{0} mies."}
+                many{"{0} mies."}
+                one{"{0} mies."}
+                other{"{0} mies."}
+            }
+            nanosecond{
+                dnam{"ns"}
+                few{"{0} ns"}
+                many{"{0} ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"sekundy"}
+                few{"{0} sek."}
+                many{"{0} sek."}
+                one{"{0} sek."}
+                other{"{0} sek."}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"tygodnie"}
+                few{"{0} tyg."}
+                many{"{0} tyg."}
+                one{"{0} tydz."}
+                other{"{0} tyg."}
+            }
+            year{
+                dnam{"lata"}
+                few{"{0} lata"}
+                many{"{0} lat"}
+                one{"{0} rok"}
+                other{"{0} roku"}
+            }
+        }
+    }
+}

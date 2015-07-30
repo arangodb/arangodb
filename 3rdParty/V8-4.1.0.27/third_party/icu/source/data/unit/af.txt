@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/af.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/af.xml
+ */
+af{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} per {1}"}
+        }
+        duration{
+            day{
+                dnam{"dae"}
+                one{"{0} dag"}
+                other{"{0} dae"}
+            }
+            hour{
+                dnam{"uur"}
+                one{"{0} uur"}
+                other{"{0} uur"}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"mikrosekondes"}
+                one{"{0} mikrosekonde"}
+                other{"{0} mikrosekondes"}
+            }
+            millisecond{
+                dnam{"millisekondes"}
+                one{"{0} millisekonde"}
+                other{"{0} millisekondes"}
+            }
+            minute{
+                dnam{"minute"}
+                one{"{0} minuut"}
+                other{"{0} minute"}
+            }
+            month{
+                dnam{"maande"}
+                one{"{0} maand"}
+                other{"{0} maande"}
+            }
+            nanosecond{
+                dnam{"nanosekondes"}
+                one{"{0} nanosekonde"}
+                other{"{0} nanosekondes"}
+            }
+            second{
+                dnam{"sekondes"}
+                one{"{0} sekonde"}
+                other{"{0} sekondes"}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"weke"}
+                one{"{0} week"}
+                other{"{0} weke"}
+            }
+            year{
+                dnam{"jaar"}
+                one{"{0} jaar"}
+                other{"{0} jaar"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"dag"}
+                one{"{0} d."}
+                other{"{0} d."}
+            }
+            hour{
+                dnam{"uur"}
+                one{"{0} u."}
+                other{"{0} u."}
+            }
+            millisecond{
+                dnam{"ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"minute"}
+                one{"{0} min."}
+                other{"{0} min."}
+            }
+            month{
+                dnam{"maand"}
+                one{"{0} md."}
+                other{"{0} md."}
+            }
+            second{
+                dnam{"sekondes"}
+                one{"{0} sek."}
+                other{"{0} sek."}
+            }
+            week{
+                dnam{"w."}
+                one{"{0} w."}
+                other{"{0} w."}
+            }
+            year{
+                dnam{"jaar"}
+                one{"{0} j."}
+                other{"{0} j."}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"dae"}
+                one{"{0} dag"}
+                other{"{0} dae"}
+            }
+            hour{
+                dnam{"uur"}
+                one{"{0} u."}
+                other{"{0} u."}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"μs"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"millisekondes"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"minute"}
+                one{"{0} min."}
+                other{"{0} min."}
+            }
+            month{
+                dnam{"maande"}
+                one{"{0} md."}
+                other{"{0} md."}
+            }
+            nanosecond{
+                dnam{"ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"sekondes"}
+                one{"{0} sek."}
+                other{"{0} sek."}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"weke"}
+                one{"{0} w."}
+                other{"{0} w."}
+            }
+            year{
+                dnam{"jaar"}
+                one{"{0} j."}
+                other{"{0} j."}
+            }
+        }
+    }
+}

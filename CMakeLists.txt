@@ -39,7 +39,7 @@ set(BIN_ARANGOSH      arangosh)
 set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 
-set(V8_VERSION        3.31.74.1)
+set(V8_VERSION        4.1.0.27)
 
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "http://www.arangodb.org")

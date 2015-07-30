@@ -1,0 +1,28 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/os.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/os.xml
+ */
+os{
+    Countries{
+        BR{"Бразили"}
+        CN{"Китай"}
+        DE{"Герман"}
+        FR{"Франц"}
+        GB{"Стыр Британи"}
+        GE{"Гуырдзыстон"}
+        IN{"Инди"}
+        IT{"Итали"}
+        JP{"Япон"}
+        RU{"Уӕрӕсе"}
+        US{"АИШ"}
+        ZZ{"Нӕзонгӕ бӕстӕ"}
+    }
+    Version{"2.1.7.53"}
+}

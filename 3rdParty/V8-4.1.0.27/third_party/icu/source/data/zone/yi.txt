@@ -1,0 +1,31 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/yi.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/yi.xml
+ */
+yi{
+    Version{"2.1.7.41"}
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"אַבידזשאַן"}
+        }
+        "Africa:Asmera"{
+            ec{"אַסמאַראַ"}
+        }
+        "Africa:Tunis"{
+            ec{"טוניס"}
+        }
+        "Africa:Windhoek"{
+            ec{"ווינטהוק"}
+        }
+        "Asia:Saigon"{
+            ec{"הא טשי מין שטאָט"}
+        }
+    }
+}

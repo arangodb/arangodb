@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sq.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/sq.xml
+ */
+sq{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} në {1}"}
+        }
+        duration{
+            day{
+                dnam{"ditë"}
+                one{"{0} ditë"}
+                other{"{0} ditë"}
+            }
+            hour{
+                dnam{"orë"}
+                one{"{0} orë"}
+                other{"{0} orë"}
+                per{"{0}/orë"}
+            }
+            microsecond{
+                dnam{"mikrosekonda"}
+                one{"{0} mikrosekondë"}
+                other{"{0} mikrosekonda"}
+            }
+            millisecond{
+                dnam{"milisekonda"}
+                one{"{0} milisekondë"}
+                other{"{0} milisekonda"}
+            }
+            minute{
+                dnam{"minuta"}
+                one{"{0} minutë"}
+                other{"{0} minuta"}
+            }
+            month{
+                dnam{"muaj"}
+                one{"{0} muaj"}
+                other{"{0} muaj"}
+            }
+            nanosecond{
+                dnam{"nanosekonda"}
+                one{"{0} nanosekondë"}
+                other{"{0} nanosekonda"}
+            }
+            second{
+                dnam{"sekonda"}
+                one{"{0} sekondë"}
+                other{"{0} sekonda"}
+                per{"{0}/sek."}
+            }
+            week{
+                dnam{"javë"}
+                one{"{0} javë"}
+                other{"{0} javë"}
+            }
+            year{
+                dnam{"vjet"}
+                one{"{0} vit"}
+                other{"{0} vjet"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ditë"}
+                one{"{0} ditë"}
+                other{"{0} ditë"}
+            }
+            hour{
+                dnam{"orë"}
+                one{"{0} orë"}
+                other{"{0} orë"}
+            }
+            millisecond{
+                dnam{"milisek."}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min."}
+                one{"{0} min."}
+                other{"{0} min."}
+            }
+            month{
+                dnam{"muaj"}
+                one{"{0} muaj"}
+                other{"{0} muaj"}
+            }
+            second{
+                dnam{"sek."}
+                one{"{0} sek."}
+                other{"{0} sek."}
+            }
+            week{
+                dnam{"javë"}
+                one{"{0} javë"}
+                other{"{0} javë"}
+            }
+            year{
+                dnam{"vjet"}
+                one{"{0} vit"}
+                other{"{0} vjet"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ditë"}
+                one{"{0} ditë"}
+                other{"{0} ditë"}
+            }
+            hour{
+                dnam{"orë"}
+                one{"{0} orë"}
+                other{"{0} orë"}
+                per{"{0}/orë"}
+            }
+            microsecond{
+                dnam{"mikrosek."}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"milisek."}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min."}
+                one{"{0} min."}
+                other{"{0} min."}
+            }
+            month{
+                dnam{"muaj"}
+                one{"{0} muaj"}
+                other{"{0} muaj"}
+            }
+            nanosecond{
+                dnam{"nanosek."}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"sek."}
+                one{"{0} sek."}
+                other{"{0} sek."}
+                per{"{0}/sek."}
+            }
+            week{
+                dnam{"javë"}
+                one{"{0} javë"}
+                other{"{0} javë"}
+            }
+            year{
+                dnam{"vjet"}
+                one{"{0} vit"}
+                other{"{0} vjet"}
+            }
+        }
+    }
+}

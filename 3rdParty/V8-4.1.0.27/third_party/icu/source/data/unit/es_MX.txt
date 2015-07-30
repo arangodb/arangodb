@@ -1,0 +1,62 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es_MX.xml
+// *
+// ***************************************************************************
+es_MX{
+    %%Parent{"es_419"}
+    Version{"2.1.8.19"}
+    units{
+    }
+    unitsNarrow{
+        duration{
+            day{
+                dnam{"días"}
+                one{"{0} d"}
+                other{"{0} d"}
+            }
+            month{
+                dnam{"m"}
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            week{
+                dnam{"sem"}
+                one{"{0} sem"}
+                other{"{0} sem"}
+            }
+            year{
+                dnam{"a"}
+                one{"{0}a"}
+                other{"{0} a"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                dnam{"días"}
+                one{"{0} día"}
+                other{"{0} días"}
+            }
+            month{
+                dnam{"meses"}
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            week{
+                dnam{"sem"}
+                one{"{0} sem"}
+                other{"{0} sem"}
+            }
+            year{
+                dnam{"a"}
+                one{"{0} a"}
+                other{"{0} a"}
+            }
+        }
+    }
+}

@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sw.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/sw.xml
+ */
+sw{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0}kwa kila{1}"}
+        }
+        duration{
+            day{
+                dnam{"siku"}
+                one{"siku {0}"}
+                other{"siku {0}"}
+            }
+            hour{
+                dnam{"saa"}
+                one{"saa {0}"}
+                other{"saa {0}"}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"mikrosekunde"}
+                one{"mikrosekunde {0}"}
+                other{"mikrosekunde {0}"}
+            }
+            millisecond{
+                dnam{"millisekunde"}
+                one{"millisekunde {0}"}
+                other{"millisekunde {0}"}
+            }
+            minute{
+                dnam{"dakika"}
+                one{"dakika {0}"}
+                other{"dakika {0}"}
+            }
+            month{
+                dnam{"miezi"}
+                one{"mwezi {0}"}
+                other{"miezi {0}"}
+            }
+            nanosecond{
+                dnam{"nanosekunde"}
+                one{"nanosekunde {0}"}
+                other{"nanosekunde {0}"}
+            }
+            second{
+                dnam{"sekunde"}
+                one{"sekunde {0}"}
+                other{"sekunde {0}"}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"wiki"}
+                one{"wiki {0}"}
+                other{"wiki {0}"}
+            }
+            year{
+                dnam{"miaka"}
+                one{"mwaka {0}"}
+                other{"miaka {0}"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"siku"}
+                one{"siku {0}"}
+                other{"siku {0}"}
+            }
+            hour{
+                dnam{"saa"}
+                one{"saa {0}"}
+                other{"saa {0}"}
+            }
+            millisecond{
+                dnam{"millisekunde"}
+                one{"ms {0}"}
+                other{"ms {0}"}
+            }
+            minute{
+                dnam{"dakika"}
+                one{"dakika {0}"}
+                other{"dakika {0}"}
+            }
+            month{
+                dnam{"mwezi"}
+                one{"mwezi {0}"}
+                other{"miezi {0}"}
+            }
+            second{
+                dnam{"sekunde"}
+                one{"s {0}"}
+                other{"s {0}"}
+            }
+            week{
+                dnam{"wiki"}
+                one{"wiki {0}"}
+                other{"wiki {0}"}
+            }
+            year{
+                dnam{"mwaka"}
+                one{"mwaka {0}"}
+                other{"miaka {0}"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"siku"}
+                one{"siku {0}"}
+                other{"siku {0}"}
+            }
+            hour{
+                dnam{"saa"}
+                one{"saa {0}"}
+                other{"saa {0}"}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"mikrosekunde"}
+                one{"mikrosekunde {0}"}
+                other{"mikrosekunde {0}"}
+            }
+            millisecond{
+                dnam{"millisekunde"}
+                one{"ms {0}"}
+                other{"ms {0}"}
+            }
+            minute{
+                dnam{"dakika"}
+                one{"dakika {0}"}
+                other{"dakika {0}"}
+            }
+            month{
+                dnam{"miezi"}
+                one{"mwezi {0}"}
+                other{"miezi {0}"}
+            }
+            nanosecond{
+                dnam{"nanosekunde"}
+                one{"nanosekunde {0}"}
+                other{"nanosekunde {0}"}
+            }
+            second{
+                dnam{"sekunde"}
+                one{"sekunde {0}"}
+                other{"sekunde {0}"}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"wiki"}
+                one{"wiki {0}"}
+                other{"wiki {0}"}
+            }
+            year{
+                dnam{"miaka"}
+                one{"mwaka {0}"}
+                other{"miaka {0}"}
+            }
+        }
+    }
+}

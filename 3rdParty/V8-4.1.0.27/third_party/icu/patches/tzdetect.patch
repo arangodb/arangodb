@@ -1,0 +1,200 @@
+diff --git a/source/i18n/timezone.cpp b/source/i18n/timezone.cpp
+index 6ed008d..6b3f8d2 100644
+--- a/source/i18n/timezone.cpp
++++ b/source/i18n/timezone.cpp
+@@ -1,6 +1,6 @@
+ /*
+ *******************************************************************************
+-* Copyright (C) 1997-2014, International Business Machines Corporation and
++* Copyright (C) 1997-2015, International Business Machines Corporation and
+ * others. All Rights Reserved.
+ *******************************************************************************
+ *
+@@ -440,21 +440,9 @@ TimeZone::createTimeZone(const UnicodeString& ID)
+ 
+ // -------------------------------------
+ 
+-/**
+- * Initialize DEFAULT_ZONE from the system default time zone.  
+- * Upon return, DEFAULT_ZONE will not be NULL, unless operator new()
+- * returns NULL.
+- */
+-static void U_CALLCONV initDefault()
++TimeZone* U_EXPORT2
++TimeZone::detectHostTimeZone()
+ {
+-    ucln_i18n_registerCleanup(UCLN_I18N_TIMEZONE, timeZone_cleanup);
+-
+-    // If setDefault() has already been called we can skip getting the
+-    // default zone information from the system.
+-    if (DEFAULT_ZONE != NULL) {
+-        return;
+-    }
+-    
+     // We access system timezone data through TPlatformUtilities,
+     // including tzset(), timezone, and tzname[].
+     int32_t rawOffset = 0;
+@@ -463,16 +451,6 @@ static void U_CALLCONV initDefault()
+     // First, try to create a system timezone, based
+     // on the string ID in tzname[0].
+ 
+-    // NOTE:  this code is safely single threaded, being only
+-    // run via umtx_initOnce().
+-    //
+-    // Some of the locale/timezone OS functions may not be thread safe,
+-    //
+-    // The operating system might actually use ICU to implement timezones.
+-    // So we may have ICU calling ICU here, like on AIX.
+-    // There shouldn't be a problem with this; initOnce does not hold a mutex
+-    // while the init function is being run.
+-
+     uprv_tzset(); // Initialize tz... system data
+ 
+     // Get the timezone ID from the host.  This function should do
+@@ -484,13 +462,13 @@ static void U_CALLCONV initDefault()
+     // Invert sign because UNIX semantics are backwards
+     rawOffset = uprv_timezone() * -U_MILLIS_PER_SECOND;
+ 
+-    TimeZone* default_zone = NULL;
++    TimeZone* hostZone = NULL;
+ 
+     /* Make sure that the string is NULL terminated to prevent BoundsChecker/Purify warnings. */
+     UnicodeString hostStrID(hostID, -1, US_INV);
+     hostStrID.append((UChar)0);
+     hostStrID.truncate(hostStrID.length()-1);
+-    default_zone = createSystemTimeZone(hostStrID);
++    hostZone = createSystemTimeZone(hostStrID);
+ 
+ #if U_PLATFORM_USES_ONLY_WIN32_API
+     // hostID points to a heap-allocated location on Windows.
+@@ -498,30 +476,69 @@ static void U_CALLCONV initDefault()
+ #endif
+ 
+     int32_t hostIDLen = hostStrID.length();
+-    if (default_zone != NULL && rawOffset != default_zone->getRawOffset()
++    if (hostZone != NULL && rawOffset != hostZone->getRawOffset()
+         && (3 <= hostIDLen && hostIDLen <= 4))
+     {
+         // Uh oh. This probably wasn't a good id.
+         // It was probably an ambiguous abbreviation
+-        delete default_zone;
+-        default_zone = NULL;
++        delete hostZone;
++        hostZone = NULL;
+     }
+ 
+     // Construct a fixed standard zone with the host's ID
+     // and raw offset.
+-    if (default_zone == NULL) {
+-        default_zone = new SimpleTimeZone(rawOffset, hostStrID);
++    if (hostZone == NULL) {
++        hostZone = new SimpleTimeZone(rawOffset, hostStrID);
+     }
+ 
+     // If we _still_ don't have a time zone, use GMT.
+-    if (default_zone == NULL) {
++    //
++    // Note: This is extremely unlikely situation. If
++    // new SimpleTimeZone(...) above fails, the following
++    // code may also fail.
++    if (hostZone == NULL) {
+         const TimeZone* temptz = TimeZone::getGMT();
+         // If we can't use GMT, get out.
+         if (temptz == NULL) {
+-            return;
++            return NULL;
+         }
+-        default_zone = temptz->clone();
++        hostZone = temptz->clone();
++    }
++
++    return hostZone;
++}
++
++// -------------------------------------
++
++/**
++ * Initialize DEFAULT_ZONE from the system default time zone.  
++ * Upon return, DEFAULT_ZONE will not be NULL, unless operator new()
++ * returns NULL.
++ */
++static void U_CALLCONV initDefault()
++{
++    ucln_i18n_registerCleanup(UCLN_I18N_TIMEZONE, timeZone_cleanup);
++
++    // If setDefault() has already been called we can skip getting the
++    // default zone information from the system.
++    if (DEFAULT_ZONE != NULL) {
++        return;
+     }
++    
++    // NOTE:  this code is safely single threaded, being only
++    // run via umtx_initOnce().
++    //
++    // Some of the locale/timezone OS functions may not be thread safe,
++    //
++    // The operating system might actually use ICU to implement timezones.
++    // So we may have ICU calling ICU here, like on AIX.
++    // There shouldn't be a problem with this; initOnce does not hold a mutex
++    // while the init function is being run.
++
++    // The code detecting the host time zone was separated from this
++    // and implemented as TimeZone::detectHostTimeZone()
++
++    TimeZone *default_zone = TimeZone::detectHostTimeZone();
+ 
+     // The only way for DEFAULT_ZONE to be non-null at this point is if the user
+     // made a thread-unsafe call to setDefault() or adoptDefault() in another
+diff --git a/source/i18n/unicode/timezone.h b/source/i18n/unicode/timezone.h
+index fa4f5bf..c3356c9 100644
+--- a/source/i18n/unicode/timezone.h
++++ b/source/i18n/unicode/timezone.h
+@@ -1,5 +1,5 @@
+ /*************************************************************************
+-* Copyright (c) 1997-2014, International Business Machines Corporation
++* Copyright (c) 1997-2015, International Business Machines Corporation
+ * and others. All Rights Reserved.
+ **************************************************************************
+ *
+@@ -273,6 +273,23 @@ public:
+     static const UnicodeString U_EXPORT2 getEquivalentID(const UnicodeString& id,
+                                                int32_t index);
+ 
++#ifndef U_HIDE_DRAFT_API
++    /**
++     * Creates an instance of TimeZone detected from the current host
++     * system configuration. Note that ICU4C does not change the default
++     * time zone unless TimeZone::adoptDefault(TimeZone*) or
++     * TimeZone::setDefault(const TimeZone&) is explicitly called by a
++     * user. This method does not update the current ICU's default,
++     * and may return a different TimeZone from the one returned by
++     * TimeZone::createDefault().
++     *
++     * @return  A new instance of TimeZone detected from the current host system
++     *          configuration.
++     * @draft ICU 55
++     */
++    static TimeZone* U_EXPORT2 detectHostTimeZone();
++#endif
++
+     /**
+      * Creates a new copy of the default TimeZone for this host. Unless the default time
+      * zone has already been set using adoptDefault() or setDefault(), the default is
+diff --git a/source/test/intltest/tztest.cpp b/source/test/intltest/tztest.cpp
+index 4111e51..76304e9 100644
+--- a/source/test/intltest/tztest.cpp
++++ b/source/test/intltest/tztest.cpp
+@@ -135,6 +135,13 @@ TimeZoneTest::TestGenericAPI()
+         infoln("WARNING: t_timezone may be incorrect. It is not a multiple of 15min.", tzoffset);
+     }
+ 
++    TimeZone* hostZone = TimeZone::detectHostTimeZone();
++    /* Host time zone's offset should match the offset returned by uprv_timezone() */
++    if (hostZone->getRawOffset() != tzoffset * (-1000)) {
++        errln("FAIL: detectHostTimeZone()'s raw offset != host timezone's offset");
++    }
++    delete hostZone;
++
+     UErrorCode status = U_ZERO_ERROR;
+     const char* tzver = TimeZone::getTZDataVersion(status);
+     if (U_FAILURE(status)) {

@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/kk.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/kk.xml
+ */
+kk{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0}{1}қатынасы"}
+        }
+        duration{
+            day{
+                dnam{"тәулік"}
+                one{"{0} тәулік"}
+                other{"{0} тәулік"}
+            }
+            hour{
+                dnam{"сағат"}
+                one{"{0} сағат"}
+                other{"{0} сағат"}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"микросекунд"}
+                one{"{0} микросекунд"}
+                other{"{0} микросекунд"}
+            }
+            millisecond{
+                dnam{"миллисекунд"}
+                one{"{0} миллисекунд"}
+                other{"{0} миллисекунд"}
+            }
+            minute{
+                dnam{"минут"}
+                one{"{0} минут"}
+                other{"{0} минут"}
+            }
+            month{
+                dnam{"ай"}
+                one{"{0} ай"}
+                other{"{0} ай"}
+            }
+            nanosecond{
+                dnam{"наносекунд"}
+                one{"{0} наносекунд"}
+                other{"{0} наносекунд"}
+            }
+            second{
+                dnam{"секунд"}
+                one{"{0} секунд"}
+                other{"{0} секунд"}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"апта"}
+                one{"{0} апта"}
+                other{"{0} апта"}
+            }
+            year{
+                dnam{"жыл"}
+                one{"{0} жыл"}
+                other{"{0} жыл"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"тәулік"}
+                one{"{0} т"}
+                other{"{0}т"}
+            }
+            hour{
+                dnam{"сағат"}
+                one{"{0} сағат"}
+                other{"{0} сағат"}
+            }
+            millisecond{
+                dnam{"миллисекунд"}
+                one{"{0} мс"}
+                other{"{0} мс"}
+            }
+            minute{
+                dnam{"минут"}
+                one{"{0} мин"}
+                other{"{0} мин"}
+            }
+            month{
+                dnam{"ай"}
+                one{"{0} ай"}
+                other{"{0} ай"}
+            }
+            second{
+                dnam{"секунд"}
+                one{"{0} сек."}
+                other{"{0} сек."}
+            }
+            week{
+                dnam{"апта"}
+                one{"{0} апта"}
+                other{"{0} апта"}
+            }
+            year{
+                dnam{"жыл"}
+                one{"{0} ж."}
+                other{"{0} ж."}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"тәулік"}
+                one{"{0} тәулік"}
+                other{"{0} тәулік"}
+            }
+            hour{
+                dnam{"сағат"}
+                one{"{0} сағат"}
+                other{"{0} сағат"}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"мкс"}
+                one{"{0} мкс"}
+                other{"{0} мкс"}
+            }
+            millisecond{
+                dnam{"миллисекунд"}
+                one{"{0} мс"}
+                other{"{0} мс"}
+            }
+            minute{
+                dnam{"минут"}
+                one{"{0} мин"}
+                other{"{0} мин"}
+            }
+            month{
+                dnam{"ай"}
+                one{"{0} ай"}
+                other{"{0} ай"}
+            }
+            nanosecond{
+                dnam{"нс"}
+                one{"{0} нс"}
+                other{"{0} нс"}
+            }
+            second{
+                dnam{"секунд"}
+                one{"{0} секунд"}
+                other{"{0} секунд"}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"апта"}
+                one{"{0} апта"}
+                other{"{0} апта"}
+            }
+            year{
+                dnam{"жыл"}
+                one{"{0} ж."}
+                other{"{0} ж."}
+            }
+        }
+    }
+}

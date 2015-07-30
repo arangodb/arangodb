@@ -114,8 +114,8 @@ if ENABLE_V8_DEBUG
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
 	        LDFLAGS="-lc++" \
-	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
+	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
@@ -133,8 +133,8 @@ else # ! ENABLE_V8_DEBUG
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
 	        LDFLAGS="-lc++" \
-                CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+                CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
+	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif # ENABLE_V8_DEBUG
 
@@ -186,6 +186,12 @@ endif # ENABLE_ARM6
 ################################################################################
 
 CLEANUP_3RD += clean-v8
+
+non-thin-v8:
+	for lib in `find @top_srcdir@/3rdParty/$(V8DIR)/out -name '*.a'`; \
+	    do ar -t $${lib} | xargs ar rvs $${lib}.new && mv -v $${lib}.new $${lib}; \
+	done
+
 
 clean-v8:
 	rm -f @srcdir@/.v8-build-@TRI_BITS@

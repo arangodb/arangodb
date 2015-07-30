@@ -1,0 +1,80 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lkt.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/lkt.xml
+ */
+lkt{
+    Version{"2.1.6.69"}
+    units{
+        duration{
+            day{
+                other{"{0}-čháŋ"}
+            }
+            hour{
+                other{"Owápȟe {0}"}
+            }
+            month{
+                other{"Wíyawapi {0}"}
+            }
+            second{
+                other{"Okpí {0}"}
+            }
+            week{
+                other{"okó {0}"}
+            }
+            year{
+                other{"ómakȟa {0}"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            day{
+                other{"{0}-čháŋ"}
+            }
+            hour{
+                other{"Owápȟe {0}"}
+            }
+            month{
+                other{"Wí {0}"}
+            }
+            second{
+                other{"Okpí {0}"}
+            }
+            week{
+                other{"okó {0}"}
+            }
+            year{
+                other{"ómakȟa {0}"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                other{"{0}-čháŋ"}
+            }
+            hour{
+                other{"Owápȟe {0}"}
+            }
+            month{
+                other{"Wíyawapi {0}"}
+            }
+            second{
+                other{"Okpí {0}"}
+            }
+            week{
+                other{"okó {0}"}
+            }
+            year{
+                other{"ómakȟa {0}"}
+            }
+        }
+    }
+}

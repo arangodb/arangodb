@@ -1,0 +1,132 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/uz_Cyrl.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/uz_Cyrl.xml
+ */
+uz_Cyrl{
+    %%Parent{"root"}
+    Version{"2.1.7.39"}
+    units{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0} кун"}
+                other{"{0} кун"}
+            }
+            hour{
+                one{"{0} соат"}
+                other{"{0} соат"}
+            }
+            millisecond{
+                one{"{0} миллисония"}
+                other{"{0} миллисония"}
+            }
+            minute{
+                one{"{0} дақиқа"}
+                other{"{0} дақиқа"}
+            }
+            month{
+                one{"{0} ой"}
+                other{"{0} ой"}
+            }
+            second{
+                one{"{0} сония"}
+                other{"{0} сония"}
+            }
+            week{
+                one{"{0} ҳафта"}
+                other{"{0} ҳафта"}
+            }
+            year{
+                one{"{0} йил"}
+                other{"{0} йил"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0} к"}
+                other{"{0} к"}
+            }
+            hour{
+                one{"{0} с"}
+                other{"{0} с"}
+            }
+            millisecond{
+                one{"{0} мс"}
+                other{"{0} мс"}
+            }
+            minute{
+                one{"{0} дақ"}
+                other{"{0} дақ"}
+            }
+            month{
+                one{"{0} ой"}
+                other{"{0} ой"}
+            }
+            second{
+                one{"{0} сон"}
+                other{"{0} сон"}
+            }
+            week{
+                one{"{0} ҳафт"}
+                other{"{0} ҳафт"}
+            }
+            year{
+                one{"{0} й"}
+                other{"{0} й"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0} кун"}
+                other{"{0} кун"}
+            }
+            hour{
+                one{"{0} соат"}
+                other{"{0} соат"}
+            }
+            millisecond{
+                one{"{0} мс"}
+                other{"{0} мс"}
+            }
+            minute{
+                one{"{0} дақ"}
+                other{"{0} дақ"}
+            }
+            month{
+                one{"{0} ой"}
+                other{"{0} ой"}
+            }
+            second{
+                one{"{0} сония"}
+                other{"{0} сония"}
+            }
+            week{
+                one{"{0} ҳафт"}
+                other{"{0} ҳафт"}
+            }
+            year{
+                one{"{0} й"}
+                other{"{0} й"}
+            }
+        }
+    }
+}

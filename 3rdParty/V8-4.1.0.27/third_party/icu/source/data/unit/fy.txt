@@ -1,0 +1,147 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fy.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/fy.xml
+ */
+fy{
+    Version{"2.1.7.53"}
+    units{
+        compound{
+            per{"{0} per {1}"}
+        }
+        duration{
+            day{
+                dnam{"deien"}
+                one{"{0} dei"}
+                other{"{0} deien"}
+            }
+            hour{
+                dnam{"oere"}
+                one{"{0} oere"}
+                other{"{0} oere"}
+            }
+            millisecond{
+                dnam{"millisekonden"}
+                one{"{0} millisekonde"}
+                other{"{0} millisekonden"}
+            }
+            minute{
+                dnam{"minuten"}
+                one{"{0} minút"}
+                other{"{0} minuten"}
+            }
+            month{
+                dnam{"moanneen"}
+                one{"{0} moanne"}
+                other{"{0} moanneen"}
+            }
+            second{
+                dnam{"sekonden"}
+                one{"{0} sekonde"}
+                other{"{0} sekonden"}
+            }
+            week{
+                dnam{"wiken"}
+                one{"{0} wike"}
+                other{"{0} wiken"}
+            }
+            year{
+                dnam{"jier"}
+                one{"{0} jier"}
+                other{"{0} jier"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0} d"}
+                other{"{0} d"}
+            }
+            hour{
+                one{"{0} u"}
+                other{"{0} u"}
+            }
+            millisecond{
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            month{
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            second{
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+            week{
+                one{"{0} w"}
+                other{"{0} w"}
+            }
+            year{
+                one{"{0} jr"}
+                other{"{0} jr"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"deien"}
+                one{"{0} dei"}
+                other{"{0} deien"}
+            }
+            hour{
+                dnam{"oere"}
+                one{"{0} oere"}
+                other{"{0} oere"}
+            }
+            millisecond{
+                dnam{"millisekonden"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"minuten"}
+                one{"{0} min"}
+                other{"{0} min"}
+            }
+            month{
+                dnam{"moanneen"}
+                one{"{0} mn"}
+                other{"{0} mn"}
+            }
+            second{
+                dnam{"sekonden"}
+                one{"{0} sek."}
+                other{"{0} sek."}
+            }
+            week{
+                dnam{"wiken"}
+                one{"{0} wk"}
+                other{"{0} wkn"}
+            }
+            year{
+                dnam{"jier"}
+                one{"{0} jr"}
+                other{"{0} jr"}
+            }
+        }
+    }
+}

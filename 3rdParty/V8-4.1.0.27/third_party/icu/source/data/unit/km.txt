@@ -1,0 +1,151 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/km.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/km.xml
+ */
+km{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0}​ក្នុង​មួយ​{1}"}
+        }
+        duration{
+            day{
+                dnam{"ថ្ងៃ"}
+                other{"{0} ថ្ងៃ"}
+            }
+            hour{
+                dnam{"ម៉ោង"}
+                other{"{0} ម៉ោង"}
+                per{"{0} ក្នុង​មួយ​ម៉ោង"}
+            }
+            microsecond{
+                dnam{"មីក្រូ​វិនាទី"}
+                other{"{0} មីក្រូ​វិនាទី"}
+            }
+            millisecond{
+                dnam{"មិល្លី​វិនាទី"}
+                other{"{0} មិល្លី​វិនាទី"}
+            }
+            minute{
+                dnam{"នាទី"}
+                other{"{0} នាទី"}
+            }
+            month{
+                dnam{"ខែ"}
+                other{"{0} ខែ"}
+            }
+            nanosecond{
+                dnam{"ណាណូវិនាទី"}
+                other{"{0} ណាណូវិនាទី"}
+            }
+            second{
+                dnam{"វិនាទី"}
+                other{"{0} វិនាទី"}
+                per{"{0} ក្នុង​មួយ​វិនាទី"}
+            }
+            week{
+                dnam{"សប្ដាហ៍"}
+                other{"{0} សប្ដាហ៍"}
+            }
+            year{
+                dnam{"ឆ្នាំ"}
+                other{"{0} ឆ្នាំ"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ថ្ងៃ"}
+                other{"{0} ថ្ងៃ"}
+            }
+            hour{
+                dnam{"ម៉ោង"}
+                other{"{0} ម៉ោង"}
+            }
+            millisecond{
+                dnam{"មិល្លី​វិនាទី"}
+                other{"{0}ms"}
+            }
+            minute{
+                dnam{"នាទី"}
+                other{"{0} នាទី"}
+            }
+            month{
+                dnam{"ខែ"}
+                other{"{0} ខែ"}
+            }
+            second{
+                dnam{"វិនាទី"}
+                other{"{0} វិនាទី"}
+            }
+            week{
+                dnam{"សប្ដាហ៍"}
+                other{"{0} សប្ដាហ៍"}
+            }
+            year{
+                dnam{"ឆ្នាំ"}
+                other{"{0} ឆ្នាំ"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ថ្ងៃ"}
+                other{"{0} ថ្ងៃ"}
+            }
+            hour{
+                dnam{"ម៉ោង"}
+                other{"{0} ម៉ោង"}
+                per{"{0} ក្នុង​មួយ​ម៉ោង"}
+            }
+            microsecond{
+                dnam{"មីក្រូ​វិនាទី"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"មិល្លី​វិនាទី"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"នាទី"}
+                other{"{0} នាទី"}
+            }
+            month{
+                dnam{"ខែ"}
+                other{"{0} ខែ"}
+            }
+            nanosecond{
+                dnam{"ណាណូវិនាទី"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"វិនាទី"}
+                other{"{0} វិនាទី"}
+                per{"{0} ក្នុង​មួយ​វិនាទី"}
+            }
+            week{
+                dnam{"សប្ដាហ៍"}
+                other{"{0} សប្ដាហ៍"}
+            }
+            year{
+                dnam{"ឆ្នាំ"}
+                other{"{0} ឆ្នាំ"}
+            }
+        }
+    }
+}

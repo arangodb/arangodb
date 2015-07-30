@@ -1,0 +1,12 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/uz_Latn_UZ.xml
+// *
+// ***************************************************************************
+uz_Latn_UZ{
+    %%Parent{"uz_Latn"}
+    Version{"2.1.6.69"}
+}

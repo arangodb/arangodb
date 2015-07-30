@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/uz.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/uz.xml
+ */
+uz{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"kun"}
+                one{"{0} kun"}
+                other{"{0} kun"}
+            }
+            hour{
+                dnam{"soat"}
+                one{"{0} soat"}
+                other{"{0} soat"}
+                per{"soatiga {0}"}
+            }
+            microsecond{
+                dnam{"mikrosoniya"}
+                one{"{0} mikrosoniya"}
+                other{"{0} mikrosoniya"}
+            }
+            millisecond{
+                dnam{"millisoniya"}
+                one{"{0} millisoniya"}
+                other{"{0} millisoniya"}
+            }
+            minute{
+                dnam{"daqiqa"}
+                one{"{0} daqiqa"}
+                other{"{0} daqiqa"}
+            }
+            month{
+                dnam{"oy"}
+                one{"{0} oy"}
+                other{"{0} oy"}
+            }
+            nanosecond{
+                dnam{"nanosoniya"}
+                one{"{0} nanosoniya"}
+                other{"{0} nanosoniya"}
+            }
+            second{
+                dnam{"soniya"}
+                one{"{0} soniya"}
+                other{"{0} soniya"}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"hafta"}
+                one{"{0} hafta"}
+                other{"{0} hafta"}
+            }
+            year{
+                dnam{"yil"}
+                one{"{0} yil"}
+                other{"{0} yil"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"kun"}
+                one{"{0} k"}
+                other{"{0} k"}
+            }
+            hour{
+                dnam{"soat"}
+                one{"{0} soat"}
+                other{"{0} soat"}
+            }
+            millisecond{
+                dnam{"mson."}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"daqiqa"}
+                one{"{0} daq"}
+                other{"{0} daq"}
+            }
+            month{
+                dnam{"oy"}
+                one{"{0} oy"}
+                other{"{0} oy"}
+            }
+            second{
+                dnam{"son"}
+                one{"{0} son"}
+                other{"{0} son"}
+            }
+            week{
+                dnam{"hafta"}
+                one{"{0} haft"}
+                other{"{0} haft"}
+            }
+            year{
+                dnam{"yil"}
+                one{"{0} y"}
+                other{"{0} y"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"kun"}
+                one{"{0} kun"}
+                other{"{0} kun"}
+            }
+            hour{
+                dnam{"soat"}
+                one{"{0} soat"}
+                other{"{0} soat"}
+                per{"{0}/soat"}
+            }
+            microsecond{
+                dnam{"μson."}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"millison."}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"daqiqa"}
+                one{"{0} daq"}
+                other{"{0} daq"}
+            }
+            month{
+                dnam{"oy"}
+                one{"{0} oy"}
+                other{"{0} oy"}
+            }
+            nanosecond{
+                dnam{"nanoson."}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"soniya"}
+                one{"{0} soniya"}
+                other{"{0} soniya"}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"hafta"}
+                one{"{0} haft"}
+                other{"{0} haft"}
+            }
+            year{
+                dnam{"yil"}
+                one{"{0} yil"}
+                other{"{0} yil"}
+            }
+        }
+    }
+}
