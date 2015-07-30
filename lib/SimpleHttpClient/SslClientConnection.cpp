@@ -65,6 +65,9 @@
 #define STR_ERROR() strerror(errno)
 #endif
 
+#ifdef __linux__
+#include <sys/epoll.h>
+#endif
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -265,20 +268,57 @@ void SslClientConnection::disconnectSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::prepare (double timeout, bool isWrite) const {
-#ifndef LINUX
+  auto const fd = TRI_get_fd_or_handle_of_socket(_socket);
   double start = TRI_microtime();
-#endif
+  int res;
+    
+#ifdef __linux__
+  // Here we have epoll, on all other platforms we use select
+  int towait;
+  if (timeout * 1000.0 > static_cast<double>(INT_MAX)) {
+    towait = INT_MAX;
+  }
+  else {
+    towait = static_cast<int>(timeout * 1000.0);
+  }
 
+  int epollfd = epoll_create(1);
+  if (epollfd < 0) {
+    res = -1;
+  }
+  else {
+    struct epoll_event ev;
+    struct epoll_event happened[1];
+    int myerrno = 0;  // Eiertanz to preserve the error number
+
+    ev.events = isWrite ? EPOLLOUT : EPOLLIN;
+    ev.data.fd = fd;
+    res = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev);
+    if (res == 0) {
+      do {
+        res = epoll_wait(epollfd, happened, 1, towait);
+        if (res < 0) {
+          myerrno = errno;
+        }
+        double end = TRI_microtime();
+        towait -= static_cast<int>((end - start) * 1000.0);
+        start = end;
+      } while (res == -1 && errno == EINTR && towait > 0);
+    }
+    else {
+      myerrno = errno;
+    }
+    close(epollfd);
+    errno = myerrno;
+  }
+#else
+  // All versions other than Linux use select:
   struct timeval tv;
   tv.tv_sec = (long) timeout;
   tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
-  int res;
   fd_set fdset;
-
   do {
-    auto const fd = TRI_get_fd_or_handle_of_socket(_socket);
-    
     // An fd_set is a fixed size buffer. 
     // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE 
     // will result in undefined behavior. Moreover, POSIX requires fd to be a valid file descriptor.
@@ -305,20 +345,42 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
     int sockn = (int) (fd + 1);
     res = select(sockn, readFds, writeFds, nullptr, &tv);
 
-    #ifndef LINUX
     if ((res == -1 && errno == EINTR)) {
+      int myerrno = errno;
       double end = TRI_microtime();
+      errno = myerrno;
       timeout = timeout - (end - start);
       start = end;
       tv.tv_sec = (long) timeout;
       tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
     }
-    #endif 
   } 
   while ((res == -1) && (errno == EINTR) && (timeout > 0.0));
+#endif
 
   if (res > 0) {
     return true;
+  }
+
+  if (res == 0) {
+    if (isWrite) {
+      _errorDetails = std::string("timeout during write");
+      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_WRITE);
+    }
+    else {
+      _errorDetails = std::string("timeout during read");
+      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_READ);
+    }
+  }
+  else {  //    res < 0
+#ifdef _WIN32
+    char windowsErrorBuf[256];
+#endif
+
+    char const* pErr = STR_ERROR();
+    _errorDetails = std::string("during prepare: ") + std::to_string(errno) + std::string(" - ") + pErr;
+    
+    TRI_set_errno(errno);
   }
 
   return false;

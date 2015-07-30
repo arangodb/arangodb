@@ -58,6 +58,10 @@
 #define STR_ERROR() strerror(errno)
 #endif
 
+#ifdef __linux__
+#include <sys/epoll.h>
+#endif
+
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::rest;
@@ -99,7 +103,7 @@ bool ClientConnection::checkSocket () {
   socklen_t len = sizeof so_error;
 
   TRI_ASSERT(TRI_isvalidsocket(_socket));
-    
+
   int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*) &so_error, &len);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -168,21 +172,58 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
     _errorDetails = std::string("not a valid socket");
     return false;
   }
-    
-#ifndef LINUX
-  double start = TRI_microtime();
-#endif
 
+  auto const fd = TRI_get_fd_or_handle_of_socket(_socket);
+  double start = TRI_microtime();
+  int res;
+    
+#ifdef __linux__
+  // Here we have epoll, on all other platforms we use select
+  int towait;
+  if (timeout * 1000.0 > static_cast<double>(INT_MAX)) {
+    towait = INT_MAX;
+  }
+  else {
+    towait = static_cast<int>(timeout * 1000.0);
+  }
+
+  int epollfd = epoll_create(1);
+  if (epollfd < 0) {
+    res = -1;
+  }
+  else {
+    struct epoll_event ev;
+    struct epoll_event happened[1];
+    int myerrno = 0;  // Eiertanz to preserve the error number
+
+    ev.events = isWrite ? EPOLLOUT : EPOLLIN;
+    ev.data.fd = fd;
+    res = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev);
+    if (res == 0) {
+      do {
+        res = epoll_wait(epollfd, happened, 1, towait);
+        if (res < 0) {
+          myerrno = errno;
+        }
+        double end = TRI_microtime();
+        towait -= static_cast<int>((end - start) * 1000.0);
+        start = end;
+      } while (res == -1 && myerrno == EINTR && towait > 0);
+    }
+    else {
+      myerrno = errno;
+    }
+    close(epollfd);
+    errno = myerrno;
+  }
+#else
+  // All versions other than Linux use select:
   struct timeval tv;
   tv.tv_sec = (long) timeout;
   tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
   
   fd_set fdset;
-  int res;
-
   do {
-    auto const fd = TRI_get_fd_or_handle_of_socket(_socket);
-    
     // An fd_set is a fixed size buffer. 
     // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE 
     // will result in undefined behavior. Moreover, POSIX requires fd to be a valid file descriptor.
@@ -208,17 +249,17 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
 
     int sockn = (int) (fd + 1);
     res = select(sockn, readFds, writeFds, nullptr, &tv);
-#ifndef LINUX
     if ((res == -1 && errno == EINTR)) {
+      int myerrno = errno;
       double end = TRI_microtime();
+      errno = myerrno;
       timeout = timeout - (end - start);
       start = end;
       tv.tv_sec = (long) timeout;
       tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
     }
-#endif 
-  } 
-  while ((res == -1) && (errno == EINTR) && (timeout > 0.0));
+  } while (res == -1 && errno == EINTR && timeout > 0.0);
+#endif
 
   if (res > 0) {
     return true;
@@ -234,8 +275,7 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
       TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_READ);
     }
   }
-
-  if (res < 0) {
+  else {    // res < 0
 #ifdef _WIN32
     char windowsErrorBuf[256];
 #endif
