@@ -542,7 +542,7 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName (char const* name) {
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
       }
 
-      void* f;
+      void* TRI_UNUSED f;
       {
         WRITE_LOCKER(_attributeIdsLock);
         f = TRI_InsertKeyAssociativePointer(&_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
