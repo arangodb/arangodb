@@ -43,6 +43,44 @@
 
   .select2-choices {
     border-radius: 3px;
+    border: 1px solid #aaa;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+    background-image: none !important;
+
+    input {
+      box-shadow: none;
+      -webkit-box-shadow: none;
+      outline: transparent !important;
+    }
+
+    input:active {
+      box-shadow: none;
+      -webkit-box-shadow: none;
+      outline: none !important;
+    }
+
+    .select2-search-choice {
+      margin: 5px 0 3px 5px !important;
+    }
+
+    li {
+      color: $c-black;
+      background-color: $c-white !important;
+      background-image: none !important;
+      a {
+        margin-top: -1px;
+        margin-left: 1px;
+      }
+    }
+
+  }
+
+  .select2-choices:active {
+    outline: transparent !important;
+    border: 1px solid #aaa;
+    box-shadow: none !important;
+    -webkit-box-shadow: none !important;
   }
 
   .nav-tabs {
