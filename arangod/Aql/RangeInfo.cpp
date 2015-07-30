@@ -654,18 +654,17 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief andCombineRangeInfoMaps: insert every RangeInfo in the <rhs> in the
-/// <lhs> and delete the <rhs>
+/// @brief andCombineRangeInfoMaps: insert every RangeInfo in the right argument
+/// in a new copy of the left argument
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, 
-                                                      RangeInfoMap* rhs) {
+                                                      RangeInfoMap const* rhs) {
   for (auto const& x : rhs->_ranges) {
     for (auto const& y : x.second) {
       lhs->insert(y.second.clone());
     }
   }
-  delete rhs;
   return lhs;
 }
 
@@ -698,7 +697,7 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
     std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec()); // must be a new one
     for (size_t i = 0; i < lhs->size(); i++) {
       for (size_t j = 0; j < rhs->size(); j++) {
-        rimv->emplace_back(std::move(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone())));
+        rimv->emplace_back(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]));
       }
     }
 

@@ -863,8 +863,7 @@ namespace triagens {
 /// can be private
 ////////////////////////////////////////////////////////////////////////////////
     
-        std::unordered_map<std::string, std::unordered_map<std::string,
-          RangeInfo>> _ranges; 
+        std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo>> _ranges; 
         
     };
 
@@ -1029,7 +1028,8 @@ namespace triagens {
 /// in a new copy of the left argument
 ////////////////////////////////////////////////////////////////////////////////
 
-    RangeInfoMap* andCombineRangeInfoMaps (RangeInfoMap*, RangeInfoMap*);
+    RangeInfoMap* andCombineRangeInfoMaps (RangeInfoMap*, 
+                                           RangeInfoMap const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
@@ -1039,7 +1039,8 @@ namespace triagens {
 /// The return RIMV is new unless one of the arguments is empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-    RangeInfoMapVec* orCombineRangeInfoMapVecs (RangeInfoMapVec*, RangeInfoMapVec*);
+    RangeInfoMapVec* orCombineRangeInfoMapVecs (RangeInfoMapVec*, 
+                                                RangeInfoMapVec*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief andCombineRangeInfoMapVecs: return a new RangeInfoMapVec by
@@ -1049,14 +1050,16 @@ namespace triagens {
 /// The return RIMV is new unless one of the arguments is empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-    RangeInfoMapVec* andCombineRangeInfoMapVecs (RangeInfoMapVec*, RangeInfoMapVec*);
+    RangeInfoMapVec* andCombineRangeInfoMapVecs (RangeInfoMapVec*, 
+                                                 RangeInfoMapVec*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief andCombineRangeInfoMapVecs: same as before, but will return the
 /// mapvec even if one side is a nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
-    RangeInfoMapVec* andCombineRangeInfoMapVecsIgnoreEmpty (RangeInfoMapVec*, RangeInfoMapVec*);
+    RangeInfoMapVec* andCombineRangeInfoMapVecsIgnoreEmpty (RangeInfoMapVec*, 
+                                                            RangeInfoMapVec*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IndexOrCondition, type for vector of vector of RangeInfo. The meaning
