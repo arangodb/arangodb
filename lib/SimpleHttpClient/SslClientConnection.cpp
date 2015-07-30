@@ -288,15 +288,19 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
   }
   else {
     struct epoll_event ev;
+    memset(&ev, 0, sizeof(struct epoll_event)); // for our old friend Valgrind
+
     struct epoll_event happened[1];
     int myerrno = 0;  // Eiertanz to preserve the error number
 
     ev.events = isWrite ? EPOLLOUT : EPOLLIN;
     ev.data.fd = fd;
     res = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev);
+
     if (res == 0) {
       do {
         res = epoll_wait(epollfd, happened, 1, towait);
+
         if (res < 0) {
           myerrno = errno;
         }
