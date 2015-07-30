@@ -155,15 +155,19 @@ describe ArangoDB do
       it "checks handling of an request, with gzip support" do
         require 'uri'
         require 'net/http'
-        uri = URI.parse(ArangoDB.base_uri + "/_db/_system/_admin/aardvark/standalone.html")
-        http = Net::HTTP.new(uri.host, uri.port)
 
-        request = Net::HTTP::Get.new(uri.request_uri)
-        request["Accept-Encoding"] = "gzip"
-        response = http.request(request)
+        # only run the following test when using SSL
+        if not ArangoDB.base_uri =~ /^https:/
+          uri = URI.parse(ArangoDB.base_uri + "/_db/_system/_admin/aardvark/standalone.html")
+          http = Net::HTTP.new(uri.host, uri.port)
 
-        # check content encoding
-        response['content-encoding'].should eq('gzip')
+          request = Net::HTTP::Get.new(uri.request_uri)
+          request["Accept-Encoding"] = "gzip"
+          response = http.request(request)
+
+          # check content encoding
+          response['content-encoding'].should eq('gzip')
+        end
       end
 
       it "checks handling of an request, without gzip support" do
