@@ -33,6 +33,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/Mutex.h"
+#include "Basics/ReadWriteLock.h"
 #include "Cluster/AgencyComm.h"
 #include "VocBase/collection.h"
 #include "VocBase/voc-types.h"
@@ -1052,17 +1054,7 @@ namespace triagens {
 
         AgencyComm                         _agency;
         triagens::basics::ReadWriteLock    _lock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uniqid sequence
-////////////////////////////////////////////////////////////////////////////////
-
-        struct {
-          uint64_t _currentValue;
-          uint64_t _upperValue;
-        }
-        _uniqid;
-
+        
         // Cached data from the agency, we reload whenever necessary:
         std::map<DatabaseID, struct TRI_json_t*> _plannedDatabases;
               // from Plan/Databases
@@ -1093,6 +1085,22 @@ namespace triagens {
         std::map<CollectionID, std::shared_ptr<std::vector<std::string>>>
                                         _shardKeys;
                                         // from Plan/Collections/
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uniqid sequence
+////////////////////////////////////////////////////////////////////////////////
+
+        struct {
+          uint64_t _currentValue;
+          uint64_t _upperValue;
+        }
+        _uniqid;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock for uniqid sequence
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Mutex _idLock;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private static variables
