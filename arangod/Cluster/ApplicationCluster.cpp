@@ -294,13 +294,16 @@ bool ApplicationCluster::start () {
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
+  // initialise ConnectionManager library
+  httpclient::ConnectionManager::initialize();
+
   // the agency about our state
   AgencyComm comm;
   comm.sendServerState(0.0);
 
   const std::string version = comm.getVersion();
 
-  ServerState::instance()->setInitialised();
+  ServerState::instance()->setInitialized();
 
   LOG_INFO("Cluster feature is turned on. "
            "Agency version: %s, Agency endpoints: %s, "

@@ -73,7 +73,7 @@ ServerState::ServerState ()
     _lock(),
     _role(),
     _state(STATE_UNDEFINED),
-    _initialised(false),
+    _initialized(false),
     _clusterEnabled(false) {
     
   storeRole(ROLE_UNDEFINED);
