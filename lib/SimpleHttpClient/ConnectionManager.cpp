@@ -47,21 +47,29 @@ ConnectionOptions ConnectionManager::_globalConnectionOptions = {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual singleton instance
+/// @brief singleton instance of the connection manager
 ////////////////////////////////////////////////////////////////////////////////
 
-ConnectionManager* ConnectionManager::_theinstance = nullptr;
+static ConnectionManager Instance;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 ConnectionManager::~ConnectionManager ( ) {
-  WRITE_LOCKER(_allLock);
+  WRITE_LOCKER(_connectionsByEndpointLock);
 
-  for (auto& it : _allConnections) {
+  for (auto& it : _connectionsByEndpoint) {
     delete it.second;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the unique instance
+////////////////////////////////////////////////////////////////////////////////
+
+ConnectionManager* ConnectionManager::instance () {
+  return &Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,11 +199,11 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection (s
   // list for an endpoint already
   ServerConnections* s = nullptr;
   {
-    READ_LOCKER(_allLock);
+    READ_LOCKER(_connectionsByEndpointLock);
 
-    auto it = _allConnections.find(endpoint);
+    auto it = _connectionsByEndpoint.find(endpoint);
 
-    if (it != _allConnections.end()) {
+    if (it != _connectionsByEndpoint.end()) {
       s = (*it).second;
     }
   }
@@ -209,19 +217,19 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection (s
     // note that it is possible for a concurrent thread to have created
     // a list for the same endpoint. this case is handled below
 
-    WRITE_LOCKER(_allLock);
+    WRITE_LOCKER(_connectionsByEndpointLock);
 
-    auto it = _allConnections.emplace(endpoint, sc.get());
+    auto it = _connectionsByEndpoint.emplace(endpoint, sc.get());
 
     if (! it.second) {
       // insert didn't work -> another thread has concurrently created a
       // list for the same endpoint
       // this means the unique_ptr can free the just created object and
       // we only need to lookup the connections list from the map
-      auto it2 = _allConnections.find(endpoint);
+      auto it2 = _connectionsByEndpoint.find(endpoint);
 
       // we must have a result!
-      TRI_ASSERT(it2 != _allConnections.end());
+      TRI_ASSERT(it2 != _connectionsByEndpoint.end());
       s = (*it2).second;
     }
     else {
@@ -329,10 +337,10 @@ void ConnectionManager::closeUnusedConnections (double limit) {
   // copy the list of ServerConnections first
   std::vector<ConnectionManager::ServerConnections*> copy;
   {
-    READ_LOCKER(_allLock);
+    READ_LOCKER(_connectionsByEndpointLock);
 
-    copy.reserve(_allConnections.size());
-    for (auto& it : _allConnections) {
+    copy.reserve(_connectionsByEndpoint.size());
+    for (auto& it : _connectionsByEndpoint) {
       copy.emplace_back(it.second);
     }
   }

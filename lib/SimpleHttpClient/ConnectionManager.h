@@ -62,6 +62,8 @@ namespace triagens {
 // --SECTION--                                     constructors and destructors
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises library
 ///
@@ -69,8 +71,7 @@ namespace triagens {
 /// new instances or copy them, except we ourselves.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ConnectionManager () { 
-        }
+        ConnectionManager () = default; 
 
         ConnectionManager (ConnectionManager const&) = delete;
         ConnectionManager& operator= (ConnectionManager const&) = delete;
@@ -78,8 +79,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down library
 ////////////////////////////////////////////////////////////////////////////////
-
-      public:
 
         ~ConnectionManager ( );
 
@@ -168,32 +167,7 @@ namespace triagens {
 /// @brief get the unique instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ConnectionManager* instance () {
-          // This does not have to be thread-safe, because we guarantee that
-          // this is called very early in the startup phase when there is still
-          // a single thread.
-          if (nullptr == _theinstance) {
-            _theinstance = new ConnectionManager( );
-            // this now happens exactly once
-          }
-          return _theinstance;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise function to call once when still single-threaded
-////////////////////////////////////////////////////////////////////////////////
-
-        static void initialise () {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup function to call once when shutting down
-////////////////////////////////////////////////////////////////////////////////
-
-        static void cleanup () {
-          delete _theinstance;
-          _theinstance = nullptr;
-        }
+        static ConnectionManager* instance ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open or get a previously cached connection to a server
@@ -227,12 +201,6 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the pointer to the singleton instance
-////////////////////////////////////////////////////////////////////////////////
-
-        static ConnectionManager* _theinstance;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief global options for connections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -243,8 +211,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         // We keep connections to servers open:
-        std::unordered_map<std::string, ServerConnections*> _allConnections;
-        triagens::basics::ReadWriteLock _allLock;
+        std::unordered_map<std::string, ServerConnections*> _connectionsByEndpoint;
+        triagens::basics::ReadWriteLock _connectionsByEndpointLock;
 
     };
   }
