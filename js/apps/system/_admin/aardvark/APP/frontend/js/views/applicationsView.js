@@ -17,8 +17,6 @@
     },
 
     fixCheckboxes: function() {
-      var checkboxIds = ['#checkDevel', '#checkSystem', '#checkProduction'];
-
       if (this._showDevel) {
         $('#checkDevel').attr('checked', 'checked');
       }
@@ -27,7 +25,7 @@
       }
       if (this._showSystem) {
         $('#checkSystem').attr('checked', 'checked');
-      }
+      }
       else {
         $('#checkSystem').removeAttr('checked');
       }
