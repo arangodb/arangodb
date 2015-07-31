@@ -59,7 +59,7 @@
 #endif
 
 #ifdef __linux__
-#include <sys/epoll.h>
+#include <poll.h>
 #endif
 
 using namespace triagens::basics;
@@ -178,7 +178,8 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
   int res;
     
 #ifdef __linux__
-  // Here we have epoll, on all other platforms we use select
+  // Here we have poll, on all other platforms we use select
+  bool nowait = (timeout == 0.0);
   int towait;
   if (timeout * 1000.0 > static_cast<double>(INT_MAX)) {
     towait = INT_MAX;
@@ -187,41 +188,44 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
     towait = static_cast<int>(timeout * 1000.0);
   }
 
-  int epollfd = epoll_create(1);
-  if (epollfd < 0) {
-    res = -1;
-  }
-  else {
-    struct epoll_event ev;
-    memset(&ev, 0, sizeof(struct epoll_event)); // for our old friend Valgrind
+  struct pollfd poller;
+  memset(&poller, 0, sizeof(struct pollfd)); // for our old friend Valgrind
+  poller.fd = fd;
+  poller.events = (isWrite ? POLLOUT : POLLIN);
 
-    struct epoll_event happened[1];
-    int myerrno = 0;  // Eiertanz to preserve the error number
-
-    ev.events = isWrite ? EPOLLOUT : EPOLLIN;
-    ev.data.fd = fd;
-
-    res = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev);
-
-    if (res == 0) {
-      do {
-        res = epoll_wait(epollfd, happened, 1, towait);
-
-        if (res < 0) {
-          myerrno = errno;
-        }
+  while (true) {  // will be left by break
+    res = poll(&poller, 1, towait);
+    if (res == -1 && errno == EINTR) {
+      if (! nowait) {
         double end = TRI_microtime();
         towait -= static_cast<int>((end - start) * 1000.0);
         start = end;
-      } while (res == -1 && myerrno == EINTR && towait > 0);
+        if (towait < 0) {  // Should not happen, but there might be rounding
+                           // errors, so just to prevent a poll call with
+                           // negative timeout...
+          res = 0;
+          break;
+        }
+      }
+      continue;
     }
-    else {
-      myerrno = errno;
-    }
-    close(epollfd);
-    errno = myerrno;
+    break;
   }
+  // Now res can be:
+  //   1 : if the file descriptor was ready
+  //   0 : if the timeout happened
+  //   -1: if an error happened, EINTR within the timeout is already caught
 #else
+  // An fd_set is a fixed size buffer. 
+  // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE 
+  // will result in undefined behavior. Moreover, POSIX requires fd to be a valid file descriptor.
+  if (fd < 0 || fd >= FD_SETSIZE) {
+    // invalid or too high file descriptor value...
+    // if we call FD_ZERO() or FD_SET() with it, the program behavior will be undefined
+    _errorDetails = std::string("file descriptor value too high");
+    return false;
+  }
+
   // All versions other than Linux use select:
   struct timeval tv;
   tv.tv_sec = (long) timeout;
@@ -229,16 +233,6 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
   
   fd_set fdset;
   do {
-    // An fd_set is a fixed size buffer. 
-    // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE 
-    // will result in undefined behavior. Moreover, POSIX requires fd to be a valid file descriptor.
-    if (fd < 0 || fd >= FD_SETSIZE) {
-      // invalid or too high file descriptor value...
-      // if we call FD_ZERO() or FD_SET() with it, the program behavior will be undefined
-      _errorDetails = std::string("file descriptor value too high");
-      return false;
-    }
-
     FD_ZERO(&fdset);
     FD_SET(fd, &fdset);
 
