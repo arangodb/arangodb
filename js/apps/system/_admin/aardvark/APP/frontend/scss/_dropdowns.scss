@@ -68,6 +68,24 @@ div.dropdownInner {
     }
   }
 
+  ul {
+    li {
+      .fa {
+        margin-right: 5px;
+        color: #8c8a89;
+
+        &.fa-square-0 {
+          margin-left: 1px;
+        }
+
+        &.fa-check-square-o,
+        &.fa-check-circle-o {
+          color: $c-positive;
+        }
+      }
+    }
+  }
+
 }
 
 div.queryline {

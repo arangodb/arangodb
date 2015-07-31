@@ -47,6 +47,7 @@
       }
 
       var length;
+      this.setCheckboxStatus("#collectionsDropdown");
 
       try {
         length = searchOptions.searchPhrase.length;
@@ -57,9 +58,33 @@
       $('#searchInput').focus();
       $('#searchInput')[0].setSelectionRange(length, length);
 
+
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
 
       return this;
+    },
+
+    setCheckboxStatus: function(id) {
+      $.each($(id).find('ul').find('li'), function(key, element) {
+         if (!$(element).hasClass("nav-header")) {
+           if ($(element).find('input').attr('checked')) {
+             if ($(element).find('i').hasClass('css-round-label')) {
+               $(element).find('i').addClass('fa-dot-circle-o');
+             }
+             else {
+               $(element).find('i').addClass('fa-check-circle-o');
+             }
+           }
+           else {
+             if ($(element).find('i').hasClass('css-round-label')) {
+               $(element).find('i').addClass('fa-circle-o');
+             }
+             else {
+               $(element).find('i').addClass('fa-circle-o');
+             }
+           }
+         }
+      });
     },
 
     events: {
@@ -98,6 +123,7 @@
       //chrome bugfix
       var clicked = e.currentTarget.id;
       $('#'+clicked).click();
+      console.log(e);
     },
 
     checkSystem: function () {
