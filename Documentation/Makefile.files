@@ -64,6 +64,7 @@ examples:
 
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
 		--output-dir @builddir@/Documentation/Examples \
+		--only-thisone "$(FILTER_EXAMPLE)" \
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
 		@srcdir@/js/actions \
 		@srcdir@/js/client \

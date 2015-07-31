@@ -114,6 +114,12 @@ ArangoshCases = [ ]
 ArangoshSetup = ""
 
 ################################################################################
+### @brief filter to only output this one:
+################################################################################
+
+FilterForTestcase = ""
+
+################################################################################
 ### @brief states
 ################################################################################
 
@@ -128,6 +134,7 @@ STATE_ARANGOSH_RUN = 2
 OPTION_NORMAL = 0
 OPTION_ARANGOSH_SETUP = 1
 OPTION_OUTPUT_DIR = 2
+OPTION_FILTER = 3
 
 fstate = OPTION_NORMAL
 
@@ -292,7 +299,7 @@ regularStartLine = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
 runLine = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
     
 def matchStartLine(line, filename):
-    global regularStartLine, errorStartLine, runLine
+    global regularStartLine, errorStartLine, runLine, FilterForTestcase
     errorName = ""
     m = regularStartLine.match(line)
 
@@ -304,6 +311,10 @@ def matchStartLine(line, filename):
         if name in ArangoshFiles:
             print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
             sys.exit(1)
+        # if we match for filters, only output these!
+        if ((len(FilterForTestcase) != 0) and (FilterForTestcase != name)):
+            print >> sys.stderr, "filtering test case %s" %name
+            return("", STATE_BEGIN);
 
         ArangoshFiles[name] = True
         ArangoshOutput[name] = []
@@ -318,6 +329,11 @@ def matchStartLine(line, filename):
         if name in ArangoshFiles:
             print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
             sys.exit(1)
+
+        # if we match for filters, only output these!
+        if ((len(FilterForTestcase) != 0) and (FilterForTestcase != name)):
+            print >> sys.stderr, "filtering test case %s" %name
+            return("", STATE_BEGIN);
 
         ArangoshCases.append(name)    
         ArangoshFiles[name] = True
@@ -540,7 +556,7 @@ if (allErrors.length > 0) {
 ### @brief get file names
 ################################################################################
 def loopDirectories():
-    global ArangoshSetup, OutputDir
+    global ArangoshSetup, OutputDir, FilterForTestcase
     argv = sys.argv
     argv.pop(0)
     filenames = []
@@ -549,7 +565,9 @@ def loopDirectories():
         if filename == "--arangosh-setup":
             fstate = OPTION_ARANGOSH_SETUP
             continue
-    
+        if filename == "--only-thisone": 
+            fstate = OPTION_FILTER
+            continue
         if filename == "--output-dir":
             fstate = OPTION_OUTPUT_DIR
             continue
@@ -563,6 +581,9 @@ def loopDirectories():
             else:
                 filenames.append(filename)
     
+        elif fstate == OPTION_FILTER:
+            fstate = OPTION_NORMAL
+            FilterForTestcase = filename;
         elif fstate == OPTION_ARANGOSH_SETUP:
             fstate = OPTION_NORMAL
             f = open(filename, "r")
