@@ -351,6 +351,7 @@ Where...
 generate
 --------
  - make examples - on toplevel to generate Documentation/Examples
+ - make examples FILTER_EXAMPLE=geoIndexSelect will only produce one example - *geoIndexSelect*
  - make swagger - on toplevel to generate the documentation interactively with the server
  - cd Documentation/Books; make - to generate the HTML documentation
 
