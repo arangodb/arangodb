@@ -291,7 +291,8 @@ ClusterInfo::~ClusterInfo () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ask whether a cluster database exists
+/// @brief increase the uniqid value. if it exceeds the upper bound, fetch a
+/// new upper bound value from the agency
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid (uint64_t count) {
