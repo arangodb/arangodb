@@ -294,9 +294,6 @@ bool ApplicationCluster::start () {
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
-  // initialise ConnectionManager library
-  httpclient::ConnectionManager::instance()->initialise();
-
   // the agency about our state
   AgencyComm comm;
   comm.sendServerState(0.0);
