@@ -4589,9 +4589,7 @@ div.dropdownInner {
   div.dropdownInner ul li .fa {
     margin-right: 5px;
     color: #8c8a89; }
-    div.dropdownInner ul li .fa.fa-square-0 {
-      margin-left: 1px; }
-    div.dropdownInner ul li .fa.fa-check-square-o, div.dropdownInner ul li .fa.fa-check-circle-o {
+    div.dropdownInner ul li .fa.fa-check-circle-o, div.dropdownInner ul li .fa.fa-dot-circle-o {
       color: #8aa051; }
 
 div.queryline {

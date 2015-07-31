@@ -147,6 +147,7 @@
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
       this.events['change tr[id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
+      arangoHelper.setCheckboxStatus("#graphManagementDropdown");
 
       return this;
     },
