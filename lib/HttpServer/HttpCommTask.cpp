@@ -185,13 +185,14 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     _connectionInfo.serverAddress.c_str(),
     (int) _connectionInfo.serverPort,
     _connectionInfo.clientAddress.c_str(),
-    (int) _connectionInfo.clientPort);
+    (int) _connectionInfo.clientPort
+  );
 
-  const auto p = server->handlerFactory()->sizeRestrictions();
+  auto const& sizeRestrictions = server->handlerFactory()->sizeRestrictions();
 
-  _maximalHeaderSize = p.maximalHeaderSize;
-  _maximalBodySize = p.maximalBodySize;
-  _maximalPipelineSize = p.maximalPipelineSize;
+  _maximalHeaderSize   = sizeRestrictions.maximalHeaderSize;
+  _maximalBodySize     = sizeRestrictions.maximalBodySize;
+  _maximalPipelineSize = sizeRestrictions.maximalPipelineSize;
 
   ConnectionStatisticsAgentSetHttp(this);
   ConnectionStatisticsAgent::release();

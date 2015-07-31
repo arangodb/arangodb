@@ -97,12 +97,20 @@ namespace triagens {
 /// @brief size restrictions
 ////////////////////////////////////////////////////////////////////////////////
         
-        typedef struct {
+        struct SizeRestriction {
+          SizeRestriction (size_t maximalHeaderSize,
+                           size_t maximalBodySize,
+                           size_t maximalPipelineSize)
+            : maximalHeaderSize(maximalHeaderSize),
+              maximalBodySize(maximalBodySize),
+              maximalPipelineSize(maximalPipelineSize) {
+          }
+
           size_t maximalHeaderSize;
           size_t maximalBodySize;
           size_t maximalPipelineSize;
-        } size_restriction_t;
-        
+        };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -159,7 +167,7 @@ namespace triagens {
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_restriction_t sizeRestrictions () const;
+        SizeRestriction const& sizeRestrictions () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request, wrapper method
