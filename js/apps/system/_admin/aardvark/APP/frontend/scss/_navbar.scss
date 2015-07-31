@@ -32,8 +32,8 @@ nav.navbar {
     & > .active {
 
       & > a {
-        background-color: $c-positive;
-        color: $c-white;
+        background-color: $c-white;
+        color: $c-black;
         @include box-shadow(0 0 0 $c-transp inset);
       }
     }
@@ -45,7 +45,7 @@ nav.navbar {
       }
 
       & > a:hover {
-        background-color: $c-positive;
+        background-color: $c-black;
         color: $c-bar-bg;
       }
     }
@@ -101,9 +101,7 @@ ul.navlist {
     }
   }
 
-  > li.active,
-  li.dropdown-item:hover,
-  > li:hover {
+  > li.active {
     background-color: $c-transp;
 
     a {
@@ -111,7 +109,49 @@ ul.navlist {
     }
   }
 
-  li.dropdown-item:hover {
+  > li.active:hover {
+    background-color: $c-transp;
+
+    a {
+      color: $c-black;
+    }
+
+  }
+  li {
+    &.navbar-spacer,
+    &.divider {
+      border: none;
+    }
+
+    &.divider {
+      background-color: rgba(0,0,0,0.2);
+    }
+  }
+
+
+  li {
+
+   border-top: 1px solid transparent;
+   border-left: 1px solid transparent;
+   border-right: 1px solid transparent;
+
+    &.dropdown:hover {
+      border-top: 1px solid rgba(0,0,0,0.2);
+      border-left: 1px solid rgba(0,0,0,0.2);
+      border-right: 1px solid rgba(0,0,0,0.2);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+
+  li.dropdown-item:hover,
+  > li:hover {
+    background-color: $c-white;
+    border-radius: 3px;
+
+    a {
+      color: $c-black;
+    }
   }
 
   li.dropdown-item {
@@ -155,6 +195,12 @@ a.tab {
 
 ul.link-dropdown-menu {
   @extend %dropdown-menu;
+  background-color: $c-white;
+  z-index: -10;
+  margin-top: 7px;
+  margin-right: -1px;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-top-right-radius: 0;
 }
 
 ul.user-dropdown-menu {
@@ -199,7 +245,7 @@ ul.gv-dropdown-menu {
   li {
 
     &:hover {
-      background-color: $c-positive;
+      background-color: $c-white;
       background-image: none;
     }
 

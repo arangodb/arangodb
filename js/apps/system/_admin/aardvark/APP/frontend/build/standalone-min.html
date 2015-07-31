@@ -178,22 +178,25 @@
       <li class="nav-header">Type</li>
       <li><a href="#applications">
         <label class="checkbox checkboxLabel">
-          <input class="css-checkbox" type="checkbox" id="checkProduction">
-          <label class="css-label"></label>Production
+          <input class="css-checkbox" type="checkbox" id="checkProduction"/>
+          <i class="fa"></i>
+          Production
         </label>
       </a></li>
 
       <li><a href="#applications">
         <label class="checkbox checkboxLabel">
-          <input class="css-checkbox" type="checkbox" id="checkDevel">
-          <label class="css-label"></label>Development
+          <input class="css-checkbox" type="checkbox" id="checkDevel"/>
+          <i class="fa"></i>
+          Development
         </label>
       </a></li>
 
       <li><a href="#applications">
         <label class="checkbox checkboxLabel">
-          <input class="css-checkbox" id="checkSystem" type="checkbox">
-          <label class="css-label"></label>System applications
+          <input class="css-checkbox" id="checkSystem" type="checkbox"/>
+          <i class="fa"></i>
+          System applications
         </label>
       </a></li>
     </ul>
@@ -567,7 +570,7 @@
 <%
 if (list.length > 0) {
 %>
-    <li class="dropdown-header">DBs</li>
+    <li class="dropdown-header">Databases</li>
   <%
     _.each(list, function(i) {
   %>
@@ -586,7 +589,7 @@ if (list.length > 0) {
     <% } %>
     <li class="dropdown-header">Manager</li>
     <li id="databaseNavi" class="dropdown-item">
-      <a id="databases" class="tab" href="#databases">Manage DBs</a>
+      <a id="databases" class="tab" href="#databases">Manage Databases</a>
     </li>
     <% } %>
 </ul></script><script id="demoView.ejs" type="text/template"><div class="headerBar">
@@ -1274,7 +1277,8 @@ if (list.length > 0) {
         <li><a>
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="graphSortDesc">
-            <label class="css-label" id="graphSortDesc"></label>Sort descending
+            <i class="fa"></i>
+            Sort descending
           </label>
         </a></li>
       </ul>
@@ -2506,7 +2510,8 @@ var cutByResolution = function (str) {
       <li><a href="#">
         <label class="checkbox checkboxLabel">
           <input class="css-checkbox" type="checkbox" id="userSortDesc">
-          <label class="css-label"></label>Sort descending
+          <i class="fa"></i>
+          Sort descending
         </label>
       </a></li>
     </ul>

@@ -103,6 +103,8 @@
         this.editCurrentUser();
       }
 
+      arangoHelper.setCheckboxStatus('#userManagementDropdown');
+
       return this;
     },
 
