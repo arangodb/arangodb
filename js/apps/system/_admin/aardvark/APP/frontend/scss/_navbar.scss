@@ -117,6 +117,32 @@ ul.navlist {
     }
 
   }
+  li {
+    &.navbar-spacer,
+    &.divider {
+      border: none;
+    }
+
+    &.divider {
+      background-color: rgba(0,0,0,0.2);
+    }
+  }
+
+
+  li {
+
+   border-top: 1px solid transparent;
+   border-left: 1px solid transparent;
+   border-right: 1px solid transparent;
+
+    &.dropdown:hover {
+      border-top: 1px solid rgba(0,0,0,0.2);
+      border-left: 1px solid rgba(0,0,0,0.2);
+      border-right: 1px solid rgba(0,0,0,0.2);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
 
   li.dropdown-item:hover,
   > li:hover {
@@ -170,7 +196,11 @@ a.tab {
 ul.link-dropdown-menu {
   @extend %dropdown-menu;
   background-color: $c-white;
-  border: none;
+  z-index: -10;
+  margin-top: 7px;
+  margin-right: -1px;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-top-right-radius: 0;
 }
 
 ul.user-dropdown-menu {

@@ -1958,6 +1958,20 @@ ul.navlist {
     background-color: transparent; }
     ul.navlist > li.active:hover a {
       color: #000; }
+  ul.navlist li.navbar-spacer, ul.navlist li.divider {
+    border: none; }
+  ul.navlist li.divider {
+    background-color: rgba(0, 0, 0, 0.2); }
+  ul.navlist li {
+    border-top: 1px solid transparent;
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent; }
+    ul.navlist li.dropdown:hover {
+      border-top: 1px solid rgba(0, 0, 0, 0.2);
+      border-left: 1px solid rgba(0, 0, 0, 0.2);
+      border-right: 1px solid rgba(0, 0, 0, 0.2);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0; }
   ul.navlist li.dropdown-item:hover, ul.navlist > li:hover {
     background-color: #fff;
     border-radius: 3px; }
@@ -1990,7 +2004,11 @@ a.tab {
 
 ul.link-dropdown-menu {
   background-color: #fff;
-  border: none; }
+  z-index: -10;
+  margin-top: 7px;
+  margin-right: -1px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-top-right-radius: 0; }
 
 ul.script-dropdown-menu li.dropdown-item {
   margin-left: 0; }
