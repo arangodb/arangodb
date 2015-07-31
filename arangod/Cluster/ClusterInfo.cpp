@@ -37,6 +37,7 @@
 #include "Basics/vector.h"
 #include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/StringUtils.h"
@@ -192,8 +193,8 @@ CollectionInfoCurrent::CollectionInfoCurrent (ShardID const& shardID, TRI_json_t
 /// @brief creates a collection info object from another
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfoCurrent::CollectionInfoCurrent (CollectionInfoCurrent const& other) :
-  _jsons(other._jsons) {
+CollectionInfoCurrent::CollectionInfoCurrent (CollectionInfoCurrent const& other) 
+  : _jsons(other._jsons) {
   copyAllJsons();
 }
 
@@ -263,13 +264,13 @@ ClusterInfo* ClusterInfo::instance () {
 
 ClusterInfo::ClusterInfo ()
   : _agency(),
-    _uniqid(),
     _plannedDatabases(),
     _currentDatabases(),
     _collectionsValid(false),
     _serversValid(false),
     _DBServersValid(false),
-    _coordinatorsValid(false) {
+    _coordinatorsValid(false),
+    _uniqid() {
 
   _uniqid._currentValue = _uniqid._upperValue = 0ULL;
 
@@ -288,14 +289,16 @@ ClusterInfo::~ClusterInfo () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask whether a cluster database exists
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid (uint64_t count) {
-  WRITE_LOCKER(_lock);
+  MUTEX_LOCKER(_idLock);
 
   if (_uniqid._currentValue >= _uniqid._upperValue) {
+    
     uint64_t fetch = count;
 
     if (fetch < MinIdsPerBatch) {
