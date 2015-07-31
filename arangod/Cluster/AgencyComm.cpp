@@ -263,8 +263,8 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
   }
 
   std::string keydecoded
-    = AgencyComm::decodeKey(std::string(key->_value._string.data,
-                                        key->_value._string.length-1));
+    = std::move(AgencyComm::decodeKey(std::string(key->_value._string.data,
+                                                  key->_value._string.length - 1)));
 
   // make sure we don't strip more bytes than the key is long
   const size_t offset = AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
@@ -1567,7 +1567,7 @@ void AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::buildUrl (std::string const& relativePart) const {
-  return AgencyComm::AGENCY_URL_PREFIX +encodeKey(_globalPrefix + relativePart);
+  return AgencyComm::AGENCY_URL_PREFIX + std::move(encodeKey(_globalPrefix + relativePart));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1576,7 +1576,7 @@ std::string AgencyComm::buildUrl (std::string const& relativePart) const {
 
 std::string AgencyComm::buildUrl () const {
   return AgencyComm::AGENCY_URL_PREFIX
-         + encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1));
+         + std::move(encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1754,6 +1754,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
                                                                     headers);
 
   if (response == nullptr) {
+    connection->disconnect();
     result._message = "could not send request to agency";
     LOG_TRACE("sending request to agency failed");
 
@@ -1761,6 +1762,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   }
 
   if (! response->isComplete()) {
+    connection->disconnect();
     result._message = "sending request to agency failed";
     LOG_TRACE("sending request to agency failed");
     delete response;
@@ -1804,6 +1806,10 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 
   delete response;
 
+  if (result._statusCode > 399) {
+    connection->disconnect();
+  }
+
   return result.successful();
 }
 
@@ -1811,8 +1817,8 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 /// @brief encode a key for etcd
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::encodeKey (std::string s) {
-  std::string::iterator i;
+std::string AgencyComm::encodeKey (std::string const& s) {
+  std::string::const_iterator i;
   std::string res;
   for (i = s.begin(); i != s.end(); ++i) {
     if (*i == '_') {
@@ -1834,8 +1840,8 @@ std::string AgencyComm::encodeKey (std::string s) {
 /// @brief decode a key for etcd
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::decodeKey (std::string s) {
-  std::string::iterator i;
+std::string AgencyComm::decodeKey (std::string const& s) {
+  std::string::const_iterator i;
   std::string res;
   for (i = s.begin(); i != s.end(); ++i) {
     if (*i == '@') {
