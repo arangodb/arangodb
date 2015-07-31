@@ -65,6 +65,9 @@
 #define STR_ERROR() strerror(errno)
 #endif
 
+#ifdef __linux__
+#include <sys/poll.h>
+#endif
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -265,20 +268,70 @@ void SslClientConnection::disconnectSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::prepare (double timeout, bool isWrite) const {
-  struct timeval tv;
-  fd_set fdset;
-  int res;
-
-  #ifndef LINUX
+  auto const fd = TRI_get_fd_or_handle_of_socket(_socket);
   double start = TRI_microtime();
-  #endif
+  int res;
+    
+#ifdef __linux__
+  // Here we have poll, on all other platforms we use select
+  bool nowait = (timeout == 0.0);
+  int towait;
+  if (timeout * 1000.0 > static_cast<double>(INT_MAX)) {
+    towait = INT_MAX;
+  }
+  else {
+    towait = static_cast<int>(timeout * 1000.0);
+  }
 
+  struct pollfd poller;
+  memset(&poller, 0, sizeof(struct pollfd)); // for our old friend Valgrind
+  poller.fd = fd;
+  poller.events = isWrite ? POLLOUT : POLLIN;
+
+  while (true) {  // will be left by break
+    res = poll(&poller, 1, towait);
+    if (res == -1 && errno == EINTR) {
+      if (! nowait) {
+        double end = TRI_microtime();
+        towait -= static_cast<int>((end - start) * 1000.0);
+        start = end;
+        if (towait < 0) {  // Should not happen, but there might be rounding
+                           // errors, so just to prevent a poll call with
+                           // negative timeout...
+          res = 0;
+          break;
+        }
+      }
+      continue;
+    }
+    break;
+  }
+  // Now res can be:
+  //   1 : if the file descriptor was ready
+  //   0 : if the timeout happened
+  //   -1: if an error happened, EINTR within the timeout is already caught
+#else
+  // All versions other than Linux use select:
+ 
+  // An fd_set is a fixed size buffer. 
+  // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE 
+  // will result in undefined behavior. Moreover, POSIX requires fd to be a valid file descriptor.
+  if (fd < 0 || fd >= FD_SETSIZE) {
+    // invalid or too high file descriptor value...
+    // if we call FD_ZERO() or FD_SET() with it, the program behavior will be undefined
+    _errorDetails = std::string("file descriptor value too high");
+    return false;
+  }
+
+  struct timeval tv;
   tv.tv_sec = (long) timeout;
   tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
+  fd_set fdset;
   do {
+
     FD_ZERO(&fdset);
-    FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
+    FD_SET(fd, &fdset);
 
     fd_set* readFds = nullptr;
     fd_set* writeFds = nullptr;
@@ -290,23 +343,45 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
       readFds = &fdset;
     }
 
-    int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
+    int sockn = (int) (fd + 1);
     res = select(sockn, readFds, writeFds, nullptr, &tv);
 
-    #ifndef LINUX
     if ((res == -1 && errno == EINTR)) {
+      int myerrno = errno;
       double end = TRI_microtime();
+      errno = myerrno;
       timeout = timeout - (end - start);
       start = end;
       tv.tv_sec = (long) timeout;
       tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
     }
-    #endif 
   } 
   while ((res == -1) && (errno == EINTR) && (timeout > 0.0));
+#endif
 
   if (res > 0) {
     return true;
+  }
+
+  if (res == 0) {
+    if (isWrite) {
+      _errorDetails = std::string("timeout during write");
+      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_WRITE);
+    }
+    else {
+      _errorDetails = std::string("timeout during read");
+      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_READ);
+    }
+  }
+  else {  //    res < 0
+#ifdef _WIN32
+    char windowsErrorBuf[256];
+#endif
+
+    char const* pErr = STR_ERROR();
+    _errorDetails = std::string("during prepare: ") + std::to_string(errno) + std::string(" - ") + pErr;
+    
+    TRI_set_errno(errno);
   }
 
   return false;

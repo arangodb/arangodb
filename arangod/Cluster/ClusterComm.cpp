@@ -64,7 +64,7 @@ void triagens::arango::ClusterCommRestCallback(string& coordinator,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm () :
-  _backgroundThread(0),
+  _backgroundThread(nullptr),
   _logConnectionErrors(false) {
 }
 
@@ -73,11 +73,11 @@ ClusterComm::ClusterComm () :
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::~ClusterComm () {
-  if (_backgroundThread != 0) {
+  if (_backgroundThread != nullptr) {
     _backgroundThread->stop();
     _backgroundThread->shutdown();
     delete _backgroundThread;
-    _backgroundThread = 0;
+    _backgroundThread = nullptr;
   }
 
   cleanupAllQueues();
@@ -241,8 +241,8 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->freeBody             = freeBody;
   op->headerFields         = headerFields;
   op->callback             = callback;
-  op->endTime              = timeout == 0.0 ? TRI_microtime()+24*60*60.0
-                                            : TRI_microtime()+timeout;
+  op->endTime              = timeout == 0.0 ? TRI_microtime() + 24 * 60 * 60.0
+                                            : TRI_microtime() + timeout;
 
   // LOCKING-DEBUG
   // std::cout << "asyncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << op->serverID << ":" << path << "\n" << body << "\n";
@@ -378,7 +378,7 @@ ClusterCommResult* ClusterComm::syncRequest (
       // std::cout << std::endl;
       std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
         new triagens::httpclient::SimpleHttpClient(
-                                connection->connection,
+                                connection->_connection,
                                 endTime - currentTime, false)
       );
       client->keepConnectionOnDestruction(true);
@@ -804,7 +804,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 
   std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
     new triagens::httpclient::SimpleHttpClient(
-                             connection->connection, 3600.0, false)
+                             connection->_connection, 3600.0, false)
   );
   client->keepConnectionOnDestruction(true);
 
@@ -1099,7 +1099,7 @@ void ClusterCommThread::run () {
 
               std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
                 new triagens::httpclient::SimpleHttpClient(
-                                      connection->connection,
+                                      connection->_connection,
                                       op->endTime-currentTime, false)
               );
 

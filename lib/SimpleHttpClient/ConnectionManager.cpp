@@ -26,12 +26,13 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/WriteLocker.h"
-
 #include "ConnectionManager.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 
 using namespace std;
 using namespace triagens::httpclient;
+using namespace triagens::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global options for connections
@@ -46,21 +47,29 @@ ConnectionOptions ConnectionManager::_globalConnectionOptions = {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual singleton instance
+/// @brief singleton instance of the connection manager
 ////////////////////////////////////////////////////////////////////////////////
 
-ConnectionManager* ConnectionManager::_theinstance = 0;
+static ConnectionManager Instance;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 ConnectionManager::~ConnectionManager ( ) {
-  WRITE_LOCKER(allLock);
-  map<string,ServerConnections*>::iterator i;
-  for (i = allConnections.begin(); i != allConnections.end(); ++i) {
-    delete i->second;
+  WRITE_LOCKER(_connectionsByEndpointLock);
+
+  for (auto& it : _connectionsByEndpoint) {
+    delete it.second;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the unique instance
+////////////////////////////////////////////////////////////////////////////////
+
+ConnectionManager* ConnectionManager::instance () {
+  return &Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,9 +77,8 @@ ConnectionManager::~ConnectionManager ( ) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ConnectionManager::SingleServerConnection::~SingleServerConnection () {
-  delete connection;
-  delete endpoint;
-  lastUsed = 0;
+  delete _connection;
+  delete _endpoint;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,166 +86,246 @@ ConnectionManager::SingleServerConnection::~SingleServerConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ConnectionManager::ServerConnections::~ServerConnections () {
-  vector<SingleServerConnection*>::iterator i;
-  WRITE_LOCKER(lock);
+  WRITE_LOCKER(_lock);
 
-  unused.clear();
-  for (i = connections.begin();i != connections.end();++i) {
-    delete *i;
+  for (auto& it : _connections) {
+    delete it;
   }
-  connections.clear();
+
+  _connections.clear();
+  _unused.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a single connection
+////////////////////////////////////////////////////////////////////////////////
+
+void ConnectionManager::ServerConnections::addConnection (ConnectionManager::SingleServerConnection* connection) {
+  WRITE_LOCKER(_lock);
+
+  _connections.emplace_back(connection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pop a free connection - returns nullptr if no connection is
+/// available
+////////////////////////////////////////////////////////////////////////////////
+
+ConnectionManager::SingleServerConnection* ConnectionManager::ServerConnections::popConnection () {
+  // get an unused connection
+  {
+    WRITE_LOCKER(_lock);
+
+    if (! _unused.empty()) {
+      auto connection = _unused.back();
+      _unused.pop_back();
+
+      return connection;
+    }
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push a unused connection back on the stack, allowing its re-use
+////////////////////////////////////////////////////////////////////////////////
+
+void ConnectionManager::ServerConnections::pushConnection (ConnectionManager::SingleServerConnection* connection) {
+  connection->_lastUsed = time(0);
+
+  WRITE_LOCKER(_lock);
+  _unused.emplace_back(connection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a (broken) connection from the list of connections
+////////////////////////////////////////////////////////////////////////////////
+
+void ConnectionManager::ServerConnections::removeConnection (ConnectionManager::SingleServerConnection* connection) {
+  WRITE_LOCKER(_lock);
+
+  for (auto it = _connections.begin(); it != _connections.end(); ++it) {
+    if ((*it) == connection) {
+      // got it, now remove it
+      _connections.erase(it); 
+      return;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes unused connections
+////////////////////////////////////////////////////////////////////////////////
+
+void ConnectionManager::ServerConnections::closeUnusedConnections (double limit) {
+  time_t const t = time(0);
+
+  std::list<ConnectionManager::SingleServerConnection*>::iterator current;
+
+  WRITE_LOCKER(_lock);
+
+  for (current = _unused.begin(); current != _unused.end(); /* no hoisting */) {
+    SingleServerConnection* connection = (*current);
+
+    if (t - connection->_lastUsed <= limit) {
+      // connection is still valid
+      ++current;
+    }
+    else {
+      // connection is timed out
+
+      // remove from list of connections
+      for (auto it = _connections.begin(); it != _connections.end(); ++it) {
+        if ((*it) == connection) {
+          _connections.erase(it);
+          break;
+        }
+      }
+
+      delete connection;
+      current = _unused.erase(current);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open or get a previously cached connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
-ConnectionManager::SingleServerConnection*
-ConnectionManager::leaseConnection (std::string& endpoint) {
-  map<string,ServerConnections*>::iterator i;
-  ServerConnections* s;
-  SingleServerConnection* c;
-
-  // First find a connections list:
+ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection (std::string const& endpoint) {
+  // first find a connections list
+  // this is optimized for the fact that we mostly have a connections
+  // list for an endpoint already
+  ServerConnections* s = nullptr;
   {
-    WRITE_LOCKER(allLock);
+    READ_LOCKER(_connectionsByEndpointLock);
 
-    i = allConnections.find(endpoint);
-    if (i != allConnections.end()) {
-      s = i->second;
+    auto it = _connectionsByEndpoint.find(endpoint);
+
+    if (it != _connectionsByEndpoint.end()) {
+      s = (*it).second;
+    }
+  }
+
+  if (s == nullptr) {
+    // do not yet have a connections list for this endpoint, so let's create one!
+    std::unique_ptr<ServerConnections> sc(new ServerConnections());
+
+    sc->_connections.reserve(16);
+
+    // note that it is possible for a concurrent thread to have created
+    // a list for the same endpoint. this case is handled below
+
+    WRITE_LOCKER(_connectionsByEndpointLock);
+
+    auto it = _connectionsByEndpoint.emplace(endpoint, sc.get());
+
+    if (! it.second) {
+      // insert didn't work -> another thread has concurrently created a
+      // list for the same endpoint
+      // this means the unique_ptr can free the just created object and
+      // we only need to lookup the connections list from the map
+      auto it2 = _connectionsByEndpoint.find(endpoint);
+
+      // we must have a result!
+      TRI_ASSERT(it2 != _connectionsByEndpoint.end());
+      s = (*it2).second;
     }
     else {
-      s = new ServerConnections();
-      allConnections[endpoint] = s;
+      // insert has worked. the map is now responsible for managing the
+      // connections list memory
+      s = sc.release();
     }
   }
-
+  
+  // when we get here, we must have found a collections list
   TRI_ASSERT(s != nullptr);
 
-  // Now get an unused one:
+  // now get an unused one
   {
-    WRITE_LOCKER(s->lock);
-    if (! s->unused.empty()) {
-      c = s->unused.back();
-      s->unused.pop_back();
-      return c;
+    auto connection = s->popConnection();
+ 
+    if (connection != nullptr) {
+      return connection;
     }
   }
 
-  triagens::rest::Endpoint* e
-      = triagens::rest::Endpoint::clientFactory(endpoint);
-  if (nullptr == e) {
-    return nullptr;
-  }
-  triagens::httpclient::GeneralClientConnection*
-         g = triagens::httpclient::GeneralClientConnection::factory(
-                   e,
-                   _globalConnectionOptions._requestTimeout,
-                   _globalConnectionOptions._connectTimeout,
-                   _globalConnectionOptions._connectRetries,
-                   _globalConnectionOptions._sslProtocol);
-  if (nullptr == g) {
-    delete e;
-    return nullptr;
-  }
-  if (! g->connect()) {
-    delete g;
-    delete e;
+  // create a new connection object
+
+
+  // create an endpoint object
+  std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
+
+  if (ep == nullptr) {
+    // out memory
     return nullptr;
   }
 
-  c = new SingleServerConnection(g, e, endpoint);
-  if (nullptr == c) {
-    delete g;
-    delete e;
+  // create a connection object
+  std::unique_ptr<GeneralClientConnection> cn(GeneralClientConnection::factory(
+    ep.get(),
+    _globalConnectionOptions._requestTimeout,
+    _globalConnectionOptions._connectTimeout,
+    _globalConnectionOptions._connectRetries,
+    _globalConnectionOptions._sslProtocol
+  ));
+
+  if (cn == nullptr) {
+    // out of memory
+    return nullptr;
+  }
+
+  if (! cn->connect()) {
+    // could not connect
+    return nullptr;
+  }
+
+
+  // finally create the SingleServerConnection
+  std::unique_ptr<SingleServerConnection> c(new SingleServerConnection(s, cn.get(), ep.get(), endpoint));
+
+  if (c == nullptr) {
     return nullptr;
   }
 
   // Now put it into our administration:
-  {
-    WRITE_LOCKER(s->lock);
-    s->connections.push_back(c);
-  }
-  c->lastUsed = time(0);
-  return c;
+  s->addConnection(c.get());
+
+  // now the ServerConnections list is responsible for the memory management!
+  cn.release();
+  ep.release();
+
+  return c.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return leased connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::returnConnection (SingleServerConnection* c) {
-  map<string,ServerConnections*>::iterator i;
-  ServerConnections* s;
-
-  if (! c->connection->isConnected()) {
-    brokenConnection(c);
+void ConnectionManager::returnConnection (SingleServerConnection* connection) {
+  if (! connection->_connection->isConnected()) {
+    brokenConnection(connection);
     return;
   }
 
-  // First find the collections list:
-  {
-    WRITE_LOCKER(allLock);
+  auto manager = connection->_connections;
+  TRI_ASSERT(manager != nullptr);
 
-    i = allConnections.find(c->ep_spec);
-    if (i != allConnections.end()) {
-      s = i->second;
-    }
-    else {
-      // How strange! We just destroy the connection in despair!
-      delete c;
-      return;
-    }
-  }
-
-  c->lastUsed = time(0);
-
-  // Now mark it as unused:
-  {
-    WRITE_LOCKER(s->lock);
-    s->unused.push_back(c);
-  }
+  manager->pushConnection(connection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief report a leased connection as being broken
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::brokenConnection (SingleServerConnection* c) {
-  map<string,ServerConnections*>::iterator i;
-  ServerConnections* s;
+void ConnectionManager::brokenConnection (SingleServerConnection* connection) {
+  auto manager = connection->_connections;
+  TRI_ASSERT(manager != nullptr);
 
-  // First find the collections list:
-  {
-    WRITE_LOCKER(allLock);
+  manager->removeConnection(connection);
 
-    i = allConnections.find(c->ep_spec);
-    if (i != allConnections.end()) {
-      s = i->second;
-    }
-    else {
-      // How strange! We just destroy the connection in despair!
-      delete c;
-      return;
-    }
-  }
-
-  // Now find it to get rid of it:
-  {
-    WRITE_LOCKER(s->lock);
-    vector<SingleServerConnection*>::iterator i;
-    for (i = s->connections.begin(); i != s->connections.end(); ++i) {
-      if (*i == c) {
-        // Got it, now remove it:
-        s->connections.erase(i);
-        delete c;
-        return;
-      }
-    }
-  }
-
-  // How strange! We should have known this one!
-  delete c;
+  delete connection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,47 +334,21 @@ void ConnectionManager::brokenConnection (SingleServerConnection* c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ConnectionManager::closeUnusedConnections (double limit) {
-  WRITE_LOCKER(allLock);
-  map<string,ServerConnections*>::iterator s;
-  list<SingleServerConnection*>::iterator i;
-  list<SingleServerConnection*>::iterator prev;
-  ServerConnections* sc;
-  time_t t;
-  bool haveprev;
+  // copy the list of ServerConnections first
+  std::vector<ConnectionManager::ServerConnections*> copy;
+  {
+    READ_LOCKER(_connectionsByEndpointLock);
 
-  t = time(0);
-  for (s = allConnections.begin(); s != allConnections.end(); ++s) {
-    sc = s->second;
-    {
-      WRITE_LOCKER(sc->lock);
-      haveprev = false;
-      for (i = sc->unused.begin(); i != sc->unused.end(); ) {
-        if (t - (*i)->lastUsed > limit) {
-          vector<SingleServerConnection*>::iterator j;
-          for (j = sc->connections.begin(); j != sc->connections.end(); ++j) {
-            if (*j == *i) {
-              sc->connections.erase(j);
-              break;
-            }
-          }
-          delete (*i);
-          sc->unused.erase(i);
-          if (haveprev) {
-            i = prev;   // will be incremented in next iteration
-            ++i;
-            haveprev = false;
-          }
-          else {
-            i = sc->unused.begin();
-          }
-        }
-        else {
-          prev = i;
-          ++i;
-          haveprev = true;
-        }
-      }
+    copy.reserve(_connectionsByEndpoint.size());
+    for (auto& it : _connectionsByEndpoint) {
+      copy.emplace_back(it.second);
     }
+  }
+
+  // now perform the cleanup for each ServerConnections object
+
+  for (auto& it : copy) {
+    it->closeUnusedConnections(limit);
   }
 }
 

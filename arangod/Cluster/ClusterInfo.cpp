@@ -1176,11 +1176,11 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
   }
   uint64_t index = res._index;
 
-  string where = "Current/Collections/" + databaseName + "/" + collectionID;
+  std::string const where = "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
     res.clear();
     res = ac.getValues(where, true);
-    if (res.successful() && res.parse(where+"/", false)) {
+    if (res.successful() && res.parse(where + "/", false)) {
       if (res._values.size() == (size_t) numberOfShards) {
         map<string, AgencyCommResultEntry>::iterator it;
         string tmpMsg = "";
