@@ -1,3 +1,8 @@
+v2.6.4 (2015-07-30)
+-------------------
+
+* V8: Upgrade to version 4.1.0.27 - this is intended to be the stable version.
+
 v2.6.3 (2015-07-21)
 -------------------
 
