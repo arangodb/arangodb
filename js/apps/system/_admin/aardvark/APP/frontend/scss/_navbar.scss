@@ -32,8 +32,8 @@ nav.navbar {
     & > .active {
 
       & > a {
-        background-color: $c-positive;
-        color: $c-white;
+        background-color: $c-white;
+        color: $c-black;
         @include box-shadow(0 0 0 $c-transp inset);
       }
     }
@@ -45,7 +45,7 @@ nav.navbar {
       }
 
       & > a:hover {
-        background-color: $c-positive;
+        background-color: $c-black;
         color: $c-bar-bg;
       }
     }
@@ -101,9 +101,7 @@ ul.navlist {
     }
   }
 
-  > li.active,
-  li.dropdown-item:hover,
-  > li:hover {
+  > li.active {
     background-color: $c-transp;
 
     a {
@@ -111,7 +109,23 @@ ul.navlist {
     }
   }
 
-  li.dropdown-item:hover {
+  > li.active:hover {
+    background-color: $c-transp;
+
+    a {
+      color: $c-black;
+    }
+
+  }
+
+  li.dropdown-item:hover,
+  > li:hover {
+    background-color: $c-white;
+    border-radius: 3px;
+
+    a {
+      color: $c-black;
+    }
   }
 
   li.dropdown-item {
@@ -155,6 +169,8 @@ a.tab {
 
 ul.link-dropdown-menu {
   @extend %dropdown-menu;
+  background-color: $c-white;
+  border: none;
 }
 
 ul.user-dropdown-menu {
@@ -199,7 +215,7 @@ ul.gv-dropdown-menu {
   li {
 
     &:hover {
-      background-color: $c-positive;
+      background-color: $c-white;
       background-image: none;
     }
 
