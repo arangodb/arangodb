@@ -58,9 +58,9 @@ static ConnectionManager* Instance = nullptr;
 
 ConnectionManager::~ConnectionManager ( ) {
   for (size_t i = 0; i < CONNECTION_MANAGER_BUCKETS; ++i) {
-    WRITE_LOCKER(_connectionsByEndpointLock[i]);
+    WRITE_LOCKER(_connectionsBuckets[i]._lock);
 
-    for (auto& it : _connectionsByEndpoint[i]) {
+    for (auto& it : _connectionsBuckets[i]._connections) {
       delete it.second;
     }
   }
@@ -211,11 +211,11 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection (s
 
   ServerConnections* s = nullptr;
   {
-    READ_LOCKER(_connectionsByEndpointLock[slot]);
+    READ_LOCKER(_connectionsBuckets[slot]._lock);
 
-    auto it = _connectionsByEndpoint[slot].find(endpoint);
+    auto it = _connectionsBuckets[slot]._connections.find(endpoint);
 
-    if (it != _connectionsByEndpoint[slot].end()) {
+    if (it != _connectionsBuckets[slot]._connections.end()) {
       s = (*it).second;
     }
   }
@@ -229,19 +229,19 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection (s
     // note that it is possible for a concurrent thread to have created
     // a list for the same endpoint. this case is handled below
 
-    WRITE_LOCKER(_connectionsByEndpointLock[slot]);
+    WRITE_LOCKER(_connectionsBuckets[slot]._lock);
 
-    auto it = _connectionsByEndpoint[slot].emplace(endpoint, sc.get());
+    auto it = _connectionsBuckets[slot]._connections.emplace(endpoint, sc.get());
 
     if (! it.second) {
       // insert didn't work -> another thread has concurrently created a
       // list for the same endpoint
       // this means the unique_ptr can free the just created object and
       // we only need to lookup the connections list from the map
-      auto it2 = _connectionsByEndpoint[slot].find(endpoint);
+      auto it2 = _connectionsBuckets[slot]._connections.find(endpoint);
 
       // we must have a result!
-      TRI_ASSERT(it2 != _connectionsByEndpoint[slot].end());
+      TRI_ASSERT(it2 != _connectionsBuckets[slot]._connections.end());
       s = (*it2).second;
     }
     else {
@@ -350,9 +350,9 @@ void ConnectionManager::closeUnusedConnections (double limit) {
   std::vector<ConnectionManager::ServerConnections*> copy;
   {
     for (size_t i = 0; i < CONNECTION_MANAGER_BUCKETS; ++i) {
-      READ_LOCKER(_connectionsByEndpointLock[i]);
+      READ_LOCKER(_connectionsBuckets[i]._lock);
 
-      for (auto& it : _connectionsByEndpoint[i]) {
+      for (auto& it : _connectionsBuckets[i]._connections) {
         copy.emplace_back(it.second);
       }
     }
