@@ -982,7 +982,7 @@ function DocumentationAndConstraintsSpec () {
       callback(req, res);
 
       assertFalse(called);
-      assertEqual(res.responseCode, 400);
+      assertEqual(res.responseCode, 422);
     },
 
     testSetParamForUndocumentedBodyParam: function () {

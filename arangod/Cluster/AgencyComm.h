@@ -573,13 +573,13 @@ namespace triagens {
 /// we decode the key when we see it.
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string encodeKey (std::string);
+        static std::string encodeKey (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decode a key for etcd
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string decodeKey (std::string);
+        static std::string decodeKey (std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
