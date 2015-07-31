@@ -4586,6 +4586,13 @@ div.dropdownInner {
     div.dropdownInner ul label {
       color: #000;
       padding-left: 35px; }
+  div.dropdownInner ul li .fa {
+    margin-right: 5px;
+    color: #8c8a89; }
+    div.dropdownInner ul li .fa.fa-square-0 {
+      margin-left: 1px; }
+    div.dropdownInner ul li .fa.fa-check-square-o, div.dropdownInner ul li .fa.fa-check-circle-o {
+      color: #8aa051; }
 
 div.queryline {
   color: #000;
@@ -4852,7 +4859,33 @@ div.headerBar > div.headerButtonBar {
   font-size: 14px;
   font-weight: 300; }
   .modal-body .select2-choices {
-    border-radius: 3px; }
+    border-radius: 3px;
+    border: 1px solid #aaa;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+    background-image: none !important; }
+    .modal-body .select2-choices input {
+      box-shadow: none;
+      -webkit-box-shadow: none;
+      outline: transparent !important; }
+    .modal-body .select2-choices input:active {
+      box-shadow: none;
+      -webkit-box-shadow: none;
+      outline: none !important; }
+    .modal-body .select2-choices .select2-search-choice {
+      margin: 5px 0 3px 5px !important; }
+    .modal-body .select2-choices li {
+      color: #000;
+      background-color: #fff !important;
+      background-image: none !important; }
+      .modal-body .select2-choices li a {
+        margin-top: -1px;
+        margin-left: 1px; }
+  .modal-body .select2-choices:active {
+    outline: transparent !important;
+    border: 1px solid #aaa;
+    box-shadow: none !important;
+    -webkit-box-shadow: none !important; }
   .modal-body .nav-tabs {
     margin-top: 15px; }
   .modal-body input, .modal-body select, .modal-body textarea {
@@ -5254,8 +5287,8 @@ pre.gv-object-view {
     padding-top: 5px; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
       fill-opacity: .15;
-      stroke-opacity: 1;
-      stroke-width: 1px; }
+      stroke-opacity: 0.8;
+      stroke-width: 0.5px; }
 
 .dashboard-medium-chart-outer {
   border: 1px solid rgba(104, 103, 102, 0.1);
@@ -5340,8 +5373,8 @@ pre.gv-object-view {
         text-align: right; }
     .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
       fill-opacity: .15;
-      stroke-opacity: 1;
-      stroke-width: 1px; }
+      stroke-opacity: .8;
+      stroke-width: 0.5px; }
 
 .dashboard-legend .dashboard-legend-inner {
   padding: 0 5px 5px 0; }
