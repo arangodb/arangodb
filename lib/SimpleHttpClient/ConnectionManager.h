@@ -33,6 +33,9 @@
 #include "Basics/ReadWriteLock.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
+// TODO: change to constexpr when feasible
+#define CONNECTION_MANAGER_BUCKETS 8 
+
 namespace triagens {
   namespace httpclient {
 
@@ -62,25 +65,33 @@ namespace triagens {
 // --SECTION--                                     constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises library
+/// @brief initializes library
 ///
 /// We are a singleton class, therefore nobody is allowed to create
 /// new instances or copy them, except we ourselves.
 ////////////////////////////////////////////////////////////////////////////////
+
+      private:
 
         ConnectionManager () = default; 
 
         ConnectionManager (ConnectionManager const&) = delete;
         ConnectionManager& operator= (ConnectionManager const&) = delete;
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down library
 ////////////////////////////////////////////////////////////////////////////////
 
         ~ConnectionManager ( );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes library
+////////////////////////////////////////////////////////////////////////////////
+
+        static void initialize ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 public subclasses
@@ -201,6 +212,14 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief hash the endpoint value into a bucket
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t bucket (std::string const& endpoint) const {
+          return std::hash<std::string>()(endpoint) % CONNECTION_MANAGER_BUCKETS;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief global options for connections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -211,8 +230,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         // We keep connections to servers open:
-        std::unordered_map<std::string, ServerConnections*> _connectionsByEndpoint;
-        triagens::basics::ReadWriteLock _connectionsByEndpointLock;
+        std::unordered_map<std::string, ServerConnections*> _connectionsByEndpoint[CONNECTION_MANAGER_BUCKETS];
+
+        triagens::basics::ReadWriteLock _connectionsByEndpointLock[CONNECTION_MANAGER_BUCKETS];
 
     };
   }
