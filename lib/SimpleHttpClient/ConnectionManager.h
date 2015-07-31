@@ -230,9 +230,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         // We keep connections to servers open:
-        std::unordered_map<std::string, ServerConnections*> _connectionsByEndpoint[CONNECTION_MANAGER_BUCKETS];
+        struct ConnectionsBucket {
+          std::unordered_map<std::string, ServerConnections*> _connections;
 
-        triagens::basics::ReadWriteLock _connectionsByEndpointLock[CONNECTION_MANAGER_BUCKETS];
+          triagens::basics::ReadWriteLock _lock;
+        };
+
+        ConnectionsBucket _connectionsBuckets[CONNECTION_MANAGER_BUCKETS];
 
     };
   }
