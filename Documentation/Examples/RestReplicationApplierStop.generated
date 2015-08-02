@@ -10,7 +10,7 @@ content-type: application/json; charset=utf-8
     "lastProcessedContinuousTick" : null, 
     "lastAvailableContinuousTick" : null, 
     "progress" : { 
-      "time" : "2015-07-21T19:14:14Z", 
+      "time" : "2015-08-02T14:28:17Z", 
       "message" : "fetching master state information", 
       "failedConnects" : 1 
     }, 
@@ -19,15 +19,15 @@ content-type: application/json; charset=utf-8
     "totalEvents" : 0, 
     "totalOperationsExcluded" : 0, 
     "lastError" : { 
-      "time" : "2015-07-21T19:14:14Z", 
+      "time" : "2015-08-02T14:28:17Z", 
       "errorMessage" : "could not connect to master at tcp://127.0.0.1:8529: Could not connect to 'tcp://127.0.0.1:8529' 'connect() failed with #61 - Connection refused'", 
       "errorNum" : 1412 
     }, 
-    "time" : "2015-07-21T19:14:14Z" 
+    "time" : "2015-08-02T14:28:17Z" 
   }, 
   "server" : { 
-    "version" : "2.5.6", 
-    "serverId" : "70461324756591" 
+    "version" : "2.5.7", 
+    "serverId" : "79303320193461" 
   }, 
   "endpoint" : "tcp://127.0.0.1:8529", 
   "database" : "_system" 

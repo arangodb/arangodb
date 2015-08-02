@@ -7,13 +7,13 @@ arangosh> query.outEdges().toVertices().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "314625855", 
+      "_rev" : "310014614", 
       "name" : "Alice" 
     }, 
     { 
       "_id" : "relation/aliceAndBob", 
       "_key" : "aliceAndBob", 
-      "_rev" : "315674431", 
+      "_rev" : "311063190", 
       "_from" : "female/alice", 
       "_to" : "male/bob", 
       "type" : "married" 
@@ -21,7 +21,7 @@ arangosh> query.outEdges().toVertices().path().toArray();
     { 
       "_id" : "male/bob", 
       "_key" : "bob", 
-      "_rev" : "314953535", 
+      "_rev" : "310342294", 
       "name" : "Bob" 
     } 
   ], 
@@ -29,13 +29,13 @@ arangosh> query.outEdges().toVertices().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "314625855", 
+      "_rev" : "310014614", 
       "name" : "Alice" 
     }, 
     { 
       "_id" : "relation/aliceAndCharly", 
       "_key" : "aliceAndCharly", 
-      "_rev" : "315936575", 
+      "_rev" : "311325334", 
       "_from" : "female/alice", 
       "_to" : "male/charly", 
       "type" : "friend" 
@@ -43,7 +43,7 @@ arangosh> query.outEdges().toVertices().path().toArray();
     { 
       "_id" : "male/charly", 
       "_key" : "charly", 
-      "_rev" : "315150143", 
+      "_rev" : "310538902", 
       "name" : "Charly" 
     } 
   ] 

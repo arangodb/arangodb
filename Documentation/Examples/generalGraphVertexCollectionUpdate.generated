@@ -4,13 +4,13 @@ arangosh> graph.female.save({name: "Lynda", _key: "linda"});
 { 
   "error" : false, 
   "_id" : "female/linda", 
-  "_rev" : "799133503", 
+  "_rev" : "796947094", 
   "_key" : "linda" 
 }
 arangosh> graph.female.update("female/linda", {name: "Linda", _key: "linda"});
 { 
   "error" : false, 
   "_id" : "female/linda", 
-  "_rev" : "799330111", 
+  "_rev" : "797143702", 
   "_key" : "linda" 
 }
