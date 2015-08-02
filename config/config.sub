@@ -2,7 +2,7 @@
 # Configuration validation subroutine script.
 #   Copyright 1992-2014 Free Software Foundation, Inc.
 
-timestamp='2014-09-11'
+timestamp='2014-12-03'
 
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ timestamp='2014-09-11'
 # of the GNU General Public License, version 3 ("GPLv3").
 
 
-# Please send patches with a ChangeLog entry to config-patches@gnu.org.
+# Please send patches to <config-patches@gnu.org>.
 #
 # Configuration subroutine to validate and canonicalize a configuration type.
 # Supply the specified configuration type as an argument.
@@ -313,6 +313,7 @@ case $basic_machine in
 	| tahoe | tic4x | tic54x | tic55x | tic6x | tic80 | tron \
 	| ubicom32 \
 	| v850 | v850e | v850e1 | v850e2 | v850es | v850e2v3 \
+	| visium \
 	| we32k \
 	| x86 | xc16x | xstormy16 | xtensa \
 	| z8k | z80)
@@ -326,6 +327,9 @@ case $basic_machine in
 		;;
 	c6x)
 		basic_machine=tic6x-unknown
+		;;
+	leon|leon[3-9])
+		basic_machine=sparc-$basic_machine
 		;;
 	m6811 | m68hc11 | m6812 | m68hc12 | m68hcs12x | nvptx | picochip)
 		basic_machine=$basic_machine-unknown
@@ -437,6 +441,7 @@ case $basic_machine in
 	| ubicom32-* \
 	| v850-* | v850e-* | v850e1-* | v850es-* | v850e2-* | v850e2v3-* \
 	| vax-* \
+	| visium-* \
 	| we32k-* \
 	| x86-* | x86_64-* | xc16x-* | xps100-* \
 	| xstormy16-* | xtensa*-* \
@@ -773,6 +778,9 @@ case $basic_machine in
 	isi68 | isi)
 		basic_machine=m68k-isi
 		os=-sysv
+		;;
+	leon-*|leon[3-9]-*)
+		basic_machine=sparc-`echo $basic_machine | sed 's/-.*//'`
 		;;
 	m68knommu)
 		basic_machine=m68k-unknown

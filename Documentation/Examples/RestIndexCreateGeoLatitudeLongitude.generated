@@ -11,7 +11,7 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1242681151", 
+  "id" : "products/1238594198", 
   "type" : "geo2", 
   "unique" : false, 
   "sparse" : true, 

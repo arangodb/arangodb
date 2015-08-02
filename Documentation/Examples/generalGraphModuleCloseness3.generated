@@ -3,8 +3,8 @@ arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._closeness({direction : 'outbound', weight : 'distance'});
 [ 
   { 
-    "germanCity/Berlin" : 1, 
     "germanCity/Hamburg" : 0.7279057017543861, 
+    "germanCity/Berlin" : 1, 
     "frenchCity/Paris" : 0.3355263157894737, 
     "germanCity/Cologne" : 0.5991541353383459, 
     "frenchCity/Lyon" : 0 
