@@ -4,6 +4,6 @@ arangosh> graph._fromVertex("relation/aliceAndBob")
 { 
   "name" : "Alice", 
   "_id" : "female/alice", 
-  "_rev" : "857630839", 
+  "_rev" : "853722713", 
   "_key" : "alice" 
 }

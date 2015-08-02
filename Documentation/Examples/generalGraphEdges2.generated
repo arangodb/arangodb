@@ -4,10 +4,10 @@ arangosh> db._query("FOR e IN GRAPH_EDGES("
 ........> +"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"
 ........> ).toArray();
 [ 
-  "germanHighway/699689079", 
-  "internationalHighway/701130871", 
-  "internationalHighway/701327479", 
-  "internationalHighway/700737655", 
-  "frenchHighway/700016759", 
-  "internationalHighway/700934263" 
+  "germanHighway/698992217", 
+  "internationalHighway/700434009", 
+  "internationalHighway/700630617", 
+  "internationalHighway/700040793", 
+  "frenchHighway/699319897", 
+  "internationalHighway/700237401" 
 ]

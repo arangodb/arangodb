@@ -1,8 +1,8 @@
 arangosh> a1 = db.example.insert({ a : 1 });
 { 
-  "_id" : "example/485779575", 
-  "_rev" : "485779575", 
-  "_key" : "485779575" 
+  "_id" : "example/481674841", 
+  "_rev" : "481674841", 
+  "_key" : "481674841" 
 }
 arangosh> db._remove(a1);
 true

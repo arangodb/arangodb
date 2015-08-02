@@ -1,6 +1,6 @@
 arangosh> db.old.ensureSkiplist("age");
 { 
-  "id" : "old/30894199", 
+  "id" : "old/26789465", 
   "type" : "skiplist", 
   "fields" : [ 
     "age" 
@@ -12,34 +12,34 @@ arangosh> db.old.ensureSkiplist("age");
 }
 arangosh> db.old.save({ age: 15 });
 { 
-  "_id" : "old/31156343", 
-  "_rev" : "31156343", 
-  "_key" : "31156343" 
+  "_id" : "old/27051609", 
+  "_rev" : "27051609", 
+  "_key" : "27051609" 
 }
 arangosh> db.old.save({ age: 25 });
 { 
-  "_id" : "old/31352951", 
-  "_rev" : "31352951", 
-  "_key" : "31352951" 
+  "_id" : "old/27248217", 
+  "_rev" : "27248217", 
+  "_key" : "27248217" 
 }
 arangosh> db.old.save({ age: 30 });
 { 
-  "_id" : "old/31549559", 
-  "_rev" : "31549559", 
-  "_key" : "31549559" 
+  "_id" : "old/27444825", 
+  "_rev" : "27444825", 
+  "_key" : "27444825" 
 }
 arangosh> db.old.range("age", 10, 30).toArray();
 [ 
   { 
-    "_id" : "old/31156343", 
-    "_key" : "31156343", 
-    "_rev" : "31156343", 
+    "_id" : "old/27051609", 
+    "_key" : "27051609", 
+    "_rev" : "27051609", 
     "age" : 15 
   }, 
   { 
-    "_id" : "old/31352951", 
-    "_key" : "31352951", 
-    "_rev" : "31352951", 
+    "_id" : "old/27248217", 
+    "_key" : "27248217", 
+    "_rev" : "27248217", 
     "age" : 25 
   } 
 ]

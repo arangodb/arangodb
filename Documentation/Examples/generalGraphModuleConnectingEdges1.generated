@@ -3,57 +3,57 @@ arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._getConnectingEdges({isCapital : true}, {isCapital : true});
 [ 
   { 
-    "_id" : "germanHighway/1000302711", 
-    "_key" : "1000302711", 
-    "_rev" : "1000302711", 
+    "_id" : "germanHighway/996394585", 
+    "_key" : "996394585", 
+    "_rev" : "996394585", 
     "_from" : "germanCity/Berlin", 
     "_to" : "germanCity/Cologne", 
     "distance" : 850 
   }, 
   { 
-    "_id" : "germanHighway/1000499319", 
-    "_key" : "1000499319", 
-    "_rev" : "1000499319", 
+    "_id" : "germanHighway/996591193", 
+    "_key" : "996591193", 
+    "_rev" : "996591193", 
     "_from" : "germanCity/Berlin", 
     "_to" : "germanCity/Hamburg", 
     "distance" : 400 
   }, 
   { 
-    "_id" : "internationalHighway/1001351287", 
-    "_key" : "1001351287", 
-    "_rev" : "1001351287", 
+    "_id" : "internationalHighway/997443161", 
+    "_key" : "997443161", 
+    "_rev" : "997443161", 
     "_from" : "germanCity/Berlin", 
     "_to" : "frenchCity/Lyon", 
     "distance" : 1100 
   }, 
   { 
-    "_id" : "internationalHighway/1001547895", 
-    "_key" : "1001547895", 
-    "_rev" : "1001547895", 
+    "_id" : "internationalHighway/997639769", 
+    "_key" : "997639769", 
+    "_rev" : "997639769", 
     "_from" : "germanCity/Berlin", 
     "_to" : "frenchCity/Paris", 
     "distance" : 1200 
   }, 
   { 
-    "_id" : "frenchHighway/1001023607", 
-    "_key" : "1001023607", 
-    "_rev" : "1001023607", 
+    "_id" : "frenchHighway/997115481", 
+    "_key" : "997115481", 
+    "_rev" : "997115481", 
     "_from" : "frenchCity/Paris", 
     "_to" : "frenchCity/Lyon", 
     "distance" : 550 
   }, 
   { 
-    "_id" : "internationalHighway/1002334327", 
-    "_key" : "1002334327", 
-    "_rev" : "1002334327", 
+    "_id" : "internationalHighway/998426201", 
+    "_key" : "998426201", 
+    "_rev" : "998426201", 
     "_from" : "germanCity/Cologne", 
     "_to" : "frenchCity/Paris", 
     "distance" : 550 
   }, 
   { 
-    "_id" : "internationalHighway/1001744503", 
-    "_key" : "1001744503", 
-    "_rev" : "1001744503", 
+    "_id" : "internationalHighway/997836377", 
+    "_key" : "997836377", 
+    "_rev" : "997836377", 
     "_from" : "germanCity/Hamburg", 
     "_to" : "frenchCity/Paris", 
     "distance" : 900 
