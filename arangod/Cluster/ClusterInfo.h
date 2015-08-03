@@ -869,7 +869,7 @@ namespace triagens {
 /// @brief drop database in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        int dropDatabaseCoordinator (std::string const& name, 
+        int dropDatabaseCoordinator (std::string const& name,
                                      std::string& errorMsg,
                                      double timeout);
 
@@ -881,7 +881,7 @@ namespace triagens {
                                          std::string const& collectionID,
                                          uint64_t numberOfShards,
                                          TRI_json_t const* json,
-                                         std::string& errorMsg, 
+                                         std::string& errorMsg,
                                          double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -995,7 +995,7 @@ namespace triagens {
 /// @brief find the shard that is responsible for a document
 ////////////////////////////////////////////////////////////////////////////////
 
-        int getResponsibleShard (CollectionID const&, 
+        int getResponsibleShard (CollectionID const&,
                                  TRI_json_t const*,
                                  bool docComplete,
                                  ShardID& shardID,
@@ -1058,36 +1058,39 @@ namespace triagens {
         triagens::basics::ReadWriteLock    _lock;
         
         // Cached data from the agency, we reload whenever necessary:
-        std::map<DatabaseID, struct TRI_json_t*> _plannedDatabases;
-              // from Plan/Databases
-        std::map<DatabaseID, std::map<ServerID, struct TRI_json_t*> >
-              _currentDatabases;        // from Current/Databases
-
-        AllCollections                  _collections;
-                                        // from Plan/Collections/
-        bool                            _collectionsValid;
-        AllCollectionsCurrent           _collectionsCurrent;
-                                        // from Current/Collections/
-        bool                            _collectionsCurrentValid;
-        std::unordered_map<ServerID, std::string> _servers;
-                                        // from Current/ServersRegistered
-        bool                            _serversValid;
-        std::unordered_map<ServerID, ServerID> _DBServers;
-                                        // from Current/DBServers
-        bool                            _DBServersValid;
-        std::unordered_map<ServerID, ServerID> _coordinators;
-                                        // from Current/Coordinators
-        bool                            _coordinatorsValid;
-        std::unordered_map<ShardID, ServerID> _shardIds;
-                                        // from Current/Collections/
+        std::map<DatabaseID, struct TRI_json_t*>
+            _plannedDatabases;          // from Plan/Databases
+        AllCollections
+            _collections;               // from Plan/Collections/
+        bool _collectionsValid;
         std::unordered_map<CollectionID,
                            std::shared_ptr<std::vector<std::string>>>
-                                        _shards;
-                                        // from Plan/Collections/
+            _shards;                    // from Plan/Collections/
                                // (may later come from Current/Colletions/ )
-        std::unordered_map<CollectionID, std::shared_ptr<std::vector<std::string>>>
-                                        _shardKeys;
-                                        // from Plan/Collections/
+        std::unordered_map<CollectionID,
+                           std::shared_ptr<std::vector<std::string>>>
+            _shardKeys;                 // from Plan/Collections/
+
+        std::unordered_map<DatabaseID,
+                           std::unordered_map<ServerID, struct TRI_json_t*>>
+            _currentDatabases;          // from Current/Databases
+
+        AllCollectionsCurrent
+            _collectionsCurrent;        // from Current/Collections/
+        bool
+            _collectionsCurrentValid;
+        std::unordered_map<ServerID, std::string>
+            _servers;                   // from Current/ServersRegistered
+        bool
+            _serversValid;
+        std::unordered_map<ServerID, ServerID>
+            _DBServers;                 // from Current/DBServers
+        bool _DBServersValid;
+        std::unordered_map<ServerID, ServerID>
+            _coordinators;              // from Current/Coordinators
+        bool _coordinatorsValid;
+        std::unordered_map<ShardID, ServerID>
+            _shardIds;                  // from Current/Collections/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief uniqid sequence

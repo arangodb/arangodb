@@ -265,8 +265,8 @@ ClusterInfo* ClusterInfo::instance () {
 ClusterInfo::ClusterInfo ()
   : _agency(),
     _plannedDatabases(),
-    _currentDatabases(),
     _collectionsValid(false),
+    _currentDatabases(),
     _serversValid(false),
     _DBServersValid(false),
     _coordinatorsValid(false),
@@ -372,7 +372,8 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID,
 
       if (it != _plannedDatabases.end()) {
         // found the database in Plan
-        std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::const_iterator it2 = _currentDatabases.find(databaseID);
+        // _currentDatabases is a map-type<ServerID, TRI_json_t*>
+        auto it2 = _currentDatabases.find(databaseID);
 
         if (it2 != _currentDatabases.end()) {
           // found the database in Current
@@ -410,10 +411,13 @@ vector<DatabaseID> ClusterInfo::listDatabases (bool reload) {
   READ_LOCKER(_lock);
   const size_t expectedSize = _DBServers.size();
 
-  std::map<DatabaseID, TRI_json_t*>::const_iterator it = _plannedDatabases.begin();
+  // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
+  auto it = _plannedDatabases.begin();
 
   while (it != _plannedDatabases.end()) {
-    std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::const_iterator it2 = _currentDatabases.find((*it).first);
+    // _currentDatabases is:
+    //   a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
+    auto it2 = _currentDatabases.find((*it).first);
 
     if (it2 != _currentDatabases.end()) {
       if ((*it2).second.size() >= expectedSize) {
@@ -451,10 +455,12 @@ void ClusterInfo::clearPlannedDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::clearCurrentDatabases () {
-  std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::iterator it = _currentDatabases.begin();
+  // _currentDatabases is
+  //   a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
+  auto it = _currentDatabases.begin();
 
   while (it != _currentDatabases.end()) {
-    std::map<ServerID, TRI_json_t*>::iterator it2 = (*it).second.begin();
+    auto it2 = (*it).second.begin();
 
     while (it2 != (*it).second.end()) {
       TRI_json_t* json = (*it2).second;
@@ -494,7 +500,8 @@ void ClusterInfo::loadPlannedDatabases () {
     WRITE_LOCKER(_lock);
     clearPlannedDatabases();
 
-    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+    // result._values is a std::map<std::string, AgencyCommResultEntry>
+    auto it = result._values.begin();
 
     while (it != result._values.end()) {
       string const& name = (*it).first;
@@ -551,11 +558,13 @@ void ClusterInfo::loadCurrentDatabases () {
       }
       const std::string database = parts[0];
 
-      std::map<std::string, std::map<ServerID, TRI_json_t*> >::iterator it2 = _currentDatabases.find(database);
+      // _currentDatabases is
+      //   a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
+      auto it2 = _currentDatabases.find(database);
 
       if (it2 == _currentDatabases.end()) {
         // insert an empty list for this database
-        std::map<ServerID, TRI_json_t*> empty;
+        decltype(it2->second) empty;
         it2 = _currentDatabases.insert(std::make_pair(database, empty)).first;
       }
 
