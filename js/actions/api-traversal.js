@@ -104,7 +104,7 @@ function notFound (req, res, code, message) {
 ///     The visitor function can do anything, but its return value is ignored. To
 ///     populate a result, use the *result* variable by reference. Note that the
 ///     *connected* argument is only populated when the *order* attribute is set
-///     to *"preorder-expander"* .
+///     to *"preorder-expander"*.
 ///
 /// - *direction* (optional): direction for traversal
 ///   - *if set*, must be either *"outbound"*, *"inbound"*, or *"any"*
@@ -357,6 +357,25 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
+/// Using a visitor function to return vertex ids only:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorFunc}
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
+///     var url = "/_api/traversal";
+///     var body = '{ "startVertex": "' + a + '", ';
+///         body += '"graphName" : "' + g.__name + '", ';
+///         body += '"direction" : "outbound", ';
+///         body += '"visitor" : "result.visited.vertices.push(vertex._id;"}';
+///
+///     var response = logCurlRequest('POST', url, body);
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     examples.dropGraph("knows_graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// Count all visited nodes and return a list of nodes only:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorCountAndList}
@@ -572,8 +591,7 @@ function post_api_traversal(req, res) {
     // -----------------------------------------
 
     if (json.edgeCollection === undefined) {
-      return badParam(req, res, arangodb.ERROR_GRAPH_NOT_FOUND,
-        "missing graphname");
+      return badParam(req, res, "missing graphname");
     }
     if (typeof json.edgeCollection !== "string") {
       return notFound(req, res, "invalid edgecollection");
