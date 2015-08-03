@@ -25,8 +25,12 @@ def file_content(filepath):
     if "@startDocuBlock" in line[1]:
       _start = line[0]
     if "@endDocuBlock" in line[1]:
-      _end = line[0] + 1
-      comment_indexes.append([_start, _end])
+      try:
+        _end = line[0] + 1
+        comment_indexes.append([_start, _end])
+      except NameError:
+        print "endDocuBlock without previous startDocublock seen while analyzing %s [%s]" %(filepath, line)
+        raise
 
   for index in comment_indexes:
     comments.append(filelines[index[0]: index[1]])

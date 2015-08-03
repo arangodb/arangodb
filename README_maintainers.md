@@ -378,7 +378,15 @@ Heres how its details work:
 OUTPUT and RUN Specialities
 ---------------------------
  - OUTPUT is intended to create samples that the users can cut'n'paste into their arangosh. Its used for javascript api documentation.
-  - it is excuted line by line. If a line is intended to fail (aka throw an exception), you have to specify *// xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)* so the exception will be caught; else the example is marked as broken.
+  - it is excuted line by line. If a line is intended to fail (aka throw an exception),
+    you have to specify *// xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)* so the exception will be caught;
+    else the example is marked as broken.
+    If you need to wrap that line, you may want to make the next line like this to suppress an empty line:
+    
+        /// | someLongStatement()
+        /// ~ // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
+    
+    
  - RUN is intended to be pasted into a unix shell with *cURL* to demonstrate how the REST-HTTP-APIs work. The whole chunk of code is executet at once, and is expected **not to throw**. You should use **assert(condition)** to ensure the result is what you've expected.
 
 Additional Example syntax

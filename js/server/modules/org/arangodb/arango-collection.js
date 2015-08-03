@@ -938,14 +938,14 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// @startDocuBlock collectionEnsureCapConstraint
 /// `collection.ensureCapConstraint(size, byteSize)`
 ///
-/// Creates a size restriction aka cap for the collection of *size*
-/// documents and/or *byteSize* data size. If the restriction is in place
-/// and the (*size* plus one) document is added to the collection, or the
-/// total active data size in the collection exceeds *byteSize*, then the
+/// Creates a size restriction aka cap for the collection of `size`
+/// documents and/or `byteSize` data size. If the restriction is in place
+/// and the (`size` plus one) document is added to the collection, or the
+/// total active data size in the collection exceeds `byteSize`, then the
 /// least recently created or updated documents are removed until all
 /// constraints are satisfied.
 ///
-/// It is allowed to specify either *size* or *byteSize*, or both at
+/// It is allowed to specify either `size` or `byteSize`, or both at
 /// the same time. If both are specified, then the automatic document removal
 /// will be triggered by the first non-met constraint.
 ///
@@ -961,7 +961,14 @@ ArangoCollection.prototype.updateByExample = function (example,
 ///
 /// Restrict the number of document to at most 10 documents:
 ///
-/// @verbinclude ensure-cap-constraint
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionEnsureCapConstraint}
+/// ~db._create('examples');
+///  db.examples.ensureCapConstraint(10);
+///  for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
+///  db.examples.count();
+/// ~db._drop('examples');
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -978,34 +985,52 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a unique skiplist index exists
 /// @startDocuBlock ensureUniqueSkiplist
-/// `ensureUniqueSkiplist(attribute*1*, attribute*2*, ..., attribute*n*, options)`
+/// `collection.ensureUniqueSkiplist(field1, field2, ..., fieldn)`
 ///
-/// Creates a unique skiplist index on all documents using *attribute1*,
-/// *attribute2*, ... as attribute paths. At least one attribute path must be given.
+/// Creates a unique skiplist index on all documents using *field1*, *field2*, ...
+/// as attribute paths. At least one attribute path must be given. The index will
+///  be non-sparse by default.
 ///
 /// All documents in the collection must differ in terms of the indexed 
 /// attributes. Creating a new document or updating an existing document will
 /// will fail if the attribute uniqueness is violated. 
 ///
-/// Additional index options can be specified in the *options* argument. If
-/// set, it must be an object. Currently the following index options are
-/// supported:
-///
-/// - *sparse*: controls if the index is sparse. The default is *false*.
-///
+/// To create a sparse index, use the following command:
+/// 
+/// `collection.ensureUniqueSkiplist(field1, field2, ..., fieldn, { sparse: true })`
+/// 
 /// In a sparse index all documents will be excluded from the index that do not 
 /// contain at least one of the specified index attributes or that have a value 
-/// of *null* in any of the specified index attributes. Such documents will
+/// of `null` in any of the specified index attributes. Such documents will
 /// not be indexed, and not be taken into account for uniqueness checks.
 ///
 /// In a non-sparse index, these documents will be indexed (for non-present
-/// indexed attributes, a value of *null* will be used) and will be taken into
+/// indexed attributes, a value of `null` will be used) and will be taken into
 /// account for uniqueness checks.
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
-/// @verbinclude unique-skiplist
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplist}
+/// ~db._create("ids");
+/// db.ids.ensureUniqueSkiplist("myId");
+/// db.ids.save({ "myId": 123 });
+/// db.ids.save({ "myId": 456 });
+/// db.ids.save({ "myId": 789 });
+/// db.ids.save({ "myId": 123 });  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
+/// ~db._drop("ids");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistMultiColmun}
+/// ~db._create("ids");
+/// db.ids.ensureUniqueSkiplist("name.first", "name.last");
+/// db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
+/// db.ids.save({ "name" : { "first" : "jens", "last": "jensen" }});
+/// db.ids.save({ "name" : { "first" : "hans", "last": "jensen" }});
+/// | db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }}); 
+/// ~ // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
+/// ~db._drop("ids");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1021,10 +1046,11 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a non-unique skiplist index exists
 /// @startDocuBlock ensureSkiplist
-/// `ensureSkiplist(attribute*1*, attribute*2*, ..., attribute*n*, options)`
+/// `collection.ensureSkiplist(field1, field2, ..., fieldn)`
 ///
-/// Creates a non-unique skiplist index on all documents using *attribute1*,
-/// *attribute2*, ... as attribute paths. At least one attribute path must be given.
+/// Creates a non-unique skiplist index on all documents using *field1*, 
+/// *field2*, ... as attribute paths. At least one attribute path must be given.
+/// The index will be non-sparse by default.
 ///
 /// Additional index options can be specified in the *options* argument. If
 /// set, it must be an object. Currently the following index options are
@@ -1042,7 +1068,28 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
-/// @verbinclude multi-skiplist
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureSkiplist}
+/// ~db._create("names");
+/// db.names.ensureSkiplist("first");
+/// db.names.save({ "first" : "Tim" });
+/// db.names.save({ "first" : "Tom" });
+/// db.names.save({ "first" : "John" });
+/// db.names.save({ "first" : "Tim" });
+/// db.names.save({ "first" : "Tom" });
+/// ~db._drop("names");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Note that in addition to the two specialized index creation methods, there
+/// is also the general method `collection.ensureIndex`, which can be used to
+/// create indexes of any type and also supports uniqueness and sparsity:
+/// 
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureSparseSkiplist}
+/// ~db._create("test");
+/// db.test.ensureIndex({ type: "skiplist", fields: [ "a" ], sparse: true });
+/// db.test.ensureIndex({ type: "skiplist", fields: [ "a", "b" ], unique: true });
+/// ~db._drop("test");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
