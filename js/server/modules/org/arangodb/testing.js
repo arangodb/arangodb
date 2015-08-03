@@ -1504,6 +1504,8 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
     "server.username": options.username,
     "server.password": options.password,
     "server.endpoint": instanceInfo.endpoint,
+    //"server.request-timeout": 1200 // default now. 
+    "server.connect-timeout": 10 // 5s default
   };
 
   args = _.extend(args, cmds);
