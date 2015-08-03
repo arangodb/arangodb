@@ -302,25 +302,23 @@ bool RestDocumentHandler::createDocument () {
 
   bool const waitForSync = extractWaitForSync();
 
-  TRI_json_t* json = parseJsonBody();
+  std::unique_ptr<TRI_json_t> json(parseJsonBody());
 
   if (json == nullptr) {
     return false;
   }
 
   if (json->_type != TRI_JSON_OBJECT) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
-    return createDocumentCoordinator(collection, waitForSync, json);
+    return createDocumentCoordinator(collection, waitForSync, json.release());
   }
 
   if (! checkCreateCollection(collection, getCollectionType())) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -334,14 +332,12 @@ bool RestDocumentHandler::createDocument () {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, res);
     return false;
   }
 
   if (trx.documentCollection()->_info._type != TRI_COL_TYPE_DOCUMENT) {
     // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT collection
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
@@ -349,10 +345,8 @@ bool RestDocumentHandler::createDocument () {
   TRI_voc_cid_t const cid = trx.cid();
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx.createDocument(&mptr, json, waitForSync);
+  res = trx.createDocument(&mptr, json.get(), waitForSync);
   res = trx.finish(res);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // .............................................................................
   // outside write transaction

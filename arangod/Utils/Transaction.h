@@ -593,7 +593,7 @@ namespace triagens {
                     void const* data,
                     bool forceSync) {
 
-          TRI_voc_key_t key = 0;
+          TRI_voc_key_t key = nullptr;
           int res = DocumentHelper::getKey(json, &key);
 
           if (res != TRI_ERROR_NO_ERROR) {
