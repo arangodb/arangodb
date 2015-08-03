@@ -1058,8 +1058,9 @@ namespace triagens {
         triagens::basics::ReadWriteLock    _lock;
         
         // Cached data from the agency, we reload whenever necessary:
-        std::map<DatabaseID, struct TRI_json_t*>
+        std::unordered_map<DatabaseID, struct TRI_json_t*>
             _plannedDatabases;          // from Plan/Databases
+
         AllCollections
             _collections;               // from Plan/Collections/
         bool _collectionsValid;
