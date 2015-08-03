@@ -227,7 +227,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the maximal journal size
+/// @brief returns the number of buckets for indexes
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t indexBuckets () const {
@@ -704,13 +704,15 @@ namespace triagens {
     class ClusterInfo {
       private:
 
-        typedef std::map<CollectionID, std::shared_ptr<CollectionInfo> >
+        typedef std::unordered_map<CollectionID,
+                                   std::shared_ptr<CollectionInfo> >
                 DatabaseCollections;
-        typedef std::map<DatabaseID, DatabaseCollections>
+        typedef std::unordered_map<DatabaseID, DatabaseCollections>
                 AllCollections;
-        typedef std::map<CollectionID, std::shared_ptr<CollectionInfoCurrent> >
+        typedef std::unordered_map<CollectionID,
+                                   std::shared_ptr<CollectionInfoCurrent> >
                 DatabaseCollectionsCurrent;
-        typedef std::map<DatabaseID, DatabaseCollectionsCurrent>
+        typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent>
                 AllCollectionsCurrent;
 
 // -----------------------------------------------------------------------------
@@ -1067,22 +1069,23 @@ namespace triagens {
         AllCollectionsCurrent           _collectionsCurrent;
                                         // from Current/Collections/
         bool                            _collectionsCurrentValid;
-        std::map<ServerID, std::string> _servers;
+        std::unordered_map<ServerID, std::string> _servers;
                                         // from Current/ServersRegistered
         bool                            _serversValid;
-        std::map<ServerID, ServerID>    _DBServers;
+        std::unordered_map<ServerID, ServerID> _DBServers;
                                         // from Current/DBServers
         bool                            _DBServersValid;
-        std::map<ServerID, ServerID>    _coordinators;
+        std::unordered_map<ServerID, ServerID> _coordinators;
                                         // from Current/Coordinators
         bool                            _coordinatorsValid;
-        std::map<ShardID, ServerID>     _shardIds;
+        std::unordered_map<ShardID, ServerID> _shardIds;
                                         // from Current/Collections/
-        std::map<CollectionID, std::shared_ptr<std::vector<std::string>>>
+        std::unordered_map<CollectionID,
+                           std::shared_ptr<std::vector<std::string>>>
                                         _shards;
                                         // from Plan/Collections/
                                // (may later come from Current/Colletions/ )
-        std::map<CollectionID, std::shared_ptr<std::vector<std::string>>>
+        std::unordered_map<CollectionID, std::shared_ptr<std::vector<std::string>>>
                                         _shardKeys;
                                         // from Plan/Collections/
 
