@@ -98,6 +98,9 @@ namespace triagens {
         int insert (struct TRI_doc_mptr_t const*, bool) override final;
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        
+        int batchInsert (std::vector<struct TRI_doc_mptr_t const*> const*,
+                         size_t) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges using the index, restarting at the edge pointed at
@@ -110,6 +113,10 @@ namespace triagens {
                      size_t);
 
         int sizeHint (size_t) override final;
+        
+        bool hasBatchInsert () const override final {
+          return true;
+        }
 
         TRI_EdgeIndexHash_t* from () {
           return _edgesFrom;
