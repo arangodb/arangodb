@@ -521,6 +521,7 @@ static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
 static int CreateHeader (TRI_document_collection_t* document,
                          TRI_doc_document_key_marker_t const* marker,
                          TRI_voc_fid_t fid,
+                         TRI_voc_key_t key,
                          TRI_doc_mptr_t** result) {
   size_t markerSize = (size_t) marker->base._size;
   TRI_ASSERT(markerSize > 0);
@@ -537,7 +538,7 @@ static int CreateHeader (TRI_document_collection_t* document,
   header->_rid     = marker->_rid;
   header->_fid     = fid;
   header->setDataPtr(marker);  // ONLY IN OPENITERATOR
-  header->_hash    = primaryIndex->calculateHash(TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+  header->_hash    = primaryIndex->calculateHash(key); // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
   *result = header;
 
   return TRI_ERROR_NO_ERROR;
@@ -1260,14 +1261,15 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   auto primaryIndex = document->primaryIndex();
 
   // no primary index lock required here because we are the only ones reading from the index ATM
-  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key));
+  uint64_t slot;
+  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key, slot));
 
   // it is a new entry
   if (found == nullptr) {
     TRI_doc_mptr_t* header;
 
     // get a header
-    int res = CreateHeader(document, (TRI_doc_document_key_marker_t*) marker, operation->_fid, &header);
+    int res = CreateHeader(document, (TRI_doc_document_key_marker_t*) marker, operation->_fid, key, &header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("out of memory");
@@ -1282,7 +1284,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       // we know how many documents there will be, at least approximately...
       // the index was likely already allocated to be big enough for this number of documents
 
-      if (state->_documents % 100 == 0) {
+      if (state->_documents % 128 == 0) {
         // to be on the safe size, we still need to check if the index will burst from time to time
         res = primaryIndex->resize();
       
@@ -1294,9 +1296,9 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
           return res;
         }
       }
-      
+     
       // we can now use an optimized insert method
-      primaryIndex->insertKey(header);
+      primaryIndex->insertKey(header, slot);
     }
     else {
       // use regular insert method
@@ -1311,7 +1313,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       }
     }
 
-    document->_numberDocuments++;
+    ++document->_numberDocuments;
 
     // update the datafile info
     if (state->_dfi != nullptr) {
@@ -1496,15 +1498,11 @@ static int OpenIteratorAddOperation (open_iterator_state_t* state,
   operation._marker = marker;
   operation._fid    = fid;
 
-  int res;
   if (state->_tid == 0) {
-    res = OpenIteratorApplyOperation(state, &operation);
-  }
-  else {
-    res = TRI_PushBackVector(&state->_operations, &operation);
+    return OpenIteratorApplyOperation(state, &operation);
   }
 
-  return res;
+  return TRI_PushBackVector(&state->_operations, &operation);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2928,7 +2926,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   }
 
   TRI_ASSERT(n >= 1);
-    
+   
   std::atomic<int> result(TRI_ERROR_NO_ERROR);
  
   { 
@@ -3189,7 +3187,143 @@ static TRI_json_t* ExtractFields (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises an index with all existing documents
+/// @brief fill an index in batches
+////////////////////////////////////////////////////////////////////////////////
+
+static int FillIndexBatch (TRI_document_collection_t* document,
+                           triagens::arango::Index* idx) {
+  auto indexPool = document->_vocbase->_server->_indexPool;
+  TRI_ASSERT(indexPool != nullptr);
+
+  double start = TRI_microtime();
+  
+  LOG_ACTION("fill-index-batch { collection: %s/%s }, %s, threads: %d, buckets: %d", 
+            document->_vocbase->_name,
+            document->_info._name, 
+            idx->context().c_str(),
+            (int) indexPool->numThreads(),
+            (int) document->_info._indexBuckets);
+
+  // give the index a size hint
+  auto primaryIndex = document->primaryIndex()->internals();
+
+  void** ptr = primaryIndex->_table;
+  void** end = ptr + primaryIndex->_nrAlloc;
+
+  idx->sizeHint(static_cast<size_t>(primaryIndex->_nrUsed));
+
+  // process documents a million at a time
+  size_t blockSize = 1024 * 1024; 
+
+  if (primaryIndex->_nrUsed < blockSize) {
+    blockSize = primaryIndex->_nrUsed;
+  }
+  if (blockSize == 0) {
+    blockSize = 1;
+  }
+    
+  int res = TRI_ERROR_NO_ERROR;
+        
+  std::vector<TRI_doc_mptr_t const*> documents;
+  documents.reserve(blockSize);
+
+  for (;  ptr < end;  ++ptr) {
+    auto mptr = static_cast<TRI_doc_mptr_t const*>(*ptr);
+
+    if (mptr != nullptr) {
+      documents.emplace_back(mptr);
+
+      if (documents.size() == blockSize) {
+        res = idx->batchInsert(&documents, indexPool->numThreads());
+        documents.clear();
+
+        // some error occurred
+        if (res != TRI_ERROR_NO_ERROR) {
+          break;
+        }
+      }
+    }
+  }
+
+  // process the remainder of the documents
+  if (! documents.empty()) {
+    res = idx->batchInsert(&documents, indexPool->numThreads());
+  }
+  
+  LOG_TIMER((TRI_microtime() - start),
+            "fill-index-batch { collection: %s/%s }, %s, threads: %d, buckets: %d", 
+            document->_vocbase->_name,
+            document->_info._name, 
+            idx->context().c_str(),
+            (int) indexPool->numThreads(),
+            (int) document->_info._indexBuckets);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fill an index sequentially
+////////////////////////////////////////////////////////////////////////////////
+
+static int FillIndexSequential (TRI_document_collection_t* document,
+                                triagens::arango::Index* idx) {
+  double start = TRI_microtime();
+  
+  LOG_ACTION("fill-index-sequential { collection: %s/%s }, %s, buckets: %d", 
+            document->_vocbase->_name,
+            document->_info._name, 
+            idx->context().c_str(),
+            (int) document->_info._indexBuckets);
+
+  // give the index a size hint
+  auto primaryIndex = document->primaryIndex()->internals();
+
+  void** ptr = primaryIndex->_table;
+  void** end = ptr + primaryIndex->_nrAlloc;
+  
+  idx->sizeHint(static_cast<size_t>(primaryIndex->_nrUsed));
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  static const int LoopSize = 10000;
+  int counter = 0;
+  int loops = 0;
+#endif
+
+  for (;  ptr < end;  ++ptr) {
+    auto mptr = static_cast<TRI_doc_mptr_t const*>(*ptr);
+
+    if (mptr != nullptr) {
+      int res = idx->insert(mptr, false);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      if (++counter == LoopSize) {
+        counter = 0;
+        ++loops;
+        LOG_TRACE("indexed %llu documents of collection %llu",
+                  (unsigned long long) (LoopSize * loops),
+                  (unsigned long long) document->_info._cid);
+      }
+#endif
+
+    }
+  }
+  
+  LOG_TIMER((TRI_microtime() - start),
+            "fill-index-sequential { collection: %s/%s }, %s, buckets: %d", 
+            document->_vocbase->_name,
+            document->_info._name, 
+            idx->context().c_str(),
+            (int) document->_info._indexBuckets);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes an index with all existing documents
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FillIndex (TRI_document_collection_t* document,
@@ -3199,45 +3333,26 @@ static int FillIndex (TRI_document_collection_t* document,
     return TRI_ERROR_NO_ERROR;
   }
 
-  auto primaryIndex = document->primaryIndex()->internals();
-  void** ptr = primaryIndex->_table;
-  void** end = ptr + primaryIndex->_nrAlloc;
-
   try {
-    // give the index a size hint
-    idx->sizeHint(static_cast<size_t>(primaryIndex->_nrUsed));
+    auto primaryIndex = document->primaryIndex()->internals();
+    auto indexPool = document->_vocbase->_server->_indexPool;
+ 
+    int res;
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    static const int LoopSize = 10000;
-    int counter = 0;
-    int loops = 0;
-#endif
-
-    for (;  ptr < end;  ++ptr) {
-      auto mptr = static_cast<TRI_doc_mptr_t const*>(*ptr);
-
-      if (mptr != nullptr) {
-        int res = idx->insert(mptr, false);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
-        }
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-        if (++counter == LoopSize) {
-          counter = 0;
-          ++loops;
-
-          LOG_TRACE("indexed %llu documents of collection %llu",
-                    (unsigned long long) (LoopSize * loops),
-                    (unsigned long long) document->_info._cid);
-        }
-#endif
-
-      }
+    if (indexPool != nullptr && 
+        idx->hasBatchInsert() && 
+        primaryIndex->_nrUsed > 256 * 1024 &&
+        document->_info._indexBuckets > 1) {
+      // use batch insert if there is an index pool,
+      // the collection has more than one index bucket
+      // and it contains a significant amount of documents
+      res = FillIndexBatch(document, idx);
+    }
+    else {
+      res = FillIndexSequential(document, idx);
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
   catch (triagens::basics::Exception const& ex) {
     return ex.code();

@@ -99,8 +99,26 @@ namespace triagens {
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
 
         void* lookupKey (char const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an element given a key
+/// returns the index position into which a key would belong in the second
+/// parameter. sets position to UINT64_MAX if the position cannot be determined
+////////////////////////////////////////////////////////////////////////////////
+
+        void* lookupKey (char const*, uint64_t&) const;
+
         int insertKey (struct TRI_doc_mptr_t const*, void const**);
         void insertKey (struct TRI_doc_mptr_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a key/element to the index
+/// this is a special, optimized version that receives the target slot index
+/// from a previous lookupKey call
+////////////////////////////////////////////////////////////////////////////////
+
+        void insertKey (struct TRI_doc_mptr_t const*, uint64_t);
+
         void* removeKey (char const*);
 
         int resize (size_t);
