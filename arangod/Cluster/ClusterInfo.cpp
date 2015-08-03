@@ -264,12 +264,12 @@ ClusterInfo* ClusterInfo::instance () {
 
 ClusterInfo::ClusterInfo ()
   : _agency(),
-    _plannedDatabases(),
-    _collectionsValid(false),
-    _currentDatabases(),
     _serversValid(false),
     _DBServersValid(false),
     _coordinatorsValid(false),
+    _plannedDatabases(),
+    _currentDatabases(),
+    _collectionsValid(false),
     _uniqid() {
 
   _uniqid._currentValue = _uniqid._upperValue = 0ULL;
@@ -483,6 +483,7 @@ void ClusterInfo::clearCurrentDatabases () {
 /// @brief (re-)load the information about planned databases
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
+//
 static const std::string prefixPlannedDatabases = "Plan/Databases";
 void ClusterInfo::loadPlannedDatabases () {
 
