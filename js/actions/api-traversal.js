@@ -367,7 +367,7 @@ function notFound (req, res, code, message) {
 ///     var body = '{ "startVertex": "' + a + '", ';
 ///         body += '"graphName" : "' + g.__name + '", ';
 ///         body += '"direction" : "outbound", ';
-///         body += '"visitor" : "result.visited.vertices.push(vertex._id;"}';
+///         body += '"visitor" : "result.visited.vertices.push(vertex._id);"}';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
