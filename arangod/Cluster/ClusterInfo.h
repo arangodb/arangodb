@@ -1058,9 +1058,37 @@ namespace triagens {
         triagens::basics::ReadWriteLock    _lock;
         
         // Cached data from the agency, we reload whenever necessary:
+ 
+        // The servers, first all, we only need Current here:
+        std::unordered_map<ServerID, std::string>
+            _servers;                   // from Current/ServersRegistered
+        bool
+            _serversValid;
+        // The DBServers, also from Current:
+        std::unordered_map<ServerID, ServerID>
+            _DBServers;                 // from Current/DBServers
+        bool _DBServersValid;
+        // The Coordinators, also from Current:
+        std::unordered_map<ServerID, ServerID>
+            _coordinators;              // from Current/Coordinators
+        bool _coordinatorsValid;
+
+        // First the databases, there is Plan and Current information:
         std::unordered_map<DatabaseID, struct TRI_json_t*>
             _plannedDatabases;          // from Plan/Databases
+        std::unordered_map<DatabaseID,
+                           std::unordered_map<ServerID, struct TRI_json_t*>>
+            _currentDatabases;          // from Current/Databases
 
+        // Finally, we need information about collections, again we have
+        // data from Plan and from Current.
+        // The information for _shards and _shardKeys are filled from the 
+        // Plan (since they are fixed for the lifetime of the collection).
+        // _shardIds is filled from Current, since we have to be able to
+        // move shards between servers, and Plan contains who ought to be
+        // responsible and Current contains the actual current responsibility.
+
+        // The Plan state:
         AllCollections
             _collections;               // from Plan/Collections/
         bool _collectionsValid;
@@ -1072,24 +1100,11 @@ namespace triagens {
                            std::shared_ptr<std::vector<std::string>>>
             _shardKeys;                 // from Plan/Collections/
 
-        std::unordered_map<DatabaseID,
-                           std::unordered_map<ServerID, struct TRI_json_t*>>
-            _currentDatabases;          // from Current/Databases
-
+        // The Current state:
         AllCollectionsCurrent
             _collectionsCurrent;        // from Current/Collections/
         bool
             _collectionsCurrentValid;
-        std::unordered_map<ServerID, std::string>
-            _servers;                   // from Current/ServersRegistered
-        bool
-            _serversValid;
-        std::unordered_map<ServerID, ServerID>
-            _DBServers;                 // from Current/DBServers
-        bool _DBServersValid;
-        std::unordered_map<ServerID, ServerID>
-            _coordinators;              // from Current/Coordinators
-        bool _coordinatorsValid;
         std::unordered_map<ShardID, ServerID>
             _shardIds;                  // from Current/Collections/
 
