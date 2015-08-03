@@ -2174,7 +2174,7 @@ void ClusterInfo::loadCurrentDBServers () {
     // Now set the new value:
     {
       WRITE_LOCKER(_DBServersProt.lock);
-      newDBServers.swap(newDBServers);
+      _DBServers.swap(newDBServers);
       _DBServersProt.version++;   // such that others notice our change
       _DBServersProt.isValid = true;  // will never be reset to false
     }
