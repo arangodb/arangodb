@@ -1010,16 +1010,20 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the list of planned databases
+/// @brief actually clears a list of planned databases
 ////////////////////////////////////////////////////////////////////////////////
 
-        void clearPlannedDatabases ();
+        void clearPlannedDatabases (
+               std::unordered_map<DatabaseID, TRI_json_t*>& databases);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the list of current databases
+/// @brief actually clears a list of current databases
 ////////////////////////////////////////////////////////////////////////////////
 
-        void clearCurrentDatabases ();
+        void clearCurrentDatabases (
+               std::unordered_map<DatabaseID, 
+                                  std::unordered_map<ServerID, TRI_json_t*>>&
+               databases);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an operation timeout
@@ -1055,30 +1059,58 @@ namespace triagens {
       private:
 
         AgencyComm                         _agency;
-        triagens::basics::ReadWriteLock    _lock;
         
         // Cached data from the agency, we reload whenever necessary:
  
+        // We group the data, each group has an atomic "valid-flag"
+        // which is used for lazy loading in the beginning. It starts
+        // as false, is set to true at each reload and is never reset
+        // to false in the lifetime of the server. The variable is
+        // atomic to be able to check it without acquiring
+        // the read lock (see below). Flush is just an explicit reload
+        // for all data and is only used in tests.
+        // Furthermore, each group has a mutex that protects against
+        // simultaneously contacting the agency for an update.
+        // In addition, each group has an atomic version number, this is used
+        // to prevent a stampede if multiple threads notice concurrently
+        // that an update from the agency is necessary. Finally, there is
+        // a read/write lock which protects the actual data structure.
+        // We encapsulate this protection in the struct ProtectionData:
+ 
+        struct ProtectionData {
+          std::atomic<bool> isValid;
+          triagens::basics::Mutex mutex;
+          std::atomic<uint64_t> version;
+          triagens::basics::ReadWriteLock lock;
+
+          ProtectionData () : isValid(false), version(0) {
+          }
+        };
+
         // The servers, first all, we only need Current here:
         std::unordered_map<ServerID, std::string>
             _servers;                   // from Current/ServersRegistered
-        bool
-            _serversValid;
+        ProtectionData _serversProt;
+
         // The DBServers, also from Current:
         std::unordered_map<ServerID, ServerID>
             _DBServers;                 // from Current/DBServers
-        bool _DBServersValid;
+        ProtectionData _DBServersProt;
+
         // The Coordinators, also from Current:
         std::unordered_map<ServerID, ServerID>
             _coordinators;              // from Current/Coordinators
-        bool _coordinatorsValid;
+        ProtectionData _coordinatorsProt;
 
         // First the databases, there is Plan and Current information:
         std::unordered_map<DatabaseID, struct TRI_json_t*>
             _plannedDatabases;          // from Plan/Databases
+        ProtectionData _plannedDatabasesProt;
+
         std::unordered_map<DatabaseID,
                            std::unordered_map<ServerID, struct TRI_json_t*>>
             _currentDatabases;          // from Current/Databases
+        ProtectionData _currentDatabasesProt;
 
         // Finally, we need information about collections, again we have
         // data from Plan and from Current.
@@ -1090,8 +1122,8 @@ namespace triagens {
 
         // The Plan state:
         AllCollections
-            _collections;               // from Plan/Collections/
-        bool _collectionsValid;
+            _plannedCollections;               // from Plan/Collections/
+        ProtectionData _plannedCollectionsProt;
         std::unordered_map<CollectionID,
                            std::shared_ptr<std::vector<std::string>>>
             _shards;                    // from Plan/Collections/
@@ -1102,9 +1134,8 @@ namespace triagens {
 
         // The Current state:
         AllCollectionsCurrent
-            _collectionsCurrent;        // from Current/Collections/
-        bool
-            _collectionsCurrentValid;
+            _currentCollections;        // from Current/Collections/
+        ProtectionData _currentCollectionsProt;
         std::unordered_map<ShardID, ServerID>
             _shardIds;                  // from Current/Collections/
 
