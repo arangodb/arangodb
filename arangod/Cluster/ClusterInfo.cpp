@@ -368,7 +368,8 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID,
 
       // look up database by name
 
-      std::map<DatabaseID, TRI_json_t*>::const_iterator it = _plannedDatabases.find(databaseID);
+      // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
+      auto it = _plannedDatabases.find(databaseID);
 
       if (it != _plannedDatabases.end()) {
         // found the database in Plan
@@ -436,7 +437,8 @@ vector<DatabaseID> ClusterInfo::listDatabases (bool reload) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::clearPlannedDatabases () {
-  std::map<DatabaseID, TRI_json_t*>::iterator it = _plannedDatabases.begin();
+  // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
+  auto it = _plannedDatabases.begin();
 
   while (it != _plannedDatabases.end()) {
     TRI_json_t* json = (*it).second;
