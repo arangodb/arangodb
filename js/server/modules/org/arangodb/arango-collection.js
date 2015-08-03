@@ -938,14 +938,14 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// @startDocuBlock collectionEnsureCapConstraint
 /// `collection.ensureCapConstraint(size, byteSize)`
 ///
-/// Creates a size restriction aka cap for the collection of *size*
-/// documents and/or *byteSize* data size. If the restriction is in place
-/// and the (*size* plus one) document is added to the collection, or the
-/// total active data size in the collection exceeds *byteSize*, then the
+/// Creates a size restriction aka cap for the collection of `size`
+/// documents and/or `byteSize` data size. If the restriction is in place
+/// and the (`size` plus one) document is added to the collection, or the
+/// total active data size in the collection exceeds `byteSize`, then the
 /// least recently created or updated documents are removed until all
 /// constraints are satisfied.
 ///
-/// It is allowed to specify either *size* or *byteSize*, or both at
+/// It is allowed to specify either `size` or `byteSize`, or both at
 /// the same time. If both are specified, then the automatic document removal
 /// will be triggered by the first non-met constraint.
 ///
@@ -961,7 +961,14 @@ ArangoCollection.prototype.updateByExample = function (example,
 ///
 /// Restrict the number of document to at most 10 documents:
 ///
-/// @verbinclude ensure-cap-constraint
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionEnsureCapConstraint}
+/// ~db._create('examples');
+///  db.examples.ensureCapConstraint(10);
+///  for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
+///  db.examples.count();
+/// ~db._drop('examples');
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
