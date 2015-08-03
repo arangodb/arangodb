@@ -1190,27 +1190,31 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 /// Creates a geo-spatial index on all documents using *location* as path to
 /// the coordinates. The value of the attribute must be an array with at least two
 /// numeric values. The array must contain the latitude (first value) and the
-/// longitude (second value). All documents which do not have the attribute
-/// path or with value that are not suitable, are ignored.
+/// longitude (second value).
+/// 
+/// All documents, which do not have the attribute path or have a non-conforming
+/// value in it are excluded from the index.
+///
+/// A geo index is implicitly sparse, and there is no way to control its sparsity.
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
 /// `collection.ensureGeoIndex(location, true)`
 ///
-/// As above which the exception, that the order within the array is longitude
+/// As above whith the exception, that the order within the array is longitude
 /// followed by latitude. This corresponds to the format described in
 /// [positions](http://geojson.org/geojson-spec.html)
 ///
 /// `collection.ensureGeoIndex(latitude, longitude)`
 ///
 /// Creates a geo-spatial index on all documents using *latitude* and
-/// *longitude* as paths the latitude and the longitude. The value of the
-/// attribute *latitude* and of the attribute *longitude* must be numeric.
-/// All documents which do not have the attribute paths or which values
-/// are not suitable, are ignored.
+/// *longitude* as paths the latitude and the longitude. The values of the
+/// attributes *latitude* and  *longitude* must be numeric.
+/// All documents, which do not have the attribute paths or 
+/// have non-conforming values in the index attributes are excluded from the index.
 ///
-/// Geo indexes are always sparse, meaning that documents with do not contain
+/// Geo indexes are always sparse, meaning that documents which do not contain
 /// the index attributes or have non-numeric values in the index attributes
 /// will not be indexed.
 ///
@@ -1221,11 +1225,33 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 ///
 /// Create a geo index for an array attribute:
 ///
-/// @verbinclude ensure-geo-index-list
+/// @EXAMPLE_ARANGOSH_OUTPUT{geoIndexCreateForArrayAttribute}
+/// ~db._create("geo")
+///  db.geo.ensureGeoIndex("loc");
+/// | for (i = -90;  i <= 90;  i += 10) {
+/// |     for (j = -180; j <= 180; j += 10) {
+/// |         db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] });
+/// |     }
+///   }	
+/// db.geo.count();
+/// db.geo.near(0, 0).limit(3).toArray();
+/// db.geo.near(0, 0).count();
+/// ~db._drop("geo")
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// Create a geo index for an object attribute:
-///
-/// @verbinclude ensure-geo-index-array
+/// Create a geo index for a hash array attribute:
+/// 
+/// @EXAMPLE_ARANGOSH_OUTPUT{geoIndexCreateForArrayAttribute2}
+/// ~db._create("geo2")
+/// db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
+/// | for (i = -90;  i <= 90;  i += 10) {
+/// |     for (j = -180; j <= 180; j += 10) {
+/// |         db.geo2.save({ name : "Name/" + i + "/" + j, location: { latitude : i, longitude : j } });
+/// |     }
+///   }	
+/// db.geo2.near(0, 0).limit(3).toArray();
+/// ~db._drop("geo2")
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

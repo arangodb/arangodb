@@ -14,15 +14,14 @@ documents which do not fulfill these requirements.
 
 !SECTION Accessing Geo Indexes from the Shell
 
-`collection.ensureGeoIndex(location)`
+<!-- js/server/modules/org/arangodb/arango-collection.js-->
+@startDocuBlock collectionEnsureGeoIndex
 
-Creates a geo-spatial index on all documents using *location* as path 
-to the coordinates. The value of the attribute must be an array with at 
-least two numeric values. The array must contain the latitude (first value) 
-and the longitude (second value). 
+<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+@startDocuBlock collectionGeo
 
-All documents, which do not have the attribute path or have a non-conforming
-value in it are excluded from the index.
+<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+@startDocuBlock collectionNear
 
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock collectionWithin
