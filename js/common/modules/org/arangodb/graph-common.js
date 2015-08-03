@@ -312,7 +312,7 @@ Edge.prototype.getOutVertex = function () {
 /// ~ db._drop("v");
 /// ~ db._drop("e");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPeerVertex = function (vertex) {
@@ -418,7 +418,7 @@ Vertex.prototype.outDegree = function () {
 /// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-get-id
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getId = function () {
@@ -436,7 +436,7 @@ Vertex.prototype.getId = function () {
 /// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-get-property
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getProperty = function (name) {
@@ -454,7 +454,7 @@ Vertex.prototype.getProperty = function (name) {
 /// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-get-property-keys
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getPropertyKeys = function () {
@@ -472,7 +472,7 @@ Vertex.prototype.getPropertyKeys = function () {
 /// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-properties
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
@@ -623,7 +623,7 @@ Graph.prototype.replaceVertex = function (id, data) {
 /// `graph.replaceEdge(peer, peer)`
 ///
 /// Replaces an existing edge by ID
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.replaceEdge = function (id, data) {
