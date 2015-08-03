@@ -89,7 +89,7 @@ LinenoiseShell::~LinenoiseShell() {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::open(bool) {
+bool LinenoiseShell::open (bool) {
   linenoiseHistoryLoad(historyPath().c_str());
 
   _state = STATE_OPENED;
@@ -101,7 +101,7 @@ bool LinenoiseShell::open(bool) {
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::close() {
+bool LinenoiseShell::close () {
   if (_state != STATE_OPENED) {
     // avoid duplicate saving of history
     return true;
@@ -116,7 +116,7 @@ bool LinenoiseShell::close() {
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string LinenoiseShell::historyPath() {
+string LinenoiseShell::historyPath () {
   string path;
 
   // get home directory
@@ -140,7 +140,7 @@ string LinenoiseShell::historyPath() {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LinenoiseShell::addHistory(char const* str) {
+void LinenoiseShell::addHistory (char const* str) {
   if (*str == '\0') {
     return;
   }
@@ -152,13 +152,13 @@ void LinenoiseShell::addHistory(char const* str) {
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::writeHistory() {
+bool LinenoiseShell::writeHistory () {
   linenoiseHistorySave(historyPath().c_str());
 
   return true;
 }
 
-char* LinenoiseShell::getLine(char const* input) {
+char* LinenoiseShell::getLine (char const* input) {
   return linenoise(input);
 }
 
