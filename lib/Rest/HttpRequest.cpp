@@ -520,9 +520,7 @@ void HttpRequest::setHeader (char const* key,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* HttpRequest::toJson (char** errmsg) {
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
-
-  return json;
+  return TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
