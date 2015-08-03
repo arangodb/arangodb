@@ -1042,7 +1042,7 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
   if (this._index === null) {
     var err = new ArangoError();
     err.errorNum = arangodb.ERROR_QUERY_GEO_INDEX_MISSING;
-    err.errorMessage = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    err.errorMessage = require("internal").sprintf(arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message, collection.name());
     throw err;
   }
 };
