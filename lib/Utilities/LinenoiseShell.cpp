@@ -41,17 +41,17 @@ using namespace std;
 using namespace triagens;
 
 namespace {
-  static Completer * COMPLETER;
+  static Completer* COMPLETER;
 
-  static void LinenoiseCompletionGenerator(char const* text, linenoiseCompletions * lc) {
-    vector<string> alternatives;
-
+  static void LinenoiseCompletionGenerator (char const* text, 
+                                            linenoiseCompletions* lc) {
     if (COMPLETER) {
+      std::vector<string> alternatives;
       COMPLETER->getAlternatives(text, alternatives);
       LineEditor::sortAlternatives(alternatives);
 
-      for (vector<string>::const_iterator i = alternatives.begin(); i != alternatives.end(); ++i) {
-        linenoiseAddCompletion(lc, (*i).c_str());
+      for (auto& it : alternatives) {
+        linenoiseAddCompletion(lc, it.c_str());
       }
     }
     lc->multiLine = 1;
@@ -70,14 +70,15 @@ namespace {
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LinenoiseShell::LinenoiseShell(std::string const& history, Completer * completer)
+LinenoiseShell::LinenoiseShell (std::string const& history, 
+                                Completer* completer)
 : ShellImplementation(history, completer) {
   COMPLETER = completer;
   linenoiseSetCompletionCallback(LinenoiseCompletionGenerator);
 }
 
 LinenoiseShell::~LinenoiseShell() {
-  COMPLETER = 0;
+  COMPLETER = nullptr;
 }
 
 // -----------------------------------------------------------------------------
@@ -121,11 +122,11 @@ string LinenoiseShell::historyPath() {
   // get home directory
   char* p = TRI_HomeDirectory();
 
-  if (p != 0) {
+  if (p != nullptr) {
     path.append(p);
     TRI_Free(TRI_CORE_MEM_ZONE, p);
 
-    if (!path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+    if (! path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
       path.push_back(TRI_DIR_SEPARATOR_CHAR);
     }
   }
