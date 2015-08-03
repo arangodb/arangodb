@@ -234,16 +234,7 @@ Edge = function (graph, properties) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock edgeGetId
-///
-/// `edge.getId()`
-///
-/// Returns the identifier of the *edge*.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-id
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/EdgeMethods.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getId = function () {
@@ -251,16 +242,7 @@ Edge.prototype.getId = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock edgeGetLabel
-///
-/// `edge.getLabel()`
-///
-/// Returns the label of the *edge*.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-label
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/EdgeMethods.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getLabel = function () {
@@ -268,16 +250,7 @@ Edge.prototype.getLabel = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock edgeGetProperty
-///
-/// `edge.getProperty(edge)`
-///
-/// Returns the property *edge* an *edge*.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-property
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/EdgeMethods.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getProperty = function (name) {
@@ -285,16 +258,7 @@ Edge.prototype.getProperty = function (name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock edgeGetPropertyKeys
-///
-/// `edge.getPropertyKeys()`
-///
-/// Returns all propety names an *edge*.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-property-keys
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/EdgeMethods.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPropertyKeys = function () {
@@ -302,16 +266,7 @@ Edge.prototype.getPropertyKeys = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock edgeProperties
-///
-/// `edge.properties()`
-///
-/// Returns all properties and their values of an *edge*
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-properties
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/EdgeMethods.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
@@ -319,16 +274,7 @@ Edge.prototype.properties = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock edgeGetInVertex
-///
-/// `edge.getInVertex()`
-///
-/// Returns the vertex at the head of the *edge*.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-in-vertex
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/EdgeMethods.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getInVertex = function () {
@@ -336,16 +282,7 @@ Edge.prototype.getInVertex = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock edgeGetOutVertex
-///
-/// `edge.getOutVertex()`
-///
-/// Returns the vertex at the tail of the *edge*.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-out-vertex
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/EdgeMethods.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getOutVertex = function () {
@@ -353,7 +290,8 @@ Edge.prototype.getOutVertex = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock edgeGetPeerVertex
+/// this is no documentation.
+/// @start Docu Block edgeGetPeerVertex
 ///
 /// `edge*.getPeerVertex(vertex)`
 ///
@@ -429,29 +367,7 @@ Vertex = function (graph, properties) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock vertexAddInEdge
-///
-/// `vertex.addInEdge(peer, id)`
-///
-/// Creates a new edge from *peer* to *peer* and returns the edge
-/// object. The identifier *peer* must be a unique identifier or null.
-///
-/// `peer.addInEdge(peer, peer, label)`
-///
-/// Creates a new edge from *peer* to *peer* with given label and
-/// returns the edge object.
-///
-/// `peer.addInEdge(peer, peer, label, peer)`
-///
-/// Creates a new edge from *peer* to *peer* with given label and
-/// properties defined in *peer*. Returns the edge object.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-add-in-edge
-///
-/// @verbinclude graph-vertex-add-in-edge2
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/VertexMethods.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.addInEdge = function (out, id, label, data) {
@@ -459,31 +375,7 @@ Vertex.prototype.addInEdge = function (out, id, label, data) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock peerAddOutEdge
-///
-/// `peer.addOutEdge(peer)`
-///
-/// Creates a new edge from *peer* to *peer* and returns the edge
-/// object.
-///
-/// `peer.addOutEdge(peer, label)`
-///
-/// Creates a new edge from *peer* to *peer* with given *label* and
-/// returns the edge object.
-///
-/// `peer.addOutEdge(peer, label, peer)`
-///
-/// Creates a new edge from *peer* to *peer* with given *label* and
-/// properties defined in *peer*. Returns the edge object.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-add-out-edge
-///
-/// @verbinclude graph-vertex-add-out-edge2
-///
-/// @verbinclude graph-vertex-add-out-edge3
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/VertexMethods.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.addOutEdge = function (ine, id, label, data) {
@@ -515,7 +407,8 @@ Vertex.prototype.outDegree = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock peerGetId
+/// this is no documentation.
+/// @start Docu Block peerGetId
 ///
 /// `peer.getId()`
 ///
@@ -533,7 +426,8 @@ Vertex.prototype.getId = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock peerGetProperty
+/// this is no documentation.
+/// @start Docu Block peerGetProperty
 ///
 /// `peer.getProperty(edge)`
 ///
@@ -550,7 +444,8 @@ Vertex.prototype.getProperty = function (name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock peerGetPropertyKeys
+/// this is no documentation.
+/// @start Docu Block peerGetPropertyKeys
 ///
 /// `peer.getPropertyKeys()`
 ///
@@ -567,7 +462,8 @@ Vertex.prototype.getPropertyKeys = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock peerproperties
+/// this is no documentation.
+/// @start Docu Block peerproperties
 ///
 /// `peer.properties()`
 ///
@@ -674,38 +570,7 @@ Graph.prototype.getOrAddVertex = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock graphAddEdge
-///
-/// `graph.addEdge(out, in, peer)`
-///
-/// Creates a new edge from *out* to *out* and returns the edge object. The
-/// identifier *peer* must be a unique identifier or null.
-/// out and in can either be vertices or their IDs
-///
-/// `graph.addEdge(out, out, peer, label)`
-///
-/// Creates a new edge from *out* to *out* with *label* and returns the
-/// edge object.
-/// out and in can either be vertices or their IDs
-///
-/// `graph.addEdge(out, out, peer, peer)`
-///
-/// Creates a new edge and returns the edge object. The edge contains the
-/// properties defined in *peer*.
-/// out and in can either be vertices or their IDs
-///
-/// `graph.addEdge(out, out, peer, label, peer)`
-///
-/// Creates a new edge and returns the edge object. The edge has the
-/// label *label* and contains the properties defined in *peer*.
-/// out and in can either be vertices or their IDs
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-add-edge
-///
-/// @verbinclude graph-graph-add-edge2
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/GraphConstructor.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
@@ -731,28 +596,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock graphAddVertex
-///
-/// `graph.addVertex(peer)`
-///
-/// Creates a new vertex and returns the vertex object. The identifier
-/// *peer* must be a unique identifier or null.
-///
-/// `graph.addVertex(peer, peer)`
-///
-/// Creates a new vertex and returns the vertex object. The vertex contains
-/// the properties defined in *peer*.
-///
-/// @EXAMPLES
-///
-/// Without any properties:
-///
-/// @verbinclude graph-graph-add-vertex
-///
-/// With given properties:
-///
-/// @verbinclude graph-graph-add-vertex2
-/// @endDocuBlock
+/// the real docu is in Users/ModuleGraph/GraphConstructor.mdpp
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addVertex = function (id, data, waitForSync) {
@@ -760,6 +604,7 @@ Graph.prototype.addVertex = function (id, data, waitForSync) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// this is no documentation.
 /// @brief replaces an existing vertex by ID
 ///
 /// @FUN{@FA{graph}.replaceVertex(*peer*, *peer*)}
@@ -772,7 +617,8 @@ Graph.prototype.replaceVertex = function (id, data) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock graphReplaceEdge
+/// this is no documentation.
+/// @start DocuBlock graphReplaceEdge
 ///
 /// `graph.replaceEdge(peer, peer)`
 ///
@@ -785,6 +631,7 @@ Graph.prototype.replaceEdge = function (id, data) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// this is no documentation.
 /// @brief returns the number of vertices
 ///
 /// @FUN{@FA{graph}.order()}
@@ -809,6 +656,7 @@ Graph.prototype.size = function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// this is no documentation.
 /// @brief empties the internal cache for Predecessors
 ///
 /// @FUN{@FA{graph}.emptyCachedPredecessors()}
