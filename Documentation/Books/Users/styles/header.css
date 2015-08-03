@@ -1,3 +1,109 @@
+/* Design fix because of the header */
+@import url(https://fonts.googleapis.com/css?family=Roboto:400,500,300,700);
+
+body {
+  overflow: hidden;
+  font-family: Roboto, Helvetica, sans-serif;
+  background: #444444;
+  margin: 10px;
+}
+
+.book .book-header h1 a, .book .book-header h1 a:hover {
+  display: none;
+}
+
+/* GOOGLE START */
+
+.google-search #gsc-iw-id1{
+  border: none !important;
+}
+
+.google-search .gsst_b {
+  position: relative;
+  top: 10px;
+  left: -25px;
+  width: 1px;
+}
+
+.gsst_a .gscb_a {
+  color: #c01a07 !important;
+}
+
+.google-search input {
+  background-color: #fff !important;
+  font-family: Roboto, Helvetica, sans-serif;
+  font-size: 10pt !important;
+  padding-left: 5px !important; 
+  float: right;
+  position: relative;
+  top: 8px;
+  width: 100% !important;
+  height: 30px !important;
+}
+
+.google-search input:active {
+}
+
+.google-search {
+  margin-right: 114px !important;
+  margin-left: 10px !important;
+  float: right !important;
+}
+
+.google-search td, 
+.google-search table, 
+.google-search tr, 
+.google-search th {
+  background-color: #444444 !important;
+}
+
+.google-search .gsc-input-box,
+.google-search .gsc-input-box input {
+  border-radius: 3px !important;
+  width: 200px;
+}
+
+.gsc-branding-text,
+.gsc-branding-img,
+.gsc-user-defined-text {
+  display: none !important;
+}
+
+.google-search .gsc-input-box input {
+  font-size: 16px !important;
+}
+
+.google-search .gsc-search-button {
+  display: none !important;
+}
+
+.google-search .gsc-control-cse {
+  padding: 10px !important;
+}
+
+.google-search > div {
+  float: left !important;
+  width: 200px !important;
+}
+
+/* GOOGLE END */
+
+.book-summary,
+.book-body {
+  margin-top: 48px;
+}
+
+.book-search,
+.toggle-search,
+.facebook-sharing-link {
+  display: none !important;
+}
+
+.book .book-summary ul.summary li.active > a,
+.book .book-summary ul.summary li a:hover {
+  color: #fff !important;
+}
+
 /* Header Hack - to prevent using a custom theme */
 
 /* Disable Search - temp. 
@@ -14,14 +120,9 @@
 #logo {
   display: block;
   float: left;
-  font-family: Roboto, Helvetica, sans-serif;
-  font-weight: 300;
-  /* font-family: 'Kalam', 'Trebuchet MS', sans-serif; */
   color: #fff;
-  /* font-weight: normal; */
   width: 12%;
-  /* font-size: 1.85em; */
-  line-height: 40px; // 80px;
+  line-height: 40px;
 }
 
 #logo img {
@@ -40,14 +141,22 @@
 #header {
   display: block;
   width: 100%;
-  height: 48px; // 80px;
-  background: #444; //4e5f81;
-  -webkit-box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
-  -moz-box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
-  box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+  height: 48px;
+  background: #444;
 }
-.fixed{
-  position: fixed;
+
+#header .socialIcons-googlegroups a img {
+  position: relative;
+  top: 3px;
+}
+
+#header .wrap,
+#header .wrap .clearfix {
+  max-height: 48px;
+}
+
+.absolute{
+  position: absolute;
   z-index: 10;
   right: 0;
   left: 0;
@@ -56,9 +165,8 @@
 
 #navmenu {
   display: block;
-  float: left;
+  float: right;
   margin: 0px;
-  margin-left: 114px;
 }
 
 #navmenu li {
@@ -69,30 +177,28 @@
 #navmenu li a {
   display: block;
   float: left;
-  padding: 0 20px;
-  font-size: 1.2em;
-  line-height: 48px;// 80px;
-  font-weight: bold;
+  padding-left: 10px;
+  padding-right: 10px;
+  line-height: 48px;
+  font-size: 16px;
+  font-weight: 400;
   color: #fff;
   text-decoration: none;
+  font-family: Roboto, Helvetica, sans-serif;
 }
 
 #navmenu li a:hover {
-  background: #80A54D !important;
+  background: #8aa051 !important;
 }
 
 .owntab {
-  background-color:#6a873e;
-}
-
-.socialIcons {
-  margin-left: -15px;
+  background-color: #444444;
 }
 
 .arangodb_version {
   float: left;
   padding: 0 20px;
-  line-height: 40px;// 80px;
+  line-height: 40px;
   font-weight: bold;
   color: #fff;
   text-decoration: none;
@@ -100,11 +206,46 @@
 
 /** simple responsive updates **/
 
+@media screen and (max-width: 1100px) {
+  #logo {
+    position: absolute;
+    left: -100px;
+  }
+
+  .google-search {
+    margin-right: -5px !important;
+  }
+
+  .socialIcons {
+    display: none !important;
+  }
+}
+
 @media screen and (max-width: 770px) {
+  .google-search {
+    margin-right: -5px !important;
+    width: 200px !important;
+  }
+  #navmenu {
+    display: none;
+  }
   #navmenu li a { font-size: 0.8em; padding: 0 15px; }
   #navmenu li a img { width:11px; height:36px; padding-top: 4px; }
-  #logo { width: 10%; }
-  #logo img { width: 80px; margin-top:8px;}
+  #logo { 
+    width: 100px;
+    height: 50px;
+    position: absolute;
+    top: 4px;
+    left: -100px;
+    z-index: 9999; 
+  }
+  #logo img { 
+    width: 100px;
+    margin-top:4px;
+    position: absolute;
+    float: left;
+    left: -10px;
+  }
   .owntab { display: none !important; }
 }
 

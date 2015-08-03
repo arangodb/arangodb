@@ -41,17 +41,17 @@ using namespace std;
 using namespace triagens;
 
 namespace {
-  static Completer * COMPLETER;
+  static Completer* COMPLETER;
 
-  static void LinenoiseCompletionGenerator(char const* text, linenoiseCompletions * lc) {
-    vector<string> alternatives;
-
+  static void LinenoiseCompletionGenerator (char const* text, 
+                                            linenoiseCompletions* lc) {
     if (COMPLETER) {
+      std::vector<string> alternatives;
       COMPLETER->getAlternatives(text, alternatives);
       LineEditor::sortAlternatives(alternatives);
 
-      for (vector<string>::const_iterator i = alternatives.begin(); i != alternatives.end(); ++i) {
-        linenoiseAddCompletion(lc, (*i).c_str());
+      for (auto& it : alternatives) {
+        linenoiseAddCompletion(lc, it.c_str());
       }
     }
     lc->multiLine = 1;
@@ -70,14 +70,15 @@ namespace {
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LinenoiseShell::LinenoiseShell(std::string const& history, Completer * completer)
+LinenoiseShell::LinenoiseShell (std::string const& history, 
+                                Completer* completer)
 : ShellImplementation(history, completer) {
   COMPLETER = completer;
   linenoiseSetCompletionCallback(LinenoiseCompletionGenerator);
 }
 
 LinenoiseShell::~LinenoiseShell() {
-  COMPLETER = 0;
+  COMPLETER = nullptr;
 }
 
 // -----------------------------------------------------------------------------
@@ -88,7 +89,7 @@ LinenoiseShell::~LinenoiseShell() {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::open(bool) {
+bool LinenoiseShell::open (bool) {
   linenoiseHistoryLoad(historyPath().c_str());
 
   _state = STATE_OPENED;
@@ -100,7 +101,7 @@ bool LinenoiseShell::open(bool) {
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::close() {
+bool LinenoiseShell::close () {
   if (_state != STATE_OPENED) {
     // avoid duplicate saving of history
     return true;
@@ -115,17 +116,17 @@ bool LinenoiseShell::close() {
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string LinenoiseShell::historyPath() {
+string LinenoiseShell::historyPath () {
   string path;
 
   // get home directory
   char* p = TRI_HomeDirectory();
 
-  if (p != 0) {
+  if (p != nullptr) {
     path.append(p);
     TRI_Free(TRI_CORE_MEM_ZONE, p);
 
-    if (!path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+    if (! path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
       path.push_back(TRI_DIR_SEPARATOR_CHAR);
     }
   }
@@ -139,7 +140,7 @@ string LinenoiseShell::historyPath() {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LinenoiseShell::addHistory(char const* str) {
+void LinenoiseShell::addHistory (char const* str) {
   if (*str == '\0') {
     return;
   }
@@ -151,13 +152,13 @@ void LinenoiseShell::addHistory(char const* str) {
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::writeHistory() {
+bool LinenoiseShell::writeHistory () {
   linenoiseHistorySave(historyPath().c_str());
 
   return true;
 }
 
-char* LinenoiseShell::getLine(char const* input) {
+char* LinenoiseShell::getLine (char const* input) {
   return linenoise(input);
 }
 
