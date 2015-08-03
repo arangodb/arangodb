@@ -485,10 +485,10 @@ void Query::registerWarning (int code,
   }
 
   if (details == nullptr) {
-    _warnings.emplace_back(std::make_pair(code, TRI_errno_string(code)));
+    _warnings.emplace_back(code, TRI_errno_string(code));
   }
   else {
-    _warnings.emplace_back(std::make_pair(code, details));
+    _warnings.emplace_back(code, details);
   }
 }
 

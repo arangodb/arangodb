@@ -33,9 +33,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/vector.h"
-
-#include "unicode/coll.h"
-#include "unicode/ustring.h"
+#include <unicode/coll.h>
+#include <unicode/regex.h>
+#include <unicode/ustring.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class Utf8Helper
@@ -45,8 +45,8 @@ namespace triagens {
   namespace basics {
 
     class Utf8Helper {
-        Utf8Helper (Utf8Helper const&);
-        Utf8Helper& operator= (Utf8Helper const&);
+        Utf8Helper (Utf8Helper const&) = delete;
+        Utf8Helper& operator= (Utf8Helper const&) = delete;
 
       public:
 
@@ -179,7 +179,31 @@ namespace triagens {
                        size_t maximalWordLength,
                        bool lowerCase);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds a regex matcher for the specified pattern
+////////////////////////////////////////////////////////////////////////////////
+
+        RegexMatcher* buildMatcher (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not value matches a regex
+////////////////////////////////////////////////////////////////////////////////
+    
+        bool matches (RegexMatcher*,
+                      std::string const&,
+                      bool&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not value matches a regex
+////////////////////////////////////////////////////////////////////////////////
+    
+        bool matches (RegexMatcher*,
+                      char const*,
+                      size_t,
+                      bool&);
+
       private:
+
         Collator* _coll;
     };
 
