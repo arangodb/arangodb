@@ -1919,7 +1919,8 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
   while (true) {
     {
       READ_LOCKER(_lock);
-      std::map<ServerID, string>::const_iterator it = _servers.find(serverID);
+      // _servers is a map-type <ServerId, string>
+      auto it = _servers.find(serverID);
 
       if (it != _servers.end()) {
         return (*it).second;
@@ -2145,7 +2146,8 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   while (true) {
     {
       READ_LOCKER(_lock);
-      std::map<ShardID, ServerID>::const_iterator it = _shardIds.find(shardID);
+      // _shardIds is a map-type <ShardId, ServerId>
+      auto it = _shardIds.find(shardID);
 
       if (it != _shardIds.end()) {
         return (*it).second;
@@ -2203,13 +2205,13 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     {
       // Get the sharding keys and the number of shards:
       READ_LOCKER(_lock);
-      map<CollectionID, shared_ptr<vector<string>>>::iterator it
-          = _shards.find(collectionID);
+      // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
+      auto it = _shards.find(collectionID);
 
       if (it != _shards.end()) {
         shards = it->second;
-        map<CollectionID, shared_ptr<vector<string>>>::iterator it2
-            = _shardKeys.find(collectionID);
+        // _shardKeys is a map-type <CollectionID, shared_ptr<vector<string>>>
+        auto it2 = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
           shardKeys = new char const* [shardKeysPtr->size()];
