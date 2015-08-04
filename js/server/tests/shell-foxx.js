@@ -362,7 +362,6 @@ function SetRoutesFoxxControllerSpec () {
 
       app.activateSessions({
         sessionStorage: 'sessions',
-        type: 'cookie',
         cookie: {
           name: 'sid',
           secret: 'secret'
