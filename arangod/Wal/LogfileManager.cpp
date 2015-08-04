@@ -177,6 +177,9 @@ LogfileManager::LogfileManager (TRI_server_t* server,
   if (res != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not compile regex");
   }
+
+  _transactions.reserve(32);
+  _failedTransactions.reserve(32);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
