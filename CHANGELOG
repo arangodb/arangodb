@@ -1,6 +1,20 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* increased default value collection-specific `indexBuckets` value from 1 to 16
+
+  Collections created from 2.7 on will use the new default if not overriden on
+  collection creation or later using `collection.properties({ indexBuckets: ... })`.
+
+  The `indexBuckets` value determines the number of buckets to use when creating
+  an edges index in the collection, and it may be used in future versions of ArangoDB
+  for other index types, too.
+
+* allow parallel processing of multiple buckets when loading edge indexes
+
+  Buckets will be built in parallel if the collection has an `indexBuckets` value
+  greater than 1 and the collection contains a significant amount of documents/edges.
+
 * changed HTTP client to use poll instead of select on Linux and MacOS
 
   This affects the ArangoShell and user-defined JavaScript code running inside 
@@ -17,7 +31,7 @@ v2.7.0 (XXXX-XX-XX)
       FOR doc IN collection
         RETURN DISTINCT doc.status 
 
-* removed `createNamedQueue()` and `addJob()` from org/arangodb/tasks
+* removed `createNamedQueue()` and `addJob()` functions from org/arangodb/tasks
 
 * moved dispatcher to atomic implementation
 
