@@ -274,7 +274,9 @@ void SchedulerLibev::switchAllocator () {
 
 SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
   : Scheduler(concurrency),
-    _backend(backend) {
+    _backend(backend),
+    _loops(nullptr),
+    _wakers(nullptr) {
 
   switchAllocator();
 

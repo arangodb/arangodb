@@ -1,6 +1,15 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* changed HTTP client to use poll instead of select on Linux and MacOS
+
+  This affects the ArangoShell and user-defined JavaScript code running inside 
+  arangod that initiates its own HTTP calls.
+
+  Using poll instead of select allows using arbitrary high file descriptors
+  (bigger than the compiled in FD_SETSIZE). Server connections are still handled using 
+  epoll, which has never been affected by FD_SETSIZE.
+
 * implemented AQL `LIKE` function using ICU regexes
 
 * add `RETURN DISTINCT` for AQL queries to return unique results:
