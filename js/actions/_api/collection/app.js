@@ -231,6 +231,19 @@ function parseBodyForCreateCollection (req, res) {
 ///   - *2*: document collection
 ///   - *3*: edges collection
 ///
+/// - *indexBuckets* (optiona): number of buckets into which indexes using a hash
+///   table are split. The default is 16 and this number has to be a
+///   power of 2 and less than or equal to 1024. 
+///   
+///   For very large collections one should increase this to avoid long pauses 
+///   when the hash table has to be initially built or resized, since buckets 
+///   are resized individually and can be initially built in parallel. For 
+///   example, 64 might be a sensible value for a collection with 100
+///   000 000 documents. Currently, only the edge index respects this
+///   value, but other index types might follow in future ArangoDB versions. 
+///   Changes (see below) are applied when the collection is loaded the next 
+///   time.
+///
 /// - *numberOfShards* (optional, default is *1*): in a cluster, this value
 ///   determines the number of shards to create for the collection. In a single
 ///   server setup, this option is meaningless.
