@@ -35,43 +35,43 @@
 // --SECTION--                                                           imports
 // -----------------------------------------------------------------------------
 
-var R = require("ramda");
-var internal = require("internal");
-var fs = require("fs");
-var joi = require("joi");
-var util = require("util");
-var semver = require("semver");
-var utils = require("org/arangodb/foxx/manager-utils");
-var store = require("org/arangodb/foxx/store");
-var console = require("console");
-var ArangoApp = require("org/arangodb/foxx/arangoApp").ArangoApp;
-var TemplateEngine = require("org/arangodb/foxx/templateEngine").Engine;
-var routeApp = require("org/arangodb/foxx/routing").routeApp;
-var exportApp = require("org/arangodb/foxx/routing").exportApp;
-var invalidateExportCache  = require("org/arangodb/foxx/routing").invalidateExportCache;
-var formatUrl = require('url').format;
-var parseUrl = require('url').parse;
-var arangodb = require("org/arangodb");
-var ArangoError = arangodb.ArangoError;
-var db = arangodb.db;
-var checkParameter = arangodb.checkParameter;
-var errors = arangodb.errors;
-var cluster = require("org/arangodb/cluster");
-var download = require("internal").download;
-var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
-var actions = require("org/arangodb/actions");
-var _ = require("underscore");
+const R = require('ramda');
+const internal = require('internal');
+const fs = require('fs');
+const joi = require('joi');
+const util = require('util');
+const semver = require('semver');
+const utils = require('org/arangodb/foxx/manager-utils');
+const store = require('org/arangodb/foxx/store');
+const deprecated = require('org/arangodb/deprecated');
+const ArangoApp = require('org/arangodb/foxx/arangoApp').ArangoApp;
+const TemplateEngine = require('org/arangodb/foxx/templateEngine').Engine;
+const routeApp = require('org/arangodb/foxx/routing').routeApp;
+const exportApp = require('org/arangodb/foxx/routing').exportApp;
+const invalidateExportCache = require('org/arangodb/foxx/routing').invalidateExportCache;
+const formatUrl = require('url').format;
+const parseUrl = require('url').parse;
+const arangodb = require('org/arangodb');
+const ArangoError = arangodb.ArangoError;
+const db = arangodb.db;
+const checkParameter = arangodb.checkParameter;
+const errors = arangodb.errors;
+const cluster = require('org/arangodb/cluster');
+const download = require('internal').download;
+const executeGlobalContextFunction = require('internal').executeGlobalContextFunction;
+const actions = require('org/arangodb/actions');
+const _ = require('underscore');
 
-var throwDownloadError = arangodb.throwDownloadError;
-var throwFileNotFound = arangodb.throwFileNotFound;
+const throwDownloadError = arangodb.throwDownloadError;
+const throwFileNotFound = arangodb.throwFileNotFound;
 
 // Regular expressions for joi patterns
-var RE_FQPATH = /^\//;
-var RE_EMPTY = /^$/;
-var RE_NOT_FQPATH = /^[^\/]/;
-var RE_NOT_EMPTY = /./;
+const RE_FQPATH = /^\//;
+const RE_EMPTY = /^$/;
+const RE_NOT_FQPATH = /^[^\/]/;
+const RE_NOT_EMPTY = /./;
 
-var manifestSchema = {
+const manifestSchema = {
   assets: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -86,7 +86,7 @@ var manifestSchema = {
       })
     ))
   ),
-  author: joi.string().allow("").default(""),
+  author: joi.string().allow('').default(''),
   configuration: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -96,7 +96,7 @@ var manifestSchema = {
         default: joi.any().optional(),
         type: (
           joi.only(Object.keys(utils.parameterTypes))
-          .default("string")
+          .default('string')
         ),
         description: joi.string().optional(),
         required: joi.boolean().default(true)
@@ -112,13 +112,13 @@ var manifestSchema = {
       .pattern(RE_FQPATH, joi.string().required())
     )
   ),
-  defaultDocument: joi.string().allow("").optional(),
+  defaultDocument: joi.string().allow('').optional(),
   dependencies: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.string().required())
   ),
-  description: joi.string().allow("").default(""),
+  description: joi.string().allow('').default(''),
   engines: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -179,12 +179,12 @@ var manifestSchema = {
 
 var appCache = {};
 var usedSystemMountPoints = [
-  "/_admin/aardvark", // Admin interface.
-  "/_system/cerberus", // Password recovery.
-  "/_api/gharial", // General_Graph API.
-  "/_system/sessions", // Sessions.
-  "/_system/users", // Users.
-  "/_system/simple-auth" // Authentication.
+  '/_admin/aardvark', // Admin interface.
+  '/_system/cerberus', // Password recovery.
+  '/_api/gharial', // General_Graph API.
+  '/_system/sessions', // Sessions.
+  '/_system/users', // Users.
+  '/_system/simple-auth' // Authentication.
 ];
 
 // -----------------------------------------------------------------------------
@@ -195,35 +195,35 @@ var usedSystemMountPoints = [
 /// @brief Searches through a tree of files and returns true for all app roots
 ////////////////////////////////////////////////////////////////////////////////
 
-var filterAppRoots = function(folder) {
+function filterAppRoots(folder) {
   return /[\\\/]APP$/i.test(folder) && !/(APP[\\\/])(.*)APP$/i.test(folder);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Trigger reload routing
 /// Triggers reloading of routes in this as well as all other threads.
 ////////////////////////////////////////////////////////////////////////////////
 
-var reloadRouting = function() {
-  executeGlobalContextFunction("reloadRouting");
+function reloadRouting() {
+  executeGlobalContextFunction('reloadRouting');
   actions.reloadRouting();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Resets the app cache
 ////////////////////////////////////////////////////////////////////////////////
 
-var resetCache = function () {
+function resetCache() {
   appCache = {};
   invalidateExportCache();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup app in cache
 /// Returns either the app or undefined if it is not cached.
 ////////////////////////////////////////////////////////////////////////////////
 
-var lookupApp = function(mount) {
+function lookupApp(mount) {
   var dbname = arangodb.db._name();
   if (!appCache.hasOwnProperty(dbname) || Object.keys(appCache[dbname]).length === 0) {
     refillCaches(dbname);
@@ -235,18 +235,18 @@ var lookupApp = function(mount) {
     }
     throw new ArangoError({
       errorNum: errors.ERROR_APP_NOT_FOUND.code,
-      errorMessage: "App not found at: " + mount
+      errorMessage: 'App not found at: ' + mount
     });
   }
   return appCache[dbname][mount];
-};
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief refills the routing cache
 ////////////////////////////////////////////////////////////////////////////////
 
-var refillCaches = function(dbname) {
+function refillCaches(dbname) {
   var cache = appCache[dbname] = {};
 
   var cursor = utils.getStorage().all();
@@ -261,22 +261,22 @@ var refillCaches = function(dbname) {
   }
 
   return routes;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief routes of an foxx
 ////////////////////////////////////////////////////////////////////////////////
 
-var routes = function(mount) {
+function routes(mount) {
   var app = lookupApp(mount);
   return routeApp(app);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Makes sure all system apps are mounted.
 ////////////////////////////////////////////////////////////////////////////////
 
-var checkMountedSystemApps = function(dbname) {
+function checkMountedSystemApps(dbname) {
   var i, mount;
   var collection = utils.getStorage();
   for (i = 0; i < usedSystemMountPoints.length; ++i) {
@@ -287,9 +287,9 @@ var checkMountedSystemApps = function(dbname) {
       collection.remove(definition._key);
     }
     _scanFoxx(mount, {});
-    executeAppScript("setup", lookupApp(mount));
+    executeAppScript('setup', lookupApp(mount));
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check a manifest for completeness
@@ -297,7 +297,7 @@ var checkMountedSystemApps = function(dbname) {
 /// this implements issue #590: Manifest Lint
 ////////////////////////////////////////////////////////////////////////////////
 
-var checkManifest = function(filename, manifest) {
+function checkManifest(filename, manifest) {
   var validationErrors = [];
 
   Object.keys(manifestSchema).forEach(function (key) {
@@ -331,61 +331,40 @@ var checkManifest = function(filename, manifest) {
 
   if (manifest.engines && manifest.engines.arangodb && !semver.satisfies(internal.version, manifest.engines.arangodb)) {
     console.warn(
-      'Manifest "%s" for app "%s": ArangoDB version %s probably not compatible with expected version %s.',
-      filename,
-      manifest.name,
-      internal.version,
-      manifest.engines.arangodb
+      `Manifest "${filename}" for app "${manifest.name}":`
+      + ` ArangoDB version ${internal.version} probably not compatible`
+      + ` with expected version ${manifest.engines.arangodb}.`
     );
   }
 
-  // TODO Remove in 2.8
-
   if (manifest.setup && manifest.setup !== manifest.scripts.setup) {
-    console.warn(
-      (
-        'Manifest "%s" for app "%s" contains deprecated attribute "setup",'
-        + ' use "scripts.setup" instead.'
-      ),
-      filename,
-      manifest.name
-    );
+    deprecated('2.8', (
+      `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "setup",`
+      + ` use "scripts.setup" instead.`
+    ));
     manifest.scripts.setup = manifest.scripts.setup || manifest.setup;
     delete manifest.setup;
   }
 
   if (manifest.teardown && manifest.teardown !== manifest.scripts.teardown) {
-    console.warn(
-      (
-        'Manifest "%s" for app "%s" contains deprecated attribute "teardown",'
-        + ' use "scripts.teardown" instead.'
-      ),
-      filename,
-      manifest.name
-    );
+    deprecated('2.8', (
+      `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "teardown",`
+      + ` use "scripts.teardown" instead.`
+    ));
     manifest.scripts.teardown = manifest.scripts.teardown || manifest.teardown;
     delete manifest.teardown;
   }
 
   if (manifest.assets) {
-    console.warn(
-      (
-        'Manifest "%s" for app "%s" contains deprecated attribute "assets",'
-        + ' use "files" and an external build tool instead.'
-      ),
-      filename,
-      manifest.name
-    );
+    deprecated('2.8', (
+      `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "assets",`
+      + ` use "files" and an external build tool instead.`
+    ));
   }
 
   Object.keys(manifest).forEach(function (key) {
     if (!manifestSchema[key]) {
-      console.warn(
-        'Manifest "%s" for app "%s": unknown attribute "%s"',
-        filename,
-        manifest.name,
-        key
-      );
+      console.warn(`Manifest "${filename}" for app "${manifest.name}": unknown attribute "${key}"`);
     }
   });
 
@@ -403,7 +382,7 @@ var checkManifest = function(filename, manifest) {
       errorMessage: validationErrors.join('\n')
     });
   }
-};
+}
 
 
 
@@ -412,17 +391,18 @@ var checkManifest = function(filename, manifest) {
 /// All errors are handled including file not found. Returns undefined if manifest is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-var validateManifestFile = function(file) {
+function validateManifestFile(file) {
   var mf, msg;
   if (!fs.exists(file)) {
-    msg = 'Cannot find manifest file "' + file + '"';
+    msg = `Cannot find manifest file "${file}"`;
     console.errorLines(msg);
     throwFileNotFound(msg);
   }
   try {
     mf = JSON.parse(fs.read(file));
   } catch (err) {
-    msg = 'Cannot parse app manifest "' + file + '": ' + String(err.stack || err);
+    let details = String(err.stack || err);
+    msg = `Cannot parse app manifest "${file}": ${details}`;
     console.errorLines(msg);
     throw new ArangoError({
       errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
@@ -432,69 +412,69 @@ var validateManifestFile = function(file) {
   try {
     checkManifest(file, mf);
   } catch (err) {
-    console.errorLines("Manifest file '%s' is invalid:\n%s", file, err.errorMessage);
+    console.errorLines(`Manifest file "${file}" is invalid:\n${err.errorMessage}`);
     if (err.stack) {
       console.errorLines(err.stack);
     }
     throw err;
   }
   return mf;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the mountpoint is reserved for system apps
 ////////////////////////////////////////////////////////////////////////////////
 
-var isSystemMount = function(mount) {
+function isSystemMount(mount) {
   return (/^\/_/).test(mount);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the root path for application. Knows about system apps
 ////////////////////////////////////////////////////////////////////////////////
 
-var computeRootAppPath = function(mount) {
+function computeRootAppPath(mount) {
   if (isSystemMount(mount)) {
     return module.systemAppPath();
   }
   return module.appPath();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transforms a mount point to a sub-path relative to root
 ////////////////////////////////////////////////////////////////////////////////
 
-var transformMountToPath = function(mount) {
-  var list = mount.split("/");
-  list.push("APP");
-  return fs.join.apply(this, list);
-};
+function transformMountToPath(mount) {
+  var list = mount.split('/');
+  list.push('APP');
+  return fs.join.apply(fs, list);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transforms a sub-path to a mount point
 ////////////////////////////////////////////////////////////////////////////////
 
-var transformPathToMount = function(path) {
+function transformPathToMount(path) {
   var list = path.split(fs.pathSeparator);
   list.pop();
-  return "/" + list.join("/");
-};
+  return '/' + list.join('/');
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the application path for mount point
 ////////////////////////////////////////////////////////////////////////////////
 
-var computeAppPath = function(mount) {
+function computeAppPath(mount) {
   var root = computeRootAppPath(mount);
   var mountPath = transformMountToPath(mount);
   return fs.join(root, mountPath);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an app script
 ////////////////////////////////////////////////////////////////////////////////
 
-var executeAppScript = function (scriptName, app, argv) {
+function executeAppScript(scriptName, app, argv) {
   var readableName = utils.getReadableName(scriptName);
   var scripts = app._manifest.scripts;
 
@@ -508,44 +488,41 @@ var executeAppScript = function (scriptName, app, argv) {
       });
     } catch (e) {
       if (!(e.cause || e).statusCode) {
-        console.errorLines(
-          "Running script '" + readableName + "' not possible for mount '%s':\n%s",
-          app._mount,
-          (e.cause || e).stack || String(e.cause || e)
-        );
+        let details = String((e.cause || e).stack || e.cause || e);
+        console.errorLines(`Running script "${readableName}" not possible for mount "${app._mount}":\n${details}`);
       }
       throw e;
     }
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a valid app config for validation purposes
 ////////////////////////////////////////////////////////////////////////////////
 
-var fakeAppConfig = function(path) {
-  var file = fs.join(path, "manifest.json");
+function fakeAppConfig(path) {
+  var file = fs.join(path, 'manifest.json');
   return {
-    id: "__internal",
-    root: "",
+    id: '__internal',
+    root: '',
     path: path,
     options: {},
-    mount: "/internal",
+    mount: '/internal',
     manifest: validateManifestFile(file),
     isSystem: false,
     isDevelopment: false
   };
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the app path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
-var appConfig = function (mount, options, activateDevelopment) {
+function appConfig(mount, options, activateDevelopment) {
   var root = computeRootAppPath(mount);
   var path = transformMountToPath(mount);
 
-  var file = fs.join(root, path, "manifest.json");
+  var file = fs.join(root, path, 'manifest.json');
    return {
     id: mount,
     path: path,
@@ -555,7 +532,7 @@ var appConfig = function (mount, options, activateDevelopment) {
     isSystem: isSystemMount(mount),
     isDevelopment: activateDevelopment || false
   };
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates an app with options and returns it
@@ -563,19 +540,19 @@ var appConfig = function (mount, options, activateDevelopment) {
 /// If the app is valid it will be added into the local app cache.
 ////////////////////////////////////////////////////////////////////////////////
 
-var createApp = function(mount, options, activateDevelopment) {
+function createApp(mount, options, activateDevelopment) {
   var dbname = arangodb.db._name();
   var config = appConfig(mount, options, activateDevelopment);
   var app = new ArangoApp(config);
   appCache[dbname][mount] = app;
   return app;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Distributes zip file to peer coordinators. Only used in cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-var uploadToPeerCoordinators = function(appInfo, coordinators) {
+function uploadToPeerCoordinators(appInfo, coordinators) {
   let coordOptions = {
     coordTransactionID: ArangoClusterInfo.uniqid()
   };
@@ -587,45 +564,45 @@ var uploadToPeerCoordinators = function(appInfo, coordinators) {
     let ctid = ArangoClusterInfo.uniqid();
     mapping[ctid] = coordinators[i];
     coordOptions.clientTransactionID = ctid;
-    ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
-      "/_api/upload", req, httpOptions, coordOptions);
+    ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
+      '/_api/upload', req, httpOptions, coordOptions);
   }
   return {
     results: cluster.wait(coordOptions, coordinators),
     mapping: mapping
   };
-};
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Generates an App with the given options into the targetPath
 ////////////////////////////////////////////////////////////////////////////////
-var installAppFromGenerator = function(targetPath, options) {
+function installAppFromGenerator(targetPath, options) {
   var invalidOptions = [];
   // Set default values:
-  options.name = options.name || "MyApp";
-  options.author = options.author || "Author";
-  options.description = options.description || "";
-  options.license = options.license || "Apache 2";
+  options.name = options.name || 'MyApp';
+  options.author = options.author || 'Author';
+  options.description = options.description || '';
+  options.license = options.license || 'Apache 2';
   options.authenticated = options.authenticated || false;
   options.collectionNames = options.collectionNames || [];
-  if (typeof options.name !== "string") {
-    invalidOptions.push("options.name has to be a string.");
+  if (typeof options.name !== 'string') {
+    invalidOptions.push('options.name has to be a string.');
   }
-  if (typeof options.author !== "string") {
-    invalidOptions.push("options.author has to be a string.");
+  if (typeof options.author !== 'string') {
+    invalidOptions.push('options.author has to be a string.');
   }
-  if (typeof options.description !== "string") {
-    invalidOptions.push("options.description has to be a string.");
+  if (typeof options.description !== 'string') {
+    invalidOptions.push('options.description has to be a string.');
   }
-  if (typeof options.license !== "string") {
-    invalidOptions.push("options.license has to be a string.");
+  if (typeof options.license !== 'string') {
+    invalidOptions.push('options.license has to be a string.');
   }
-  if (typeof options.authenticated !== "boolean") {
-    invalidOptions.push("options.authenticated has to be a boolean.");
+  if (typeof options.authenticated !== 'boolean') {
+    invalidOptions.push('options.authenticated has to be a boolean.');
   }
   if (!Array.isArray(options.collectionNames)) {
-    invalidOptions.push("options.collectionNames has to be an array.");
+    invalidOptions.push('options.collectionNames has to be an array.');
   }
   if (invalidOptions.length > 0) {
     console.log(invalidOptions);
@@ -637,7 +614,7 @@ var installAppFromGenerator = function(targetPath, options) {
   options.path = targetPath;
   var engine = new TemplateEngine(options);
   engine.write();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Extracts an app from zip and moves it to temporary path
@@ -645,8 +622,8 @@ var installAppFromGenerator = function(targetPath, options) {
 /// return path to app
 ////////////////////////////////////////////////////////////////////////////////
 
-var extractAppToPath = function (archive, targetPath, noDelete)  {
-  var tempFile = fs.getTempFile("zip", false);
+function extractAppToPath(archive, targetPath, noDelete) {
+  var tempFile = fs.getTempFile('zip', false);
   fs.makeDirectory(tempFile);
   fs.unzipFile(archive, tempFile, false, true);
 
@@ -658,7 +635,7 @@ var extractAppToPath = function (archive, targetPath, noDelete)  {
       fs.remove(archive);
     }
     catch (err1) {
-      arangodb.printf("Cannot remove temporary file '%s'\n", archive);
+      arangodb.printf(`Cannot remove temporary file "${archive}"\n`);
     }
   }
 
@@ -666,16 +643,16 @@ var extractAppToPath = function (archive, targetPath, noDelete)  {
   // locate the manifest file
   // .............................................................................
 
-  var tree = fs.listTree(tempFile).sort(function(a,b) {
+  var tree = fs.listTree(tempFile).sort(function(a, b) {
     return a.length - b.length;
   });
   var found;
-  var mf = "manifest.json";
+  var mf = 'manifest.json';
   var re = /[\/\\\\]manifest\.json$/; // Windows!
   var tf;
   var i;
 
-  for (i = 0; i < tree.length && found === undefined;  ++i) {
+  for (i = 0; i < tree.length && found === undefined; ++i) {
     tf = tree[i];
 
     if (re.test(tf) || tf === mf) {
@@ -684,13 +661,13 @@ var extractAppToPath = function (archive, targetPath, noDelete)  {
   }
 
   if (found === undefined) {
-    throwFileNotFound("Cannot find manifest file in zip file '" + tempFile + "'");
+    throwFileNotFound(`Cannot find manifest file in zip file "${tempFile}"`);
   }
 
   var mp;
 
   if (found === mf) {
-    mp = ".";
+    mp = '.';
   }
   else {
     mp = found.substr(0, found.length - mf.length - 1);
@@ -706,36 +683,37 @@ var extractAppToPath = function (archive, targetPath, noDelete)  {
       fs.removeDirectoryRecursive(tempFile);
     }
     catch (err1) {
-      arangodb.printf("Cannot remove temporary folder '%s'\n Stack: %s", tempFile, err1.stack || String(err1));
+      let details = String(err1.stack || err1);
+      arangodb.printf(`Cannot remove temporary folder "${tempFile}"\n Stack: ${details}`);
     }
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a github repository URL
 ////////////////////////////////////////////////////////////////////////////////
 
-var buildGithubUrl = function (appInfo) {
-  var splitted = appInfo.split(":");
+function buildGithubUrl(appInfo) {
+  var splitted = appInfo.split(':');
   var repository = splitted[1];
   var version = splitted[2];
   if (version === undefined) {
-    version = "master";
+    version = 'master';
   }
 
-  var urlPrefix = require("process").env.FOXX_BASE_URL;
+  var urlPrefix = require('process').env.FOXX_BASE_URL;
   if (urlPrefix === undefined) {
     urlPrefix = 'https://github.com/';
   }
   return urlPrefix + repository + '/archive/' + version + '.zip';
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Downloads an app from remote zip file and copies it to mount path
 ////////////////////////////////////////////////////////////////////////////////
 
-var installAppFromRemote = function(url, targetPath) {
-  var tempFile = fs.getTempFile("downloads", false);
+function installAppFromRemote(url, targetPath) {
+  var tempFile = fs.getTempFile('downloads', false);
   var auth;
 
   var urlObj = parseUrl(url);
@@ -752,34 +730,35 @@ var installAppFromRemote = function(url, targetPath) {
   }
 
   try {
-    var result = download(url, "", {
-      method: "get",
+    var result = download(url, '', {
+      method: 'get',
       followRedirects: true,
       timeout: 30,
       auth: auth
     }, tempFile);
 
     if (result.code < 200 || result.code > 299) {
-      throwDownloadError("Could not download from '" + url + "'");
+      throwDownloadError(`Could not download from "${url}"`);
     }
   }
   catch (err) {
-    throwDownloadError("Could not download from '" + url + "': " + String(err));
+    let details = String(err.stack || err);
+    throwDownloadError(`Could not download from "${url}": ${details}`);
   }
   extractAppToPath(tempFile, targetPath);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Copies an app from local, either zip file or folder, to mount path
 ////////////////////////////////////////////////////////////////////////////////
 
-var installAppFromLocal = function(path, targetPath) {
+function installAppFromLocal(path, targetPath) {
   if (fs.isDirectory(path)) {
     extractAppToPath(utils.zipDirectory(path), targetPath);
   } else {
     extractAppToPath(path, targetPath, true);
   }
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -796,17 +775,17 @@ var installAppFromLocal = function(path, targetPath) {
 /// -
 ////////////////////////////////////////////////////////////////////////////////
 
-var runScript = function (scriptName, mount, options) {
+function runScript(scriptName, mount, options) {
   checkParameter(
-    "runScript(<scriptName>, <mount>, [<options>])",
-    [ [ "Script name", "string" ], [ "Mount path", "string" ] ],
+    'runScript(<scriptName>, <mount>, [<options>])',
+    [ [ 'Script name', 'string' ], [ 'Mount path', 'string' ] ],
     [ scriptName, mount ]
   );
 
   var app = lookupApp(mount);
 
   return executeAppScript(scriptName, app, options) || null;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the app's README.md
@@ -818,23 +797,23 @@ var runScript = function (scriptName, mount, options) {
 /// -
 ////////////////////////////////////////////////////////////////////////////////
 
-var readme = function (mount) {
+function readme(mount) {
   checkParameter(
-    "readme(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'readme(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ]
   );
   let app = lookupApp(mount);
-  let path, readme;
+  let path, readmeText;
 
   path = fs.join(app._root, app._path, 'README.md');
-  readme = fs.exists(path) && fs.read(path);
-  if (!readme) {
+  readmeText = fs.exists(path) && fs.read(path);
+  if (!readmeText) {
     path = fs.join(app._root, app._path, 'README');
-    readme = fs.exists(path) && fs.read(path);
+    readmeText = fs.exists(path) && fs.read(path);
   }
-  return readme || null;
-};
+  return readmeText || null;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a Foxx application's tests
@@ -846,35 +825,35 @@ var readme = function (mount) {
 /// -
 ////////////////////////////////////////////////////////////////////////////////
 
-var runTests = function (mount, options) {
+function runTests(mount, options) {
   checkParameter(
-    "runTests(<mount>, [<options>])",
-    [ [ "Mount path", "string" ] ],
+    'runTests(<mount>, [<options>])',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ]
   );
 
   var app = lookupApp(mount);
   var reporter = options ? options.reporter : null;
   return require('org/arangodb/foxx/mocha').run(app, reporter);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Initializes the appCache and fills it initially for each db.
 ////////////////////////////////////////////////////////////////////////////////
 
-var initCache = function () {
+function initCache() {
   var dbname = arangodb.db._name();
   if (!appCache.hasOwnProperty(dbname)) {
     initializeFoxx();
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Internal scanFoxx function. Check scanFoxx.
 /// Does not check parameters and throws errors.
 ////////////////////////////////////////////////////////////////////////////////
 
-var _scanFoxx = function(mount, options, activateDevelopment) {
+function _scanFoxx(mount, options, activateDevelopment) {
   options = options || { };
   var dbname = arangodb.db._name();
   delete appCache[dbname][mount];
@@ -884,20 +863,19 @@ var _scanFoxx = function(mount, options, activateDevelopment) {
       utils.getStorage().save(app.toJSON());
     }
     catch (err) {
-      if (! options.replace ||
-        err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
+      if (!options.replace || err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
         throw err;
       }
       var old = utils.getStorage().firstExample({ mount: mount });
       if (old === null) {
-        throw new Error("Could not find app for mountpoint '" + mount + "'.");
+        throw new Error(`Could not find app for mountpoint "${mount}"`);
       }
       var manifest = app.toJSON().manifest;
-      utils.getStorage().update(old, { manifest: manifest });
+      utils.getStorage().update(old, {manifest: manifest});
     }
   }
   return app;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Scans the sources of the given mountpoint and publishes the routes
@@ -905,16 +883,16 @@ var _scanFoxx = function(mount, options, activateDevelopment) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var scanFoxx = function(mount, options) {
+function scanFoxx(mount, options) {
   checkParameter(
-    "scanFoxx(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'scanFoxx(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   initCache();
   var app = _scanFoxx(mount, options);
   reloadRouting();
   return app.simpleJSON();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Scans the sources of the given mountpoint and publishes the routes
@@ -922,10 +900,10 @@ var scanFoxx = function(mount, options) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var rescanFoxx = function(mount) {
+function rescanFoxx(mount) {
   checkParameter(
-    "scanFoxx(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'scanFoxx(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
 
   var old = lookupApp(mount);
@@ -935,7 +913,7 @@ var rescanFoxx = function(mount) {
     collections: {
       write: collection.name()
     },
-    action: function() {
+    action() {
       var definition = collection.firstExample({mount: mount});
       if (definition !== null) {
         collection.remove(definition._key);
@@ -943,15 +921,15 @@ var rescanFoxx = function(mount) {
       _scanFoxx(mount, old._options, old._isDevelopment);
     }
   });
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Build app in path
 ////////////////////////////////////////////////////////////////////////////////
 
-var _buildAppInPath = function(appInfo, path, options) {
+function _buildAppInPath(appInfo, path, options) {
   try {
-    if (appInfo === "EMPTY") {
+    if (appInfo === 'EMPTY') {
       // Make Empty app
       installAppFromGenerator(path, options || {});
     } else if (/^GIT:/i.test(appInfo)) {
@@ -970,18 +948,19 @@ var _buildAppInPath = function(appInfo, path, options) {
     try {
       fs.removeDirectoryRecursive(path, true);
     } catch (err) {
+      // noop
     }
     throw e;
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Internal app validation function
 /// Does not check parameters and throws errors.
 ////////////////////////////////////////////////////////////////////////////////
 
-var _validateApp = function(appInfo) {
-  var tempPath = fs.getTempFile("apps", false);
+function _validateApp(appInfo) {
+  var tempPath = fs.getTempFile('apps', false);
   try {
     _buildAppInPath(appInfo, tempPath, {});
     var tmp = new ArangoApp(fakeAppConfig(tempPath));
@@ -994,7 +973,7 @@ var _validateApp = function(appInfo) {
   } finally {
     fs.removeDirectoryRecursive(tempPath, true);
   }
-};
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1002,13 +981,13 @@ var _validateApp = function(appInfo) {
 /// Does not check parameters and throws errors.
 ////////////////////////////////////////////////////////////////////////////////
 
-var _install = function(appInfo, mount, options, runSetup) {
+function _install(appInfo, mount, options, runSetup) {
   var targetPath = computeAppPath(mount, true);
   var app;
   var collection = utils.getStorage();
   options = options || {};
   if (fs.exists(targetPath)) {
-    throw new Error("An app is already installed at this location.");
+    throw new Error('An app is already installed at this location.');
   }
   fs.makeDirectoryRecursive(targetPath);
   // Remove the empty APP folder.
@@ -1022,12 +1001,12 @@ var _install = function(appInfo, mount, options, runSetup) {
       collections: {
         write: collection.name()
       },
-      action: function() {
+      action() {
         app = _scanFoxx(mount, options);
       }
     });
     if (runSetup) {
-      executeAppScript("setup", lookupApp(mount));
+      executeAppScript('setup', lookupApp(mount));
     }
     if (!app.needsConfiguration()) {
       // Validate Routing
@@ -1047,7 +1026,7 @@ var _install = function(appInfo, mount, options, runSetup) {
           collections: {
             write: collection.name()
           },
-          action: function() {
+          action() {
             var definition = collection.firstExample({mount: mount});
             collection.remove(definition._key);
           }
@@ -1073,7 +1052,7 @@ var _install = function(appInfo, mount, options, runSetup) {
     throw e;
   }
   return app;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Installs a new foxx application on the given mount point.
@@ -1081,11 +1060,11 @@ var _install = function(appInfo, mount, options, runSetup) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var install = function(appInfo, mount, options) {
+function install(appInfo, mount, options) {
   checkParameter(
-    "install(<appInfo>, <mount>, [<options>])",
-    [ [ "Install information", "string" ],
-      [ "Mount path", "string" ] ],
+    'install(<appInfo>, <mount>, [<options>])',
+    [ [ 'Install information', 'string' ],
+      [ 'Mount path', 'string' ] ],
     [ appInfo, mount ] );
   utils.validateMount(mount);
   let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(appInfo);
@@ -1111,8 +1090,8 @@ var install = function(appInfo, mount, options) {
         /*jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
         /*jshint -W075:false */
-        ArangoClusterComm.asyncRequest("POST","server:" + mapping[res[i].clientTransactionID], db._name(),
-          "/_admin/foxx/install", JSON.stringify(intReq), httpOptions, coordOptions);
+        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
+          '/_admin/foxx/install', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, coordinators);
     } else {
@@ -1127,22 +1106,22 @@ var install = function(appInfo, mount, options) {
       req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         if (coordinators[i] !== ArangoServerState.id()) {
-          ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
-            "/_admin/foxx/install", req, httpOptions, coordOptions);
+          ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
+            '/_admin/foxx/install', req, httpOptions, coordOptions);
         }
       }
     }
   }
   reloadRouting();
   return app.simpleJSON();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Internal install function. Check install.
 /// Does not check parameters and throws errors.
 ////////////////////////////////////////////////////////////////////////////////
 
-var _uninstall = function(mount, options) {
+function _uninstall(mount, options) {
   var dbname = arangodb.db._name();
   if (!appCache.hasOwnProperty(dbname)) {
     initializeFoxx(options);
@@ -1171,7 +1150,7 @@ var _uninstall = function(mount, options) {
         collections: {
           write: collection.name()
         },
-        action: function() {
+        action() {
           var definition = collection.firstExample({mount: mount});
           collection.remove(definition._key);
         }
@@ -1182,9 +1161,9 @@ var _uninstall = function(mount, options) {
       }
     }
   }
-  if (options.teardown !== false && options.teardown !== "false") {
+  if (options.teardown !== false && options.teardown !== 'false') {
     try {
-      executeAppScript("teardown", app);
+      executeAppScript('teardown', app);
     } catch (e) {
       if (!options.force) {
         throw e;
@@ -1200,17 +1179,17 @@ var _uninstall = function(mount, options) {
   }
   if (options.force && app === undefined) {
     return {
-      simpleJSON: function() {
+      simpleJSON() {
         return {
-          name: "force uninstalled",
-          version: "unknown",
+          name: 'force uninstalled',
+          version: 'unknown',
           mount: mount
         };
       }
     };
   }
   return app;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Uninstalls the foxx application on the given mount point.
@@ -1218,10 +1197,10 @@ var _uninstall = function(mount, options) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var uninstall = function(mount, options) {
+function uninstall(mount, options) {
   checkParameter(
-    "uninstall(<mount>, [<options>])",
-    [ [ "Mount path", "string" ] ],
+    'uninstall(<mount>, [<options>])',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount);
   options = options || {};
@@ -1240,14 +1219,14 @@ var uninstall = function(mount, options) {
     req = JSON.stringify(req);
     for (let i = 0; i < coordinators.length; ++i) {
       if (coordinators[i] !== ArangoServerState.id()) {
-        ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
-          "/_admin/foxx/uninstall", req, httpOptions, coordOptions);
+        ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
+          '/_admin/foxx/uninstall', req, httpOptions, coordOptions);
       }
     }
   }
   reloadRouting();
   return app.simpleJSON();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Replaces a foxx application on the given mount point by an other one.
@@ -1255,11 +1234,11 @@ var uninstall = function(mount, options) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var replace = function(appInfo, mount, options) {
+function replace(appInfo, mount, options) {
   checkParameter(
-    "replace(<appInfo>, <mount>, [<options>])",
-    [ [ "Install information", "string" ],
-      [ "Mount path", "string" ] ],
+    'replace(<appInfo>, <mount>, [<options>])',
+    [ [ 'Install information', 'string' ],
+      [ 'Mount path', 'string' ] ],
     [ appInfo, mount ] );
   utils.validateMount(mount);
   _validateApp(appInfo);
@@ -1285,8 +1264,8 @@ var replace = function(appInfo, mount, options) {
         /*jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
         /*jshint -W075:false */
-        ArangoClusterComm.asyncRequest("POST","server:" + mapping[res[i].coordinatorTransactionID], db._name(),
-          "/_admin/foxx/replace", JSON.stringify(intReq), httpOptions, coordOptions);
+        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
+          '/_admin/foxx/replace', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, coordinators);
     } else {
@@ -1302,8 +1281,8 @@ var replace = function(appInfo, mount, options) {
       req.options.force = true;
       req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
-        ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
-          "/_admin/foxx/replace", req, httpOptions, coordOptions);
+        ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
+          '/_admin/foxx/replace', req, httpOptions, coordOptions);
       }
     }
   }
@@ -1314,7 +1293,7 @@ var replace = function(appInfo, mount, options) {
   var app = _install(appInfo, mount, options, true);
   reloadRouting();
   return app.simpleJSON();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Upgrade a foxx application on the given mount point by a new one.
@@ -1322,11 +1301,11 @@ var replace = function(appInfo, mount, options) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var upgrade = function(appInfo, mount, options) {
+function upgrade(appInfo, mount, options) {
   checkParameter(
-    "upgrade(<appInfo>, <mount>, [<options>])",
-    [ [ "Install information", "string" ],
-      [ "Mount path", "string" ] ],
+    'upgrade(<appInfo>, <mount>, [<options>])',
+    [ [ 'Install information', 'string' ],
+      [ 'Mount path', 'string' ] ],
     [ appInfo, mount ] );
   utils.validateMount(mount);
   _validateApp(appInfo);
@@ -1352,8 +1331,8 @@ var upgrade = function(appInfo, mount, options) {
         /*jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
         /*jshint -W075:false */
-        ArangoClusterComm.asyncRequest("POST","server:" + mapping[res[i].coordinatorTransactionID], db._name(),
-          "/_admin/foxx/update", JSON.stringify(intReq), httpOptions, coordOptions);
+        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
+          '/_admin/foxx/update', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, coordinators);
     } else {
@@ -1369,8 +1348,8 @@ var upgrade = function(appInfo, mount, options) {
       req.options.force = true;
       req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
-        ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
-          "/_admin/foxx/update", req, httpOptions, coordOptions);
+        ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
+          '/_admin/foxx/update', req, httpOptions, coordOptions);
       }
     }
   }
@@ -1396,77 +1375,77 @@ var upgrade = function(appInfo, mount, options) {
   var app = _install(appInfo, mount, options, true);
   reloadRouting();
   return app.simpleJSON();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the Foxx apps
 ////////////////////////////////////////////////////////////////////////////////
 
-var initializeFoxx = function(options) {
+function initializeFoxx(options) {
   var dbname = arangodb.db._name();
   var mounts = syncWithFolder(options);
   refillCaches(dbname);
   checkMountedSystemApps(dbname);
   mounts.forEach(function (mount) {
-    executeAppScript("setup", lookupApp(mount));
+    executeAppScript('setup', lookupApp(mount));
   });
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute all app routes
 ////////////////////////////////////////////////////////////////////////////////
 
-var mountPoints = function() {
+function mountPoints() {
   var dbname = arangodb.db._name();
   return refillCaches(dbname);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toggles development mode of app and reloads routing
 ////////////////////////////////////////////////////////////////////////////////
 
-var _toggleDevelopment = function(mount, activate) {
+function _toggleDevelopment(mount, activate) {
   var app = lookupApp(mount);
   app.development(activate);
   utils.updateApp(mount, app.toJSON());
   reloadRouting();
   return app;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief activate development mode
 ////////////////////////////////////////////////////////////////////////////////
 
-var setDevelopment = function(mount) {
+function setDevelopment(mount) {
   checkParameter(
-    "development(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'development(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   var app = _toggleDevelopment(mount, true);
   return app.simpleJSON();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief activate production mode
 ////////////////////////////////////////////////////////////////////////////////
 
-var setProduction = function(mount) {
+function setProduction(mount) {
   checkParameter(
-    "production(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'production(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   var app = _toggleDevelopment(mount, false);
   return app.simpleJSON();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Configure the app at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var configure = function(mount, options) {
+function configure(mount, options) {
   checkParameter(
-    "configure(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'configure(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
   var app = lookupApp(mount);
@@ -1478,16 +1457,16 @@ var configure = function(mount, options) {
   utils.updateApp(mount, app.toJSON());
   reloadRouting();
   return app.simpleJSON();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Set up dependencies of the app at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var updateDeps = function(mount, options) {
+function updateDeps(mount, options) {
   checkParameter(
-    "updateDeps(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'updateDeps(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
   var app = lookupApp(mount);
@@ -1499,55 +1478,55 @@ var updateDeps = function(mount, options) {
   utils.updateApp(mount, app.toJSON());
   reloadRouting();
   return app.simpleJSON();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the configuration for the app at the given mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var configuration = function(mount) {
+function configuration(mount) {
   checkParameter(
-    "configuration(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'configuration(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
   var app = lookupApp(mount);
   return app.getConfiguration();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the dependencies for the app at the given mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var dependencies = function(mount) {
+function dependencies(mount) {
   checkParameter(
-    "dependencies(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'dependencies(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
   var app = lookupApp(mount);
   return app.getDependencies();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Require the exports defined on the mount point
 ////////////////////////////////////////////////////////////////////////////////
 
-var requireApp = function(mount) {
+function requireApp(mount) {
   checkParameter(
-    "requireApp(<mount>)",
-    [ [ "Mount path", "string" ] ],
+    'requireApp(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
   var app = lookupApp(mount);
   return exportApp(app);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Syncs the apps in ArangoDB with the applications stored on disc
 ////////////////////////////////////////////////////////////////////////////////
 
-var syncWithFolder = function(options) {
+function syncWithFolder(options) {
   var dbname = arangodb.db._name();
   options = options || {};
   options.replace = true;
@@ -1561,14 +1540,14 @@ var syncWithFolder = function(options) {
       collections: {
         write: collection.name()
       },
-      action: function () {
+      action() {
         mount = transformPathToMount(folder);
         _scanFoxx(mount, options);
       }
     });
     return mount;
   });
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           exports
