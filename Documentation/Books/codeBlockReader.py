@@ -170,7 +170,7 @@ def fetch_comments(dirpath):
 
   for root, directories, files in os.walk(dirpath):
     for filename in files:
-      if filename.endswith(validExtensions):
+      if filename.endswith(validExtensions) and (filename.find("#") < 0):
         filepath = os.path.join(root, filename)
         file_comments = file_content(filepath)
         for comment in file_comments:
