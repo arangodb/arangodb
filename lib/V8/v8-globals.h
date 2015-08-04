@@ -134,7 +134,7 @@ static const uint32_t V8DataSlot = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_PAIR_STRING(name, length)                                \
-  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, (int) length)
+  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, (int) (length))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for current v8 globals and scope

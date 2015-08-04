@@ -242,6 +242,8 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClientConnection::writeClientConnection (void const* buffer, size_t length, size_t* bytesWritten) {
+  TRI_ASSERT(bytesWritten != nullptr);
+
   if (! checkSocket()) {
     return false;
   }

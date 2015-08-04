@@ -2340,15 +2340,21 @@ static int Run (v8::Isolate* isolate, eRunMode runMode, bool promptError) {
 
 class BufferAllocator : public v8::ArrayBuffer::Allocator {
  public:
-  virtual void* Allocate(size_t length) {
+  virtual void* Allocate (size_t length) {
     void* data = AllocateUninitialized(length);
     if (data != nullptr) {
       memset(data, 0, length);
     }
     return data;
   }
-  virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
-  virtual void Free(void* data, size_t) { free(data); }
+  virtual void* AllocateUninitialized (size_t length) { 
+    return malloc(length); 
+  }
+  virtual void Free (void* data, size_t) { 
+    if (data != nullptr) {
+      free(data); 
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -824,20 +824,19 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
               endpoint.c_str(),
               url.c_str());
 
-    Endpoint* ep = Endpoint::clientFactory(endpoint);
+    std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
     if (ep == nullptr) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid URL");
     }
 
-    GeneralClientConnection* connection = GeneralClientConnection::factory(ep, timeout, timeout, 3, 0);
+    std::unique_ptr<GeneralClientConnection> connection(GeneralClientConnection::factory(ep.get(), timeout, timeout, 3, 0));
 
     if (connection == nullptr) {
-      delete ep;
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    SimpleHttpClient* client = new SimpleHttpClient(connection, timeout, false);
+    SimpleHttpClient client(connection.get(), timeout, false);
 
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -847,28 +846,26 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
 
     // send the actual request
-    SimpleHttpResult* response = client->request(method,
-                                                 relative,
-                                                 (body.size() > 0 ? body.c_str() : nullptr),
-                                                 body.size(),
-                                                 headerFields);
+    std::unique_ptr<SimpleHttpResult> response(client.request(method,
+                                                              relative,
+                                                              (body.size() > 0 ? body.c_str() : ""),
+                                                              body.size(),
+                                                              headerFields));
 
     int returnCode = 500; // set a default
     string returnMessage;
 
     if (response == nullptr || ! response->isComplete()) {
       // save error message
-      returnMessage = client->getErrorMessage();
+      returnMessage = client.getErrorMessage();
       returnCode = 500;
-
-      delete client;
 
       if (response != nullptr && response->getHttpReturnCode() > 0) {
         returnCode = response->getHttpReturnCode();
       }
     }
     else {
-      delete client;
+      TRI_ASSERT(response != nullptr);
 
       returnMessage = response->getHttpReturnMessage();
       returnCode = response->getHttpReturnCode();
@@ -877,12 +874,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       if (followRedirects &&
           (returnCode == 301 || returnCode == 302 || returnCode == 307)) {
         bool found;
-        url = response->getHeaderField(string("location"), found);
-
-        delete response;
-        delete connection;
-        connection = nullptr;
-        delete ep;
+        url = response->getHeaderField(std::string("location"), found);
 
         if (! found) {
           TRI_V8_THROW_EXCEPTION_INTERNAL("caught invalid redirect URL");
@@ -923,12 +915,10 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
             if (returnBodyAsBuffer) {
               V8Buffer* buffer = V8Buffer::New(isolate, sb.c_str(), sb.length());
               v8::Local<v8::Object> bufferObject = v8::Local<v8::Object>::New(isolate, buffer->_handle);
-              result->Set(TRI_V8_ASCII_STRING("body"),
-                          bufferObject);
+              result->Set(TRI_V8_ASCII_STRING("body"), bufferObject);
             }
             else {
-              result->Set(TRI_V8_ASCII_STRING("body"),
-                          TRI_V8_STD_STRING(sb));
+              result->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(sb));
             }
           }
         }
@@ -941,14 +931,6 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
     result->Set(TRI_V8_ASCII_STRING("code"),    v8::Number::New(isolate, returnCode));
     result->Set(TRI_V8_ASCII_STRING("message"), TRI_V8_STD_STRING(returnMessage));
 
-    if (response) {
-      delete response;
-    }
-
-    if (connection) {
-      delete connection;
-    }
-    delete ep;
     TRI_V8_RETURN(result);
   }
 
