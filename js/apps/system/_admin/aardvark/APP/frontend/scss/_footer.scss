@@ -93,6 +93,23 @@ div.footer-center {
   color: $c-bar-bg;
   width: 10%;
 
+  i {
+    background-color: $c-white;
+    border-radius: 20px;
+    border: 1px solid rgba(104, 103, 102, 0.1);
+    width: 20px;
+    padding: 6px 3px 6px 2px;
+  }
+
+  i:hover {
+    color: $c-white;
+    background-color: $c-new-grey;
+  }
+
+  p {
+    padding-top: 5px;
+  }
+
   p:hover {
     cursor: pointer;
   }
