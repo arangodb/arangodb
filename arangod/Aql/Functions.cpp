@@ -50,11 +50,25 @@ using CollectionNameResolver = triagens::arango::CollectionNameResolver;
 /// @brief thread-local cache for compiled regexes
 ////////////////////////////////////////////////////////////////////////////////
 
-thread_local std::unordered_map<std::string, RegexMatcher*> RegexCache; 
+thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the regex cache in a thread
+////////////////////////////////////////////////////////////////////////////////
+  
+static void ClearRegexCache () {
+  if (RegexCache != nullptr) {
+    for (auto& it : *RegexCache) {
+      delete it.second;
+    }
+    delete RegexCache; 
+    RegexCache = nullptr;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compile a regex pattern from a string 
@@ -404,12 +418,7 @@ void Functions::InitializeThreadContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Functions::DestroyThreadContext () {
-  if (! RegexCache.empty()) {
-    for (auto& it : RegexCache) {
-      delete it.second;
-    } 
-    RegexCache.clear();
-  }
+  ClearRegexCache();
 }
 
 // -----------------------------------------------------------------------------
@@ -711,23 +720,30 @@ AqlValue Functions::Like (triagens::aql::Query* query,
   size_t const length = buffer.length();
 
   std::string const pattern = std::move(BuildRegexPattern(buffer.c_str(), length, caseInsensitive));
-
-  auto it = RegexCache.find(pattern);
-
   RegexMatcher* matcher = nullptr;
 
-  // check regex cache
-  if (it != RegexCache.end()) {
-    matcher = (*it).second;
+  if (RegexCache != nullptr) {
+    auto it = RegexCache->find(pattern);
+
+    // check regex cache
+    if (it != RegexCache->end()) {
+      matcher = (*it).second;
+    }
   }
-  else {
+
+  if (matcher != nullptr) {
     matcher = triagens::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+
     try {
+      if (RegexCache == nullptr) {
+        RegexCache = new std::unordered_map<std::string, RegexMatcher*>();
+      }
       // insert into cache, no matter if pattern is valid or not
-      RegexCache.emplace(pattern, matcher);
+      RegexCache->emplace(pattern, matcher);
     }
     catch (...) {
       delete matcher;
+      ClearRegexCache();
       throw;
     }
   }
