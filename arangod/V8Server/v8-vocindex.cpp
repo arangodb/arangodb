@@ -1113,6 +1113,8 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 /// new index will be created if none exists with the given description.
 ///
 /// The *index-description* must contain at least a *type* attribute.
+/// Other attributes may be necessary, depending on the index type.
+///
 /// *type* can be one of the following values:
 /// - *hash*: hash index
 /// - *skiplist*: skiplist index
@@ -1121,26 +1123,32 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 /// - *geo2*: geo index, with two attributes
 /// - *cap*: cap constraint
 ///
-/// Other attributes may be necessary, depending on the index type.
+/// *sparse* can be *true* or *false*.
+///
+/// For *hash*, and *skiplist* the sparsity can be controlled, *fulltext* and *geo*
+/// are sparse by definition.
+///
+/// In a sparse index all documents will be excluded from the index that do not 
+/// contain at least one of the specified index attributes or that have a value 
+/// of *null* in any of the specified index attributes. 
+///
+/// In a non-sparse index, these documents will be indexed (for non-present
+/// indexed attributes, a value of *null* will be used).
 ///
 /// Calling this method returns an index object. Whether or not the index
 /// object existed before the call is indicated in the return attribute
 /// *isNewlyCreated*.
 ///
+/// *unique* can be *true* or *false* and is supported by *hash* or *skiplist*
+///
 /// @EXAMPLES
 ///
-/// ```js
-/// arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
-/// {
-///   "id" : "example/30242599562",
-///   "type" : "hash",
-///   "unique" : true,
-///   "fields" : [
-///     "name"
-///    ],
-///   "isNewlyCreated" : true
-/// }
-/// ```
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionEnsureIndex}
+/// ~db._create("test");
+/// db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
+/// db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
+/// ~db._drop("test");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

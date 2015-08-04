@@ -550,7 +550,7 @@ ArangoCollection.prototype.last = function (count) {
 ///
 /// Returns the first document of a collection that matches the specified
 /// example. If no such document exists, *null* will be returned. 
-/// The example must be specified as paths and values.
+/// The example has to be specified as paths and values.
 /// See *byExample* for details.
 ///
 /// `collection.firstExample(path1, value1, ...)`
@@ -988,7 +988,7 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 /// `collection.ensureUniqueSkiplist(field1, field2, ..., fieldn)`
 ///
 /// Creates a unique skiplist index on all documents using *field1*, *field2*, ...
-/// as attribute paths. At least one attribute path must be given. The index will
+/// as attribute paths. At least one attribute path has to be given. The index will
 ///  be non-sparse by default.
 ///
 /// All documents in the collection must differ in terms of the indexed 
@@ -1049,21 +1049,14 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 /// `collection.ensureSkiplist(field1, field2, ..., fieldn)`
 ///
 /// Creates a non-unique skiplist index on all documents using *field1*, 
-/// *field2*, ... as attribute paths. At least one attribute path must be given.
+/// *field2*, ... as attribute paths. At least one attribute path has to be given.
 /// The index will be non-sparse by default.
 ///
 /// Additional index options can be specified in the *options* argument. If
-/// set, it must be an object. Currently the following index options are
+/// set, it has to be an object. Currently the following index options are
 /// supported:
 ///
 /// - *sparse*: controls if the index is sparse. The default is *false*.
-///
-/// In a sparse index all documents will be excluded from the index that do not 
-/// contain at least one of the specified index attributes or that have a value 
-/// of *null* in any of the specified index attributes. 
-///
-/// In a non-sparse index, these documents will be indexed (for non-present
-/// indexed attributes, a value of *null* will be used).
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
@@ -1078,18 +1071,6 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 /// db.names.save({ "first" : "Tom" });
 /// ~db._drop("names");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Note that in addition to the two specialized index creation methods, there
-/// is also the general method `collection.ensureIndex`, which can be used to
-/// create indexes of any type and also supports uniqueness and sparsity:
-/// 
-/// @EXAMPLE_ARANGOSH_OUTPUT{ensureSparseSkiplist}
-/// ~db._create("test");
-/// db.test.ensureIndex({ type: "skiplist", fields: [ "a" ], sparse: true });
-/// db.test.ensureIndex({ type: "skiplist", fields: [ "a", "b" ], unique: true });
-/// ~db._drop("test");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1140,36 +1121,43 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a unique constraint exists
 /// @startDocuBlock ensureUniqueConstraint
-/// `ensureUniqueConstraint(attribute*1*, attribute*2*, ..., attribute*n*, options)`
+/// `collection.ensureUniqueConstraint(field1, field2, ..., fieldn)`
 ///
-/// Creates a unique hash index on all documents using *attribute1*, *attribute2*,
-/// ... as attribute paths. At least one attribute path must be given.
+/// Creates a unique hash index on all documents using *field1*, *field2*,
+/// ... as attribute paths. At least one attribute path has to be given.
+/// The index will be non-sparse by default.
 ///
 /// All documents in the collection must differ in terms of the indexed 
 /// attributes. Creating a new document or updating an existing document will
 /// will fail if the attribute uniqueness is violated. 
 ///
-/// Additional index options can be specified in the *options* argument. If
-/// set, it must be an object. Currently the following index options are
-/// supported:
-///
-/// - *sparse*: controls if the index is sparse. The default is *false*.
-///
+/// To create a sparse index, use the following command:
+/// 
+/// `collection.ensureUniqueConstraint(field1, field2, ..., fieldn, { sparse: true })`
+/// 
+/// In case that the index was successfully created, the index identifier is returned.
+/// 
 /// In a sparse index all documents will be excluded from the index that do not 
 /// contain at least one of the specified index attributes or that have a value 
 /// of *null* in any of the specified index attributes. Such documents will
 /// not be indexed, and not be taken into account for uniqueness checks.
 ///
 /// In a non-sparse index, these documents will be indexed (for non-present
-/// indexed attributes, a value of *null* will be used) and will be taken into
+/// indexed attributes, a value of `null` will be used) and will be taken into
 /// account for uniqueness checks.
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
-/// *Examples*
-///
-/// @verbinclude shell-index-create-unique-constraint
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueConstraint}
+/// ~db._create("test");
+/// db.test.ensureUniqueConstraint("a", "b.c");
+/// db.test.save({ a : 1, b : { c : 1 } });
+/// db.test.save({ a : 1, b : { c : 1 } }); // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
+/// db.test.save({ a : 1, b : { c : null } });
+/// db.test.save({ a : 1 });  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
+/// ~db._drop("test");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1185,16 +1173,15 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a non-unique hash index exists
 /// @startDocuBlock ensureHashIndex
-/// `ensureHashIndex(attribute*1*, attribute*2*, ..., attribute*n*)`
+/// `collection.ensureHashIndex(field1, field2, ..., fieldn)`
 ///
-/// Creates a non-unique hash index on all documents using *attribute1*, *attribute2*,
-/// ... as attribute paths. At least one attribute path must be given.
+/// Creates a non-unique hash index on all documents using  *field1*, *field2*
+/// ... as attribute paths. At least one attribute path has to be given.
+/// The index will be non-sparse by default.
 ///
-/// Additional index options can be specified in the *options* argument. If
-/// set, it must be an object. Currently the following index options are
-/// supported:
+/// To create a sparse index, use the following command:
 ///
-/// - *sparse*: controls if the index is sparse. The default is *false*.
+/// `collection.ensureHashIndex(field1, field2, ..., fieldn, { sparse: true })`
 ///
 /// In a sparse index all documents will be excluded from the index that do not 
 /// contain at least one of the specified index attributes or that have a value 
@@ -1207,9 +1194,14 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
-/// *Examples*
-///
-/// @verbinclude shell-index-create-hash-index
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureHashIndex}
+/// ~db._create("test");
+/// db.test.ensureHashIndex("a");
+/// db.test.save({ a : 1 });
+/// db.test.save({ a : 1 });
+/// db.test.save({ a : null });
+/// ~db._drop("test");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1227,7 +1219,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 /// `collection.ensureGeoIndex(location)`
 ///
 /// Creates a geo-spatial index on all documents using *location* as path to
-/// the coordinates. The value of the attribute must be an array with at least two
+/// the coordinates. The value of the attribute has to be an array with at least two
 /// numeric values. The array must contain the latitude (first value) and the
 /// longitude (second value).
 /// 
@@ -1249,7 +1241,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 ///
 /// Creates a geo-spatial index on all documents using *latitude* and
 /// *longitude* as paths the latitude and the longitude. The values of the
-/// attributes *latitude* and  *longitude* must be numeric.
+/// attributes *latitude* and  *longitude* has to be numeric.
 /// All documents, which do not have the attribute paths or 
 /// have non-conforming values in the index attributes are excluded from the index.
 ///
