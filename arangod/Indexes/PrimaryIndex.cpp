@@ -155,6 +155,41 @@ void* PrimaryIndex::lookupKey (char const* key) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an element given a key
+/// returns the index position into which a key would belong in the second
+/// parameter. sets position to UINT64_MAX if the position cannot be determined
+////////////////////////////////////////////////////////////////////////////////
+
+void* PrimaryIndex::lookupKey (char const* key,
+                               uint64_t& position) const {
+  if (_primaryIndex._nrUsed == 0) {
+    position = UINT64_MAX;
+    return nullptr;
+  }
+
+  // compute the hash
+  uint64_t const hash = calculateHash(key);
+  uint64_t const n = _primaryIndex._nrAlloc;
+  uint64_t i, k;
+
+  i = k = hash % n;
+
+  TRI_ASSERT_EXPENSIVE(n > 0);
+
+  // search the table
+  for (; i < n && _primaryIndex._table[i] != nullptr && IsDifferentHashElement(key, hash, _primaryIndex._table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && _primaryIndex._table[i] != nullptr && IsDifferentHashElement(key, hash, _primaryIndex._table[i]); ++i);
+  }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
+  position = i;
+
+  // return whatever we found
+  return _primaryIndex._table[i];
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the index
 /// returns a status code, and *found will contain a found element (if any)
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,6 +246,37 @@ void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header) {
   uint64_t i, k;
 
   i = k = header->_hash % n;
+
+  for (; i < n && _primaryIndex._table[i] != nullptr && IsDifferentKeyElement(header, _primaryIndex._table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && _primaryIndex._table[i] != nullptr && IsDifferentKeyElement(header, _primaryIndex._table[i]); ++i);
+  }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
+
+  TRI_ASSERT_EXPENSIVE(_primaryIndex._table[i] == nullptr);
+
+  _primaryIndex._table[i] = const_cast<void*>(static_cast<void const*>(header));
+  ++_primaryIndex._nrUsed;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a key/element to the index
+/// this is a special, optimized version that receives the target slot index
+/// from a previous lookupKey call
+////////////////////////////////////////////////////////////////////////////////
+
+void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
+                              uint64_t slot) {
+  uint64_t const n = _primaryIndex._nrAlloc;
+  uint64_t i, k;
+
+  if (slot != UINT64_MAX) {
+    i = k = slot;
+  }
+  else {
+    i = k = header->_hash % n;
+  }
 
   for (; i < n && _primaryIndex._table[i] != nullptr && IsDifferentKeyElement(header, _primaryIndex._table[i]); ++i);
   if (i == n) {

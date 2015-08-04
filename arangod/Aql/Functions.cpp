@@ -46,9 +46,102 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using CollectionNameResolver = triagens::arango::CollectionNameResolver;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief thread-local cache for compiled regexes
+////////////////////////////////////////////////////////////////////////////////
+
+thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache = nullptr;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the regex cache in a thread
+////////////////////////////////////////////////////////////////////////////////
+  
+static void ClearRegexCache () {
+  if (RegexCache != nullptr) {
+    for (auto& it : *RegexCache) {
+      delete it.second;
+    }
+    delete RegexCache; 
+    RegexCache = nullptr;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a regex pattern from a string 
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string BuildRegexPattern (char const* ptr,
+                                      size_t length,
+                                      bool caseInsensitive) {
+  // pattern is always anchored
+  std::string pattern("^");
+  if (caseInsensitive) {
+    pattern.append("(?i)");
+  }
+  
+  bool escaped = false;
+
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i]; 
+
+    if (c == '\\') {
+      if (escaped) {
+        // literal backslash
+        pattern.append("\\\\");
+      }
+      escaped = ! escaped;
+    }
+    else {
+      if (c == '%') {
+        if (escaped) {
+          // literal %
+          pattern.push_back('%');
+        }
+        else {
+          // wildcard
+          pattern.append(".*");
+        }
+      }
+      else if (c == '_') {
+        if (escaped) {
+          // literal underscore
+          pattern.push_back('_');
+        }
+        else {
+          // wildcard character
+          pattern.push_back('.');
+        }
+      }
+      else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
+               c == '{' || c == '}' || c == '^' || c == '$' || c == '|' || 
+               c == '\\' || c == '.') {
+        // character with special meaning in a regex
+        pattern.push_back('\\');
+        pattern.push_back(c);
+      }
+      else {
+        if (escaped) {
+          // found a backslash followed by no special character
+          pattern.append("\\\\");
+        }
+
+        // literal character
+        pattern.push_back(c);
+      }
+
+      escaped = false;
+    }
+  }
+
+  // always anchor the pattern
+  pattern.push_back('$');
+
+  return pattern;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a function parameter from the arguments list
@@ -305,6 +398,27 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
       break;
     }
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      AQL functions public helpers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called before a query starts
+/// has the chance to set up any thread-local storage
+////////////////////////////////////////////////////////////////////////////////
+
+void Functions::InitializeThreadContext () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called when a query ends
+/// its responsibility is to clear any thread-local storage
+////////////////////////////////////////////////////////////////////////////////
+
+void Functions::DestroyThreadContext () {
+  ClearRegexCache();
 }
 
 // -----------------------------------------------------------------------------
@@ -584,6 +698,77 @@ AqlValue Functions::Concat (triagens::aql::Query*,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
   j.release();
   return AqlValue(jr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function LIKE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Like (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  if (parameters.size() < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LIKE", (int) 2, (int) 3);
+  }
+
+  bool const caseInsensitive = GetBooleanParameter(trx, parameters, 2, false);
+  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+
+  // build pattern from parameter #1
+  auto const regex = ExtractFunctionParameter(trx, parameters, 1, false);
+  AppendAsString(buffer, regex.json());
+  size_t const length = buffer.length();
+
+  std::string const pattern = std::move(BuildRegexPattern(buffer.c_str(), length, caseInsensitive));
+  RegexMatcher* matcher = nullptr;
+
+  if (RegexCache != nullptr) {
+    auto it = RegexCache->find(pattern);
+
+    // check regex cache
+    if (it != RegexCache->end()) {
+      matcher = (*it).second;
+    }
+  }
+
+  if (matcher != nullptr) {
+    matcher = triagens::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+
+    try {
+      if (RegexCache == nullptr) {
+        RegexCache = new std::unordered_map<std::string, RegexMatcher*>();
+      }
+      // insert into cache, no matter if pattern is valid or not
+      RegexCache->emplace(pattern, matcher);
+    }
+    catch (...) {
+      delete matcher;
+      ClearRegexCache();
+      throw;
+    }
+  }
+  
+  if (matcher == nullptr) {
+    // compiling regular expression failed
+    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  // extract value
+  buffer.clear();
+  auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
+  AppendAsString(buffer, value.json());
+ 
+  bool error = false;
+  bool const result = triagens::basics::Utf8Helper::DefaultUtf8Helper.matches(matcher, buffer.c_str(), buffer.length(), error);
+
+  if (error) {
+    // compiling regular expression failed
+    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(new Json(Json::Null));
+  }
+        
+  return AqlValue(new Json(result));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

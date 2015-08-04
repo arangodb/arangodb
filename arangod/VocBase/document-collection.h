@@ -179,6 +179,14 @@ struct TRI_doc_mptr_t {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the beginning of the marker, without checking
+////////////////////////////////////////////////////////////////////////////////
+    
+    inline void const* getDataPtrUnchecked () const {
+      return _dataptr;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set the pointer to the beginning of the memory for the marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -226,7 +234,7 @@ struct TRI_doc_mptr_t {
 /// @brief A derived class for copies of master pointers, they
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
+struct TRI_doc_mptr_copy_t final : public TRI_doc_mptr_t {
     TRI_doc_mptr_copy_t () : TRI_doc_mptr_t() {
     }
 
@@ -272,7 +280,7 @@ struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
     // The actual code has an assertion about transactions!
     virtual void const* getDataPtr () const;
 #endif
-
+    
 #ifndef TRI_ENABLE_MAINTAINER_MODE
     inline void setDataPtr (void const* d) {
       _dataptr = d;
