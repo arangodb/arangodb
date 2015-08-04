@@ -1,13 +1,13 @@
 v2.5.7 (2015-08-02)
 -------------------
 
-* V8: Upgrade to version 4.1.0.27 - this is intended to be the stable version.
+* V8: Upgrade to version 4.1.0.27 - this is intended to be the stable V8 version.
 
 
 v2.5.6 (2015-07-21)
 -------------------
 
-* alter windows build infrastructure so we can properly store pdb files.
+* alter Windows build infrastructure so we can properly store pdb files.
 
 * potentially fixed issue #1313: Wrong metric calculation at dashboard
 
