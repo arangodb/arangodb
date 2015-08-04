@@ -277,7 +277,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
     var collections = _.shuffle(self.getNodeCollections()), i;
     for (i = 0; i < collections.length; ++i) {
 
-
       var list = getNRandom(10, collections[i]);
       if (list.length > 0) {
         var counter = 0;
@@ -331,7 +330,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
   };
 
   self.loadNodeFromTreeById = function(nodeId, callback) {
-
     sendQuery(queries.traversal, {
       example: nodeId
     }, function(res) {
