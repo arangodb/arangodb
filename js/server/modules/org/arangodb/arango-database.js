@@ -275,6 +275,26 @@ ArangoDatabase.prototype._truncate = function(name) {
 /// @brief index id regex
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an index
+/// @startDocuBlock IndexVerify
+///
+/// So you've created an index, and since its maintainance isn't for free,
+/// you definitely want to know whether your Query can utilize it.
+///
+/// You can use explain to verify whether **skiplist** or **hash indices** are used:
+/// (if you ommit `colors: false` you will get nice colors on ArangoSH)
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{IndexVerify}
+/// ~db._create("example");
+/// var explain = require("org/arangodb/aql/explainer").explain;
+/// db.example.ensureSkiplist("a", "b");
+/// explain("FOR doc IN example FILTER doc.a < 23 RETURN doc", {colors:false});
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
 ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,15 +304,15 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 ///
 /// Returns the index with *index-handle* or null if no such index exists.
 ///
-/// @EXAMPLES
-///
-/// ```js
-/// arango> db.example.getIndexes().map(function(x) { return x.id; });
-/// ["example/0"]
-/// arango> db._index("example/0");
-/// { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
-/// ```
-///
+/// @EXAMPLE_ARANGOSH_OUTPUT{IndexHandle}
+/// ~db._create("example");
+/// db.example.ensureSkiplist("a", "b");
+/// var indexInfo = db.example.getIndexes().map(function(x) { return x.id; });
+/// indexInfo;
+/// db._index(indexInfo[0])
+/// db._index(indexInfo[1])
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -341,32 +361,22 @@ ArangoDatabase.prototype._index = function(id) {
 ///
 /// Drops the *index*.  If the index does not exist, then *false* is
 /// returned. If the index existed and was dropped, then *true* is
-/// returned. Note that you cannot drop the primary index.
+/// returned.
 ///
 /// `db._dropIndex(index-handle)`
 ///
 /// Drops the index with *index-handle*.
 ///
-/// @EXAMPLES
-///
-/// ```js
-/// arango> db.example.ensureSkiplist("a", "b");
-/// { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
-///
-/// arango> i = db.example.getIndexes();
-/// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
-///  { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
-///
-///  arango> db._dropIndex(i[0]);
-///  false
-///
-///  arango> db._dropIndex(i[1].id);
-/// true
-///
-/// arango> i = db.example.getIndexes();
-/// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
-/// ```
-///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dropIndex}
+/// ~db._create("example");
+/// db.example.ensureSkiplist("a", "b");
+/// var indexInfo = db.example.getIndexes();
+/// indexInfo;
+/// db._dropIndex(indexInfo[0])
+/// db._dropIndex(indexInfo[1].id)
+/// indexInfo = db.example.getIndexes();
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

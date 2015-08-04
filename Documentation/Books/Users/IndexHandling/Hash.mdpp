@@ -16,74 +16,9 @@ of `null`.
 
 !SECTION Accessing Hash Indexes from the Shell
 
-`collection.ensureUniqueConstraint(field1, field2, ..., fieldn)`
+<!-- js/server/modules/org/arangodb/arango-collection.js-->
+@startDocuBlock ensureUniqueConstraint
 
-Creates a unique hash index on all documents using *field1*, *field2*, ... as attribute paths. 
-At least one attribute path must be given. The index will be non-sparse by default.
+<!-- js/server/modules/org/arangodb/arango-collection.js-->
+@startDocuBlock ensureHashIndex
 
-To create a sparse index, use the following command:
-
-`collection.ensureUniqueConstraint(field1, field2, ..., fieldn, { sparse: true })`
-
-In case that the index was successfully created, the index identifier is returned.
-
-*Examples*
-
-```
-arangosh> db.four.ensureUniqueConstraint("a", "b.c");
-{ "id" : "four/1147445", "unique" : true, "type" : "hash", "fields" : ["a", "b.c"], "isNewlyCreated" : true }
-
-arangosh> db.four.save({ a : 1, b : { c : 1 } });
-{ "_id" : "four/1868341", "_key" : "1868341", "_rev" : "1868341" }
-
-arangsh> db.four.save({ a : 1, b : { c : 1 } });
-JavaScript exception in file '(arango)' at 1,9: [ArangoError 1210: cannot save document]
-!db.four.save({ a : 1, b : { c : 1 } });
-!        ^
-stacktrace: [ArangoError 1210: cannot save document]
-at (arango):1:9
-	
-arangosh> db.four.save({ a : 1, b : { c : null } });
-{ "_id" : "four/2196021", "_key" : "2196021", "_rev" : "2196021" }
-
-arangosh> db.four.save({ a : 1 });
-{ "_id" : "four/2196023", "_key" : "2196023", "_rev" : "2196023" }
-```
-
-`collection.ensureHashIndex(field1, field2, ..., fieldn)`
-
-Creates a non-unique hash index on all documents using *field1*, *field2*, ... as attribute paths. 
-At least one attribute path must be given. The index will be non-sparse by default.
-
-To create a sparse index, use the following command:
-
-`collection.ensureHashIndex(field1, field2, ..., fieldn, { sparse: true })`
-
-In case that the index was successfully created, the index identifier is returned.
-
-*Examples*
-
-```
-arangosh> db.test.ensureHashIndex("a");
-{ "id" : "test/5922391", "unique" : false, "type" : "hash", "fields" : ["a"], "isNewlyCreated" : true }
-
-arangosh> db.test.save({ a : 1 });
-{ "_id" : "test/6381143", "_key" : "6381143", "_rev" : "6381143" }
-	
-arangosh> db.test.save({ a : 1 });
-{ "_id" : "test/6446679", "_key" : "6446679", "_rev" : "6446679" }
-	
-arangosh> db.test.save({ a : null });
-{ "_id" : "test/6708823", "_key" : "6708823", "_rev" : "6708823" }
-```
-
-Note that in addition to the two specialized index creation methods, there is also the
-general method `collection.ensureIndex`, which can be used to create indexes of any type
-and also supports uniqueness and sparsity:
-
-*Examples*
-
-```
-arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
-arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
-```
