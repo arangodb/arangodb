@@ -2143,6 +2143,17 @@ div.footer-center {
   background: none repeat scroll 0 0 transparent;
   color: #686766;
   width: 10%; }
+  div.footer-center i {
+    background-color: #fff;
+    border-radius: 20px;
+    border: 1px solid rgba(104, 103, 102, 0.1);
+    width: 20px;
+    padding: 6px 3px 6px 2px; }
+  div.footer-center i:hover {
+    color: #fff;
+    background-color: #8c8a89; }
+  div.footer-center p {
+    padding-top: 5px; }
   div.footer-center p:hover {
     cursor: pointer; }
 
