@@ -2017,16 +2017,17 @@ static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///     Not used for other key generator types.
 ///
 /// * *indexBuckets*: number of buckets into which indexes using a hash
-///   table are split. The default is 1 and this number has to be a
+///   table are split. The default is 16 and this number has to be a
 ///   power of 2 and less than or equal to 1024. 
 ///   
-///   For very large collections
-///   one should increase this to avoid long pauses when the hash table
-///   has to be resized, since buckets are resized individually. For 
+///   For very large collections one should increase this to avoid long pauses 
+///   when the hash table has to be initially built or resized, since buckets 
+///   are resized individually and can be initially built in parallel. For 
 ///   example, 64 might be a sensible value for a collection with 100
 ///   000 000 documents. Currently, only the edge index respects this
-///   value. Changes (see below) are applied when the collection is
-///   loaded the next time.
+///   value, but other index types might follow in future ArangoDB versions. 
+///   Changes (see below) are applied when the collection is loaded the next 
+///   time.
 ///
 /// In a cluster setup, the result will also contain the following attributes:
 ///
