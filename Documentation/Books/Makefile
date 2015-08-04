@@ -4,6 +4,7 @@ all: build-books
 
 MDPP_FILES = $(wildcard Users/*.mdpp Users/*/*.mdpp Users/*/*/*.mdpp)
 MD_FILES = $(wildcard Users/*/*.md Users/*/*/*.md)
+newVersionNumber = $(shell cat ../../VERSION)
 
 md-files:
 	@for file in $(basename $(MDPP_FILES)); do echo "converting $${file}.mdpp"; markdown-pp.py $${file}.mdpp $${file}.md; done
@@ -97,4 +98,4 @@ build-book:
 	cd $(NAME) && gitbook install
 	cd $(NAME) && gitbook build ./ ./../books/$(NAME)
 	python deprecated.py
-
+	cd books/$(NAME) && sed -ie 's/VERSION_NUMBER/$(newVersionNumber)/g' styles/header.js
