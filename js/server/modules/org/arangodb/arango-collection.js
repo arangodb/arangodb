@@ -1085,22 +1085,39 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 /// @startDocuBlock ensureFulltextIndex
-/// `ensureFulltextIndex(attribute, minWordLength)`
+/// `ensureFulltextIndex(field, minWordLength)`
 ///
-/// Creates a fulltext index on all documents on attribute *attribute*.
-/// All documents, which do not have the attribute *attribute* or that have a
-/// non-textual value inside their *attribute* attribute are ignored.
+/// Creates a fulltext index on all documents on attribute *field*.
 ///
-/// The minimum length of words that are indexed can be specified with the
-/// @FA{minWordLength} parameter. Words shorter than *minWordLength*
-/// characters will not be indexed. *minWordLength* has a default value of 2,
-/// but this value might be changed in future versions of ArangoDB. It is thus
-/// recommended to explicitly specify this value
+/// Fulltext indexes are implicitly sparse: all documents which do not have 
+/// the specified *field* attribute or that have a non-qualifying value in their 
+/// *field* attribute will be ignored for indexing.
+///
+/// Only a single attribute can be indexed. Specifying multiple attributes is 
+/// unsupported.
+///
+/// The minimum length of words that are indexed can be specified via the
+/// *minWordLength* parameter. Words shorter than minWordLength characters will 
+/// not be indexed. *minWordLength* has a default value of 2, but this value might
+/// be changed in future versions of ArangoDB. It is thus recommended to explicitly
+/// specify this value.
 ///
 /// In case that the index was successfully created, an object with the index
-/// details, including the index-identifier, is returned.
+/// details is returned.
 ///
-/// @verbinclude fulltext
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureFulltextIndex}
+/// ~db._create("example");
+/// db.example.ensureFulltextIndex("text");
+/// db.example.save({ text : "the quick brown", b : { c : 1 } });
+/// db.example.save({ text : "quick brown fox", b : { c : 2 } });
+/// db.example.save({ text : "brown fox jums", b : { c : 3 } });
+/// db.example.save({ text : "fox jumps over", b : { c : 4 } });
+/// db.example.save({ text : "jumps over the", b : { c : 5 } });
+/// db.example.save({ text : "over the lazy", b : { c : 6 } });
+/// db.example.save({ text : "the lazy dog", b : { c : 7 } });
+/// db._query("FOR document IN FULLTEXT(example, 'text', 'the') RETURN document");
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1137,14 +1154,13 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 /// 
 /// In case that the index was successfully created, the index identifier is returned.
 /// 
-/// In a sparse index all documents will be excluded from the index that do not 
-/// contain at least one of the specified index attributes or that have a value 
-/// of *null* in any of the specified index attributes. Such documents will
-/// not be indexed, and not be taken into account for uniqueness checks.
+/// Non-existing attributes will default to `null`.
+/// In a sparse index all documents will be excluded from the index for which all
+/// specified index attributes are `null`. Such documents will not be taken into account
+/// for uniqueness checks.
 ///
-/// In a non-sparse index, these documents will be indexed (for non-present
-/// indexed attributes, a value of `null` will be used) and will be taken into
-/// account for uniqueness checks.
+/// In a non-sparse index, **all** documents regardless of `null` - attributes will be
+/// indexed and will be taken into account for uniqueness checks.
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
@@ -1182,14 +1198,6 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 /// To create a sparse index, use the following command:
 ///
 /// `collection.ensureHashIndex(field1, field2, ..., fieldn, { sparse: true })`
-///
-/// In a sparse index all documents will be excluded from the index that do not 
-/// contain at least one of the specified index attributes or that have a value 
-/// of *null* in any of the specified index attributes. Such documents will
-/// not be indexed.
-///
-/// In a non-sparse index, these documents will be indexed (for non-present
-/// indexed attributes, a value of *null* will be used).
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
