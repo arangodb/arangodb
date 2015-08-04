@@ -1,0 +1,29 @@
+arangosh> for (i = -90;  i <= 90;  i += 10) {
+........>  for (j = -180;  j <= 180;  j += 10) {
+........>    db.example.save({ name : "Name/" + i + "/" + j,
+........>                      home : [ i, j ],
+........>                      work : [ -i, -j ] });
+........>  }
+........> }
+........> 
+arangosh> db.example.ensureGeoIndex("home");
+{ 
+  "id" : "example/591418780", 
+  "type" : "geo1", 
+  "fields" : [ 
+    "home" 
+  ], 
+  "geoJson" : false, 
+  "constraint" : false, 
+  "unique" : false, 
+  "ignoreNull" : true, 
+  "sparse" : true, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
+arangosh> items = db.example.getIndexes().map(function(x) { return x.id; });
+........> db.example.index(items[1]);
+[ 
+  "example/0", 
+  "example/591418780" 
+]

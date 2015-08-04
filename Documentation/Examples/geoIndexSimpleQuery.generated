@@ -1,0 +1,188 @@
+arangosh> for (i = -90;  i <= 90;  i += 10) {
+........>  for (j = -180;  j <= 180;  j += 10) {
+........>    db.complex.save({ name : "Name/" + i + "/" + j,
+........>                      home : [ i, j ],
+........>                      work : [ -i, -j ] });
+........>  }
+........> }
+........> 
+arangosh> db.complex.near(0, 170).limit(5);
+[ArangoError 1570: no suitable geo index found for geo restriction on 'complex']
+arangosh> db.complex.ensureGeoIndex("home");
+{ 
+  "id" : "complex/1784305052", 
+  "type" : "geo1", 
+  "fields" : [ 
+    "home" 
+  ], 
+  "geoJson" : false, 
+  "constraint" : false, 
+  "unique" : false, 
+  "ignoreNull" : true, 
+  "sparse" : true, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
+arangosh> db.complex.near(0, 170).limit(5).toArray();
+[ 
+  { 
+    "_id" : "complex/1718375836", 
+    "_key" : "1718375836", 
+    "_rev" : "1718375836", 
+    "name" : "Name/0/170", 
+    "home" : [ 
+      0, 
+      170 
+    ], 
+    "work" : [ 
+      0, 
+      -170 
+    ] 
+  }, 
+  { 
+    "_id" : "complex/1718572444", 
+    "_key" : "1718572444", 
+    "_rev" : "1718572444", 
+    "name" : "Name/0/180", 
+    "home" : [ 
+      0, 
+      180 
+    ], 
+    "work" : [ 
+      0, 
+      -180 
+    ] 
+  }, 
+  { 
+    "_id" : "complex/1711101340", 
+    "_key" : "1711101340", 
+    "_rev" : "1711101340", 
+    "name" : "Name/-10/170", 
+    "home" : [ 
+      -10, 
+      170 
+    ], 
+    "work" : [ 
+      10, 
+      -170 
+    ] 
+  }, 
+  { 
+    "_id" : "complex/1725650332", 
+    "_key" : "1725650332", 
+    "_rev" : "1725650332", 
+    "name" : "Name/10/170", 
+    "home" : [ 
+      10, 
+      170 
+    ], 
+    "work" : [ 
+      -10, 
+      -170 
+    ] 
+  }, 
+  { 
+    "_id" : "complex/1711494556", 
+    "_key" : "1711494556", 
+    "_rev" : "1711494556", 
+    "name" : "Name/0/-180", 
+    "home" : [ 
+      0, 
+      -180 
+    ], 
+    "work" : [ 
+      0, 
+      180 
+    ] 
+  } 
+]
+arangosh> db.complex.geo("work").near(0, 170).limit(5);
+[ArangoError 1570: no suitable geo index found for geo restriction on 'complex']
+arangosh> db.complex.ensureGeoIndex("work");
+{ 
+  "id" : "complex/1784829340", 
+  "type" : "geo1", 
+  "fields" : [ 
+    "work" 
+  ], 
+  "geoJson" : false, 
+  "constraint" : false, 
+  "unique" : false, 
+  "ignoreNull" : true, 
+  "sparse" : true, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
+arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
+[ 
+  { 
+    "_id" : "complex/1711691164", 
+    "_key" : "1711691164", 
+    "_rev" : "1711691164", 
+    "name" : "Name/0/-170", 
+    "home" : [ 
+      0, 
+      -170 
+    ], 
+    "work" : [ 
+      0, 
+      170 
+    ] 
+  }, 
+  { 
+    "_id" : "complex/1711494556", 
+    "_key" : "1711494556", 
+    "_rev" : "1711494556", 
+    "name" : "Name/0/-180", 
+    "home" : [ 
+      0, 
+      -180 
+    ], 
+    "work" : [ 
+      0, 
+      180 
+    ] 
+  }, 
+  { 
+    "_id" : "complex/1718965660", 
+    "_key" : "1718965660", 
+    "_rev" : "1718965660", 
+    "name" : "Name/10/-170", 
+    "home" : [ 
+      10, 
+      -170 
+    ], 
+    "work" : [ 
+      -10, 
+      170 
+    ] 
+  }, 
+  { 
+    "_id" : "complex/1704416668", 
+    "_key" : "1704416668", 
+    "_rev" : "1704416668", 
+    "name" : "Name/-10/-170", 
+    "home" : [ 
+      -10, 
+      -170 
+    ], 
+    "work" : [ 
+      10, 
+      170 
+    ] 
+  }, 
+  { 
+    "_id" : "complex/1718572444", 
+    "_key" : "1718572444", 
+    "_rev" : "1718572444", 
+    "name" : "Name/0/180", 
+    "home" : [ 
+      0, 
+      180 
+    ], 
+    "work" : [ 
+      0, 
+      -180 
+    ] 
+  } 
+]

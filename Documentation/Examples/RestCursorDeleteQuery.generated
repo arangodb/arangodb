@@ -8,6 +8,7 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ ], 
   "hasMore" : false, 
+  "cached" : false, 
   "extra" : { 
     "stats" : { 
       "writesExecuted" : 2, 

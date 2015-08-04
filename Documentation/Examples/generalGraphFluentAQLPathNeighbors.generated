@@ -7,68 +7,28 @@ arangosh> query.neighbors().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "802737395", 
+      "_rev" : "939414940", 
       "name" : "Alice" 
     }, 
     { 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndBob", 
-          "_key" : "aliceAndBob", 
-          "_rev" : "803785971", 
-          "_from" : "female/alice", 
-          "_to" : "male/bob", 
-          "type" : "married" 
-        } 
-      ], 
-      "vertices" : [ 
-        { 
-          "_id" : "female/alice", 
-          "_key" : "alice", 
-          "_rev" : "802737395", 
-          "name" : "Alice" 
-        }, 
-        { 
-          "_id" : "male/bob", 
-          "_key" : "bob", 
-          "_rev" : "803065075", 
-          "name" : "Bob" 
-        } 
-      ] 
+      "_id" : "male/charly", 
+      "_key" : "charly", 
+      "_rev" : "939939228", 
+      "name" : "Charly" 
     } 
   ], 
   [ 
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "802737395", 
+      "_rev" : "939414940", 
       "name" : "Alice" 
     }, 
     { 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndCharly", 
-          "_key" : "aliceAndCharly", 
-          "_rev" : "804048115", 
-          "_from" : "female/alice", 
-          "_to" : "male/charly", 
-          "type" : "friend" 
-        } 
-      ], 
-      "vertices" : [ 
-        { 
-          "_id" : "female/alice", 
-          "_key" : "alice", 
-          "_rev" : "802737395", 
-          "name" : "Alice" 
-        }, 
-        { 
-          "_id" : "male/charly", 
-          "_key" : "charly", 
-          "_rev" : "803261683", 
-          "name" : "Charly" 
-        } 
-      ] 
+      "_id" : "male/bob", 
+      "_key" : "bob", 
+      "_rev" : "939742620", 
+      "name" : "Bob" 
     } 
   ] 
 ]

@@ -1,0 +1,31 @@
+arangosh> db.test.ensureHashIndex("a");
+{ 
+  "id" : "test/649155996", 
+  "type" : "hash", 
+  "fields" : [ 
+    "a" 
+  ], 
+  "selectivityEstimate" : 1, 
+  "unique" : false, 
+  "sparse" : false, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
+arangosh> db.test.save({ a : 1 });
+{ 
+  "_id" : "test/649418140", 
+  "_rev" : "649418140", 
+  "_key" : "649418140" 
+}
+arangosh> db.test.save({ a : 1 });
+{ 
+  "_id" : "test/649614748", 
+  "_rev" : "649614748", 
+  "_key" : "649614748" 
+}
+arangosh> db.test.save({ a : null });
+{ 
+  "_id" : "test/649876892", 
+  "_rev" : "649876892", 
+  "_key" : "649876892" 
+}

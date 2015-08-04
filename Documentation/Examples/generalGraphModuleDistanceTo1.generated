@@ -3,36 +3,34 @@ arangosh> var g = examples.loadGraph("routeplanner");
 arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
 ........> startVertexCollectionRestriction : 'germanCity'});
 [ 
-  [ 
-    { 
-      "vertex" : "frenchCity/Lyon", 
-      "distance" : 1100, 
-      "startVertex" : "germanCity/Berlin" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Paris", 
-      "distance" : 1200, 
-      "startVertex" : "germanCity/Berlin" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Paris", 
-      "distance" : 900, 
-      "startVertex" : "germanCity/Hamburg" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Lyon", 
-      "distance" : 1200, 
-      "startVertex" : "germanCity/Hamburg" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Paris", 
-      "distance" : 550, 
-      "startVertex" : "germanCity/Cologne" 
-    }, 
-    { 
-      "vertex" : "frenchCity/Lyon", 
-      "distance" : 700, 
-      "startVertex" : "germanCity/Cologne" 
-    } 
-  ] 
+  { 
+    "startVertex" : "germanCity/Berlin", 
+    "vertex" : "frenchCity/Paris", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Berlin", 
+    "vertex" : "frenchCity/Lyon", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Hamburg", 
+    "vertex" : "frenchCity/Paris", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Hamburg", 
+    "vertex" : "frenchCity/Lyon", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Cologne", 
+    "vertex" : "frenchCity/Paris", 
+    "distance" : 1 
+  }, 
+  { 
+    "startVertex" : "germanCity/Cologne", 
+    "vertex" : "frenchCity/Lyon", 
+    "distance" : 1 
+  } 
 ]

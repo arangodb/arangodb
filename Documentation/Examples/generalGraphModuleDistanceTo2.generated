@@ -3,11 +3,9 @@ arangosh> var g = examples.loadGraph("routeplanner");
 arangosh> g._distanceTo([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
 ........> {weight : 'distance'});
 [ 
-  [ 
-    { 
-      "vertex" : "frenchCity/Lyon", 
-      "distance" : 700, 
-      "startVertex" : "germanCity/Cologne" 
-    } 
-  ] 
+  { 
+    "startVertex" : "germanCity/Cologne", 
+    "vertex" : "frenchCity/Lyon", 
+    "distance" : 1 
+  } 
 ]

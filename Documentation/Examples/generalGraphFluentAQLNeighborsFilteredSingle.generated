@@ -6,7 +6,7 @@ arangosh> query.neighbors({name: "Bob"}).toArray();
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "776326387", 
+    "_rev" : "914445724", 
     "name" : "Bob" 
   } 
 ]

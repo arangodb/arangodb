@@ -1,0 +1,27 @@
+arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
+{ 
+  "id" : "test/603084188", 
+  "type" : "hash", 
+  "fields" : [ 
+    "a" 
+  ], 
+  "selectivityEstimate" : 1, 
+  "unique" : false, 
+  "sparse" : true, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
+arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
+{ 
+  "id" : "test/603346332", 
+  "type" : "hash", 
+  "fields" : [ 
+    "a", 
+    "b" 
+  ], 
+  "selectivityEstimate" : 1, 
+  "unique" : true, 
+  "sparse" : false, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}

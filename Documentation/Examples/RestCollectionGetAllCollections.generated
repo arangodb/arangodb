@@ -6,284 +6,242 @@ content-type: application/json; charset=utf-8
 { 
   "collections" : [ 
     { 
-      "id" : "19254515", 
-      "name" : "_sessions", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "4574451", 
-      "name" : "_statisticsRaw", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "2346227", 
-      "name" : "_routing", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "6343923", 
-      "name" : "_jobs", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "7195891", 
-      "name" : "_apps", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "4967667", 
+      "id" : "4937116", 
       "name" : "_statistics", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
     { 
-      "id" : "5360883", 
-      "name" : "_statistics15", 
+      "id" : "7165340", 
+      "name" : "_apps", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
     { 
-      "id" : "21351667", 
-      "name" : "collectable_foxx_data_firstCollection", 
-      "isSystem" : false, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "4443379", 
-      "name" : "_aqlfunctions", 
+      "id" : "6313372", 
+      "name" : "_jobs", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
     { 
-      "id" : "2215155", 
-      "name" : "_modules", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "6212851", 
-      "name" : "_queues", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "1259392243", 
-      "name" : "animals", 
-      "isSystem" : false, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "5754099", 
-      "name" : "_configuration", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "19975411", 
-      "name" : "_system_users_users", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "1258474739", 
-      "name" : "demo", 
-      "isSystem" : false, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "21220595", 
-      "name" : "tescht_todos", 
-      "isSystem" : false, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    { 
-      "id" : "2084083", 
+      "id" : "2053532", 
       "name" : "_graphs", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
     { 
-      "id" : "2477299", 
-      "name" : "_cluster_kickstarter_plans", 
+      "id" : "14374300", 
+      "name" : "_sessions", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
     { 
-      "id" : "249075", 
+      "id" : "1788237212", 
+      "name" : "demo", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "6182300", 
+      "name" : "_queues", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "5330332", 
+      "name" : "_statistics15", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "15095196", 
+      "name" : "_system_users_users", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "218524", 
       "name" : "_users", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
     { 
-      "id" : "21089523", 
-      "name" : "blarg_todos", 
+      "id" : "2446748", 
+      "name" : "_cluster_kickstarter_plans", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "5723548", 
+      "name" : "_configuration", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1789154716", 
+      "name" : "animals", 
       "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "2315676", 
+      "name" : "_routing", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "4543900", 
+      "name" : "_statisticsRaw", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "2184604", 
+      "name" : "_modules", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "4412828", 
+      "name" : "_aqlfunctions", 
+      "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     } 
   ], 
   "names" : { 
-    "_sessions" : { 
-      "id" : "19254515", 
-      "name" : "_sessions", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "_statisticsRaw" : { 
-      "id" : "4574451", 
-      "name" : "_statisticsRaw", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "_routing" : { 
-      "id" : "2346227", 
-      "name" : "_routing", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "_jobs" : { 
-      "id" : "6343923", 
-      "name" : "_jobs", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "_apps" : { 
-      "id" : "7195891", 
-      "name" : "_apps", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
     "_statistics" : { 
-      "id" : "4967667", 
+      "id" : "4937116", 
       "name" : "_statistics", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
-    "_statistics15" : { 
-      "id" : "5360883", 
-      "name" : "_statistics15", 
+    "_apps" : { 
+      "id" : "7165340", 
+      "name" : "_apps", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
-    "collectable_foxx_data_firstCollection" : { 
-      "id" : "21351667", 
-      "name" : "collectable_foxx_data_firstCollection", 
-      "isSystem" : false, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "_aqlfunctions" : { 
-      "id" : "4443379", 
-      "name" : "_aqlfunctions", 
+    "_jobs" : { 
+      "id" : "6313372", 
+      "name" : "_jobs", 
       "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "_modules" : { 
-      "id" : "2215155", 
-      "name" : "_modules", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "_queues" : { 
-      "id" : "6212851", 
-      "name" : "_queues", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "animals" : { 
-      "id" : "1259392243", 
-      "name" : "animals", 
-      "isSystem" : false, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "_configuration" : { 
-      "id" : "5754099", 
-      "name" : "_configuration", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "_system_users_users" : { 
-      "id" : "19975411", 
-      "name" : "_system_users_users", 
-      "isSystem" : true, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "demo" : { 
-      "id" : "1258474739", 
-      "name" : "demo", 
-      "isSystem" : false, 
-      "status" : 3, 
-      "type" : 2 
-    }, 
-    "tescht_todos" : { 
-      "id" : "21220595", 
-      "name" : "tescht_todos", 
-      "isSystem" : false, 
       "status" : 3, 
       "type" : 2 
     }, 
     "_graphs" : { 
-      "id" : "2084083", 
+      "id" : "2053532", 
       "name" : "_graphs", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
-    "_cluster_kickstarter_plans" : { 
-      "id" : "2477299", 
-      "name" : "_cluster_kickstarter_plans", 
+    "_sessions" : { 
+      "id" : "14374300", 
+      "name" : "_sessions", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "demo" : { 
+      "id" : "1788237212", 
+      "name" : "demo", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_queues" : { 
+      "id" : "6182300", 
+      "name" : "_queues", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_statistics15" : { 
+      "id" : "5330332", 
+      "name" : "_statistics15", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_system_users_users" : { 
+      "id" : "15095196", 
+      "name" : "_system_users_users", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
     "_users" : { 
-      "id" : "249075", 
+      "id" : "218524", 
       "name" : "_users", 
       "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     }, 
-    "blarg_todos" : { 
-      "id" : "21089523", 
-      "name" : "blarg_todos", 
+    "_cluster_kickstarter_plans" : { 
+      "id" : "2446748", 
+      "name" : "_cluster_kickstarter_plans", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_configuration" : { 
+      "id" : "5723548", 
+      "name" : "_configuration", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "animals" : { 
+      "id" : "1789154716", 
+      "name" : "animals", 
       "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_routing" : { 
+      "id" : "2315676", 
+      "name" : "_routing", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_statisticsRaw" : { 
+      "id" : "4543900", 
+      "name" : "_statisticsRaw", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_modules" : { 
+      "id" : "2184604", 
+      "name" : "_modules", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_aqlfunctions" : { 
+      "id" : "4412828", 
+      "name" : "_aqlfunctions", 
+      "isSystem" : true, 
       "status" : 3, 
       "type" : 2 
     } 

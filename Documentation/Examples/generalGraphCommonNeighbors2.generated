@@ -6,55 +6,27 @@ arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
 ........> ).toArray();
 [ 
   { 
-    "germanCity/Hamburg" : { 
-      "germanCity/Berlin" : [ 
-        { 
-          "_id" : "germanCity/Cologne", 
-          "_key" : "Cologne", 
-          "_rev" : "611503347", 
-          "isCapital" : false, 
-          "population" : 1000000 
-        }, 
-        { 
-          "_id" : "frenchCity/Lyon", 
-          "_key" : "Lyon", 
-          "_rev" : "612093171", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "frenchCity/Paris", 
-          "_key" : "Paris", 
-          "_rev" : "612289779", 
-          "isCapital" : true, 
-          "population" : 4000000 
-        } 
-      ], 
-      "germanCity/Cologne" : [ 
-        { 
-          "_id" : "frenchCity/Lyon", 
-          "_key" : "Lyon", 
-          "_rev" : "612093171", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "frenchCity/Paris", 
-          "_key" : "Paris", 
-          "_rev" : "612289779", 
-          "isCapital" : true, 
-          "population" : 4000000 
-        } 
-      ], 
-      "frenchCity/Paris" : [ 
-        { 
-          "_id" : "frenchCity/Lyon", 
-          "_key" : "Lyon", 
-          "_rev" : "612093171", 
-          "isCapital" : false, 
-          "population" : 80000 
-        } 
-      ] 
-    } 
+    "left" : "germanCity/Hamburg", 
+    "right" : "germanCity/Berlin", 
+    "neighbors" : [ 
+      "germanCity/Cologne", 
+      "frenchCity/Lyon", 
+      "frenchCity/Paris" 
+    ] 
+  }, 
+  { 
+    "left" : "germanCity/Hamburg", 
+    "right" : "germanCity/Cologne", 
+    "neighbors" : [ 
+      "frenchCity/Lyon", 
+      "frenchCity/Paris" 
+    ] 
+  }, 
+  { 
+    "left" : "germanCity/Hamburg", 
+    "right" : "frenchCity/Paris", 
+    "neighbors" : [ 
+      "frenchCity/Lyon" 
+    ] 
   } 
 ]
