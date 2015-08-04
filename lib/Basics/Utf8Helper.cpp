@@ -701,12 +701,12 @@ bool Utf8Helper::matches (RegexMatcher* matcher,
   error = false;
 
   TRI_ASSERT(matcher != nullptr);
-  bool result = matcher->matches(status);
+  UBool result = matcher->matches(status);
   if (U_FAILURE(status)) {
     error = true;
   }
 
-  return result;
+  return (result ? true : false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
