@@ -1,4 +1,11 @@
+'use strict';
+const extend = require('underscore').extend;
+const deprecated = require('org/arangodb/deprecated');
 
-// TODO Deprecated in 2.7
-// require('console').log('"org/arangodb/extend" is deprecated, use "extendible" instead');
-exports.extend = require('extendible');
+exports.extend = function (protoProps, staticProps) {
+  deprecated('2.9', '"extend" is deprecated, use class syntax instead');
+  const Class = class extends this {};
+  extend(Class.prototype, protoProps);
+  extend(Class, staticProps);
+  return Class;
+};
