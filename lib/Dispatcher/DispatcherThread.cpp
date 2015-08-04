@@ -127,15 +127,15 @@ void DispatcherThread::run () {
 
         --_queue->_nrWaiting;
 
-	// there is a chance, that we created more threads than necessary because
-	// we ignore race conditions for the statistic variables
-	if (_queue->tooManyThreads()) {
-	  break;
-	}
+        // there is a chance, that we created more threads than necessary because
+        // we ignore race conditions for the statistic variables
+        if (_queue->tooManyThreads()) {
+          break;
+        }
       }
       else if (worked < now) {
-	uintptr_t n = (uintptr_t) this;
-	usleep(1 + ((n >> 3) % 19));
+        uintptr_t n = (uintptr_t) this;
+        usleep(1 + ((n >> 3) % 19));
       }
     }
   }
