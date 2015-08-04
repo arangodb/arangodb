@@ -1,0 +1,56 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_EDGES("
+........> + "'routeplanner', 'germanCity/Hamburg', {direction : 'outbound',"
+........> + "maxDepth : 2, includeData: true}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "_id" : "germanHighway/848582044", 
+    "_key" : "848582044", 
+    "_rev" : "848582044", 
+    "_from" : "germanCity/Hamburg", 
+    "_to" : "germanCity/Cologne", 
+    "distance" : 500 
+  }, 
+  { 
+    "_id" : "internationalHighway/850023836", 
+    "_key" : "850023836", 
+    "_rev" : "850023836", 
+    "_from" : "germanCity/Cologne", 
+    "_to" : "frenchCity/Lyon", 
+    "distance" : 700 
+  }, 
+  { 
+    "_id" : "internationalHighway/850220444", 
+    "_key" : "850220444", 
+    "_rev" : "850220444", 
+    "_from" : "germanCity/Cologne", 
+    "_to" : "frenchCity/Paris", 
+    "distance" : 550 
+  }, 
+  { 
+    "_id" : "internationalHighway/849630620", 
+    "_key" : "849630620", 
+    "_rev" : "849630620", 
+    "_from" : "germanCity/Hamburg", 
+    "_to" : "frenchCity/Paris", 
+    "distance" : 900 
+  }, 
+  { 
+    "_id" : "frenchHighway/848909724", 
+    "_key" : "848909724", 
+    "_rev" : "848909724", 
+    "_from" : "frenchCity/Paris", 
+    "_to" : "frenchCity/Lyon", 
+    "distance" : 550 
+  }, 
+  { 
+    "_id" : "internationalHighway/849827228", 
+    "_key" : "849827228", 
+    "_rev" : "849827228", 
+    "_from" : "germanCity/Hamburg", 
+    "_to" : "frenchCity/Lyon", 
+    "distance" : 1300 
+  } 
+]

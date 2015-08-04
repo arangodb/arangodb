@@ -4,15 +4,15 @@ arangosh> var query = graph._vertices({name: "Alice"});
 arangosh> query.neighbors().toArray();
 [ 
   { 
-    "_id" : "male/bob", 
-    "_key" : "bob", 
-    "_rev" : "780127475", 
-    "name" : "Bob" 
-  }, 
-  { 
     "_id" : "male/charly", 
     "_key" : "charly", 
-    "_rev" : "780324083", 
+    "_rev" : "918246812", 
     "name" : "Charly" 
+  }, 
+  { 
+    "_id" : "male/bob", 
+    "_key" : "bob", 
+    "_rev" : "918050204", 
+    "name" : "Bob" 
   } 
 ]
