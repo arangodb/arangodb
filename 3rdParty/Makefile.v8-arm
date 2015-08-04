@@ -1,11 +1,13 @@
+V8=V8-4.1.0.27
+
 install:
 	mkdir -p ../ArmLibraries/lib
 	mkdir -p ../ArmLibraries/include/unicode
 
-	cp -a V8-3.31.74.1/out/arm.release/obj.target/tools/gyp/*.a ../ArmLibraries/lib
-	cp -a V8-3.31.74.1/out/arm.release/obj.target/third_party/icu/*.a ../ArmLibraries/lib
-	cp -a V8-3.31.74.1/include/* ../ArmLibraries/include
+	cp -a ${V8}/out/arm.release/obj.target/tools/gyp/*.a ../ArmLibraries/lib
+	cp -a ${V8}/out/arm.release/obj.target/third_party/icu/*.a ../ArmLibraries/lib
+	cp -a ${V8}/include/* ../ArmLibraries/include
 
 	for f in common i18n io; do \
-	  cp -a V8-3.31.74.1/third_party/icu/source/$${f}/unicode/* ../ArmLibraries/include/unicode/; \
+	  cp -a ${V8}/third_party/icu/source/$${f}/unicode/* ../ArmLibraries/include/unicode/; \
 	done

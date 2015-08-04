@@ -7,7 +7,7 @@ here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/
 
 !SECTION V8 version upgrade
 
-The built-in version of V8 has been upgraded from 3.29.54 to 3.31.74.1.
+The built-in version of V8 has been upgraded from 3.29.54 to 4.1.0.27.
 This allows activating additional ES6 (also dubbed *Harmony* or *ES.next*) features 
 in ArangoDB, both in the ArangoShell and the ArangoDB server. They can be
 used for scripting and in server-side actions such as Foxx routes, traversals

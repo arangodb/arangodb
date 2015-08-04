@@ -8,7 +8,7 @@ upgrading to ArangoDB 2.5, and adjust any client programs if necessary.
 
 !SUBSECTION V8
 
-The V8 version shipped with ArangoDB was upgraded from 3.29.59 to 3.31.74.1.
+The V8 version shipped with ArangoDB was upgraded from 3.29.59 to 4.1.0.27.
 This leads to additional ECMAScript 6 (ES6 or "harmony") features being enabled by 
 default in ArangoDB's scripting environment.
 
