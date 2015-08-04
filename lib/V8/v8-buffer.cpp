@@ -59,6 +59,18 @@
 
 using namespace std;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief safety overhead for buffer allocations
+////////////////////////////////////////////////////////////////////////////////
+
+#define SAFETY_OVERHEAD 16
+  
+static void InitSafetyOverhead (char* p, size_t length) {
+  if (p != nullptr) {
+    memset(p + length, 0, SAFETY_OVERHEAD); 
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
 // -----------------------------------------------------------------------------
@@ -767,7 +779,7 @@ V8Buffer* V8Buffer::New (v8::Isolate* isolate,
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> obj = BufferTempl->GetFunction()->NewInstance(1, &arg);
 
-  V8Buffer *buffer = V8Buffer::unwrap(obj);
+  V8Buffer* buffer = V8Buffer::unwrap(obj);
   buffer->replace(isolate, data, length, callback, hint);
 
   return buffer;
@@ -857,19 +869,20 @@ void V8Buffer::replace (v8::Isolate* isolate,
     _data = data;
   }
   else if (0 < _length) {
-    _data = new char[_length];
+    _data = new char[_length + SAFETY_OVERHEAD];
+    InitSafetyOverhead(_data, _length);
 
-    if (data != 0) {
+    if (data != nullptr) {
       memcpy(_data, data, _length);
     }
 
     isolate->AdjustAmountOfExternalAllocatedMemory(
-      sizeof(V8Buffer) + _length);
+      sizeof(V8Buffer) + _length + SAFETY_OVERHEAD);
   }
   else {
     _data = NULL;
   }
-
+  
   auto handle = v8::Local<v8::Object>::New(isolate, _handle);
   TRI_GET_GLOBAL(LengthKey, v8::String);
   handle->Set(LengthKey, v8::Integer::NewFromUnsigned(isolate, (uint32_t) _length));
@@ -918,7 +931,8 @@ static void JS_AsciiSlice (const v8::FunctionCallbackInfo<v8::Value>& args) {
   size_t len = end - start;
 
   if (ContainsNonAscii(data, len)) {
-    char* out = new char[len];
+    char* out = new char[len + SAFETY_OVERHEAD];
+    InitSafetyOverhead(out, len);
     ForceAscii(data, out, len);
     v8::Local<v8::String> rc = TRI_V8_PAIR_STRING(out, (int) len);
     delete[] out;
@@ -988,7 +1002,8 @@ static void JS_HexSlice (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_RETURN(v8::String::Empty(isolate));
   }
 
-  char* dst = new char[dstlen];
+  char* dst = new char[dstlen + SAFETY_OVERHEAD];
+  InitSafetyOverhead(dst, dstlen);
 
   for (uint32_t i = 0, k = 0; k < dstlen; i += 1, k += 2) {
     static const char hex[] = "0123456789abcdef";
@@ -1021,7 +1036,8 @@ static void JS_Base64Slice (const v8::FunctionCallbackInfo<v8::Value>& args) {
   const char* src = parent->_data + start;
 
   unsigned dlen = (slen + 2 - ((slen + 2) % 3)) / 3 * 4;
-  char* dst = new char[dlen];
+  char* dst = new char[dlen + SAFETY_OVERHEAD];
+  InitSafetyOverhead(dst, dlen);
 
   unsigned a;
   unsigned b;
