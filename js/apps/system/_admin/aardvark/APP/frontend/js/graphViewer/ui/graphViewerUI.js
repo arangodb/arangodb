@@ -574,7 +574,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
       adapterUI.addControlChangeGraph(function() {
         updateAttributeExamples();
-        graphViewer.start();
+        graphViewer.start(true);
       });
       adapterUI.addControlChangePriority();
       // nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
