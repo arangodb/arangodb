@@ -105,7 +105,18 @@ var runInDatabase = function () {
 
 exports.manage = function () {
   var initialDatabase = db._name();
-  var databases = db._listDatabases();
+  var now = Date.now();
+
+  // fetch list of databases from cache
+  var databases = global.KEY_GET('queue-control', 'databases') || [ ];
+  var expires = global.KEY_GET('queue-control', 'databases-expire') || 0;
+
+  if (expires < now || databases.length === 0) {
+    databases = db._listDatabases();
+    global.KEY_SET('queue-control', 'databases', databases);
+    // make list of databases expire in 30 seconds from now 
+    global.KEY_SET('queue-control', 'databases-expire', Date.now() + 30 * 1000);
+  }
 
   databases.forEach(function (database) {
     try {
@@ -145,6 +156,8 @@ exports.run = function () {
   if (options.hasOwnProperty('server.foxx-queues-poll-interval')) {
     period = options['server.foxx-queues-poll-interval'];
   }
+      
+  global.KEYSPACE_CREATE('queue-control', 1, true);
 
   var initialDatabase = db._name();
   db._listDatabases().forEach(function (name) {
