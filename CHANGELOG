@@ -1,6 +1,8 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* implemented AQL `LIKE` function using ICU regexes
+
 * add `RETURN DISTINCT` for AQL queries to return unique results:
 
       FOR doc IN collection
