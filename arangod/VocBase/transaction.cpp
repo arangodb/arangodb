@@ -1326,16 +1326,18 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
 
   if (nestingLevel == 0) {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
+    
+    auto logfileManager = triagens::wal::LogfileManager::instance();
  
     if (! HasHint(trx, TRI_TRANSACTION_HINT_NO_THROTTLING) &&
         trx->_type == TRI_TRANSACTION_WRITE &&
-        triagens::wal::LogfileManager::instance()->canBeThrottled()) {
+        logfileManager->canBeThrottled()) {
       // write-throttling?
       static uint64_t const WaitTime = 50000;
-      uint64_t const maxIterations = triagens::wal::LogfileManager::instance()->maxThrottleWait() / (WaitTime / 1000);
+      uint64_t const maxIterations = logfileManager->maxThrottleWait() / (WaitTime / 1000);
       uint64_t iterations = 0;
      
-      while (triagens::wal::LogfileManager::instance()->isThrottled()) {
+      while (logfileManager->isThrottled()) {
         if (++iterations == maxIterations) {
           return TRI_ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT;
         }
@@ -1344,14 +1346,18 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
       }
     }
 
-    // get a new id
-    trx->_id = TRI_NewTickServer();
-
     // set hints
     trx->_hints = hints;
 
+    // get a new id
+    trx->_id = TRI_NewTickServer();
+
     // register a protector
-    triagens::wal::LogfileManager::instance()->registerTransaction(trx->_id);
+    int res = logfileManager->registerTransaction(trx->_id);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
   }
   else {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);

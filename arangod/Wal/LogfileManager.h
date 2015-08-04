@@ -367,7 +367,7 @@ namespace triagens {
 /// @brief registers a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void registerTransaction (TRI_voc_tid_t);
+        int registerTransaction (TRI_voc_tid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unregisters a transaction
@@ -1135,7 +1135,7 @@ namespace triagens {
 /// @brief currently ongoing transactions
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<TRI_voc_tid_t, std::pair<Logfile::IdType, Logfile::IdType>> _transactions;
+        std::unordered_map<TRI_voc_tid_t, std::pair<Logfile::IdType, Logfile::IdType>> _transactions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set of failed transactions
