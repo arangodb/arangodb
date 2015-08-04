@@ -177,6 +177,9 @@ LogfileManager::LogfileManager (TRI_server_t* server,
   if (res != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not compile regex");
   }
+
+  _transactions.reserve(32);
+  _failedTransactions.reserve(32);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,9 +417,12 @@ bool LogfileManager::open () {
   // note all failed transactions that we found plus the list
   // of collections and databases that we can ignore
   {
-    WRITE_LOCKER(_logfilesLock);
-    for (auto it = _recoverState->failedTransactions.begin(); it != _recoverState->failedTransactions.end(); ++it) {
-      _failedTransactions.insert((*it).first);
+    WRITE_LOCKER(_transactionsLock);
+
+    _failedTransactions.reserve(_recoverState->failedTransactions.size());
+
+    for (auto const& it : _recoverState->failedTransactions) {
+      _failedTransactions.emplace(it.first);
     }
 
     _droppedDatabases   = _recoverState->droppedDatabases;
@@ -593,14 +599,28 @@ void LogfileManager::stop () {
 /// @brief registers a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::registerTransaction (TRI_voc_tid_t transactionId) {
+int LogfileManager::registerTransaction (TRI_voc_tid_t transactionId) {
   auto lastCollectedId = _lastCollectedId.load();
   auto lastSealedId    = _lastSealedId.load();
 
-  WRITE_LOCKER(_transactionsLock); 
+  TRI_IF_FAILURE("LogfileManagerRegisterTransactionOom") {
+    // intentionally fail here
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
-  _transactions.emplace(transactionId, std::make_pair(lastCollectedId, lastSealedId));
-  TRI_ASSERT_EXPENSIVE(lastCollectedId <= lastSealedId);
+  try {
+    auto p = std::make_pair(lastCollectedId, lastSealedId);
+
+    WRITE_LOCKER(_transactionsLock); 
+
+    _transactions.emplace(transactionId, std::move(p));
+    TRI_ASSERT_EXPENSIVE(lastCollectedId <= lastSealedId);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+  catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -612,7 +632,7 @@ void LogfileManager::unregisterTransaction (TRI_voc_tid_t transactionId,
   WRITE_LOCKER(_transactionsLock);
 
   _transactions.erase(transactionId);
-
+  
   if (markAsFailed) {
     _failedTransactions.emplace(transactionId);
   }
@@ -626,7 +646,7 @@ std::unordered_set<TRI_voc_tid_t> LogfileManager::getFailedTransactions () {
   std::unordered_set<TRI_voc_tid_t> failedTransactions;
 
   {
-    READ_LOCKER(_logfilesLock);
+    READ_LOCKER(_transactionsLock);
     failedTransactions = _failedTransactions;
   }
 
@@ -670,7 +690,7 @@ std::unordered_set<TRI_voc_tick_t> LogfileManager::getDroppedDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::unregisterFailedTransactions (std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  WRITE_LOCKER(_logfilesLock);
+  WRITE_LOCKER(_transactionsLock);
 
   std::for_each(failedTransactions.begin(), failedTransactions.end(), [&] (TRI_voc_tid_t id) { 
     _failedTransactions.erase(id);
@@ -1330,7 +1350,7 @@ Logfile* LogfileManager::getCollectableLogfile () {
     READ_LOCKER(_transactionsLock);
 
     // iterate over all active transactions and find their minimum used logfile id
-    for (auto& it : _transactions) {
+    for (auto const& it : _transactions) {
       Logfile::IdType lastWrittenId = it.second.second;
 
       if (lastWrittenId < minId) {
@@ -1377,7 +1397,7 @@ Logfile* LogfileManager::getRemovableLogfile () {
     READ_LOCKER(_transactionsLock);
 
     // iterate over all active readers and find their minimum used logfile id
-    for (auto& it : _transactions) {
+    for (auto const& it : _transactions) {
       Logfile::IdType lastCollectedId = it.second.first;
 
       if (lastCollectedId < minId) {

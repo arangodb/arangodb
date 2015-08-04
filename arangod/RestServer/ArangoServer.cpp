@@ -228,15 +228,15 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
 static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* request,
                                                  TRI_server_t* server) {
   // get the request endpoint
-  ConnectionInfo ci = request->connectionInfo();
-  const string& endpoint = ci.endpoint;
+  ConnectionInfo const& ci = request->connectionInfo();
+  std::string const& endpoint = ci.endpoint;
 
   // get the databases mapped to the endpoint
   ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
-  const vector<string> databases = s->getEndpointMapping(endpoint);
+  std::vector<std::string> const& databases = s->getEndpointMapping(endpoint);
 
   // get database name from request
-  string dbName = request->databaseName();
+  std::string dbName = request->databaseName();
 
   if (databases.empty()) {
     // no databases defined. this means all databases are accessible via the endpoint
@@ -248,11 +248,12 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
     }
   }
   else {
-
     // only some databases are allowed for this endpoint
     if (dbName.empty()) {
       // no specific database requested, so use first mapped database
-      dbName = databases.at(0);
+      TRI_ASSERT(! databases.empty());
+
+      dbName = databases[0];
       request->setDatabaseName(dbName);
     }
     else {
@@ -260,6 +261,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 
       for (size_t i = 0; i < databases.size(); ++i) {
         if (dbName == databases.at(i)) {
+          request->setDatabaseName(dbName);
           found = true;
           break;
         }
