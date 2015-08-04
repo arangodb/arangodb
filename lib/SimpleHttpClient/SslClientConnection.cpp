@@ -392,6 +392,8 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::writeClientConnection (void const* buffer, size_t length, size_t* bytesWritten) {
+  TRI_ASSERT(bytesWritten != nullptr);
+
 #ifdef _WIN32
   char windowsErrorBuf[256];
 #endif

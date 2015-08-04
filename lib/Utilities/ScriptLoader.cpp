@@ -139,9 +139,9 @@ string const& ScriptLoader::findScript (string const& name) {
 
     for (size_t i = 0; i < parts.size(); i++) {
       char* filename = TRI_Concatenate2File(parts.at(i).c_str(), name.c_str());
-      char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, NULL);
+      char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, nullptr);
 
-      if (result == 0 && (i == parts.size() - 1)) {
+      if (result == nullptr && (i == parts.size() - 1)) {
         LOG_ERROR("cannot locate file '%s': %s",
                   StringUtils::correctPath(name).c_str(),
                   TRI_last_error());
@@ -149,7 +149,7 @@ string const& ScriptLoader::findScript (string const& name) {
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-      if (result != 0) {
+      if (result != nullptr) {
         _scripts[name] = result;
         TRI_FreeString(TRI_CORE_MEM_ZONE, result);
         return _scripts[name];
