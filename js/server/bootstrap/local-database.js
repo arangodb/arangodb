@@ -56,6 +56,15 @@
     console.error("cannot initialise database '%s', upgrade script failed", db._name());
   }
 
+  // expire database cache
+  try {  
+    global.KEY_SET('queue-control', 'databases-expire', 0);
+  }
+  catch (err) {
+    // it is of no real importance if cache invalidation fails, because
+    // the cache entry has a ttl
+  }
+
   return result;
 }());
 

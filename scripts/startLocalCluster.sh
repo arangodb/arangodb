@@ -15,6 +15,11 @@ if [ "$NRCOORDINATORS" == "" ] ; then
 fi
 echo Number of Coordinators: $NRCOORDINATORS
 
+if [ ! -z "$3" ] ; then
+    COORDINATORCONSOLE=1
+    echo Starting one coordinator in xterm with --console
+fi
+
 rm -rf cluster
 mkdir cluster
 cd cluster
@@ -41,13 +46,31 @@ start() {
                 > cluster/$PORT.stdout 2>&1 &
 }
 
+startTerminal() {
+    TYPE=$1
+    PORT=$2
+    mkdir cluster/data$PORT
+    echo Starting $TYPE on port $PORT
+    xterm -e bin/arangod --database.directory cluster/data$PORT \
+                --cluster.agency-endpoint tcp://127.0.0.1:4001 \
+                --cluster.my-address tcp://127.0.0.1:$PORT \
+                --server.endpoint tcp://127.0.0.1:$PORT \
+                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+                --log.file cluster/$PORT.log \
+                --console &
+}
+
 PORTTOPDB=`expr 8629 + $NRDBSERVERS - 1`
 for p in `seq 8629 $PORTTOPDB` ; do
     start dbserver $p
 done
 PORTTOPCO=`expr 8530 + $NRCOORDINATORS - 1`
 for p in `seq 8530 $PORTTOPCO` ; do
-    start coordinator $p
+    if [ $p == "8530" -a ! -z "$COORDINATORCONSOLE" ] ; then
+        startTerminal coordinator $p
+    else
+        start coordinator $p
+    fi
 done
 
 echo Waiting for cluster to come up...
