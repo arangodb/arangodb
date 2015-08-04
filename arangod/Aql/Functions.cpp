@@ -731,7 +731,7 @@ AqlValue Functions::Like (triagens::aql::Query* query,
     }
   }
 
-  if (matcher != nullptr) {
+  if (matcher == nullptr) {
     matcher = triagens::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
 
     try {
