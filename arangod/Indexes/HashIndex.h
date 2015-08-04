@@ -39,7 +39,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class HashIndex
