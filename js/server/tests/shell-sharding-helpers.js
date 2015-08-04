@@ -116,6 +116,7 @@ function ClusterEnabledSuite () {
       ss.setId(oldId);
       assertEqual(oldPrefix, agency.prefix(true));
       ss.setRole(oldRole);
+      ci.flush();   // reload caches with proper agency data
     },
 
 ////////////////////////////////////////////////////////////////////////////////
