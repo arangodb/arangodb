@@ -1,0 +1,54 @@
+arangosh> db.example.ensureSkiplist("a", "b");
+{ 
+  "id" : "example/19611244", 
+  "type" : "skiplist", 
+  "fields" : [ 
+    "a", 
+    "b" 
+  ], 
+  "unique" : false, 
+  "sparse" : false, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
+arangosh> var indexInfo = db.example.getIndexes();
+arangosh> indexInfo;
+[ 
+  { 
+    "id" : "example/0", 
+    "type" : "primary", 
+    "fields" : [ 
+      "_key" 
+    ], 
+    "selectivityEstimate" : 1, 
+    "unique" : true, 
+    "sparse" : false 
+  }, 
+  { 
+    "id" : "example/19611244", 
+    "type" : "skiplist", 
+    "fields" : [ 
+      "a", 
+      "b" 
+    ], 
+    "unique" : false, 
+    "sparse" : false 
+  } 
+]
+arangosh> db._dropIndex(indexInfo[0])
+false
+arangosh> db._dropIndex(indexInfo[1].id)
+true
+arangosh> indexInfo = db.example.getIndexes();
+[ 
+  { 
+    "id" : "example/0", 
+    "type" : "primary", 
+    "fields" : [ 
+      "_key" 
+    ], 
+    "selectivityEstimate" : 1, 
+    "unique" : true, 
+    "sparse" : false 
+  } 
+]
