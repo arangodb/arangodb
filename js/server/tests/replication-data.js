@@ -1064,6 +1064,7 @@ function ReplicationSuite () {
           assertTrue(properties.waitForSync);
           assertTrue(properties.doCompact);
           assertEqual(2097152, properties.journalSize);
+          assertTrue(properties.hasOwnProperty("indexBuckets"));
 
           state.cid = c._id;
           state.properties = c.properties();
@@ -1075,6 +1076,8 @@ function ReplicationSuite () {
           assertTrue(properties.waitForSync);
           assertTrue(properties.doCompact);
           assertEqual(2097152, properties.journalSize);
+          assertTrue(properties.hasOwnProperty("indexBuckets"));
+          assertEqual(properties.indexBuckets, properties.indexBuckets);
         }
       );
     },
@@ -1101,6 +1104,7 @@ function ReplicationSuite () {
           assertFalse(properties.waitForSync);
           assertFalse(properties.doCompact);
           assertEqual(1048576, properties.journalSize);
+          assertTrue(properties.hasOwnProperty("indexBuckets"));
 
           state.cid = c._id;
           state.properties = c.properties();
@@ -1112,6 +1116,35 @@ function ReplicationSuite () {
           assertFalse(properties.waitForSync);
           assertFalse(properties.doCompact);
           assertEqual(1048576, properties.journalSize);
+          assertTrue(properties.hasOwnProperty("indexBuckets"));
+          assertEqual(properties.indexBuckets, properties.indexBuckets);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test change collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testChangeCollectionIndexBuckets : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn, {
+            indexBuckets: 4
+          });
+
+          var properties = c.properties();
+          assertEqual(4, properties.indexBuckets);
+
+          properties = c.properties({ indexBuckets: 8 });
+          assertEqual(8, properties.indexBuckets);
+
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function (state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(8, properties.indexBuckets);
         }
       );
     },
@@ -1144,6 +1177,7 @@ function ReplicationSuite () {
           assertEqual(1048576, properties.journalSize);
           assertTrue(properties.keyOptions.allowUserKeys);
           assertEqual("traditional", properties.keyOptions.type);
+          assertTrue(properties.hasOwnProperty("indexBuckets"));
         }
       );
     },
@@ -1180,6 +1214,53 @@ function ReplicationSuite () {
           assertEqual(2097152, properties.journalSize);
           assertFalse(properties.keyOptions.allowUserKeys);
           assertEqual("autoincrement", properties.keyOptions.type);
+          assertTrue(properties.hasOwnProperty("indexBuckets"));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateCollectionIndexBuckets1 : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn, {
+            indexBuckets: 16
+          });
+
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function (state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(state.cid, db._collection(cn)._id);
+          assertEqual(cn, db._collection(cn).name());
+          assertEqual(16, properties.indexBuckets);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateCollectionIndexBuckets2 : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn, {
+            indexBuckets: 8
+          });
+
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function (state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(state.cid, db._collection(cn)._id);
+          assertEqual(cn, db._collection(cn).name());
+          assertEqual(8, properties.indexBuckets);
         }
       );
     },
