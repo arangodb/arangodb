@@ -72,10 +72,17 @@ void Version::initialise () {
   Values["repository-version"] = getRepositoryVersion();
   Values["sizeof int"] = triagens::basics::StringUtils::itoa(sizeof(int));
   Values["sizeof void*"] = triagens::basics::StringUtils::itoa(sizeof(void*));
+  Values["fd-setsize"] = triagens::basics::StringUtils::itoa(FD_SETSIZE);
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   Values["maintainer-mode"] = "true";
 #else
   Values["maintainer-mode"] = "false";
+#endif
+
+#ifdef TRI_HAVE_LINUX_POLL
+  Values["fd-client-event-handler"] = "poll";
+#else
+  Values["fd-client-event-handler"] = "select";
 #endif
 }
 

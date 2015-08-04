@@ -28,6 +28,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/CollectionScanner.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Functions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
@@ -1442,7 +1443,16 @@ bool IndexRangeBlock::initRanges () {
     }
     else {
       // no V8 context required!
-      buildExpressions();
+
+      Functions::InitializeThreadContext();
+      try {
+        buildExpressions();
+        Functions::DestroyThreadContext();
+      }
+      catch (...) {
+        Functions::DestroyThreadContext();
+        throw;
+      }
     }
   }
   
@@ -2894,7 +2904,16 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
 
   if (! _expression->isV8()) {
     // an expression that does not require V8
-    executeExpression(result);
+
+    Functions::InitializeThreadContext();
+    try {
+      executeExpression(result);
+      Functions::DestroyThreadContext();
+    }
+    catch (...) {
+      Functions::DestroyThreadContext();
+      throw;
+    }
   }
   else {
     bool const isRunningInCluster = triagens::arango::ServerState::instance()->isRunningInCluster();

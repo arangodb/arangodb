@@ -134,6 +134,87 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test like function, invalid arguments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLikeInvalidCxx : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(LIKE())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(LIKE(\"test\"))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(LIKE(\"test\", \"meow\", \"foo\", \"bar\"))"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test like function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLikeCxx : function () {
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"test\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"%test\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"test%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"%test%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"this%test%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"this%is%test%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"this%g\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"this%n\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"This%n\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"his%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"%g\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"%G\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"this is a test string\", \"this%test%is%\"))"));
+    
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"%\", \"\\%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"a%c\", \"a%c\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"a%c\", \"ac\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"a%c\", \"a\\\\%\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"a%c\", \"\\\\%a%\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"a%c\", \"\\\\%\\\\%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"%%\", \"\\\\%\\\\%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"_\", \"\\\\_\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"_\", \"\\\\_%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"abcd\", \"_bcd\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"abcde\", \"_bcd%\"))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"abcde\", \"\\\\_bcd%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"\\\\abc\", \"\\\\\\\\%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"\\abc\", \"\\a%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"[ ] ( ) % * . + -\", \"[%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"[ ] ( ) % * . + -\", \"[ ] ( ) \\% * . + -\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"[ ] ( ) % * . + -\", \"%. +%\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"abc^def$g\", \"abc^def$g\"))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"abc^def$g\", \"%^%$g\"))"));
+      
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"ABCD\", \"abcd\", false))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"ABCD\", \"abcd\", true))"));
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(LIKE(\"abcd\", \"ABCD\", false))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"abcd\", \"ABCD\", true))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"MÖterTräNenMÜtterSöhne\", \"MöterTräNenMütterSöhne\", true))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"MÖterTräNenMÜtterSöhne\", \"mötertränenmüttersöhne\", true))"));
+      assertEqual([ true ], getQueryResults("RETURN NOOPT(LIKE(\"MÖterTräNenMÜtterSöhne\", \"MÖTERTRÄNENMÜTTERSÖHNE\", true))"));
+      
+      assertEqual([ [ true, false, true, false ] ], getQueryResults("RETURN [ NOOPT(LIKE(\"Möter\", \"m_ter\", true)), NOOPT(LIKE(\"Möter\", \"m_ter\", false)), NOOPT(LIKE(\"Möter\", \"m_ter\", true)), NOOPT(LIKE(\"Möter\", \"m_ter\", false)) ]"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test like with special characters
+////////////////////////////////////////////////////////////////////////////////
+
+    testLikeSpecialCharsCxx : function () {
+      var data = [ 
+        "the quick\nbrown fox jumped over\r\nthe lazy dog",
+        "'the \"\\quick\\\n \"brown\\\rfox' jumped",
+        '"the fox"" jumped \\over the \newline \roof"'
+      ];
+        
+      data.forEach(function(value) {
+        var actual = getQueryResults("RETURN NOOPT(LIKE(" + JSON.stringify(value) + ", 'foobar'))");
+        assertEqual([ false ], actual);
+        
+        actual = getQueryResults("RETURN NOOPT(LIKE(" + JSON.stringify(value) + ", " + JSON.stringify(value) + "))");
+        assertEqual([ true ], actual);
+      });
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test first require function / expected datatype & arg. mismatch
 ////////////////////////////////////////////////////////////////////////////////
     
