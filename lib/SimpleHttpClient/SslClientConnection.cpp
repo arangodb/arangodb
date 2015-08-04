@@ -65,7 +65,7 @@
 #define STR_ERROR() strerror(errno)
 #endif
 
-#ifdef __linux__
+#ifdef TRI_HAVE_POLL_H
 #include <sys/poll.h>
 #endif
 
@@ -272,7 +272,7 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
   double start = TRI_microtime();
   int res;
     
-#ifdef __linux__
+#ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
   bool nowait = (timeout == 0.0);
   int towait;
@@ -311,7 +311,7 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
   //   0 : if the timeout happened
   //   -1: if an error happened, EINTR within the timeout is already caught
 #else
-  // All versions other than Linux use select:
+  // All versions other use select:
  
   // An fd_set is a fixed size buffer. 
   // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE 

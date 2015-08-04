@@ -264,12 +264,6 @@ ClusterInfo* ClusterInfo::instance () {
 
 ClusterInfo::ClusterInfo ()
   : _agency(),
-    _plannedDatabases(),
-    _currentDatabases(),
-    _collectionsValid(false),
-    _serversValid(false),
-    _DBServersValid(false),
-    _coordinatorsValid(false),
     _uniqid() {
 
   _uniqid._currentValue = _uniqid._upperValue = 0ULL;
@@ -282,8 +276,8 @@ ClusterInfo::ClusterInfo ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo () {
-  clearPlannedDatabases();
-  clearCurrentDatabases();
+  clearPlannedDatabases(_plannedDatabases);
+  clearCurrentDatabases(_currentDatabases);
 }
 
 // -----------------------------------------------------------------------------
@@ -329,21 +323,13 @@ uint64_t ClusterInfo::uniqid (uint64_t count) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::flush () {
-  WRITE_LOCKER(_lock);
-
-  _collectionsValid = false;
-  _collectionsCurrentValid = false;
-  _serversValid = false;
-  _DBServersValid = false;
-  _coordinatorsValid = false;
-
-  _collections.clear();
-  _collectionsCurrent.clear();
-  _servers.clear();
-  _shardIds.clear();
-
-  clearPlannedDatabases();
-  clearCurrentDatabases();
+  loadServers();
+  loadCurrentDBServers();
+  loadCurrentCoordinators();
+  loadPlannedDatabases();
+  loadCurrentDatabases();
+  loadPlannedCollections();
+  loadCurrentCollections();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,25 +340,39 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID,
                                      bool reload) {
   int tries = 0;
 
-  if (reload) {
+  if (reload || 
+      ! _plannedDatabasesProt.isValid ||
+      ! _currentDatabasesProt.isValid ||
+      ! _DBServersProt.isValid) {
     loadPlannedDatabases();
     loadCurrentDatabases();
     loadCurrentDBServers();
-    ++tries;
+    ++tries;   // no need to reload if the database is not found
   }
+
+  // From now on we know that all data has been valid once, so no need
+  // to check the isValid flags again under the lock.
 
   while (true) {
     {
-      READ_LOCKER(_lock);
-      const size_t expectedSize = _DBServers.size();
+      size_t expectedSize;
+      {
+        READ_LOCKER(_DBServersProt.lock);
+        expectedSize = _DBServers.size();
+      }
 
-      // look up database by name
+      // look up database by name:
 
-      std::map<DatabaseID, TRI_json_t*>::const_iterator it = _plannedDatabases.find(databaseID);
+      READ_LOCKER(_plannedDatabasesProt.lock);
+      // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
+      auto it = _plannedDatabases.find(databaseID);
 
       if (it != _plannedDatabases.end()) {
         // found the database in Plan
-        std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::const_iterator it2 = _currentDatabases.find(databaseID);
+        READ_LOCKER(_currentDatabasesProt.lock);
+        // _currentDatabases is 
+        //     a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
+        auto it2 = _currentDatabases.find(databaseID);
 
         if (it2 != _currentDatabases.end()) {
           // found the database in Current
@@ -401,40 +401,57 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID,
 vector<DatabaseID> ClusterInfo::listDatabases (bool reload) {
   vector<DatabaseID> result;
 
-  if (reload) {
+  if (reload ||
+      ! _plannedDatabasesProt.isValid ||
+      ! _currentDatabasesProt.isValid ||
+      ! _DBServersProt.isValid) {
     loadPlannedDatabases();
     loadCurrentDatabases();
     loadCurrentDBServers();
   }
 
-  READ_LOCKER(_lock);
-  const size_t expectedSize = _DBServers.size();
+  // From now on we know that all data has been valid once, so no need
+  // to check the isValid flags again under the lock.
 
-  std::map<DatabaseID, TRI_json_t*>::const_iterator it = _plannedDatabases.begin();
+  size_t expectedSize;
+  {
+    READ_LOCKER(_DBServersProt.lock);
+    expectedSize = _DBServers.size();
+  }
 
-  while (it != _plannedDatabases.end()) {
-    std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::const_iterator it2 = _currentDatabases.find((*it).first);
+  {
+    READ_LOCKER(_plannedDatabasesProt.lock);
+    READ_LOCKER(_currentDatabasesProt.lock);
+    // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
+    auto it = _plannedDatabases.begin();
 
-    if (it2 != _currentDatabases.end()) {
-      if ((*it2).second.size() >= expectedSize) {
-        result.push_back((*it).first);
+    while (it != _plannedDatabases.end()) {
+      // _currentDatabases is:
+      //   a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
+      auto it2 = _currentDatabases.find((*it).first);
+
+      if (it2 != _currentDatabases.end()) {
+        if ((*it2).second.size() >= expectedSize) {
+          result.push_back((*it).first);
+        }
       }
-    }
 
-    ++it;
+      ++it;
+    }
   }
 
   return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the list of planned databases
+/// @brief actually clears a list of planned databases
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::clearPlannedDatabases () {
-  std::map<DatabaseID, TRI_json_t*>::iterator it = _plannedDatabases.begin();
+void ClusterInfo::clearPlannedDatabases (
+                 std::unordered_map<DatabaseID, TRI_json_t*>& databases) {
 
-  while (it != _plannedDatabases.end()) {
+  auto it = databases.begin();
+  while (it != databases.end()) {
     TRI_json_t* json = (*it).second;
 
     if (json != nullptr) {
@@ -442,19 +459,84 @@ void ClusterInfo::clearPlannedDatabases () {
     }
     ++it;
   }
-
-  _plannedDatabases.clear();
+  databases.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the list of current databases
+/// @brief (re-)load the information about planned databases
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+//
+static const std::string prefixPlannedDatabases = "Plan/Databases";
+
+void ClusterInfo::loadPlannedDatabases () {
+
+  uint64_t storedVersion = _plannedDatabasesProt.version;
+  MUTEX_LOCKER(_plannedDatabasesProt.mutex);
+  if (_plannedDatabasesProt.version > storedVersion) {
+    // Somebody else did, what we intended to do, so just return
+    return;
+  }
+
+  // Now contact the agency:
+  AgencyCommResult result;
+  {
+    AgencyCommLocker locker("Plan", "READ");
+
+    if (locker.successful()) {
+      result = _agency.getValues(prefixPlannedDatabases, true);
+    }
+  }
+
+  if (result.successful()) {
+    result.parse(prefixPlannedDatabases + "/", false);
+
+    decltype(_plannedDatabases) newDatabases;
+
+    // result._values is a std::map<std::string, AgencyCommResultEntry>
+    auto it = result._values.begin();
+
+    while (it != result._values.end()) {
+      string const& name = (*it).first;
+      TRI_json_t* options = (*it).second._json;
+
+      // steal the json
+      (*it).second._json = nullptr;
+      newDatabases.insert(std::make_pair(name, options));
+
+      ++it;
+    }
+
+    // Now set the new value:
+    {
+      WRITE_LOCKER(_plannedDatabasesProt.lock);
+      _plannedDatabases.swap(newDatabases);
+      _plannedDatabasesProt.version++;   // such that others notice our change
+      _plannedDatabasesProt.isValid = true;  // will never be reset to false
+    }
+    clearPlannedDatabases(newDatabases);  // delete the old stuff
+    return;
+  }
+
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixPlannedDatabases.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a list of current databases
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::clearCurrentDatabases () {
-  std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::iterator it = _currentDatabases.begin();
+void ClusterInfo::clearCurrentDatabases (
+               std::unordered_map<DatabaseID, 
+                                  std::unordered_map<ServerID, TRI_json_t*>>&
+               databases) {
 
-  while (it != _currentDatabases.end()) {
-    std::map<ServerID, TRI_json_t*>::iterator it2 = (*it).second.begin();
+  auto it = databases.begin();
+  while (it != databases.end()) {
+    auto it2 = (*it).second.begin();
 
     while (it2 != (*it).second.end()) {
       TRI_json_t* json = (*it2).second;
@@ -468,49 +550,7 @@ void ClusterInfo::clearCurrentDatabases () {
     ++it;
   }
 
-  _currentDatabases.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about planned databases
-/// Usually one does not have to call this directly.
-////////////////////////////////////////////////////////////////////////////////
-static const std::string prefixPlannedDatabases = "Plan/Databases";
-void ClusterInfo::loadPlannedDatabases () {
-
-  AgencyCommResult result;
-
-  {
-    AgencyCommLocker locker("Plan", "READ");
-
-    if (locker.successful()) {
-      result = _agency.getValues(prefixPlannedDatabases, true);
-    }
-  }
-
-  if (result.successful()) {
-    result.parse(prefixPlannedDatabases + "/", false);
-
-    WRITE_LOCKER(_lock);
-    clearPlannedDatabases();
-
-    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
-
-    while (it != result._values.end()) {
-      string const& name = (*it).first;
-      TRI_json_t* options = (*it).second._json;
-
-      // steal the json
-      (*it).second._json = nullptr;
-      _plannedDatabases.insert(std::make_pair(name, options));
-
-      ++it;
-    }
-
-    return;
-  }
-
-  LOG_TRACE("Error while loading %s", prefixPlannedDatabases.c_str());
+  databases.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -519,10 +559,18 @@ void ClusterInfo::loadPlannedDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static const std::string prefixCurrentDatabases = "Current/Databases";
+
 void ClusterInfo::loadCurrentDatabases () {
 
-  AgencyCommResult result;
+  uint64_t storedVersion = _currentDatabasesProt.version;
+  MUTEX_LOCKER(_currentDatabasesProt.mutex);
+  if (_currentDatabasesProt.version > storedVersion) {
+    // Somebody else did, what we intended to do, so just return
+    return;
+  }
 
+  // Now contact the agency:
+  AgencyCommResult result;
   {
     AgencyCommLocker locker("Plan", "READ");
 
@@ -534,8 +582,7 @@ void ClusterInfo::loadCurrentDatabases () {
   if (result.successful()) {
     result.parse(prefixCurrentDatabases + "/", false);
 
-    WRITE_LOCKER(_lock);
-    clearCurrentDatabases();
+    decltype(_currentDatabases) newDatabases;
 
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
@@ -551,12 +598,14 @@ void ClusterInfo::loadCurrentDatabases () {
       }
       const std::string database = parts[0];
 
-      std::map<std::string, std::map<ServerID, TRI_json_t*> >::iterator it2 = _currentDatabases.find(database);
+      // _currentDatabases is
+      //   a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
+      auto it2 = newDatabases.find(database);
 
-      if (it2 == _currentDatabases.end()) {
+      if (it2 == newDatabases.end()) {
         // insert an empty list for this database
-        std::map<ServerID, TRI_json_t*> empty;
-        it2 = _currentDatabases.insert(std::make_pair(database, empty)).first;
+        decltype(it2->second) empty;
+        it2 = newDatabases.insert(std::make_pair(database, empty)).first;
       }
 
       if (parts.size() == 2) {
@@ -570,10 +619,22 @@ void ClusterInfo::loadCurrentDatabases () {
       ++it;
     }
 
+    // Now set the new value:
+    {
+      WRITE_LOCKER(_currentDatabasesProt.lock);
+      _currentDatabases.swap(newDatabases);
+      _currentDatabasesProt.version++;   // such that others notice our change
+      _currentDatabasesProt.isValid = true;  // will never be reset to false
+    }
+    clearCurrentDatabases(newDatabases);  // delete the old stuff
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixCurrentDatabases.c_str());
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixCurrentDatabases.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -582,10 +643,18 @@ void ClusterInfo::loadCurrentDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static const std::string prefixPlannedCollections = "Plan/Collections";
+
 void ClusterInfo::loadPlannedCollections (bool acquireLock) {
 
-  AgencyCommResult result;
+  uint64_t storedVersion = _plannedCollectionsProt.version;
+  MUTEX_LOCKER(_plannedCollectionsProt.mutex);
+  if (_plannedCollectionsProt.version > storedVersion) {
+    // Somebody else did, what we intended to do, so just return
+    return;
+  }
 
+  // Now contact the agency:
+  AgencyCommResult result;
   {
     if (acquireLock) {
       AgencyCommLocker locker("Plan", "READ");
@@ -602,9 +671,9 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
   if (result.successful()) {
     result.parse(prefixPlannedCollections + "/", false);
 
-    WRITE_LOCKER(_lock);
-    _collections.clear();
-    _shards.clear();
+    decltype(_plannedCollections) newCollections;
+    decltype(_shards)             newShards;
+    decltype(_shardKeys)          newShardKeys;
 
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
@@ -624,13 +693,13 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       const std::string collection = parts[1];
 
       // check whether we have created an entry for the database already
-      AllCollections::iterator it2 = _collections.find(database);
+      AllCollections::iterator it2 = newCollections.find(database);
 
-      if (it2 == _collections.end()) {
+      if (it2 == newCollections.end()) {
         // not yet, so create an entry for the database
         DatabaseCollections empty;
-        _collections.emplace(std::make_pair(database, empty));
-        it2 = _collections.find(database);
+        newCollections.emplace(std::make_pair(database, empty));
+        it2 = newCollections.find(database);
       }
 
       TRI_json_t* json = (*it).second._json;
@@ -640,15 +709,15 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
       vector<string>* shardKeys = new vector<string>;
       *shardKeys = collectionData->shardKeys();
-      _shardKeys.insert(
-                    make_pair(collection, shared_ptr<vector<string> > (shardKeys)));
+      newShardKeys.insert(
+             make_pair(collection, shared_ptr<vector<string> > (shardKeys)));
       map<ShardID, ServerID> shardIDs = collectionData->shardIds();
       vector<string>* shards = new vector<string>;
       map<ShardID, ServerID>::iterator it3;
       for (it3 = shardIDs.begin(); it3 != shardIDs.end(); ++it3) {
         shards->push_back(it3->first);
       }
-      _shards.emplace(
+      newShards.emplace(
               std::make_pair(collection, shared_ptr<vector<string> >(shards)));
 
       // insert the collection into the existing map, insert it under its
@@ -660,12 +729,24 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
                                            collectionData));
 
     }
-    _collectionsValid = true;
+
+    // Now set the new value:
+    {
+      WRITE_LOCKER(_plannedCollectionsProt.lock);
+      _plannedCollections.swap(newCollections);
+      _shards.swap(newShards);
+      _shardKeys.swap(newShardKeys);
+      _plannedCollectionsProt.version++;   // such that others notice our change
+      _plannedCollectionsProt.isValid = true;  // will never be reset to false
+    }
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixPlannedCollections.c_str());
-  _collectionsValid = false;
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixPlannedCollections.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -678,18 +759,18 @@ shared_ptr<CollectionInfo> ClusterInfo::getCollection
                                            CollectionID const& collectionID) {
   int tries = 0;
 
-  if (! _collectionsValid) {
+  if (! _plannedCollectionsProt.isValid) {
     loadPlannedCollections(true);
     ++tries;
   }
 
   while (true) {   // left by break
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(_plannedCollectionsProt.lock);
       // look up database by id
-      AllCollections::const_iterator it = _collections.find(databaseID);
+      AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
-      if (it != _collections.end()) {
+      if (it != _plannedCollections.end()) {
         // look up collection by id (or by name)
         DatabaseCollections::const_iterator it2 = (*it).second.find(collectionID);
 
@@ -761,11 +842,11 @@ const std::vector<shared_ptr<CollectionInfo> > ClusterInfo::getCollections
   // always reload
   loadPlannedCollections(true);
 
-  READ_LOCKER(_lock);
+  READ_LOCKER(_plannedCollectionsProt.lock);
   // look up database by id
-  AllCollections::const_iterator it = _collections.find(databaseID);
+  AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
-  if (it == _collections.end()) {
+  if (it == _plannedCollections.end()) {
     return result;
   }
 
@@ -795,8 +876,15 @@ const std::vector<shared_ptr<CollectionInfo> > ClusterInfo::getCollections
 static const std::string prefixCurrentCollections = "Current/Collections";
 void ClusterInfo::loadCurrentCollections (bool acquireLock) {
 
-  AgencyCommResult result;
+  uint64_t storedVersion = _currentCollectionsProt.version;
+  MUTEX_LOCKER(_currentCollectionsProt.mutex);
+  if (_currentCollectionsProt.version > storedVersion) {
+    // Somebody else did, what we intended to do, so just return
+    return;
+  }
 
+  // Now contact the agency:
+  AgencyCommResult result;
   {
     if (acquireLock) {
       AgencyCommLocker locker("Current", "READ");
@@ -813,9 +901,8 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
   if (result.successful()) {
     result.parse(prefixCurrentCollections + "/", false);
 
-    WRITE_LOCKER(_lock);
-    _collectionsCurrent.clear();
-    _shardIds.clear();
+    decltype(_currentCollections) newCollections;
+    decltype(_shardIds)           newShardIds;
 
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
@@ -837,13 +924,13 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       const std::string shardID    = parts[2];
 
       // check whether we have created an entry for the database already
-      AllCollectionsCurrent::iterator it2 = _collectionsCurrent.find(database);
+      AllCollectionsCurrent::iterator it2 = newCollections.find(database);
 
-      if (it2 == _collectionsCurrent.end()) {
+      if (it2 == newCollections.end()) {
         // not yet, so create an entry for the database
         DatabaseCollectionsCurrent empty;
-        _collectionsCurrent.insert(std::make_pair(database, empty));
-        it2 = _collectionsCurrent.find(database);
+        newCollections.insert(std::make_pair(database, empty));
+        it2 = newCollections.find(database);
       }
 
       TRI_json_t* json = (*it).second._json;
@@ -874,15 +961,26 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       std::string DBserver = triagens::basics::JsonHelper::getStringValue
                     (json, "DBServer", "");
       if (DBserver != "") {
-        _shardIds.insert(make_pair(shardID, DBserver));
+        newShardIds.insert(make_pair(shardID, DBserver));
       }
     }
-    _collectionsCurrentValid = true;
+
+    // Now set the new value:
+    {
+      WRITE_LOCKER(_currentCollectionsProt.lock);
+      _currentCollections.swap(newCollections);
+      _shardIds.swap(newShardIds);
+      _currentCollectionsProt.version++;   // such that others notice our change
+      _currentCollectionsProt.isValid = true;  // will never be reset to false
+    }
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixCurrentCollections.c_str());
-  _collectionsCurrentValid = false;
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixCurrentCollections.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -896,18 +994,18 @@ shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
             CollectionID const& collectionID) {
   int tries = 0;
 
-  if (! _collectionsCurrentValid) {
+  if (! _currentCollectionsProt.isValid) {
     loadCurrentCollections(true);
     ++tries;
   }
 
   while (true) {
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(_currentCollectionsProt.lock);
       // look up database by id
-      AllCollectionsCurrent::const_iterator it = _collectionsCurrent.find(databaseID);
+      AllCollectionsCurrent::const_iterator it = _currentCollections.find(databaseID);
 
-      if (it != _collectionsCurrent.end()) {
+      if (it != _currentCollections.end()) {
         // look up collection by id
         DatabaseCollectionsCurrent::const_iterator it2 = (*it).second.find(collectionID);
 
@@ -964,6 +1062,9 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
     }
   }
 
+  // Now update our own cache of planned databases:
+  loadPlannedDatabases();
+
   // Now wait for it to appear and be complete:
   res.clear();
   res = ac.getValues("Current/Version", false);
@@ -1010,6 +1111,7 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
           errorMsg = "Error in creation of database:" + tmpMsg;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
         }
+        loadCurrentDatabases();  // update our cache
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
@@ -1075,7 +1177,9 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
     }
   }
 
-  _collectionsValid = false;
+  // Load our own caches:
+  loadPlannedDatabases();
+  loadPlannedCollections(true);
 
   // Now wait for it to appear and be complete:
   res.clear();
@@ -1141,9 +1245,9 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
       // check if a collection with the same name is already planned
       loadPlannedCollections(false);
 
-      READ_LOCKER(_lock);
-      AllCollections::const_iterator it = _collections.find(databaseName);
-      if (it != _collections.end()) {
+      READ_LOCKER(_plannedCollectionsProt.lock);
+      AllCollections::const_iterator it = _plannedCollections.find(databaseName);
+      if (it != _plannedCollections.end()) {
         const std::string name = JsonHelper::getStringValue(json, "name", "");
 
         DatabaseCollections::const_iterator it2 = (*it).second.find(name);
@@ -1171,6 +1275,9 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
                           errorMsg);
     }
   }
+
+  // Update our cache:
+  loadPlannedCollections();
 
   // Now wait for it to appear and be complete:
   AgencyCommResult res = ac.getValues("Current/Version", false);
@@ -1214,6 +1321,7 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
           errorMsg = "Error in creation of collection:" + tmpMsg;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
         }
+        loadPlannedCollections();
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
@@ -1264,7 +1372,8 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
     }
   }
 
-  flush();
+  // Update our own cache:
+  loadPlannedCollections(true);
 
   // Now wait for it to appear and be complete:
   res.clear();
@@ -1295,6 +1404,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
           return setErrormsg(
             TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT, errorMsg);
         }
+        loadCurrentCollections();
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
@@ -1487,9 +1597,14 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
     {
       loadPlannedCollections(false);
 
-      READ_LOCKER(_lock);
-
       shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+
+      // Note that nobody is removing this collection in the plan, since
+      // we hold the write lock in the agency, therefore it does not matter
+      // that getCollection fetches the read lock and releases it before
+      // we get it again.
+      //
+      READ_LOCKER(_plannedCollectionsProt.lock);
 
       if (c->empty()) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
@@ -1592,8 +1707,8 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
     }
   }
 
-  // wipe cache
-  flush();
+  // reload our own cache:
+  loadPlannedCollections(true);
 
   TRI_ASSERT(numberOfShards > 0);
 
@@ -1660,6 +1775,8 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
           resultJson = newIndex;
           TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
 
+          loadCurrentCollections();
+
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
       }
@@ -1705,9 +1822,9 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
     {
       loadPlannedCollections(false);
 
-      READ_LOCKER(_lock);
-
       shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+
+      READ_LOCKER(_plannedCollectionsProt.lock);
 
       if (c->empty()) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
@@ -1792,8 +1909,8 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
     }
   }
 
-  // wipe cache
-  flush();
+  // load our own cache:
+  loadPlannedCollections();
 
   TRI_ASSERT(numberOfShards > 0);
 
@@ -1839,6 +1956,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
         }
 
         if (! found) {
+          loadCurrentCollections();
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
       }
@@ -1858,10 +1976,18 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
 ////////////////////////////////////////////////////////////////////////////////
 
 static const std::string prefixServers = "Current/ServersRegistered";
+
 void ClusterInfo::loadServers () {
 
-  AgencyCommResult result;
+  uint64_t storedVersion = _serversProt.version;
+  MUTEX_LOCKER(_serversProt.mutex);
+  if (_serversProt.version > storedVersion) {
+    // Somebody else did, what we intended to do, so just return
+    return;
+  }
 
+  // Now contact the agency:
+  AgencyCommResult result;
   {
     AgencyCommLocker locker("Current", "READ");
 
@@ -1873,8 +1999,7 @@ void ClusterInfo::loadServers () {
   if (result.successful()) {
     result.parse(prefixServers + "/", false);
 
-    WRITE_LOCKER(_lock);
-    _servers.clear();
+    decltype(_servers) newServers;
 
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
@@ -1885,21 +2010,26 @@ void ClusterInfo::loadServers () {
       if (nullptr != sub) {
         std::string server = triagens::basics::JsonHelper::getStringValue(sub, "");
 
-        _servers.emplace(std::make_pair((*it).first, server));
+        newServers.emplace(std::make_pair((*it).first, server));
       }
       ++it;
     }
 
-    _serversValid = true;
-
+    // Now set the new value:
+    {
+      WRITE_LOCKER(_serversProt.lock);
+      _servers.swap(newServers);
+      _serversProt.version++;   // such that others notice our change
+      _serversProt.isValid = true;  // will never be reset to false
+    }
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixServers.c_str());
-
-  _serversValid = false;
-
-  return;
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixServers.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1911,15 +2041,16 @@ void ClusterInfo::loadServers () {
 std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
   int tries = 0;
 
-  if (! _serversValid) {
+  if (! _serversProt.isValid) {
     loadServers();
     tries++;
   }
 
   while (true) {
     {
-      READ_LOCKER(_lock);
-      std::map<ServerID, string>::const_iterator it = _servers.find(serverID);
+      READ_LOCKER(_serversProt.lock);
+      // _servers is a map-type <ServerId, string>
+      auto it = _servers.find(serverID);
 
       if (it != _servers.end()) {
         return (*it).second;
@@ -1946,14 +2077,14 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
 std::string ClusterInfo::getServerName (std::string const& endpoint) {
   int tries = 0;
 
-  if (! _serversValid) {
+  if (! _serversProt.isValid) {
     loadServers();
     tries++;
   }
 
   while (true) {
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(_serversProt.lock);
       for (auto const& it : _servers) {
         if (it.second == endpoint) {
           return it.first;
@@ -1981,8 +2112,15 @@ static const std::string prefixCurrentCoordinators = "Current/Coordinators";
 
 void ClusterInfo::loadCurrentCoordinators () {
 
-  AgencyCommResult result;
+  uint64_t storedVersion = _coordinatorsProt.version;
+  MUTEX_LOCKER(_coordinatorsProt.mutex);
+  if (_coordinatorsProt.version > storedVersion) {
+    // Somebody else did, what we intended to do, so just return
+    return;
+  }
 
+  // Now contact the agency:
+  AgencyCommResult result;
   {
     AgencyCommLocker locker("Current", "READ");
 
@@ -1994,24 +2132,29 @@ void ClusterInfo::loadCurrentCoordinators () {
   if (result.successful()) {
     result.parse(prefixCurrentCoordinators + "/", false);
 
-    WRITE_LOCKER(_lock);
-    _coordinators.clear();
+    decltype(_coordinators) newCoordinators;
 
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
     for (; it != result._values.end(); ++it) {
-      _coordinators.emplace(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
+      newCoordinators.emplace(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
     }
 
-    _coordinatorsValid = true;
+    // Now set the new value:
+    {
+      WRITE_LOCKER(_coordinatorsProt.lock);
+      _coordinators.swap(newCoordinators);
+      _coordinatorsProt.version++;   // such that others notice our change
+      _coordinatorsProt.isValid = true;  // will never be reset to false
+    }
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixCurrentCoordinators.c_str());
-
-  _coordinatorsValid = false;
-
-  return;
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixCurrentCoordinators.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2023,8 +2166,15 @@ static const std::string prefixCurrentDBServers = "Current/DBServers";
 
 void ClusterInfo::loadCurrentDBServers () {
 
-  AgencyCommResult result;
+  uint64_t storedVersion = _DBServersProt.version;
+  MUTEX_LOCKER(_DBServersProt.mutex);
+  if (_DBServersProt.version > storedVersion) {
+    // Somebody else did, what we intended to do, so just return
+    return;
+  }
 
+  // Now contact the agency:
+  AgencyCommResult result;
   {
     AgencyCommLocker locker("Current", "READ");
 
@@ -2036,24 +2186,29 @@ void ClusterInfo::loadCurrentDBServers () {
   if (result.successful()) {
     result.parse(prefixCurrentDBServers + "/", false);
 
-    WRITE_LOCKER(_lock);
-    _DBServers.clear();
+    decltype(_DBServers) newDBServers;
 
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
     for (; it != result._values.end(); ++it) {
-      _DBServers.emplace(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
+      newDBServers.emplace(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
     }
 
-    _DBServersValid = true;
+    // Now set the new value:
+    {
+      WRITE_LOCKER(_DBServersProt.lock);
+      _DBServers.swap(newDBServers);
+      _DBServersProt.version++;   // such that others notice our change
+      _DBServersProt.isValid = true;  // will never be reset to false
+    }
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixCurrentDBServers.c_str());
-
-  _DBServersValid = false;
-
-  return;
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixCurrentDBServers.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2063,22 +2218,24 @@ void ClusterInfo::loadCurrentDBServers () {
 
 std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
   std::vector<ServerID> result;
-
   int tries = 0;
+
+  if (! _DBServersProt.isValid) {
+    loadCurrentDBServers();
+    tries++;
+  }
   while (true) {
     {
       // return a consistent state of servers
-      READ_LOCKER(_lock);
+      READ_LOCKER(_DBServersProt.lock);
 
-      if (_DBServersValid) {
-        result.reserve(_DBServers.size());
+      result.reserve(_DBServers.size());
 
-        for (auto& it : _DBServers) {
-          result.emplace_back(it.first);
-        }
-
-        return result;
+      for (auto& it : _DBServers) {
+        result.emplace_back(it.first);
       }
+
+      return result;
     }
 
     if (++tries >= 2) {
@@ -2137,15 +2294,16 @@ std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
 ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   int tries = 0;
 
-  if (! _collectionsCurrentValid) {
+  if (! _currentCollectionsProt.isValid) {
     loadCurrentCollections(true);
     tries++;
   }
 
   while (true) {
     {
-      READ_LOCKER(_lock);
-      std::map<ShardID, ServerID>::const_iterator it = _shardIds.find(shardID);
+      READ_LOCKER(_currentCollectionsProt.lock);
+      // _shardIds is a map-type <ShardId, ServerId>
+      auto it = _shardIds.find(shardID);
 
       if (it != _shardIds.end()) {
         return (*it).second;
@@ -2189,7 +2347,7 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   // Note that currently we take the number of shards and the shardKeys
   // from Plan, since they are immutable. Later we will have to switch
   // this to Current, when we allow to add and remove shards.
-  if (! _collectionsValid) {
+  if (! _plannedCollectionsProt.isValid) {
     loadPlannedCollections();
   }
 
@@ -2202,14 +2360,14 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   while (true) {
     {
       // Get the sharding keys and the number of shards:
-      READ_LOCKER(_lock);
-      map<CollectionID, shared_ptr<vector<string>>>::iterator it
-          = _shards.find(collectionID);
+      READ_LOCKER(_plannedCollectionsProt.lock);
+      // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
+      auto it = _shards.find(collectionID);
 
       if (it != _shards.end()) {
         shards = it->second;
-        map<CollectionID, shared_ptr<vector<string>>>::iterator it2
-            = _shardKeys.find(collectionID);
+        // _shardKeys is a map-type <CollectionID, shared_ptr<vector<string>>>
+        auto it2 = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
           shardKeys = new char const* [shardKeysPtr->size()];
@@ -2229,7 +2387,7 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     if (++tries >= 2) {
       break;
     }
-    loadPlannedCollections();
+    loadPlannedCollections(true);
   }
 
   if (! found) {
@@ -2258,22 +2416,24 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
 
 std::vector<ServerID> ClusterInfo::getCurrentCoordinators () {
   std::vector<ServerID> result;
-  
   int tries = 0;
+
+  if (! _coordinatorsProt.isValid) {
+    loadCurrentCoordinators();
+    tries++;
+  }
   while (true) {
     {
       // return a consistent state of servers
-      READ_LOCKER(_lock);
+      READ_LOCKER(_coordinatorsProt.lock);
 
-      if (_coordinatorsValid) {
-        result.reserve(_coordinators.size());
+      result.reserve(_coordinators.size());
 
-        for (auto& it : _coordinators) {
-          result.emplace_back(it.first);
-        }
-
-        return result;
+      for (auto& it : _coordinators) {
+        result.emplace_back(it.first);
       }
+
+      return result;
     }
 
     if (++tries >= 2) {

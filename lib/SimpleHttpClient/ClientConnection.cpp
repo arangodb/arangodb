@@ -58,7 +58,7 @@
 #define STR_ERROR() strerror(errno)
 #endif
 
-#ifdef __linux__
+#ifdef TRI_HAVE_POLL_H
 #include <poll.h>
 #endif
 
@@ -177,7 +177,7 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
   double start = TRI_microtime();
   int res;
     
-#ifdef __linux__
+#ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
   bool nowait = (timeout == 0.0);
   int towait;
@@ -216,6 +216,8 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
   //   0 : if the timeout happened
   //   -1: if an error happened, EINTR within the timeout is already caught
 #else
+  // All versions use select:
+
   // An fd_set is a fixed size buffer. 
   // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE 
   // will result in undefined behavior. Moreover, POSIX requires fd to be a valid file descriptor.
@@ -226,7 +228,6 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
     return false;
   }
 
-  // All versions other than Linux use select:
   struct timeval tv;
   tv.tv_sec = (long) timeout;
   tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
