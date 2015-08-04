@@ -1319,25 +1319,18 @@ int TRI_VerifyLockFile (char const* filename) {
 #else
 
 int TRI_VerifyLockFile (char const* filename) {
-  TRI_pid_t pid;
-  char buffer[128];
-  int can_lock;
-  int fd;
-  int res;
-  ssize_t n;
-  uint32_t fc;
-
   if (! TRI_ExistsFile(filename)) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  fd = TRI_OPEN(filename, O_RDONLY);
+  int fd = TRI_OPEN(filename, O_RDONLY);
 
   if (fd < 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  n = TRI_READ(fd, buffer, sizeof(buffer));
+  char buffer[128];
+  ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
   TRI_CLOSE(fd);
 
@@ -1353,14 +1346,14 @@ int TRI_VerifyLockFile (char const* filename) {
   // 0-terminate buffer
   buffer[n] = '\0';
 
-  fc = TRI_UInt32String(buffer);
-  res = TRI_errno();
+  uint32_t fc = TRI_UInt32String(buffer);
+  int res = TRI_errno();
 
   if (res != TRI_ERROR_NO_ERROR) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  pid = fc;
+  TRI_pid_t pid = fc;
 
   if (kill(pid, 0) == -1) {
     return TRI_ERROR_NO_ERROR;
@@ -1372,17 +1365,22 @@ int TRI_VerifyLockFile (char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  can_lock = flock(fd, LOCK_EX | LOCK_NB);
+  int canLock = flock(fd, LOCK_EX | LOCK_NB);
 
   // file was not yet be locked
-  if (can_lock == 0) {
+  if (canLock == 0) {
     flock(fd, LOCK_UN);
     TRI_CLOSE(fd);
 
     return TRI_ERROR_NO_ERROR;
   }
 
+  canLock = errno;
+
   TRI_CLOSE(fd);
+
+  LOG_WARNING("flock on lockfile '%s' failed: %s", filename, TRI_errno_string(canLock));
+
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
 

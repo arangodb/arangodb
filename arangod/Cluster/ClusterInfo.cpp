@@ -518,7 +518,11 @@ void ClusterInfo::loadPlannedDatabases () {
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixPlannedDatabases.c_str());
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixPlannedDatabases.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -626,7 +630,11 @@ void ClusterInfo::loadCurrentDatabases () {
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixCurrentDatabases.c_str());
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixCurrentDatabases.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -734,7 +742,11 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixPlannedCollections.c_str());
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixPlannedCollections.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -964,7 +976,11 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixCurrentCollections.c_str());
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixCurrentCollections.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2009,7 +2025,11 @@ void ClusterInfo::loadServers () {
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixServers.c_str());
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixServers.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2130,8 +2150,11 @@ void ClusterInfo::loadCurrentCoordinators () {
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixCurrentCoordinators.c_str());
-  return;
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixCurrentCoordinators.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2181,8 +2204,11 @@ void ClusterInfo::loadCurrentDBServers () {
     return;
   }
 
-  LOG_TRACE("Error while loading %s", prefixCurrentDBServers.c_str());
-  return;
+  LOG_DEBUG("Error while loading %s httpCode: %d "
+            "errorCode: %d errorMessage: %s body: %s",
+            prefixCurrentDBServers.c_str(),
+            result.httpCode(), result.errorCode(),
+            result.errorMessage().c_str(), result.body().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
