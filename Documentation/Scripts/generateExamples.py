@@ -577,10 +577,14 @@ def loopDirectories():
             fstate = OPTION_NORMAL
             OutputDir = filename
     for filename in filenames:
-        f = open(filename, "r")
-        analyzeFile(f, filename)
+        if (filename.find("#") < 0):
+            f = open(filename, "r")
+        
+            analyzeFile(f, filename)
     
-        f.close()
+            f.close()
+        else:
+            print >> sys.stderr, "skipping %s\n" % (filename)
 
 
 ################################################################################

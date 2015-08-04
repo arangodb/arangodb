@@ -213,7 +213,7 @@ saves even more precious CPU cycles and gives the optimizer more alternatives.
 
 !SUBSECTION Pitfalls
 
-Since we're free of schematas, there is no way to tell the format of the
+Since we're free of schematas, there is by default no way to tell the format of the
 documents. So, if your documents don't contain an attribute, it defaults to
 null. We can however check our data for accuracy like this:
 
@@ -234,7 +234,7 @@ compution time. So it is generaly a good idea to revalidate that the criteria
 for your join conditions exist.
 
 Using indices on the properties can speed up the operation significantly.
-ou can use the explain helper to revalidate your query actualy uses them.
+You can use the explain helper to revalidate your query actualy uses them.
 
 If you work with joins on edge collections you would typicaly aggregate over
 the internal fields *_id*, *_from* and *_to* (where *_id* equals *userId*,

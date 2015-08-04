@@ -1113,7 +1113,9 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 /// new index will be created if none exists with the given description.
 ///
 /// The *index-description* must contain at least a *type* attribute.
-/// *type* can be one of the following values:
+/// Other attributes may be necessary, depending on the index type.
+///
+/// **type** can be one of the following values:
 /// - *hash*: hash index
 /// - *skiplist*: skiplist index
 /// - *fulltext*: fulltext index
@@ -1121,7 +1123,12 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 /// - *geo2*: geo index, with two attributes
 /// - *cap*: cap constraint
 ///
-/// Other attributes may be necessary, depending on the index type.
+/// **sparse** can be *true* or *false*.
+///
+/// For *hash*, and *skiplist* the sparsity can be controlled, *fulltext* and *geo*
+/// are [sparse](WhichIndex.html) by definition.
+///
+/// **unique** can be *true* or *false* and is supported by *hash* or *skiplist*
 ///
 /// Calling this method returns an index object. Whether or not the index
 /// object existed before the call is indicated in the return attribute
@@ -1234,29 +1241,16 @@ static void DropIndexCoordinator (const v8::FunctionCallbackInfo<v8::Value>& arg
 ///
 /// Same as above. Instead of an index an index handle can be given.
 ///
-/// @EXAMPLES
-///
-/// ```js
-/// arango> db.example.ensureSkiplist("a", "b");
-/// { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
-/// 
-/// arango> i = db.example.getIndexes();
-/// [
-///   { "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
-///   { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }
-/// ]
-/// 
-/// arango> db.example.dropIndex(i[0])
-/// false
-/// 
-/// arango> db.example.dropIndex(i[1].id)
-/// true
-/// 
-/// arango> i = db.example.getIndexes();
-/// [
-///   { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
-/// ]
-/// ```
+/// @EXAMPLE_ARANGOSH_OUTPUT{col_dropIndex}
+/// ~db._create("example");
+/// db.example.ensureSkiplist("a", "b");
+/// var indexInfo = db.example.getIndexes();
+/// indexInfo;
+/// db.example.dropIndex(indexInfo[0])
+/// db.example.dropIndex(indexInfo[1].id)
+/// indexInfo = db.example.getIndexes();
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1370,37 +1364,17 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
 /// `getIndexes()`
 ///
 /// Returns an array of all indexes defined for the collection.
+/// 
+/// Note that `_key` implicitely has an index assigned to it.
 ///
-/// @EXAMPLES
-///
-/// ```js
-/// [
-///   { 
-///     "id" : "demo/0", 
-///     "type" : "primary",
-///     "fields" : [ "_id" ]
-///   }, 
-///   { 
-///     "id" : "demo/2290971", 
-///     "unique" : true, 
-///     "type" : "hash", 
-///     "fields" : [ "a" ] 
-///   }, 
-///   { 
-///     "id" : "demo/2946331",
-///     "unique" : false, 
-///     "type" : "hash", 
-///     "fields" : [ "b" ] 
-///   },
-///   { 
-///     "id" : "demo/3077403", 
-///     "unique" : false, 
-///     "type" : "skiplist", 
-///     "fields" : [ "c" ]
-///   }
-/// ]
-/// ```
-///
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionGetIndexes}
+/// ~db._create("test");
+/// ~db.test.ensureUniqueSkiplist("skiplistAttribute");
+/// ~db.test.ensureUniqueSkiplist("skiplistUniqueAttribute");
+/// ~db.test.ensureHashIndex("hashListAttribute", "hashListSecondAttribute.subAttribute");
+/// db.test.getIndexes();
+/// ~db._drop("test");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
