@@ -288,8 +288,8 @@ allErrors = err;
 ################################################################################
 ### @brief Try to match the start of a command section
 ################################################################################
-regularStartLine = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
-runLine = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
+regularStartLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
+runLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
     
 def matchStartLine(line, filename):
     global regularStartLine, errorStartLine, runLine
@@ -326,7 +326,7 @@ def matchStartLine(line, filename):
     # Not found, remain in STATE_BEGIN
     return ("", STATE_BEGIN)
 
-endExample = re.compile(r'^(/// )?@END_EXAMPLE_')
+endExample = re.compile(r'^(/// )? *@END_EXAMPLE_')
 #r5 = re.compile(r'^ +')
 
 ################################################################################
@@ -558,7 +558,7 @@ def loopDirectories():
             if os.path.isdir(filename):
                 for root, dirs, files in os.walk(filename):
                     for file in files:
-                        if (file.endswith(".mdpp") or file.endswith(".js") or file.endswith(".cpp")) and not file.endswith("ahuacatl.js"):
+                        if (file.endswith(".mdpp") or file.endswith(".js") or file.endswith(".cpp")):
                             filenames.append(os.path.join(root, file))
             else:
                 filenames.append(filename)
