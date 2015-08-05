@@ -79,7 +79,7 @@ exports.ArangoQueryCursor = ArangoQueryCursor;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.toString = function () {
-  var isCaptureModeActive = internal.isCaptureMode()
+  var isCaptureModeActive = internal.isCaptureMode();
   var rows = [ ], i = 0;
   while (++i <= 10 && this.hasNext()) {
     rows.push(this.next());
@@ -100,7 +100,7 @@ ArangoQueryCursor.prototype.toString = function () {
   result += "]";
 
   if (!isCaptureModeActive) {
-    print(result);
+    internal.print(result);
     result = "";
   }
   if (rows.length > 0) {
@@ -120,7 +120,7 @@ ArangoQueryCursor.prototype.toString = function () {
   }
 
   if (!isCaptureModeActive) {
-    print(result);
+    internal.print(result);
     result = "";
   }
   return result;
