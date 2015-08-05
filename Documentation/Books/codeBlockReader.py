@@ -4,10 +4,10 @@ import re
 import inspect
 import cgi
 
-validExtensions = (".cpp", ".h", ".js")
+validExtensions = (".cpp", ".h", ".js", ".mdpp")
 # specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
 # and that path also contains copies of some files present in js/ anyway.
-searchPaths = ["arangod/", "lib/", "js/actions", "js/client", "js/apps/system/_system/cerberus", "js/apps/system/_api/gharial", "js/common", "js/server"]
+searchPaths = ["arangod/", "lib/", "js/actions", "js/client", "js/apps/system/_system/cerberus", "js/apps/system/_api/gharial", "js/common", "js/server", "Documentation/Books/Users/"]
 fullSuccess = True
 
 def file_content(filepath):
@@ -171,7 +171,9 @@ def fetch_comments(dirpath):
   for root, directories, files in os.walk(dirpath):
     for filename in files:
       if filename.endswith(validExtensions) and (filename.find("#") < 0):
+
         filepath = os.path.join(root, filename)
+        print "Searching for docublocks in " + filepath
         file_comments = file_content(filepath)
         for comment in file_comments:
           fh.write("\n<!-- filename: %s -->\n" % filename)
