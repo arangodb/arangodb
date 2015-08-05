@@ -28,13 +28,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgeHandler.h"
-
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
@@ -191,7 +190,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // extract the cid
-  const string& collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -200,27 +199,25 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  const bool waitForSync = extractWaitForSync();
+  bool const waitForSync = extractWaitForSync();
 
-  TRI_json_t* json = parseJsonBody();
+  std::unique_ptr<TRI_json_t> json(parseJsonBody());
   
   if (json == nullptr) {
     return false;
   }
 
-  if (! TRI_IsObjectJson(json)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  if (! TRI_IsObjectJson(json.get())) {
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
-    return createDocumentCoordinator(collection, waitForSync, json, from, to);
+    return createDocumentCoordinator(collection, waitForSync, json.release(), from, to);
   }
 
   if (! checkCreateCollection(collection, getCollectionType())) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -235,7 +232,6 @@ bool RestEdgeHandler::createDocument () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -244,11 +240,10 @@ bool RestEdgeHandler::createDocument () {
   if (document->_info._type != TRI_COL_TYPE_EDGE) {
     // check if we are inserting with the EDGE handler into a non-EDGE collection
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
-  const TRI_voc_cid_t cid = trx.cid();
+  TRI_voc_cid_t const cid = trx.cid();
 
   // edge
   TRI_document_edge_t edge;
@@ -281,8 +276,6 @@ bool RestEdgeHandler::createDocument () {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
 
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
     if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       generateError(HttpResponse::NOT_FOUND, res, wrongPart + " does not point to a valid collection");
     }
@@ -298,12 +291,11 @@ bool RestEdgeHandler::createDocument () {
 
   // will hold the result
   TRI_doc_mptr_copy_t mptr;
-  res = trx.createEdge(&mptr, json, waitForSync, &edge);
+  res = trx.createEdge(&mptr, json.get(), waitForSync, &edge);
   res = trx.finish(res);
 
   FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
   FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // .............................................................................
   // outside write transaction
@@ -328,7 +320,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
                                                  TRI_json_t* json,
                                                  char const* from,
                                                  char const* to) {
-  string const& dbname = _request->databaseName();
+  std::string const& dbname = _request->databaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> resultHeaders;
@@ -340,6 +332,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname.c_str(), error);
+
     return false;
   }
   // Essentially return the response we got from the DBserver, be it
@@ -347,9 +340,9 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   _response = createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
+
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock API_EDGE_READ
