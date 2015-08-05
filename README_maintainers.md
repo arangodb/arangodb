@@ -355,6 +355,14 @@ generate
  - make swagger - on toplevel to generate the documentation interactively with the server
  - cd Documentation/Books; make - to generate the HTML documentation
 
+write markdown
+--------------
+mdpp files are used for the structure. To join it with parts extracted from the programm documentation
+you need to place hooks:
+  - `@startDocuBlock &ltdocuBlockName&gt;` is replaced by a Docublock extracted from source.
+  - `@startDocuBlockInline &lt;docuBlockName&gt;` till `@endDocuBlock` is replaced in with its own content,
+     where *@EXAMPLE_ARANGOSH_OUTPUT* sections are executed the same way as inside of documentation.
+
 read / use the documentation
 ----------------------------
  - file:///Documentation/Books/books/Users/index.html contains the generated documentation
@@ -397,6 +405,8 @@ Additional Example syntax
   The command behaves similar to the arangosh: the server reply won't be printed. Hovever, the variable will be in the scope of the other lines.
 * Lines starting with a Tilde ('/// ~'):
   These lines can be used for setup/teardown purposes. They are completely invisible in the generated example transscript.
+
+
 
 Do's and Don'ts
 ---------------
