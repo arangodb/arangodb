@@ -24,8 +24,13 @@ def findStartCode(textFile,full_path):
   if match:      
     for find in match:
       getTextFromSourceFile(find, full_path)
+  matchInline = re.findall(r'@startDocuBlockInline\s*(\w+)', textFile)
+  if matchInline:
+    for find in matchInline:
+      getTextFromSourceFileInline(find, full_path)
 
 def getTextFromSourceFile(searchText, full_path):
+  ''' reads a single block from allComments.txt'''
   f=open("allComments.txt", 'rU')
   s=f.read()
   match = re.search(r'@startDocuBlock\s+'+ searchText + "(?:\s+|$)" +'(.+?)@endDocuBlock', s,re.DOTALL)
@@ -34,7 +39,18 @@ def getTextFromSourceFile(searchText, full_path):
     textExtracted = textExtracted.replace("<br />","\n")
     replaceText(textExtracted, full_path, searchText)
 
+def getTextFromSourceFileInline(searchText, full_path):
+  ''' reads a single block from allComments.txt'''
+  f=open("allComments.txt", 'rU')
+  s=f.read()
+  match = re.search(r'@startDocuBlockInline\s+'+ searchText + "(?:\s+|$)" +'(.+?)@endDocuBlock', s,re.DOTALL)
+  if match:
+    textExtracted = match.group(1)
+    textExtracted = textExtracted.replace("<br />","\n")
+    replaceTextInline(textExtracted, full_path, searchText)
+
 def replaceText(text, pathOfFile, searchText):
+  ''' reads the mdpp and generates the md '''
   f=open(pathOfFile,"rU")
   if f:
     s=f.read()
@@ -43,6 +59,18 @@ def replaceText(text, pathOfFile, searchText):
   replaced = re.sub("@startDocuBlock\s+"+ searchText + "(?:\s+|$)",text,s)
   f.write(replaced)
   f.close()
+
+def replaceTextInline(text, pathOfFile, searchText):
+  ''' reads the mdpp and generates the md '''
+  f=open(pathOfFile,"rU")
+  if f:
+    s=f.read()
+  f.close()
+  f=open(pathOfFile,'w')
+  replaced = re.sub(r' *@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock', text, s, flags=re.DOTALL)
+  f.write(replaced)
+  f.close()
+  
   
 
 def replaceCode(pathOfFile):
