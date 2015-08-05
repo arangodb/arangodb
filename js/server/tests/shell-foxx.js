@@ -1413,7 +1413,6 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorage: 'sessions',
-          type: 'cookie',
           cookie: {
             name: 'sid'
           }
@@ -1433,7 +1432,6 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorage: 'sessions',
-          type: 'cookie',
           cookie: 'sid'
         });
       } catch (e) {
@@ -1451,7 +1449,6 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorage: 'sessions',
-          type: 'cookie',
           cookie: {
             name: 'sid',
             secret: 'keyboardcat'
@@ -1472,7 +1469,6 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorage: 'sessions',
-          type: 'header',
           header: 'X-Session-Id'
         });
       } catch (e) {
