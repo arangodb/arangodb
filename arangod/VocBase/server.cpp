@@ -818,10 +818,8 @@ static int CloseDatabases (TRI_server_t* server) {
 static int CloseDroppedDatabases (TRI_server_t* server) {
   WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
 
-  size_t const n = server->_droppedDatabases.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    auto vocbase = server->_droppedDatabases[i];
+  for (auto it = server->_droppedDatabases.begin(); it != server->_droppedDatabases.end(); /* no hoisting */) {
+    auto vocbase = (*it);
 
     if (vocbase != nullptr) {
       if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
@@ -829,12 +827,12 @@ static int CloseDroppedDatabases (TRI_server_t* server) {
         delete vocbase;
 
         // clear to avoid potential double freeing
-        server->_droppedDatabases[i] = nullptr;
+        it = server->_droppedDatabases.erase(it);
       }
       else if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
         delete vocbase;
         // clear to avoid potential double freeing
-        server->_droppedDatabases[i] = nullptr;
+        it = server->_droppedDatabases.erase(it);
       }
       else {
         LOG_ERROR("unknown database type %d %s - close doing nothing.",
@@ -842,6 +840,8 @@ static int CloseDroppedDatabases (TRI_server_t* server) {
                   vocbase->_name);
       }
     }
+
+    ++it;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1526,23 +1526,37 @@ static void DatabaseManager (void* data) {
     TRI_vocbase_t* database = nullptr;
 
     {
-      WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
-
-      for (auto it = server->_droppedDatabases.begin(); it != server->_droppedDatabases.end(); ++it) {
-        auto vocbase = (*it);
-
+      READ_LOCKER(server->_databasesLock);
+      
+      for (auto& vocbase : server->_droppedDatabases) {
         if (! TRI_CanRemoveVocBase(vocbase)) {
           continue;
         }
 
         // found a database to delete
-        server->_droppedDatabases.erase(it);
         database = vocbase;
         break;
       }
     }
 
     if (database != nullptr) {
+      // found a database to delete, now remove it from the struct
+
+      {
+        WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
+  
+        size_t count = server->_droppedDatabases.erase(database);
+
+        if (count == 0) {
+          // oops, it seems someone lese deleted the SAME database in
+          // the meantime
+          database = nullptr;
+        }
+      }
+    }
+
+    if (database != nullptr) {
+
       if (database->_type != TRI_VOCBASE_TYPE_COORDINATOR) {
         // regular database
         // ---------------------------
@@ -2311,7 +2325,7 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
         LOG_INFO("dropping coordinator database '%s'",
                  vocbase->_name);
 
-        server->_droppedDatabases.emplace_back(vocbase);
+        server->_droppedDatabases.emplace(vocbase);
         res = TRI_ERROR_NO_ERROR;
       }
       break;
@@ -2357,7 +2371,7 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
       LOG_INFO("dropping coordinator database '%s'",
                vocbase->_name);
    
-      server->_droppedDatabases.emplace_back(vocbase);
+      server->_droppedDatabases.emplace(vocbase);
       res = TRI_ERROR_NO_ERROR;
     }
     else {
@@ -2426,7 +2440,7 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
                                      vocbase->_path);
     // TODO: what to do here in case of error?
 
-    server->_droppedDatabases.emplace_back(vocbase);
+    server->_droppedDatabases.emplace(vocbase);
 
     if (writeMarker) {
       WriteDropMarker(vocbase->_id);
