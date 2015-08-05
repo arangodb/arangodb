@@ -1480,27 +1480,6 @@ function SetupSessions () {
       }
 
       assertUndefined(err);
-    },
-
-    testRefusesUnknownSessionsTypes: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'magic',
-          cookie: {
-            name: 'sid',
-            secret: 'secret'
-          }
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertTrue(err instanceof Error);
     }
   };
 }
