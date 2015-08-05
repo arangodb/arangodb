@@ -6890,6 +6890,8 @@ input.gv-radio-button {
       position: absolute;
       width: 160px; }
       .application-detail-view section.info .header div.header-icon-container img.icon {
+        border: 1px solid rgba(104, 103, 102, 0.1);
+        border-radius: 3px;
         height: auto;
         max-height: 160px;
         max-width: 160px;
@@ -6897,23 +6899,29 @@ input.gv-radio-button {
     .application-detail-view section.info .header .header_left {
       left: 170px;
       position: absolute;
-      width: 120px; }
+      width: 120px;
+      padding-top: 1px; }
       .application-detail-view section.info .header .header_left input.delete, .application-detail-view section.info .header .header_left input.upgrade, .application-detail-view section.info .header .header_left input.switch-mode {
         margin-top: 13.3333333333px; }
+      .application-detail-view section.info .header .header_left input {
+        width: 90px; }
     .application-detail-view section.info .header .header_right {
       margin-left: 300px;
       padding: 5px; }
+      .application-detail-view section.info .header .header_right input {
+        margin-left: 0; }
       .application-detail-view section.info .header .header_right .header_line h3 {
         float: left;
         padding-right: 5px; }
       .application-detail-view section.info .header .header_right .header_line .license, .application-detail-view section.info .header .header_right .header_line .version {
-        -moz-border-radius: 6px;
-        -webkit-border-radius: 6px;
-        border-radius: 6px;
+        -moz-border-radius: 3px;
+        -webkit-border-radius: 3px;
+        border-radius: 3px;
+        background-color: #fff;
         border: 1px solid #a0a0a0;
         color: #a0a0a0;
         font-size: .6em;
-        padding: 0 8px;
+        padding: 0 8px 2px;
         position: relative;
         top: -2px; }
       .application-detail-view section.info .header .header_right .header_line:after {
@@ -6935,7 +6943,8 @@ input.gv-radio-button {
         margin: 0;
         font-size: 1em; }
   .application-detail-view section.info .swagger iframe {
-    border: 1px solid black;
+    border: 1px solid rgba(104, 103, 102, 0.1);
+    border-radius: 3px;
     height: 600px;
     width: 100%; }
   .application-detail-view section.info .readme {
@@ -6943,9 +6952,16 @@ input.gv-radio-button {
     background: white;
     padding: 1em 2em; }
 .application-detail-view aside.meta {
+  background-color: #fff;
+  border: 1px solid rgba(104, 103, 102, 0.1);
+  border-radius: 3px;
   clear: right;
   float: left;
-  width: 200px; }
+  width: 198px; }
+  .application-detail-view aside.meta dl {
+    padding-left: 7px;
+    padding-top: 5px;
+    margin-top: 0; }
 
 .tests-result .stack {
   border-color: #f04;
