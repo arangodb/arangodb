@@ -3246,7 +3246,8 @@ static int FillIndexBatch (TRI_document_collection_t* document,
   }
 
   // process the remainder of the documents
-  if (! documents.empty()) {
+  if (res == TRI_ERROR_NO_ERROR &&
+      ! documents.empty()) {
     res = idx->batchInsert(&documents, indexPool->numThreads());
   }
   
