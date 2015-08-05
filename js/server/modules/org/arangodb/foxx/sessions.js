@@ -29,7 +29,6 @@
 
 const joi = require('joi');
 const Foxx = require('org/arangodb/foxx');
-const deprecated = require('org/arangodb/deprecated');
 const paramSchema = joi.string().optional().description('Foxx session ID');
 
 // -----------------------------------------------------------------------------
@@ -160,22 +159,6 @@ class Sessions {
   constructor(opts) {
     if (!opts) {
       opts = {};
-    }
-
-    if (opts.type) {
-      deprecated('2.8', (
-        'The Foxx session option "type" is deprecated and will be removed.'
-        + ' Use the options "cookie" and/or "header" instead.'
-      ));
-      if (opts.type === 'cookie') {
-        delete opts.header;
-        opts.cookie = opts.cookie || true;
-      } else if (opts.type === 'header') {
-        delete opts.cookie;
-        opts.header = opts.header || true;
-      } else {
-        throw new Error('Only the following session types are supported at this time: ' + sessionTypes.join(', '));
-      }
     }
 
     if (opts.cookie) {

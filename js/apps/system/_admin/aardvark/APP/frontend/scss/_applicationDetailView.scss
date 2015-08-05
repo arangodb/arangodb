@@ -16,6 +16,8 @@
         width: 160px;
 
         img.icon {
+          border: 1px solid $c-content-border;
+          border-radius: 3px;
           height: auto;
           max-height: 160px;
           max-width: 160px;
@@ -28,17 +30,26 @@
         left: 170px;
         position: absolute;
         width: 120px;
+        padding-top: 1px;
 
         input.delete,
         input.upgrade,
         input.switch-mode {
           margin-top: (160px - 4 * 30px) / 3;
         }
+
+        input {
+          width: 90px;
+        }
       }
 
       .header_right {
         margin-left: 300px;
         padding: 5px;
+
+        input {
+          margin-left: 0;
+        }
 
         .header_line {
           h3 {
@@ -48,12 +59,13 @@
 
           .license,
           .version {
-            @include border-radius(6px);
+            @include border-radius(3px);
 
+            background-color: $c-white;
             border: 1px solid $c-editor-toolbar;
             color: $c-editor-toolbar;
             font-size: .6em;
-            padding: 0 8px;
+            padding: 0 8px 2px;
             position: relative;
             top: -2px;
           }
@@ -85,7 +97,8 @@
 
     .swagger {
       iframe {
-        border: 1px solid black;
+        border: 1px solid $c-content-border;
+        border-radius: 3px;
         height: 600px;
         width: 100%;
       }
@@ -99,9 +112,18 @@
   }
 
   aside.meta {
+    background-color: #fff; 
+    border: 1px solid $c-content-border;
+    border-radius: 3px;
     clear: right;
     float: left;
-    width: 200px;
+    width: 198px;
+
+    dl {
+      padding-left: 7px;
+      padding-top: 5px;
+      margin-top: 0;
+    }
   }
 }
 
