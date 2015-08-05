@@ -65,28 +65,28 @@ struct TRI_server_t {
   TRI_server_t ();
   ~TRI_server_t ();
 
-  TRI_associative_pointer_t        _databases;
-  TRI_associative_pointer_t        _coordinatorDatabases;
-  triagens::basics::ReadWriteLock  _databasesLock;
+  TRI_associative_pointer_t          _databases;
+  TRI_associative_pointer_t          _coordinatorDatabases;
+  triagens::basics::ReadWriteLock    _databasesLock;
 
-  TRI_thread_t                     _databaseManager;
-  std::vector<TRI_vocbase_t*>      _droppedDatabases;
+  TRI_thread_t                       _databaseManager;
+  std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
 
-  TRI_vocbase_defaults_t           _defaults;
+  TRI_vocbase_defaults_t             _defaults;
   triagens::rest::ApplicationEndpointServer*  _applicationEndpointServer; 
-  triagens::basics::ThreadPool*    _indexPool;                 
-  triagens::aql::QueryRegistry*    _queryRegistry;
+  triagens::basics::ThreadPool*      _indexPool;                 
+  triagens::aql::QueryRegistry*      _queryRegistry;
 
-  char*                            _basePath;
-  char*                            _databasePath;
-  char*                            _lockFilename;
-  char*                            _serverIdFilename;
-  char*                            _appPath;
+  char*                              _basePath;
+  char*                              _databasePath;
+  char*                              _lockFilename;
+  char*                              _serverIdFilename;
+  char*                              _appPath;
 
-  bool                             _disableReplicationAppliers;
-  bool                             _iterateMarkersOnOpen;
-  bool                             _hasCreatedSystemDatabase;
-  bool                             _initialized;
+  bool                               _disableReplicationAppliers;
+  bool                               _iterateMarkersOnOpen;
+  bool                               _hasCreatedSystemDatabase;
+  bool                               _initialized;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
