@@ -12,6 +12,7 @@ lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 lib_libarango_a_SOURCES = \
+	lib/Basics/AttributeNameParser.cpp \
 	lib/Basics/application-exit.cpp \
 	lib/Basics/associative.cpp \
 	lib/Basics/Barrier.cpp \
