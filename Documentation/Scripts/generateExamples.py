@@ -35,7 +35,7 @@
 ### @author Copyright 2011-2014, triagens GmbH, Cologne, Germany
 ################################################################################
 
-import re, sys, string, os
+import re, sys, string, os, re
 from pprint import pprint
 
 ################################################################################
@@ -112,6 +112,12 @@ ArangoshCases = [ ]
 ################################################################################
 
 ArangoshSetup = ""
+
+################################################################################
+### @brief filter to only output this one:
+################################################################################
+
+FilterForTestcase = None
 
 ################################################################################
 ### @brief states
@@ -278,6 +284,20 @@ var checkForOrphanTestCollections = function(msg) {
   }
 };
 
+var addIgnoreCollection = function(collectionName) {
+  print("from now on ignoring this collection whether its dropped: "  + collectionName);
+  collectionAlreadyThere.push(collectionName);
+};
+
+var removeIgnoreCollection = function(collectionName) {
+  print("from now on checking again whether this collection dropped: " + collectionName);
+  for (j=0; j < collectionAlreadyThere.length; j++) {
+    if (collectionAlreadyThere[j] === collectionName) {
+      collectionAlreadyThere[j] = undefined;
+    }
+  }
+};
+
 // Set the first available list of already there collections:
 var err = allErrors;
 checkForOrphanTestCollections('Collections already there which we will ignore from now on:');
@@ -304,6 +324,10 @@ def matchStartLine(line, filename):
         if name in ArangoshFiles:
             print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
             sys.exit(1)
+        # if we match for filters, only output these!
+        if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
+            print >> sys.stderr, "filtering test case %s" %name
+            return("", STATE_BEGIN);
 
         ArangoshFiles[name] = True
         ArangoshOutput[name] = []
@@ -320,6 +344,12 @@ def matchStartLine(line, filename):
             sys.exit(1)
 
         ArangoshCases.append(name)    
+        # if we match for filters, only output these!
+        if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
+            print >> sys.stderr, "filtering test case %s" %name
+            return("", STATE_BEGIN);
+
+        ArangoshCases.append(name)
         ArangoshFiles[name] = True
         ArangoshRun[name] = ""
         return (name, STATE_ARANGOSH_RUN)
@@ -562,7 +592,11 @@ def loopDirectories():
                             filenames.append(os.path.join(root, file))
             else:
                 filenames.append(filename)
-    
+        elif fstate == OPTION_FILTER:
+            fstate = OPTION_NORMAL
+            if (len(filename) > 0): 
+                FilterForTestcase = re.compile(filename);
+            print dir(FilterForTestcase)
         elif fstate == OPTION_ARANGOSH_SETUP:
             fstate = OPTION_NORMAL
             f = open(filename, "r")
