@@ -291,6 +291,10 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("failed to create logfile '%s'. Please check the path and permissions.", filename.c_str());
     }
+
+    if (daemon && _logFile != "+" && _logFile != "-") {
+      LOG_INFO("using logfiles: supervisor process: '%s', child process: '%s'", filename.c_str(), _logFile.c_str());
+    }
   }
 }
 
