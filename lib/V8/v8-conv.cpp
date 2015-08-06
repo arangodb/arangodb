@@ -682,28 +682,6 @@ std::string TRI_ObjectToString (v8::Handle<v8::Value> const value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a character
-////////////////////////////////////////////////////////////////////////////////
-
-char TRI_ObjectToCharacter (v8::Handle<v8::Value> const value, bool& error) {
-  error = false;
-
-  if (! value->IsString() && ! value->IsStringObject()) {
-    error = true;
-    return '\0';
-  }
-
-  TRI_Utf8ValueNFC sep(TRI_UNKNOWN_MEM_ZONE, value->ToString());
-
-  if (*sep == nullptr || sep.length() != 1) {
-    error = true;
-    return '\0';
-  }
-
-  return (*sep)[0];
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to an int64_t
 ////////////////////////////////////////////////////////////////////////////////
 

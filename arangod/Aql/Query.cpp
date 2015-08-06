@@ -1070,7 +1070,7 @@ char* Query::registerString (char const* p,
   char* copy = nullptr;
   if (mustUnescape) {
     size_t outLength;
-    copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
+    copy = TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
   }
   else {
     if (length < ShortStringStorage::MaxStringLength) {

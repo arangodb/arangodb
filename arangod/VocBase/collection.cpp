@@ -1993,27 +1993,6 @@ bool TRI_IsAllowedNameCollection (bool allowSystem,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_TypeNameCollection (const TRI_col_type_e type) {
-  switch (type) {
-    case TRI_COL_TYPE_DOCUMENT:
-      return "document";
-    case TRI_COL_TYPE_EDGE:
-      return "edge";
-    case TRI_COL_TYPE_SHAPE_DEPRECATED:
-      return "shape (deprecated)";
-    case TRI_COL_TYPE_UNKNOWN:
-    default:
-      return "unknown";
-  }
-
-  TRI_ASSERT(false);
-  return "unknown";
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
