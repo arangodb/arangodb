@@ -185,7 +185,11 @@ def fetch_comments(dirpath):
                 elif ("@EXAMPLE_ARANGOSH_OUTPUT" in _text or \
                   "@EXAMPLE_ARANGOSH_RUN" in _text):
                   shouldIgnoreLine = True
-                  _filename = re.search("{(.*)}", _text).group(1)
+                  try:
+                    _filename = re.search("{(.*)}", _text).group(1)
+                  except Exception as x:
+                    print "failed to match file name in  %s while parsing %s " % (_text, filepath)
+                    raise x
                   dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir, "Examples", _filename + ".generated"))
                   if os.path.isfile(dirpath):
                     example_content(dirpath, fh, _filename)
