@@ -60,6 +60,8 @@ namespace triagens {
 ///     prot.scan();         // This will block until no thread is reading
 ///                          // the old value any more.
 ///     delete oldp;         // guaranteed to be safe
+///   This can be a slow operation and only one thread should perform it 
+///   at a time. Use a mutex to ensure this.
 ///   Please note:
 ///     - The value of p *can* change under the feet of the reading threads,
 ///       which is why you need to use the pSeen variable. However, you know
