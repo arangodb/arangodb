@@ -31,6 +31,7 @@
 #define ARANGODB_INDEXES_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/JsonHelper.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -75,7 +76,7 @@ namespace triagens {
 
         Index (TRI_idx_iid_t,
                struct TRI_document_collection_t*,
-               std::vector<std::string> const&);
+               std::vector<triagens::basics::AttributeName> const&);
 
         virtual ~Index ();
 
@@ -117,7 +118,7 @@ namespace triagens {
 /// @brief return the index fields
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline std::vector<std::string> const& fields () const {
+        inline std::vector<triagens::basics::AttributeName> const& fields () const {
           return _fields;
         }
 
@@ -203,11 +204,11 @@ namespace triagens {
 
       protected:
 
-        TRI_idx_iid_t const                      _iid;
+        TRI_idx_iid_t const                                 _iid;
 
-        struct TRI_document_collection_t*        _collection;
+        struct TRI_document_collection_t*                   _collection;
 
-        std::vector<std::string> const           _fields;
+        std::vector<triagens::basics::AttributeName> const  _fields;
                
     };
 

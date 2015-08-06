@@ -52,7 +52,7 @@ CapConstraint::CapConstraint (TRI_idx_iid_t iid,
                               TRI_document_collection_t* collection,
                               size_t count,
                               int64_t size)
-  : Index(iid, collection, std::vector<std::string>()),
+  : Index(iid, collection, std::vector<triagens::basics::AttributeName>()),
     _count(count),
     _size(static_cast<int64_t>(size)) {
 
