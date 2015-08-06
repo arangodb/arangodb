@@ -58,11 +58,16 @@ TRI_edge_direction_e;
 /// @brief index entry for edges
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_edge_header_s {
+struct TRI_edge_header_t {
+  TRI_edge_header_t (TRI_voc_cid_t cid,
+                     TRI_voc_key_t key) 
+    : _cid(cid),
+      _key(key) {
+  }
+
   TRI_voc_cid_t _cid; // from or to, depending on the direction
   TRI_voc_key_t _key;
-}
-TRI_edge_header_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge index iterator
@@ -73,10 +78,12 @@ struct TRI_edge_index_iterator_t {
                              TRI_voc_cid_t cid,
                              TRI_voc_key_t key) 
     : _direction(direction),
-      _edge({ cid, nullptr }) {
+      _edge(cid, nullptr) {
 
     TRI_ASSERT(key != nullptr);
+
     _edge._key = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, key);
+
     if (_edge._key == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
