@@ -315,7 +315,7 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 
 EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection) 
-  : Index(iid, collection, std::vector<triagens::basics::AttributeName>({ { TRI_VOC_ATTRIBUTE_FROM, false }, { TRI_VOC_ATTRIBUTE_TO , false } })),
+  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName const>>({ { { TRI_VOC_ATTRIBUTE_FROM, false } }, { { TRI_VOC_ATTRIBUTE_TO , false } } })),
     _edgesFrom(nullptr),
     _edgesTo(nullptr) {
   

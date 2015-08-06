@@ -549,20 +549,22 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node
   size_t j = 0;
 
   for (; (i < idxFields && j < n); i++) {
-    if (equalityLookupAttributes.find(idx->fields[i].name) != equalityLookupAttributes.end()) {
+    std::string fieldString;
+    TRI_AttributeNamesToString(idx->fields[i], fieldString);
+    if (equalityLookupAttributes.find(fieldString) != equalityLookupAttributes.end()) {
       // found an attribute in the sort criterion that is used in an equality lookup, too...
       // (e.g. doc.value == 1 && SORT doc.value1)
       // in this case, we can ignore the sorting for this particular attribute, as the index
       // will only return constant values for it
       match.matches.push_back(FORWARD_MATCH); // doesn't matter here if FORWARD or BACKWARD
       ++interestingCount;
-      if (attrs[j].first == idx->fields[i].name) {
+      if (attrs[j].first == fieldString) {
         ++j;
       }
       continue;
     }
 
-    if (attrs[j].first == idx->fields[i].name) {
+    if (attrs[j].first == fieldString) {
       if (attrs[j].second) {
         // ascending
         match.matches.push_back(FORWARD_MATCH);
@@ -1246,7 +1248,9 @@ size_t EnumerateCollectionNode::getUsableFieldsOfIndex (Index const* idx,
                                                         std::unordered_set<std::string> const& attrs) const {
   size_t count = 0;
   for (size_t i = 0; i < idx->fields.size(); i++) {
-    if (attrs.find(idx->fields[i].name) == attrs.end()) {
+    std::string tmp;
+    TRI_AttributeNamesToString(idx->fields[i], tmp);
+    if (attrs.find(tmp) == attrs.end()) {
       break;
     }
 
