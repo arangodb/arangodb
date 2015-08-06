@@ -45,7 +45,7 @@ using namespace triagens::arango;
 
 Index::Index (TRI_idx_iid_t iid,
               TRI_document_collection_t* collection,
-              std::vector<std::string> const& fields) 
+              std::vector<triagens::basics::AttributeName> const& fields) 
   : _iid(iid),
     _collection(collection),
     _fields(fields) {
@@ -340,7 +340,7 @@ triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone) const {
     triagens::basics::Json f(zone, triagens::basics::Json::Array, fields().size());
 
     for (auto const& field : fields()) {
-      f.add(triagens::basics::Json(zone, field));
+      f.add(triagens::basics::Json(zone, field.name));
     }
 
     json("fields", f);

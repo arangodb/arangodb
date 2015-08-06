@@ -97,7 +97,7 @@ namespace triagens {
             auto * name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
 
             if (TRI_IsStringJson(name)) {
-              fields.emplace_back(std::string(name->_value._string.data, name->_value._string.length - 1));
+              fields.emplace_back(std::string(name->_value._string.data, name->_value._string.length - 1), false);
             }
           }
         }
@@ -123,7 +123,7 @@ namespace triagens {
 
         triagens::basics::Json f(triagens::basics::Json::Array);
         for (auto const& field : fields) {
-          f.add(triagens::basics::Json(field));
+          f.add(triagens::basics::Json(field.name));
         }
 
         json("fields", f);
@@ -168,15 +168,15 @@ namespace triagens {
 
       public:
 
-        TRI_idx_iid_t const                  id;
-        triagens::arango::Index::IndexType   type;
-        bool                                 unique;
-        bool                                 sparse;
-        std::vector<std::string>             fields;
+        TRI_idx_iid_t const                           id;
+        triagens::arango::Index::IndexType            type;
+        bool                                          unique;
+        bool                                          sparse;
+        std::vector<triagens::basics::AttributeName>  fields;
 
       private:
 
-        triagens::arango::Index*             internals;
+        triagens::arango::Index*                      internals;
 
     };
 

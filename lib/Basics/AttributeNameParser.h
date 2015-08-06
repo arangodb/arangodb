@@ -55,6 +55,13 @@ namespace triagens {
       AttributeName (std::string const& pName, bool pExpand)
         : name(pName), shouldExpand(pExpand) {};
 
+      bool operator== (const AttributeName& b) const {
+        return name == b.name && shouldExpand == b.shouldExpand;
+      }
+
+      bool operator!= (const AttributeName& b) const {
+        return name != b.name || shouldExpand != b.shouldExpand;
+      }
     };
 
     void TRI_ParseAttributeString (
