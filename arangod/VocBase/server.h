@@ -33,8 +33,9 @@
 #include "Basics/Common.h"
 #include "Basics/associative.h"
 #include "Basics/locks.h"
-#include "Basics/ReadWriteLock.h"
+#include "Basics/Mutex.h"
 #include "Basics/threads.h"
+#include "Basics/ThreadProtector.h"
 #include "Basics/vector.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
@@ -61,16 +62,22 @@ namespace triagens {
 /// @brief server structure
 ////////////////////////////////////////////////////////////////////////////////
 
+struct DatabasesLists {
+  std::unordered_map<std::string, TRI_vocbase_t*> _databases;
+  std::unordered_map<std::string, TRI_vocbase_t*> _coordinatorDatabases;
+  std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
+};
+
 struct TRI_server_t {
   TRI_server_t ();
   ~TRI_server_t ();
 
-  TRI_associative_pointer_t          _databases;
-  TRI_associative_pointer_t          _coordinatorDatabases;
-  triagens::basics::ReadWriteLock    _databasesLock;
+  std::atomic<DatabasesLists*>       _databasesLists;
+  triagens::basics::ThreadProtector<64>  
+                                     _databasesProtector;
+  triagens::basics::Mutex            _databasesMutex;
 
   TRI_thread_t                       _databaseManager;
-  std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
 
   TRI_vocbase_defaults_t             _defaults;
   triagens::rest::ApplicationEndpointServer*  _applicationEndpointServer; 
