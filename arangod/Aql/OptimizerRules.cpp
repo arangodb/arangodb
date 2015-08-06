@@ -2365,7 +2365,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                       
                         for (size_t j = 0; j < idx->fields.size(); j++) {
                           std::string fieldString;
-                          TRI_AttributeNamesToString(idx->fields[j], fieldString);
+                          TRI_AttributeNamesToString(idx->fields[j], fieldString, true);
                           auto range = map->find(fieldString);
                       
                           if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
@@ -2411,7 +2411,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
 
                         std::string fieldString;
-                        TRI_AttributeNamesToString(idx->fields[0], fieldString);
+                        TRI_AttributeNamesToString(idx->fields[0], fieldString, true);
                         // check if there is a range that contains the first index attribute
                         auto range = map->find(fieldString);
 
@@ -2429,7 +2429,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         size_t j = 0;
                         while (++j < prefixes.at(i) && equality) {
                           std::string fieldString;
-                          TRI_AttributeNamesToString(idx->fields[j], fieldString);
+                          TRI_AttributeNamesToString(idx->fields[j], fieldString, true);
                           range = map->find(fieldString);
 
                           if (range == map->end()) { 
@@ -2459,7 +2459,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
 
                           for (size_t j = 0; j < idx->fields.size(); j++) {
                             std::string fieldString;
-                            TRI_AttributeNamesToString(idx->fields[j], fieldString);
+                            TRI_AttributeNamesToString(idx->fields[j], fieldString, true);
                             auto range = map->find(fieldString);
 
                             if (range == map->end()) { 
