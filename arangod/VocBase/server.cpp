@@ -821,27 +821,27 @@ static int CloseDroppedDatabases (TRI_server_t* server) {
   for (auto it = server->_droppedDatabases.begin(); it != server->_droppedDatabases.end(); /* no hoisting */) {
     auto vocbase = (*it);
 
-    if (vocbase != nullptr) {
-      if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
-        TRI_DestroyVocBase(vocbase);
-        delete vocbase;
-
-        // clear to avoid potential double freeing
-        it = server->_droppedDatabases.erase(it);
-      }
-      else if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
-        delete vocbase;
-        // clear to avoid potential double freeing
-        it = server->_droppedDatabases.erase(it);
-      }
-      else {
-        LOG_ERROR("unknown database type %d %s - close doing nothing.",
-                  vocbase->_type,
-                  vocbase->_name);
-      }
+    if (vocbase == nullptr) {
+      ++it;
+      continue;
     }
 
-    ++it;
+    if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
+      TRI_DestroyVocBase(vocbase);
+      // fall-through intentional
+    }
+    else if (vocbase->_type != TRI_VOCBASE_TYPE_COORDINATOR) {
+      LOG_ERROR("unknown database type %d %s - close doing nothing.",
+                vocbase->_type,
+                vocbase->_name);
+      ++it;
+      continue;
+    }
+      
+    delete vocbase;
+
+    // clear to avoid potential double freeing
+    it = server->_droppedDatabases.erase(it);
   }
 
   return TRI_ERROR_NO_ERROR;
