@@ -157,6 +157,7 @@ var XXX;
 var testFunc;
 var countErrors;
 var collectionAlreadyThere = [];
+var ignoreCollectionAlreadyThere = [];
 internal.startPrettyPrint(true);
 internal.stopColorPrint(true);
 var appender = function(text) {
@@ -286,18 +287,33 @@ var checkForOrphanTestCollections = function(msg) {
 };
 
 var addIgnoreCollection = function(collectionName) {
-  print("from now on ignoring this collection whether its dropped: "  + collectionName);
+  // print("from now on ignoring this collection whether its dropped: "  + collectionName);
   collectionAlreadyThere.push(collectionName);
+  ignoreCollectionAlreadyThere.push(collectionName);
 };
 
 var removeIgnoreCollection = function(collectionName) {
-  print("from now on checking again whether this collection dropped: " + collectionName);
+  // print("from now on checking again whether this collection dropped: " + collectionName);
   for (j=0; j < collectionAlreadyThere.length; j++) {
     if (collectionAlreadyThere[j] === collectionName) {
       collectionAlreadyThere[j] = undefined;
     }
   }
+  for (j=0; j < ignoreCollectionAlreadyThere.length; j++) {
+    if (ignoreCollectionAlreadyThere[j] === collectionName) {
+      ignoreCollectionAlreadyThere[j] = undefined;
+    }
+  }
+
 };
+
+var checkIgnoreCollectionAlreadyThere = function () {
+  if (ignoreCollectionAlreadyThere.length > 0) {
+    allErrors += "some temporarily ignored collections haven't been cleaned up: " +
+                 ignoreCollectionAlreadyThere;
+  }
+
+}
 
 // Set the first available list of already there collections:
 var err = allErrors;
