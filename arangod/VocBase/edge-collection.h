@@ -35,8 +35,6 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 
-struct TRI_index_t;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   EDGE COLLECTION
 // -----------------------------------------------------------------------------
