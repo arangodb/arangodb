@@ -97,7 +97,7 @@ static void AbortHandler (int signum) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  int res = 0;
+  int res = EXIT_SUCCESS;
 
   signal(SIGSEGV, AbortHandler);
 

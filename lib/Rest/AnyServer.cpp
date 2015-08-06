@@ -207,6 +207,55 @@ static int ForkProcess (string const& workingDirectory, string& current) {
   return 0;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for the supervisor process with pid to return its exit status
+/// waits for at most 5 seconds. if the supervisor has not returned until then,
+/// we assume a successful start
+////////////////////////////////////////////////////////////////////////////////
+
+int WaitForSupervisor (int pid) {
+  int tries = 0;
+  
+  while (++tries < 10) {
+    int status;
+    int res = waitpid(pid, &status, WNOHANG);
+
+    if (res == -1) {
+      // error in waitpid. don't know what to do
+      break;
+    }
+
+    if (res != 0 && WIFEXITED(status)) {
+      // give information about supervisor exit code
+      if (WEXITSTATUS(status) == 0) {
+        // exit code 0
+        return EXIT_SUCCESS;
+      }
+      else if (WIFSIGNALED(status)) {
+        switch (WTERMSIG(status)) {
+          case 2:
+          case 9:
+          case 15:
+            // terminated normally
+            return EXIT_SUCCESS;
+          default:
+            break;
+        }
+      }
+      
+      // failure!    
+      LOG_ERROR("unable to start arangod. please check the logfiles for errors"); 
+      return EXIT_FAILURE;
+    }
+
+    // sleep a while and retry
+    usleep(500 * 1000);
+  }
+
+  // 5 seconds have elapsed... we now abort our loop 
+  return EXIT_SUCCESS;
+}
+
 #else
 
 // ..............................................................................
@@ -345,7 +394,10 @@ int AnyServer::startupSupervisor () {
 
   // main process
   if (result != 0) {
-    return 0;
+    // wait for at most 5 seconds for the supervisor to return
+    // if it returns within 5 seconds, we can fetch its exit code
+    // and report it
+    return WaitForSupervisor(result);
   }
 
   // child process
@@ -389,7 +441,6 @@ int AnyServer::startupSupervisor () {
 
             LOG_ERROR("child %d died a horrible death, exit status %d", (int) pid, (int) WEXITSTATUS(status));
 
-
             if (t < MIN_TIME_ALIVE_IN_SEC) {
               LOG_ERROR("child only survived for %d seconds, this will not work - please fix the error first", (int) t);
               done = true;
@@ -417,6 +468,12 @@ int AnyServer::startupSupervisor () {
               if (t < MIN_TIME_ALIVE_IN_SEC) {
                 LOG_ERROR("child only survived for %d seconds, this will not work - please fix the error first", (int) t);
                 done = true;
+
+#ifdef WCOREDUMP
+                if (WCOREDUMP(status)) {
+                  LOG_WARNING("child process %d produced a core dump", (int) pid);
+                }
+#endif
               }
               else {
                 done = false;
@@ -435,6 +492,8 @@ int AnyServer::startupSupervisor () {
           if (! FileUtils::remove(_pidFile)) {
             LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
           }
+
+          result = EXIT_FAILURE;
         }
       }
 
