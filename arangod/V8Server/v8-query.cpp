@@ -183,7 +183,7 @@ static void CalculateSkipLimitSlice (size_t length,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
-                                                      std::vector<std::string> const& fields,
+                                                      std::vector<triagens::basics::AttributeName> const& fields,
                                                       VocShaper* shaper,
                                                       v8::Handle<v8::Object> conditions) {
   TRI_index_operator_t* lastOperator = nullptr;
@@ -199,7 +199,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
   // iterate over all index fields
   size_t i = 0;
   for (auto const& field : fields) {
-    v8::Handle<v8::String> key = TRI_V8_STD_STRING(field);
+    v8::Handle<v8::String> key = TRI_V8_STD_STRING(field.name);
 
     if (! conditions->HasOwnProperty(key)) {
       break;
@@ -394,7 +394,7 @@ MEM_ERROR:
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
-                                                   std::vector<std::string> const& fields,
+                                                   std::vector<triagens::basics::AttributeName> const& fields,
                                                    VocShaper* shaper,
                                                    v8::Handle<v8::Object> example) {
   TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
@@ -404,7 +404,7 @@ static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
   }
 
   for (auto const& field : fields) {
-    v8::Handle<v8::String> key = TRI_V8_STD_STRING(field);
+    v8::Handle<v8::String> key = TRI_V8_STD_STRING(field.name);
 
     if (! example->HasOwnProperty(key)) {
       break;
