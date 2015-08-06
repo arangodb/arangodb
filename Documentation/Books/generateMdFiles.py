@@ -106,6 +106,8 @@ def replaceText(text, pathOfFile, searchText):
   if not searchText in dokuBlocks[0]:
       print "Failed to locate the docublock '%s' for replacing it into the file '%s'\n have:" % (searchText, pathOfFile)
       print dokuBlocks[0].keys()
+      print '*' * 80
+      print text
       exit(1)
   rc= re.sub("@startDocuBlock\s+"+ searchText + "(?:\s+|$)", dokuBlocks[0][searchText], text)
   return rc
@@ -116,6 +118,8 @@ def replaceTextInline(text, pathOfFile, searchText):
   if not searchText in dokuBlocks[1]:
       print "Failed to locate the inline docublock '%s' for replacing it into the file '%s'\n have:" % (searchText, pathOfFile)
       print dokuBlocks[1].keys()
+      print '*' * 80
+      print text
       exit(1)
   return re.sub(r' *@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText, dokuBlocks[1][searchText], text, flags=re.DOTALL)
 
