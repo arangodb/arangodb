@@ -971,14 +971,6 @@ bool TRI_StringifyArrayShapedJson (T*,
 /// @brief prints a shaped json to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StringifyShapedJson (VocShaper*,
-                              struct TRI_string_buffer_s*,
-                              TRI_shaped_json_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a shaped json to a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
 bool TRI_StringifyAugmentedShapedJson (VocShaper*,
                                        struct TRI_string_buffer_s*,
                                        TRI_shaped_json_t const*,
@@ -1054,16 +1046,6 @@ bool TRI_StringValueShapedJson (TRI_shape_t const*,
                                 char const*,
                                 char**,
                                 size_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringifies a data blob into a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_StringifyJsonShapeData (VocShaper*,
-                                 struct TRI_string_buffer_s*,
-                                 TRI_shape_t const*,
-                                 char const*,
-                                 uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over a shaped json array, using a callback function

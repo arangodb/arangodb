@@ -2174,7 +2174,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
     if (c == STRING_CONSTANT) {
       // utf-8 attribute name
       size_t outLength;
-      char* name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+      char* name = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
     
       if (name == nullptr) {
         yyextra._message = "out-of-memory";
@@ -2287,7 +2287,7 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
 
       // string is not empty
       size_t outLength;
-      char* ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+      char* ptr = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
 
       if (ptr == nullptr || outLength == 0) {
         yyextra._message = "out-of-memory";

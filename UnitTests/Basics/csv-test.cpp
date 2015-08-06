@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_simple) {
     "f,g,h" LF
     ",,i,j,," LF;
 
-  TRI_ParseCsvString(&parser, csv);
+  TRI_ParseCsvString(&parser, csv, strlen(csv));
   BOOST_CHECK_EQUAL("0:a,b,c,d,e,\n1:f,g,h\n2:,,i,j,,\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_crlf) {
     "f,g,h" CR LF
     "i,j" CR LF;
 
-  TRI_ParseCsvString(&parser, csv);
+  TRI_ParseCsvString(&parser, csv, strlen(csv));
   BOOST_CHECK_EQUAL("0:a,b,c,d,e\n1:f,g,h\n2:i,j\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_whitespace) {
     LF
     "   x   x  " LF;
 
-  TRI_ParseCsvString(&parser, csv);
+  TRI_ParseCsvString(&parser, csv, strlen(csv));
   BOOST_CHECK_EQUAL("0: a , \"b \" , c , d , e \n1:\n2:\n3:   x   x  \n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -195,7 +195,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes1) {
     "a,b" LF
     "\"a,b\",\"c,d\"" LF;
 
-  TRI_ParseCsvString(&parser, csv);
+  TRI_ParseCsvString(&parser, csv, strlen(csv));
   BOOST_CHECK_EQUAL("0:ESCaESC,ESCbESC\n1:a,b\n2:ESCa,bESC,ESCc,dESC\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -214,7 +214,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes2) {
     "\"x\"\"y\",\"a\"\"\"" LF
     "\"\",\"\"\"ab\",\"\"\"\"\"ab\"" LF;
 
-  TRI_ParseCsvString(&parser, csv);
+  TRI_ParseCsvString(&parser, csv, strlen(csv));
   BOOST_CHECK_EQUAL("0:ESCx\"yESC,ESCa\"ESC\n1:ESCESC,ESC\"abESC,ESC\"\"abESC\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes_whitespace) {
     " \"\" ix" LF
     " \"\" " LF;
 
-  TRI_ParseCsvString(&parser, csv);
+  TRI_ParseCsvString(&parser, csv, strlen(csv));
   BOOST_CHECK_EQUAL("0:ESCa ESC,ESC \" b ESC,ESC\"ESC,ESC ESC\n1: \"\" ix\n2: \"\" \n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -253,7 +253,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_simple) {
     "a" TAB "b" TAB "c" LF 
     "the quick" TAB "brown fox jumped" TAB "over the" TAB "lazy" TAB "dog" LF; 
 
-  TRI_ParseCsvString(&parser, tsv);
+  TRI_ParseCsvString(&parser, tsv, strlen(tsv));
   BOOST_CHECK_EQUAL("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -274,7 +274,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_whitespace) {
     "" LF
     "something else" LF;
 
-  TRI_ParseCsvString(&parser, tsv);
+  TRI_ParseCsvString(&parser, tsv, strlen(tsv));
   BOOST_CHECK_EQUAL("0:a , b, c \n1:  \n2:\n3:something else\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_quotes) {
     " \"" LF
     "\" fox " LF;
 
-  TRI_ParseCsvString(&parser, tsv);
+  TRI_ParseCsvString(&parser, tsv, strlen(tsv));
   BOOST_CHECK_EQUAL("0:\"a\",\"b\",\"c\n1: \"\n2:\" fox \n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -314,7 +314,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_separator) {
     " , ,\", " LF
     ",\", fox,, " LF;
 
-  TRI_ParseCsvString(&parser, tsv);
+  TRI_ParseCsvString(&parser, tsv, strlen(tsv));
   BOOST_CHECK_EQUAL("0:\"a,,\",\",,b\",\",c,\n1: , ,\", \n2:,\", fox,, \n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -333,7 +333,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_crlf) {
     "a" TAB "b" TAB "c" CR LF 
     "the quick" TAB "brown fox jumped" TAB "over the" TAB "lazy" TAB "dog" CR LF; 
 
-  TRI_ParseCsvString(&parser, tsv);
+  TRI_ParseCsvString(&parser, tsv, strlen(tsv));
   BOOST_CHECK_EQUAL("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -354,7 +354,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_semicolon) {
     ";" LF
     ";;i; ;j; ;" LF;
 
-  TRI_ParseCsvString(&parser, csv);
+  TRI_ParseCsvString(&parser, csv, strlen(csv));
   BOOST_CHECK_EQUAL("0:a,b,c,d,e,\n1:f,g,,ESCh,;ESC\n2:,\n3:,,i, ,j, ,\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
@@ -376,7 +376,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_semicolon_noquote) {
     " " CR LF
     "\" abc \" " CR LF;
 
-  TRI_ParseCsvString(&parser, csv);
+  TRI_ParseCsvString(&parser, csv, strlen(csv));
   BOOST_CHECK_EQUAL("0:a, b, c, d  ,\n1:\n2: ,\n3: \n4:\" abc \" \n", out.str());
 
   TRI_DestroyCsvParser(&parser);

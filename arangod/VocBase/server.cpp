@@ -2358,62 +2358,6 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops an existing coordinator database
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
-                                       char const* name) {
-  if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
-    // prevent deletion of system database
-    return TRI_ERROR_FORBIDDEN;
-  }
-
-  MUTEX_LOCKER(server->_databasesMutex);
-
-  auto oldLists = server->_databasesLists.load();
-  decltype(oldLists) newLists = nullptr;
-  TRI_vocbase_t* vocbase = nullptr;
-  try {
-    newLists = new DatabasesLists(*oldLists);
-
-    auto it = newLists->_coordinatorDatabases.find(std::string(name));
-    if (it == newLists->_coordinatorDatabases.end()) {
-      // not found
-      delete newLists;
-      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-    }
-    else {
-      vocbase = it->second;
-      // mark as deleted
-      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
-
-      newLists->_coordinatorDatabases.erase(it);
-      newLists->_droppedDatabases.insert(vocbase);
-    }
-  }
-  catch (...) {
-    delete newLists;
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  if (TRI_DropVocBase(vocbase)) {
-    LOG_INFO("dropping coordinator database '%s'",
-             vocbase->_name);
- 
-    server->_databasesLists = newLists;
-    server->_databasesProtector.scan();
-    delete oldLists;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-  else {
-    delete newLists;
-
-    // already deleted
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2641,24 +2585,6 @@ void TRI_ReleaseDatabaseServer (TRI_server_t* server,
                                 TRI_vocbase_t* vocbase) {
 
   TRI_ReleaseVocBase(vocbase);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a database by its id
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExistsDatabaseByIdServer (TRI_server_t* server,
-                                   TRI_voc_tick_t id) {
-  auto unuser(server->_databasesProtector.use());
-  auto theLists = server->_databasesLists.load();
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    if (vocbase->_id == id) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

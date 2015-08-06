@@ -303,7 +303,8 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone,
     }
   }
 
-  utf8_dest = TRI_LowerAsciiStringZ(zone, src);
+  utf8_dest = TRI_LowerAsciiString(zone, src);
+
   if (utf8_dest != nullptr) {
     dstLength = (int32_t) strlen(utf8_dest);
   }
@@ -392,7 +393,8 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone,
     }
   }
 
-  utf8_dest = TRI_UpperAsciiStringZ(zone, src);
+  utf8_dest = TRI_UpperAsciiString(zone, src);
+
   if (utf8_dest != nullptr) {
     dstLength = (int32_t) strlen(utf8_dest);
   }

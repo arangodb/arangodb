@@ -339,12 +339,6 @@ void TRI_AddVectorStringPODescription (TRI_PO_section_t * desc,
 void TRI_AddOptionsPODescription (TRI_PO_section_t * parent, TRI_PO_section_t * child);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief builds a usage string
-////////////////////////////////////////////////////////////////////////////////
-
-char * TRI_UsagePODescription (TRI_PO_section_t * desc);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a command line of arguments according the description desc_ptr
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -360,13 +354,6 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
                                   char const * programName,
                                   char const * filename);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if the option was given
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_HasOptionProgramOptions (TRI_program_options_t const * options,
-                                  char const * name);
 
 #endif
 
