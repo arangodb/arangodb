@@ -250,7 +250,7 @@ static int HashIndex_find (TRI_hash_array_t const* hashArray,
 
 HashIndex::HashIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection,
-                      std::vector<triagens::basics::AttributeName> const& fields,
+                      std::vector<std::vector<triagens::basics::AttributeName const>> const& fields,
                       std::vector<TRI_shape_pid_t> const& paths,
                       bool unique,
                       bool sparse) 

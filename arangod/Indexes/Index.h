@@ -76,7 +76,7 @@ namespace triagens {
 
         Index (TRI_idx_iid_t,
                struct TRI_document_collection_t*,
-               std::vector<triagens::basics::AttributeName> const&);
+               std::vector<std::vector<triagens::basics::AttributeName const> >const&);
 
         virtual ~Index ();
 
@@ -118,7 +118,7 @@ namespace triagens {
 /// @brief return the index fields
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline std::vector<triagens::basics::AttributeName> const& fields () const {
+        inline std::vector<std::vector<triagens::basics::AttributeName const>> const& fields () const {
           return _fields;
         }
 
@@ -204,11 +204,11 @@ namespace triagens {
 
       protected:
 
-        TRI_idx_iid_t const                                 _iid;
+        TRI_idx_iid_t const                                                    _iid;
 
-        struct TRI_document_collection_t*                   _collection;
+        struct TRI_document_collection_t*                                      _collection;
 
-        std::vector<triagens::basics::AttributeName> const  _fields;
+        std::vector<std::vector<triagens::basics::AttributeName const>> const  _fields;
                
     };
 

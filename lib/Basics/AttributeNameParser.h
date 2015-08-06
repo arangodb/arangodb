@@ -64,10 +64,32 @@ namespace triagens {
       }
     };
 
+
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Parse an input string into attribute names and expansion flags
+////////////////////////////////////////////////////////////////////////////////
+
     void TRI_ParseAttributeString (
         std::string const& input,
         std::vector<AttributeName const>& result
       );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transform a vector of AttributeNames back into a string
+////////////////////////////////////////////////////////////////////////////////
+
+    void TRI_AttributeNamesToString (
+        std::vector<AttributeName const> const& input,
+        std::string& result,
+        bool excludeExpansion = false
+      );
+
   }
 }
 

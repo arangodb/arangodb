@@ -127,7 +127,7 @@ static int FillLookupOperator (TRI_index_operator_t* slOperator,
 
 SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
                                 TRI_document_collection_t* collection,
-                                std::vector<triagens::basics::AttributeName> const& fields,
+                                std::vector<std::vector<triagens::basics::AttributeName const>> const& fields,
                                 std::vector<TRI_shape_pid_t> const& paths,
                                 bool unique,
                                 bool sparse) 
