@@ -58,13 +58,13 @@ namespace triagens {
 
         GeoIndex2 (TRI_idx_iid_t,
                    struct TRI_document_collection_t*,
-                   std::vector<triagens::basics::AttributeName> const&,
+                   std::vector<std::vector<triagens::basics::AttributeName const>> const&,
                    std::vector<TRI_shape_pid_t> const&,
                    bool);
         
         GeoIndex2 (TRI_idx_iid_t,
                    struct TRI_document_collection_t*,
-                   std::vector<triagens::basics::AttributeName> const&,
+                   std::vector<std::vector<triagens::basics::AttributeName const>> const&,
                    std::vector<TRI_shape_pid_t> const&);
 
         ~GeoIndex2 ();

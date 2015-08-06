@@ -206,6 +206,35 @@ BOOST_AUTO_TEST_CASE (test_nonClosingBracket2) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test_reverseTransform
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (test_reverseTransform) {
+  std::string input = "foo[*].bar.baz[*]";
+  std::vector<AttributeName const> result;
+  TRI_ParseAttributeString(input, result);
+
+  std::string output = "";
+  TRI_AttributeNamesToString(result, output);
+  BOOST_CHECK_EQUAL(output, input);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test_reverseTransformToPidPath
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (test_reverseTransformToPidPath) {
+  std::string input = "foo[*].bar.baz[*]";
+  std::string expected = "foo.bar.baz";
+  std::vector<AttributeName const> result;
+  TRI_ParseAttributeString(input, result);
+
+  std::string output = "";
+  TRI_AttributeNamesToString(result, output, true);
+  BOOST_CHECK_EQUAL(output, expected);
+}
+
 
 
 

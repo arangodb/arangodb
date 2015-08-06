@@ -60,3 +60,25 @@ void triagens::basics::TRI_ParseAttributeString (
     result.emplace_back(input.substr(parsedUntil), false);
   }
 }
+
+void triagens::basics::TRI_AttributeNamesToString (
+    std::vector<AttributeName const> const& input,
+    std::string& result,
+    bool excludeExpansion
+  ) {
+  TRI_ASSERT(result.size() == 0);
+  bool isFirst = true;
+  for (auto& it : input) {
+    if (!isFirst) {
+      result += ".";
+    }
+    isFirst = false;
+    result += it.name;
+    if (! excludeExpansion && it.shouldExpand) {
+      result += "[*]";
+    }
+  }
+}
+
+
+

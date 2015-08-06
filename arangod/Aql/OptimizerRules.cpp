@@ -2364,7 +2364,9 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                       
                         for (size_t j = 0; j < idx->fields.size(); j++) {
-                          auto range = map->find(idx->fields[j].name);
+                          std::string fieldString;
+                          TRI_AttributeNamesToString(idx->fields[j], fieldString);
+                          auto range = map->find(fieldString);
                       
                           if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
                             indexOrCondition.clear();   // not usable
@@ -2408,8 +2410,10 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
 
+                        std::string fieldString;
+                        TRI_AttributeNamesToString(idx->fields[0], fieldString);
                         // check if there is a range that contains the first index attribute
-                        auto range = map->find(idx->fields[0].name);
+                        auto range = map->find(fieldString);
 
                         if (range == map->end()) { 
                           indexOrCondition.clear();
@@ -2424,7 +2428,9 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         bool handled = false;
                         size_t j = 0;
                         while (++j < prefixes.at(i) && equality) {
-                          range = map->find(idx->fields[j].name);
+                          std::string fieldString;
+                          TRI_AttributeNamesToString(idx->fields[j], fieldString);
+                          range = map->find(fieldString);
 
                           if (range == map->end()) { 
                             indexOrCondition.clear();
@@ -2452,7 +2458,9 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                           auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
 
                           for (size_t j = 0; j < idx->fields.size(); j++) {
-                            auto range = map->find(idx->fields[j].name);
+                            std::string fieldString;
+                            TRI_AttributeNamesToString(idx->fields[j], fieldString);
+                            auto range = map->find(fieldString);
 
                             if (range == map->end()) { 
                               indexOrCondition.clear();
