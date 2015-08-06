@@ -162,7 +162,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 bool RestEdgeHandler::createDocument () {
   vector<string> const& suffix = _request->suffix();
 
-  if (suffix.size() != 0) {
+  if (! suffix.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + EDGE_PATH + "?collection=<identifier>");
