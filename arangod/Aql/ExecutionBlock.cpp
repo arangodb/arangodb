@@ -1546,7 +1546,7 @@ void IndexRangeBlock::sortConditions () {
       for (size_t u = 0; u < _condition->at(s).size(); u++) {
         auto const& ri = _condition->at(s)[u];
         std::string fieldString;
-        TRI_AttributeNamesToString(en->_index->fields[t], fieldString);
+        TRI_AttributeNamesToString(en->_index->fields[t], fieldString, true);
 
         if (fieldString.compare(ri._attr) == 0) {
     
