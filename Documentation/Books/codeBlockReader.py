@@ -169,7 +169,6 @@ def fetch_comments(dirpath):
       if filename.endswith(validExtensions) and (filename.find("#") < 0):
 
         filepath = os.path.join(root, filename)
-        print "Searching for docublocks in " + filepath
         file_comments = file_content(filepath)
         for comment in file_comments:
           fh.write("\n<!-- filename: %s -->\n" % filename)
