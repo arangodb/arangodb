@@ -2205,24 +2205,7 @@ bool TRI_StringifyArrayShapedJson (T* shaper,
   }
 
   uint64_t num;
-  bool ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false, &num);
-  return ok;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a shaped json to a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_StringifyShapedJson (VocShaper* shaper,
-                              TRI_string_buffer_t* buffer,
-                              TRI_shaped_json_t const* shaped) {
-  TRI_shape_t const* shape = shaper->lookupShapeId(shaped->_sid);
-
-  if (shape == nullptr) {
-    return false;
-  }
-
-  return StringifyJsonShapeData<VocShaper>(shaper, buffer, shape, shaped->_data.data, shaped->_data.length);
+  return StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false, &num);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2415,18 +2398,6 @@ bool TRI_StringValueShapedJson (TRI_shape_t const* shape,
   *length = 0;
 
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringifies a data blob into a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_StringifyJsonShapeData (VocShaper* shaper,
-                                 TRI_string_buffer_t* buffer,
-                                 TRI_shape_t const* shape,
-                                 char const* data,
-                                 uint64_t size) {
-  return StringifyJsonShapeData<VocShaper>(shaper, buffer, shape, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

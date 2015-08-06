@@ -211,7 +211,7 @@ namespace triagens {
       double nextProgress = ProgressStep;
 
       size_t separatorLength;
-      char* separator = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(), _separator.size(), &separatorLength);
+      char* separator = TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(), _separator.size(), &separatorLength);
 
       if (separator == nullptr) {
         if (fd != STDIN_FILENO) {
@@ -267,7 +267,7 @@ namespace triagens {
         totalRead += (int64_t) n;
         reportProgress(totalLength, totalRead, nextProgress);
 
-        TRI_ParseCsvString2(&parser, buffer, n);
+        TRI_ParseCsvString(&parser, buffer, n);
       }
 
       if (_outputBuffer.length() > 0) {
