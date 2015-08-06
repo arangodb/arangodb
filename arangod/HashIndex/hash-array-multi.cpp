@@ -409,17 +409,6 @@ void TRI_DestroyHashArrayMulti (TRI_hash_array_multi_t* array) {
   TRI_DestroyVectorPointer(&array->_blocks);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeHashArrayMulti (TRI_hash_array_multi_t* array) {
-  if (array != nullptr) {
-    TRI_DestroyHashArrayMulti(array);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array);
-  }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------

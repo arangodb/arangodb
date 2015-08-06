@@ -758,18 +758,6 @@ char* TRI_StealStringBuffer (TRI_string_buffer_t* self) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the character at the end of the string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-char TRI_LastCharStringBuffer (TRI_string_buffer_t const* self) {
-  if (self->_buffer != nullptr && self->_current - self->_buffer > 0) {
-    return *(self->_current - 1);
-  }
-
-  return '\0';
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -822,16 +810,6 @@ int TRI_ReplaceStringStringBuffer (TRI_string_buffer_t * self, char const * str,
   return TRI_AppendString2StringBuffer(self, str, len);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces characters
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
-  self->_current = self->_buffer;
-
-  return TRI_AppendString2StringBuffer(self, text->_buffer, (size_t) (text->_current - text->_buffer));
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  STRING APPENDERS
 // -----------------------------------------------------------------------------
@@ -869,30 +847,6 @@ int TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str) 
 
 int TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
   return AppendString(self, str, len);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
-  return TRI_AppendString2StringBuffer(self, text->_buffer, (size_t) (text->_current - text->_buffer));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends a blob
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendBlobStringBuffer (TRI_string_buffer_t * self, TRI_blob_t const * text) {
-  return TRI_AppendString2StringBuffer(self, text->data, text->length);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends eol character
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendEolStringBuffer (TRI_string_buffer_t * self) {
-  return TRI_AppendCharStringBuffer(self, '\n');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1191,18 +1145,6 @@ int TRI_AppendUInt64StringBuffer (TRI_string_buffer_t* self, uint64_t attr) {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends size_t
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendSizeStringBuffer (TRI_string_buffer_t* self, size_t attr) {
-#if TRI_SIZEOF_SIZE_T == 8
-  return TRI_AppendUInt64StringBuffer(self, (uint64_t) attr);
-#else
-  return TRI_AppendUInt32StringBuffer(self, (uint32_t) attr);
-#endif
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           INTEGER OCTAL APPENDERS
 // -----------------------------------------------------------------------------
@@ -1245,18 +1187,6 @@ int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t* self, uint64_t attr)
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends size_t in octal
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t* self, size_t attr) {
-#if TRI_SIZEOF_SIZE_T == 8
-  return TRI_AppendUInt64OctalStringBuffer(self, (uint64_t) attr);
-#else
-  return TRI_AppendUInt32OctalStringBuffer(self, (uint32_t) attr);
-#endif
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             INTEGER HEX APPENDERS
 // -----------------------------------------------------------------------------
@@ -1297,18 +1227,6 @@ int TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t* self, uint64_t attr) {
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends size_t in hex
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t* self, size_t attr) {
-#if TRI_SIZEOF_SIZE_T == 8
-  return TRI_AppendUInt64HexStringBuffer(self, (uint64_t) attr);
-#else
-  return TRI_AppendUInt32HexStringBuffer(self, (uint32_t) attr);
-#endif
 }
 
 // -----------------------------------------------------------------------------

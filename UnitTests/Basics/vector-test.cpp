@@ -76,7 +76,6 @@ BOOST_AUTO_TEST_CASE (tst_length_init) {
   VECTOR_INIT
 
   BOOST_CHECK_EQUAL((size_t) 0, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(true, TRI_EmptyVector(&v1));
 
   VECTOR_DESTROY
 }
@@ -88,21 +87,16 @@ BOOST_AUTO_TEST_CASE (tst_length_init) {
 BOOST_AUTO_TEST_CASE (tst_length_insert) {
   VECTOR_INIT
 
-  BOOST_CHECK_EQUAL(true, TRI_EmptyVector(&v1));
-
   int p1 = 1;
   int p2 = 2;
   TRI_PushBackVector(&v1, &p1);
   BOOST_CHECK_EQUAL((size_t) 1, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(false, TRI_EmptyVector(&v1));
 
   TRI_PushBackVector(&v1, &p1);
   BOOST_CHECK_EQUAL((size_t) 2, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(false, TRI_EmptyVector(&v1));
   
   TRI_PushBackVector(&v1, &p2);
   BOOST_CHECK_EQUAL((size_t) 3, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(false, TRI_EmptyVector(&v1));
 
   VECTOR_DESTROY
 }
@@ -114,31 +108,24 @@ BOOST_AUTO_TEST_CASE (tst_length_insert) {
 BOOST_AUTO_TEST_CASE (tst_length_insert_remove) {
   VECTOR_INIT
 
-  BOOST_CHECK_EQUAL(true, TRI_EmptyVector(&v1));
-
   int p1 = 1;
   int p2 = 2;
   int p3 = 3;
   TRI_PushBackVector(&v1, &p1);
   BOOST_CHECK_EQUAL((size_t) 1, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(false, TRI_EmptyVector(&v1));
 
   TRI_RemoveVector(&v1, 0);
   BOOST_CHECK_EQUAL((size_t) 0, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(true, TRI_EmptyVector(&v1));
   
   TRI_PushBackVector(&v1, &p2);
   TRI_PushBackVector(&v1, &p3);
   BOOST_CHECK_EQUAL((size_t) 2, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(false, TRI_EmptyVector(&v1));
   
   TRI_RemoveVector(&v1, 0);
   BOOST_CHECK_EQUAL((size_t) 1, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(false, TRI_EmptyVector(&v1));
 
   TRI_RemoveVector(&v1, 0);
   BOOST_CHECK_EQUAL((size_t) 0, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(true, TRI_EmptyVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -150,7 +137,6 @@ BOOST_AUTO_TEST_CASE (tst_length_insert_remove) {
 BOOST_AUTO_TEST_CASE (tst_length_clear) {
   VECTOR_INIT
 
-  BOOST_CHECK_EQUAL(true, TRI_EmptyVector(&v1));
   int p1 = 1;
   int p2 = 2;
   int p3 = 3;
@@ -162,11 +148,9 @@ BOOST_AUTO_TEST_CASE (tst_length_clear) {
  
   TRI_ClearVector(&v1); 
   BOOST_CHECK_EQUAL((size_t) 0, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(true, TRI_EmptyVector(&v1));
 
   TRI_PushBackVector(&v1, &p2);
   BOOST_CHECK_EQUAL((size_t) 1, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(false, TRI_EmptyVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -185,7 +169,6 @@ BOOST_AUTO_TEST_CASE (tst_remove_invalid1) {
   TRI_RemoveVector(&v1, 99); // invalid position
   
   BOOST_CHECK_EQUAL((size_t) 0, TRI_LengthVector(&v1));
-  BOOST_CHECK_EQUAL(true, TRI_EmptyVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -485,7 +468,7 @@ BOOST_AUTO_TEST_CASE (tst_set) {
   BOOST_CHECK_EQUAL(3, *(int*) TRI_AtVector(&v1, 2));
   BOOST_CHECK_EQUAL(4, *(int*) TRI_AtVector(&v1, 3));
   BOOST_CHECK_EQUAL(1, *(int*) TRI_BeginVector(&v1));
-  BOOST_CHECK_EQUAL(4, *((int*) TRI_EndVector(&v1) - 1));
+  BOOST_CHECK_EQUAL(4, *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
 
   TRI_SetVector(&v1, 0, &d);
   TRI_SetVector(&v1, 1, &c);
@@ -498,7 +481,7 @@ BOOST_AUTO_TEST_CASE (tst_set) {
   BOOST_CHECK_EQUAL(2, *(int*) TRI_AtVector(&v1, 2));
   BOOST_CHECK_EQUAL(1, *(int*) TRI_AtVector(&v1, 3));
   BOOST_CHECK_EQUAL(4, *(int*) TRI_BeginVector(&v1));
-  BOOST_CHECK_EQUAL(1, *((int*) TRI_EndVector(&v1) - 1));
+  BOOST_CHECK_EQUAL(1, *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
 
   TRI_SetVector(&v1, 0, &b);
   BOOST_CHECK_EQUAL(2, *(int*) TRI_AtVector(&v1, 0));

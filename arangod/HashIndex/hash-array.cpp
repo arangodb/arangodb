@@ -325,17 +325,6 @@ void TRI_DestroyHashArray (TRI_hash_array_t* array) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeHashArray (TRI_hash_array_t* array) {
-  if (array != nullptr) {
-    TRI_DestroyHashArray(array);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array);
-  }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------

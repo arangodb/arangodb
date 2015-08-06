@@ -1924,7 +1924,7 @@ bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &
 /// @brief copies the filesystem attributes of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopyAttributes(std::string srcItem, std::string dstItem, std::string &error) {
+bool TRI_CopyAttributes (std::string const& srcItem, std::string const& dstItem, std::string& error) {
 #ifndef _WIN32
   struct stat statbuf;
 
@@ -1957,7 +1957,7 @@ bool TRI_CopyAttributes(std::string srcItem, std::string dstItem, std::string &e
 /// @brief copies a symlink; the link target is not altered.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopySymlink(std::string srcItem, std::string dstItem, std::string &error) {
+bool TRI_CopySymlink (std::string const& srcItem, std::string const& dstItem, std::string& error) {
 #ifndef _WIN32
   char buffer[PATH_MAX];
   ssize_t rc;
@@ -1979,7 +1979,6 @@ bool TRI_CopySymlink(std::string srcItem, std::string dstItem, std::string &erro
 #endif
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the home directory

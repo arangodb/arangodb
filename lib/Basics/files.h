@@ -333,13 +333,13 @@ bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &
 /// @brief copies the file Attributes from source to dest.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopyAttributes(std::string srcItem, std::string dstItem, std::string &error);
+bool TRI_CopyAttributes (std::string const& srcItem, std::string const& dstItem, std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copies the symlink from source to dest; will do nothing in winodws?
+/// @brief copies the symlink from source to dest; will do nothing in Windows?
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopySymlink(std::string srcItem, std::string dstItem, std::string &error);
+bool TRI_CopySymlink (std::string const& srcItem, std::string const& dstItem, std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory

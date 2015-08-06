@@ -330,12 +330,6 @@ static sig_atomic_t UseLocalTime = 0;
 static sig_atomic_t ShowLineNumber = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief show function names
-////////////////////////////////////////////////////////////////////////////////
-
-static sig_atomic_t ShowFunction = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief show thread identifier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -563,12 +557,7 @@ static int GenerateMessage (char* buffer,
   // .............................................................................
 
   if (sln) {
-    if (ShowFunction) {
-      n = snprintf(buffer + m, size - m, "[%s@%s:%d] ", func, file, line);
-    }
-    else {
-      n = snprintf(buffer + m, size - m, "[%s:%d] ", file, line);
-    }
+    n = snprintf(buffer + m, size - m, "[%s:%d] ", file, line);
 
     if (n < 0) {
       return n;
@@ -1100,14 +1089,6 @@ void TRI_SetUseLocalTimeLogging (bool value) {
 
 void TRI_SetLineNumberLogging (bool show) {
   ShowLineNumber = show ? 1 : 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the function names visibility
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetFunctionLogging (bool show) {
-  ShowFunction = show ? 1 : 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
