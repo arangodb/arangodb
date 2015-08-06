@@ -40,19 +40,21 @@ build-book-symlinks:
 	bash
 
 build-book:
-	test -d books/$(NAME) || mkdir books/$(NAME)
-	test -d ppbooks/$(NAME) || mkdir ppbooks/$(NAME)
-	tar -cO `find $(NAME) -name \*.md ` |tar -xvC ppbooks/
-	cd ppbooks/$(NAME); ln -s ../../$(NAME)/styles .
+	test -d ppbooks/$(NAME) || mkdir -p ppbooks/$(NAME)
+	cd ppbooks/$(NAME); test -l SUMMARY.md || ln -s ../../$(NAME)/SUMMARY.md .
+	cd ppbooks/$(NAME); test -l book.json || ln -s ../../$(NAME)/book.json .
+	cd ppbooks/$(NAME); test d styles || cp -a ../../$(NAME)/styles .
+	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/$(newVersionNumber)/g' styles/header.js
 	python generateMdFiles.py $(NAME) ppbooks/
+
+	test -d books/$(NAME) || mkdir -p books/$(NAME)
+
 	cd ppbooks/$(NAME) && gitbook install
-	cd ppbooks/$(NAME) && gitbook build ./ ./../books/$(NAME)
+	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	python deprecated.py
-	cd books/$(NAME) && sed -ie 's/VERSION_NUMBER/$(newVersionNumber)/g' styles/header.js
 
 	make book-check-leftover-docublocks
 	make book-check-markdown-leftovers
-
 
 clean-book:
 	@rm -rvf books/$(NAME) ppbooks/$(NAME)
@@ -98,7 +100,7 @@ clean-intermediate:
 	make clean-book-intermediate NAME=Users
 
 
-clean: clean-md-files clean-books clean-intermediate
+clean: clean-intermediate
 	rm -f allComments.txt
 
 
@@ -109,5 +111,4 @@ build-books-keep-md:
 	python codeBlockReader.py
 	make build-book NAME=Users
 
-build-books: clean-intermediate build-books-keep-md # not now: check-docublocks
-	make clean-intermediate
+build-books: clean-intermediate build-books-keep-md check-docublocks
