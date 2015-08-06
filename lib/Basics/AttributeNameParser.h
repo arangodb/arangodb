@@ -50,10 +50,10 @@ namespace triagens {
       bool const shouldExpand;
 
       AttributeName (std::string const& pName)
-        : name(pName), shouldExpand(false) {};
+        : name(pName), shouldExpand(false) { };
 
       AttributeName (std::string const& pName, bool pExpand)
-        : name(pName), shouldExpand(pExpand) {};
+        : name(pName), shouldExpand(pExpand) { };
 
       bool operator== (const AttributeName& b) const {
         return name == b.name && shouldExpand == b.shouldExpand;

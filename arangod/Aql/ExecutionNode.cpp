@@ -550,7 +550,7 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node
 
   for (; (i < idxFields && j < n); i++) {
     std::string fieldString;
-    TRI_AttributeNamesToString(idx->fields[i], fieldString);
+    TRI_AttributeNamesToString(idx->fields[i], fieldString, true);
     if (equalityLookupAttributes.find(fieldString) != equalityLookupAttributes.end()) {
       // found an attribute in the sort criterion that is used in an equality lookup, too...
       // (e.g. doc.value == 1 && SORT doc.value1)
@@ -1249,7 +1249,7 @@ size_t EnumerateCollectionNode::getUsableFieldsOfIndex (Index const* idx,
   size_t count = 0;
   for (size_t i = 0; i < idx->fields.size(); i++) {
     std::string tmp;
-    TRI_AttributeNamesToString(idx->fields[i], tmp);
+    TRI_AttributeNamesToString(idx->fields[i], tmp, true);
     if (attrs.find(tmp) == attrs.end()) {
       break;
     }
