@@ -130,34 +130,6 @@ static TRI_server_id_t ServerId;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           database hash functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the database name
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementDatabaseName (TRI_associative_pointer_t* array,
-                                         void const* element) {
-  TRI_vocbase_t const* e = static_cast<TRI_vocbase_t const*>(element);
-
-  return TRI_FnvHashString((char const*) e->_name);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a database name and a database
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualKeyDatabaseName (TRI_associative_pointer_t* array,
-                                  void const* key,
-                                  void const* element) {
-  char const* k = static_cast<char const*>(key);
-  TRI_vocbase_t const* e = static_cast<TRI_vocbase_t const*>(element);
-
-  return TRI_EqualString(k, e->_name);
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                               server id functions
 // -----------------------------------------------------------------------------
 
@@ -497,6 +469,11 @@ static int OpenDatabases (TRI_server_t* server,
     qsort(files._buffer, n, sizeof(char**), &DatabaseIdComparator);
   }
 
+  MUTEX_LOCKER(server->_databasesMutex);
+  auto oldLists = server->_databasesLists.load();
+  auto newLists = new DatabasesLists(*oldLists);
+  // Now try catch here, if we crash here because out of memory...
+
   for (size_t i = 0;  i < n;  ++i) {
     TRI_vocbase_t* vocbase;
     TRI_json_t* json;
@@ -507,14 +484,14 @@ static int OpenDatabases (TRI_server_t* server,
     TRI_vocbase_defaults_t defaults;
     char* parametersFile;
     char* databaseName;
-    void const* found;
+    void const* found = nullptr;
 
     char const* name = files._buffer[i];
     TRI_ASSERT(name != nullptr);
 
-    // .............................................................................
+    // .........................................................................
     // construct and validate path
-    // .............................................................................
+    // .........................................................................
 
     char* databaseDirectory = TRI_Concatenate2File(server->_databasePath, name);
 
@@ -565,9 +542,9 @@ static int OpenDatabases (TRI_server_t* server,
 
     // a valid database directory
 
-    // .............................................................................
+    // .........................................................................
     // read parameter.json file
-    // .............................................................................
+    // .........................................................................
 
     // now read data from parameter.json file
     parametersFile = TRI_Concatenate2File(databaseDirectory, TRI_VOC_PARAMETER_FILE);
@@ -657,9 +634,9 @@ static int OpenDatabases (TRI_server_t* server,
                                          nameJson->_value._string.data,
                                          nameJson->_value._string.length - 1);
 
-    // .............................................................................
+    // .........................................................................
     // setup defaults
-    // .............................................................................
+    // .........................................................................
 
     // use defaults and blend them with parameters found in file
     TRI_GetDatabaseDefaultsServer(server, &defaults);
@@ -674,9 +651,9 @@ static int OpenDatabases (TRI_server_t* server,
       break;
     }
 
-    // .............................................................................
+    // .........................................................................
     // create app directories
-    // .............................................................................
+    // .........................................................................
 
     res = CreateApplicationDirectory(databaseName, server->_appPath);
 
@@ -686,9 +663,9 @@ static int OpenDatabases (TRI_server_t* server,
       break;
     }
 
-    // .............................................................................
+    // .........................................................................
     // open the database and scan collections in it
-    // .............................................................................
+    // .........................................................................
 
     // try to open this database
     vocbase = TRI_OpenVocBase(server,
@@ -722,25 +699,30 @@ static int OpenDatabases (TRI_server_t* server,
     // we found a valid database
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
 
-    res = TRI_InsertKeyAssociativePointer2(&server->_databases,
-                                           vocbase->_name,
-                                           vocbase,
-                                           &found);
-
-    if (res != TRI_ERROR_NO_ERROR) {
+    try {
+      auto pair = newLists->_databases.insert(
+          std::make_pair(std::string(vocbase->_name), vocbase));
+      if (! pair.second) {
+        found = pair.first->second;
+      }
+    }
+    catch (...) {
+      res = TRI_ERROR_OUT_OF_MEMORY;
       LOG_ERROR("could not add database '%s': out of memory",
                 name);
-
       break;
     }
 
-    // should never have a duplicate database name
     TRI_ASSERT(found == nullptr);
 
     LOG_INFO("loaded database '%s' from '%s'",
              vocbase->_name,
              vocbase->_path);
   }
+
+  server->_databasesLists = newLists;
+  server->_databasesProtector.scan();
+  delete oldLists;
 
   TRI_DestroyVectorString(&files);
 
@@ -752,19 +734,15 @@ static int OpenDatabases (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StopReplicationAppliers (TRI_server_t* server) {
-  WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
-
-  size_t n = server->_databases._nrAlloc;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
-
-    if (vocbase != nullptr) {
-      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-
-      if (vocbase->_replicationApplier != nullptr) {
-        TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
-      }
+  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
+  // No need for the thread protector here, because we have the mutex
+  
+  for (auto& p : server->_databasesLists.load()->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+    if (vocbase->_replicationApplier != nullptr) {
+      TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
     }
   }
 }
@@ -774,39 +752,47 @@ static void StopReplicationAppliers (TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloseDatabases (TRI_server_t* server) {
-  WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
+  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
+  // No need for the thread protector here, because we have the mutex
+  // Note however, that somebody could still read the lists concurrently,
+  // therefore we first install a new value, call scan() on the protector
+  // and only then really destroy the vocbases:
 
-  size_t n = server->_databases._nrAlloc;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
-
-    if (vocbase != nullptr) {
-      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-
-      TRI_DestroyVocBase(vocbase);
-
-      delete vocbase;
-
-      // clear to avoid potential double freeing
-      server->_databases._table[i] = nullptr;
-    }
+  // Build the new value:
+  auto newList = new DatabasesLists();
+  try {
+    newList->_droppedDatabases = server->_databasesLists.load()->_droppedDatabases;
+  }
+  catch (...) {
+    delete newList;
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  n = server->_coordinatorDatabases._nrAlloc;
+  // Replace the old by the new:
+  auto oldList = server->_databasesLists.load();
+  server->_databasesLists = newList;
+  server->_databasesProtector.scan();
 
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
+  // Now it is safe to destroy the old databases and the old lists struct:
+  for (auto& p : oldList->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
-    if (vocbase != nullptr) {
-      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
+    TRI_DestroyVocBase(vocbase);
 
-      delete vocbase;
-
-      // clear to avoid potential double freeing
-      server->_coordinatorDatabases._table[i] = nullptr;
-    }
+    delete vocbase;
   }
+
+  for (auto& p : oldList->_coordinatorDatabases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
+
+    delete vocbase;
+  }
+
+  delete oldList; // Note that this does not delete the TRI_vocbase_t pointers!
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -816,33 +802,44 @@ static int CloseDatabases (TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloseDroppedDatabases (TRI_server_t* server) {
-  WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
+  MUTEX_LOCKER(server->_databasesMutex);
 
-  for (auto it = server->_droppedDatabases.begin(); it != server->_droppedDatabases.end(); /* no hoisting */) {
-    auto vocbase = (*it);
+  // No need for the thread protector here, because we have the mutex
+  // Note however, that somebody could still read the lists concurrently,
+  // therefore we first install a new value, call scan() on the protector
+  // and only then really destroy the vocbases:
 
-    if (vocbase == nullptr) {
-      ++it;
-      continue;
-    }
+  // Build the new value:
+  auto newList = new DatabasesLists();
+  try {
+    newList->_databases = server->_databasesLists.load()->_databases;
+    newList->_coordinatorDatabases = server->_databasesLists.load()->_coordinatorDatabases;
+  }
+  catch (...) {
+    delete newList;
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
+  // Replace the old by the new:
+  auto oldList = server->_databasesLists.load();
+  server->_databasesLists = newList;
+  server->_databasesProtector.scan();
+
+  // Now it is safe to destroy the old dropped databases and the old lists struct:
+  for (TRI_vocbase_t* vocbase : oldList->_droppedDatabases) {
+    TRI_ASSERT(vocbase != nullptr);
     if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
       TRI_DestroyVocBase(vocbase);
-      // fall-through intentional
+      delete vocbase;
     }
     else if (vocbase->_type != TRI_VOCBASE_TYPE_COORDINATOR) {
       LOG_ERROR("unknown database type %d %s - close doing nothing.",
                 vocbase->_type,
                 vocbase->_name);
-      ++it;
-      continue;
     }
-      
-    delete vocbase;
-
-    // clear to avoid potential double freeing
-    it = server->_droppedDatabases.erase(it);
   }
+
+  delete oldList; // Note that this does not delete the TRI_vocbase_t pointers!
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1526,9 +1523,10 @@ static void DatabaseManager (void* data) {
     TRI_vocbase_t* database = nullptr;
 
     {
-      READ_LOCKER(server->_databasesLock);
+      auto unuser(server->_databasesProtector.use());
+      auto theLists = server->_databasesLists.load();
       
-      for (auto& vocbase : server->_droppedDatabases) {
+      for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
         if (! TRI_CanRemoveVocBase(vocbase)) {
           continue;
         }
@@ -1543,19 +1541,36 @@ static void DatabaseManager (void* data) {
       // found a database to delete, now remove it from the struct
 
       {
-        WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
-  
-        size_t count = server->_droppedDatabases.erase(database);
+        MUTEX_LOCKER(server->_databasesMutex);
 
-        if (count == 0) {
-          // oops, it seems someone lese deleted the SAME database in
-          // the meantime
-          database = nullptr;
+        // Build the new value:
+        auto oldLists = server->_databasesLists.load();
+        decltype(oldLists) newLists;
+        newLists = new DatabasesLists();
+        try {
+          newLists->_databases = oldLists->_databases;
+          newLists->_coordinatorDatabases = oldLists->_coordinatorDatabases;
+          for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
+            if (vocbase != database) {
+              newLists->_droppedDatabases.insert(vocbase);
+            }
+          }
         }
-      }
-    }
+        catch (...) {
+          delete newLists;
+          continue;   // try again later
+        }
 
-    if (database != nullptr) {
+        // Replace the old by the new:
+        server->_databasesLists = newLists;
+        server->_databasesProtector.scan();
+        delete oldLists;
+
+        // From now on no other thread can possibly see the old TRI_vocbase_t*,
+        // note that there is only one DatabaseManager thread, so it is
+        // not possible that another thread has seen this very database
+        // and tries to free it at the same time!
+      }
 
       if (database->_type != TRI_VOCBASE_TYPE_COORDINATOR) {
         // regular database
@@ -1620,21 +1635,18 @@ static void DatabaseManager (void* data) {
           ++cleanupCycles == 10) { 
         cleanupCycles = 0;
 
-        READ_LOCKER(server->_databasesLock);
+        auto unuser(server->_databasesProtector.use());
+        auto theLists = server->_databasesLists.load();
+      
+        for (auto& p : theLists->_coordinatorDatabases) {
+          TRI_vocbase_t* vocbase = p.second;
+          TRI_ASSERT(vocbase != nullptr);
+          auto cursorRepository = static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
 
-        size_t const n = server->_coordinatorDatabases._nrAlloc;
-
-        for (size_t i = 0; i < n; ++i) {
-          TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
-
-          if (vocbase != nullptr) {
-            auto cursorRepository = static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
-
-            try {
-              cursorRepository->garbageCollect(false);
-            }
-            catch (...) {
-            }
+          try {
+            cursorRepository->garbageCollect(false);
+          }
+          catch (...) {
           }
         }
       }
@@ -1674,9 +1686,9 @@ int TRI_InitServer (TRI_server_t* server,
 
   server->_indexPool                 = indexPool;
 
-  // .............................................................................
+  // ...........................................................................
   // set up paths and filenames
-  // .............................................................................
+  // ...........................................................................
 
   server->_basePath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, basePath);
 
@@ -1722,29 +1734,17 @@ int TRI_InitServer (TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  // .............................................................................
+  // ...........................................................................
   // server defaults
-  // .............................................................................
+  // ...........................................................................
 
   memcpy(&server->_defaults, defaults, sizeof(TRI_vocbase_defaults_t));
 
-  // .............................................................................
+  // ...........................................................................
   // database hashes and vectors
-  // .............................................................................
+  // ...........................................................................
 
-  TRI_InitAssociativePointer(&server->_databases,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             &TRI_HashStringKeyAssociativePointer,
-                             HashElementDatabaseName,
-                             EqualKeyDatabaseName,
-                             nullptr);
-
-  TRI_InitAssociativePointer(&server->_coordinatorDatabases,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             &TRI_HashStringKeyAssociativePointer,
-                             HashElementDatabaseName,
-                             EqualKeyDatabaseName,
-                             nullptr);
+  server->_databasesLists = new DatabasesLists();
 
   server->_disableReplicationAppliers = disableAppliers;
 
@@ -1800,9 +1800,9 @@ int TRI_StartServer (TRI_server_t* server,
     return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
   }
 
-  // .............................................................................
+  // ...........................................................................
   // check that the database is not locked and lock it
-  // .............................................................................
+  // ...........................................................................
 
   res = TRI_VerifyLockFile(server->_lockFilename);
 
@@ -1827,9 +1827,9 @@ int TRI_StartServer (TRI_server_t* server,
     return TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE;
   }
 
-  // .............................................................................
+  // ...........................................................................
   // read the server id
-  // .............................................................................
+  // ...........................................................................
 
   res = DetermineServerId(server, checkVersion);
 
@@ -1844,9 +1844,9 @@ int TRI_StartServer (TRI_server_t* server,
     return res;
   }
 
-  // .............................................................................
+  // ...........................................................................
   // verify existence of "databases" subdirectory
-  // .............................................................................
+  // ...........................................................................
 
   if (! TRI_IsDirectory(server->_databasePath)) {
     long systemError;
@@ -1872,9 +1872,9 @@ int TRI_StartServer (TRI_server_t* server,
   }
 
 
-  // .............................................................................
+  // ...........................................................................
   // perform an eventual migration of the databases.
-  // .............................................................................
+  // ...........................................................................
 
   res = InitDatabases(server, checkVersion, performUpgrade);
 
@@ -1888,9 +1888,9 @@ int TRI_StartServer (TRI_server_t* server,
     return res;
   }
 
-  // .............................................................................
+  // ...........................................................................
   // create shared application directories
-  // .............................................................................
+  // ...........................................................................
 
   if (server->_appPath != nullptr &&
       strlen(server->_appPath) > 0 &&
@@ -1929,9 +1929,9 @@ int TRI_StartServer (TRI_server_t* server,
   }
 
 
-  // .............................................................................
+  // ...........................................................................
   // open and scan all databases
-  // .............................................................................
+  // ...........................................................................
 
   regex_t regex;
   res = regcomp(&regex, "^database-([0-9][0-9]*)$", REG_EXTENDED);
@@ -1966,38 +1966,35 @@ int TRI_StartServer (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitDatabasesServer (TRI_server_t* server) {
-  READ_LOCKER(server->_databasesLock);
+  auto unuser(server->_databasesProtector.use());
+  auto theLists = server->_databasesLists.load();
 
-  size_t const n = server->_databases._nrAlloc;
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
-  // iterate over all databases
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+    // initialise the authentication data for the database
+    TRI_ReloadAuthInfo(vocbase);
 
-    if (vocbase != nullptr) {
-      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+    // start the compactor for the database
+    TRI_StartCompactorVocBase(vocbase);
 
-      // initialise the authentication data for the database
-      TRI_ReloadAuthInfo(vocbase);
+    // start the replication applier
+    TRI_ASSERT(vocbase->_replicationApplier != nullptr);
 
-      // start the compactor for the database
-      TRI_StartCompactorVocBase(vocbase);
-  
-      // start the replication applier
-      TRI_ASSERT(vocbase->_replicationApplier != nullptr);
+    if (vocbase->_replicationApplier->_configuration._autoStart) {
+      if (server->_disableReplicationAppliers) {
+        LOG_INFO("replication applier explicitly deactivated for database '%s'", vocbase->_name);
+      }
+      else {
+        int res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
 
-      if (vocbase->_replicationApplier->_configuration._autoStart) {
-        if (server->_disableReplicationAppliers) {
-          LOG_INFO("replication applier explicitly deactivated for database '%s'", vocbase->_name);
-        }
-        else {
-          int res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_WARNING("unable to start replication applier for database '%s': %s",
-                        vocbase->_name,
-                        TRI_errno_string(res));
-          }
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_WARNING("unable to start replication applier for database '%s': %s",
+                      vocbase->_name,
+                      TRI_errno_string(res));
         }
       }
     }
@@ -2048,11 +2045,11 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   MUTEX_LOCKER(DatabaseCreateLock);
 
   {
-    READ_LOCKER(server->_databasesLock);
+    auto unuser(server->_databasesProtector.use());
+    auto theLists = server->_databasesLists.load();
 
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name));
-
-    if (vocbase != nullptr) {
+    auto it = theLists->_coordinatorDatabases.find(std::string(name));
+    if (it != theLists->_coordinatorDatabases.end()) {
       // name already in use
       return TRI_ERROR_ARANGO_DUPLICATE_NAME;
     }
@@ -2096,12 +2093,21 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   {
-    WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
-
-    if (TRI_InsertKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name, vocbase, false) != nullptr) {
-      // this shouldn't happen, since we will leak and not replace the new database.
-      LOG_ERROR("Replacing existing database by name %s", vocbase->_name);
+    MUTEX_LOCKER(server->_databasesMutex);
+    auto oldLists = server->_databasesLists.load();
+    decltype(oldLists) newLists = nullptr;
+    try {
+      auto newLists = new DatabasesLists(*oldLists);
+      newLists->_coordinatorDatabases.insert(
+            std::make_pair(std::string(vocbase->_name), vocbase));
     }
+    catch (...) {
+      delete newLists;
+      throw;
+    }
+    server->_databasesLists = newLists;
+    server->_databasesProtector.scan();
+    delete oldLists;
   }
 
   *database = vocbase;
@@ -2134,11 +2140,11 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   {
 
     {
-      READ_LOCKER(server->_databasesLock);
+      auto unuser(server->_databasesProtector.use());
+      auto theLists = server->_databasesLists.load();
 
-      vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_databases, name));
-
-      if (vocbase != nullptr) {
+      auto it = theLists->_databases.find(std::string(name));
+      if (it != theLists->_databases.end()) {
         // name already in use
         return TRI_ERROR_ARANGO_DUPLICATE_NAME;
       }
@@ -2237,8 +2243,20 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     }
 
     {
-      WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
-      TRI_InsertKeyAssociativePointer(&server->_databases, vocbase->_name, vocbase, false);
+      MUTEX_LOCKER(server->_databasesMutex);
+      auto oldLists = server->_databasesLists.load();
+      auto newLists = new DatabasesLists(*oldLists);
+      try {
+        newLists->_databases.insert(
+              std::make_pair(std::string(vocbase->_name), vocbase));
+      }
+      catch (...) {
+        LOG_ERROR("Out of memory for putting new database into list!");
+        // This is bad, but at least we do not crash!
+      }
+      server->_databasesLists = newLists;
+      server->_databasesProtector.scan();
+      delete oldLists;
     }
 
   } // release DatabaseCreateLock
@@ -2266,15 +2284,13 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
   TRI_InitVector(&v, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_voc_tick_t));
 
   {
-    READ_LOCKER(server->_databasesLock);
+    auto unuser(server->_databasesProtector.use());
+    auto theLists = server->_databasesLists.load();
 
-    size_t const n = server->_coordinatorDatabases._nrAlloc;
-
-    for (size_t i = 0; i < n; ++i) {
-      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
-
-      if (vocbase != nullptr &&
-          ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
+    for (auto& p : theLists->_coordinatorDatabases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      if (! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
         TRI_PushBackVector(&v, &vocbase->_id);
       }
     }
@@ -2302,36 +2318,42 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
                                            bool force) {
   int res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
 
-  WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
-
+  MUTEX_LOCKER(server->_databasesMutex);
+  auto oldLists = server->_databasesLists.load();
+  decltype(oldLists) newLists = nullptr;
+  TRI_vocbase_t* vocbase = nullptr;
   try {
-    // we need space for one more element
-    server->_droppedDatabases.reserve(server->_droppedDatabases.size() + 1);
-  }
-  catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+    newLists = new DatabasesLists(*oldLists);
+    for (auto it = newLists->_coordinatorDatabases.begin();
+         it != newLists->_coordinatorDatabases.end(); it++) {
+      vocbase = it->second;
 
-  size_t const n = server->_coordinatorDatabases._nrAlloc;
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
-
-    if (vocbase != nullptr &&
-        vocbase->_id == id &&
-        (force || ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE))) {
-      TRI_RemoveKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name);
-
-      if (TRI_DropVocBase(vocbase)) {
-        LOG_INFO("dropping coordinator database '%s'",
-                 vocbase->_name);
-
-        server->_droppedDatabases.emplace(vocbase);
-        res = TRI_ERROR_NO_ERROR;
+      if (vocbase->_id == id &&
+          (force || ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE))) {
+        newLists->_droppedDatabases.insert(vocbase);
+        newLists->_coordinatorDatabases.erase(it);
+        break;
       }
-      break;
+      vocbase = nullptr;
     }
   }
+  catch (...) {
+    delete newLists;
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  if (vocbase != nullptr) {
+    server->_databasesLists = newLists;
+    server->_databasesProtector.scan();
+    delete oldLists;
 
+    if (TRI_DropVocBase(vocbase)) {
+      LOG_INFO("dropping coordinator database '%s'", vocbase->_name);
+      res = TRI_ERROR_NO_ERROR;
+    }
+  }
+  else {
+    delete newLists;
+  }
   return res;
 }
 
@@ -2346,41 +2368,49 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
+  MUTEX_LOCKER(server->_databasesMutex);
 
+  auto oldLists = server->_databasesLists.load();
+  decltype(oldLists) newLists = nullptr;
+  TRI_vocbase_t* vocbase = nullptr;
   try {
-    // we need space for one more element
-    server->_droppedDatabases.reserve(server->_droppedDatabases.size() + 1);
-  }
-  catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+    newLists = new DatabasesLists(*oldLists);
 
-  int res = TRI_ERROR_INTERNAL;
-  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_RemoveKeyAssociativePointer(&server->_coordinatorDatabases, name));
-
-  if (vocbase == nullptr) {
-    // not found
-    res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-  }
-  else {
-    // mark as deleted
-    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
-
-    if (TRI_DropVocBase(vocbase)) {
-      LOG_INFO("dropping coordinator database '%s'",
-               vocbase->_name);
-   
-      server->_droppedDatabases.emplace(vocbase);
-      res = TRI_ERROR_NO_ERROR;
+    auto it = newLists->_coordinatorDatabases.find(std::string(name));
+    if (it == newLists->_coordinatorDatabases.end()) {
+      // not found
+      delete newLists;
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
     else {
-      // already deleted
-      res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+      vocbase = it->second;
+      // mark as deleted
+      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
+
+      newLists->_coordinatorDatabases.erase(it);
+      newLists->_droppedDatabases.insert(vocbase);
     }
   }
+  catch (...) {
+    delete newLists;
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  if (TRI_DropVocBase(vocbase)) {
+    LOG_INFO("dropping coordinator database '%s'",
+             vocbase->_name);
+ 
+    server->_databasesLists = newLists;
+    server->_databasesProtector.scan();
+    delete oldLists;
 
-  return res;
+    return TRI_ERROR_NO_ERROR;
+  }
+  else {
+    delete newLists;
+
+    // already deleted
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2396,30 +2426,44 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  WRITE_LOCKER_EVENTUAL(server->_databasesLock, 1000);
+  MUTEX_LOCKER(server->_databasesMutex);
 
+  auto oldLists = server->_databasesLists.load();
+  decltype(oldLists) newLists = nullptr;
+  TRI_vocbase_t* vocbase = nullptr;
   try {
-    // we need space for one more element
-    server->_droppedDatabases.reserve(server->_droppedDatabases.size() + 1);
+    newLists = new DatabasesLists(*oldLists);
+
+    auto it = newLists->_databases.find(std::string(name));
+    if (it == newLists->_databases.end()) {
+      // not found
+      delete newLists;
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    }
+    else {
+      vocbase = it->second;
+      // mark as deleted
+      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+
+      newLists->_databases.erase(it);
+      newLists->_droppedDatabases.insert(vocbase);
+    }
   }
   catch (...) {
+    delete newLists;
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_RemoveKeyAssociativePointer(&server->_databases, name));
-
-  if (vocbase == nullptr) {
-    // not found
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-  }
-
-  // mark as deleted
-  TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+    
+  server->_databasesLists = newLists;
+  server->_databasesProtector.scan();
+  delete oldLists;
 
   vocbase->_isOwnAppsDirectory = removeAppsDirectory;
 
   // invalidate all entries for the database
   triagens::aql::QueryCache::instance()->invalidate(vocbase);
+
+  int res = TRI_ERROR_NO_ERROR;
 
   if (TRI_DropVocBase(vocbase)) {
     if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
@@ -2433,24 +2477,18 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
                vocbase->_path);
     }
 
-    int res = SaveDatabaseParameters(vocbase->_id,
-                                     vocbase->_name,
-                                     true,
-                                     &vocbase->_settings,
-                                     vocbase->_path);
+    res = SaveDatabaseParameters(vocbase->_id,
+                                 vocbase->_name,
+                                 true,
+                                 &vocbase->_settings,
+                                 vocbase->_path);
     // TODO: what to do here in case of error?
-
-    server->_droppedDatabases.emplace(vocbase);
 
     if (writeMarker) {
       WriteDropMarker(vocbase->_id);
     }
-
-    return res;
   }
-    
-  // already deleted
-  return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2464,14 +2502,12 @@ int TRI_DropByIdDatabaseServer (TRI_server_t* server,
   std::string name;
   
   {
-    READ_LOCKER(server->_databasesLock);
+    auto unuser(server->_databasesProtector.use());
+    auto theLists = server->_databasesLists.load();
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
 
-    size_t const n = server->_databases._nrAlloc;
-
-    for (size_t i = 0; i < n; ++i) {
-      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
-
-      if (vocbase != nullptr && vocbase->_id == id) {
+      if (vocbase->_id == id) {
         name = vocbase->_name;
         break;
       }
@@ -2488,15 +2524,12 @@ int TRI_DropByIdDatabaseServer (TRI_server_t* server,
 
 TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
                                                      TRI_voc_tick_t id) {
+  auto unuser(server->_databasesProtector.use());
+  auto theLists = server->_databasesLists.load();
+  for (auto& p : theLists->_coordinatorDatabases) {
+    TRI_vocbase_t* vocbase = p.second;
 
-  READ_LOCKER(server->_databasesLock);
-
-  size_t const n = server->_coordinatorDatabases._nrAlloc;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
-
-    if (vocbase != nullptr && vocbase->_id == id) {
+    if (vocbase->_id == id) {
       bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
 
       // if we got here, no one else can have deleted the database
@@ -2504,7 +2537,6 @@ TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
       return vocbase;
     }
   }
-
   return nullptr;
 }
 
@@ -2515,14 +2547,14 @@ TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
 
 TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
                                                  char const* name) {
-  READ_LOCKER(server->_databasesLock);
-
-  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name));
-
-  if (vocbase != nullptr) {
+  auto unuser(server->_databasesProtector.use());
+  auto theLists = server->_databasesLists.load();
+  auto it = theLists->_coordinatorDatabases.find(std::string(name));
+  TRI_vocbase_t* vocbase = nullptr;
+  if (it != theLists->_coordinatorDatabases.end()) {
+    vocbase = it->second;
     TRI_UseVocBase(vocbase);
   }
-
   return vocbase;
 }
 
@@ -2533,14 +2565,14 @@ TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
 
 TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
                                       char const* name) {
-  READ_LOCKER(server->_databasesLock);
-
-  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_databases, name));
-
-  if (vocbase != nullptr) {
+  auto unuser(server->_databasesProtector.use());
+  auto theLists = server->_databasesLists.load();
+  auto it = theLists->_databases.find(std::string(name));
+  TRI_vocbase_t* vocbase = nullptr;
+  if (it != theLists->_databases.end()) {
+    vocbase = it->second;
     TRI_UseVocBase(vocbase);
   }
-
   return vocbase;
 }
 
@@ -2550,14 +2582,11 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
 
 TRI_vocbase_t* TRI_LookupDatabaseByIdServer (TRI_server_t* server,
                                              TRI_voc_tick_t id) {
-  READ_LOCKER(server->_databasesLock);
-
-  size_t const n = server->_databases._nrAlloc;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
-
-    if (vocbase != nullptr && vocbase->_id == id) {
+  auto unuser(server->_databasesProtector.use());
+  auto theLists = server->_databasesLists.load();
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    if (vocbase->_id == id) {
       return vocbase;
     }
   }
@@ -2571,14 +2600,11 @@ TRI_vocbase_t* TRI_LookupDatabaseByIdServer (TRI_server_t* server,
 
 TRI_vocbase_t* TRI_LookupDatabaseByNameServer (TRI_server_t* server,
                                                char const* name) {
-  READ_LOCKER(server->_databasesLock);
-  
-  size_t const n = server->_databases._nrAlloc;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
-
-    if (vocbase != nullptr && TRI_EqualString(vocbase->_name, name)) {
+  auto unuser(server->_databasesProtector.use());
+  auto theLists = server->_databasesLists.load();
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    if (TRI_EqualString(vocbase->_name, name)) {
       return vocbase;
     }
   }
@@ -2593,14 +2619,11 @@ TRI_vocbase_t* TRI_LookupDatabaseByNameServer (TRI_server_t* server,
 
 TRI_vocbase_t* TRI_UseDatabaseByIdServer (TRI_server_t* server,
                                           TRI_voc_tick_t id) {
-  READ_LOCKER(server->_databasesLock);
-  
-  size_t const n = server->_databases._nrAlloc;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
-
-    if (vocbase != nullptr && vocbase->_id == id) {
+  auto unuser(server->_databasesProtector.use());
+  auto theLists = server->_databasesLists.load();
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    if (vocbase->_id == id) {
       TRI_UseVocBase(vocbase);
       return vocbase;
     }
@@ -2626,14 +2649,11 @@ void TRI_ReleaseDatabaseServer (TRI_server_t* server,
 
 bool TRI_ExistsDatabaseByIdServer (TRI_server_t* server,
                                    TRI_voc_tick_t id) {
-  READ_LOCKER(server->_databasesLock);
-  
-  size_t const n = server->_databases._nrAlloc;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
-
-    if (vocbase != nullptr && vocbase->_id == id) {
+  auto unuser(server->_databasesProtector.use());
+  auto theLists = server->_databasesLists.load();
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    if (vocbase->_id == id) {
       return true;
     }
   }
@@ -2652,34 +2672,30 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
   int res = TRI_ERROR_NO_ERROR;
 
   {
-    READ_LOCKER(server->_databasesLock);
+    auto unuser(server->_databasesProtector.use());
+    auto theLists = server->_databasesLists.load();
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->_name != nullptr);
 
-    size_t const n = server->_databases._nrAlloc;
+      if (! CanUseDatabase(vocbase, username)) {
+        // user cannot see database
+        continue;
+      }
 
-    for (size_t i = 0; i < n; ++i) {
-      auto vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+      char* copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
 
-      if (vocbase != nullptr) {
-        TRI_ASSERT(vocbase->_name != nullptr);
+      if (copy == nullptr) {
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
 
-        if (! CanUseDatabase(vocbase, username)) {
-          // user cannot see database
-          continue;
-        }
-
-        char* copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
-
-        if (copy == nullptr) {
-          res = TRI_ERROR_OUT_OF_MEMORY;
-          break;
-        }
-
-        if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
-          // insertion failed.
-          TRI_Free(names->_memoryZone, copy);
-          res = TRI_ERROR_OUT_OF_MEMORY;
-          break;
-        }
+      if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
+        // insertion failed.
+        TRI_Free(names->_memoryZone, copy);
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
       }
     }
   }
@@ -2699,31 +2715,27 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
   int res = TRI_ERROR_NO_ERROR;
 
   {
-    READ_LOCKER(server->_databasesLock);
-    
-    size_t const n = server->_databases._nrAlloc;
+    auto unuser(server->_databasesProtector.use());
+    auto theLists = server->_databasesLists.load();
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      char* copy;
 
-    for (size_t i = 0; i < n; ++i) {
-      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+      TRI_ASSERT(vocbase->_name != nullptr);
 
-      if (vocbase != nullptr) {
-        char* copy;
+      copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
 
-        TRI_ASSERT(vocbase->_name != nullptr);
+      if (copy == nullptr) {
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
 
-        copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
-
-        if (copy == nullptr) {
-          res = TRI_ERROR_OUT_OF_MEMORY;
-          break;
-        }
-
-        if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
-          // insertion failed.
-          TRI_Free(names->_memoryZone, copy);
-          res = TRI_ERROR_OUT_OF_MEMORY;
-          break;
-        }
+      if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
+        // insertion failed.
+        TRI_Free(names->_memoryZone, copy);
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
       }
     }
   }
@@ -2834,7 +2846,8 @@ TRI_vocbase_operationmode_e TRI_GetOperationModeServer () {
 // -----------------------------------------------------------------------------
 
 TRI_server_t::TRI_server_t ()
-  : _applicationEndpointServer(nullptr),
+  : _databasesLists(nullptr),
+    _applicationEndpointServer(nullptr),
     _indexPool(nullptr),
     _queryRegistry(nullptr),
     _basePath(nullptr),
@@ -2853,8 +2866,7 @@ TRI_server_t::~TRI_server_t () {
   if (_initialized) {
     CloseDatabases(this);
 
-    TRI_DestroyAssociativePointer(&_coordinatorDatabases);
-    TRI_DestroyAssociativePointer(&_databases);
+    delete _databasesLists;
 
     TRI_Free(TRI_CORE_MEM_ZONE, _appPath);
     TRI_Free(TRI_CORE_MEM_ZONE, _serverIdFilename);
