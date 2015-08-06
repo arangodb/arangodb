@@ -613,9 +613,6 @@ int LogfileManager::registerTransaction (TRI_voc_tid_t transactionId) {
 
     WRITE_LOCKER(_transactionsLock); 
  
-    // make room for at least one more failed transaction
-    _failedTransactions.reserve(_failedTransactions.size() + 1);
-
     // insert into currently running list of transactions
     _transactions.emplace(transactionId, std::move(p));
     TRI_ASSERT_EXPENSIVE(lastCollectedId <= lastSealedId);
