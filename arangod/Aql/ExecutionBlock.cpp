@@ -1545,8 +1545,10 @@ void IndexRangeBlock::sortConditions () {
     for (size_t t = 0; t < numFields; t++) {
       for (size_t u = 0; u < _condition->at(s).size(); u++) {
         auto const& ri = _condition->at(s)[u];
+        std::string fieldString;
+        TRI_AttributeNamesToString(en->_index->fields[t], fieldString);
 
-        if (en->_index->fields[t].name.compare(ri._attr) == 0) {
+        if (fieldString.compare(ri._attr) == 0) {
     
           TRI_IF_FAILURE("IndexRangeBlock::sortConditionsInner") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

@@ -3371,7 +3371,7 @@ static int FillIndex (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_collection_t* collection,
-                                                                   std::vector<triagens::basics::AttributeName> const& paths,
+                                                                   std::vector<std::vector<triagens::basics::AttributeName const>> const& paths,
                                                                    triagens::arango::Index::IndexType type,
                                                                    int sparsity,
                                                                    bool unique,
@@ -3434,11 +3434,16 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
       // any permutation of attributes is allowed
       for (size_t i = 0; i < n; ++i) {
         found = false;
+        size_t fieldSize = idxFields[i].size();
 
         for (size_t j = 0; j < n; ++j) {
-          if (idxFields[i] == paths[j]) {
-            found = true;
-            break;
+          if (fieldSize == paths[j].size()) {
+            for (size_t k = 0; k < fieldSize; ++k) {
+              if (idxFields[j][k] == paths[j][k]) {
+                found = true;
+                break;
+              }
+            }
           }
         }
 
@@ -3450,9 +3455,14 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
     else {
       // attributes need to be present in a given order
       for (size_t i = 0; i < n; ++i) {
-        if (idxFields[i] != paths[i]) {
-          found = false;
-          break;
+        size_t fieldSize = idxFields[i].size();
+        if (fieldSize == paths[i].size()) {
+          for (size_t k = 0; k < fieldSize; ++k) {
+            if (idxFields[i][k] != paths[i][k]) {
+              found = false;
+              break;
+            }
+          }
         }
       }
     }
@@ -3742,7 +3752,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
 static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
                                      VocShaper* shaper,
                                      std::vector<TRI_shape_pid_t>& pids,
-                                     std::vector<triagens::basics::AttributeName>& names,
+                                     std::vector<std::vector<triagens::basics::AttributeName const>>& names,
                                      bool sorted,
                                      bool create) {
   pids.reserve(attributes.size());
@@ -3754,25 +3764,31 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
 
   if (sorted) {
     // combine name and pid
-    typedef std::pair<std::string, TRI_shape_pid_t> PidNameType;
+    typedef std::pair<std::vector<triagens::basics::AttributeName const>, TRI_shape_pid_t> PidNameType;
     std::vector<PidNameType> pidNames;
     pidNames.reserve(attributes.size()); 
 
     for (auto const& name : attributes) {
+      std::vector<triagens::basics::AttributeName const> attrNameList;
+      TRI_ParseAttributeString(name, attrNameList);
+      TRI_ASSERT(attrNameList.size() > 0);
+      std::string pidPath;
+      TRI_AttributeNamesToString(attrNameList, pidPath, true);
+
       TRI_shape_pid_t pid;
 
       if (create) {
-        pid = shaper->findOrCreateAttributePathByName(name.c_str());
+        pid = shaper->findOrCreateAttributePathByName(pidPath.c_str());
       }
       else {
-        pid = shaper->lookupAttributePathByName(name.c_str());
+        pid = shaper->lookupAttributePathByName(pidPath.c_str());
       }
 
       if (pid == 0) {
         return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
       }
 
-      pidNames.emplace_back(std::make_pair(name, pid));
+      pidNames.emplace_back(std::make_pair(attrNameList, pid));
     }
 
     // sort according to pid
@@ -3782,7 +3798,7 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
 
     for (auto const& it : pidNames) {
       pids.emplace_back(it.second);
-      names.emplace_back(it.first, false);
+      names.emplace_back(it.first);
     }
   }
 
@@ -3792,13 +3808,20 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
 
   else {
     for (auto const& name : attributes) {
+
+      std::vector<triagens::basics::AttributeName const> attrNameList;
+      TRI_ParseAttributeString(name, attrNameList);
+      TRI_ASSERT(attrNameList.size() > 0);
+      std::string pidPath;
+      TRI_AttributeNamesToString(attrNameList, pidPath, true);
+
       TRI_shape_pid_t pid;
     
       if (create) {
-        pid = shaper->findOrCreateAttributePathByName(name.c_str());
+        pid = shaper->findOrCreateAttributePathByName(pidPath.c_str());
       }
       else {
-        pid = shaper->lookupAttributePathByName(name.c_str());
+        pid = shaper->lookupAttributePathByName(pidPath.c_str());
       }
 
       if (pid == 0) {
@@ -3806,7 +3829,7 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
       }
 
       pids.emplace_back(pid);
-      names.emplace_back(name, false);
+      names.emplace_back(attrNameList);
     }
   }
 
@@ -4062,14 +4085,14 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
 
   // create a new index
   if (! location.empty()) {
-    geoIndex.reset(new triagens::arango::GeoIndex2(iid, document, std::vector<triagens::basics::AttributeName>{ { location, false } }, std::vector<TRI_shape_pid_t>{ loc }, geoJson));
+    geoIndex.reset(new triagens::arango::GeoIndex2(iid, document, std::vector<std::vector<triagens::basics::AttributeName const>> { { { location, false } } }, std::vector<TRI_shape_pid_t>{ loc }, geoJson));
 
     LOG_TRACE("created geo-index for location '%s': %ld",
               location.c_str(),
               (unsigned long) loc);
   }
   else if (! longitude.empty() && ! latitude.empty()) {
-    geoIndex.reset(new triagens::arango::GeoIndex2(iid, document, std::vector<triagens::basics::AttributeName>{ { latitude, false } , { longitude, false } }, std::vector<TRI_shape_pid_t>{ lat, lon }));
+    geoIndex.reset(new triagens::arango::GeoIndex2(iid, document, std::vector<std::vector<triagens::basics::AttributeName const>>{ { { latitude, false } } , { { longitude, false } } }, std::vector<TRI_shape_pid_t>{ lat, lon }));
 
     LOG_TRACE("created geo-index for location '%s': %ld, %ld",
               location.c_str(),
@@ -4354,7 +4377,7 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
                                                                    bool unique,
                                                                    bool* created) {
   std::vector<TRI_shape_pid_t> paths;
-  std::vector<triagens::basics::AttributeName> fields;
+  std::vector<std::vector<triagens::basics::AttributeName const>> fields;
 
   // determine the sorted shape ids for the attributes
   int res = PidNamesByAttributeNames(attributes,
@@ -4453,7 +4476,7 @@ triagens::arango::Index* TRI_LookupHashIndexDocumentCollection (TRI_document_col
                                                                 int sparsity,
                                                                 bool unique) {
   std::vector<TRI_shape_pid_t> paths;
-  std::vector<triagens::basics::AttributeName> fields;
+  std::vector<std::vector<triagens::basics::AttributeName const>> fields;
 
   // determine the sorted shape ids for the attributes
   int res = PidNamesByAttributeNames(attributes,
@@ -4521,7 +4544,7 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
                                                                        bool unique,
                                                                        bool* created) {
   std::vector<TRI_shape_pid_t> paths;
-  std::vector<triagens::basics::AttributeName> fields;
+  std::vector<std::vector<triagens::basics::AttributeName const>> fields;
   
   int res = PidNamesByAttributeNames(attributes,
                                      document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -4617,7 +4640,7 @@ triagens::arango::Index* TRI_LookupSkiplistIndexDocumentCollection (TRI_document
                                                                     int sparsity,
                                                                     bool unique) {
   std::vector<TRI_shape_pid_t> paths;
-  std::vector<triagens::basics::AttributeName> fields;
+  std::vector<std::vector<triagens::basics::AttributeName const>> fields;
 
   // determine the unsorted shape ids for the attributes
   int res = PidNamesByAttributeNames(attributes,
