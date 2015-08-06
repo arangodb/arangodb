@@ -1546,7 +1546,7 @@ void IndexRangeBlock::sortConditions () {
       for (size_t u = 0; u < _condition->at(s).size(); u++) {
         auto const& ri = _condition->at(s)[u];
 
-        if (en->_index->fields[t].compare(ri._attr) == 0) {
+        if (en->_index->fields[t].name.compare(ri._attr) == 0) {
     
           TRI_IF_FAILURE("IndexRangeBlock::sortConditionsInner") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

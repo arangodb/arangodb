@@ -57,7 +57,7 @@ namespace triagens {
 
         HashIndex (TRI_idx_iid_t,
                    struct TRI_document_collection_t*,
-                   std::vector<std::string> const&,
+                   std::vector<triagens::basics::AttributeName> const&,
                    std::vector<TRI_shape_pid_t> const&,
                    bool,
                    bool);

@@ -92,7 +92,7 @@ namespace triagens {
         int cleanup () override final;
 
         bool isSame (std::string const& field, int minWordLength) const {
-          return (_minWordLength == minWordLength && fields()[0] == field);
+          return (_minWordLength == minWordLength && fields()[0].name == field);
         }
 
         TRI_fts_index_t* internals () {

@@ -2364,7 +2364,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                       
                         for (size_t j = 0; j < idx->fields.size(); j++) {
-                          auto range = map->find(idx->fields[j]);
+                          auto range = map->find(idx->fields[j].name);
                       
                           if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
                             indexOrCondition.clear();   // not usable
@@ -2409,7 +2409,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
 
                         // check if there is a range that contains the first index attribute
-                        auto range = map->find(idx->fields[0]);
+                        auto range = map->find(idx->fields[0].name);
 
                         if (range == map->end()) { 
                           indexOrCondition.clear();
@@ -2424,7 +2424,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         bool handled = false;
                         size_t j = 0;
                         while (++j < prefixes.at(i) && equality) {
-                          range = map->find(idx->fields[j]);
+                          range = map->find(idx->fields[j].name);
 
                           if (range == map->end()) { 
                             indexOrCondition.clear();
@@ -2452,7 +2452,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                           auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
 
                           for (size_t j = 0; j < idx->fields.size(); j++) {
-                            auto range = map->find(idx->fields[j]);
+                            auto range = map->find(idx->fields[j].name);
 
                             if (range == map->end()) { 
                               indexOrCondition.clear();
