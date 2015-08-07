@@ -71,7 +71,10 @@ namespace triagens {
 ///       instanciation for all values of Nr used in the executable.
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<int Nr>
+#define THREAD_PROTECTOR_MULTIPLICITY 64
+
+    // TODO: Make this a template again once everybody has gcc >= 4.9.2
+    // template<int Nr>
     class ThreadProtector {
         struct alignas(64) Entry {  // 64 is the size of a cache line,
              // it is important that different list entries lie in different
@@ -117,9 +120,9 @@ namespace triagens {
         };
 
         ThreadProtector () : _last(0) {
-          _list = new Entry[Nr];
+          _list = new Entry[THREAD_PROTECTOR_MULTIPLICITY];
           // Just to be sure:
-          for (size_t i = 0; i < Nr; i++) {
+          for (size_t i = 0; i < THREAD_PROTECTOR_MULTIPLICITY; i++) {
             _list[i]._count = 0;
           }
         }
@@ -132,7 +135,7 @@ namespace triagens {
           int id = _mySlot;
           if (id < 0) {
             id = _last++;
-            if (_last > Nr) {
+            if (_last > THREAD_PROTECTOR_MULTIPLICITY) {
               _last = 0;
             }
             _mySlot = id;
@@ -142,7 +145,7 @@ namespace triagens {
         }
 
         void scan () {
-          for (size_t i = 0; i < Nr; i++) {
+          for (size_t i = 0; i < THREAD_PROTECTOR_MULTIPLICITY; i++) {
             while (_list[i]._count > 0) {
               usleep(250);
             }

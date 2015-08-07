@@ -73,8 +73,9 @@ struct TRI_server_t {
   ~TRI_server_t ();
 
   std::atomic<DatabasesLists*>       _databasesLists;
-  triagens::basics::ThreadProtector<64>  
-                                     _databasesProtector;
+  // TODO: Make this again a template once everybody has gcc >= 4.9.2
+  // triagens::basics::ThreadProtector<64>  
+  triagens::basics::ThreadProtector  _databasesProtector;
   triagens::basics::Mutex            _databasesMutex;
 
   TRI_thread_t                       _databaseManager;
