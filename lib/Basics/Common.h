@@ -250,6 +250,20 @@ static inline uint32_t TRI_64to32 (uint64_t x) {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTIONS--                                                          alignas
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct alignas(x) ... does not work in Visual Studio 2013
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+#define TRI_ALIGNAS(x)
+#else
+#define TRI_ALIGNAS(x) alignas(x)
+#endif
+
+// -----------------------------------------------------------------------------
 // --SECTIONS--                                               deferred execution
 // -----------------------------------------------------------------------------
 
@@ -282,7 +296,6 @@ struct TRI_AutoOutOfScope {
   TRI_AutoOutOfScope<decltype(funcname)> objname(funcname);
 
 #define TRI_DEFER(Destructor) TRI_DEFER_INTERNAL(Destructor, TOKEN_PASTE(auto_fun, __LINE__) , TOKEN_PASTE(auto_obj, __LINE__))
-
 
 // -----------------------------------------------------------------------------
 // --SECTIONS--                                               triagens namespace
