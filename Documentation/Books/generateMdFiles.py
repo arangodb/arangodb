@@ -121,7 +121,19 @@ def replaceTextInline(text, pathOfFile, searchText):
       print '*' * 80
       print text
       exit(1)
-  return re.sub(r' *@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText, dokuBlocks[1][searchText], text, flags=re.DOTALL)
+  rePattern = r'\s*@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText
+  match = re.search(rePattern, text, flags=re.DOTALL);
+
+  if (match == None): 
+      print "failed to match with '%s' for %s in file %s in: \n%s" % (rePattern, searchText, pathOfFile, text)
+      exit(1)
+
+  subtext = match.group(0)
+  if (len(re.findall('@startDocuBlock', subtext)) > 1):
+      print "failed to snap with '%s' on end docublock for %s in %s our match is:\n%s" % (rePattern, searchText, pathOfFile, subtext)
+      exit(1);
+
+  return re.sub(rePattern, dokuBlocks[1][searchText], text, flags=re.DOTALL)
 
 ################################################################################
 # Read the docublocks into memory
