@@ -29,14 +29,17 @@
 
 #include "Basics/ThreadProtector.h"
 
-template<int Nr> 
-thread_local int triagens::basics::ThreadProtector<Nr>::_mySlot = -1;
+// TODO: Make this a template again once everybody has gcc >= 4.9.2
+// template<int Nr> 
+// thread_local int triagens::basics::ThreadProtector<Nr>::_mySlot = -1;
+thread_local int triagens::basics::ThreadProtector::_mySlot = -1;
 
 /// We need an explicit template initialisation for each value of the
 /// template parameter, such that the compiler can allocate a thread local
 /// variable for each of them.
 
-template class triagens::basics::ThreadProtector<64>;
+// TODO: Reactivate this template instanciation once everybody has gcc >= 4.9.2
+// template class triagens::basics::ThreadProtector<64>;
 
 // Local Variables:
 // mode: outline-minor
