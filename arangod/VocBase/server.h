@@ -188,7 +188,7 @@ int TRI_CreateDatabaseServer (TRI_server_t*,
 /// the caller is responsible for freeing the result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
+std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database
