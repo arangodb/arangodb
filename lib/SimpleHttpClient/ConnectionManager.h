@@ -230,7 +230,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         // We keep connections to servers open:
-        struct alignas(64) ConnectionsBucket {
+        struct TRI_ALIGNAS(64) ConnectionsBucket {
           std::unordered_map<std::string, ServerConnections*> _connections;
 
           triagens::basics::ReadWriteLock _lock;
