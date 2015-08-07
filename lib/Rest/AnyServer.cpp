@@ -209,14 +209,22 @@ static int ForkProcess (string const& workingDirectory, string& current) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for the supervisor process with pid to return its exit status
-/// waits for at most 5 seconds. if the supervisor has not returned until then,
+/// waits for at most 10 seconds. if the supervisor has not returned until then,
 /// we assume a successful start
 ////////////////////////////////////////////////////////////////////////////////
 
 int WaitForSupervisor (int pid) {
-  int tries = 0;
-  
-  while (++tries < 10) {
+  if (! isatty(STDIN_FILENO)) {
+    // during system boot, we don't have a tty, and we don't want to delay
+    // the boot process
+    return EXIT_SUCCESS;
+  }
+
+  // in case a tty is present, this is probably a manual invocation of the start
+  // procedure
+  double const end = TRI_microtime() + 10.0;
+
+  while (TRI_microtime() < end) {
     int status;
     int res = waitpid(pid, &status, WNOHANG);
 
@@ -252,7 +260,7 @@ int WaitForSupervisor (int pid) {
     usleep(500 * 1000);
   }
 
-  // 5 seconds have elapsed... we now abort our loop 
+  // enough time has elapsed... we now abort our loop 
   return EXIT_SUCCESS;
 }
 
@@ -394,8 +402,8 @@ int AnyServer::startupSupervisor () {
 
   // main process
   if (result != 0) {
-    // wait for at most 5 seconds for the supervisor to return
-    // if it returns within 5 seconds, we can fetch its exit code
+    // wait for a few seconds for the supervisor to return
+    // if it returns within a reasonable time, we can fetch its exit code
     // and report it
     return WaitForSupervisor(result);
   }
