@@ -221,6 +221,33 @@ BOOST_AUTO_TEST_CASE (test_reverseTransform) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test_reverseTransformSimple
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (test_reverseTransformSimple) {
+  std::string input = "i";
+  std::vector<AttributeName const> result;
+  TRI_ParseAttributeString(input, result);
+
+  std::string output = "";
+  TRI_AttributeNamesToString(result, output);
+  BOOST_CHECK_EQUAL(output, input);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test_reverseTransformSimpleMultiAttributes
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (test_reverseTransformSimpleMultiAttributes) {
+  std::string input = "a.j";
+  std::vector<AttributeName const> result;
+  TRI_ParseAttributeString(input, result);
+
+  std::string output = "";
+  TRI_AttributeNamesToString(result, output);
+  BOOST_CHECK_EQUAL(output, input);
+}
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test_reverseTransformToPidPath
 ////////////////////////////////////////////////////////////////////////////////
 
