@@ -619,16 +619,16 @@ void RestReplicationHandler::handleCommandLoggerState () {
 
 void RestReplicationHandler::handleCommandBatch () {
   // extract the request type
-  const HttpRequest::HttpRequestType type = _request->requestType();
+  HttpRequest::HttpRequestType const type = _request->requestType();
   vector<string> const& suffix = _request->suffix();
-  const size_t len = suffix.size();
+  size_t const len = suffix.size();
 
   TRI_ASSERT(len >= 1);
 
   if (type == HttpRequest::HTTP_REQUEST_POST) {
     // create a new blocker
-
-    TRI_json_t* input = _request->toJson(0);
+ 
+    std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
 
     if (input == nullptr) {
       generateError(HttpResponse::BAD,
@@ -638,9 +638,7 @@ void RestReplicationHandler::handleCommandBatch () {
     }
 
     // extract ttl
-    double expires = JsonHelper::getNumericValue<double>(input, "ttl", 0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, input);
+    double expires = JsonHelper::getNumericValue<double>(input.get(), "ttl", 0);
 
     TRI_voc_tick_t id;
     int res = TRI_InsertBlockerCompactorVocBase(_vocbase, expires, &id);
@@ -651,13 +649,14 @@ void RestReplicationHandler::handleCommandBatch () {
     }
 
     TRI_json_t json;
-    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
-    char* idString = TRI_StringUInt64((uint64_t) id);
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "id",
-                          TRI_CreateStringJson(TRI_CORE_MEM_ZONE, idString, strlen(idString)));
+    TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &json);
+    std::string const idString(std::to_string(id));
+
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "id",
+                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(), idString.size()));
 
     generateResult(&json);
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+    TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
     return;
   }
 
@@ -665,7 +664,7 @@ void RestReplicationHandler::handleCommandBatch () {
     // extend an existing blocker
     TRI_voc_tick_t id = (TRI_voc_tick_t) StringUtils::uint64(suffix[1]);
 
-    TRI_json_t* input = _request->toJson(0);
+    std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
 
     if (input == nullptr) {
       generateError(HttpResponse::BAD,
@@ -675,9 +674,7 @@ void RestReplicationHandler::handleCommandBatch () {
     }
 
     // extract ttl
-    double expires = JsonHelper::getNumericValue<double>(input, "ttl", 0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, input);
+    double expires = JsonHelper::getNumericValue<double>(input.get(), "ttl", 0);
 
     // now extend the blocker
     int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
@@ -1246,8 +1243,6 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_json_t json;
   TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
 
-  char* tickString = TRI_StringUInt64(tick);
-
   // add collections data
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "collections", collections);
 
@@ -1269,7 +1264,8 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, s.timeString.c_str(), s.timeString.size()));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "state", state);
 
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString, strlen(tickString)));
+  std::string const tickString(std::to_string(tick));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString.c_str(), tickString.size()));
 
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
@@ -3280,9 +3276,10 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
 
-  TRI_ReadLockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
-  TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
-  TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
+  {
+    READ_LOCKER(_vocbase->_replicationApplier->_statusLock);
+    TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
+  }
 
   TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
   TRI_DestroyConfigurationReplicationApplier(&config);
@@ -3412,9 +3409,10 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     return;
   }
 
-  TRI_ReadLockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
-  TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
-  TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
+  {
+    READ_LOCKER(_vocbase->_replicationApplier->_statusLock);
+    TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
+  }
 
   TRI_json_t const* value;
   const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
