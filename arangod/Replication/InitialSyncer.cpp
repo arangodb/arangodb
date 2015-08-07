@@ -52,24 +52,6 @@ using namespace triagens::httpclient;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
-
-static inline void Mylocalgetline (char const*& p, 
-                                   string& line, 
-                                   char delim) {
-  char const* q = p;
-  while (*p != 0 && *p != delim) {
-    p++;
-  }
-
-  line.assign(q, p - q);
-  if (*p == delim) {
-    p++;
-  }
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -149,7 +131,6 @@ int InitialSyncer::run (string& errorMsg) {
   }
 
 
-  map<string, string> headers;
   string url = BaseUrl + "/inventory?serverId=" + _localServerIdString;
   if (_includeSystem) {
     url += "&includeSystem=true";
@@ -159,24 +140,23 @@ int InitialSyncer::run (string& errorMsg) {
   string const progress = "fetching master inventory from " + url;
   setProgress(progress);
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
-                                                url,
-                                                nullptr,
-                                                0,
-                                                headers);
+  map<string, string> headers;
+  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
+                                                              url,
+                                                              nullptr,
+                                                              0,
+                                                              headers));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
                ": " + _client->getErrorMessage();
 
-    if (response != nullptr) {
-      delete response;
-    }
-
     sendFinishBatch();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
+
+  TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
@@ -186,13 +166,10 @@ int InitialSyncer::run (string& errorMsg) {
                ": " + response->getHttpReturnMessage();
   }
   else {
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                      response->getBody().c_str());
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
-    if (JsonHelper::isObject(json)) {
-      res = handleInventoryResponse(json, errorMsg);
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    if (JsonHelper::isObject(json.get())) {
+      res = handleInventoryResponse(json.get(), errorMsg);
     }
     else {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -201,8 +178,6 @@ int InitialSyncer::run (string& errorMsg) {
         ": invalid JSON";
     }
   }
-
-  delete response;
 
   sendFinishBatch();
 
@@ -220,8 +195,6 @@ int InitialSyncer::run (string& errorMsg) {
 int InitialSyncer::sendStartBatch (string& errorMsg) {
   _batchId = 0;
 
-  map<string, string> const headers;
-
   string const url = BaseUrl + "/batch";
   string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
@@ -229,22 +202,21 @@ int InitialSyncer::sendStartBatch (string& errorMsg) {
   string const progress = "send batch start command to url " + url;
   setProgress(progress);
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_POST,
-                                                url,
-                                                body.c_str(),
-                                                body.size(),
-                                                headers);
+  map<string, string> const headers;
+  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_POST,
+                                                              url,
+                                                              body.c_str(),
+                                                              body.size(),
+                                                              headers));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
                ": " + _client->getErrorMessage();
 
-    if (response != nullptr) {
-      delete response;
-    }
-
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
+
+  TRI_ASSERT(response != nullptr);
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -257,14 +229,13 @@ int InitialSyncer::sendStartBatch (string& errorMsg) {
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE,
-                                      response->getBody().c_str());
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
     if (json == nullptr) {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
     else {
-      string const id = JsonHelper::getStringValue(json, "id", "");
+      string const id = JsonHelper::getStringValue(json.get(), "id", "");
 
       if (id.empty()) {
         res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -273,12 +244,8 @@ int InitialSyncer::sendStartBatch (string& errorMsg) {
         _batchId = StringUtils::uint64(id);
         _batchUpdateTime = TRI_microtime();
       }
-
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
   }
-
-  delete response;
 
   return res;
 }
@@ -299,8 +266,6 @@ int InitialSyncer::sendExtendBatch () {
     return TRI_ERROR_NO_ERROR;
   }
 
-  map<string, string> const headers;
-
   string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId);
   string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
@@ -308,19 +273,18 @@ int InitialSyncer::sendExtendBatch () {
   string const progress = "send batch start command to url " + url;
   setProgress(progress);
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                                url,
-                                                body.c_str(),
-                                                body.size(),
-                                                headers);
+  map<string, string> const headers;
+  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
+                                                              url,
+                                                              body.c_str(),
+                                                              body.size(),
+                                                              headers));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
+
+  TRI_ASSERT(response != nullptr);
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -330,8 +294,6 @@ int InitialSyncer::sendExtendBatch () {
   else {
     _batchUpdateTime = TRI_microtime();
   }
-
-  delete response;
 
   return res;
 }
@@ -345,26 +307,24 @@ int InitialSyncer::sendFinishBatch () {
     return TRI_ERROR_NO_ERROR;
   }
 
-  map<string, string> const headers;
   string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId);
 
   // send request
   string const progress = "send batch finish command to url " + url;
   setProgress(progress);
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_DELETE,
-                                                url,
-                                                nullptr,
-                                                0,
-                                                headers);
+  map<string, string> const headers;
+  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_DELETE,
+                                                              url,
+                                                              nullptr,
+                                                              0,
+                                                              headers));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
+
+  TRI_ASSERT(response != nullptr);
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -375,8 +335,6 @@ int InitialSyncer::sendFinishBatch () {
     _batchId = 0;
     _batchUpdateTime = 0;
   }
-
-  delete response;
 
   return res;
 }
@@ -393,25 +351,32 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
                             StringUtils::itoa(trxCollection->_cid);
 
   StringBuffer& data = response->getBody();
-  char const* p = data.c_str();
+  char* p = data.begin(); 
+  char* end = p + data.length();
 
-  while (true) {
-    string line;
+  // buffer must end with a NUL byte
+  TRI_ASSERT(*end == '\0');
 
-    Mylocalgetline(p, line, '\n');
+  while (p < end) {
+    char* q = strchr(p, '\n');
 
-    if (line.size() < 2) {
+    if (q == nullptr) {
+      q = end;
+    }
+    
+    if (q - p < 2) {
       // we are done
       return TRI_ERROR_NO_ERROR;
     }
 
-    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, line.c_str());
+    TRI_ASSERT(q <= end);
+    *q = '\0';
 
-    if (! JsonHelper::isObject(json)) {
-      if (json != nullptr) {
-        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      }
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, p));
+    
+    p = q + 1;
 
+    if (! JsonHelper::isObject(json.get())) {
       errorMsg = invalidMsg;
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -422,20 +387,20 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
     TRI_json_t const* doc = nullptr;
     TRI_voc_rid_t rid     = 0;
 
-    size_t const n = TRI_LengthVector(&json->_value._objects);
+    auto objects = &(json.get()->_value._objects);
+    size_t const n = TRI_LengthVector(objects);
 
     for (size_t i = 0; i < n; i += 2) {
-      TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+      auto element = static_cast<TRI_json_t const*>(TRI_AtVector(objects, i));
 
       if (! JsonHelper::isString(element)) {
-        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         errorMsg = invalidMsg;
 
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
 
       char const* attributeName = element->_value._string.data;
-      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
+      auto value = static_cast<TRI_json_t const*>(TRI_AtVector(objects, i + 1));
 
       if (TRI_EqualString(attributeName, "type")) {
         if (JsonHelper::isNumber(value)) {
@@ -464,7 +429,6 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
 
     // key must not be 0, but doc can be 0!
     if (key == nullptr) {
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       errorMsg = invalidMsg;
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -472,12 +436,13 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
 
     int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
 
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
   }
+
+  // reached the end      
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -511,7 +476,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
   TRI_voc_tick_t fromTick = 0;
   int batch = 1;
 
-  while (1) {
+  while (true) {
     sendExtendBatch();
 
     string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
@@ -521,36 +486,34 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     }
 
     url += "&serverId=" + _localServerIdString;
+  
+    std::string const typeString = (trxCollection->_collection->_collection->_info._type == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
     // send request
     string const progress = "fetching master collection dump for collection '" + collectionName +
-                            "', id " + cid + ", batch " + StringUtils::itoa(batch);
+                            "', type: " + typeString + ", id " + cid + ", batch " + StringUtils::itoa(batch);
 
     setProgress(progress.c_str());
 
-    SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
-                                                  url,
-                                                  nullptr,
-                                                  0,
-                                                  headers);
+    std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
+                                                                url,
+                                                                nullptr,
+                                                                0,
+                                                                headers));
 
     if (response == nullptr || ! response->isComplete()) {
       errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
                  ": " + _client->getErrorMessage();
 
-      if (response != nullptr) {
-        delete response;
-      }
-
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
     }
+
+    TRI_ASSERT(response != nullptr);
 
     if (response->wasHttpError()) {
       errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
                  ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                  ": " + response->getHttpReturnMessage();
-
-      delete response;
 
       return TRI_ERROR_REPLICATION_MASTER_ERROR;
     }
@@ -588,10 +551,8 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = applyCollectionDump(trxCollection, response, errorMsg);
+      res = applyCollectionDump(trxCollection, response.get(), errorMsg);
     }
-
-    delete response;
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -622,22 +583,6 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
   string const masterName = JsonHelper::getStringValue(parameters, "name", "");
 
-  if (masterName.empty()) {
-    errorMsg = "collection name is missing in response";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
-
-  if (TRI_ExcludeCollectionReplication(masterName.c_str(), _includeSystem)) {
-    // we're not interested in this collection
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
-    // we don't care about deleted collections
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_json_t const* masterId = JsonHelper::getObjectElement(parameters, "cid");
 
   if (! JsonHelper::isString(masterId)) {
@@ -645,29 +590,25 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
+  
+  TRI_json_t const* type = JsonHelper::getObjectElement(parameters, "type");
+
+  if (! JsonHelper::isNumber(type)) {
+    errorMsg = "collection type is missing in response";
+    
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  std::string const typeString = (type->_value._number == 3 ? "edge" : "document");
 
   TRI_voc_cid_t const cid = StringUtils::uint64(masterId->_value._string.data, masterId->_value._string.length - 1);
-  string const collectionMsg = "collection '" + masterName + "', id " + StringUtils::itoa(cid);
-
-  if (! _restrictType.empty()) {
-    auto const it = _restrictCollections.find(masterName);
-
-    bool found = (it != _restrictCollections.end());
-
-    if (_restrictType == "include" && ! found) {
-      // collection should not be included
-      return TRI_ERROR_NO_ERROR;
-    }
-    else if (_restrictType == "exclude" && found) {
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
+  string const collectionMsg = "collection '" + masterName + "', type " + typeString + ", id " + StringUtils::itoa(cid);
 
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
     // validation phase just returns ok if we got here (aborts above if data is invalid)
-    _processedCollections.insert(std::pair<TRI_voc_cid_t, string>(cid, masterName));
+    _processedCollections.emplace(cid, masterName);
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -884,12 +825,75 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
 int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
                                             string& errorMsg) {
-  TRI_json_t* collections = JsonHelper::getObjectElement(json, "collections");
+  TRI_json_t const* data = JsonHelper::getObjectElement(json, "collections");
 
-  if (! JsonHelper::isArray(collections)) {
+  if (! JsonHelper::isArray(data)) {
     errorMsg = "collections section is missing from response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  std::vector<std::pair<TRI_json_t const*, TRI_json_t const*>> collections;
+  size_t const n = TRI_LengthVector(&data->_value._objects);
+  
+  for (size_t i = 0; i < n; ++i) {
+    auto collection = static_cast<TRI_json_t const*>(TRI_AtVector(&data->_value._objects, i));
+
+    if (! JsonHelper::isObject(collection)) {
+      errorMsg = "collection declaration is invalid in response";
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+    
+    TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
+
+    if (! JsonHelper::isObject(parameters)) {
+      errorMsg = "collection parameters declaration is invalid in response";
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+    
+    TRI_json_t const* indexes = JsonHelper::getObjectElement(collection, "indexes");
+
+    if (! JsonHelper::isArray(indexes)) {
+      errorMsg = "collection indexes declaration is invalid in response";
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+
+    string const masterName = JsonHelper::getStringValue(parameters, "name", "");
+  
+    if (masterName.empty()) {
+      errorMsg = "collection name is missing in response";
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+  
+    if (TRI_ExcludeCollectionReplication(masterName.c_str(), _includeSystem)) {
+      continue;
+    }
+  
+    if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
+      // we don't care about deleted collections
+      continue;
+    }
+  
+    if (! _restrictType.empty()) {
+      auto const it = _restrictCollections.find(masterName);
+
+      bool found = (it != _restrictCollections.end());
+
+      if (_restrictType == "include" && ! found) {
+        // collection should not be included
+        continue;
+      }
+      else if (_restrictType == "exclude" && found) {
+        // collection should be excluded
+        continue;
+      }
+    }
+
+    collections.emplace_back(std::make_pair(parameters, indexes));
   }
 
   int res;
@@ -928,44 +932,25 @@ int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
   // STEP 4: sync collection data from master and create initial indexes
   // ----------------------------------------------------------------------------------
 
-  res = iterateCollections(collections, errorMsg, PHASE_DUMP);
-
-  return res;
+  return iterateCollections(collections, errorMsg, PHASE_DUMP);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over all collections from a list and apply an action
+/// @brief iterate over all collections from an array and apply an action
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::iterateCollections (TRI_json_t const* collections,
+int InitialSyncer::iterateCollections (std::vector<std::pair<TRI_json_t const*, TRI_json_t const*>> const& collections,
                                        string& errorMsg,
                                        sync_phase_e phase) {
-  size_t const n = TRI_LengthVector(&collections->_value._objects);
+  std::string phaseMsg("starting phase " + translatePhase(phase) + " with " + std::to_string(collections.size()) + " collections");
+  setProgress(phaseMsg); 
 
-  for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* collection = static_cast<TRI_json_t const*>(TRI_AtVector(&collections->_value._objects, i));
+  for (auto const& collection : collections) {
+    TRI_json_t const* parameters = collection.first;
+    TRI_json_t const* indexes    = collection.second;
 
-    if (! JsonHelper::isObject(collection)) {
-      errorMsg = "collection declaration is invalid in response";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    }
-
-    TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
-
-    if (! JsonHelper::isObject(parameters)) {
-      errorMsg = "collection parameters declaration is invalid in response";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    }
-
-    TRI_json_t const* indexes = JsonHelper::getObjectElement(collection, "indexes");
-
-    if (! JsonHelper::isArray(indexes)) {
-      errorMsg = "collection indexes declaration is invalid in response";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    }
+    TRI_ASSERT(parameters != nullptr);
+    TRI_ASSERT(indexes != nullptr);
 
     int res = handleCollection(parameters, indexes, errorMsg, phase);
 

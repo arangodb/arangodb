@@ -119,6 +119,28 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief translate a phase to a phase name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string translatePhase (sync_phase_e phase) const {
+          switch (phase) {
+            case PHASE_INIT: 
+              return "init";
+            case PHASE_VALIDATE:
+              return "validate";
+            case PHASE_DROP:
+              return "drop";
+            case PHASE_CREATE:
+              return "create";
+            case PHASE_DUMP:
+              return "dump";
+            case PHASE_NONE: 
+              break;
+          }
+          return "none";
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collections that were synced
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -198,10 +220,10 @@ namespace triagens {
                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over all collections from a list and apply an action
+/// @brief iterate over all collections from an array and apply an action
 ////////////////////////////////////////////////////////////////////////////////
 
-        int iterateCollections (struct TRI_json_t const*,
+        int iterateCollections (std::vector<std::pair<struct TRI_json_t const*, struct TRI_json_t const*>> const&,
                                 std::string&,
                                 sync_phase_e);
 
