@@ -390,13 +390,14 @@ triagens::basics::Json EdgeIndex::toJson (TRI_memory_zone_t* zone) const {
 
 int EdgeIndex::insert (TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
-  _edgesFrom->insert(CONST_CAST(doc), true, isRollback);
+  auto element = const_cast<void*>(static_cast<void const*>(doc));
+  _edgesFrom->insert(element, true, isRollback);
 
   try {
-    _edgesTo->insert(CONST_CAST(doc), true, isRollback);
+    _edgesTo->insert(element, true, isRollback);
   }
   catch (...) {
-    _edgesFrom->remove(doc);
+    _edgesFrom->remove(element);
     throw;
   }
   

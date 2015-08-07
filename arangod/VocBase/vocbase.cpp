@@ -760,7 +760,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
     TRI_CopyString(collection->_name, newName, sizeof(collection->_name) - 1);
 
     // this shouldn't fail, as we removed an element above so adding one should be ok
-    found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
+    found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, collection, false);
     TRI_ASSERT(found == nullptr);
 
     TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
