@@ -32,7 +32,7 @@
 
 void triagens::basics::TRI_ParseAttributeString (
     std::string const& input,
-    std::vector<AttributeName const>& result
+    std::vector<AttributeName>& result
   ) {
   size_t parsedUntil = 0;
   size_t length = input.length();
@@ -62,7 +62,7 @@ void triagens::basics::TRI_ParseAttributeString (
 }
 
 void triagens::basics::TRI_AttributeNamesToString (
-    std::vector<AttributeName const> const& input,
+    std::vector<AttributeName> const& input,
     std::string& result,
     bool excludeExpansion
   ) {
