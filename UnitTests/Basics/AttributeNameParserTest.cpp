@@ -64,7 +64,7 @@ BOOST_FIXTURE_TEST_SUITE (AttributeNameParserTest, AttributeNameParserSetup)
 
 BOOST_AUTO_TEST_CASE (test_simpleString) {
   std::string input = "test";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result);
   
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE (test_simpleString) {
 
 BOOST_AUTO_TEST_CASE (test_subAttribute) {
   std::string input = "foo.bar";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result);
   
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE (test_subAttribute) {
 
 BOOST_AUTO_TEST_CASE (test_subsubAttribute) {
   std::string input = "foo.bar.baz";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result);
   
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE (test_subsubAttribute) {
 
 BOOST_AUTO_TEST_CASE (test_expandAttribute) {
   std::string input = "foo[*]";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result);
   
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE (test_expandAttribute) {
 
 BOOST_AUTO_TEST_CASE (test_expandSubAttribute) {
   std::string input = "foo.bar[*]";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result);
   
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE (test_expandSubAttribute) {
 
 BOOST_AUTO_TEST_CASE (test_expandedSubAttribute) {
   std::string input = "foo[*].bar";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result);
   
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE (test_expandedSubAttribute) {
 
 BOOST_AUTO_TEST_CASE (test_invalidAttributeAfterExpand) {
   std::string input = "foo[*]bar";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
 
   try {
     TRI_ParseAttributeString(input, result);
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE (test_invalidAttributeAfterExpand) {
 
 BOOST_AUTO_TEST_CASE (test_nonClosingBracket) {
   std::string input = "foo[*bar";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
 
   try {
     TRI_ParseAttributeString(input, result);
@@ -196,7 +196,7 @@ BOOST_AUTO_TEST_CASE (test_nonClosingBracket) {
 
 BOOST_AUTO_TEST_CASE (test_nonClosingBracket2) {
   std::string input = "foo[ * ].baz";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
 
   try {
     TRI_ParseAttributeString(input, result);
@@ -212,7 +212,7 @@ BOOST_AUTO_TEST_CASE (test_nonClosingBracket2) {
 
 BOOST_AUTO_TEST_CASE (test_reverseTransform) {
   std::string input = "foo[*].bar.baz[*]";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
   TRI_ParseAttributeString(input, result);
 
   std::string output = "";
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE (test_reverseTransform) {
 
 BOOST_AUTO_TEST_CASE (test_reverseTransformSimple) {
   std::string input = "i";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
   TRI_ParseAttributeString(input, result);
 
   std::string output = "";
@@ -240,7 +240,7 @@ BOOST_AUTO_TEST_CASE (test_reverseTransformSimple) {
 
 BOOST_AUTO_TEST_CASE (test_reverseTransformSimpleMultiAttributes) {
   std::string input = "a.j";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
   TRI_ParseAttributeString(input, result);
 
   std::string output = "";
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE (test_reverseTransformSimpleMultiAttributes) {
 BOOST_AUTO_TEST_CASE (test_reverseTransformToPidPath) {
   std::string input = "foo[*].bar.baz[*]";
   std::string expected = "foo.bar.baz";
-  std::vector<AttributeName const> result;
+  std::vector<AttributeName> result;
   TRI_ParseAttributeString(input, result);
 
   std::string output = "";
