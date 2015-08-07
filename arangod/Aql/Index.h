@@ -97,7 +97,7 @@ namespace triagens {
             auto * name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
 
             if (TRI_IsStringJson(name)) {
-              std::vector<triagens::basics::AttributeName const> parsedAttributes;
+              std::vector<triagens::basics::AttributeName> parsedAttributes;
               TRI_ParseAttributeString(std::string(name->_value._string.data, name->_value._string.length - 1), parsedAttributes);
               fields.emplace_back(parsedAttributes);
             }
@@ -176,7 +176,7 @@ namespace triagens {
         triagens::arango::Index::IndexType                               type;
         bool                                                             unique;
         bool                                                             sparse;
-        std::vector<std::vector<triagens::basics::AttributeName const>>  fields;
+        std::vector<std::vector<triagens::basics::AttributeName>>  fields;
 
       private:
 

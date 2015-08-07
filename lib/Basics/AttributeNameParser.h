@@ -77,7 +77,7 @@ namespace triagens {
 
     void TRI_ParseAttributeString (
         std::string const& input,
-        std::vector<AttributeName const>& result
+        std::vector<AttributeName>& result
       );
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,7 +85,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     void TRI_AttributeNamesToString (
-        std::vector<AttributeName const> const& input,
+        std::vector<AttributeName> const& input,
         std::string& result,
         bool excludeExpansion = false
       );
