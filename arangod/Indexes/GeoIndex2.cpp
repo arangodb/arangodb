@@ -49,7 +49,7 @@ using namespace triagens::arango;
 
 GeoIndex2::GeoIndex2 (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection,
-                      std::vector<std::vector<triagens::basics::AttributeName const>> const& fields,
+                      std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                       std::vector<TRI_shape_pid_t> const& paths,
                       bool geoJson) 
   : Index(iid, collection, fields),
@@ -76,7 +76,7 @@ GeoIndex2::GeoIndex2 (TRI_idx_iid_t iid,
 
 GeoIndex2::GeoIndex2 (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection,
-                      std::vector<std::vector<triagens::basics::AttributeName const>> const& fields,
+                      std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                       std::vector<TRI_shape_pid_t> const& paths) 
   : Index(iid, collection, fields),
     _paths(paths),
