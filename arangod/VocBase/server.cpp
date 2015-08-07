@@ -2792,7 +2792,8 @@ TRI_server_t::~TRI_server_t () {
   if (_initialized) {
     CloseDatabases(this);
 
-    delete _databasesLists;
+    auto p = _databasesLists.load();
+    delete p;
 
     TRI_Free(TRI_CORE_MEM_ZONE, _appPath);
     TRI_Free(TRI_CORE_MEM_ZONE, _serverIdFilename);
