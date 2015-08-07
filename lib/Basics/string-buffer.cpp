@@ -467,7 +467,7 @@ TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t* zone) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone,
-                                                  const size_t size) {
+                                                  size_t size) {
   TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(zone, sizeof(TRI_string_buffer_t), false);
 
   if (self == nullptr) {
