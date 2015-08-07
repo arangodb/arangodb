@@ -218,17 +218,16 @@ function ahuacatlFailureSuite () {
     testSortBlock3 : function () {
       internal.debugSetFailAt("SortBlock::doSortingCache");
       c.ensureSkiplist("value");
-      assertFailingQuery("FOR v IN " + c.name() + " LIMIT 2 FOR w IN " + c.name() + " SORT v.value RETURN [v.value]");
+      assertFailingQuery("FOR v IN " + c.name() + " FILTER v.value < 100 LIMIT 100 SORT v.value + 1 RETURN [v.value]");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-    
     testSortBlock4 : function () {
       internal.debugSetFailAt("SortBlock::doSortingNext1");
       c.ensureSkiplist("value");
-      assertFailingQuery("FOR v IN " + c.name() + " LIMIT 2 FOR w IN " + c.name() + " SORT v.value RETURN [v.value]");
+      assertFailingQuery("FOR v IN " + c.name() + " FILTER v.value < 100 LIMIT 100 SORT v.value + 1 RETURN [v.value]");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
