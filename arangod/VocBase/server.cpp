@@ -2282,11 +2282,8 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 /// the caller is responsible for freeing the result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
-  TRI_vector_t v;
-
-  TRI_InitVector(&v, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_voc_tick_t));
-
+std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
+  std::vector<TRI_voc_tick_t> v;
   {
     auto unuser(server->_databasesProtector.use());
     auto theLists = server->_databasesLists.load();
@@ -2295,22 +2292,11 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
       if (! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
-        TRI_PushBackVector(&v, &vocbase->_id);
+        v.push_back(vocbase->_id);
       }
     }
   }
-
-  // append a 0 as the end marker
-  TRI_voc_tick_t zero = 0;
-  TRI_PushBackVector(&v, &zero);
-
-  // steal the elements from the vector
-  TRI_voc_tick_t* data = (TRI_voc_tick_t*) v._buffer;
-  v._buffer = nullptr;
-
-  TRI_DestroyVector(&v);
-
-  return data;
+  return v;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
