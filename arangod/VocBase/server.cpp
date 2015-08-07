@@ -484,8 +484,6 @@ static int OpenDatabases (TRI_server_t* server,
     TRI_vocbase_defaults_t defaults;
     char* parametersFile;
     char* databaseName;
-    void const* found = nullptr;
-
     char const* name = files._buffer[i];
     TRI_ASSERT(name != nullptr);
 
@@ -698,6 +696,8 @@ static int OpenDatabases (TRI_server_t* server,
 
     // we found a valid database
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+    
+    void const* TRI_UNUSED found = nullptr;
 
     try {
       auto pair = newLists->_databases.insert(
