@@ -3437,11 +3437,16 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
 
         for (size_t j = 0; j < n; ++j) {
           if (fieldSize == paths[j].size()) {
+            bool allEqual = true;
             for (size_t k = 0; k < fieldSize; ++k) {
-              if (idxFields[j][k] == paths[j][k]) {
-                found = true;
+              if (idxFields[j][k] != paths[j][k]) {
+                allEqual = false;
                 break;
               }
+            }
+            if (allEqual) {
+              found = true;
+              break;
             }
           }
         }
@@ -3462,6 +3467,13 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
               break;
             }
           }
+          if (! found) {
+            break;
+          }
+        }
+        else {
+          found = false;
+          break;
         }
       }
     }
@@ -4409,7 +4421,7 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
     if (created != nullptr) {
       *created = false;
     }
-
+    
     return idx;
   }
 

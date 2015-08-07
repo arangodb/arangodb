@@ -69,7 +69,7 @@ void triagens::basics::TRI_AttributeNamesToString (
   TRI_ASSERT(result.size() == 0);
   bool isFirst = true;
   for (auto& it : input) {
-    if (!isFirst) {
+    if (! isFirst) {
       result += ".";
     }
     isFirst = false;
