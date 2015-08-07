@@ -183,7 +183,7 @@ static void CalculateSkipLimitSlice (size_t length,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
-                                                      std::vector<std::vector<triagens::basics::AttributeName const>> const& fields,
+                                                      std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                                                       VocShaper* shaper,
                                                       v8::Handle<v8::Object> conditions) {
   TRI_index_operator_t* lastOperator = nullptr;
@@ -396,7 +396,7 @@ MEM_ERROR:
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
-                                                   std::vector<std::vector<triagens::basics::AttributeName const>> const& fields,
+                                                   std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                                                    VocShaper* shaper,
                                                    v8::Handle<v8::Object> example) {
   TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);

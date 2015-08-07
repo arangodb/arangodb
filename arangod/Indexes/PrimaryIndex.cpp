@@ -73,7 +73,7 @@ uint64_t const PrimaryIndex::InitialSize = 251;
 // -----------------------------------------------------------------------------
 
 PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection) 
-  : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName const>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } )) {
+  : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } )) {
 
   _primaryIndex._nrAlloc = 0;
   _primaryIndex._nrUsed  = 0;
