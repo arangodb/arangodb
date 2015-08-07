@@ -472,7 +472,7 @@ static int OpenDatabases (TRI_server_t* server,
   MUTEX_LOCKER(server->_databasesMutex);
   auto oldLists = server->_databasesLists.load();
   auto newLists = new DatabasesLists(*oldLists);
-  // Now try catch here, if we crash here because out of memory...
+  // No try catch here, if we crash here because out of memory...
 
   for (size_t i = 0;  i < n;  ++i) {
     TRI_vocbase_t* vocbase;
@@ -759,8 +759,10 @@ static int CloseDatabases (TRI_server_t* server) {
   // and only then really destroy the vocbases:
 
   // Build the new value:
-  auto newList = new DatabasesLists();
+  auto oldList = server->_databasesLists.load();
+  decltype(oldList) newList = nullptr;
   try {
+    newList = new DatabasesLists();
     newList->_droppedDatabases = server->_databasesLists.load()->_droppedDatabases;
   }
   catch (...) {
@@ -769,7 +771,6 @@ static int CloseDatabases (TRI_server_t* server) {
   }
 
   // Replace the old by the new:
-  auto oldList = server->_databasesLists.load();
   server->_databasesLists = newList;
   server->_databasesProtector.scan();
 
@@ -810,8 +811,10 @@ static int CloseDroppedDatabases (TRI_server_t* server) {
   // and only then really destroy the vocbases:
 
   // Build the new value:
-  auto newList = new DatabasesLists();
+  auto oldList = server->_databasesLists.load();
+  decltype(oldList) newList = nullptr;
   try {
+    newList = new DatabasesLists();
     newList->_databases = server->_databasesLists.load()->_databases;
     newList->_coordinatorDatabases = server->_databasesLists.load()->_coordinatorDatabases;
   }
@@ -821,7 +824,6 @@ static int CloseDroppedDatabases (TRI_server_t* server) {
   }
 
   // Replace the old by the new:
-  auto oldList = server->_databasesLists.load();
   server->_databasesLists = newList;
   server->_databasesProtector.scan();
 
@@ -1545,9 +1547,9 @@ static void DatabaseManager (void* data) {
 
         // Build the new value:
         auto oldLists = server->_databasesLists.load();
-        decltype(oldLists) newLists;
-        newLists = new DatabasesLists();
+        decltype(oldLists) newLists = nullptr;
         try {
+          newLists = new DatabasesLists();
           newLists->_databases = oldLists->_databases;
           newLists->_coordinatorDatabases = oldLists->_coordinatorDatabases;
           for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
@@ -1743,8 +1745,6 @@ int TRI_InitServer (TRI_server_t* server,
   // ...........................................................................
   // database hashes and vectors
   // ...........................................................................
-
-  server->_databasesLists = new DatabasesLists();
 
   server->_disableReplicationAppliers = disableAppliers;
 
@@ -2097,13 +2097,14 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
     auto oldLists = server->_databasesLists.load();
     decltype(oldLists) newLists = nullptr;
     try {
-      auto newLists = new DatabasesLists(*oldLists);
+      newLists = new DatabasesLists(*oldLists);
       newLists->_coordinatorDatabases.insert(
             std::make_pair(std::string(vocbase->_name), vocbase));
     }
     catch (...) {
       delete newLists;
-      throw;
+      delete vocbase;
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
     server->_databasesLists = newLists;
     server->_databasesProtector.scan();
@@ -2245,8 +2246,9 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     {
       MUTEX_LOCKER(server->_databasesMutex);
       auto oldLists = server->_databasesLists.load();
-      auto newLists = new DatabasesLists(*oldLists);
+      decltype(oldLists) newLists = nullptr;
       try {
+        newLists = new DatabasesLists(*oldLists);
         newLists->_databases.insert(
               std::make_pair(std::string(vocbase->_name), vocbase));
       }
@@ -2254,9 +2256,11 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
         LOG_ERROR("Out of memory for putting new database into list!");
         // This is bad, but at least we do not crash!
       }
-      server->_databasesLists = newLists;
-      server->_databasesProtector.scan();
-      delete oldLists;
+      if (newLists != nullptr) {
+        server->_databasesLists = newLists;
+        server->_databasesProtector.scan();
+        delete oldLists;
+      }
     }
 
   } // release DatabaseCreateLock
@@ -2772,7 +2776,7 @@ TRI_vocbase_operationmode_e TRI_GetOperationModeServer () {
 // -----------------------------------------------------------------------------
 
 TRI_server_t::TRI_server_t ()
-  : _databasesLists(nullptr),
+  : _databasesLists(new DatabasesLists()),
     _applicationEndpointServer(nullptr),
     _indexPool(nullptr),
     _queryRegistry(nullptr),
