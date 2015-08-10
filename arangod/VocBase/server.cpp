@@ -300,25 +300,6 @@ static bool CanUseDatabase (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief comparator for database names
-////////////////////////////////////////////////////////////////////////////////
-
-static int DatabaseNameComparator (const void* lhs, const void* rhs) {
-  const char* l = *((char**) lhs);
-  const char* r = *((char**) rhs);
-
-  return strcmp(l, r);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort a list of database names
-////////////////////////////////////////////////////////////////////////////////
-
-static void SortDatabaseNames (TRI_vector_string_t* names) {
-  qsort(names->_buffer, names->_length, sizeof(char*), &DatabaseNameComparator);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -830,6 +811,7 @@ static int CloseDroppedDatabases (TRI_server_t* server) {
   // Now it is safe to destroy the old dropped databases and the old lists struct:
   for (TRI_vocbase_t* vocbase : oldList->_droppedDatabases) {
     TRI_ASSERT(vocbase != nullptr);
+
     if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
       TRI_DestroyVocBase(vocbase);
       delete vocbase;
@@ -2291,6 +2273,7 @@ std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* s
     for (auto& p : theLists->_coordinatorDatabases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
+
       if (! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
         v.push_back(vocbase->_id);
       }
@@ -2314,6 +2297,7 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
   TRI_vocbase_t* vocbase = nullptr;
   try {
     newLists = new DatabasesLists(*oldLists);
+
     for (auto it = newLists->_coordinatorDatabases.begin();
          it != newLists->_coordinatorDatabases.end(); it++) {
       vocbase = it->second;
@@ -2438,6 +2422,7 @@ int TRI_DropByIdDatabaseServer (TRI_server_t* server,
   {
     auto unuser(server->_databasesProtector.use());
     auto theLists = server->_databasesLists.load();
+
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
 
@@ -2460,6 +2445,7 @@ TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
                                                      TRI_voc_tick_t id) {
   auto unuser(server->_databasesProtector.use());
   auto theLists = server->_databasesLists.load();
+
   for (auto& p : theLists->_coordinatorDatabases) {
     TRI_vocbase_t* vocbase = p.second;
 
@@ -2485,10 +2471,12 @@ TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
   auto theLists = server->_databasesLists.load();
   auto it = theLists->_coordinatorDatabases.find(std::string(name));
   TRI_vocbase_t* vocbase = nullptr;
+
   if (it != theLists->_coordinatorDatabases.end()) {
     vocbase = it->second;
     TRI_UseVocBase(vocbase);
   }
+
   return vocbase;
 }
 
@@ -2503,10 +2491,12 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
   auto theLists = server->_databasesLists.load();
   auto it = theLists->_databases.find(std::string(name));
   TRI_vocbase_t* vocbase = nullptr;
+
   if (it != theLists->_databases.end()) {
     vocbase = it->second;
     TRI_UseVocBase(vocbase);
   }
+
   return vocbase;
 }
 
@@ -2518,8 +2508,10 @@ TRI_vocbase_t* TRI_LookupDatabaseByIdServer (TRI_server_t* server,
                                              TRI_voc_tick_t id) {
   auto unuser(server->_databasesProtector.use());
   auto theLists = server->_databasesLists.load();
+
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
+
     if (vocbase->_id == id) {
       return vocbase;
     }
@@ -2536,8 +2528,10 @@ TRI_vocbase_t* TRI_LookupDatabaseByNameServer (TRI_server_t* server,
                                                char const* name) {
   auto unuser(server->_databasesProtector.use());
   auto theLists = server->_databasesLists.load();
+
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
+
     if (TRI_EqualString(vocbase->_name, name)) {
       return vocbase;
     }
@@ -2555,8 +2549,10 @@ TRI_vocbase_t* TRI_UseDatabaseByIdServer (TRI_server_t* server,
                                           TRI_voc_tick_t id) {
   auto unuser(server->_databasesProtector.use());
   auto theLists = server->_databasesLists.load();
+
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
+
     if (vocbase->_id == id) {
       TRI_UseVocBase(vocbase);
       return vocbase;
@@ -2583,13 +2579,14 @@ void TRI_ReleaseDatabaseServer (TRI_server_t* server,
 
 int TRI_GetUserDatabasesServer (TRI_server_t* server,
                                 char const* username,
-                                TRI_vector_string_t* names) {
+                                std::vector<std::string>& names) {
 
   int res = TRI_ERROR_NO_ERROR;
 
   {
     auto unuser(server->_databasesProtector.use());
     auto theLists = server->_databasesLists.load();
+
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
@@ -2600,23 +2597,18 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
         continue;
       }
 
-      char* copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
-
-      if (copy == nullptr) {
-        res = TRI_ERROR_OUT_OF_MEMORY;
-        break;
+      try {
+        names.emplace_back(vocbase->_name);
       }
-
-      if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
-        // insertion failed.
-        TRI_Free(names->_memoryZone, copy);
-        res = TRI_ERROR_OUT_OF_MEMORY;
-        break;
+      catch (...) {
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
   }
 
-  SortDatabaseNames(names);
+  std::sort(names.begin(), names.end(), [](std::string const& l, std::string const& r) -> bool {
+    return l < r;
+  });
 
   return res;
 }
@@ -2626,37 +2618,31 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_GetDatabaseNamesServer (TRI_server_t* server,
-                                TRI_vector_string_t* names) {
+                                std::vector<std::string>& names) {
 
   int res = TRI_ERROR_NO_ERROR;
 
   {
     auto unuser(server->_databasesProtector.use());
     auto theLists = server->_databasesLists.load();
+
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
-      char* copy;
-
       TRI_ASSERT(vocbase->_name != nullptr);
 
-      copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
-
-      if (copy == nullptr) {
-        res = TRI_ERROR_OUT_OF_MEMORY;
-        break;
+      try {
+        names.emplace_back(vocbase->_name);
       }
-
-      if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
-        // insertion failed.
-        TRI_Free(names->_memoryZone, copy);
-        res = TRI_ERROR_OUT_OF_MEMORY;
-        break;
+      catch (...) {
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
   }
 
-  SortDatabaseNames(names);
+  std::sort(names.begin(), names.end(), [](std::string const& l, std::string const& r) -> bool {
+    return l < r;
+  });
 
   return res;
 }
