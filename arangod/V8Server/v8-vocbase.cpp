@@ -3120,33 +3120,29 @@ static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   TRI_GET_GLOBALS();
 
-  TRI_vector_string_t names;
-  TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
+  std::vector<std::string> names;
 
   int res;
 
   if (argc == 0) {
     // return all databases
-    res = TRI_GetDatabaseNamesServer(static_cast<TRI_server_t*>(v8g->_server), &names);
+    res = TRI_GetDatabaseNamesServer(static_cast<TRI_server_t*>(v8g->_server), names);
   }
   else {
     // return all databases for a specific user
     std::string&& username = TRI_ObjectToString(args[0]);
 
-    res = TRI_GetUserDatabasesServer((TRI_server_t*) v8g->_server, username.c_str(), &names);
+    res = TRI_GetUserDatabasesServer((TRI_server_t*) v8g->_server, username.c_str(), names);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVectorString(&names);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
-  for (size_t i = 0;  i < names._length;  ++i) {
-    result->Set((uint32_t) i, TRI_V8_STRING((char const*) TRI_AtVectorString(&names, i)));
+  for (size_t i = 0;  i < names.size();  ++i) {
+    result->Set((uint32_t) i, TRI_V8_STD_STRING(names[i]));
   }
-
-  TRI_DestroyVectorString(&names);
 
   TRI_V8_RETURN(result);
 }
