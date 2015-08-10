@@ -989,7 +989,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads an existing (document) collection
 ///
-/// Note that this will READ lock the collection you have to release the
+/// Note that this will READ lock the collection. You have to release the
 /// collection lock by yourself.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1076,7 +1076,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
   // currently loading
   if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
     // loop until the status changes
-    while (1) {
+    while (true) {
       TRI_vocbase_col_status_e status = collection->_status;
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1084,6 +1084,9 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
       if (status != TRI_VOC_COL_STATUS_LOADING) {
         break;
       }
+
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED;      
+
       usleep(COLLECTION_STATUS_POLL_INTERVAL);
 
       TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1094,8 +1097,6 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
 
   // unloaded, load collection
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    TRI_document_collection_t* document;
-
     // set the status to loading
     collection->_status = TRI_VOC_COL_STATUS_LOADING;
 
@@ -1105,7 +1106,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     // disk activity, index creation etc.)
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    document = TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
+    TRI_document_collection_t* document = TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
 
     // lock again the adjust the status
     TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
