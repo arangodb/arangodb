@@ -31,7 +31,7 @@
 #define ARANGODB_VOC_BASE_REPLICATION__APPLIER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/threads.h"
 #include "Utils/ReplicationTransaction.h"
 #include "VocBase/replication-common.h"
@@ -116,11 +116,8 @@ struct TRI_replication_applier_t {
                              TRI_vocbase_t* vocbase) 
     : _server(server),
       _vocbase(vocbase),
+      _terminateThread(false),
       _databaseName(TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name)) {
-  
-    TRI_InitCondition(&_runStateChangeCondition);
-    TRI_InitReadWriteLock(&_statusLock);
-    TRI_InitSpin(&_threadLock);
   }
 
   ~TRI_replication_applier_t () {
@@ -131,10 +128,6 @@ struct TRI_replication_applier_t {
       trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
       delete trx;
     }
-
-    TRI_DestroySpin(&_threadLock);
-    TRI_DestroyReadWriteLock(&_statusLock);
-    TRI_DestroyCondition(&_runStateChangeCondition);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, _databaseName);
   }
@@ -160,10 +153,8 @@ struct TRI_replication_applier_t {
 
   TRI_server_t*                            _server;
   TRI_vocbase_t*                           _vocbase;
-  TRI_read_write_lock_t                    _statusLock;
-  TRI_spin_t                               _threadLock;
-  TRI_condition_t                          _runStateChangeCondition;
-  bool                                     _terminateThread;
+  triagens::basics::ReadWriteLock          _statusLock;
+  std::atomic<bool>                        _terminateThread;
   TRI_replication_applier_state_t          _state;
   TRI_replication_applier_configuration_t  _configuration;
   char*                                    _databaseName;

@@ -63,7 +63,7 @@ TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t*,
-                                                  const size_t);
+                                                  size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the string buffer
