@@ -35,7 +35,7 @@
 #include "Basics/locks.h"
 #include "Basics/Mutex.h"
 #include "Basics/threads.h"
-#include "Basics/ThreadProtector.h"
+#include "Basics/DataProtector.h"
 #include "Basics/vector.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
@@ -74,8 +74,8 @@ struct TRI_server_t {
 
   std::atomic<DatabasesLists*>       _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
-  // triagens::basics::ThreadProtector<64>  
-  triagens::basics::ThreadProtector  _databasesProtector;
+  // triagens::basics::DataProtector<64>  
+  triagens::basics::DataProtector    _databasesProtector;
   triagens::basics::Mutex            _databasesMutex;
 
   TRI_thread_t                       _databaseManager;

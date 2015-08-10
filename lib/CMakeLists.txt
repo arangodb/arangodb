@@ -52,6 +52,7 @@ add_library(
     Basics/ConditionVariable.cpp
     Basics/conversions.cpp
     Basics/csv.cpp
+    Basics/DataProtector.cpp
     Basics/debugging.cpp
     Basics/error.cpp
     Basics/Exceptions.cpp
@@ -93,7 +94,6 @@ add_library(
     Basics/terminal-utils.cpp
     Basics/Thread.cpp
     Basics/ThreadPool.cpp
-    Basics/ThreadProtector.cpp
     Basics/tri-strings.cpp
     Basics/tri-zip.cpp
     Basics/Utf8Helper.cpp
