@@ -116,3 +116,26 @@ The following other date functions are also available:
   
   Note that this function is evaluated on every invocation and may return different 
   values when invoked multiple times in the same query.
+
+
+Working with dates and indices
+------------------------------
+There are two recommended ways to store timestamps in ArangoDB:
+  - as string with ISO 8601 UTC timestamp
+  - as [Epoch number](https://en.wikipedia.org/wiki/Epoch_%28reference_date%29)
+
+This way you can work with [skiplist incices](../IndexHandling/Skiplist.html) and use
+string comparisons (less than, greater than, in, equality) to express timeranges in your queries:
+
+    @startDocuBlockInline working_with_date_time
+    @EXAMPLE_ARANGOSH_OUTPUT{working_with_date_time}
+    db._create("exampleTime");
+    var timestamps = ["2014-05-07T14:19:09.522","2014-05-07T21:19:09.522","2014-05-08T04:19:09.522","2014-05-08T11:19:09.522","2014-05-08T18:19:09.522"];
+    for (i = 0; i < 5; i++) db.exampleTime.save({value:i, ts: timestamps[i]})
+    db._query("FOR d IN exampleTime FILTER d.ts > '2014-05-07T14:19:09.522' and d.ts < '2014-05-08T18:19:09.522' RETURN d").toArray()
+    ~addIgnoreCollection("example")
+    ~db._drop("exampleTime")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock working_with_date_time
+
+The first and the last timestamp in the array are excluded from the result by the `FILTER`.
