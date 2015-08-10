@@ -150,7 +150,6 @@ var help = function () {
     "available"       : "lists all Foxx applications available in the local repository",
     "configuration"   : "request the configuration information for the given mountpoint",
     "configure"       : "sets the configuration for the given mountpoint",
-    "updateDeps"      : "links the dependencies in manifest to a mountpoint",
     "dependencies"    : "request the dependencies information for the given mountpoint",
     "development"     : "activates development mode for the given mountpoint",
     "help"            : "shows this help",
@@ -163,7 +162,8 @@ var help = function () {
                          "WARNING: this action will remove application data if the application implements teardown!" ],
     "run"             : "runs the given script of a foxx app mounted at the given mountpoint",
     "search"          : "searches the local foxx-apps repository",
-    "set-dependencies": "sets the dependencies for the given mountpoint",
+    "set-dependencies": ["sets the dependencies for the given mountpoint",
+                         "example foxx-manager set-dependencies /appA nameDep=/mountOfDep"],
     "setup"           : "executes the setup script",
     "teardown"        : [ "executes the teardown script",
                            "WARNING: this action will remove application data if the application implements teardown!" ],
@@ -478,28 +478,7 @@ var configuration = function(mount) {
   arangosh.checkRequestResult(res);
   return res;
 };
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Link Dependencies to the installed mountpoint the app at the mountpoint
-////////////////////////////////////////////////////////////////////////////////
 
-var updateDeps = function(mount, options) {
-  checkParameter(
-    "update(<mount>)",
-    [ [ "Mount path", "string" ] ],
-    [ mount ] );
-  utils.validateMount(mount);
-  var req = {
-    mount: mount,
-    options: options
-  };
-  var res = arango.POST("/_admin/foxx/updateDeps", JSON.stringify(req));
-  arangosh.checkRequestResult(res);
-  return {
-    name: res.name,
-    version: res.version,
-    mount: res.mount
-  };
-};
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Configure the dependencies of the app at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
