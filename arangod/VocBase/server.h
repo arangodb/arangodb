@@ -276,14 +276,14 @@ void TRI_ReleaseDatabaseServer (TRI_server_t*,
 
 int TRI_GetUserDatabasesServer (TRI_server_t*,
                                 char const*,
-                                TRI_vector_string_t*);
+                                std::vector<std::string>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all database names
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_GetDatabaseNamesServer (TRI_server_t*,
-                                TRI_vector_string_t*);
+                                std::vector<std::string>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the defaults into the target
