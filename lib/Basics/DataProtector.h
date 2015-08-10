@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREAD_PROTECTOR_H
-#define ARANGODB_BASICS_THREAD_PROTECTOR_H 1
+#ifndef ARANGODB_BASICS_DATA_PROTECTOR_H
+#define ARANGODB_BASICS_DATA_PROTECTOR_H 1
 
 #include "Basics/Common.h"
 
@@ -36,16 +36,16 @@ namespace triagens {
   namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ThreadProtector, a template class to manage a single atomic
+/// @brief DataProtector, a template class to manage a single atomic
 /// value (can be a pointer to some class), optimized for many fast
 /// readers and slow writers using lockfree technology.
 /// The template parameter Nr should be on the order of magnitude of the
 /// maximal number of concurrently running threads.
 /// Usage:
-///   Put an instance of the ThreadProtector next to the atomic value you
+///   Put an instance of the DataProtector next to the atomic value you
 ///   want to protect, as in:
 ///     atomic<SomeClass*> p;
-///     ThreadProtector<64> prot;
+///     DataProtector<64> prot;
 ///   If you want to read p and *p, do
 ///     auto unuser(prot.use());
 ///     auto pSeen = p;
@@ -66,16 +66,16 @@ namespace triagens {
 ///     - The value of p *can* change under the feet of the reading threads,
 ///       which is why you need to use the pSeen variable. However, you know
 ///       that as long as unused is in scope, pSeen remains valid.
-///     - The ThreadProtector instances needs 64*Nr bytes of memory.
-///     - ThreadProtector.cpp needs to contain an explicit template 
+///     - The DataProtector instances needs 64*Nr bytes of memory.
+///     - DataProtector.cpp needs to contain an explicit template 
 ///       instanciation for all values of Nr used in the executable.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define THREAD_PROTECTOR_MULTIPLICITY 64
+#define DATA_PROTECTOR_MULTIPLICITY 64
 
     // TODO: Make this a template again once everybody has gcc >= 4.9.2
     // template<int Nr>
-    class ThreadProtector {
+    class DataProtector {
         struct TRI_ALIGNAS(64) Entry {  // 64 is the size of a cache line,
              // it is important that different list entries lie in different
              // cache lines.
@@ -89,13 +89,13 @@ namespace triagens {
 
       public:
 
-        // A class to automatically unuse the threadprotector:
+        // A class to automatically unuse the DataProtector:
         class UnUser {
-            ThreadProtector* _prot;
+            DataProtector* _prot;
             int _id;
 
           public:
-            UnUser (ThreadProtector* p, int i) : _prot(p), _id(i) {
+            UnUser (DataProtector* p, int i) : _prot(p), _id(i) {
             }
 
             ~UnUser () {
@@ -119,15 +119,15 @@ namespace triagens {
             UnUser () = delete;
         };
 
-        ThreadProtector () : _last(0) {
-          _list = new Entry[THREAD_PROTECTOR_MULTIPLICITY];
+        DataProtector () : _last(0) {
+          _list = new Entry[DATA_PROTECTOR_MULTIPLICITY];
           // Just to be sure:
-          for (size_t i = 0; i < THREAD_PROTECTOR_MULTIPLICITY; i++) {
+          for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
             _list[i]._count = 0;
           }
         }
 
-        ~ThreadProtector () {
+        ~DataProtector () {
           delete[] _list;
         }
 
@@ -135,7 +135,7 @@ namespace triagens {
           int id = _mySlot;
           if (id < 0) {
             id = _last++;
-            if (_last > THREAD_PROTECTOR_MULTIPLICITY) {
+            if (_last > DATA_PROTECTOR_MULTIPLICITY) {
               _last = 0;
             }
             _mySlot = id;
@@ -145,7 +145,7 @@ namespace triagens {
         }
 
         void scan () {
-          for (size_t i = 0; i < THREAD_PROTECTOR_MULTIPLICITY; i++) {
+          for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
             while (_list[i]._count > 0) {
               usleep(250);
             }
