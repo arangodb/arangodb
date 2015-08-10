@@ -76,6 +76,10 @@ namespace triagens {
     StringBuffer& SimpleHttpResult::getBody () {
       return _resultBody;
     }
+    
+    StringBuffer const& SimpleHttpResult::getBody () const {
+      return _resultBody;
+    }
 
     string SimpleHttpResult::getResultTypeMessage () const {
       switch (_requestResultType) {
