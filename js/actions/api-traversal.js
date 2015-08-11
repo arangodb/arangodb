@@ -148,7 +148,7 @@ function notFound (req, res, code, message) {
 ///
 /// - *uniqueness* (optional): specifies uniqueness for vertices and edges visited
 ///      if set, must be an object like this:
-///      *"uniqueness": {"vertices": "none"|"global"|path", "edges": "none"|"global"|"path"}*
+///      *"uniqueness": {"vertices": "none"|"global"|"path", "edges": "none"|"global"|"path"}*
 ///
 /// - *maxIterations* (optional): Maximum number of iterations in each traversal. This number can be
 ///    set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
