@@ -1,0 +1,2 @@
+arangosh> stmt = db._createStatement( { "query": "FOR i IN [ 1, 2, 3, 4 ] RETURN i", "count": true } );
+[object ArangoStatement]

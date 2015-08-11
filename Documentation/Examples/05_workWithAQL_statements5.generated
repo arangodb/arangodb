@@ -1,0 +1,9 @@
+arangosh> var stmt = db._createStatement( { "query": "FOR i IN [ @one, @two ] RETURN i * 2" } );
+arangosh> stmt.bind("one", 1);
+arangosh> stmt.bind("two", 2);
+arangosh> c = stmt.execute();
+[ 
+  2, 
+  4 
+]
+[object ArangoQueryCursor, count: 2, hasMore: false]

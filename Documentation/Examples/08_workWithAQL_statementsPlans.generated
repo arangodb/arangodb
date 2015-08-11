@@ -1,0 +1,10 @@
+arangosh> var formatPlan = function (plan) { return { estimatedCost: plan.estimatedCost, nodes: plan.nodes.map(function(node) { return node.type; }) }; };
+arangosh> formatPlan(stmt.explain().plan);
+{ 
+  "estimatedCost" : 3, 
+  "nodes" : [ 
+    "SingletonNode", 
+    "EnumerateCollectionNode", 
+    "ReturnNode" 
+  ] 
+}

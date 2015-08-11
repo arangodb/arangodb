@@ -1,0 +1,10 @@
+arangosh> db.example.byExample({ name: "Jane Smith" }).toArray()
+[ 
+  { 
+    "_id" : "example/511850408645", 
+    "_key" : "511850408645", 
+    "_rev" : "511850408645", 
+    "age" : 31, 
+    "name" : "Jane Smith" 
+  } 
+]

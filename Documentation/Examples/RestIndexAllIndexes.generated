@@ -8,62 +8,62 @@ content-type: application/json; charset=utf-8
     { 
       "id" : "products/0", 
       "type" : "primary", 
+      "unique" : true, 
+      "sparse" : false, 
+      "selectivityEstimate" : 1, 
       "fields" : [ 
         "_key" 
-      ], 
-      "selectivityEstimate" : 1, 
-      "unique" : true, 
-      "sparse" : false 
+      ] 
     }, 
     { 
-      "id" : "products/1789613468", 
+      "id" : "products/512207710917", 
       "type" : "hash", 
+      "unique" : false, 
+      "sparse" : false, 
+      "selectivityEstimate" : 1, 
       "fields" : [ 
         "name" 
-      ], 
-      "selectivityEstimate" : 1, 
-      "unique" : false, 
-      "sparse" : false 
+      ] 
     }, 
     { 
-      "id" : "products/1789875612", 
+      "id" : "products/512208038597", 
       "type" : "skiplist", 
+      "unique" : false, 
+      "sparse" : true, 
       "fields" : [ 
         "price" 
-      ], 
-      "unique" : false, 
-      "sparse" : true 
+      ] 
     } 
   ], 
   "identifiers" : { 
     "products/0" : { 
       "id" : "products/0", 
       "type" : "primary", 
+      "unique" : true, 
+      "sparse" : false, 
+      "selectivityEstimate" : 1, 
       "fields" : [ 
         "_key" 
-      ], 
-      "selectivityEstimate" : 1, 
-      "unique" : true, 
-      "sparse" : false 
+      ] 
     }, 
-    "products/1789613468" : { 
-      "id" : "products/1789613468", 
+    "products/512207710917" : { 
+      "id" : "products/512207710917", 
       "type" : "hash", 
+      "unique" : false, 
+      "sparse" : false, 
+      "selectivityEstimate" : 1, 
       "fields" : [ 
         "name" 
-      ], 
-      "selectivityEstimate" : 1, 
-      "unique" : false, 
-      "sparse" : false 
+      ] 
     }, 
-    "products/1789875612" : { 
-      "id" : "products/1789875612", 
+    "products/512208038597" : { 
+      "id" : "products/512208038597", 
       "type" : "skiplist", 
+      "unique" : false, 
+      "sparse" : true, 
       "fields" : [ 
         "price" 
-      ], 
-      "unique" : false, 
-      "sparse" : true 
+      ] 
     } 
   }, 
   "error" : false, 

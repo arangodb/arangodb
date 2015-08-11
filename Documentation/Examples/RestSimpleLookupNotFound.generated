@@ -2,11 +2,3 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/l
 {"keys":["foo","bar","baz"],"collection":"test"}
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
-
-{ 
-  "documents" : [ ], 
-  "error" : false, 
-  "code" : 200 
-}

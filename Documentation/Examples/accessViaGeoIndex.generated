@@ -8,16 +8,16 @@ arangosh> for (i = -90;  i <= 90;  i += 10) {
 ........> 
 arangosh> db.example.ensureGeoIndex("home");
 { 
-  "id" : "example/591418780", 
+  "id" : "example/512507538117", 
   "type" : "geo1", 
+  "unique" : false, 
+  "sparse" : true, 
+  "geoJson" : false, 
+  "constraint" : false, 
+  "ignoreNull" : true, 
   "fields" : [ 
     "home" 
   ], 
-  "geoJson" : false, 
-  "constraint" : false, 
-  "unique" : false, 
-  "ignoreNull" : true, 
-  "sparse" : true, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
@@ -25,5 +25,5 @@ arangosh> items = db.example.getIndexes().map(function(x) { return x.id; });
 ........> db.example.index(items[1]);
 [ 
   "example/0", 
-  "example/591418780" 
+  "example/512507538117" 
 ]

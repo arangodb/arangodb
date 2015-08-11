@@ -1,0 +1,9 @@
+arangosh> require("org/arangodb/users").save("my-user", "my-secret-password");
+{ 
+  "user" : "my-user", 
+  "active" : true, 
+  "extra" : { 
+  }, 
+  "changePassword" : false, 
+  "code" : 201 
+}

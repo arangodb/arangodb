@@ -1,0 +1,2 @@
+arangosh> require("org/arangodb/users").isValid("my-user", "my-secret-password");
+true
