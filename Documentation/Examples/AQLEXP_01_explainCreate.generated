@@ -1,15 +1,15 @@
 arangosh> db._create("test"); 
-[ArangoCollection 511866268357, "test" (type document, status loaded)]
+[ArangoCollection 478553025, "test" (type document, status loaded)]
 arangosh> for (i = 0; i < 100; ++i) { db.test.save({ value: i }); }
 arangosh> db.test.ensureSkiplist("value");
 { 
-  "id" : "test/511886322373", 
+  "id" : "test/498541505", 
   "type" : "skiplist", 
-  "unique" : false, 
-  "sparse" : false, 
   "fields" : [ 
     "value" 
   ], 
+  "unique" : false, 
+  "sparse" : false, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
@@ -63,7 +63,7 @@ arangosh> stmt.explain();
         ], 
         "index" : { 
           "type" : "skiplist", 
-          "id" : "511886322373", 
+          "id" : "498541505", 
           "unique" : false, 
           "sparse" : false, 
           "fields" : [ 
@@ -92,10 +92,11 @@ arangosh> stmt.explain();
           ] 
         }, 
         "outVariable" : { 
-          "id" : 2, 
-          "name" : "2" 
+          "id" : 4, 
+          "name" : "3" 
         }, 
-        "canThrow" : false 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
       }, 
       { 
         "type" : "ReturnNode", 
@@ -106,8 +107,8 @@ arangosh> stmt.explain();
         "estimatedCost" : 142, 
         "estimatedNrItems" : 47, 
         "inVariable" : { 
-          "id" : 2, 
-          "name" : "2" 
+          "id" : 4, 
+          "name" : "3" 
         } 
       } 
     ], 
@@ -130,15 +131,15 @@ arangosh> stmt.explain();
     ], 
     "variables" : [ 
       { 
-        "id" : 3, 
+        "id" : 6, 
+        "name" : "5" 
+      }, 
+      { 
+        "id" : 4, 
         "name" : "3" 
       }, 
       { 
         "id" : 2, 
-        "name" : "2" 
-      }, 
-      { 
-        "id" : 1, 
         "name" : "1" 
       }, 
       { 
@@ -151,7 +152,7 @@ arangosh> stmt.explain();
   }, 
   "warnings" : [ ], 
   "stats" : { 
-    "rulesExecuted" : 32, 
+    "rulesExecuted" : 34, 
     "rulesSkipped" : 0, 
     "plansCreated" : 1 
   } 

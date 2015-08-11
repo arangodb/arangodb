@@ -1,18 +1,18 @@
 arangosh> db.example.save({ Hello : "World" });
 { 
-  "_id" : "example/511849818821", 
-  "_rev" : "511849818821", 
-  "_key" : "511849818821" 
+  "_id" : "example/462234561", 
+  "_rev" : "462234561", 
+  "_key" : "462234561" 
 }
 arangosh> db.example.save({ "name" : "John Doe", "age" : 29 });
 { 
-  "_id" : "example/511850212037", 
-  "_rev" : "511850212037", 
-  "_key" : "511850212037" 
+  "_id" : "example/462627777", 
+  "_rev" : "462627777", 
+  "_key" : "462627777" 
 }
 arangosh> db.example.save({ "name" : "Jane Smith", "age" : 31 });
 { 
-  "_id" : "example/511850408645", 
-  "_rev" : "511850408645", 
-  "_key" : "511850408645" 
+  "_id" : "example/462824385", 
+  "_rev" : "462824385", 
+  "_key" : "462824385" 
 }

@@ -54,42 +54,31 @@ arangosh> stmt.explain({ maxNumberOfPlans: 1 });
           ] 
         }, 
         "outVariable" : { 
-          "id" : 1, 
+          "id" : 2, 
           "name" : "1" 
         }, 
-        "canThrow" : false 
+        "canThrow" : false, 
+        "expressionType" : "simple" 
       }, 
       { 
-        "type" : "CalculationNode", 
+        "type" : "FilterNode", 
         "dependencies" : [ 
           3 
         ], 
-        "id" : 5, 
+        "id" : 4, 
         "estimatedCost" : 301, 
         "estimatedNrItems" : 100, 
-        "expression" : { 
-          "type" : "attribute access", 
-          "name" : "value", 
-          "subNodes" : [ 
-            { 
-              "type" : "reference", 
-              "name" : "i", 
-              "id" : 0 
-            } 
-          ] 
-        }, 
-        "outVariable" : { 
+        "inVariable" : { 
           "id" : 2, 
-          "name" : "2" 
-        }, 
-        "canThrow" : false 
+          "name" : "1" 
+        } 
       }, 
       { 
         "type" : "CalculationNode", 
         "dependencies" : [ 
-          5 
+          4 
         ], 
-        "id" : 7, 
+        "id" : 5, 
         "estimatedCost" : 401, 
         "estimatedNrItems" : 100, 
         "expression" : { 
@@ -104,37 +93,25 @@ arangosh> stmt.explain({ maxNumberOfPlans: 1 });
           ] 
         }, 
         "outVariable" : { 
-          "id" : 3, 
+          "id" : 4, 
           "name" : "3" 
         }, 
-        "canThrow" : false 
-      }, 
-      { 
-        "type" : "FilterNode", 
-        "dependencies" : [ 
-          7 
-        ], 
-        "id" : 4, 
-        "estimatedCost" : 501, 
-        "estimatedNrItems" : 100, 
-        "inVariable" : { 
-          "id" : 1, 
-          "name" : "1" 
-        } 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
       }, 
       { 
         "type" : "SortNode", 
         "dependencies" : [ 
-          4 
+          5 
         ], 
         "id" : 6, 
-        "estimatedCost" : 961.5170185988092, 
+        "estimatedCost" : 861.5170185988092, 
         "estimatedNrItems" : 100, 
         "elements" : [ 
           { 
             "inVariable" : { 
-              "id" : 2, 
-              "name" : "2" 
+              "id" : 4, 
+              "name" : "3" 
             }, 
             "ascending" : true 
           } 
@@ -142,22 +119,46 @@ arangosh> stmt.explain({ maxNumberOfPlans: 1 });
         "stable" : false 
       }, 
       { 
-        "type" : "ReturnNode", 
+        "type" : "CalculationNode", 
         "dependencies" : [ 
           6 
+        ], 
+        "id" : 7, 
+        "estimatedCost" : 961.5170185988092, 
+        "estimatedNrItems" : 100, 
+        "expression" : { 
+          "type" : "attribute access", 
+          "name" : "value", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "i", 
+              "id" : 0 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 6, 
+          "name" : "5" 
+        }, 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          7 
         ], 
         "id" : 8, 
         "estimatedCost" : 1061.517018598809, 
         "estimatedNrItems" : 100, 
         "inVariable" : { 
-          "id" : 3, 
-          "name" : "3" 
+          "id" : 6, 
+          "name" : "5" 
         } 
       } 
     ], 
-    "rules" : [ 
-      "move-calculations-up" 
-    ], 
+    "rules" : [ ], 
     "collections" : [ 
       { 
         "name" : "test", 
@@ -166,15 +167,15 @@ arangosh> stmt.explain({ maxNumberOfPlans: 1 });
     ], 
     "variables" : [ 
       { 
-        "id" : 3, 
+        "id" : 6, 
+        "name" : "5" 
+      }, 
+      { 
+        "id" : 4, 
         "name" : "3" 
       }, 
       { 
         "id" : 2, 
-        "name" : "2" 
-      }, 
-      { 
-        "id" : 1, 
         "name" : "1" 
       }, 
       { 
@@ -187,8 +188,8 @@ arangosh> stmt.explain({ maxNumberOfPlans: 1 });
   }, 
   "warnings" : [ ], 
   "stats" : { 
-    "rulesExecuted" : 1, 
-    "rulesSkipped" : 20, 
+    "rulesExecuted" : 0, 
+    "rulesSkipped" : 22, 
     "plansCreated" : 1 
   } 
 }

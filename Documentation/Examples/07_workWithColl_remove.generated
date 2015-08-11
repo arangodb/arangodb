@@ -3,16 +3,16 @@ true
 arangosh> db.example.toArray()
 [ 
   { 
-    "_id" : "example/511849818821", 
-    "_key" : "511849818821", 
-    "_rev" : "511849818821", 
-    "Hello" : "World" 
+    "Hello" : "World", 
+    "_id" : "example/462234561", 
+    "_rev" : "462234561", 
+    "_key" : "462234561" 
   }, 
   { 
-    "_id" : "example/511850408645", 
-    "_key" : "511850408645", 
-    "_rev" : "511850408645", 
     "age" : 31, 
-    "name" : "Jane Smith" 
+    "name" : "Jane Smith", 
+    "_id" : "example/462824385", 
+    "_rev" : "462824385", 
+    "_key" : "462824385" 
   } 
 ]

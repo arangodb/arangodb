@@ -1,42 +1,42 @@
 arangosh> db.names.ensureSkiplist("first");
 { 
-  "id" : "names/512567569093", 
+  "id" : "names/1172317121", 
   "type" : "skiplist", 
-  "unique" : false, 
-  "sparse" : false, 
   "fields" : [ 
     "first" 
   ], 
+  "unique" : false, 
+  "sparse" : false, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
 arangosh> db.names.save({ "first" : "Tim" });
 { 
-  "_id" : "names/512567831237", 
-  "_rev" : "512567831237", 
-  "_key" : "512567831237" 
+  "_id" : "names/1172579265", 
+  "_rev" : "1172579265", 
+  "_key" : "1172579265" 
 }
 arangosh> db.names.save({ "first" : "Tom" });
 { 
-  "_id" : "names/512568027845", 
-  "_rev" : "512568027845", 
-  "_key" : "512568027845" 
+  "_id" : "names/1172775873", 
+  "_rev" : "1172775873", 
+  "_key" : "1172775873" 
 }
 arangosh> db.names.save({ "first" : "John" });
 { 
-  "_id" : "names/512568224453", 
-  "_rev" : "512568224453", 
-  "_key" : "512568224453" 
+  "_id" : "names/1172972481", 
+  "_rev" : "1172972481", 
+  "_key" : "1172972481" 
 }
 arangosh> db.names.save({ "first" : "Tim" });
 { 
-  "_id" : "names/512568421061", 
-  "_rev" : "512568421061", 
-  "_key" : "512568421061" 
+  "_id" : "names/1173169089", 
+  "_rev" : "1173169089", 
+  "_key" : "1173169089" 
 }
 arangosh> db.names.save({ "first" : "Tom" });
 { 
-  "_id" : "names/512568617669", 
-  "_rev" : "512568617669", 
-  "_key" : "512568617669" 
+  "_id" : "names/1173365697", 
+  "_rev" : "1173365697", 
+  "_key" : "1173365697" 
 }

@@ -47,7 +47,7 @@ arangosh> stmt.explain({ allPlans: true });
           ], 
           "index" : { 
             "type" : "skiplist", 
-            "id" : "511886322373", 
+            "id" : "498541505", 
             "unique" : false, 
             "sparse" : false, 
             "fields" : [ 
@@ -76,10 +76,11 @@ arangosh> stmt.explain({ allPlans: true });
             ] 
           }, 
           "outVariable" : { 
-            "id" : 2, 
-            "name" : "2" 
+            "id" : 4, 
+            "name" : "3" 
           }, 
-          "canThrow" : false 
+          "canThrow" : false, 
+          "expressionType" : "attribute" 
         }, 
         { 
           "type" : "ReturnNode", 
@@ -90,8 +91,8 @@ arangosh> stmt.explain({ allPlans: true });
           "estimatedCost" : 142, 
           "estimatedNrItems" : 47, 
           "inVariable" : { 
-            "id" : 2, 
-            "name" : "2" 
+            "id" : 4, 
+            "name" : "3" 
           } 
         } 
       ], 
@@ -114,15 +115,15 @@ arangosh> stmt.explain({ allPlans: true });
       ], 
       "variables" : [ 
         { 
-          "id" : 3, 
+          "id" : 6, 
+          "name" : "5" 
+        }, 
+        { 
+          "id" : 4, 
           "name" : "3" 
         }, 
         { 
           "id" : 2, 
-          "name" : "2" 
-        }, 
-        { 
-          "id" : 1, 
           "name" : "1" 
         }, 
         { 
@@ -136,7 +137,7 @@ arangosh> stmt.explain({ allPlans: true });
   ], 
   "warnings" : [ ], 
   "stats" : { 
-    "rulesExecuted" : 32, 
+    "rulesExecuted" : 34, 
     "rulesSkipped" : 0, 
     "plansCreated" : 1 
   } 

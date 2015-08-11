@@ -9,24 +9,25 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "407882835818", 
+        "cid" : "7152577", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "_apps", 
         "isVolatile" : false, 
         "waitForSync" : false 
       }, 
       "indexes" : [ 
         { 
-          "id" : "407883163498", 
+          "id" : "7414721", 
           "type" : "hash", 
-          "unique" : true, 
-          "sparse" : false, 
-          "selectivityEstimate" : 1, 
           "fields" : [ 
             "mount" 
-          ] 
+          ], 
+          "selectivityEstimate" : 1, 
+          "unique" : true, 
+          "sparse" : false 
         } 
       ] 
     }, 
@@ -34,7 +35,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "4855473", 
+        "cid" : "4400065", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 4194304, 
@@ -48,48 +50,14 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "467525925975", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "_fishbowl", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ 
-        { 
-          "id" : "467526188119", 
-          "type" : "fulltext", 
-          "unique" : false, 
-          "sparse" : true, 
-          "minLength" : 2, 
-          "fields" : [ 
-            "description" 
-          ] 
-        }, 
-        { 
-          "id" : "467526450263", 
-          "type" : "fulltext", 
-          "unique" : false, 
-          "sparse" : true, 
-          "minLength" : 2, 
-          "fields" : [ 
-            "name" 
-          ] 
-        } 
-      ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "2496177", 
+        "cid" : "2040769", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
         "name" : "_graphs", 
         "isVolatile" : false, 
-        "waitForSync" : true 
+        "waitForSync" : false 
       }, 
       "indexes" : [ ] 
     }, 
@@ -97,7 +65,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2627249", 
+        "cid" : "2171841", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -111,7 +80,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2758321", 
+        "cid" : "2302913", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 33554432, 
@@ -125,10 +95,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "26941105", 
+        "cid" : "14361537", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "_sessions", 
         "isVolatile" : false, 
         "waitForSync" : false 
@@ -139,10 +110,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "407892141930", 
+        "cid" : "15082433", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "_system_users_users", 
         "isVolatile" : false, 
         "waitForSync" : false 
@@ -153,22 +125,25 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "595633", 
+        "cid" : "205761", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 4194304, 
         "name" : "_users", 
         "isVolatile" : false, 
-        "waitForSync" : true 
+        "waitForSync" : false 
       }, 
       "indexes" : [ 
         { 
-          "id" : "857777", 
+          "id" : "533441", 
           "type" : "hash", 
-          "unique" : true, 
           "fields" : [ 
             "user" 
-          ] 
+          ], 
+          "selectivityEstimate" : 1, 
+          "unique" : true, 
+          "sparse" : true 
         } 
       ] 
     }, 
@@ -176,10 +151,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "511405812421", 
+        "cid" : "19145665", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "animals", 
         "isVolatile" : false, 
         "waitForSync" : false 
@@ -190,52 +166,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "467557383255", 
+        "cid" : "18293697", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "blablabla_providers", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "407906297706", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "blarg", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "392615929403", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "complexCollection", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "511404894917", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "demo", 
         "isVolatile" : false, 
         "waitForSync" : false 
@@ -246,41 +181,42 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "512217017029", 
+        "cid" : "824714177", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "IndexedCollection1", 
         "isVolatile" : false, 
         "waitForSync" : false 
       }, 
       "indexes" : [ 
         { 
-          "id" : "512217279173", 
+          "id" : "824976321", 
           "type" : "hash", 
-          "unique" : false, 
-          "sparse" : false, 
-          "selectivityEstimate" : 1, 
           "fields" : [ 
             "name" 
-          ] 
+          ], 
+          "selectivityEstimate" : 1, 
+          "unique" : false, 
+          "sparse" : false 
         }, 
         { 
-          "id" : "512217606853", 
+          "id" : "825304001", 
           "type" : "skiplist", 
-          "unique" : true, 
-          "sparse" : false, 
           "fields" : [ 
             "a", 
             "b" 
-          ] 
+          ], 
+          "unique" : true, 
+          "sparse" : false 
         }, 
         { 
-          "id" : "512217803461", 
+          "id" : "825500609", 
           "type" : "cap", 
-          "unique" : false, 
           "size" : 500, 
-          "byteSize" : 0 
+          "byteSize" : 0, 
+          "unique" : false 
         } 
       ] 
     }, 
@@ -288,100 +224,50 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "512218000069", 
+        "cid" : "825697217", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "IndexedCollection2", 
         "isVolatile" : false, 
         "waitForSync" : false 
       }, 
       "indexes" : [ 
         { 
-          "id" : "512218262213", 
+          "id" : "825893825", 
           "type" : "fulltext", 
-          "unique" : false, 
-          "sparse" : true, 
-          "minLength" : 10, 
           "fields" : [ 
             "text" 
-          ] 
+          ], 
+          "unique" : false, 
+          "sparse" : true, 
+          "minLength" : 10 
         }, 
         { 
-          "id" : "512218524357", 
+          "id" : "826221505", 
           "type" : "skiplist", 
-          "unique" : false, 
-          "sparse" : false, 
           "fields" : [ 
             "a" 
-          ] 
+          ], 
+          "unique" : false, 
+          "sparse" : false 
         }, 
         { 
-          "id" : "512218720965", 
+          "id" : "826418113", 
           "type" : "cap", 
-          "unique" : false, 
           "size" : 0, 
-          "byteSize" : 1048576 
+          "byteSize" : 1048576, 
+          "unique" : false 
         } 
       ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "467593362519", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "marvel_vertices", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "166729996718", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "profiles", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ 
-        { 
-          "id" : "60301483134", 
-          "type" : "skiplist", 
-          "unique" : false, 
-          "fields" : [ 
-            "userId" 
-          ] 
-        } 
-      ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 3, 
-        "cid" : "471199087703", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "marvel_edges", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
     } 
   ], 
   "state" : { 
     "running" : true, 
-    "lastLogTick" : "512218589893", 
-    "totalEvents" : 32296, 
-    "time" : "2015-08-11T10:55:55Z" 
+    "lastLogTick" : "824648641", 
+    "totalEvents" : 4978, 
+    "time" : "2015-08-11T13:40:56Z" 
   }, 
-  "tick" : "512218852037" 
+  "tick" : "826549185" 
 }

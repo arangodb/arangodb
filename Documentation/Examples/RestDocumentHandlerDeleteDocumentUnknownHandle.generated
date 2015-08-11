@@ -1,11 +1,11 @@
-shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/512087517893
+shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/693511105
 
 HTTP/1.1 404 Not Found
 content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
-  "errorMessage" : "document /_api/document/products/512087517893 not found", 
+  "errorMessage" : "document not found", 
   "code" : 404, 
   "errorNum" : 1202 
 }

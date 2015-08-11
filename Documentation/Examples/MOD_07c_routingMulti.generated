@@ -16,8 +16,8 @@ arangosh> db._routing.save({
 ........>  ]
 ........> });
 { 
-  "_id" : "_routing/511991704261", 
-  "_rev" : "511991704261", 
-  "_key" : "511991704261" 
+  "_id" : "_routing/599401409", 
+  "_rev" : "599401409", 
+  "_key" : "599401409" 
 }
 arangosh> require("internal").reloadRouting()

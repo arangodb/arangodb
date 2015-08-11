@@ -1,2 +1,10 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=512218917573&chunkSize=400
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=825369537&chunkSize=400
 
+HTTP/1.1 200 OK
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-active: true
+x-arango-replication-checkmore: true
+x-arango-replication-lastincluded: 825762753
+x-arango-replication-lasttick: 827925441
+
+"{\"tick\":\"825631681\",\"type\":2100,\"database\":\"74689\",\"cid\":\"824714177\",\"id\":\"825500609\",\"index\":{\"id\":\"825500609\",\"type\":\"cap\",\"size\":500,\"byteSize\":0,\"unique\":false}}\n{\"tick\":\"825762753\",\"type\":2000,\"database\":\"74689\",\"cid\":\"825697217\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"825697217\",\"indexBuckets\":8,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"IndexedCollection2\",\"isVolatile\":false,\"waitForSync\":false}}\n"

@@ -2,8 +2,8 @@ arangosh> var stmt = db._createStatement("FOR doc IN @@collection FILTER doc.foo
 arangosh> stmt.parse();
 { 
   "bindVars" : [ 
-    "bar", 
-    "@collection" 
+    "@collection", 
+    "bar" 
   ], 
   "collections" : [ ], 
   "ast" : [ 

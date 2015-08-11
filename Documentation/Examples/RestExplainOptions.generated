@@ -35,7 +35,7 @@ content-type: application/json; charset=utf-8
           ], 
           "index" : { 
             "type" : "skiplist", 
-            "id" : "512124938949", 
+            "id" : "730080193", 
             "unique" : false, 
             "sparse" : false, 
             "fields" : [ 
@@ -67,7 +67,8 @@ content-type: application/json; charset=utf-8
             "id" : 1, 
             "name" : "a" 
           }, 
-          "canThrow" : false 
+          "canThrow" : false, 
+          "expressionType" : "attribute" 
         }, 
         { 
           "type" : "CalculationNode", 
@@ -92,10 +93,11 @@ content-type: application/json; charset=utf-8
             ] 
           }, 
           "outVariable" : { 
-            "id" : 3, 
+            "id" : 4, 
             "name" : "3" 
           }, 
-          "canThrow" : false 
+          "canThrow" : false, 
+          "expressionType" : "simple" 
         }, 
         { 
           "type" : "FilterNode", 
@@ -106,7 +108,7 @@ content-type: application/json; charset=utf-8
           "estimatedCost" : 41, 
           "estimatedNrItems" : 10, 
           "inVariable" : { 
-            "id" : 3, 
+            "id" : 4, 
             "name" : "3" 
           } 
         }, 
@@ -133,7 +135,8 @@ content-type: application/json; charset=utf-8
             "id" : 2, 
             "name" : "name" 
           }, 
-          "canThrow" : false 
+          "canThrow" : false, 
+          "expressionType" : "attribute" 
         }, 
         { 
           "type" : "CalculationNode", 
@@ -155,10 +158,11 @@ content-type: application/json; charset=utf-8
             ] 
           }, 
           "outVariable" : { 
-            "id" : 4, 
-            "name" : "4" 
+            "id" : 6, 
+            "name" : "5" 
           }, 
-          "canThrow" : false 
+          "canThrow" : false, 
+          "expressionType" : "attribute" 
         }, 
         { 
           "type" : "LimitNode", 
@@ -197,11 +201,11 @@ content-type: application/json; charset=utf-8
       ], 
       "variables" : [ 
         { 
-          "id" : 4, 
-          "name" : "4" 
+          "id" : 6, 
+          "name" : "5" 
         }, 
         { 
-          "id" : 3, 
+          "id" : 4, 
           "name" : "3" 
         }, 
         { 
@@ -224,7 +228,7 @@ content-type: application/json; charset=utf-8
   "warnings" : [ ], 
   "stats" : { 
     "rulesExecuted" : 4, 
-    "rulesSkipped" : 28, 
+    "rulesSkipped" : 30, 
     "plansCreated" : 1 
   }, 
   "error" : false, 

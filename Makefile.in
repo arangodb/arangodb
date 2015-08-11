@@ -168,19 +168,14 @@ noinst_PROGRAMS = $(am__EXEEXT_1)
 @ENABLE_READLINE_TRUE@am__append_3 = \
 @ENABLE_READLINE_TRUE@	lib/Utilities/ReadlineShell.cpp
 
-@ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@am__append_4 = \
-@ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@	lib/Utilities/LinenoiseShell.cpp \
-@ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@	3rdParty/linenoise/linenoise.c \
-@ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@	3rdParty/linenoise/utf8.c
+@ENABLE_READLINE_FALSE@am__append_4 = \
+@ENABLE_READLINE_FALSE@	lib/Utilities/DummyShell.cpp 
 
-@ENABLE_LINENOISE_FALSE@@ENABLE_READLINE_FALSE@am__append_5 = \
-@ENABLE_LINENOISE_FALSE@@ENABLE_READLINE_FALSE@	lib/Utilities/DummyShell.cpp 
-
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_6 = \
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_5 = \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Aql/grammar.h \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Aql/grammar.cpp
 
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_7 = UnitTests/basics_suite UnitTests/geo_suite
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_6 = UnitTests/basics_suite UnitTests/geo_suite
 @ENABLE_MAINTAINER_MODE_FALSE@UnitTests_basics_suite_DEPENDENCIES =
 @ENABLE_MAINTAINER_MODE_FALSE@UnitTests_geo_suite_DEPENDENCIES =
 
@@ -199,7 +194,7 @@ noinst_PROGRAMS = $(am__EXEEXT_1)
 ################################################################################
 ### @brief mimetypes file
 ################################################################################
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_8 = @top_srcdir@/lib/Basics/voc-errors.h \
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_7 = @top_srcdir@/lib/Basics/voc-errors.h \
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/lib/Basics/voc-errors.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/js/common/bootstrap/errors.js \
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/lib/Basics/voc-mimetypes.h \
@@ -217,7 +212,7 @@ noinst_PROGRAMS = $(am__EXEEXT_1)
 ################################################################################
 ### @brief generate readme
 ################################################################################
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_9 = README
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_8 = README
 
 ################################################################################
 ### @brief generate all flex files
@@ -226,14 +221,14 @@ noinst_PROGRAMS = $(am__EXEEXT_1)
 ################################################################################
 ### @brief generate all bison files
 ################################################################################
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_10 = $(FLEX_FILES) \
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_9 = $(FLEX_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(FLEXXX_FILES) $(BISON_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(BISONXX_FILES)
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_11 = clean-etcd
+@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_10 = clean-etcd
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -246,7 +241,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/configure.coverage \
 	$(top_srcdir)/m4/configure.maintainer \
 	$(top_srcdir)/m4/clock_gettime $(top_srcdir)/m4/external.math \
-	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
 	$(top_srcdir)/m4/configure.information \
 	$(top_srcdir)/configure.ac
@@ -371,7 +365,6 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/Utils/arangod_libarangod_a-TransactionContext.$(OBJEXT) \
 	arangod/Utils/arangod_libarangod_a-V8TransactionContext.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-ApplicationV8.$(OBJEXT) \
-	arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-V8Job.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-V8PeriodicTask.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-V8QueueJob.$(OBJEXT) \
@@ -383,6 +376,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/V8Server/arangod_libarangod_a-v8-dispatcher.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-v8-query.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-v8-replication.$(OBJEXT) \
+	arangod/V8Server/arangod_libarangod_a-v8-shape-conv.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-v8-vocbase.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-v8-vocindex.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-v8-voccursor.$(OBJEXT) \
@@ -400,15 +394,19 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/VocBase/arangod_libarangod_a-edge-collection.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-headers.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-KeyGenerator.$(OBJEXT) \
+	arangod/VocBase/arangod_libarangod_a-Legends.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-replication-applier.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-replication-common.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-replication-dump.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-replication-master.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-server.$(OBJEXT) \
+	arangod/VocBase/arangod_libarangod_a-shape-accessor.$(OBJEXT) \
+	arangod/VocBase/arangod_libarangod_a-shaped-json.$(OBJEXT) \
+	arangod/VocBase/arangod_libarangod_a-Shaper.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-transaction.$(OBJEXT) \
-	arangod/VocBase/arangod_libarangod_a-voc-shaper.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-vocbase.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-vocbase-defaults.$(OBJEXT) \
+	arangod/VocBase/arangod_libarangod_a-VocShaper.$(OBJEXT) \
 	arangod/Wal/arangod_libarangod_a-AllocatorThread.$(OBJEXT) \
 	arangod/Wal/arangod_libarangod_a-CollectorThread.$(OBJEXT) \
 	arangod/Wal/arangod_libarangod_a-LogfileManager.$(OBJEXT) \
@@ -426,36 +424,36 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/application-exit.cpp \
 	lib/Basics/associative.cpp lib/Basics/Barrier.cpp \
 	lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ConditionVariable.cpp lib/Basics/conversions.cpp \
-	lib/Basics/csv.cpp lib/Basics/debugging.cpp \
-	lib/Basics/error.cpp lib/Basics/Exceptions.cpp \
-	lib/Basics/fasthash.cpp lib/Basics/files.cpp \
-	lib/Basics/FileUtils.cpp lib/Basics/fpconv.cpp \
-	lib/Basics/hashes.cpp lib/Basics/init.cpp \
-	lib/Basics/InitialiseBasics.cpp lib/Basics/json.cpp \
-	lib/Basics/json-utilities.cpp lib/Basics/JsonHelper.cpp \
-	lib/Basics/levenshtein.cpp lib/Basics/locks-macos.cpp \
-	lib/Basics/locks-posix.cpp lib/Basics/logging.cpp \
-	lib/Basics/memory.cpp lib/Basics/memory-map-posix.cpp \
-	lib/Basics/mimetypes.cpp lib/Basics/Mutex.cpp \
-	lib/Basics/MutexLocker.cpp lib/Basics/Nonce.cpp \
-	lib/Basics/prime-numbers.cpp lib/Basics/process-utils.cpp \
-	lib/Basics/ProgramOptions.cpp \
+	lib/Basics/csv.cpp lib/Basics/DataProtector.cpp \
+	lib/Basics/debugging.cpp lib/Basics/error.cpp \
+	lib/Basics/Exceptions.cpp lib/Basics/fasthash.cpp \
+	lib/Basics/files.cpp lib/Basics/FileUtils.cpp \
+	lib/Basics/fpconv.cpp lib/Basics/hashes.cpp \
+	lib/Basics/init.cpp lib/Basics/InitialiseBasics.cpp \
+	lib/Basics/json.cpp lib/Basics/json-utilities.cpp \
+	lib/Basics/JsonHelper.cpp lib/Basics/levenshtein.cpp \
+	lib/Basics/locks-macos.cpp lib/Basics/locks-posix.cpp \
+	lib/Basics/logging.cpp lib/Basics/memory.cpp \
+	lib/Basics/memory-map-posix.cpp lib/Basics/mimetypes.cpp \
+	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
+	lib/Basics/Nonce.cpp lib/Basics/prime-numbers.cpp \
+	lib/Basics/process-utils.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/random.cpp \
 	lib/Basics/RandomGenerator.cpp lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp lib/Basics/ReadWriteLock.cpp \
-	lib/Basics/skip-list.cpp lib/Basics/socket-utils.cpp \
+	lib/Basics/SkipList.cpp lib/Basics/socket-utils.cpp \
+	lib/Basics/SpinLock.cpp lib/Basics/SpinLocker.cpp \
 	lib/Basics/ssl-helper.cpp lib/Basics/string-buffer.cpp \
 	lib/Basics/StringUtils.cpp lib/Basics/structures.cpp \
 	lib/Basics/system-functions.cpp \
 	lib/Basics/terminal-utils-posix.cpp \
 	lib/Basics/terminal-utils.cpp lib/Basics/Thread.cpp \
 	lib/Basics/ThreadPool.cpp lib/Basics/threads-posix.cpp \
-	lib/Basics/Timing.cpp lib/Basics/tri-strings.cpp \
-	lib/Basics/tri-zip.cpp lib/Basics/Utf8Helper.cpp \
-	lib/Basics/vector.cpp lib/Basics/voc-errors.cpp \
-	lib/Basics/voc-mimetypes.cpp lib/Basics/WriteLocker.cpp \
-	lib/Basics/WriteUnlocker.cpp lib/Basics/xxhash.cpp \
-	lib/JsonParser/json-parser.cpp \
+	lib/Basics/tri-strings.cpp lib/Basics/tri-zip.cpp \
+	lib/Basics/Utf8Helper.cpp lib/Basics/vector.cpp \
+	lib/Basics/voc-errors.cpp lib/Basics/voc-mimetypes.cpp \
+	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
+	lib/Basics/xxhash.cpp lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
 	lib/Rest/EndpointIp.cpp lib/Rest/EndpointIpV4.cpp \
@@ -463,22 +461,14 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/application-exit.cpp \
 	lib/Rest/Handler.cpp lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpResponse.cpp lib/Rest/InitialiseRest.cpp \
 	lib/Rest/SslInterface.cpp lib/Rest/Version.cpp \
-	lib/ShapedJson/Legends.cpp lib/ShapedJson/json-shaper.cpp \
-	lib/ShapedJson/shape-accessor.cpp \
-	lib/ShapedJson/shaped-json.cpp lib/Statistics/statistics.cpp \
-	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
+	lib/Statistics/statistics.cpp lib/Utilities/LineEditor.cpp \
+	lib/Utilities/ScriptLoader.cpp \
 	lib/Utilities/ShellImplFactory.cpp \
 	lib/Utilities/ShellImplementation.cpp lib/Zip/ioapi.cpp \
 	lib/Zip/unzip.cpp lib/Zip/zip.cpp \
-	lib/Utilities/ReadlineShell.cpp \
-	lib/Utilities/LinenoiseShell.cpp \
-	3rdParty/linenoise/linenoise.c 3rdParty/linenoise/utf8.c \
-	lib/Utilities/DummyShell.cpp
+	lib/Utilities/ReadlineShell.cpp lib/Utilities/DummyShell.cpp
 @ENABLE_READLINE_TRUE@am__objects_1 = lib/Utilities/lib_libarango_a-ReadlineShell.$(OBJEXT)
-@ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@am__objects_2 = lib/Utilities/lib_libarango_a-LinenoiseShell.$(OBJEXT) \
-@ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@	3rdParty/linenoise/lib_libarango_a-linenoise.$(OBJEXT) \
-@ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@	3rdParty/linenoise/lib_libarango_a-utf8.$(OBJEXT)
-@ENABLE_LINENOISE_FALSE@@ENABLE_READLINE_FALSE@am__objects_3 = lib/Utilities/lib_libarango_a-DummyShell.$(OBJEXT)
+@ENABLE_READLINE_FALSE@am__objects_2 = lib/Utilities/lib_libarango_a-DummyShell.$(OBJEXT)
 am_lib_libarango_a_OBJECTS =  \
 	lib/Basics/lib_libarango_a-application-exit.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-associative.$(OBJEXT) \
@@ -487,6 +477,7 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Basics/lib_libarango_a-ConditionVariable.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-conversions.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-csv.$(OBJEXT) \
+	lib/Basics/lib_libarango_a-DataProtector.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-debugging.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-error.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-Exceptions.$(OBJEXT) \
@@ -519,8 +510,10 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Basics/lib_libarango_a-ReadLocker.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-ReadUnlocker.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-ReadWriteLock.$(OBJEXT) \
-	lib/Basics/lib_libarango_a-skip-list.$(OBJEXT) \
+	lib/Basics/lib_libarango_a-SkipList.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-socket-utils.$(OBJEXT) \
+	lib/Basics/lib_libarango_a-SpinLock.$(OBJEXT) \
+	lib/Basics/lib_libarango_a-SpinLocker.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-ssl-helper.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-string-buffer.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-StringUtils.$(OBJEXT) \
@@ -531,7 +524,6 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Basics/lib_libarango_a-Thread.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-ThreadPool.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-threads-posix.$(OBJEXT) \
-	lib/Basics/lib_libarango_a-Timing.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-tri-strings.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-tri-zip.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-Utf8Helper.$(OBJEXT) \
@@ -556,10 +548,6 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Rest/lib_libarango_a-InitialiseRest.$(OBJEXT) \
 	lib/Rest/lib_libarango_a-SslInterface.$(OBJEXT) \
 	lib/Rest/lib_libarango_a-Version.$(OBJEXT) \
-	lib/ShapedJson/lib_libarango_a-Legends.$(OBJEXT) \
-	lib/ShapedJson/lib_libarango_a-json-shaper.$(OBJEXT) \
-	lib/ShapedJson/lib_libarango_a-shape-accessor.$(OBJEXT) \
-	lib/ShapedJson/lib_libarango_a-shaped-json.$(OBJEXT) \
 	lib/Statistics/lib_libarango_a-statistics.$(OBJEXT) \
 	lib/Utilities/lib_libarango_a-LineEditor.$(OBJEXT) \
 	lib/Utilities/lib_libarango_a-ScriptLoader.$(OBJEXT) \
@@ -568,7 +556,7 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Zip/lib_libarango_a-ioapi.$(OBJEXT) \
 	lib/Zip/lib_libarango_a-unzip.$(OBJEXT) \
 	lib/Zip/lib_libarango_a-zip.$(OBJEXT) $(am__objects_1) \
-	$(am__objects_2) $(am__objects_3)
+	$(am__objects_2)
 lib_libarango_a_OBJECTS = $(am_lib_libarango_a_OBJECTS)
 lib_libarango_client_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_client_a_LIBADD =
@@ -641,9 +629,11 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" \
 	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" \
-	"$(DESTDIR)$(pkgdataJS1dir)" "$(DESTDIR)$(pkgdataJS2dir)" \
-	"$(DESTDIR)$(pkgdataJS3dir)" "$(DESTDIR)$(pkgdataJS4dir)" \
-	"$(DESTDIR)$(pkgdataJS5dir)"
+	"$(DESTDIR)$(pkgdataJS01dir)" "$(DESTDIR)$(pkgdataJS02dir)" \
+	"$(DESTDIR)$(pkgdataJS03dir)" "$(DESTDIR)$(pkgdataJS04dir)" \
+	"$(DESTDIR)$(pkgdataJS05dir)" "$(DESTDIR)$(pkgdataJS06dir)" \
+	"$(DESTDIR)$(pkgdataJS07dir)" "$(DESTDIR)$(pkgdataJS08dir)" \
+	"$(DESTDIR)$(pkgdataJS09dir)" "$(DESTDIR)$(pkgdataJS10dir)"
 @ENABLE_MAINTAINER_MODE_TRUE@am__EXEEXT_1 =  \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/basics_suite$(EXEEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/geo_suite$(EXEEXT)
@@ -657,7 +647,6 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Basics/Runner.cpp \
 	UnitTests/Basics/hashes-test.cpp \
 	UnitTests/Basics/associative-pointer-test.cpp \
 	UnitTests/Basics/associative-multi-pointer-test.cpp \
-	UnitTests/Basics/associative-synced-test.cpp \
 	UnitTests/Basics/skiplist-test.cpp \
 	UnitTests/Basics/priorityqueue-test.cpp \
 	UnitTests/Basics/string-buffer-test.cpp \
@@ -680,7 +669,6 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Basics/Runner.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-hashes-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-pointer-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-skiplist-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-buffer-test.$(OBJEXT) \
@@ -787,18 +775,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
-	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-AM_V_CC = $(am__v_CC_@AM_V@)
-am__v_CC_ = $(am__v_CC_@AM_DEFAULT_V@)
-am__v_CC_0 = @echo "  CC      " $@;
-am__v_CC_1 = 
-CCLD = $(CC)
-LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-AM_V_CCLD = $(am__v_CCLD_@AM_V@)
-am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
-am__v_CCLD_0 = @echo "  CCLD    " $@;
-am__v_CCLD_1 = 
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
 AM_V_CXX = $(am__v_CXX_@AM_V@)
@@ -839,9 +815,11 @@ man8dir = $(mandir)/man8
 NROFF = nroff
 MANS = $(dist_man_MANS)
 DATA = $(arangosysconf_DATA) $(nobase_pkgdata_DATA) \
-	$(nobase_pkgdataJS1_DATA) $(nobase_pkgdataJS2_DATA) \
-	$(nobase_pkgdataJS3_DATA) $(nobase_pkgdataJS4_DATA) \
-	$(nobase_pkgdataJS5_DATA)
+	$(nobase_pkgdataJS01_DATA) $(nobase_pkgdataJS02_DATA) \
+	$(nobase_pkgdataJS03_DATA) $(nobase_pkgdataJS04_DATA) \
+	$(nobase_pkgdataJS05_DATA) $(nobase_pkgdataJS06_DATA) \
+	$(nobase_pkgdataJS07_DATA) $(nobase_pkgdataJS08_DATA) \
+	$(nobase_pkgdataJS09_DATA) $(nobase_pkgdataJS10_DATA)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -906,6 +884,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BISON = @BISON@
+BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
+BOOST_VERSION = @BOOST_VERSION@
 BUILD_H = @BUILD_H@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -1091,9 +1071,9 @@ BUILT_SOURCES = build.h etc/arangodb/arango-dfdb$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangorestore$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangosh$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/foxx-manager$(PROGRAM_SUFFIX).conf \
-	$(am__append_8) $(JAVASCRIPT_BROWSER) \
-	@builddir@/.setup-js-directories $(am__append_9) \
-	$(am__append_10) @LIBEV_LIBS@ @V8_LIBS@ @ZLIB_LIBS@
+	$(am__append_7) $(JAVASCRIPT_BROWSER) \
+	@builddir@/.setup-js-directories $(am__append_8) \
+	$(am__append_9) @LIBEV_LIBS@ @V8_LIBS@ @ZLIB_LIBS@
 
 ################################################################################
 ### @brief man pages to install
@@ -1111,7 +1091,7 @@ dist_man_MANS = Documentation/man/man1/arangob.1 \
 ################################################################################
 ### @brief files to cleanup
 ################################################################################
-CLEANUP = $(am__append_2) $(am__append_6)
+CLEANUP = $(am__append_2) $(am__append_5)
 
 ################################################################################
 ### @brief targets for cleanup of 3rd party libraries
@@ -1128,7 +1108,7 @@ CLEANUP = $(am__append_2) $(am__append_6)
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-CLEANUP_3RD = clean-libev clean-v8 clean-zlib $(am__append_11)
+CLEANUP_3RD = clean-libev clean-v8 clean-zlib $(am__append_10)
 
 ################################################################################
 ### @brief flex files
@@ -1207,6 +1187,7 @@ AM_CPPFLAGS = \
 	-D_SYSCONFDIR_='"${TRI_SYSCONFDIR}"' \
 	-I@top_srcdir@/lib \
 	-I@top_builddir@/lib \
+	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
@@ -1265,16 +1246,26 @@ arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*$(PROGRAM_SUFF
 ### @brief /share data
 ################################################################################
 JS_FILE_LIST = $(shell @srcdir@/Installation/file-list-js.sh @srcdir@)
-pkgdataJS1dir = $(datadir)/arangodb
-pkgdataJS2dir = $(datadir)/arangodb
-pkgdataJS3dir = $(datadir)/arangodb
-pkgdataJS4dir = $(datadir)/arangodb
-pkgdataJS5dir = $(datadir)/arangodb
-nobase_pkgdataJS1_DATA = $(wordlist    1,   1000, $(JS_FILE_LIST))
-nobase_pkgdataJS2_DATA = $(wordlist 1001,   2000, $(JS_FILE_LIST))
-nobase_pkgdataJS3_DATA = $(wordlist 2001,   3000, $(JS_FILE_LIST))
-nobase_pkgdataJS4_DATA = $(wordlist 3001,   4000, $(JS_FILE_LIST))
-nobase_pkgdataJS5_DATA = $(wordlist 4001, 100000, $(JS_FILE_LIST))
+pkgdataJS01dir = $(datadir)/arangodb
+pkgdataJS02dir = $(datadir)/arangodb
+pkgdataJS03dir = $(datadir)/arangodb
+pkgdataJS04dir = $(datadir)/arangodb
+pkgdataJS05dir = $(datadir)/arangodb
+pkgdataJS06dir = $(datadir)/arangodb
+pkgdataJS07dir = $(datadir)/arangodb
+pkgdataJS08dir = $(datadir)/arangodb
+pkgdataJS09dir = $(datadir)/arangodb
+pkgdataJS10dir = $(datadir)/arangodb
+nobase_pkgdataJS01_DATA = $(wordlist    1,   1000, $(JS_FILE_LIST))
+nobase_pkgdataJS02_DATA = $(wordlist 1001,   2000, $(JS_FILE_LIST))
+nobase_pkgdataJS03_DATA = $(wordlist 2001,   3000, $(JS_FILE_LIST))
+nobase_pkgdataJS04_DATA = $(wordlist 3001,   4000, $(JS_FILE_LIST))
+nobase_pkgdataJS05_DATA = $(wordlist 4001,   5000, $(JS_FILE_LIST))
+nobase_pkgdataJS06_DATA = $(wordlist 5001,   6000, $(JS_FILE_LIST))
+nobase_pkgdataJS07_DATA = $(wordlist 6001,   7000, $(JS_FILE_LIST))
+nobase_pkgdataJS08_DATA = $(wordlist 7001,   8000, $(JS_FILE_LIST))
+nobase_pkgdataJS09_DATA = $(wordlist 8001,   9000, $(JS_FILE_LIST))
+nobase_pkgdataJS10_DATA = $(wordlist 9001, 100000, $(JS_FILE_LIST))
 nobase_pkgdata_DATA = 
 lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
@@ -1283,36 +1274,36 @@ lib_libarango_a_SOURCES = lib/Basics/application-exit.cpp \
 	lib/Basics/associative.cpp lib/Basics/Barrier.cpp \
 	lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ConditionVariable.cpp lib/Basics/conversions.cpp \
-	lib/Basics/csv.cpp lib/Basics/debugging.cpp \
-	lib/Basics/error.cpp lib/Basics/Exceptions.cpp \
-	lib/Basics/fasthash.cpp lib/Basics/files.cpp \
-	lib/Basics/FileUtils.cpp lib/Basics/fpconv.cpp \
-	lib/Basics/hashes.cpp lib/Basics/init.cpp \
-	lib/Basics/InitialiseBasics.cpp lib/Basics/json.cpp \
-	lib/Basics/json-utilities.cpp lib/Basics/JsonHelper.cpp \
-	lib/Basics/levenshtein.cpp lib/Basics/locks-macos.cpp \
-	lib/Basics/locks-posix.cpp lib/Basics/logging.cpp \
-	lib/Basics/memory.cpp lib/Basics/memory-map-posix.cpp \
-	lib/Basics/mimetypes.cpp lib/Basics/Mutex.cpp \
-	lib/Basics/MutexLocker.cpp lib/Basics/Nonce.cpp \
-	lib/Basics/prime-numbers.cpp lib/Basics/process-utils.cpp \
-	lib/Basics/ProgramOptions.cpp \
+	lib/Basics/csv.cpp lib/Basics/DataProtector.cpp \
+	lib/Basics/debugging.cpp lib/Basics/error.cpp \
+	lib/Basics/Exceptions.cpp lib/Basics/fasthash.cpp \
+	lib/Basics/files.cpp lib/Basics/FileUtils.cpp \
+	lib/Basics/fpconv.cpp lib/Basics/hashes.cpp \
+	lib/Basics/init.cpp lib/Basics/InitialiseBasics.cpp \
+	lib/Basics/json.cpp lib/Basics/json-utilities.cpp \
+	lib/Basics/JsonHelper.cpp lib/Basics/levenshtein.cpp \
+	lib/Basics/locks-macos.cpp lib/Basics/locks-posix.cpp \
+	lib/Basics/logging.cpp lib/Basics/memory.cpp \
+	lib/Basics/memory-map-posix.cpp lib/Basics/mimetypes.cpp \
+	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
+	lib/Basics/Nonce.cpp lib/Basics/prime-numbers.cpp \
+	lib/Basics/process-utils.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/random.cpp \
 	lib/Basics/RandomGenerator.cpp lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp lib/Basics/ReadWriteLock.cpp \
-	lib/Basics/skip-list.cpp lib/Basics/socket-utils.cpp \
+	lib/Basics/SkipList.cpp lib/Basics/socket-utils.cpp \
+	lib/Basics/SpinLock.cpp lib/Basics/SpinLocker.cpp \
 	lib/Basics/ssl-helper.cpp lib/Basics/string-buffer.cpp \
 	lib/Basics/StringUtils.cpp lib/Basics/structures.cpp \
 	lib/Basics/system-functions.cpp \
 	lib/Basics/terminal-utils-posix.cpp \
 	lib/Basics/terminal-utils.cpp lib/Basics/Thread.cpp \
 	lib/Basics/ThreadPool.cpp lib/Basics/threads-posix.cpp \
-	lib/Basics/Timing.cpp lib/Basics/tri-strings.cpp \
-	lib/Basics/tri-zip.cpp lib/Basics/Utf8Helper.cpp \
-	lib/Basics/vector.cpp lib/Basics/voc-errors.cpp \
-	lib/Basics/voc-mimetypes.cpp lib/Basics/WriteLocker.cpp \
-	lib/Basics/WriteUnlocker.cpp lib/Basics/xxhash.cpp \
-	lib/JsonParser/json-parser.cpp \
+	lib/Basics/tri-strings.cpp lib/Basics/tri-zip.cpp \
+	lib/Basics/Utf8Helper.cpp lib/Basics/vector.cpp \
+	lib/Basics/voc-errors.cpp lib/Basics/voc-mimetypes.cpp \
+	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
+	lib/Basics/xxhash.cpp lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
 	lib/Rest/EndpointIp.cpp lib/Rest/EndpointIpV4.cpp \
@@ -1320,14 +1311,12 @@ lib_libarango_a_SOURCES = lib/Basics/application-exit.cpp \
 	lib/Rest/Handler.cpp lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpResponse.cpp lib/Rest/InitialiseRest.cpp \
 	lib/Rest/SslInterface.cpp lib/Rest/Version.cpp \
-	lib/ShapedJson/Legends.cpp lib/ShapedJson/json-shaper.cpp \
-	lib/ShapedJson/shape-accessor.cpp \
-	lib/ShapedJson/shaped-json.cpp lib/Statistics/statistics.cpp \
-	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
+	lib/Statistics/statistics.cpp lib/Utilities/LineEditor.cpp \
+	lib/Utilities/ScriptLoader.cpp \
 	lib/Utilities/ShellImplFactory.cpp \
 	lib/Utilities/ShellImplementation.cpp lib/Zip/ioapi.cpp \
 	lib/Zip/unzip.cpp lib/Zip/zip.cpp $(am__append_3) \
-	$(am__append_4) $(am__append_5)
+	$(am__append_4)
 
 ################################################################################
 ### @brief library "libarango.a", client part
@@ -1510,7 +1499,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Utils/TransactionContext.cpp \
 	arangod/Utils/V8TransactionContext.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
-	arangod/V8Server/V8DispatcherThread.cpp \
 	arangod/V8Server/V8Job.cpp \
 	arangod/V8Server/V8PeriodicTask.cpp \
 	arangod/V8Server/V8QueueJob.cpp \
@@ -1522,6 +1510,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/v8-dispatcher.cpp \
 	arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-replication.cpp \
+	arangod/V8Server/v8-shape-conv.cpp \
 	arangod/V8Server/v8-vocbase.cpp \
 	arangod/V8Server/v8-vocindex.cpp \
 	arangod/V8Server/v8-voccursor.cpp \
@@ -1539,15 +1528,19 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/edge-collection.cpp \
 	arangod/VocBase/headers.cpp \
 	arangod/VocBase/KeyGenerator.cpp \
+	arangod/VocBase/Legends.cpp \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \
 	arangod/VocBase/replication-dump.cpp \
 	arangod/VocBase/replication-master.cpp \
 	arangod/VocBase/server.cpp \
+	arangod/VocBase/shape-accessor.cpp \
+	arangod/VocBase/shaped-json.cpp \
+	arangod/VocBase/Shaper.cpp \
 	arangod/VocBase/transaction.cpp \
-	arangod/VocBase/voc-shaper.cpp \
 	arangod/VocBase/vocbase.cpp \
 	arangod/VocBase/vocbase-defaults.cpp \
+	arangod/VocBase/VocShaper.cpp \
 	arangod/Wal/AllocatorThread.cpp \
 	arangod/Wal/CollectorThread.cpp \
 	arangod/Wal/LogfileManager.cpp \
@@ -1716,6 +1709,7 @@ SERVER_OPT := \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
+	--log.level error \
         --wal.reserve-logfiles 1 \
 	--server.threads 4 \
 	$(SERVER_START)
@@ -1723,10 +1717,11 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
+	--log.level error \
 	--no-colors \
 	--quiet
 
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_srcdir@/lib @ICU_CPPFLAGS@
+@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_srcdir@/lib @ICU_CPPFLAGS@ @BOOST_CPPFLAGS@
 @ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework @ICU_LDFLAGS@
 @ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 @ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_SOURCES = \
@@ -1740,7 +1735,6 @@ CLIENT_OPT := \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/hashes-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/associative-pointer-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/associative-multi-pointer-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/associative-synced-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/skiplist-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/priorityqueue-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/string-buffer-test.cpp \
@@ -1754,7 +1748,7 @@ CLIENT_OPT := \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/StringBufferTest.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/StringUtilsTest.cpp
 
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib
+@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib @BOOST_CPPFLAGS@
 @ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
 @ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 @ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_SOURCES = \
@@ -1816,7 +1810,8 @@ SHELL_COMMON = \
 ### @brief SHELL SERVER TESTS (BASICS)
 ################################################################################
 SHELL_SERVER_ONLY = \
-               @top_srcdir@/js/server/tests/shell-readonly-noncluster-disabled.js\
+               @top_srcdir@/js/server/tests/shell-readonly-noncluster-disabled.js \
+               @top_srcdir@/js/server/tests/shell-collection-not-loaded-timecritical-noncluster.js \
                @top_srcdir@/js/server/tests/shell-wal-noncluster-memoryintense.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster-timecritical.js \
@@ -1854,6 +1849,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-call-apply.js \
 			@top_srcdir@/js/server/tests/aql-complex.js \
 			@top_srcdir@/js/server/tests/aql-cross.js \
+			@top_srcdir@/js/server/tests/aql-distinct.js \
 			@top_srcdir@/js/server/tests/aql-dynamic-attributes.js \
 			@top_srcdir@/js/server/tests/aql-edges-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-escaping.js \
@@ -1916,12 +1912,13 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-queries-optimiser-sort-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-simple.js \
 			@top_srcdir@/js/server/tests/aql-queries-variables.js \
-			@top_srcdir@/js/server/tests/aql-query-cache.js \
+			@top_srcdir@/js/server/tests/aql-query-cache-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-range.js \
 			@top_srcdir@/js/server/tests/aql-ranges.js \
 			@top_srcdir@/js/server/tests/aql-refaccess-attribute.js \
 			@top_srcdir@/js/server/tests/aql-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/aql-relational.js \
+			@top_srcdir@/js/server/tests/aql-simple-attributes.js \
 			@top_srcdir@/js/server/tests/aql-skiplist-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-subquery.js \
 			@top_srcdir@/js/server/tests/aql-ternary.js \
@@ -2053,7 +2050,7 @@ all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .cpp .o .obj
+.SUFFIXES: .cpp .o .obj
 am--refresh: Makefile
 	@:
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.libev $(srcdir)/3rdParty/Makefile.v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd $(am__configure_deps)
@@ -2497,9 +2494,6 @@ arangod/V8Server/$(DEPDIR)/$(am__dirstamp):
 arangod/V8Server/arangod_libarangod_a-ApplicationV8.$(OBJEXT):  \
 	arangod/V8Server/$(am__dirstamp) \
 	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
-arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.$(OBJEXT):  \
-	arangod/V8Server/$(am__dirstamp) \
-	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
 arangod/V8Server/arangod_libarangod_a-V8Job.$(OBJEXT):  \
 	arangod/V8Server/$(am__dirstamp) \
 	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
@@ -2531,6 +2525,9 @@ arangod/V8Server/arangod_libarangod_a-v8-query.$(OBJEXT):  \
 	arangod/V8Server/$(am__dirstamp) \
 	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
 arangod/V8Server/arangod_libarangod_a-v8-replication.$(OBJEXT):  \
+	arangod/V8Server/$(am__dirstamp) \
+	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
+arangod/V8Server/arangod_libarangod_a-v8-shape-conv.$(OBJEXT):  \
 	arangod/V8Server/$(am__dirstamp) \
 	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
 arangod/V8Server/arangod_libarangod_a-v8-vocbase.$(OBJEXT):  \
@@ -2590,6 +2587,9 @@ arangod/VocBase/arangod_libarangod_a-headers.$(OBJEXT):  \
 arangod/VocBase/arangod_libarangod_a-KeyGenerator.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/arangod_libarangod_a-Legends.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-replication-applier.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -2605,16 +2605,25 @@ arangod/VocBase/arangod_libarangod_a-replication-master.$(OBJEXT):  \
 arangod/VocBase/arangod_libarangod_a-server.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/arangod_libarangod_a-transaction.$(OBJEXT):  \
+arangod/VocBase/arangod_libarangod_a-shape-accessor.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/arangod_libarangod_a-voc-shaper.$(OBJEXT):  \
+arangod/VocBase/arangod_libarangod_a-shaped-json.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/arangod_libarangod_a-Shaper.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/arangod_libarangod_a-transaction.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-vocbase.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-vocbase-defaults.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/arangod_libarangod_a-VocShaper.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/Wal/$(am__dirstamp):
@@ -2686,6 +2695,9 @@ lib/Basics/lib_libarango_a-conversions.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-csv.$(OBJEXT): lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/lib_libarango_a-DataProtector.$(OBJEXT):  \
+	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-debugging.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
@@ -2781,10 +2793,16 @@ lib/Basics/lib_libarango_a-ReadUnlocker.$(OBJEXT):  \
 lib/Basics/lib_libarango_a-ReadWriteLock.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
-lib/Basics/lib_libarango_a-skip-list.$(OBJEXT):  \
+lib/Basics/lib_libarango_a-SkipList.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-socket-utils.$(OBJEXT):  \
+	lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/lib_libarango_a-SpinLock.$(OBJEXT):  \
+	lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/lib_libarango_a-SpinLocker.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-ssl-helper.$(OBJEXT):  \
@@ -2815,9 +2833,6 @@ lib/Basics/lib_libarango_a-ThreadPool.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-threads-posix.$(OBJEXT):  \
-	lib/Basics/$(am__dirstamp) \
-	lib/Basics/$(DEPDIR)/$(am__dirstamp)
-lib/Basics/lib_libarango_a-Timing.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-tri-strings.$(OBJEXT):  \
@@ -2897,24 +2912,6 @@ lib/Rest/lib_libarango_a-SslInterface.$(OBJEXT):  \
 	lib/Rest/$(am__dirstamp) lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/lib_libarango_a-Version.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
-lib/ShapedJson/$(am__dirstamp):
-	@$(MKDIR_P) lib/ShapedJson
-	@: > lib/ShapedJson/$(am__dirstamp)
-lib/ShapedJson/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) lib/ShapedJson/$(DEPDIR)
-	@: > lib/ShapedJson/$(DEPDIR)/$(am__dirstamp)
-lib/ShapedJson/lib_libarango_a-Legends.$(OBJEXT):  \
-	lib/ShapedJson/$(am__dirstamp) \
-	lib/ShapedJson/$(DEPDIR)/$(am__dirstamp)
-lib/ShapedJson/lib_libarango_a-json-shaper.$(OBJEXT):  \
-	lib/ShapedJson/$(am__dirstamp) \
-	lib/ShapedJson/$(DEPDIR)/$(am__dirstamp)
-lib/ShapedJson/lib_libarango_a-shape-accessor.$(OBJEXT):  \
-	lib/ShapedJson/$(am__dirstamp) \
-	lib/ShapedJson/$(DEPDIR)/$(am__dirstamp)
-lib/ShapedJson/lib_libarango_a-shaped-json.$(OBJEXT):  \
-	lib/ShapedJson/$(am__dirstamp) \
-	lib/ShapedJson/$(DEPDIR)/$(am__dirstamp)
 lib/Statistics/$(am__dirstamp):
 	@$(MKDIR_P) lib/Statistics
 	@: > lib/Statistics/$(am__dirstamp)
@@ -2957,21 +2954,6 @@ lib/Zip/lib_libarango_a-zip.$(OBJEXT): lib/Zip/$(am__dirstamp) \
 lib/Utilities/lib_libarango_a-ReadlineShell.$(OBJEXT):  \
 	lib/Utilities/$(am__dirstamp) \
 	lib/Utilities/$(DEPDIR)/$(am__dirstamp)
-lib/Utilities/lib_libarango_a-LinenoiseShell.$(OBJEXT):  \
-	lib/Utilities/$(am__dirstamp) \
-	lib/Utilities/$(DEPDIR)/$(am__dirstamp)
-3rdParty/linenoise/$(am__dirstamp):
-	@$(MKDIR_P) 3rdParty/linenoise
-	@: > 3rdParty/linenoise/$(am__dirstamp)
-3rdParty/linenoise/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) 3rdParty/linenoise/$(DEPDIR)
-	@: > 3rdParty/linenoise/$(DEPDIR)/$(am__dirstamp)
-3rdParty/linenoise/lib_libarango_a-linenoise.$(OBJEXT):  \
-	3rdParty/linenoise/$(am__dirstamp) \
-	3rdParty/linenoise/$(DEPDIR)/$(am__dirstamp)
-3rdParty/linenoise/lib_libarango_a-utf8.$(OBJEXT):  \
-	3rdParty/linenoise/$(am__dirstamp) \
-	3rdParty/linenoise/$(DEPDIR)/$(am__dirstamp)
 lib/Utilities/lib_libarango_a-DummyShell.$(OBJEXT):  \
 	lib/Utilities/$(am__dirstamp) \
 	lib/Utilities/$(DEPDIR)/$(am__dirstamp)
@@ -3290,9 +3272,6 @@ UnitTests/Basics/UnitTests_basics_suite-associative-pointer-test.$(OBJEXT):  \
 UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-test.$(OBJEXT):  \
 	UnitTests/Basics/$(am__dirstamp) \
 	UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
-UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.$(OBJEXT):  \
-	UnitTests/Basics/$(am__dirstamp) \
-	UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Basics/UnitTests_basics_suite-skiplist-test.$(OBJEXT):  \
 	UnitTests/Basics/$(am__dirstamp) \
 	UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
@@ -3515,7 +3494,6 @@ uninstall-pkglibexecSCRIPTS:
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f 3rdParty/linenoise/*.$(OBJEXT)
 	-rm -f UnitTests/Basics/*.$(OBJEXT)
 	-rm -f UnitTests/Geo/*.$(OBJEXT)
 	-rm -f arangod/Actions/*.$(OBJEXT)
@@ -3546,7 +3524,6 @@ mostlyclean-compile:
 	-rm -f lib/ProgramOptions/*.$(OBJEXT)
 	-rm -f lib/Rest/*.$(OBJEXT)
 	-rm -f lib/Scheduler/*.$(OBJEXT)
-	-rm -f lib/ShapedJson/*.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/*.$(OBJEXT)
 	-rm -f lib/Statistics/*.$(OBJEXT)
 	-rm -f lib/Utilities/*.$(OBJEXT)
@@ -3556,15 +3533,12 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-linenoise.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-utf8.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-EndpointTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-Runner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-StringUtilsTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-associative-multi-pointer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-associative-pointer-test.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-associative-synced-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-conversions-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-csv-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-files-test.Po@am__quote@
@@ -3684,7 +3658,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-TransactionContext.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-V8TransactionContext.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-ApplicationV8.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Job.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8PeriodicTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8QueueJob.Po@am__quote@
@@ -3696,6 +3669,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-dispatcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-replication.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-shape-conv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-user-structures.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-vocbase.Po@am__quote@
@@ -3705,6 +3679,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-KeyGenerator.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Legends.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Shaper.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-VocShaper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-auth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-cleanup.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-collection.Po@am__quote@
@@ -3718,8 +3695,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-master.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-server.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shape-accessor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shaped-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-transaction.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-voc-shaper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-vocbase-defaults.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-vocbase.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Wal/$(DEPDIR)/arangod_libarangod_a-AllocatorThread.Po@am__quote@
@@ -3758,6 +3736,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-Barrier.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ConditionLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ConditionVariable.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-DataProtector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-Exceptions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-FileUtils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-InitialiseBasics.Po@am__quote@
@@ -3771,10 +3750,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ReadLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ReadUnlocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ReadWriteLock.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-SkipList.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLock.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-StringUtils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-Thread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ThreadPool.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-Timing.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-Utf8Helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-WriteLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-WriteUnlocker.Po@am__quote@
@@ -3801,7 +3782,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-prime-numbers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-process-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-random.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-skip-list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-socket-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ssl-helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-string-buffer.Po@am__quote@
@@ -3860,10 +3840,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/Task.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/TaskManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Scheduler/$(DEPDIR)/TimerTask.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/lib_libarango_a-Legends.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/lib_libarango_a-json-shaper.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shape-accessor.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shaped-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/ClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/ConnectionManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/GeneralClientConnection.Po@am__quote@
@@ -3873,7 +3849,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Statistics/$(DEPDIR)/lib_libarango_a-statistics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-DummyShell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ReadlineShell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ScriptLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplFactory.Po@am__quote@
@@ -3890,50 +3865,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Zip/$(DEPDIR)/lib_libarango_a-ioapi.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Zip/$(DEPDIR)/lib_libarango_a-unzip.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Zip/$(DEPDIR)/lib_libarango_a-zip.Po@am__quote@
-
-.c.o:
-@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
-@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ $<
-
-.c.obj:
-@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
-@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
-
-3rdParty/linenoise/lib_libarango_a-linenoise.o: 3rdParty/linenoise/linenoise.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT 3rdParty/linenoise/lib_libarango_a-linenoise.o -MD -MP -MF 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-linenoise.Tpo -c -o 3rdParty/linenoise/lib_libarango_a-linenoise.o `test -f '3rdParty/linenoise/linenoise.c' || echo '$(srcdir)/'`3rdParty/linenoise/linenoise.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-linenoise.Tpo 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-linenoise.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='3rdParty/linenoise/linenoise.c' object='3rdParty/linenoise/lib_libarango_a-linenoise.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o 3rdParty/linenoise/lib_libarango_a-linenoise.o `test -f '3rdParty/linenoise/linenoise.c' || echo '$(srcdir)/'`3rdParty/linenoise/linenoise.c
-
-3rdParty/linenoise/lib_libarango_a-linenoise.obj: 3rdParty/linenoise/linenoise.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT 3rdParty/linenoise/lib_libarango_a-linenoise.obj -MD -MP -MF 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-linenoise.Tpo -c -o 3rdParty/linenoise/lib_libarango_a-linenoise.obj `if test -f '3rdParty/linenoise/linenoise.c'; then $(CYGPATH_W) '3rdParty/linenoise/linenoise.c'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise/linenoise.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-linenoise.Tpo 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-linenoise.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='3rdParty/linenoise/linenoise.c' object='3rdParty/linenoise/lib_libarango_a-linenoise.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o 3rdParty/linenoise/lib_libarango_a-linenoise.obj `if test -f '3rdParty/linenoise/linenoise.c'; then $(CYGPATH_W) '3rdParty/linenoise/linenoise.c'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise/linenoise.c'; fi`
-
-3rdParty/linenoise/lib_libarango_a-utf8.o: 3rdParty/linenoise/utf8.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT 3rdParty/linenoise/lib_libarango_a-utf8.o -MD -MP -MF 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-utf8.Tpo -c -o 3rdParty/linenoise/lib_libarango_a-utf8.o `test -f '3rdParty/linenoise/utf8.c' || echo '$(srcdir)/'`3rdParty/linenoise/utf8.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-utf8.Tpo 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-utf8.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='3rdParty/linenoise/utf8.c' object='3rdParty/linenoise/lib_libarango_a-utf8.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o 3rdParty/linenoise/lib_libarango_a-utf8.o `test -f '3rdParty/linenoise/utf8.c' || echo '$(srcdir)/'`3rdParty/linenoise/utf8.c
-
-3rdParty/linenoise/lib_libarango_a-utf8.obj: 3rdParty/linenoise/utf8.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT 3rdParty/linenoise/lib_libarango_a-utf8.obj -MD -MP -MF 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-utf8.Tpo -c -o 3rdParty/linenoise/lib_libarango_a-utf8.obj `if test -f '3rdParty/linenoise/utf8.c'; then $(CYGPATH_W) '3rdParty/linenoise/utf8.c'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise/utf8.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-utf8.Tpo 3rdParty/linenoise/$(DEPDIR)/lib_libarango_a-utf8.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='3rdParty/linenoise/utf8.c' object='3rdParty/linenoise/lib_libarango_a-utf8.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o 3rdParty/linenoise/lib_libarango_a-utf8.obj `if test -f '3rdParty/linenoise/utf8.c'; then $(CYGPATH_W) '3rdParty/linenoise/utf8.c'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise/utf8.c'; fi`
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -5337,20 +5268,6 @@ arangod/V8Server/arangod_libarangod_a-ApplicationV8.obj: arangod/V8Server/Applic
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-ApplicationV8.obj `if test -f 'arangod/V8Server/ApplicationV8.cpp'; then $(CYGPATH_W) 'arangod/V8Server/ApplicationV8.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/ApplicationV8.cpp'; fi`
 
-arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o: arangod/V8Server/V8DispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Tpo -c -o arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o `test -f 'arangod/V8Server/V8DispatcherThread.cpp' || echo '$(srcdir)/'`arangod/V8Server/V8DispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/V8DispatcherThread.cpp' object='arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o `test -f 'arangod/V8Server/V8DispatcherThread.cpp' || echo '$(srcdir)/'`arangod/V8Server/V8DispatcherThread.cpp
-
-arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj: arangod/V8Server/V8DispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Tpo -c -o arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj `if test -f 'arangod/V8Server/V8DispatcherThread.cpp'; then $(CYGPATH_W) 'arangod/V8Server/V8DispatcherThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/V8DispatcherThread.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/V8DispatcherThread.cpp' object='arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj `if test -f 'arangod/V8Server/V8DispatcherThread.cpp'; then $(CYGPATH_W) 'arangod/V8Server/V8DispatcherThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/V8DispatcherThread.cpp'; fi`
-
 arangod/V8Server/arangod_libarangod_a-V8Job.o: arangod/V8Server/V8Job.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-V8Job.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Job.Tpo -c -o arangod/V8Server/arangod_libarangod_a-V8Job.o `test -f 'arangod/V8Server/V8Job.cpp' || echo '$(srcdir)/'`arangod/V8Server/V8Job.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Job.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Job.Po
@@ -5504,6 +5421,20 @@ arangod/V8Server/arangod_libarangod_a-v8-replication.obj: arangod/V8Server/v8-re
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/v8-replication.cpp' object='arangod/V8Server/arangod_libarangod_a-v8-replication.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-v8-replication.obj `if test -f 'arangod/V8Server/v8-replication.cpp'; then $(CYGPATH_W) 'arangod/V8Server/v8-replication.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/v8-replication.cpp'; fi`
+
+arangod/V8Server/arangod_libarangod_a-v8-shape-conv.o: arangod/V8Server/v8-shape-conv.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-v8-shape-conv.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-shape-conv.Tpo -c -o arangod/V8Server/arangod_libarangod_a-v8-shape-conv.o `test -f 'arangod/V8Server/v8-shape-conv.cpp' || echo '$(srcdir)/'`arangod/V8Server/v8-shape-conv.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-shape-conv.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-shape-conv.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/v8-shape-conv.cpp' object='arangod/V8Server/arangod_libarangod_a-v8-shape-conv.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-v8-shape-conv.o `test -f 'arangod/V8Server/v8-shape-conv.cpp' || echo '$(srcdir)/'`arangod/V8Server/v8-shape-conv.cpp
+
+arangod/V8Server/arangod_libarangod_a-v8-shape-conv.obj: arangod/V8Server/v8-shape-conv.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-v8-shape-conv.obj -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-shape-conv.Tpo -c -o arangod/V8Server/arangod_libarangod_a-v8-shape-conv.obj `if test -f 'arangod/V8Server/v8-shape-conv.cpp'; then $(CYGPATH_W) 'arangod/V8Server/v8-shape-conv.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/v8-shape-conv.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-shape-conv.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-shape-conv.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/v8-shape-conv.cpp' object='arangod/V8Server/arangod_libarangod_a-v8-shape-conv.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-v8-shape-conv.obj `if test -f 'arangod/V8Server/v8-shape-conv.cpp'; then $(CYGPATH_W) 'arangod/V8Server/v8-shape-conv.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/v8-shape-conv.cpp'; fi`
 
 arangod/V8Server/arangod_libarangod_a-v8-vocbase.o: arangod/V8Server/v8-vocbase.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-v8-vocbase.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-vocbase.Tpo -c -o arangod/V8Server/arangod_libarangod_a-v8-vocbase.o `test -f 'arangod/V8Server/v8-vocbase.cpp' || echo '$(srcdir)/'`arangod/V8Server/v8-vocbase.cpp
@@ -5743,6 +5674,20 @@ arangod/VocBase/arangod_libarangod_a-KeyGenerator.obj: arangod/VocBase/KeyGenera
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-KeyGenerator.obj `if test -f 'arangod/VocBase/KeyGenerator.cpp'; then $(CYGPATH_W) 'arangod/VocBase/KeyGenerator.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/KeyGenerator.cpp'; fi`
 
+arangod/VocBase/arangod_libarangod_a-Legends.o: arangod/VocBase/Legends.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-Legends.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Legends.Tpo -c -o arangod/VocBase/arangod_libarangod_a-Legends.o `test -f 'arangod/VocBase/Legends.cpp' || echo '$(srcdir)/'`arangod/VocBase/Legends.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Legends.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Legends.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/Legends.cpp' object='arangod/VocBase/arangod_libarangod_a-Legends.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-Legends.o `test -f 'arangod/VocBase/Legends.cpp' || echo '$(srcdir)/'`arangod/VocBase/Legends.cpp
+
+arangod/VocBase/arangod_libarangod_a-Legends.obj: arangod/VocBase/Legends.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-Legends.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Legends.Tpo -c -o arangod/VocBase/arangod_libarangod_a-Legends.obj `if test -f 'arangod/VocBase/Legends.cpp'; then $(CYGPATH_W) 'arangod/VocBase/Legends.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/Legends.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Legends.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Legends.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/Legends.cpp' object='arangod/VocBase/arangod_libarangod_a-Legends.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-Legends.obj `if test -f 'arangod/VocBase/Legends.cpp'; then $(CYGPATH_W) 'arangod/VocBase/Legends.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/Legends.cpp'; fi`
+
 arangod/VocBase/arangod_libarangod_a-replication-applier.o: arangod/VocBase/replication-applier.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-replication-applier.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-applier.Tpo -c -o arangod/VocBase/arangod_libarangod_a-replication-applier.o `test -f 'arangod/VocBase/replication-applier.cpp' || echo '$(srcdir)/'`arangod/VocBase/replication-applier.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-applier.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-applier.Po
@@ -5813,6 +5758,48 @@ arangod/VocBase/arangod_libarangod_a-server.obj: arangod/VocBase/server.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-server.obj `if test -f 'arangod/VocBase/server.cpp'; then $(CYGPATH_W) 'arangod/VocBase/server.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/server.cpp'; fi`
 
+arangod/VocBase/arangod_libarangod_a-shape-accessor.o: arangod/VocBase/shape-accessor.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-shape-accessor.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shape-accessor.Tpo -c -o arangod/VocBase/arangod_libarangod_a-shape-accessor.o `test -f 'arangod/VocBase/shape-accessor.cpp' || echo '$(srcdir)/'`arangod/VocBase/shape-accessor.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shape-accessor.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shape-accessor.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/shape-accessor.cpp' object='arangod/VocBase/arangod_libarangod_a-shape-accessor.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-shape-accessor.o `test -f 'arangod/VocBase/shape-accessor.cpp' || echo '$(srcdir)/'`arangod/VocBase/shape-accessor.cpp
+
+arangod/VocBase/arangod_libarangod_a-shape-accessor.obj: arangod/VocBase/shape-accessor.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-shape-accessor.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shape-accessor.Tpo -c -o arangod/VocBase/arangod_libarangod_a-shape-accessor.obj `if test -f 'arangod/VocBase/shape-accessor.cpp'; then $(CYGPATH_W) 'arangod/VocBase/shape-accessor.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shape-accessor.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shape-accessor.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shape-accessor.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/shape-accessor.cpp' object='arangod/VocBase/arangod_libarangod_a-shape-accessor.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-shape-accessor.obj `if test -f 'arangod/VocBase/shape-accessor.cpp'; then $(CYGPATH_W) 'arangod/VocBase/shape-accessor.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shape-accessor.cpp'; fi`
+
+arangod/VocBase/arangod_libarangod_a-shaped-json.o: arangod/VocBase/shaped-json.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-shaped-json.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shaped-json.Tpo -c -o arangod/VocBase/arangod_libarangod_a-shaped-json.o `test -f 'arangod/VocBase/shaped-json.cpp' || echo '$(srcdir)/'`arangod/VocBase/shaped-json.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shaped-json.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shaped-json.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/shaped-json.cpp' object='arangod/VocBase/arangod_libarangod_a-shaped-json.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-shaped-json.o `test -f 'arangod/VocBase/shaped-json.cpp' || echo '$(srcdir)/'`arangod/VocBase/shaped-json.cpp
+
+arangod/VocBase/arangod_libarangod_a-shaped-json.obj: arangod/VocBase/shaped-json.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-shaped-json.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shaped-json.Tpo -c -o arangod/VocBase/arangod_libarangod_a-shaped-json.obj `if test -f 'arangod/VocBase/shaped-json.cpp'; then $(CYGPATH_W) 'arangod/VocBase/shaped-json.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shaped-json.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shaped-json.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shaped-json.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/shaped-json.cpp' object='arangod/VocBase/arangod_libarangod_a-shaped-json.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-shaped-json.obj `if test -f 'arangod/VocBase/shaped-json.cpp'; then $(CYGPATH_W) 'arangod/VocBase/shaped-json.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shaped-json.cpp'; fi`
+
+arangod/VocBase/arangod_libarangod_a-Shaper.o: arangod/VocBase/Shaper.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-Shaper.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Shaper.Tpo -c -o arangod/VocBase/arangod_libarangod_a-Shaper.o `test -f 'arangod/VocBase/Shaper.cpp' || echo '$(srcdir)/'`arangod/VocBase/Shaper.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Shaper.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Shaper.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/Shaper.cpp' object='arangod/VocBase/arangod_libarangod_a-Shaper.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-Shaper.o `test -f 'arangod/VocBase/Shaper.cpp' || echo '$(srcdir)/'`arangod/VocBase/Shaper.cpp
+
+arangod/VocBase/arangod_libarangod_a-Shaper.obj: arangod/VocBase/Shaper.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-Shaper.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Shaper.Tpo -c -o arangod/VocBase/arangod_libarangod_a-Shaper.obj `if test -f 'arangod/VocBase/Shaper.cpp'; then $(CYGPATH_W) 'arangod/VocBase/Shaper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/Shaper.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Shaper.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Shaper.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/Shaper.cpp' object='arangod/VocBase/arangod_libarangod_a-Shaper.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-Shaper.obj `if test -f 'arangod/VocBase/Shaper.cpp'; then $(CYGPATH_W) 'arangod/VocBase/Shaper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/Shaper.cpp'; fi`
+
 arangod/VocBase/arangod_libarangod_a-transaction.o: arangod/VocBase/transaction.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-transaction.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-transaction.Tpo -c -o arangod/VocBase/arangod_libarangod_a-transaction.o `test -f 'arangod/VocBase/transaction.cpp' || echo '$(srcdir)/'`arangod/VocBase/transaction.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-transaction.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-transaction.Po
@@ -5826,20 +5813,6 @@ arangod/VocBase/arangod_libarangod_a-transaction.obj: arangod/VocBase/transactio
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/transaction.cpp' object='arangod/VocBase/arangod_libarangod_a-transaction.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-transaction.obj `if test -f 'arangod/VocBase/transaction.cpp'; then $(CYGPATH_W) 'arangod/VocBase/transaction.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/transaction.cpp'; fi`
-
-arangod/VocBase/arangod_libarangod_a-voc-shaper.o: arangod/VocBase/voc-shaper.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-voc-shaper.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-voc-shaper.Tpo -c -o arangod/VocBase/arangod_libarangod_a-voc-shaper.o `test -f 'arangod/VocBase/voc-shaper.cpp' || echo '$(srcdir)/'`arangod/VocBase/voc-shaper.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-voc-shaper.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-voc-shaper.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/voc-shaper.cpp' object='arangod/VocBase/arangod_libarangod_a-voc-shaper.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-voc-shaper.o `test -f 'arangod/VocBase/voc-shaper.cpp' || echo '$(srcdir)/'`arangod/VocBase/voc-shaper.cpp
-
-arangod/VocBase/arangod_libarangod_a-voc-shaper.obj: arangod/VocBase/voc-shaper.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-voc-shaper.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-voc-shaper.Tpo -c -o arangod/VocBase/arangod_libarangod_a-voc-shaper.obj `if test -f 'arangod/VocBase/voc-shaper.cpp'; then $(CYGPATH_W) 'arangod/VocBase/voc-shaper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/voc-shaper.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-voc-shaper.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-voc-shaper.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/voc-shaper.cpp' object='arangod/VocBase/arangod_libarangod_a-voc-shaper.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-voc-shaper.obj `if test -f 'arangod/VocBase/voc-shaper.cpp'; then $(CYGPATH_W) 'arangod/VocBase/voc-shaper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/voc-shaper.cpp'; fi`
 
 arangod/VocBase/arangod_libarangod_a-vocbase.o: arangod/VocBase/vocbase.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-vocbase.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-vocbase.Tpo -c -o arangod/VocBase/arangod_libarangod_a-vocbase.o `test -f 'arangod/VocBase/vocbase.cpp' || echo '$(srcdir)/'`arangod/VocBase/vocbase.cpp
@@ -5868,6 +5841,20 @@ arangod/VocBase/arangod_libarangod_a-vocbase-defaults.obj: arangod/VocBase/vocba
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/vocbase-defaults.cpp' object='arangod/VocBase/arangod_libarangod_a-vocbase-defaults.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-vocbase-defaults.obj `if test -f 'arangod/VocBase/vocbase-defaults.cpp'; then $(CYGPATH_W) 'arangod/VocBase/vocbase-defaults.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/vocbase-defaults.cpp'; fi`
+
+arangod/VocBase/arangod_libarangod_a-VocShaper.o: arangod/VocBase/VocShaper.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-VocShaper.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-VocShaper.Tpo -c -o arangod/VocBase/arangod_libarangod_a-VocShaper.o `test -f 'arangod/VocBase/VocShaper.cpp' || echo '$(srcdir)/'`arangod/VocBase/VocShaper.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-VocShaper.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-VocShaper.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/VocShaper.cpp' object='arangod/VocBase/arangod_libarangod_a-VocShaper.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-VocShaper.o `test -f 'arangod/VocBase/VocShaper.cpp' || echo '$(srcdir)/'`arangod/VocBase/VocShaper.cpp
+
+arangod/VocBase/arangod_libarangod_a-VocShaper.obj: arangod/VocBase/VocShaper.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-VocShaper.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-VocShaper.Tpo -c -o arangod/VocBase/arangod_libarangod_a-VocShaper.obj `if test -f 'arangod/VocBase/VocShaper.cpp'; then $(CYGPATH_W) 'arangod/VocBase/VocShaper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/VocShaper.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-VocShaper.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-VocShaper.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/VocShaper.cpp' object='arangod/VocBase/arangod_libarangod_a-VocShaper.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-VocShaper.obj `if test -f 'arangod/VocBase/VocShaper.cpp'; then $(CYGPATH_W) 'arangod/VocBase/VocShaper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/VocShaper.cpp'; fi`
 
 arangod/Wal/arangod_libarangod_a-AllocatorThread.o: arangod/Wal/AllocatorThread.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Wal/arangod_libarangod_a-AllocatorThread.o -MD -MP -MF arangod/Wal/$(DEPDIR)/arangod_libarangod_a-AllocatorThread.Tpo -c -o arangod/Wal/arangod_libarangod_a-AllocatorThread.o `test -f 'arangod/Wal/AllocatorThread.cpp' || echo '$(srcdir)/'`arangod/Wal/AllocatorThread.cpp
@@ -6106,6 +6093,20 @@ lib/Basics/lib_libarango_a-csv.obj: lib/Basics/csv.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/csv.cpp' object='lib/Basics/lib_libarango_a-csv.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-csv.obj `if test -f 'lib/Basics/csv.cpp'; then $(CYGPATH_W) 'lib/Basics/csv.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/csv.cpp'; fi`
+
+lib/Basics/lib_libarango_a-DataProtector.o: lib/Basics/DataProtector.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-DataProtector.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-DataProtector.Tpo -c -o lib/Basics/lib_libarango_a-DataProtector.o `test -f 'lib/Basics/DataProtector.cpp' || echo '$(srcdir)/'`lib/Basics/DataProtector.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-DataProtector.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-DataProtector.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/DataProtector.cpp' object='lib/Basics/lib_libarango_a-DataProtector.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-DataProtector.o `test -f 'lib/Basics/DataProtector.cpp' || echo '$(srcdir)/'`lib/Basics/DataProtector.cpp
+
+lib/Basics/lib_libarango_a-DataProtector.obj: lib/Basics/DataProtector.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-DataProtector.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-DataProtector.Tpo -c -o lib/Basics/lib_libarango_a-DataProtector.obj `if test -f 'lib/Basics/DataProtector.cpp'; then $(CYGPATH_W) 'lib/Basics/DataProtector.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/DataProtector.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-DataProtector.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-DataProtector.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/DataProtector.cpp' object='lib/Basics/lib_libarango_a-DataProtector.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-DataProtector.obj `if test -f 'lib/Basics/DataProtector.cpp'; then $(CYGPATH_W) 'lib/Basics/DataProtector.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/DataProtector.cpp'; fi`
 
 lib/Basics/lib_libarango_a-debugging.o: lib/Basics/debugging.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-debugging.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-debugging.Tpo -c -o lib/Basics/lib_libarango_a-debugging.o `test -f 'lib/Basics/debugging.cpp' || echo '$(srcdir)/'`lib/Basics/debugging.cpp
@@ -6555,19 +6556,19 @@ lib/Basics/lib_libarango_a-ReadWriteLock.obj: lib/Basics/ReadWriteLock.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-ReadWriteLock.obj `if test -f 'lib/Basics/ReadWriteLock.cpp'; then $(CYGPATH_W) 'lib/Basics/ReadWriteLock.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/ReadWriteLock.cpp'; fi`
 
-lib/Basics/lib_libarango_a-skip-list.o: lib/Basics/skip-list.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-skip-list.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-skip-list.Tpo -c -o lib/Basics/lib_libarango_a-skip-list.o `test -f 'lib/Basics/skip-list.cpp' || echo '$(srcdir)/'`lib/Basics/skip-list.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-skip-list.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-skip-list.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/skip-list.cpp' object='lib/Basics/lib_libarango_a-skip-list.o' libtool=no @AMDEPBACKSLASH@
+lib/Basics/lib_libarango_a-SkipList.o: lib/Basics/SkipList.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-SkipList.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-SkipList.Tpo -c -o lib/Basics/lib_libarango_a-SkipList.o `test -f 'lib/Basics/SkipList.cpp' || echo '$(srcdir)/'`lib/Basics/SkipList.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-SkipList.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-SkipList.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/SkipList.cpp' object='lib/Basics/lib_libarango_a-SkipList.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-skip-list.o `test -f 'lib/Basics/skip-list.cpp' || echo '$(srcdir)/'`lib/Basics/skip-list.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-SkipList.o `test -f 'lib/Basics/SkipList.cpp' || echo '$(srcdir)/'`lib/Basics/SkipList.cpp
 
-lib/Basics/lib_libarango_a-skip-list.obj: lib/Basics/skip-list.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-skip-list.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-skip-list.Tpo -c -o lib/Basics/lib_libarango_a-skip-list.obj `if test -f 'lib/Basics/skip-list.cpp'; then $(CYGPATH_W) 'lib/Basics/skip-list.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/skip-list.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-skip-list.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-skip-list.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/skip-list.cpp' object='lib/Basics/lib_libarango_a-skip-list.obj' libtool=no @AMDEPBACKSLASH@
+lib/Basics/lib_libarango_a-SkipList.obj: lib/Basics/SkipList.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-SkipList.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-SkipList.Tpo -c -o lib/Basics/lib_libarango_a-SkipList.obj `if test -f 'lib/Basics/SkipList.cpp'; then $(CYGPATH_W) 'lib/Basics/SkipList.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/SkipList.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-SkipList.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-SkipList.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/SkipList.cpp' object='lib/Basics/lib_libarango_a-SkipList.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-skip-list.obj `if test -f 'lib/Basics/skip-list.cpp'; then $(CYGPATH_W) 'lib/Basics/skip-list.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/skip-list.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-SkipList.obj `if test -f 'lib/Basics/SkipList.cpp'; then $(CYGPATH_W) 'lib/Basics/SkipList.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/SkipList.cpp'; fi`
 
 lib/Basics/lib_libarango_a-socket-utils.o: lib/Basics/socket-utils.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-socket-utils.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-socket-utils.Tpo -c -o lib/Basics/lib_libarango_a-socket-utils.o `test -f 'lib/Basics/socket-utils.cpp' || echo '$(srcdir)/'`lib/Basics/socket-utils.cpp
@@ -6582,6 +6583,34 @@ lib/Basics/lib_libarango_a-socket-utils.obj: lib/Basics/socket-utils.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/socket-utils.cpp' object='lib/Basics/lib_libarango_a-socket-utils.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-socket-utils.obj `if test -f 'lib/Basics/socket-utils.cpp'; then $(CYGPATH_W) 'lib/Basics/socket-utils.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/socket-utils.cpp'; fi`
+
+lib/Basics/lib_libarango_a-SpinLock.o: lib/Basics/SpinLock.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-SpinLock.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLock.Tpo -c -o lib/Basics/lib_libarango_a-SpinLock.o `test -f 'lib/Basics/SpinLock.cpp' || echo '$(srcdir)/'`lib/Basics/SpinLock.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLock.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/SpinLock.cpp' object='lib/Basics/lib_libarango_a-SpinLock.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-SpinLock.o `test -f 'lib/Basics/SpinLock.cpp' || echo '$(srcdir)/'`lib/Basics/SpinLock.cpp
+
+lib/Basics/lib_libarango_a-SpinLock.obj: lib/Basics/SpinLock.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-SpinLock.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLock.Tpo -c -o lib/Basics/lib_libarango_a-SpinLock.obj `if test -f 'lib/Basics/SpinLock.cpp'; then $(CYGPATH_W) 'lib/Basics/SpinLock.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/SpinLock.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLock.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/SpinLock.cpp' object='lib/Basics/lib_libarango_a-SpinLock.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-SpinLock.obj `if test -f 'lib/Basics/SpinLock.cpp'; then $(CYGPATH_W) 'lib/Basics/SpinLock.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/SpinLock.cpp'; fi`
+
+lib/Basics/lib_libarango_a-SpinLocker.o: lib/Basics/SpinLocker.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-SpinLocker.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLocker.Tpo -c -o lib/Basics/lib_libarango_a-SpinLocker.o `test -f 'lib/Basics/SpinLocker.cpp' || echo '$(srcdir)/'`lib/Basics/SpinLocker.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLocker.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/SpinLocker.cpp' object='lib/Basics/lib_libarango_a-SpinLocker.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-SpinLocker.o `test -f 'lib/Basics/SpinLocker.cpp' || echo '$(srcdir)/'`lib/Basics/SpinLocker.cpp
+
+lib/Basics/lib_libarango_a-SpinLocker.obj: lib/Basics/SpinLocker.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-SpinLocker.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLocker.Tpo -c -o lib/Basics/lib_libarango_a-SpinLocker.obj `if test -f 'lib/Basics/SpinLocker.cpp'; then $(CYGPATH_W) 'lib/Basics/SpinLocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/SpinLocker.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLocker.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/SpinLocker.cpp' object='lib/Basics/lib_libarango_a-SpinLocker.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-SpinLocker.obj `if test -f 'lib/Basics/SpinLocker.cpp'; then $(CYGPATH_W) 'lib/Basics/SpinLocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/SpinLocker.cpp'; fi`
 
 lib/Basics/lib_libarango_a-ssl-helper.o: lib/Basics/ssl-helper.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-ssl-helper.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-ssl-helper.Tpo -c -o lib/Basics/lib_libarango_a-ssl-helper.o `test -f 'lib/Basics/ssl-helper.cpp' || echo '$(srcdir)/'`lib/Basics/ssl-helper.cpp
@@ -6722,20 +6751,6 @@ lib/Basics/lib_libarango_a-threads-posix.obj: lib/Basics/threads-posix.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/threads-posix.cpp' object='lib/Basics/lib_libarango_a-threads-posix.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-threads-posix.obj `if test -f 'lib/Basics/threads-posix.cpp'; then $(CYGPATH_W) 'lib/Basics/threads-posix.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/threads-posix.cpp'; fi`
-
-lib/Basics/lib_libarango_a-Timing.o: lib/Basics/Timing.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-Timing.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-Timing.Tpo -c -o lib/Basics/lib_libarango_a-Timing.o `test -f 'lib/Basics/Timing.cpp' || echo '$(srcdir)/'`lib/Basics/Timing.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-Timing.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-Timing.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/Timing.cpp' object='lib/Basics/lib_libarango_a-Timing.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-Timing.o `test -f 'lib/Basics/Timing.cpp' || echo '$(srcdir)/'`lib/Basics/Timing.cpp
-
-lib/Basics/lib_libarango_a-Timing.obj: lib/Basics/Timing.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-Timing.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-Timing.Tpo -c -o lib/Basics/lib_libarango_a-Timing.obj `if test -f 'lib/Basics/Timing.cpp'; then $(CYGPATH_W) 'lib/Basics/Timing.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/Timing.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-Timing.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-Timing.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/Timing.cpp' object='lib/Basics/lib_libarango_a-Timing.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-Timing.obj `if test -f 'lib/Basics/Timing.cpp'; then $(CYGPATH_W) 'lib/Basics/Timing.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/Timing.cpp'; fi`
 
 lib/Basics/lib_libarango_a-tri-strings.o: lib/Basics/tri-strings.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-tri-strings.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-tri-strings.Tpo -c -o lib/Basics/lib_libarango_a-tri-strings.o `test -f 'lib/Basics/tri-strings.cpp' || echo '$(srcdir)/'`lib/Basics/tri-strings.cpp
@@ -7073,62 +7088,6 @@ lib/Rest/lib_libarango_a-Version.obj: lib/Rest/Version.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Rest/lib_libarango_a-Version.obj `if test -f 'lib/Rest/Version.cpp'; then $(CYGPATH_W) 'lib/Rest/Version.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Rest/Version.cpp'; fi`
 
-lib/ShapedJson/lib_libarango_a-Legends.o: lib/ShapedJson/Legends.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ShapedJson/lib_libarango_a-Legends.o -MD -MP -MF lib/ShapedJson/$(DEPDIR)/lib_libarango_a-Legends.Tpo -c -o lib/ShapedJson/lib_libarango_a-Legends.o `test -f 'lib/ShapedJson/Legends.cpp' || echo '$(srcdir)/'`lib/ShapedJson/Legends.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ShapedJson/$(DEPDIR)/lib_libarango_a-Legends.Tpo lib/ShapedJson/$(DEPDIR)/lib_libarango_a-Legends.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/ShapedJson/Legends.cpp' object='lib/ShapedJson/lib_libarango_a-Legends.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ShapedJson/lib_libarango_a-Legends.o `test -f 'lib/ShapedJson/Legends.cpp' || echo '$(srcdir)/'`lib/ShapedJson/Legends.cpp
-
-lib/ShapedJson/lib_libarango_a-Legends.obj: lib/ShapedJson/Legends.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ShapedJson/lib_libarango_a-Legends.obj -MD -MP -MF lib/ShapedJson/$(DEPDIR)/lib_libarango_a-Legends.Tpo -c -o lib/ShapedJson/lib_libarango_a-Legends.obj `if test -f 'lib/ShapedJson/Legends.cpp'; then $(CYGPATH_W) 'lib/ShapedJson/Legends.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ShapedJson/Legends.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ShapedJson/$(DEPDIR)/lib_libarango_a-Legends.Tpo lib/ShapedJson/$(DEPDIR)/lib_libarango_a-Legends.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/ShapedJson/Legends.cpp' object='lib/ShapedJson/lib_libarango_a-Legends.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ShapedJson/lib_libarango_a-Legends.obj `if test -f 'lib/ShapedJson/Legends.cpp'; then $(CYGPATH_W) 'lib/ShapedJson/Legends.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ShapedJson/Legends.cpp'; fi`
-
-lib/ShapedJson/lib_libarango_a-json-shaper.o: lib/ShapedJson/json-shaper.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ShapedJson/lib_libarango_a-json-shaper.o -MD -MP -MF lib/ShapedJson/$(DEPDIR)/lib_libarango_a-json-shaper.Tpo -c -o lib/ShapedJson/lib_libarango_a-json-shaper.o `test -f 'lib/ShapedJson/json-shaper.cpp' || echo '$(srcdir)/'`lib/ShapedJson/json-shaper.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ShapedJson/$(DEPDIR)/lib_libarango_a-json-shaper.Tpo lib/ShapedJson/$(DEPDIR)/lib_libarango_a-json-shaper.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/ShapedJson/json-shaper.cpp' object='lib/ShapedJson/lib_libarango_a-json-shaper.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ShapedJson/lib_libarango_a-json-shaper.o `test -f 'lib/ShapedJson/json-shaper.cpp' || echo '$(srcdir)/'`lib/ShapedJson/json-shaper.cpp
-
-lib/ShapedJson/lib_libarango_a-json-shaper.obj: lib/ShapedJson/json-shaper.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ShapedJson/lib_libarango_a-json-shaper.obj -MD -MP -MF lib/ShapedJson/$(DEPDIR)/lib_libarango_a-json-shaper.Tpo -c -o lib/ShapedJson/lib_libarango_a-json-shaper.obj `if test -f 'lib/ShapedJson/json-shaper.cpp'; then $(CYGPATH_W) 'lib/ShapedJson/json-shaper.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ShapedJson/json-shaper.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ShapedJson/$(DEPDIR)/lib_libarango_a-json-shaper.Tpo lib/ShapedJson/$(DEPDIR)/lib_libarango_a-json-shaper.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/ShapedJson/json-shaper.cpp' object='lib/ShapedJson/lib_libarango_a-json-shaper.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ShapedJson/lib_libarango_a-json-shaper.obj `if test -f 'lib/ShapedJson/json-shaper.cpp'; then $(CYGPATH_W) 'lib/ShapedJson/json-shaper.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ShapedJson/json-shaper.cpp'; fi`
-
-lib/ShapedJson/lib_libarango_a-shape-accessor.o: lib/ShapedJson/shape-accessor.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ShapedJson/lib_libarango_a-shape-accessor.o -MD -MP -MF lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shape-accessor.Tpo -c -o lib/ShapedJson/lib_libarango_a-shape-accessor.o `test -f 'lib/ShapedJson/shape-accessor.cpp' || echo '$(srcdir)/'`lib/ShapedJson/shape-accessor.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shape-accessor.Tpo lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shape-accessor.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/ShapedJson/shape-accessor.cpp' object='lib/ShapedJson/lib_libarango_a-shape-accessor.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ShapedJson/lib_libarango_a-shape-accessor.o `test -f 'lib/ShapedJson/shape-accessor.cpp' || echo '$(srcdir)/'`lib/ShapedJson/shape-accessor.cpp
-
-lib/ShapedJson/lib_libarango_a-shape-accessor.obj: lib/ShapedJson/shape-accessor.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ShapedJson/lib_libarango_a-shape-accessor.obj -MD -MP -MF lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shape-accessor.Tpo -c -o lib/ShapedJson/lib_libarango_a-shape-accessor.obj `if test -f 'lib/ShapedJson/shape-accessor.cpp'; then $(CYGPATH_W) 'lib/ShapedJson/shape-accessor.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ShapedJson/shape-accessor.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shape-accessor.Tpo lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shape-accessor.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/ShapedJson/shape-accessor.cpp' object='lib/ShapedJson/lib_libarango_a-shape-accessor.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ShapedJson/lib_libarango_a-shape-accessor.obj `if test -f 'lib/ShapedJson/shape-accessor.cpp'; then $(CYGPATH_W) 'lib/ShapedJson/shape-accessor.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ShapedJson/shape-accessor.cpp'; fi`
-
-lib/ShapedJson/lib_libarango_a-shaped-json.o: lib/ShapedJson/shaped-json.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ShapedJson/lib_libarango_a-shaped-json.o -MD -MP -MF lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shaped-json.Tpo -c -o lib/ShapedJson/lib_libarango_a-shaped-json.o `test -f 'lib/ShapedJson/shaped-json.cpp' || echo '$(srcdir)/'`lib/ShapedJson/shaped-json.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shaped-json.Tpo lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shaped-json.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/ShapedJson/shaped-json.cpp' object='lib/ShapedJson/lib_libarango_a-shaped-json.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ShapedJson/lib_libarango_a-shaped-json.o `test -f 'lib/ShapedJson/shaped-json.cpp' || echo '$(srcdir)/'`lib/ShapedJson/shaped-json.cpp
-
-lib/ShapedJson/lib_libarango_a-shaped-json.obj: lib/ShapedJson/shaped-json.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ShapedJson/lib_libarango_a-shaped-json.obj -MD -MP -MF lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shaped-json.Tpo -c -o lib/ShapedJson/lib_libarango_a-shaped-json.obj `if test -f 'lib/ShapedJson/shaped-json.cpp'; then $(CYGPATH_W) 'lib/ShapedJson/shaped-json.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ShapedJson/shaped-json.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shaped-json.Tpo lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shaped-json.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/ShapedJson/shaped-json.cpp' object='lib/ShapedJson/lib_libarango_a-shaped-json.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ShapedJson/lib_libarango_a-shaped-json.obj `if test -f 'lib/ShapedJson/shaped-json.cpp'; then $(CYGPATH_W) 'lib/ShapedJson/shaped-json.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ShapedJson/shaped-json.cpp'; fi`
-
 lib/Statistics/lib_libarango_a-statistics.o: lib/Statistics/statistics.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Statistics/lib_libarango_a-statistics.o -MD -MP -MF lib/Statistics/$(DEPDIR)/lib_libarango_a-statistics.Tpo -c -o lib/Statistics/lib_libarango_a-statistics.o `test -f 'lib/Statistics/statistics.cpp' || echo '$(srcdir)/'`lib/Statistics/statistics.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Statistics/$(DEPDIR)/lib_libarango_a-statistics.Tpo lib/Statistics/$(DEPDIR)/lib_libarango_a-statistics.Po
@@ -7254,20 +7213,6 @@ lib/Utilities/lib_libarango_a-ReadlineShell.obj: lib/Utilities/ReadlineShell.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/ReadlineShell.cpp' object='lib/Utilities/lib_libarango_a-ReadlineShell.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ReadlineShell.obj `if test -f 'lib/Utilities/ReadlineShell.cpp'; then $(CYGPATH_W) 'lib/Utilities/ReadlineShell.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ReadlineShell.cpp'; fi`
-
-lib/Utilities/lib_libarango_a-LinenoiseShell.o: lib/Utilities/LinenoiseShell.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-LinenoiseShell.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Tpo -c -o lib/Utilities/lib_libarango_a-LinenoiseShell.o `test -f 'lib/Utilities/LinenoiseShell.cpp' || echo '$(srcdir)/'`lib/Utilities/LinenoiseShell.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/LinenoiseShell.cpp' object='lib/Utilities/lib_libarango_a-LinenoiseShell.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-LinenoiseShell.o `test -f 'lib/Utilities/LinenoiseShell.cpp' || echo '$(srcdir)/'`lib/Utilities/LinenoiseShell.cpp
-
-lib/Utilities/lib_libarango_a-LinenoiseShell.obj: lib/Utilities/LinenoiseShell.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-LinenoiseShell.obj -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Tpo -c -o lib/Utilities/lib_libarango_a-LinenoiseShell.obj `if test -f 'lib/Utilities/LinenoiseShell.cpp'; then $(CYGPATH_W) 'lib/Utilities/LinenoiseShell.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/LinenoiseShell.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/LinenoiseShell.cpp' object='lib/Utilities/lib_libarango_a-LinenoiseShell.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-LinenoiseShell.obj `if test -f 'lib/Utilities/LinenoiseShell.cpp'; then $(CYGPATH_W) 'lib/Utilities/LinenoiseShell.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/LinenoiseShell.cpp'; fi`
 
 lib/Utilities/lib_libarango_a-DummyShell.o: lib/Utilities/DummyShell.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-DummyShell.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-DummyShell.Tpo -c -o lib/Utilities/lib_libarango_a-DummyShell.o `test -f 'lib/Utilities/DummyShell.cpp' || echo '$(srcdir)/'`lib/Utilities/DummyShell.cpp
@@ -7422,20 +7367,6 @@ UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-test.obj: Unit
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='UnitTests/Basics/associative-multi-pointer-test.cpp' object='UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-test.obj `if test -f 'UnitTests/Basics/associative-multi-pointer-test.cpp'; then $(CYGPATH_W) 'UnitTests/Basics/associative-multi-pointer-test.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Basics/associative-multi-pointer-test.cpp'; fi`
-
-UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.o: UnitTests/Basics/associative-synced-test.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.o -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-associative-synced-test.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.o `test -f 'UnitTests/Basics/associative-synced-test.cpp' || echo '$(srcdir)/'`UnitTests/Basics/associative-synced-test.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-associative-synced-test.Tpo UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-associative-synced-test.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='UnitTests/Basics/associative-synced-test.cpp' object='UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.o `test -f 'UnitTests/Basics/associative-synced-test.cpp' || echo '$(srcdir)/'`UnitTests/Basics/associative-synced-test.cpp
-
-UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.obj: UnitTests/Basics/associative-synced-test.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.obj -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-associative-synced-test.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.obj `if test -f 'UnitTests/Basics/associative-synced-test.cpp'; then $(CYGPATH_W) 'UnitTests/Basics/associative-synced-test.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Basics/associative-synced-test.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-associative-synced-test.Tpo UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-associative-synced-test.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='UnitTests/Basics/associative-synced-test.cpp' object='UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Basics/UnitTests_basics_suite-associative-synced-test.obj `if test -f 'UnitTests/Basics/associative-synced-test.cpp'; then $(CYGPATH_W) 'UnitTests/Basics/associative-synced-test.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Basics/associative-synced-test.cpp'; fi`
 
 UnitTests/Basics/UnitTests_basics_suite-skiplist-test.o: UnitTests/Basics/skiplist-test.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-skiplist-test.o -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-skiplist-test.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-skiplist-test.o `test -f 'UnitTests/Basics/skiplist-test.cpp' || echo '$(srcdir)/'`UnitTests/Basics/skiplist-test.cpp
@@ -7973,12 +7904,12 @@ uninstall-nobase_pkgdataDATA:
 	@list='$(nobase_pkgdata_DATA)'; test -n "$(pkgdatadir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
 	dir='$(DESTDIR)$(pkgdatadir)'; $(am__uninstall_files_from_dir)
-install-nobase_pkgdataJS1DATA: $(nobase_pkgdataJS1_DATA)
+install-nobase_pkgdataJS01DATA: $(nobase_pkgdataJS01_DATA)
 	@$(NORMAL_INSTALL)
-	@list='$(nobase_pkgdataJS1_DATA)'; test -n "$(pkgdataJS1dir)" || list=; \
+	@list='$(nobase_pkgdataJS01_DATA)'; test -n "$(pkgdataJS01dir)" || list=; \
 	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS1dir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS1dir)" || exit 1; \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS01dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS01dir)" || exit 1; \
 	fi; \
 	$(am__nobase_list) | while read dir files; do \
 	  xfiles=; for file in $$files; do \
@@ -7986,23 +7917,23 @@ install-nobase_pkgdataJS1DATA: $(nobase_pkgdataJS1_DATA)
 	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
 	  test -z "$$xfiles" || { \
 	    test "x$$dir" = x. || { \
-	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS1dir)/$$dir'"; \
-	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS1dir)/$$dir"; }; \
-	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS1dir)/$$dir'"; \
-	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS1dir)/$$dir" || exit $$?; }; \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS01dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS01dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS01dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS01dir)/$$dir" || exit $$?; }; \
 	done
 
-uninstall-nobase_pkgdataJS1DATA:
+uninstall-nobase_pkgdataJS01DATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(nobase_pkgdataJS1_DATA)'; test -n "$(pkgdataJS1dir)" || list=; \
+	@list='$(nobase_pkgdataJS01_DATA)'; test -n "$(pkgdataJS01dir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
-	dir='$(DESTDIR)$(pkgdataJS1dir)'; $(am__uninstall_files_from_dir)
-install-nobase_pkgdataJS2DATA: $(nobase_pkgdataJS2_DATA)
+	dir='$(DESTDIR)$(pkgdataJS01dir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataJS02DATA: $(nobase_pkgdataJS02_DATA)
 	@$(NORMAL_INSTALL)
-	@list='$(nobase_pkgdataJS2_DATA)'; test -n "$(pkgdataJS2dir)" || list=; \
+	@list='$(nobase_pkgdataJS02_DATA)'; test -n "$(pkgdataJS02dir)" || list=; \
 	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS2dir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS2dir)" || exit 1; \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS02dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS02dir)" || exit 1; \
 	fi; \
 	$(am__nobase_list) | while read dir files; do \
 	  xfiles=; for file in $$files; do \
@@ -8010,23 +7941,23 @@ install-nobase_pkgdataJS2DATA: $(nobase_pkgdataJS2_DATA)
 	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
 	  test -z "$$xfiles" || { \
 	    test "x$$dir" = x. || { \
-	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS2dir)/$$dir'"; \
-	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS2dir)/$$dir"; }; \
-	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS2dir)/$$dir'"; \
-	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS2dir)/$$dir" || exit $$?; }; \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS02dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS02dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS02dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS02dir)/$$dir" || exit $$?; }; \
 	done
 
-uninstall-nobase_pkgdataJS2DATA:
+uninstall-nobase_pkgdataJS02DATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(nobase_pkgdataJS2_DATA)'; test -n "$(pkgdataJS2dir)" || list=; \
+	@list='$(nobase_pkgdataJS02_DATA)'; test -n "$(pkgdataJS02dir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
-	dir='$(DESTDIR)$(pkgdataJS2dir)'; $(am__uninstall_files_from_dir)
-install-nobase_pkgdataJS3DATA: $(nobase_pkgdataJS3_DATA)
+	dir='$(DESTDIR)$(pkgdataJS02dir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataJS03DATA: $(nobase_pkgdataJS03_DATA)
 	@$(NORMAL_INSTALL)
-	@list='$(nobase_pkgdataJS3_DATA)'; test -n "$(pkgdataJS3dir)" || list=; \
+	@list='$(nobase_pkgdataJS03_DATA)'; test -n "$(pkgdataJS03dir)" || list=; \
 	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS3dir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS3dir)" || exit 1; \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS03dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS03dir)" || exit 1; \
 	fi; \
 	$(am__nobase_list) | while read dir files; do \
 	  xfiles=; for file in $$files; do \
@@ -8034,23 +7965,23 @@ install-nobase_pkgdataJS3DATA: $(nobase_pkgdataJS3_DATA)
 	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
 	  test -z "$$xfiles" || { \
 	    test "x$$dir" = x. || { \
-	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS3dir)/$$dir'"; \
-	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS3dir)/$$dir"; }; \
-	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS3dir)/$$dir'"; \
-	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS3dir)/$$dir" || exit $$?; }; \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS03dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS03dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS03dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS03dir)/$$dir" || exit $$?; }; \
 	done
 
-uninstall-nobase_pkgdataJS3DATA:
+uninstall-nobase_pkgdataJS03DATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(nobase_pkgdataJS3_DATA)'; test -n "$(pkgdataJS3dir)" || list=; \
+	@list='$(nobase_pkgdataJS03_DATA)'; test -n "$(pkgdataJS03dir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
-	dir='$(DESTDIR)$(pkgdataJS3dir)'; $(am__uninstall_files_from_dir)
-install-nobase_pkgdataJS4DATA: $(nobase_pkgdataJS4_DATA)
+	dir='$(DESTDIR)$(pkgdataJS03dir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataJS04DATA: $(nobase_pkgdataJS04_DATA)
 	@$(NORMAL_INSTALL)
-	@list='$(nobase_pkgdataJS4_DATA)'; test -n "$(pkgdataJS4dir)" || list=; \
+	@list='$(nobase_pkgdataJS04_DATA)'; test -n "$(pkgdataJS04dir)" || list=; \
 	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS4dir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS4dir)" || exit 1; \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS04dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS04dir)" || exit 1; \
 	fi; \
 	$(am__nobase_list) | while read dir files; do \
 	  xfiles=; for file in $$files; do \
@@ -8058,23 +7989,23 @@ install-nobase_pkgdataJS4DATA: $(nobase_pkgdataJS4_DATA)
 	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
 	  test -z "$$xfiles" || { \
 	    test "x$$dir" = x. || { \
-	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS4dir)/$$dir'"; \
-	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS4dir)/$$dir"; }; \
-	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS4dir)/$$dir'"; \
-	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS4dir)/$$dir" || exit $$?; }; \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS04dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS04dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS04dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS04dir)/$$dir" || exit $$?; }; \
 	done
 
-uninstall-nobase_pkgdataJS4DATA:
+uninstall-nobase_pkgdataJS04DATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(nobase_pkgdataJS4_DATA)'; test -n "$(pkgdataJS4dir)" || list=; \
+	@list='$(nobase_pkgdataJS04_DATA)'; test -n "$(pkgdataJS04dir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
-	dir='$(DESTDIR)$(pkgdataJS4dir)'; $(am__uninstall_files_from_dir)
-install-nobase_pkgdataJS5DATA: $(nobase_pkgdataJS5_DATA)
+	dir='$(DESTDIR)$(pkgdataJS04dir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataJS05DATA: $(nobase_pkgdataJS05_DATA)
 	@$(NORMAL_INSTALL)
-	@list='$(nobase_pkgdataJS5_DATA)'; test -n "$(pkgdataJS5dir)" || list=; \
+	@list='$(nobase_pkgdataJS05_DATA)'; test -n "$(pkgdataJS05dir)" || list=; \
 	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS5dir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS5dir)" || exit 1; \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS05dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS05dir)" || exit 1; \
 	fi; \
 	$(am__nobase_list) | while read dir files; do \
 	  xfiles=; for file in $$files; do \
@@ -8082,17 +8013,137 @@ install-nobase_pkgdataJS5DATA: $(nobase_pkgdataJS5_DATA)
 	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
 	  test -z "$$xfiles" || { \
 	    test "x$$dir" = x. || { \
-	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS5dir)/$$dir'"; \
-	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS5dir)/$$dir"; }; \
-	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS5dir)/$$dir'"; \
-	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS5dir)/$$dir" || exit $$?; }; \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS05dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS05dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS05dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS05dir)/$$dir" || exit $$?; }; \
 	done
 
-uninstall-nobase_pkgdataJS5DATA:
+uninstall-nobase_pkgdataJS05DATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(nobase_pkgdataJS5_DATA)'; test -n "$(pkgdataJS5dir)" || list=; \
+	@list='$(nobase_pkgdataJS05_DATA)'; test -n "$(pkgdataJS05dir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
-	dir='$(DESTDIR)$(pkgdataJS5dir)'; $(am__uninstall_files_from_dir)
+	dir='$(DESTDIR)$(pkgdataJS05dir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataJS06DATA: $(nobase_pkgdataJS06_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(nobase_pkgdataJS06_DATA)'; test -n "$(pkgdataJS06dir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS06dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS06dir)" || exit 1; \
+	fi; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS06dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS06dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS06dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS06dir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_pkgdataJS06DATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_pkgdataJS06_DATA)'; test -n "$(pkgdataJS06dir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	dir='$(DESTDIR)$(pkgdataJS06dir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataJS07DATA: $(nobase_pkgdataJS07_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(nobase_pkgdataJS07_DATA)'; test -n "$(pkgdataJS07dir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS07dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS07dir)" || exit 1; \
+	fi; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS07dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS07dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS07dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS07dir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_pkgdataJS07DATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_pkgdataJS07_DATA)'; test -n "$(pkgdataJS07dir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	dir='$(DESTDIR)$(pkgdataJS07dir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataJS08DATA: $(nobase_pkgdataJS08_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(nobase_pkgdataJS08_DATA)'; test -n "$(pkgdataJS08dir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS08dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS08dir)" || exit 1; \
+	fi; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS08dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS08dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS08dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS08dir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_pkgdataJS08DATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_pkgdataJS08_DATA)'; test -n "$(pkgdataJS08dir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	dir='$(DESTDIR)$(pkgdataJS08dir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataJS09DATA: $(nobase_pkgdataJS09_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(nobase_pkgdataJS09_DATA)'; test -n "$(pkgdataJS09dir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS09dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS09dir)" || exit 1; \
+	fi; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS09dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS09dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS09dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS09dir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_pkgdataJS09DATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_pkgdataJS09_DATA)'; test -n "$(pkgdataJS09dir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	dir='$(DESTDIR)$(pkgdataJS09dir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataJS10DATA: $(nobase_pkgdataJS10_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(nobase_pkgdataJS10_DATA)'; test -n "$(pkgdataJS10dir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS10dir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataJS10dir)" || exit 1; \
+	fi; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataJS10dir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataJS10dir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataJS10dir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataJS10dir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_pkgdataJS10DATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_pkgdataJS10_DATA)'; test -n "$(pkgdataJS10dir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	dir='$(DESTDIR)$(pkgdataJS10dir)'; $(am__uninstall_files_from_dir)
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
@@ -8316,7 +8367,7 @@ check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataJS1dir)" "$(DESTDIR)$(pkgdataJS2dir)" "$(DESTDIR)$(pkgdataJS3dir)" "$(DESTDIR)$(pkgdataJS4dir)" "$(DESTDIR)$(pkgdataJS5dir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataJS01dir)" "$(DESTDIR)$(pkgdataJS02dir)" "$(DESTDIR)$(pkgdataJS03dir)" "$(DESTDIR)$(pkgdataJS04dir)" "$(DESTDIR)$(pkgdataJS05dir)" "$(DESTDIR)$(pkgdataJS06dir)" "$(DESTDIR)$(pkgdataJS07dir)" "$(DESTDIR)$(pkgdataJS08dir)" "$(DESTDIR)$(pkgdataJS09dir)" "$(DESTDIR)$(pkgdataJS10dir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -8346,8 +8397,6 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f 3rdParty/linenoise/$(DEPDIR)/$(am__dirstamp)
-	-rm -f 3rdParty/linenoise/$(am__dirstamp)
 	-rm -f UnitTests/$(am__dirstamp)
 	-rm -f UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UnitTests/Basics/$(am__dirstamp)
@@ -8412,8 +8461,6 @@ distclean-generic:
 	-rm -f lib/Rest/$(am__dirstamp)
 	-rm -f lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Scheduler/$(am__dirstamp)
-	-rm -f lib/ShapedJson/$(DEPDIR)/$(am__dirstamp)
-	-rm -f lib/ShapedJson/$(am__dirstamp)
 	-rm -f lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/SimpleHttpClient/$(am__dirstamp)
 	-rm -f lib/Statistics/$(DEPDIR)/$(am__dirstamp)
@@ -8437,7 +8484,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
+	-rm -rf UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-local distclean-tags
@@ -8456,9 +8503,11 @@ info-am:
 
 install-data-am: install-arangosysconfDATA install-data-local \
 	install-man install-nobase_pkgdataDATA \
-	install-nobase_pkgdataJS1DATA install-nobase_pkgdataJS2DATA \
-	install-nobase_pkgdataJS3DATA install-nobase_pkgdataJS4DATA \
-	install-nobase_pkgdataJS5DATA
+	install-nobase_pkgdataJS01DATA install-nobase_pkgdataJS02DATA \
+	install-nobase_pkgdataJS03DATA install-nobase_pkgdataJS04DATA \
+	install-nobase_pkgdataJS05DATA install-nobase_pkgdataJS06DATA \
+	install-nobase_pkgdataJS07DATA install-nobase_pkgdataJS08DATA \
+	install-nobase_pkgdataJS09DATA install-nobase_pkgdataJS10DATA
 
 install-dvi: install-dvi-am
 
@@ -8491,7 +8540,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
+	-rm -rf UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -8509,11 +8558,16 @@ ps-am:
 
 uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-binSCRIPTS uninstall-man \
-	uninstall-nobase_pkgdataDATA uninstall-nobase_pkgdataJS1DATA \
-	uninstall-nobase_pkgdataJS2DATA \
-	uninstall-nobase_pkgdataJS3DATA \
-	uninstall-nobase_pkgdataJS4DATA \
-	uninstall-nobase_pkgdataJS5DATA uninstall-pkglibexecSCRIPTS \
+	uninstall-nobase_pkgdataDATA uninstall-nobase_pkgdataJS01DATA \
+	uninstall-nobase_pkgdataJS02DATA \
+	uninstall-nobase_pkgdataJS03DATA \
+	uninstall-nobase_pkgdataJS04DATA \
+	uninstall-nobase_pkgdataJS05DATA \
+	uninstall-nobase_pkgdataJS06DATA \
+	uninstall-nobase_pkgdataJS07DATA \
+	uninstall-nobase_pkgdataJS08DATA \
+	uninstall-nobase_pkgdataJS09DATA \
+	uninstall-nobase_pkgdataJS10DATA uninstall-pkglibexecSCRIPTS \
 	uninstall-sbinPROGRAMS
 
 uninstall-man: uninstall-man1 uninstall-man8
@@ -8534,22 +8588,29 @@ uninstall-man: uninstall-man1 uninstall-man8
 	install-exec install-exec-am install-exec-hook install-html \
 	install-html-am install-info install-info-am install-man \
 	install-man1 install-man8 install-nobase_pkgdataDATA \
-	install-nobase_pkgdataJS1DATA install-nobase_pkgdataJS2DATA \
-	install-nobase_pkgdataJS3DATA install-nobase_pkgdataJS4DATA \
-	install-nobase_pkgdataJS5DATA install-pdf install-pdf-am \
-	install-pkglibexecSCRIPTS install-ps install-ps-am \
-	install-sbinPROGRAMS install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	install-nobase_pkgdataJS01DATA install-nobase_pkgdataJS02DATA \
+	install-nobase_pkgdataJS03DATA install-nobase_pkgdataJS04DATA \
+	install-nobase_pkgdataJS05DATA install-nobase_pkgdataJS06DATA \
+	install-nobase_pkgdataJS07DATA install-nobase_pkgdataJS08DATA \
+	install-nobase_pkgdataJS09DATA install-nobase_pkgdataJS10DATA \
+	install-pdf install-pdf-am install-pkglibexecSCRIPTS \
+	install-ps install-ps-am install-sbinPROGRAMS install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
 	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-binSCRIPTS uninstall-man uninstall-man1 \
 	uninstall-man8 uninstall-nobase_pkgdataDATA \
-	uninstall-nobase_pkgdataJS1DATA \
-	uninstall-nobase_pkgdataJS2DATA \
-	uninstall-nobase_pkgdataJS3DATA \
-	uninstall-nobase_pkgdataJS4DATA \
-	uninstall-nobase_pkgdataJS5DATA uninstall-pkglibexecSCRIPTS \
+	uninstall-nobase_pkgdataJS01DATA \
+	uninstall-nobase_pkgdataJS02DATA \
+	uninstall-nobase_pkgdataJS03DATA \
+	uninstall-nobase_pkgdataJS04DATA \
+	uninstall-nobase_pkgdataJS05DATA \
+	uninstall-nobase_pkgdataJS06DATA \
+	uninstall-nobase_pkgdataJS07DATA \
+	uninstall-nobase_pkgdataJS08DATA \
+	uninstall-nobase_pkgdataJS09DATA \
+	uninstall-nobase_pkgdataJS10DATA uninstall-pkglibexecSCRIPTS \
 	uninstall-sbinPROGRAMS
 
 .PRECIOUS: Makefile
@@ -9496,6 +9557,7 @@ examples:
 
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
 		--output-dir @builddir@/Documentation/Examples \
+		--only-thisone "$(FILTER_EXAMPLE)" \
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
 		@srcdir@/js/actions \
 		@srcdir@/js/client \
@@ -9508,14 +9570,24 @@ examples:
 		@srcdir@/lib/Admin \
 		> /tmp/arangosh.examples.js
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
-
-	@builddir@/bin/arangosh \
-		-s \
-		-c @srcdir@/etc/relative/arangosh.conf \
-		--server.password "" \
-		--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
-		--javascript.execute /tmp/arangosh.examples.js
+	if test -z "$(server.endpoint)"; then \
+		$(MAKE) start-server PID=$(PID) \
+			SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" \
+			PROTO=http ;\
+		@builddir@/bin/arangosh \
+			-s \
+			-c @srcdir@/etc/relative/arangosh.conf \
+			--server.password "" \
+			--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
+			--javascript.execute /tmp/arangosh.examples.js ;\
+	else \
+		@builddir@/bin/arangosh \
+			-s \
+			-c @srcdir@/etc/relative/arangosh.conf \
+			--server.password "" \
+			--server.endpoint $(server.endpoint) \
+			--javascript.execute /tmp/arangosh.examples.js ;\
+	fi
 
 ################################################################################
 ### @brief executes jslint

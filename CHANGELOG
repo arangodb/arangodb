@@ -1,4 +1,4 @@
-v2.7.0-alpha2 (XXXX-XX-XX)
+v2.7.0-alpha3 (XXXX-XX-XX)
 -------------------
 
 * Linux startup scripts and systemd configuration for arangod now try to

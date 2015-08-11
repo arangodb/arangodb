@@ -5,4 +5,67 @@ arangosh> for (var i = 0; i < 10; ++i) {
 ........>   keys.push("test" + i);
 ........> }
 arangosh> db.example.documents(keys);
-[ArangoError 404: unknown path '/_api/simple/lookup-by-keys']
+{ 
+  "documents" : [ 
+    { 
+      "value" : 0, 
+      "_id" : "example/test0", 
+      "_rev" : "1129980865", 
+      "_key" : "test0" 
+    }, 
+    { 
+      "value" : 1, 
+      "_id" : "example/test1", 
+      "_rev" : "1130177473", 
+      "_key" : "test1" 
+    }, 
+    { 
+      "value" : 2, 
+      "_id" : "example/test2", 
+      "_rev" : "1130374081", 
+      "_key" : "test2" 
+    }, 
+    { 
+      "value" : 3, 
+      "_id" : "example/test3", 
+      "_rev" : "1130570689", 
+      "_key" : "test3" 
+    }, 
+    { 
+      "value" : 4, 
+      "_id" : "example/test4", 
+      "_rev" : "1130767297", 
+      "_key" : "test4" 
+    }, 
+    { 
+      "value" : 5, 
+      "_id" : "example/test5", 
+      "_rev" : "1130963905", 
+      "_key" : "test5" 
+    }, 
+    { 
+      "value" : 6, 
+      "_id" : "example/test6", 
+      "_rev" : "1131160513", 
+      "_key" : "test6" 
+    }, 
+    { 
+      "value" : 7, 
+      "_id" : "example/test7", 
+      "_rev" : "1131357121", 
+      "_key" : "test7" 
+    }, 
+    { 
+      "value" : 8, 
+      "_id" : "example/test8", 
+      "_rev" : "1131553729", 
+      "_key" : "test8" 
+    }, 
+    { 
+      "value" : 9, 
+      "_id" : "example/test9", 
+      "_rev" : "1131750337", 
+      "_key" : "test9" 
+    } 
+  ] 
+}

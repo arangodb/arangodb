@@ -8,17 +8,18 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "512023816901", 
+  "id" : "634135489", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
   "isVolatile" : false, 
-  "journalSize" : 33554432, 
+  "journalSize" : 1048576, 
   "keyOptions" : { 
     "type" : "traditional", 
     "allowUserKeys" : true 
   }, 
   "waitForSync" : true, 
+  "indexBuckets" : 8, 
   "status" : 3, 
   "type" : 2, 
   "error" : false, 

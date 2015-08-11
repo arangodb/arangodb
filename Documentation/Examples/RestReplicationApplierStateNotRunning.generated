@@ -10,24 +10,24 @@ content-type: application/json; charset=utf-8
     "lastProcessedContinuousTick" : null, 
     "lastAvailableContinuousTick" : null, 
     "progress" : { 
-      "time" : "2015-08-11T10:55:52Z", 
+      "time" : "2015-08-11T13:40:25Z", 
       "message" : "applier shut down", 
-      "failedConnects" : 0 
+      "failedConnects" : 1 
     }, 
-    "totalRequests" : 0, 
-    "totalFailedConnects" : 0, 
+    "totalRequests" : 1, 
+    "totalFailedConnects" : 1, 
     "totalEvents" : 0, 
     "totalOperationsExcluded" : 0, 
     "lastError" : { 
-      "time" : "2015-08-11T10:55:52Z", 
-      "errorMessage" : "got same server id (47165390813832) from endpoint 'tcp://127.0.0.1:8529' as the local applier server's id", 
-      "errorNum" : 1405 
+      "time" : "2015-08-11T13:40:35Z", 
+      "errorMessage" : "could not connect to master at tcp://127.0.0.1:8529: Could not connect to 'tcp://127.0.0.1:8529' 'connect() failed with #61 - Connection refused'", 
+      "errorNum" : 1412 
     }, 
-    "time" : "2015-08-11T10:55:52Z" 
+    "time" : "2015-08-11T13:40:35Z" 
   }, 
   "server" : { 
-    "version" : "2.5.5", 
-    "serverId" : "47165390813832" 
+    "version" : "2.7.0-alpha3", 
+    "serverId" : "181102662252948" 
   }, 
   "endpoint" : "tcp://127.0.0.1:8529", 
   "database" : "_system" 

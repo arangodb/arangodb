@@ -1,14 +1,14 @@
 arangosh> var explain = require("org/arangodb/aql/explainer").explain;
 arangosh> db.example.ensureSkiplist("a", "b");
 { 
-  "id" : "example/511983184581", 
+  "id" : "example/589833153", 
   "type" : "skiplist", 
-  "unique" : false, 
-  "sparse" : false, 
   "fields" : [ 
     "a", 
     "b" 
   ], 
+  "unique" : false, 
+  "sparse" : false, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }

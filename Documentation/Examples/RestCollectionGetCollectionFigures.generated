@@ -5,22 +5,23 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/figures
 
 { 
-  "id" : "512021195461", 
+  "id" : "632366017", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
   "isVolatile" : false, 
-  "journalSize" : 33554432, 
+  "journalSize" : 1048576, 
   "keyOptions" : { 
     "type" : "traditional", 
     "allowUserKeys" : true 
   }, 
   "waitForSync" : false, 
+  "indexBuckets" : 8, 
   "count" : 1, 
   "figures" : { 
     "alive" : { 
-      "count" : 0, 
-      "size" : 0 
+      "count" : 1, 
+      "size" : 88 
     }, 
     "dead" : { 
       "count" : 0, 
@@ -33,7 +34,7 @@ location: /_db/_system/_api/collection/products/figures
     }, 
     "journals" : { 
       "count" : 1, 
-      "fileSize" : 33554432 
+      "fileSize" : 1048576 
     }, 
     "compactors" : { 
       "count" : 0, 
@@ -44,19 +45,19 @@ location: /_db/_system/_api/collection/products/figures
       "fileSize" : 0 
     }, 
     "shapes" : { 
-      "count" : 0, 
-      "size" : 0 
+      "count" : 1, 
+      "size" : 104 
     }, 
     "attributes" : { 
-      "count" : 0, 
-      "size" : 0 
+      "count" : 1, 
+      "size" : 48 
     }, 
     "indexes" : { 
       "count" : 1, 
       "size" : 2008 
     }, 
-    "lastTick" : "512021654213", 
-    "uncollectedLogfileEntries" : 1 
+    "lastTick" : "632759233", 
+    "uncollectedLogfileEntries" : 0 
   }, 
   "status" : 3, 
   "type" : 2, 

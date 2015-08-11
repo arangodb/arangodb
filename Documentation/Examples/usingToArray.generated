@@ -1,36 +1,36 @@
 arangosh> db._create("five")
-[ArangoCollection 513775659717, "five" (type document, status loaded)]
+[ArangoCollection 2322342849, "five" (type document, status loaded)]
 arangosh> for (i = 0; i < 5; i++) db.five.save({value:i})
 arangosh> db.five.toArray()
 [ 
   { 
-    "_id" : "five/513775987397", 
-    "_key" : "513775987397", 
-    "_rev" : "513775987397", 
-    "value" : 0 
+    "value" : 4, 
+    "_id" : "five/2323456961", 
+    "_rev" : "2323456961", 
+    "_key" : "2323456961" 
   }, 
   { 
-    "_id" : "five/513776380613", 
-    "_key" : "513776380613", 
-    "_rev" : "513776380613", 
-    "value" : 2 
+    "value" : 2, 
+    "_id" : "five/2323063745", 
+    "_rev" : "2323063745", 
+    "_key" : "2323063745" 
   }, 
   { 
-    "_id" : "five/513776184005", 
-    "_key" : "513776184005", 
-    "_rev" : "513776184005", 
-    "value" : 1 
+    "value" : 3, 
+    "_id" : "five/2323260353", 
+    "_rev" : "2323260353", 
+    "_key" : "2323260353" 
   }, 
   { 
-    "_id" : "five/513776773829", 
-    "_key" : "513776773829", 
-    "_rev" : "513776773829", 
-    "value" : 4 
+    "value" : 0, 
+    "_id" : "five/2322670529", 
+    "_rev" : "2322670529", 
+    "_key" : "2322670529" 
   }, 
   { 
-    "_id" : "five/513776577221", 
-    "_key" : "513776577221", 
-    "_rev" : "513776577221", 
-    "value" : 3 
+    "value" : 1, 
+    "_id" : "five/2322867137", 
+    "_rev" : "2322867137", 
+    "_key" : "2322867137" 
   } 
 ]

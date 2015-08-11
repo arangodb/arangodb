@@ -4,9 +4,15 @@ arangosh> var options = { direction: 'outbound', maxDepth: 2, includeData: true 
 arangosh> graph._countCommonNeighbors('germanCity/Hamburg', {}, options, options);
 [ 
   { 
-    "null" : [ 
+    "germanCity/Hamburg" : [ 
       { 
-        "null" : 4 
+        "germanCity/Berlin" : 3 
+      }, 
+      { 
+        "germanCity/Cologne" : 2 
+      }, 
+      { 
+        "frenchCity/Paris" : 1 
       } 
     ] 
   } 

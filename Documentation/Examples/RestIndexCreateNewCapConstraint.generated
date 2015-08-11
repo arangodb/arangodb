@@ -6,11 +6,11 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/512209480389", 
+  "id" : "products/813310913", 
   "type" : "cap", 
-  "unique" : false, 
   "size" : 10, 
   "byteSize" : 0, 
+  "unique" : false, 
   "isNewlyCreated" : true, 
   "error" : false, 
   "code" : 201 

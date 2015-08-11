@@ -2,6 +2,6 @@ shell> curl --dump - http://localhost:8529/redirectMe
 
 HTTP/1.1 301 Moved
 content-type: text/html
-location: http://127.0.0.1:8529/somewhere.else/
+location: http://127.0.0.1:39893/somewhere.else/
 
-"<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"http://127.0.0.1:8529/somewhere.else/\">http://127.0.0.1:8529/somewhere.else/</a>.</p></body></html>"
+"<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"http://127.0.0.1:39893/somewhere.else/\">http://127.0.0.1:39893/somewhere.else/</a>.</p></body></html>"

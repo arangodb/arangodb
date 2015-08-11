@@ -7,11 +7,12 @@ arangosh> arango.GET("/echo")
     "protocol" : "http", 
     "server" : { 
       "address" : "127.0.0.1", 
-      "port" : 8529 
+      "port" : 39893 
     }, 
     "client" : { 
       "address" : "127.0.0.1", 
-      "port" : 29136 
+      "port" : 36302, 
+      "id" : "11" 
     }, 
     "internals" : { 
     }, 
@@ -28,8 +29,7 @@ arangosh> arango.GET("/echo")
     }, 
     "cookies" : { 
     }, 
-    "compatibility" : 20500, 
-    "path" : "/echo", 
+    "compatibility" : 20700, 
     "urlParameters" : { 
     } 
   }, 
