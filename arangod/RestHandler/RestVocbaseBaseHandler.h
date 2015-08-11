@@ -46,7 +46,8 @@
 
 struct TRI_document_collection_t;
 struct TRI_vocbase_col_s;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
+class VocShaper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class RestVocbaseBaseHandler
@@ -328,7 +329,7 @@ namespace triagens {
         void generateDocument (SingleCollectionReadOnlyTransaction& trx,
                                TRI_voc_cid_t,
                                TRI_doc_mptr_copy_t const&,
-                               TRI_shaper_t*,
+                               VocShaper*,
                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,7 +405,7 @@ namespace triagens {
 /// @brief the vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods

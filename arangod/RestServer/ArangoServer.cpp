@@ -228,15 +228,15 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
 static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* request,
                                                  TRI_server_t* server) {
   // get the request endpoint
-  ConnectionInfo ci = request->connectionInfo();
-  const string& endpoint = ci.endpoint;
+  ConnectionInfo const& ci = request->connectionInfo();
+  std::string const& endpoint = ci.endpoint;
 
   // get the databases mapped to the endpoint
   ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
-  const vector<string> databases = s->getEndpointMapping(endpoint);
+  std::vector<std::string> const& databases = s->getEndpointMapping(endpoint);
 
   // get database name from request
-  string dbName = request->databaseName();
+  std::string dbName = request->databaseName();
 
   if (databases.empty()) {
     // no databases defined. this means all databases are accessible via the endpoint
@@ -248,11 +248,12 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
     }
   }
   else {
-
     // only some databases are allowed for this endpoint
     if (dbName.empty()) {
       // no specific database requested, so use first mapped database
-      dbName = databases.at(0);
+      TRI_ASSERT(! databases.empty());
+
+      dbName = databases[0];
       request->setDatabaseName(dbName);
     }
     else {
@@ -260,6 +261,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 
       for (size_t i = 0; i < databases.size(); ++i) {
         if (dbName == databases.at(i)) {
+          request->setDatabaseName(dbName);
           found = true;
           break;
         }
@@ -352,6 +354,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _ignoreDatafileErrors(false),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
+    _throwCollectionNotLoadedError(false),
     _foxxQueues(true),
     _foxxQueuesPollInterval(1.0),
     _server(nullptr),
@@ -378,11 +381,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   TRI_InitServerGlobals();
 
-  _server = TRI_CreateServer();
-
-  if (_server == nullptr) {
-    LOG_FATAL_AND_EXIT("could not create server instance");
-  }
+  _server = new TRI_server_t;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,14 +390,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
 ArangoServer::~ArangoServer () {
   delete _indexPool;
-
   delete _jobManager;
-
-  if (_server != nullptr) {
-    TRI_FreeServer(_server);
-  }
-
-  TRI_FreeServerGlobals();
+  delete _server;
 
   Nonce::destroy();
 }
@@ -412,13 +405,7 @@ ArangoServer::~ArangoServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer () {
-  map<string, ProgramOptionsDescription> additional;
-
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
-
-  if (_applicationServer == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
 
   string conf = TRI_BinaryName(_argv[0]) + ".conf";
 
@@ -438,11 +425,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher();
-
-  if (_applicationDispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
   _applicationServer->addFeature(_applicationDispatcher);
 
   // .............................................................................
@@ -465,7 +447,7 @@ void ArangoServer::buildApplicationServer () {
   // ...........................................................................
 
   _queryRegistry = new aql::QueryRegistry();
-  _server->_queryRegistry = static_cast<void*>(_queryRegistry);
+  _server->_queryRegistry = _queryRegistry;
 
   // .............................................................................
   // V8 engine
@@ -476,10 +458,6 @@ void ArangoServer::buildApplicationServer () {
                                      _applicationScheduler,
                                      _applicationDispatcher);
 
-  if (_applicationV8 == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -487,6 +465,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   string ignoreOpt;
+  map<string, ProgramOptionsDescription> additional;
 
   additional["Hidden Options"]
     ("ruby.gc-interval", &ignoreOpt, "Ruby garbage collection interval (each x requests)")
@@ -503,9 +482,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationAdminServer = new ApplicationAdminServer();
-  if (_applicationAdminServer == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
 
   _applicationServer->addFeature(_applicationAdminServer);
   _applicationAdminServer->allowLogViewer();
@@ -601,6 +577,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.query-cache-mode", &_queryCacheMode, "mode for the AQL query cache (on, off, demand)")
     ("database.query-cache-max-results", &_queryCacheMaxResults, "maximum number of results in query cache per database")
     ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
+    ("database.throw-collection-not-loaded-error", &_throwCollectionNotLoadedError, "throw an error when accessing a collection that is still loading")
   ;
 
   // .............................................................................
@@ -608,11 +585,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
-
-  if (_applicationCluster == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
   _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
@@ -639,11 +611,9 @@ void ArangoServer::buildApplicationServer () {
 
   bool disableStatistics = false;
 
-#if TRI_ENABLE_FIGURES
   additional["Server Options:help-admin"]
     ("server.disable-statistics", &disableStatistics, "turn off statistics gathering")
   ;
-#endif
 
   additional["Javascript Options:help-admin"]
     ("javascript.v8-contexts", &_v8Contexts, "number of V8 contexts that are created for executing JavaScript actions")
@@ -667,10 +637,6 @@ void ArangoServer::buildApplicationServer () {
                                                              "arangodb",
                                                              &SetRequestContext,
                                                              (void*) _server);
-  if (_applicationEndpointServer == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
@@ -747,10 +713,16 @@ void ArangoServer::buildApplicationServer () {
   // disable certain options in unittest or script mode
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
+  if (mode == OperationMode::MODE_CONSOLE) {
+    _applicationScheduler->disableControlCHandler();
+  }
+ 
   if (mode == OperationMode::MODE_SCRIPT || mode == OperationMode::MODE_UNITTESTS) {
     // testing disables authentication
     _disableAuthentication = true;
   }
+
+  TRI_SetThrowCollectionNotLoadedVocBase(nullptr, _throwCollectionNotLoadedError);
   
   // set global query tracking flag
   triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);
@@ -800,7 +772,7 @@ void ArangoServer::buildApplicationServer () {
     string currentDir = FileUtils::currentDirectory(&err);
     char* absoluteFile = TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
 
-    if (absoluteFile != 0) {
+    if (absoluteFile != nullptr) {
       _pidFile = string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
 
@@ -829,6 +801,7 @@ int ArangoServer::startupServer () {
 
   if (_applicationServer->programOptions().has("no-server")) {
     startServer = false;
+    TRI_ENABLE_STATISTICS = false;
   }
 
   // check version
@@ -996,7 +969,6 @@ int ArangoServer::startupServer () {
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = vocbase;
-  httpOptions._queue = "STANDARD";
 
   if (startServer) {
 
@@ -1274,7 +1246,7 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
 
   auto isolate = context->isolate;
 
@@ -1330,7 +1302,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 
 int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
   bool ok = false;
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
   auto isolate = context->isolate;
 
   {

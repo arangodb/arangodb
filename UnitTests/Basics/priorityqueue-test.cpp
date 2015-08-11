@@ -79,7 +79,7 @@ BOOST_FIXTURE_TEST_SUITE(CPriorityQueueTest, CPriorityQueueSetup)
 BOOST_AUTO_TEST_CASE (tst_deque_case) {
   triagens::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
-  BOOST_CHECK_EQUAL(0, pq.size());
+  BOOST_CHECK_EQUAL(0, (int) pq.size());
   BOOST_CHECK_EQUAL(true, pq.empty());
 
   bool b;
@@ -95,19 +95,19 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
   b = pq.insert("c", new MyValue("c", 5));
   BOOST_CHECK_EQUAL(b, false);
 
-  BOOST_CHECK_EQUAL(4, pq.size());
+  BOOST_CHECK_EQUAL(4, (int) pq.size());
   BOOST_CHECK_EQUAL(false, pq.empty());
 
   MyValue const* p;
 
   p = pq.find("a");
-  BOOST_CHECK_EQUAL(p->_weight, 1);
+  BOOST_CHECK_EQUAL((int) p->_weight, 1);
   p = pq.find("b");
-  BOOST_CHECK_EQUAL(p->_weight, 2);
+  BOOST_CHECK_EQUAL((int) p->_weight, 2);
   p = pq.find("c");
-  BOOST_CHECK_EQUAL(p->_weight, 2);
+  BOOST_CHECK_EQUAL((int) p->_weight, 2);
   p = pq.find("d");
-  BOOST_CHECK_EQUAL(p->_weight, 4);
+  BOOST_CHECK_EQUAL((int) p->_weight, 4);
   p = pq.find("abc");
   BOOST_CHECK(p == nullptr);
 
@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "a");
   BOOST_CHECK_EQUAL(v->_key, "a");
-  BOOST_CHECK_EQUAL(v->_weight, 1);
+  BOOST_CHECK_EQUAL((int) v->_weight, 1);
   delete v;
 
   p = pq.getMinimal();
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "b");
   BOOST_CHECK_EQUAL(v->_key, "b");
-  BOOST_CHECK_EQUAL(v->_weight, 2);
+  BOOST_CHECK_EQUAL((int) v->_weight, 2);
   delete v;
 
   p = pq.getMinimal();
@@ -138,10 +138,10 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "c");
   BOOST_CHECK_EQUAL(v->_key, "c");
-  BOOST_CHECK_EQUAL(v->_weight, 2);
+  BOOST_CHECK_EQUAL((int) v->_weight, 2);
   delete v;
 
-  BOOST_CHECK_EQUAL(pq.size(), 1);
+  BOOST_CHECK_EQUAL((int) pq.size(), 1);
   BOOST_CHECK_EQUAL(pq.empty(), false);
 
   p = pq.getMinimal();
@@ -150,10 +150,10 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "d");
   BOOST_CHECK_EQUAL(v->_key, "d");
-  BOOST_CHECK_EQUAL(v->_weight, 4);
+  BOOST_CHECK_EQUAL((int) v->_weight, 4);
   delete v;
 
-  BOOST_CHECK_EQUAL(pq.size(), 0);
+  BOOST_CHECK_EQUAL((int) pq.size(), 0);
   BOOST_CHECK_EQUAL(pq.empty(), true);
 
   p = pq.getMinimal();
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
 BOOST_AUTO_TEST_CASE (tst_heap_case) {
   triagens::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
-  BOOST_CHECK_EQUAL(0, pq.size());
+  BOOST_CHECK_EQUAL(0, (int) pq.size());
   BOOST_CHECK_EQUAL(true, pq.empty());
 
   bool b;
@@ -185,19 +185,19 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
   b = pq.insert("c", new MyValue("c", 5));
   BOOST_CHECK_EQUAL(b, false);
 
-  BOOST_CHECK_EQUAL(4, pq.size());
+  BOOST_CHECK_EQUAL(4, (int) pq.size());
   BOOST_CHECK_EQUAL(false, pq.empty());
 
   MyValue const* p;
 
   p = pq.find("a");
-  BOOST_CHECK_EQUAL(p->_weight, 4);
+  BOOST_CHECK_EQUAL((int) p->_weight, 4);
   p = pq.find("b");
-  BOOST_CHECK_EQUAL(p->_weight, 1);
+  BOOST_CHECK_EQUAL((int) p->_weight, 1);
   p = pq.find("c");
-  BOOST_CHECK_EQUAL(p->_weight, 2);
+  BOOST_CHECK_EQUAL((int) p->_weight, 2);
   p = pq.find("d");
-  BOOST_CHECK_EQUAL(p->_weight, 2);
+  BOOST_CHECK_EQUAL((int) p->_weight, 2);
   p = pq.find("abc");
   BOOST_CHECK(p == nullptr);
 
@@ -210,7 +210,7 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "b");
   BOOST_CHECK_EQUAL(v->_key, "b");
-  BOOST_CHECK_EQUAL(v->_weight, 1);
+  BOOST_CHECK_EQUAL((int) v->_weight, 1);
   delete v;
 
   p = pq.getMinimal();
@@ -219,7 +219,7 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "d");
   BOOST_CHECK_EQUAL(v->_key, "d");
-  BOOST_CHECK_EQUAL(v->_weight, 2);
+  BOOST_CHECK_EQUAL((int) v->_weight, 2);
   delete v;
 
   p = pq.getMinimal();
@@ -228,10 +228,10 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "c");
   BOOST_CHECK_EQUAL(v->_key, "c");
-  BOOST_CHECK_EQUAL(v->_weight, 2);
+  BOOST_CHECK_EQUAL((int) v->_weight, 2);
   delete v;
 
-  BOOST_CHECK_EQUAL(pq.size(), 1);
+  BOOST_CHECK_EQUAL((int) pq.size(), 1);
   BOOST_CHECK_EQUAL(pq.empty(), false);
 
   p = pq.getMinimal();
@@ -240,10 +240,10 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "a");
   BOOST_CHECK_EQUAL(v->_key, "a");
-  BOOST_CHECK_EQUAL(v->_weight, 4);
+  BOOST_CHECK_EQUAL((int) v->_weight, 4);
   delete v;
 
-  BOOST_CHECK_EQUAL(pq.size(), 0);
+  BOOST_CHECK_EQUAL((int) pq.size(), 0);
   BOOST_CHECK_EQUAL(pq.empty(), true);
 
   p = pq.getMinimal();
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
 BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   triagens::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
-  BOOST_CHECK_EQUAL(0, pq.size());
+  BOOST_CHECK_EQUAL(0, (int) pq.size());
   BOOST_CHECK_EQUAL(true, pq.empty());
 
   bool b;
@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   b = pq.insert("c", new MyValue("c", 5));
   BOOST_CHECK_EQUAL(b, false);
 
-  BOOST_CHECK_EQUAL(4, pq.size());
+  BOOST_CHECK_EQUAL(4, (int) pq.size());
   BOOST_CHECK_EQUAL(false, pq.empty());
 
   pq.lowerWeight("d", 1);   // This moves "d" before "b" and "c"
@@ -283,13 +283,13 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   MyValue const* p;
 
   p = pq.find("a");
-  BOOST_CHECK_EQUAL(p->_weight, 1);
+  BOOST_CHECK_EQUAL((int) p->_weight, 1);
   p = pq.find("b");
-  BOOST_CHECK_EQUAL(p->_weight, 2);
+  BOOST_CHECK_EQUAL((int) p->_weight, 2);
   p = pq.find("c");
-  BOOST_CHECK_EQUAL(p->_weight, 2);
+  BOOST_CHECK_EQUAL((int) p->_weight, 2);
   p = pq.find("d");
-  BOOST_CHECK_EQUAL(p->_weight, 1);
+  BOOST_CHECK_EQUAL((int) p->_weight, 1);
   p = pq.find("abc");
   BOOST_CHECK(p == nullptr);
 
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "a");
   BOOST_CHECK_EQUAL(v->_key, "a");
-  BOOST_CHECK_EQUAL(v->_weight, 1);
+  BOOST_CHECK_EQUAL((int) v->_weight, 1);
   delete v;
 
   p = pq.getMinimal();
@@ -311,7 +311,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "d");
   BOOST_CHECK_EQUAL(v->_key, "d");
-  BOOST_CHECK_EQUAL(v->_weight, 1);
+  BOOST_CHECK_EQUAL((int) v->_weight, 1);
   delete v;
 
   p = pq.getMinimal();
@@ -320,10 +320,10 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "c");
   BOOST_CHECK_EQUAL(v->_key, "c");
-  BOOST_CHECK_EQUAL(v->_weight, 2);
+  BOOST_CHECK_EQUAL((int) v->_weight, 2);
   delete v;
 
-  BOOST_CHECK_EQUAL(pq.size(), 1);
+  BOOST_CHECK_EQUAL((int) pq.size(), 1);
   BOOST_CHECK_EQUAL(pq.empty(), false);
 
   p = pq.getMinimal();
@@ -332,10 +332,10 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "b");
   BOOST_CHECK_EQUAL(v->_key, "b");
-  BOOST_CHECK_EQUAL(v->_weight, 2);
+  BOOST_CHECK_EQUAL((int) v->_weight, 2);
   delete v;
 
-  BOOST_CHECK_EQUAL(pq.size(), 0);
+  BOOST_CHECK_EQUAL((int) pq.size(), 0);
   BOOST_CHECK_EQUAL(pq.empty(), true);
 
   p = pq.getMinimal();
@@ -351,7 +351,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
 BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   triagens::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
-  BOOST_CHECK_EQUAL(0, pq.size());
+  BOOST_CHECK_EQUAL(0, (int) pq.size());
   BOOST_CHECK_EQUAL(true, pq.empty());
 
   bool b;
@@ -367,7 +367,7 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   b = pq.insert("c", new MyValue("c", 5));
   BOOST_CHECK_EQUAL(b, false);
 
-  BOOST_CHECK_EQUAL(4, pq.size());
+  BOOST_CHECK_EQUAL(4, (int) pq.size());
   BOOST_CHECK_EQUAL(false, pq.empty());
 
   pq.lowerWeight("a", 1);   // This moves "a" before all others
@@ -375,13 +375,13 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   MyValue const* p;
 
   p = pq.find("a");
-  BOOST_CHECK_EQUAL(p->_weight, 1);
+  BOOST_CHECK_EQUAL((int) p->_weight, 1);
   p = pq.find("b");
-  BOOST_CHECK_EQUAL(p->_weight, 2);
+  BOOST_CHECK_EQUAL((int) p->_weight, 2);
   p = pq.find("c");
-  BOOST_CHECK_EQUAL(p->_weight, 3);
+  BOOST_CHECK_EQUAL((int) p->_weight, 3);
   p = pq.find("d");
-  BOOST_CHECK_EQUAL(p->_weight, 3);
+  BOOST_CHECK_EQUAL((int) p->_weight, 3);
   p = pq.find("abc");
   BOOST_CHECK(p == nullptr);
 
@@ -394,7 +394,7 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "a");
   BOOST_CHECK_EQUAL(v->_key, "a");
-  BOOST_CHECK_EQUAL(v->_weight, 1);
+  BOOST_CHECK_EQUAL((int) v->_weight, 1);
   delete v;
 
   p = pq.getMinimal();
@@ -403,7 +403,7 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "b");
   BOOST_CHECK_EQUAL(v->_key, "b");
-  BOOST_CHECK_EQUAL(v->_weight, 2);
+  BOOST_CHECK_EQUAL((int) v->_weight, 2);
   delete v;
 
   p = pq.getMinimal();
@@ -412,10 +412,10 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "c");
   BOOST_CHECK_EQUAL(v->_key, "c");
-  BOOST_CHECK_EQUAL(v->_weight, 3);
+  BOOST_CHECK_EQUAL((int) v->_weight, 3);
   delete v;
 
-  BOOST_CHECK_EQUAL(pq.size(), 1);
+  BOOST_CHECK_EQUAL((int) pq.size(), 1);
   BOOST_CHECK_EQUAL(pq.empty(), false);
 
   p = pq.getMinimal();
@@ -424,10 +424,10 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
   BOOST_CHECK_EQUAL(b, true);
   BOOST_CHECK_EQUAL(k, "d");
   BOOST_CHECK_EQUAL(v->_key, "d");
-  BOOST_CHECK_EQUAL(v->_weight, 3);
+  BOOST_CHECK_EQUAL((int) v->_weight, 3);
   delete v;
 
-  BOOST_CHECK_EQUAL(pq.size(), 0);
+  BOOST_CHECK_EQUAL((int) pq.size(), 0);
   BOOST_CHECK_EQUAL(pq.empty(), true);
 
   p = pq.getMinimal();

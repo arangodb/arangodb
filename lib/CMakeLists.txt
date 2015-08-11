@@ -52,6 +52,7 @@ add_library(
     Basics/ConditionVariable.cpp
     Basics/conversions.cpp
     Basics/csv.cpp
+    Basics/DataProtector.cpp
     Basics/debugging.cpp
     Basics/error.cpp
     Basics/Exceptions.cpp
@@ -81,8 +82,10 @@ add_library(
     Basics/ReadLocker.cpp
     Basics/ReadUnlocker.cpp
     Basics/ReadWriteLock.cpp
-    Basics/skip-list.cpp
+    Basics/SkipList.cpp
     Basics/socket-utils.cpp
+    Basics/SpinLock.cpp
+    Basics/SpinLocker.cpp
     Basics/ssl-helper.cpp
     Basics/string-buffer.cpp
     Basics/StringUtils.cpp
@@ -91,7 +94,6 @@ add_library(
     Basics/terminal-utils.cpp
     Basics/Thread.cpp
     Basics/ThreadPool.cpp
-    Basics/Timing.cpp
     Basics/tri-strings.cpp
     Basics/tri-zip.cpp
     Basics/Utf8Helper.cpp
@@ -115,10 +117,6 @@ add_library(
     Rest/InitialiseRest.cpp
     Rest/SslInterface.cpp
     Rest/Version.cpp
-    ShapedJson/Legends.cpp
-    ShapedJson/json-shaper.cpp
-    ShapedJson/shape-accessor.cpp
-    ShapedJson/shaped-json.cpp
     Statistics/statistics.cpp
     Utilities/ScriptLoader.cpp
     Utilities/ShellImplementation.cpp

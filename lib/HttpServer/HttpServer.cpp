@@ -47,6 +47,12 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
+#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
+#define GENERAL_SERVER_LOCKER(a) SPIN_LOCKER(a)
+#else
+#define GENERAL_SERVER_LOCKER(a) MUTEX_LOCKER(a)
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private static variables
 // -----------------------------------------------------------------------------
@@ -96,10 +102,10 @@ int HttpServer::sendChunk (uint64_t taskId, const string& data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer::HttpServer (Scheduler* scheduler,
-                              Dispatcher* dispatcher,
-                              HttpHandlerFactory* handlerFactory,
-                              AsyncJobManager* jobManager,
-                              double keepAliveTimeout)
+                        Dispatcher* dispatcher,
+                        HttpHandlerFactory* handlerFactory,
+                        AsyncJobManager* jobManager,
+                        double keepAliveTimeout)
   : _scheduler(scheduler),
     _dispatcher(dispatcher),
     _handlerFactory(handlerFactory),
@@ -107,11 +113,7 @@ HttpServer::HttpServer (Scheduler* scheduler,
     _listenTasks(),
     _endpointList(nullptr),
     _commTasks(),
-    _handlers(),
-    _task2handler(),
     _keepAliveTimeout(keepAliveTimeout) {
-  GENERAL_SERVER_INIT(&_commTasksLock);
-  GENERAL_SERVER_INIT(&_mappingLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,36 +121,17 @@ HttpServer::HttpServer (Scheduler* scheduler,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer::~HttpServer () {
-  for (auto task : _commTasks) {
+  for (auto& task : _commTasks) {
     unregisterChunkedTask(task);
     _scheduler->destroyTask(task);
   }
 
   stopListening();
-
-  GENERAL_SERVER_DESTROY(&_mappingLock);
-  GENERAL_SERVER_DESTROY(&_commTasksLock);
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            virtual public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the protocol
-////////////////////////////////////////////////////////////////////////////////
-
-const char* HttpServer::protocol () const {
-  return "http";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the encryption to be used
-////////////////////////////////////////////////////////////////////////////////
-
-Endpoint::EncryptionType HttpServer::encryptionType () const {
-  return Endpoint::ENCRYPTION_NONE;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a suitable communication task
@@ -163,30 +146,6 @@ HttpCommTask* HttpServer::createCommTask (TRI_socket_t s, const ConnectionInfo& 
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the scheduler
-////////////////////////////////////////////////////////////////////////////////
-
-Scheduler* HttpServer::scheduler () const {
-  return _scheduler;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-Dispatcher* HttpServer::dispatcher () const {
-  return _dispatcher;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the handler factory
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandlerFactory* HttpServer::handlerFactory () const {
-  return _handlerFactory;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add the endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -195,49 +154,11 @@ void HttpServer::setEndpointList (const EndpointList* list) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add another endpoint at runtime
-///
-/// the caller must make sure this is not called in parallel
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpServer::addEndpoint (Endpoint* endpoint) {
-  bool ok = openEndpoint(endpoint);
-
-  if (ok) {
-    LOG_INFO("added endpoint '%s'", endpoint->getSpecification().c_str());
-  }
-
-  return ok;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an endpoint at runtime
-///
-/// the caller must make sure this is not called in parallel
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpServer::removeEndpoint (Endpoint* endpoint) {
-  for (auto task = _listenTasks.begin();  task != _listenTasks.end();  ++task) {
-    if ((*task)->endpoint() == endpoint) {
-      // TODO: remove commtasks for the listentask??
-
-      _scheduler->destroyTask(*task);
-      _listenTasks.erase(task);
-
-      LOG_INFO("removed endpoint '%s'", endpoint->getSpecification().c_str());
-      return true;
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts listening
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::startListening () {
-  map<string, Endpoint*> endpoints = _endpointList->getByPrefix(encryptionType());
+  auto endpoints = _endpointList->getByPrefix(encryptionType());
 
   for (auto&& i : endpoints) {
     LOG_TRACE("trying to bind to endpoint '%s' for requests", i.first.c_str());
@@ -258,7 +179,7 @@ void HttpServer::startListening () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::stopListening () {
-  for (auto task : _listenTasks) {
+  for (auto& task : _listenTasks) {
     _scheduler->destroyTask(task);
   }
 
@@ -286,51 +207,27 @@ void HttpServer::unregisterChunkedTask (HttpCommTask* task) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down handlers
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpServer::shutdownHandlers () {
-  GENERAL_SERVER_LOCK(&_mappingLock);
-
-  for (auto&& i : _handlers) {
-    HttpServerJob* job = i.second._job;
-
-    if (job != nullptr) {
-      job->abandon();
-      i.second._job = nullptr;
-    }
-  }
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
-
-  GENERAL_SERVER_LOCK(&_commTasksLock);
-
-  for (auto i : _commTasks) {
-    i->beginShutdown();
-  }
-
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes all listen and comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::stop () {
-  GENERAL_SERVER_LOCK(&_commTasksLock);
+  while (true) {
+    HttpCommTask* task = nullptr;
 
-  while (! _commTasks.empty()) {
-    HttpCommTask* task = *_commTasks.begin();
-    _commTasks.erase(task);
-    GENERAL_SERVER_UNLOCK(&_commTasksLock);
+    {
+      GENERAL_SERVER_LOCKER(_commTasksLock);
+ 
+      if (_commTasks.empty()) {
+        break;
+      }
+
+      task = *_commTasks.begin();
+      _commTasks.erase(task);
+    }
 
     unregisterChunkedTask(task);
     _scheduler->destroyTask(task);
-
-    GENERAL_SERVER_LOCK(&_commTasksLock);
   }
-
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,17 +237,15 @@ void HttpServer::stop () {
 void HttpServer::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
   HttpCommTask* task = createCommTask(s, info);
 
-
-  GENERAL_SERVER_LOCK(&_commTasksLock);
-  try {
-    _commTasks.emplace(task);
+  {
+    GENERAL_SERVER_LOCKER(_commTasksLock);
+    try {
+      _commTasks.emplace(task);
+    }
+    catch (...) {
+      throw;
+    }
   }
-  catch (...) {
-    GENERAL_SERVER_UNLOCK(&_commTasksLock);
-    throw;
-  }
-
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
 
   // registers the task and get the number of the scheduler thread
   ssize_t n;
@@ -371,9 +266,10 @@ void HttpServer::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
 void HttpServer::handleCommunicationClosed (HttpCommTask* task) {
   shutdownHandlerByTask(task);
 
-  GENERAL_SERVER_LOCK(&_commTasksLock);
-  _commTasks.erase(task);
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
+  {
+    GENERAL_SERVER_LOCKER(_commTasksLock);
+    _commTasks.erase(task);
+  }
 
   unregisterChunkedTask(task);
 }
@@ -385,9 +281,10 @@ void HttpServer::handleCommunicationClosed (HttpCommTask* task) {
 void HttpServer::handleCommunicationFailure (HttpCommTask* task) {
   shutdownHandlerByTask(task);
 
-  GENERAL_SERVER_LOCK(&_commTasksLock);
-  _commTasks.erase(task);
-  GENERAL_SERVER_UNLOCK(&_commTasksLock);
+  {
+    GENERAL_SERVER_LOCKER(_commTasksLock);
+    _commTasks.erase(task);
+  }
 
   unregisterChunkedTask(task);
 }
@@ -397,49 +294,6 @@ void HttpServer::handleCommunicationFailure (HttpCommTask* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::handleAsync (HttpCommTask* task) {
-  GENERAL_SERVER_LOCK(&_mappingLock);
-
-  auto&& it = _task2handler.find(task);
-
-  if (it == _task2handler.end() || it->second._task != task) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-    LOG_WARNING("cannot find a task for the handler, giving up");
-
-    return;
-  }
-
-  handler_task_job_t element = it->second;
-  _task2handler.erase(it);
-
-  HttpHandler* handler = element._handler;
-  _handlers.erase(handler);
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
-
-  HttpResponse * response = handler->getResponse();
-
-  if (response == nullptr) {
-    basics::Exception err(TRI_ERROR_INTERNAL, 
-                          "no response received from handler",
-                          __FILE__, __LINE__);
-
-    handler->handleError(err);
-    response = handler->getResponse();
-  }
-
-  if (response == nullptr) {
-    delete handler;
-    LOG_ERROR("cannot get any response");
-
-    return;
-  }
-
-  handler->RequestStatisticsAgent::transfer(task);
-
-  task->handleResponse(response);
-          
-  delete handler;
-              
   task->processRead();
 }
 
@@ -447,57 +301,37 @@ void HttpServer::handleAsync (HttpCommTask* task) {
 /// @brief create a job for asynchronous execution (using the dispatcher)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
-  if (_dispatcher == nullptr) {
-    // without a dispatcher, simply give up
-    RequestStatisticsAgentSetExecuteError(handler);
-
-    delete handler;
-
-    LOG_WARNING("no dispatcher is known");
-    return false;
-  }
-
+bool HttpServer::handleRequestAsync (std::unique_ptr<HttpHandler>& handler, 
+                                     uint64_t* jobId) {
   // execute the handler using the dispatcher
-  Job* ajob = handler->createJob(this, true);
-  HttpServerJob* job = dynamic_cast<HttpServerJob*>(ajob);
+  std::unique_ptr<HttpServerJob> job(new HttpServerJob(this, handler.get(), nullptr));
+  // handler now belongs to the job
+  auto h = handler.release();
 
-  if (job == nullptr) {
-    delete ajob;
-
-    RequestStatisticsAgentSetExecuteError(handler);
-
-    delete handler;
-
-    LOG_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
-    return false;
-  }
+  // now handler.get() is a nullptr and must not be accessed
 
   if (jobId != nullptr) {
     try {
-      _jobManager->initAsyncJob(job, jobId);
+      _jobManager->initAsyncJob(job.get(), jobId);
     }
     catch (...) {
-      RequestStatisticsAgentSetExecuteError(handler);
+      RequestStatisticsAgentSetExecuteError(h);
       LOG_WARNING("unable to initialize job");
-      delete job;
-      delete handler;
-
       return false;
     }
   }
 
-  int error = _dispatcher->addJob(job);
+  int error = _dispatcher->addJob(job.get());
 
   if (error != TRI_ERROR_NO_ERROR) {
     // could not add job to job queue
-    RequestStatisticsAgentSetExecuteError(handler);
+    RequestStatisticsAgentSetExecuteError(h);
     LOG_WARNING("unable to add job to the job queue: %s", TRI_errno_string(error));
-    delete job;
-    delete handler;
-
     return false;
   }
+
+  // job now belongs to the dispatcher
+  job.release();
 
   // job is in queue now
   return true;
@@ -507,113 +341,68 @@ bool HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
 /// @brief executes the handler directly or add it to the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequest (HttpCommTask* task, HttpHandler* handler) {
-  registerHandler(handler, task);
-
+bool HttpServer::handleRequest (HttpCommTask* task, 
+                                std::unique_ptr<HttpHandler>& handler) {
   // execute handler and (possibly) requeue
   while (true) {
-
     // directly execute the handler within the scheduler thread
     if (handler->isDirect()) {
-      Handler::status_t status = handleRequestDirectly(task, handler);
+      Handler::status_t status = handleRequestDirectly(task, handler.get());
 
       if (status.status != Handler::HANDLER_REQUEUE) {
-        shutdownHandlerByTask(task);
         return true;
       }
     }
 
     // execute the handler using the dispatcher
-    else if (_dispatcher != nullptr) {
-      Job* ajob = handler->createJob(this, false);
-      HttpServerJob* job = dynamic_cast<HttpServerJob*>(ajob);
+    else {
+      std::unique_ptr<HttpServerJob> job(new HttpServerJob(this, handler.get(), task));
+      // handler now belongs to the job
+      auto h = handler.release();
+  
+      h->RequestStatisticsAgent::transfer(job.get());
 
-      if (job == nullptr) {
-        if (ajob != nullptr) {
-          delete ajob;
-        }
+      task->setCurrentJob(job.get());
 
-        RequestStatisticsAgentSetExecuteError(handler);
-
-        LOG_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
-
-        shutdownHandlerByTask(task);
+      if (_dispatcher->addJob(job.get()) != TRI_ERROR_NO_ERROR) {
+        task->clearCurrentJob();
         return false;
       }
 
-      registerJob(handler, job);
+      // job now belongs to the dispatcher
+      job.release();
       return true;
-    }
-
-    // without a dispatcher, simply give up
-    else {
-      RequestStatisticsAgentSetExecuteError(handler);
-
-      LOG_WARNING("no dispatcher is known");
-
-      shutdownHandlerByTask(task);
-      return false;
     }
   }
 
+  // just to pacify compilers
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback if job is done
+/// @brief handle the http response of the handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::jobDone (Job* ajob) {
-  HttpServerJob* job = dynamic_cast<HttpServerJob*>(ajob);
+void HttpServer::handleResponse (HttpCommTask* task,
+                                 HttpHandler* handler) {
+  HttpResponse* response = handler->getResponse();
 
-  if (job == nullptr) {
-    LOG_WARNING("jobDone called, but Job is no HttpServerJob");
-    return;
+  if (response == nullptr) {
+    basics::Exception err(TRI_ERROR_INTERNAL, "no response received from handler", __FILE__, __LINE__);
+
+    handler->handleError(err);
+    response = handler->getResponse();
   }
 
-  // locate the handler
-  HttpHandler* handler = job->getHandler();
-
-  if (job->isDetached()) {
-    if (handler != nullptr) {
-      _jobManager->finishAsyncJob(job);
-      delete handler;
-    }
-
-    return;
+  RequestStatisticsAgentSetRequestEnd(handler);
+  handler->RequestStatisticsAgent::transfer(task);
+    
+  if (response != nullptr) {
+    task->handleResponse(response);
   }
-
-  GENERAL_SERVER_LOCK(&_mappingLock);
-  auto&& it = _handlers.find(handler);
-
-
-  if (it == _handlers.end() || it->second._handler != handler) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-
-    LOG_WARNING("jobDone called, but handler is unknown");
-    return;
+  else {
+    LOG_ERROR("cannot get any response");
   }
-
-  handler_task_job_t& element = it->second;
-
-  // remove the job from the mapping
-  element._job = nullptr;
-
-  // if there is no task, assume the client has died
-  if (element._task == nullptr) {
-    LOG_DEBUG("jobDone called, but no task is known, assume client has died");
-    _handlers.erase(it);
-
-    delete handler;
-
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-    return;
-  }
-
-  // signal the task, to continue its work
-  element._task->signal();
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
 }
 
 // -----------------------------------------------------------------------------
@@ -647,7 +436,7 @@ bool HttpServer::openEndpoint (Endpoint* endpoint) {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, HttpHandler * handler) {
+Handler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, HttpHandler* handler) {
   Handler::status_t status(Handler::HANDLER_FAILED);
 
   RequestStatisticsAgentSetRequestStart(handler);
@@ -683,24 +472,7 @@ Handler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, HttpHan
       return status;
     }
 
-    HttpResponse * response = handler->getResponse();
-
-    if (response == nullptr) {
-      basics::Exception err(TRI_ERROR_INTERNAL, "no response received from handler", __FILE__, __LINE__);
-
-      handler->handleError(err);
-      response = handler->getResponse();
-    }
-
-    RequestStatisticsAgentSetRequestEnd(handler);
-    handler->RequestStatisticsAgent::transfer(task);
-
-    if (response != nullptr) {
-      task->handleResponse(response);
-    }
-    else {
-      LOG_ERROR("cannot get any response");
-    }
+    handleResponse(task, handler);
   }
   catch (basics::Exception const& ex) {
     RequestStatisticsAgentSetExecuteError(handler);
@@ -726,97 +498,15 @@ Handler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, HttpHan
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::shutdownHandlerByTask (Task* task) {
-  GENERAL_SERVER_LOCK(&_mappingLock);
+  auto commTask = dynamic_cast<HttpCommTask*>(task);
+  TRI_ASSERT(commTask != nullptr);
 
-  // remove the task from the map
-  auto&& it = _task2handler.find(task);
+  auto job = commTask->job();
+  commTask->clearCurrentJob();
 
-  if (it == _task2handler.end() || it->second._task != task) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-    LOG_DEBUG("shutdownHandler called, but no handler is known for task");
-
-    return;
+  if (job != nullptr) {
+    job->beginShutdown();
   }
-
-  handler_task_job_t& element = it->second;
-  HttpHandler* handler = element._handler;
-
-  _task2handler.erase(it);
-
-  // check if the handler contains a job or not
-  auto&& jt = _handlers.find(handler);
-
-  if (jt == _handlers.end() || jt->second._handler != handler) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-    LOG_DEBUG("shutdownHandler called, but handler of task is unknown");
-
-    return;
-  }
-
-  // if we do not know a job, delete handler
-  handler_task_job_t& element2 = jt->second;
-  Job* job = element2._job;
-
-  if (job == nullptr) {
-    _handlers.erase(jt);
-
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-
-    delete handler;
-
-    return;
-  }
-
-  // initiate shutdown if a job is known
-  element2._task = nullptr;
-  job->beginShutdown();
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a task
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpServer::registerHandler (HttpHandler* handler, HttpCommTask* task) {
-  handler_task_job_t element;
-  element._handler = handler;
-  element._task = task;
-  element._job = nullptr;
-
-  GENERAL_SERVER_LOCK(&_mappingLock);
-
-  _handlers[handler] = element;
-  _task2handler[task] = element;
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a new job
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpServer::registerJob (HttpHandler* handler, HttpServerJob* job) {
-  GENERAL_SERVER_LOCK(&_mappingLock);
-
-  // update the handler information
-  auto&& it = _handlers.find(handler);
-
-  if (it == _handlers.end() || it->second._handler != handler) {
-    GENERAL_SERVER_UNLOCK(&_mappingLock);
-    LOG_DEBUG("registerJob called for an unknown handler");
-
-    return;
-  }
-
-  handler_task_job_t& element = it->second;
-  element._job = job;
-
-  GENERAL_SERVER_UNLOCK(&_mappingLock);
-
-  handler->RequestStatisticsAgent::transfer(job);
-
-  _dispatcher->addJob(job);
 }
 
 // -----------------------------------------------------------------------------

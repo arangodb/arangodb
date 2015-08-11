@@ -1,0 +1,22 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal <<EOF
+{ "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "visitor" : "result.visited.vertices.push(vertex._id);"}
+EOF
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "visited" : { 
+      "vertices" : [ 
+        "persons/alice", 
+        "persons/bob", 
+        "persons/charlie", 
+        "persons/dave" 
+      ], 
+      "paths" : [ ] 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

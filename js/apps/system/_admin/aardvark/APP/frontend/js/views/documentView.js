@@ -228,9 +228,9 @@
       $('#transparentHeader').append(
         '<div class="breadcrumb">'+
         '<a href="#collections" class="activeBread">Collections</a>'+
-        '<span class="disabledBread">&gt</span>'+
+        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
         '<a class="activeBread" href="#collection/' + name[1] + '/documents/1">' + name[1] + '</a>'+
-        '<span class="disabledBread">&gt</span>'+
+        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
         '<a class="disabledBread">' + name[2] + '</a>'+
         '</div>'
       );

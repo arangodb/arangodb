@@ -40,7 +40,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              COLLECTION MIGRATION
@@ -79,7 +78,7 @@ static bool UpgradeShapeIterator (TRI_df_marker_t const* marker,
     TRI_shape_t const* shape = (TRI_shape_t const*) ((char const*) marker + sizeof(TRI_df_shape_marker_t));
 
     // if the shape is of basic type, don't copy it
-    if (TRI_LookupSidBasicShapeShaper(shape->_sid) != nullptr) {
+    if (Shaper::lookupSidBasicShape(shape->_sid) != nullptr) {
       return true;
     }
 
@@ -805,7 +804,7 @@ static void FillParametersFromJson (TRI_col_info_t* parameters,
   // init with defaults
   memset(parameters, 0, sizeof(TRI_col_info_t));
   parameters->_initialCount = -1;
-  parameters->_indexBuckets = 1;
+  parameters->_indexBuckets = TRI_DEFAULT_INDEX_BUCKETS;
 
   // convert json
   size_t const n = TRI_LengthVector(&json->_value._objects);
@@ -905,7 +904,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
     parameters->_maximalSize = static_cast<TRI_voc_size_t>(PageSize);
   }
   parameters->_initialCount  = -1;
-  parameters->_indexBuckets  = 1;
+  parameters->_indexBuckets  = TRI_DEFAULT_INDEX_BUCKETS;
 
   // fill name with 0 bytes
   memset(parameters->_name, 0, sizeof(parameters->_name));
@@ -1643,6 +1642,12 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
 
   TRI_FreeCollectionInfoOptions(&info);
 
+  double start = TRI_microtime();
+
+  LOG_ACTION("open-collection { collection: %s/%s }", 
+             vocbase->_name,
+             collection->_info._name);
+
   // check for journals and datafiles
   bool ok = CheckCollection(collection, ignoreErrors);
 
@@ -1656,6 +1661,11 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
 
     return nullptr;
   }
+  
+  LOG_TIMER((TRI_microtime() - start),
+            "open-collection { collection: %s/%s }", 
+            vocbase->_name,
+            collection->_info._name);
 
   return collection;
 }
@@ -1981,27 +1991,6 @@ bool TRI_IsAllowedNameCollection (bool allowSystem,
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_TypeNameCollection (const TRI_col_type_e type) {
-  switch (type) {
-    case TRI_COL_TYPE_DOCUMENT:
-      return "document";
-    case TRI_COL_TYPE_EDGE:
-      return "edge";
-    case TRI_COL_TYPE_SHAPE_DEPRECATED:
-      return "shape (deprecated)";
-    case TRI_COL_TYPE_UNKNOWN:
-    default:
-      return "unknown";
-  }
-
-  TRI_ASSERT(false);
-  return "unknown";
 }
 
 // -----------------------------------------------------------------------------

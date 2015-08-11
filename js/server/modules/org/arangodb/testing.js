@@ -496,6 +496,30 @@ function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
 
 }
 
+function analyzeCoreDumpWindows(instanceInfo) {
+
+  var coreFN = instanceInfo.tmpDataDir + "\\" + "core.dmp";
+  if (!fs.exists(coreFN)) {
+    print("core file "+ coreFN + " not found?");
+    return;
+  }
+  var dbgCmds = [
+    "kp", // print backtrace with arguments
+    "dv", // analyze local variables (if)
+    "!analyze -v", // print verbose analysis
+    "q" //quit the debugger
+  ];
+
+  var args = [
+    "-z",
+    coreFN,
+    "-c",
+    dbgCmds.join("; ")
+  ];
+
+  print("running cdb " + JSON.stringify(args));
+  executeExternalAndWait("cdb", args);
+}
 
 function checkInstanceAlive(instanceInfo, options) {
   var storeArangodPath;
@@ -523,10 +547,9 @@ function checkInstanceAlive(instanceInfo, options) {
           storeArangodPath + " " + options.coreDirectory + 
           "/core*" + instanceInfo.pid.pid + "*'";
         if (require("internal").platform.substr(0,3) === 'win') {
-          fs.copyFile("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
-          fs.copyFile("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
           // Windows: wait for procdump to do its job...
           statusExternal(instanceInfo.monitor, true);
+          analyzeCoreDumpWindows(instanceInfo);
         }
         else {
           fs.copyFile("bin/arangod", storeArangodPath);
@@ -558,10 +581,9 @@ function checkInstanceAlive(instanceInfo, options) {
               " /var/tmp/core*" + checkpid.pid + "*'";
 
             if (require("internal").platform.substr(0,3) === 'win') {
-              fs.copyFile("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
-              fs.copyFile("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
               // Windows: wait for procdump to do its job...
               statusExternal(instanceInfo.monitor, true);
+              analyzeCoreDumpWindows(instanceInfo);
             }
             else {
               fs.copyFile("bin/arangod", storeArangodPath);
@@ -988,7 +1010,7 @@ function performTests(options, testList, testname, remote) {
 
   if (testList.length === 0) {
     print("Testsuite is empty!");
-    return {"EMPTY TESTSUITE": {status: false, message: "no testsuites found!"};
+    return {"EMPTY TESTSUITE": {status: false, message: "no testsuites found!"}};
   }
 
   for (i = 0; i < testList.length; i++) {
@@ -1482,6 +1504,8 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
     "server.username": options.username,
     "server.password": options.password,
     "server.endpoint": instanceInfo.endpoint,
+    //"server.request-timeout": 1200 // default now. 
+    "server.connect-timeout": 10 // 5s default
   };
 
   args = _.extend(args, cmds);

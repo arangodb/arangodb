@@ -34,7 +34,7 @@
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-
+#include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
@@ -42,11 +42,10 @@
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
-#include "Cluster/ServerState.h"
 
 using namespace triagens;
 
@@ -100,7 +99,7 @@ using namespace triagens;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct df_entry_s {
-  TRI_datafile_t* _data;
+  TRI_datafile_t const* _data;
   TRI_voc_tick_t  _dataMin;
   TRI_voc_tick_t  _dataMax;
   TRI_voc_tick_t  _tickMax;
@@ -182,18 +181,16 @@ static int AppendCollection (TRI_replication_dump_t* dump,
 /// data range
 ////////////////////////////////////////////////////////////////////////////////
 
-static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
-                             TRI_vector_t* result,
-                             TRI_voc_tick_t dataMin,
-                             TRI_voc_tick_t dataMax,
-                             bool isJournal) {
-
-  int res = TRI_ERROR_NO_ERROR;
+static void IterateDatafiles (TRI_vector_pointer_t const* datafiles,
+                              std::vector<df_entry_t>& result,
+                              TRI_voc_tick_t dataMin,
+                              TRI_voc_tick_t dataMax,
+                              bool isJournal) {
 
   size_t const n = datafiles->_length;
 
   for (size_t i = 0; i < n; ++i) {
-    TRI_datafile_t* df = static_cast<TRI_datafile_t*>(TRI_AtVectorPointer(datafiles, i));
+    auto df = static_cast<TRI_datafile_t const*>(TRI_AtVectorPointer(datafiles, i));
 
     df_entry_t entry = {
       df,
@@ -227,36 +224,34 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
       continue;
     }
 
-    res = TRI_PushBackVector(result, &entry);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      break;
-    }
+    result.emplace_back(entry);
   }
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the datafiles of a collection for a specific tick range
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vector_t GetRangeDatafiles (TRI_document_collection_t* document,
-                                       TRI_voc_tick_t dataMin,
-                                       TRI_voc_tick_t dataMax) {
-  TRI_vector_t datafiles;
+static std::vector<df_entry_t> GetRangeDatafiles (TRI_document_collection_t* document,
+                                                  TRI_voc_tick_t dataMin,
+                                                  TRI_voc_tick_t dataMax) {
 
   LOG_TRACE("getting datafiles in data range %llu - %llu",
             (unsigned long long) dataMin,
             (unsigned long long) dataMax);
 
-  // determine the datafiles of the collection
-  TRI_InitVector(&datafiles, TRI_CORE_MEM_ZONE, sizeof(df_entry_t));
+  std::vector<df_entry_t> datafiles;
 
   TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(document);
 
-  IterateDatafiles(&document->_datafiles, &datafiles, dataMin, dataMax, false);
-  IterateDatafiles(&document->_journals, &datafiles, dataMin, dataMax, true);
+  try {
+    IterateDatafiles(&document->_datafiles, datafiles, dataMin, dataMax, false);
+    IterateDatafiles(&document->_journals, datafiles, dataMin, dataMax, true);
+  }
+  catch (...) {
+    TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
+    throw;
+  }
 
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
@@ -1105,11 +1100,9 @@ static int DumpCollection (TRI_replication_dump_t* dump,
                            bool withTicks,
                            bool translateCollectionIds,
                            triagens::arango::CollectionNameResolver* resolver) {
-  TRI_vector_t datafiles;
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
-  size_t i, n;
   int res;
   bool hasMore;
   bool bufferFull;
@@ -1128,8 +1121,16 @@ static int DumpCollection (TRI_replication_dump_t* dump,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax);
 
-  buffer         = dump->_buffer;
-  datafiles      = GetRangeDatafiles(document, dataMin, dataMax);
+  buffer = dump->_buffer;
+
+  std::vector<df_entry_t> datafiles;
+
+  try {
+    datafiles = GetRangeDatafiles(document, dataMin, dataMax);
+  }
+  catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   // setup some iteration state
   lastFoundTick  = 0;
@@ -1139,17 +1140,17 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bufferFull     = false;
   ignoreMarkers  = false;
 
-  n = TRI_LengthVector(&datafiles);
+  size_t const n = datafiles.size();
 
-  for (i = 0; i < n; ++i) {
-    df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
-    TRI_datafile_t* datafile = e->_data;
+  for (size_t i = 0; i < n; ++i) {
+    df_entry_t const& e = datafiles[i];
+    TRI_datafile_t const* datafile = e._data;
     char const* ptr;
     char const* end;
 
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
-    if (e->_isJournal) {
+    if (e._isJournal) {
       TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
     else {
@@ -1209,7 +1210,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 
         // check if we can abort searching
         if (foundTick >= dataMax ||
-            (foundTick >= e->_tickMax && i == (n - 1))) {
+            (foundTick >= e._tickMax && i == (n - 1))) {
           // fetched the last available marker
           hasMore = false;
           goto NEXT_DF;
@@ -1259,7 +1260,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
 
       if (foundTick >= dataMax ||
-          (foundTick >= e->_tickMax && i == (n - 1))) {
+          (foundTick >= e._tickMax && i == (n - 1))) {
         // fetched the last available marker
         hasMore = false;
         goto NEXT_DF;
@@ -1274,7 +1275,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
     }
 
 NEXT_DF:
-    if (e->_isJournal) {
+    if (e._isJournal) {
       // read-unlock the journal
       TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
@@ -1283,8 +1284,6 @@ NEXT_DF:
       break;
     }
   }
-
-  TRI_DestroyVector(&datafiles);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (lastFoundTick > 0) {
@@ -1334,11 +1333,18 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   // block compaction
   TRI_ReadLockReadWriteLock(&document->_compactionLock);
 
-  int res = DumpCollection(dump, document, dataMin, dataMax, withTicks, 
-                           translateCollectionIds, &resolver);
+  int res;
 
+  try {
+    res = DumpCollection(dump, document, dataMin, dataMax, withTicks, 
+                         translateCollectionIds, &resolver);
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  // always execute this
   TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
-
   document->ditches()->freeDitch(b);
 
   return res;

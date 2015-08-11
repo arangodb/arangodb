@@ -3,4 +3,9 @@ shell> curl --dump - http://localhost:8529/_api/aqlfunction
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
-[ ]
+[ 
+  { 
+    "name" : "myfunctions::temperature::celsiustofahrenheit", 
+    "code" : "function (celsius) { return celsius * 1.8 + 32; }" 
+  } 
+]

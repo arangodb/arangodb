@@ -157,7 +157,7 @@ namespace triagens {
 /// @brief return all variables used in the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<Variable*> variables () const;
+        void variables (std::unordered_set<Variable const*>&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a Json representation of the expression
@@ -175,7 +175,7 @@ namespace triagens {
         AqlValue execute (triagens::arango::AqlTransaction* trx,
                           AqlItemBlock const*,
                           size_t,
-                          std::vector<Variable*> const&,
+                          std::vector<Variable const*> const&,
                           std::vector<RegisterId> const&,
                           TRI_document_collection_t const**);
 
@@ -336,7 +336,7 @@ namespace triagens {
                                           triagens::arango::AqlTransaction*,
                                           AqlItemBlock const*,
                                           size_t,
-                                          std::vector<Variable*> const&,
+                                          std::vector<Variable const*> const&,
                                           std::vector<RegisterId> const&,
                                           bool);
 

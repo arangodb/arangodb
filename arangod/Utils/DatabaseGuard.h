@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/server.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -106,7 +106,7 @@ namespace triagens {
 /// @brief return the database pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline struct TRI_vocbase_s* database () const {
+        inline TRI_vocbase_t* database () const {
           return _database;
         }
 
@@ -126,7 +126,7 @@ namespace triagens {
 /// @brief pointer to database
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _database;
+        TRI_vocbase_t* _database;
 
     };
   }

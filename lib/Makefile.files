@@ -19,6 +19,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ConditionVariable.cpp \
 	lib/Basics/conversions.cpp \
 	lib/Basics/csv.cpp \
+	lib/Basics/DataProtector.cpp \
 	lib/Basics/debugging.cpp \
 	lib/Basics/error.cpp \
 	lib/Basics/Exceptions.cpp \
@@ -51,8 +52,10 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp \
-	lib/Basics/skip-list.cpp \
+	lib/Basics/SkipList.cpp \
 	lib/Basics/socket-utils.cpp \
+	lib/Basics/SpinLock.cpp \
+	lib/Basics/SpinLocker.cpp \
 	lib/Basics/ssl-helper.cpp \
 	lib/Basics/string-buffer.cpp \
 	lib/Basics/StringUtils.cpp \
@@ -63,7 +66,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/Thread.cpp \
 	lib/Basics/ThreadPool.cpp \
 	lib/Basics/threads-posix.cpp \
-	lib/Basics/Timing.cpp \
 	lib/Basics/tri-strings.cpp \
 	lib/Basics/tri-zip.cpp \
 	lib/Basics/Utf8Helper.cpp \
@@ -88,10 +90,6 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/InitialiseRest.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp \
-	lib/ShapedJson/Legends.cpp \
-	lib/ShapedJson/json-shaper.cpp \
-	lib/ShapedJson/shape-accessor.cpp \
-	lib/ShapedJson/shaped-json.cpp \
 	lib/Statistics/statistics.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
@@ -107,18 +105,9 @@ lib_libarango_a_SOURCES += \
 	lib/Utilities/ReadlineShell.cpp
 
 else
-if ENABLE_LINENOISE
-
-lib_libarango_a_SOURCES += \
-	lib/Utilities/LinenoiseShell.cpp \
-	3rdParty/linenoise/linenoise.c \
-	3rdParty/linenoise/utf8.c
-
-else
 
 lib_libarango_a_SOURCES += \
 	lib/Utilities/DummyShell.cpp 
-endif
 endif
 
 ################################################################################

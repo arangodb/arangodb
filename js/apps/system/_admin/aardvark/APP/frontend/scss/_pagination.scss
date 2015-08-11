@@ -7,8 +7,14 @@
 
 .pagination-line {
   margin: 20px 0;
-  padding-bottom: 5px;
+  margin-bottom: 0;
+  padding-top: 12px;
   text-align: center;
+  margin-top: 0;
+  border-top: 1px solid rgba(104, 103, 102, 0.1);;
+  background-color: white;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
 
   %pg-active {
     background-color: $c-neutral;
@@ -27,7 +33,7 @@
   }
 
   ul {
-    @include border-radius(4px);
+    @include border-radius(3px);
     display: inline-block;
     margin-bottom: 0;
     margin-left: 0;

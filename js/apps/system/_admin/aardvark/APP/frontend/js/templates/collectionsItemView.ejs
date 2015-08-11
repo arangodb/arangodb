@@ -8,7 +8,8 @@
   <%}%>
 </div>
 
-<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">
+<i class="collection-type-icon fa <%= model.get('picture') %>"></i>
+<!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
 <div class="tileBadge">
   <span>
     <div class="corneredBadge <%= model.get('status') %>">

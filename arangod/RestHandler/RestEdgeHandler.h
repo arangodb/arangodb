@@ -69,7 +69,7 @@ namespace triagens {
 /// @brief get collection type
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual TRI_col_type_e getCollectionType () const {
+        TRI_col_type_e getCollectionType () const override final {
           return TRI_COL_TYPE_EDGE;
         }
 
@@ -83,7 +83,7 @@ namespace triagens {
 /// @brief creates an edge
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool createDocument ();
+      bool createDocument () override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document (an edge), coordinator case in a cluster

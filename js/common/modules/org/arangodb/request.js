@@ -29,26 +29,37 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var Buffer = require('buffer').Buffer;
-var extend = require('underscore').extend;
-var is = require('org/arangodb/is');
-var querystring = require('querystring');
-var qs = require('qs');
-var url = require('url');
+const internal = require('internal');
+const Buffer = require('buffer').Buffer;
+const extend = require('underscore').extend;
+const httperr = require('http-errors');
+const is = require('org/arangodb/is');
+const querystring = require('querystring');
+const qs = require('qs');
+const url = require('url');
 
-function Response(res, encoding, json) {
-  this.status = this.statusCode = res.code;
-  this.message = res.message;
-  this.headers = res.headers ? res.headers : {};
-  this.body = this.rawBody = res.body;
-  if (this.body && encoding !== null) {
-    this.body = this.body.toString(encoding || 'utf-8');
-    if (json) {
-      try {
-        this.body = JSON.parse(this.body);
-      } catch (e) {
-        // Do nothing.
+class Response {
+  throw(msg) {
+    if (this.status >= 400) {
+      let HttpError = httperr[this.status] || httperr[500];
+      let err = new HttpError(msg || this.message);
+      err.details = this;
+      throw err;
+    }
+  }
+  constructor(res, encoding, json) {
+    this.status = this.statusCode = res.code;
+    this.message = res.message;
+    this.headers = res.headers ? res.headers : {};
+    this.body = this.rawBody = res.body;
+    if (this.body && encoding !== null) {
+      this.body = this.body.toString(encoding || 'utf-8');
+      if (json) {
+        try {
+          this.body = JSON.parse(this.body);
+        } catch (e) {
+          // Do nothing.
+        }
       }
     }
   }
@@ -73,14 +84,14 @@ function request(req) {
     req = {url: req, method: 'GET'};
   }
 
-  var path = req.url || req.uri;
+  let path = req.url || req.uri;
   if (!path) {
     throw new Error('Request URL must not be empty.');
   }
 
-  var pathObj = typeof path === 'string' ? url.parse(path) : path;
+  let pathObj = typeof path === 'string' ? url.parse(path) : path;
   if (pathObj.auth) {
-    var auth = pathObj.auth.split(':');
+    let auth = pathObj.auth.split(':');
     req = extend({
       auth: {
         username: decodeURIComponent(auth[0]),
@@ -89,14 +100,14 @@ function request(req) {
     }, req);
     delete pathObj.auth;
   }
-  var query = typeof req.qs === 'string' ? req.qs : querystringify(req.qs, req.useQuerystring);
+  let query = typeof req.qs === 'string' ? req.qs : querystringify(req.qs, req.useQuerystring);
   if (query) {
     pathObj.search = query;
   }
   path = url.format(pathObj);
 
-  var contentType;
-  var body = req.body;
+  let contentType;
+  let body = req.body;
   if (req.json) {
     body = JSON.stringify(body);
     contentType = 'application/json';
@@ -119,7 +130,7 @@ function request(req) {
     }
   }
 
-  var headers = {'content-type': contentType};
+  let headers = {'content-type': contentType};
 
   if (req.headers) {
     Object.keys(req.headers).forEach(function (name) {
@@ -138,7 +149,7 @@ function request(req) {
     );
   }
 
-  var options = {
+  let options = {
     method: (req.method || 'get').toUpperCase(),
     headers: headers,
     returnBodyAsBuffer: true
@@ -154,7 +165,7 @@ function request(req) {
   } else {
     options.maxRedirects = 10;
   }
-  var result = internal.download(path, body, options);
+  let result = internal.download(path, body, options);
 
   return new Response(result, req.encoding, req.json);
 }

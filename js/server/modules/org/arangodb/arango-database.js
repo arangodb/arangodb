@@ -275,6 +275,26 @@ ArangoDatabase.prototype._truncate = function(name) {
 /// @brief index id regex
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an index
+/// @startDocuBlock IndexVerify
+///
+/// So you've created an index, and since its maintainance isn't for free,
+/// you definitely want to know whether your Query can utilize it.
+///
+/// You can use explain to verify whether **skiplist** or **hash indices** are used:
+/// (if you ommit `colors: false` you will get nice colors on ArangoSH)
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{IndexVerify}
+/// ~db._create("example");
+/// var explain = require("org/arangodb/aql/explainer").explain;
+/// db.example.ensureSkiplist("a", "b");
+/// explain("FOR doc IN example FILTER doc.a < 23 RETURN doc", {colors:false});
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
 ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,15 +304,15 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 ///
 /// Returns the index with *index-handle* or null if no such index exists.
 ///
-/// @EXAMPLES
-///
-/// ```js
-/// arango> db.example.getIndexes().map(function(x) { return x.id; });
-/// ["example/0"]
-/// arango> db._index("example/0");
-/// { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
-/// ```
-///
+/// @EXAMPLE_ARANGOSH_OUTPUT{IndexHandle}
+/// ~db._create("example");
+/// db.example.ensureSkiplist("a", "b");
+/// var indexInfo = db.example.getIndexes().map(function(x) { return x.id; });
+/// indexInfo;
+/// db._index(indexInfo[0])
+/// db._index(indexInfo[1])
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -341,32 +361,22 @@ ArangoDatabase.prototype._index = function(id) {
 ///
 /// Drops the *index*.  If the index does not exist, then *false* is
 /// returned. If the index existed and was dropped, then *true* is
-/// returned. Note that you cannot drop the primary index.
+/// returned.
 ///
 /// `db._dropIndex(index-handle)`
 ///
 /// Drops the index with *index-handle*.
 ///
-/// @EXAMPLES
-///
-/// ```js
-/// arango> db.example.ensureSkiplist("a", "b");
-/// { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
-///
-/// arango> i = db.example.getIndexes();
-/// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
-///  { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
-///
-///  arango> db._dropIndex(i[0]);
-///  false
-///
-///  arango> db._dropIndex(i[1].id);
-/// true
-///
-/// arango> i = db.example.getIndexes();
-/// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
-/// ```
-///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dropIndex}
+/// ~db._create("example");
+/// db.example.ensureSkiplist("a", "b");
+/// var indexInfo = db.example.getIndexes();
+/// indexInfo;
+/// db._dropIndex(indexInfo[0])
+/// db._dropIndex(indexInfo[1].id)
+/// indexInfo = db.example.getIndexes();
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -416,60 +426,6 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 
 ArangoDatabase.prototype._listEndpoints = function () {
   return internal._listEndpoints();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds and connects a new endpoint
-/// @startDocuBlock configureEndpoint
-/// `db._configureEndpoint(endpoint, databases)`
-///
-/// Adds and connects or updates the *endpoint*.
-///
-/// The optional *databases* argument allows restricting the endpoint for
-/// use with specific databases only. The first database in the list will
-/// automatically become the default database for the endpoint. The default
-/// database will be used for incoming requests that do not specify the database
-/// name explicitly.
-///
-/// If *databases* is an empty list, the endpoint will allow access to all
-/// existing databases.
-///
-/// The adjusted list of endpoints is saved in a file *ENDPOINTS* in the
-/// database directory. The endpoints are restored from the file at server
-/// start.
-///
-/// Please note that managing endpoints can only be performed from out of the
-/// *_system* database. When not in the default database, you must first switch
-/// to it using the "db._useDatabase" method.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._configureEndpoint = function (endpoint, databases) {
-  return internal._configureEndpoint(endpoint, databases || [ ]);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disconnects and removes a specific endpoint
-/// @startDocuBlock removeEndpoint
-/// `db._removeEndpoint(endpoint)`
-///
-/// Disconnects and removes the *endpoint*. If the endpoint was not
-/// configured before, the operation will fail. If the endpoint happens to be
-/// the last bound endpoint, the operation will also fail as disconnecting
-/// would make the server unable to communicate with any clients.
-///
-/// The adjusted list of endpoints is saved in a file *ENDPOINTS* in the
-/// database directory. The endpoints are restored from the file at server
-/// start.
-///
-/// Please note that managing endpoints can only be performed from out of the
-/// *_system* database. When not in the default database, you must first switch
-/// to it using the "db._useDatabase" method.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._removeEndpoint = function (endpoint) {
-  return internal._removeEndpoint(endpoint);
 };
 
 // -----------------------------------------------------------------------------

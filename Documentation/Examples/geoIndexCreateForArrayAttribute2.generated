@@ -1,0 +1,53 @@
+arangosh> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
+{ 
+  "id" : "geo2/513477208773", 
+  "type" : "geo2", 
+  "unique" : false, 
+  "sparse" : true, 
+  "constraint" : false, 
+  "ignoreNull" : true, 
+  "fields" : [ 
+    "location.latitude", 
+    "location.longitude" 
+  ], 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
+arangosh> for (i = -90;  i <= 90;  i += 10) {
+........>     for (j = -180; j <= 180; j += 10) {
+........>         db.geo2.save({ name : "Name/" + i + "/" + j, location: { latitude : i, longitude : j } });
+........>     }
+........> }	
+arangosh> db.geo2.near(0, 0).limit(3).toArray();
+[ 
+  { 
+    "_id" : "geo2/513546611397", 
+    "_key" : "513546611397", 
+    "_rev" : "513546611397", 
+    "location" : { 
+      "latitude" : 0, 
+      "longitude" : 0 
+    }, 
+    "name" : "Name/0/0" 
+  }, 
+  { 
+    "_id" : "geo2/513546808005", 
+    "_key" : "513546808005", 
+    "_rev" : "513546808005", 
+    "location" : { 
+      "latitude" : 0, 
+      "longitude" : 10 
+    }, 
+    "name" : "Name/0/10" 
+  }, 
+  { 
+    "_id" : "geo2/513539336901", 
+    "_key" : "513539336901", 
+    "_rev" : "513539336901", 
+    "location" : { 
+      "latitude" : -10, 
+      "longitude" : 0 
+    }, 
+    "name" : "Name/-10/0" 
+  } 
+]

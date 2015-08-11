@@ -1,0 +1,18 @@
+arangosh> db.example.save({ Hello : "World" });
+{ 
+  "_id" : "example/511849818821", 
+  "_rev" : "511849818821", 
+  "_key" : "511849818821" 
+}
+arangosh> db.example.save({ "name" : "John Doe", "age" : 29 });
+{ 
+  "_id" : "example/511850212037", 
+  "_rev" : "511850212037", 
+  "_key" : "511850212037" 
+}
+arangosh> db.example.save({ "name" : "Jane Smith", "age" : 31 });
+{ 
+  "_id" : "example/511850408645", 
+  "_rev" : "511850408645", 
+  "_key" : "511850408645" 
+}

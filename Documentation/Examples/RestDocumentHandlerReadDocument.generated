@@ -1,12 +1,12 @@
-shell> curl --dump - http://localhost:8529/_api/document/products/1600724194
+shell> curl --dump - http://localhost:8529/_api/document/products/512094792389
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1600724194"
+etag: "512094792389"
 
 { 
   "hello" : "world", 
-  "_id" : "products/1600724194", 
-  "_rev" : "1600724194", 
-  "_key" : "1600724194" 
+  "_id" : "products/512094792389", 
+  "_rev" : "512094792389", 
+  "_key" : "512094792389" 
 }

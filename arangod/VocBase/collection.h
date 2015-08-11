@@ -116,6 +116,12 @@ struct TRI_vocbase_col_s;
 
 #define TRI_COL_NAME_STATISTICS  "_statistics"
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default number of index buckets
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_DEFAULT_INDEX_BUCKETS 8
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -436,12 +442,6 @@ bool TRI_IsSystemNameCollection (char const*);
 
 bool TRI_IsAllowedNameCollection (bool,
                                   char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_TypeNameCollection (const TRI_col_type_e);
 
 #endif
 

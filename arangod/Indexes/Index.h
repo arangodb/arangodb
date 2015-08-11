@@ -184,12 +184,15 @@ namespace triagens {
         virtual int insert (struct TRI_doc_mptr_t const*, bool) = 0;
         virtual int remove (struct TRI_doc_mptr_t const*, bool) = 0;
         virtual int postInsert (struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*);
+        virtual int batchInsert (std::vector<struct TRI_doc_mptr_t const*> const*, size_t);
 
         // a garbage collection function for the index
         virtual int cleanup ();
 
         // give index a hint about the expected size
         virtual int sizeHint (size_t);
+
+        virtual bool hasBatchInsert () const;
 
         friend std::ostream& operator<< (std::ostream&, Index const*);
         friend std::ostream& operator<< (std::ostream&, Index const&);

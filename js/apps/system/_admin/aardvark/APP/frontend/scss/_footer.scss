@@ -1,5 +1,4 @@
 .footer {
-  background-color: $c-nav-bg;
   bottom: 0;
   font-size: 14px;
   left: 0;
@@ -18,25 +17,98 @@ footer.footer {
     margin-bottom: 0;
     padding-bottom: 10px;
     padding-top: 10px;
+    font-weight: 100;
+    font-size: 10pt;
   }
 }
 
 div.footer-left {
   @extend %pull-left;
-  background: none repeat scroll 0 0 $c-nav-bg;
-  color: $c-white;
+  background: none repeat scroll 0 0 $c-transp;
+  color: $c-bar-bg;
   width: 45%;
 
   p {
     @extend %pull-left;
   }
+
+  .social-icons {
+
+    margin-top: 5px;
+
+    a {
+      width: 25px;
+      display: block;
+      height: 25px;
+      float: left;
+    }
+
+    p {
+      font-size: 12pt;
+      background: $c-white;
+      border: 1px solid rgba(104, 103, 102, 0.1);
+      border-radius: 20px;
+      height: 25px;
+      width: 25px;
+      padding: 0;
+      margin-right: 10px;
+    }
+
+    p:hover {
+      cursor: pointer;
+      background: $c-new-grey;
+
+      i {
+        color: $c-white;
+      }
+    }
+
+    i {
+      color: $c-black;
+      position: absolute;
+      margin-top: 4px;
+
+      &.fa-twitter {
+        margin-left: -7px;
+      }
+      &.fa-envelope {
+        margin-left: -20px;
+      }
+      &.fa-google {
+        margin-top: 6px;
+        margin-left: -18px;
+      }
+      &.fa-stack-overflow {
+        margin-left: -18px;
+      }
+    }
+
+
+  }
 }
 
 div.footer-center {
   @extend %pull-left;
-  background: none repeat scroll 0 0 $c-nav-bg;
-  color: $c-white;
+  background: none repeat scroll 0 0 $c-transp;
+  color: $c-bar-bg;
   width: 10%;
+
+  i {
+    background-color: $c-white;
+    border-radius: 20px;
+    border: 1px solid rgba(104, 103, 102, 0.1);
+    width: 20px;
+    padding: 6px 3px 6px 2px;
+  }
+
+  i:hover {
+    color: $c-white;
+    background-color: $c-new-grey;
+  }
+
+  p {
+    padding-top: 5px;
+  }
 
   p:hover {
     cursor: pointer;
@@ -45,8 +117,8 @@ div.footer-center {
 
 div.footer-right {
   @extend %pull-right;
-  background: none repeat scroll 0 0 $c-nav-bg;
-  color: $c-nav-bg;
+  background: none repeat scroll 0 0 $c-transp;
+  color: $c-bar-bg;
   width: 45%;
 
   p {
@@ -60,7 +132,7 @@ div.footer-right {
   }
 
   a {
-    color: #fff;
+    color: $c-bar-bg;
     margin-left: 5px;
     position: relative;
     top: -1px;

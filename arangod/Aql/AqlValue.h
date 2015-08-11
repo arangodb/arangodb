@@ -36,7 +36,6 @@
 #include "Utils/V8TransactionContext.h"
 #include "Utils/AqlTransaction.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/voc-shaper.h"
 
 namespace triagens {
   namespace aql {

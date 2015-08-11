@@ -1,11 +1,23 @@
 // TODO Needs to be cleaned up it is not so !important as it looks...
 .jsoneditor {
   background-color: $c-white !important;
-  border: 1px solid $c-semi-transp !important;
+  border: 0px solid $c-semi-transp !important;
 
   .menu {
-    background-color: $c-bar-bg !important;
-    border-bottom: 1px solid $c-semi-transp !important;
+    background-color: $c-white !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-top: 0 !important;
+    border-bottom: 1px solid $c-c2grey !important;
+
+    button {
+      border: 0 !important;
+    }
+    button:hover {
+      background-color: $c-positive;
+      color: $c-white;
+    }
+
   }
 
   .search {
@@ -13,6 +25,15 @@
     .frame {
       border: 0 !important;
       margin: 3px !important;
+
+      input {
+        border: 1px solid $c-c2grey !important;
+        border-radius: 3px;
+        margin-top: -2px;
+        margin-left: 5px;
+        margin-right: 5px;
+      }
+
     }
 
     .results {
@@ -30,8 +51,13 @@
   margin-top: 5px;
 }
 
+.document-editor-extra {
+  margin-top: 10px;
+}
+
 .document-editor {
   height: 500px;
+  margin-top: -10px;
   margin-bottom: 5px;
   width: 100%;
 }

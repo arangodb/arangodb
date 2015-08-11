@@ -32,10 +32,9 @@
 #define ARANGODB_SCHEDULER_SCHEDULER_THREAD_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/Mutex.h"
+#include "Basics/SpinLock.h"
 #include "Basics/Thread.h"
-
-#include "Basics/locks.h"
 #include "Scheduler/Task.h"
 #include "Scheduler/TaskManager.h"
 
@@ -145,6 +144,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         enum work_e {
+          INVALID,
           CLEANUP,
           DESTROY,
           SETUP
@@ -156,6 +156,10 @@ namespace triagens {
 
         class Work {
           public:
+            Work ()
+              : work(INVALID), scheduler(nullptr), task(nullptr) {
+            }
+
             Work (work_e w, Scheduler* scheduler, Task* task)
               : work(w), scheduler(scheduler), task(task) {
             }
@@ -206,9 +210,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
-        TRI_spin_t _queueLock;
+        triagens::basics::SpinLock _queueLock;
 #else
-        TRI_mutex_t _queueLock;
+        triagens::basics::Mutex _queueLock;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

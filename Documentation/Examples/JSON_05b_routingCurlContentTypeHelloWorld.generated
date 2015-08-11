@@ -1,0 +1,6 @@
+shell> curl --dump - http://localhost:8529/hello/contentType
+
+HTTP/1.1 200 OK
+content-type: text/html
+
+"<html><body>Hello World</body></html>"

@@ -48,7 +48,7 @@ namespace triagens {
 ///                                               public constructor, destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    LinenoiseShell (std::string const& history, Completer *);
+    LinenoiseShell (std::string const& history, Completer*);
 
     virtual ~LinenoiseShell ();
 

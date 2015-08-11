@@ -206,13 +206,187 @@ dnl ----------------------------------------------------------------------------
 dnl READLINE
 dnl ----------------------------------------------------------------------------
 
-m4_include([m4/external.readline])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([CHECKING FOR READLINE])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+AC_LANG(C)
+
+AC_ARG_ENABLE(readline,
+  AS_HELP_STRING([--enable-readline], [enable readline support (default: yes)]),
+  tr_READLINE="$enableval",
+  tr_READLINE="maybe"
+)
+
+if test "x$tr_DARWIN" = xyes; then
+  READLINE=/usr/local/opt/readline
+  READLINE_CPPFLAGS="-I$READLINE/include"
+  READLINE_LDFLAGS="-L$READLINE/lib"
+fi
+
+AC_ARG_WITH(readline,
+  AS_HELP_STRING([--with-readline=DIR], [where the readline library and includes are located]),
+  [READLINE_CPPFLAGS="-I$withval/include"
+   READLINE_LDFLAGS="-L$withval/lib"
+   READLINE="$withval"]
+)
+
+AC_ARG_WITH(readline-lib,
+  AS_HELP_STRING([--with-readline-lib=DIR], [where the readline library is located]),
+  [READLINE_LDFLAGS="-L$withval"]
+)
+
+dnl checks for the READLINE library
+
+if test "x$READLINE_CPPFLAGS" != x;  then
+  TR_INCLUDE([READLINE_CPPFLAGS])
+fi
+
+dnl save flags
+
+SAVE_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $READLINE_CPPFLAGS"
+
+SAVE_LDFLAGS="$LDFLAGS"
+LDFLAGS="$LDFLAGS $READLINE_LDFLAGS"
+
+SAVE_LIBS="$LIBS"
+
+dnl check for header and library
+
+if test "x$tr_READLINE" = xyes -o "x$tr_READLINE" = xmaybe;  then
+  ch_READLINE="$tr_READLINE"
+
+  AC_CHECK_HEADERS(readline/readline.h, [tr_READLINE="yes"], [tr_READLINE="no"])
+
+  if test "x$tr_READLINE" = xyes;  then
+    AC_CHECK_LIB([readline], [readline], [READLINE_LIBS="-lreadline" tr_READLINE="yes"], [tr_READLINE="no"])
+  fi
+
+  AC_MSG_CHECKING([READLINE support])
+
+  if test "x$tr_READLINE" != xyes;  then
+    AC_MSG_RESULT([not found])
+
+    if test "x$ch_READLINE" = xyes;  then
+      AC_MSG_ERROR([Please install readline support])
+    fi
+  else
+    AC_MSG_RESULT([readline])
+  fi
+else
+  AC_MSG_CHECKING([READLINE support])
+  AC_MSG_RESULT([disabled])
+fi
+
+dnl grep readline version number
+
+if test "x$tr_READLINE" = xyes;  then
+
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <readline/readline.h>
+
+main () {
+#if defined(RL_VERSION_MAJOR) && defined(RL_VERSION_MINOR)
+  long sdnhg36ed = RL_VERSION_MAJOR RL_VERSION_MINOR ;
+#else
+  long sdnhg36ed = RL_READLINE_VERSION hex ;
+#endif
+}
+
+_ACEOF
+
+  AC_MSG_CHECKING([READLINE version])
+  eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
+  READLINE_VERSION=`cat conftest.output`
+
+  if test -z "$READLINE_VERSION"; then
+    AC_MSG_ERROR([Readline support is not working. Please re-install readline support])
+  fi
+
+  AC_MSG_RESULT([$READLINE_VERSION])
+  rm -f conftest*
+
+  if test "x$tr_DARWIN" = xyes; then
+    case "$READLINE_VERSION" in
+      6.*|5.*)
+        ;;
+
+      *)
+        AC_MSG_ERROR([Please install readline 6 from brew. If you have a non-standard brew location, use "--with-readline".])
+        ;;
+    esac
+  fi
+fi
+
+dnl restore flags and set readline flags
+
+LIBS="$SAVE_LIBS"
+LDFLAGS="$SAVE_LDFLAGS"
+CPPFLAGS="$SAVE_CPPFLAGS"
+
+if test "x$tr_READLINE" = xyes;  then
+  CPPFLAGS="$CPPFLAGS -DHAVE_READLINE=1"
+  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${READLINE_VERSION}\"'"
+fi
+
+AM_CONDITIONAL(ENABLE_READLINE, test "x$tr_READLINE" = xyes)
+
+if test "x$tr_READLINE" = xyes;  then
+  AC_DEFINE_UNQUOTED(TRI_HAVE_READLINE, 1, [true if readline is used])
+fi
+
+dnl add substitutions
+
+AC_SUBST(READLINE_VERSION)
+AC_SUBST(READLINE_CPPFLAGS)
+AC_SUBST(READLINE_LDFLAGS)
+AC_SUBST(READLINE_LIBS)
+
+dnl informational output
+
+if test "x$tr_READLINE" = xyes;  then
+  LIB_INFO="$LIB_INFO|READLINE VERSION:  ${READLINE_VERSION}"
+
+  LIB_INFO="$LIB_INFO|READLINE_CPPFLAGS: ${READLINE_CPPFLAGS}"
+  LIB_INFO="$LIB_INFO|READLINE_LDLIBS:   ${READLINE_LDLIBS}"
+  LIB_INFO="$LIB_INFO|READLINE_LIBS:     ${READLINE_LIBS}"
+
+elif test "x$tr_READLINE" = xlinenoise;  then
+  LIB_INFO="$LIB_INFO|LINENOISE VERSION:  ${READLINE_VERSION}"
+
+  LIB_INFO="$LIB_INFO|LINENOISE_CPPFLAGS: ${READLINE_CPPFLAGS}"
+  LIB_INFO="$LIB_INFO|LINENOISE_LDLIBS:   ${READLINE_LDLIBS}"
+  LIB_INFO="$LIB_INFO|LINENOISE_LIBS:     ${READLINE_LIBS}"
+
+else
+  LIB_INFO="$LIB_INFO|READLINE VERSION: disabled"
+fi
+
+LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
 dnl OPENSSL
 dnl ----------------------------------------------------------------------------
 
 m4_include([m4/external.openssl])
+
+dnl ----------------------------------------------------------------------------
+dnl BOOST
+dnl ----------------------------------------------------------------------------
+
+BOOST_VERSION="1.58.0"
+BOOST_CPPFLAGS="-I${srcdir}/3rdParty/boost/${BOOST_VERSION}"
+
+AC_SUBST(BOOST_VERSION)
+AC_SUBST(BOOST_CPPFLAGS)
+
+LIB_INFO="$LIB_INFO|BOOST: 3rdParty version"
+LIB_INFO="$LIB_INFO|BOOST VERSION: ${BOOST_VERSION}"
+
+LIB_INFO="$LIB_INFO|BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
 dnl V8

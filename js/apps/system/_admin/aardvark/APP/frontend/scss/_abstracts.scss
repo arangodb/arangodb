@@ -22,7 +22,7 @@
 }
 
 %fixedbar {
-  background-color: $c-nav-bg;
+  background-color: $c-lightgreen-2-transp-bg;
   color: $c-white;
   left: 0;
   position: fixed;
@@ -164,8 +164,9 @@
 
   &:hover,
   &:focus {
-    background-color: $c-white;
-    color: $c-black;
+    border: 1px solid $c-positive;
+    background-color: $c-positive;
+    color: $c-white;
   }
 }
 
@@ -217,13 +218,13 @@
 
 %dropdown-menu {
   @extend %pull-left;
-  @include border-radius(3px);
 
-  background-color: $c-white;
+  background-color: $c-lightgreen-transp-bg;
   border: {
-    color: $c-semi-transp;
+    color: $c-darker-grey;
     style: solid;
     width: 1px;
+    radius: 3px;
   }
   display: none;
   list-style: none;
@@ -235,7 +236,7 @@
   z-index: 1000;
 
   li {
-    line-height: 20px;
+    line-height: 23px;
     white-space: nowrap;
     width: 100%;
   }
@@ -255,29 +256,14 @@
   }
 
   li.divider {
-    background-color: $c-grey;
+    background-color: $c-darker-grey;
     height: 1px;
-    margin: 10px 1px;
+    margin: 10px 0px;
   }
 
   a {
     color: $c-nav-bg;
     padding: 0 20px;
-  }
-
-  &:before {
-    @include border-triangle(7px, $c-semi-transp);
-
-    position: absolute;
-    right: 7px;
-    top: -7px;
-  }
-
-  &:after {
-    @include border-triangle(7px, $c-white);
-
-    right: 8px;
-    top: -6px;
   }
 
 }

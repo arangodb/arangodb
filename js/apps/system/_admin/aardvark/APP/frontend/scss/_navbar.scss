@@ -15,17 +15,25 @@
 
 nav.navbar {
   @extend %fixedbar;
-  height: 38px;
+  padding-top: 6px;
+  height: 44px;
   margin-bottom: 3px;
   top: 0;
+
+  .arangodbLogo {
+    height: auto;
+    margin-left: -5px;
+    margin-top: -1px;
+    width: 40%;
+  }
 
   .nav {
 
     & > .active {
 
       & > a {
-        background-color: $c-positive;
-        color: $c-white;
+        background-color: $c-white;
+        color: $c-black;
         @include box-shadow(0 0 0 $c-transp inset);
       }
     }
@@ -37,8 +45,8 @@ nav.navbar {
       }
 
       & > a:hover {
-        background-color: $c-positive;
-        color: $c-white;
+        background-color: $c-black;
+        color: $c-bar-bg;
       }
     }
   }
@@ -47,7 +55,7 @@ nav.navbar {
 div.navlogo {
   @extend %pull-left;
   margin-left: 5px;
-  margin-right: 1px;
+  margin-right: -1px;
   padding-top: 3px;
 }
 
@@ -63,7 +71,6 @@ ul.navlist {
     margin-left: 1px;
 
     &.navbar-spacer {
-      @include box-shadow(1px 0 0 $c-navbar-spacer-shadow);
       background-color: $c-navbar-spacer;
       height: 21px;
       margin-top: 9px;
@@ -85,10 +92,66 @@ ul.navlist {
     }
   }
 
-  > li.active,
+  li.active {
+    font-weight: bold;
+
+    .tab {
+      border-bottom: 2px solid $c-positive;
+      padding-bottom: 4px;
+    }
+  }
+
+  > li.active {
+    background-color: $c-transp;
+
+    a {
+      color: $c-black;
+    }
+  }
+
+  > li.active:hover {
+    background-color: $c-transp;
+
+    a {
+      color: $c-black;
+    }
+
+  }
+  li {
+    &.navbar-spacer,
+    &.divider {
+      border: none;
+    }
+
+    &.divider {
+      background-color: rgba(0,0,0,0.2);
+    }
+  }
+
+
+  li {
+
+   border-top: 1px solid transparent;
+   border-left: 1px solid transparent;
+   border-right: 1px solid transparent;
+
+    &.dropdown:hover {
+      border-top: 1px solid rgba(0,0,0,0.2);
+      border-left: 1px solid rgba(0,0,0,0.2);
+      border-right: 1px solid rgba(0,0,0,0.2);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+
   li.dropdown-item:hover,
   > li:hover {
-    background-color: $c-positive;
+    background-color: $c-white;
+    border-radius: 3px;
+
+    a {
+      color: $c-black;
+    }
   }
 
   li.dropdown-item {
@@ -96,17 +159,21 @@ ul.navlist {
 
     a {
       display: block;
+      border-bottom: 0;
     }
 
     a:hover {
-      color: $c-white;
+      color: $c-bar-bg;
+      background-color: $c-lightgreen-bg;
     }
   }
 }
 
 a.tab {
-  color: $c-white;
+  color: $c-bar-bg;
   display: block;
+  font-size: 12pt;
+  font-weight: 100;
   padding: {
     top: 9px;
     left: 10px;
@@ -119,8 +186,21 @@ a.tab {
   }
 }
 
+.dropdown-item {
+  a {
+    border-bottom: 0 !important;
+    font-weight: 300;
+  }
+}
+
 ul.link-dropdown-menu {
   @extend %dropdown-menu;
+  background-color: $c-white;
+  z-index: -10;
+  margin-top: 7px;
+  margin-right: -1px;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-top-right-radius: 0;
 }
 
 ul.user-dropdown-menu {
@@ -154,7 +234,7 @@ ul.gv-dropdown-menu {
   @include border-radius(0);
 
   background-color: $c-low-transp;
-  border: solid 1px $c-bar-bg;
+  border: solid 1px $c-c2grey;
   margin-right: -20px;
   margin-top: 6px;
 
@@ -165,7 +245,7 @@ ul.gv-dropdown-menu {
   li {
 
     &:hover {
-      background-color: $c-positive;
+      background-color: $c-white;
       background-image: none;
     }
 
@@ -196,7 +276,7 @@ ul.gv-dropdown-menu {
 .caret {
   border: {
     left: 5px solid $c-transp;
-    top: 5px solid $c-white;
+    top: 5px solid $c-bar-bg;
     right: 5px solid $c-transp;
   }
   content: '';

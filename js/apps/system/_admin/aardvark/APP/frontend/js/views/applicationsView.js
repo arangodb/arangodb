@@ -13,26 +13,32 @@
       "click #foxxToggle"            : "slideToggle",
       "click #checkDevel"            : "toggleDevel",
       "click #checkProduction"       : "toggleProduction",
-      "click #checkSystem"           : "toggleSystem",
-      "click .css-label"             : "checkBoxes"
+      "click #checkSystem"           : "toggleSystem"
     },
 
-
-    checkBoxes: function (e) {
-      //chrome bugfix
-
-      var isChromium = window.chrome,
-      vendorName = window.navigator.vendor,
-      clicked = e.currentTarget;
-
-      if (clicked.id === '' || clicked.id === undefined) {
-        if(isChromium !== null && isChromium !== undefined && vendorName === "Google Inc.") {
-          $(clicked).prev().click();
-        }
+    fixCheckboxes: function() {
+      if (this._showDevel) {
+        $('#checkDevel').attr('checked', 'checked');
       }
       else {
-        $('#'+clicked.id).click();
+        $('#checkDevel').removeAttr('checked');
       }
+      if (this._showSystem) {
+        $('#checkSystem').attr('checked', 'checked');
+      }
+      else {
+        $('#checkSystem').removeAttr('checked');
+      }
+      if (this._showProd) {
+        $('#checkProduction').attr('checked', 'checked');
+      }
+      else {
+        $('#checkProduction').removeAttr('checked');
+      }
+      $('#checkDevel').next().removeClass('fa fa-check-circle-o fa-circle-o').addClass('fa');
+      $('#checkSystem').next().removeClass('fa fa-check-circle-o fa-circle-o').addClass('fa');
+      $('#checkProduction').next().removeClass('fa fa-check-circle-o fa-circle-o').addClass('fa');
+      arangoHelper.setCheckboxStatus('#foxxDropdown');
     },
 
     toggleDevel: function() {
@@ -41,6 +47,7 @@
       _.each(this._installedSubViews, function(v) {
         v.toggle("devel", self._showDevel);
       });
+      this.fixCheckboxes();
     },
 
     toggleProduction: function() {
@@ -49,6 +56,7 @@
       _.each(this._installedSubViews, function(v) {
         v.toggle("production", self._showProd);
       });
+      this.fixCheckboxes();
     },
 
     toggleSystem: function() {
@@ -57,6 +65,7 @@
       _.each(this._installedSubViews, function(v) {
         v.toggle("system", self._showSystem);
       });
+      this.fixCheckboxes();
     },
 
     reload: function() {
@@ -117,6 +126,7 @@
       $('#checkDevel').attr('checked', this._showDevel);
       $('#checkProduction').attr('checked', this._showProd);
       $('#checkSystem').attr('checked', this._showSystem);
+      arangoHelper.setCheckboxStatus("#foxxDropdown");
       
       var self = this;
       _.each(this._installedSubViews, function(v) {

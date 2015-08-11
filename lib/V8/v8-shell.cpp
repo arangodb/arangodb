@@ -36,8 +36,6 @@
 #include "Basics/shell-colors.h"
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
-#include "ShapedJson/shaped-json.h"
-
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-json.h"
@@ -211,7 +209,7 @@ static void JS_ProcessCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) 
       break;
     }
 
-    TRI_ParseCsvString2(&parser, buffer, n);
+    TRI_ParseCsvString(&parser, buffer, n);
   }
 
   TRI_CLOSE(fd);

@@ -31,6 +31,9 @@
 #include "HttpServerJob.h"
 
 #include "Basics/logging.h"
+#include "Dispatcher/DispatcherQueue.h"
+#include "HttpServer/AsyncJobManager.h"
+#include "HttpServer/HttpCommTask.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServer.h"
 
@@ -51,13 +54,17 @@ using namespace std;
 
 HttpServerJob::HttpServerJob (HttpServer* server,
                               HttpHandler* handler,
-                              bool isDetached)
+                              HttpCommTask* task) 
   : Job("HttpServerJob"),
     _server(server),
     _handler(handler),
-    _shutdown(false),
-    _abandon(false),
-    _isDetached(isDetached) {
+    _task(task),
+    _refCount(task == nullptr ? 1 : 2),
+    _isInCleanup(false),
+    _isDetached(task == nullptr) {
+
+  TRI_ASSERT(_server != nullptr);
+  TRI_ASSERT(_handler != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,6 +72,7 @@ HttpServerJob::HttpServerJob (HttpServer* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServerJob::~HttpServerJob () {
+  delete _handler;
 }
 
 // -----------------------------------------------------------------------------
@@ -72,27 +80,11 @@ HttpServerJob::~HttpServerJob () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the underlying handler
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandler* HttpServerJob::getHandler () const {
-  return _handler;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the job is detached
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpServerJob::isDetached () const {
   return _isDetached;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abandon job
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpServerJob::abandon () {
-  _abandon.store(true);
 }
 
 // -----------------------------------------------------------------------------
@@ -103,15 +95,7 @@ void HttpServerJob::abandon () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::JobType HttpServerJob::type () const {
-  return _handler->type();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-const string& HttpServerJob::queue () const {
+size_t HttpServerJob::queue () const {
   return _handler->queue();
 }
 
@@ -129,10 +113,12 @@ void HttpServerJob::setDispatcherThread (DispatcherThread* thread) {
 
 Job::status_t HttpServerJob::work () {
   LOG_TRACE("beginning job %p", (void*) this);
-
+ 
+  TRI_ASSERT(_handler != nullptr); 
   this->RequestStatisticsAgent::transfer(_handler);
 
-  if (_shutdown.load()) {
+  if (! isDetached() && _task == nullptr) {
+    // task is already gone
     return status_t(Job::JOB_DONE);
   }
 
@@ -160,33 +146,54 @@ Job::status_t HttpServerJob::work () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServerJob::cancel (bool running) {
-  return _handler->cancel(running);
+bool HttpServerJob::cancel () {
+  return _handler->cancel();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServerJob::cleanup () {
-  bool abandon = _abandon.load();
-
-  if (! abandon && _server != nullptr) {
-    _server->jobDone(this);
+void HttpServerJob::cleanup (DispatcherQueue* queue) {
+  if (isDetached()) {
+    _server->jobManager()->finishAsyncJob(this);
+  }
+  else {
+    _isInCleanup.store(true);
+    
+    if (_task != nullptr) {
+      _task->setHandler(_handler);
+      _handler = nullptr;
+      _task->signal();
+    }
+    
+    _isInCleanup.store(false, std::memory_order_relaxed);
   }
 
-  delete this;
+  queue->removeJob(this);
+
+  if (--_refCount == 0) {
+    delete this;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServerJob::beginShutdown () {
+void HttpServerJob::beginShutdown () {
+
+  // must wait until cleanup procedure is finished
+  while (_isInCleanup.load()) {
+    usleep(1000);
+  }
+
+  _task = nullptr;
   LOG_TRACE("shutdown job %p", (void*) this);
 
-  _shutdown.store(true);
-  return true;
+  if (--_refCount == 0) {
+    delete this;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -18,11 +18,13 @@ div.gv_zoom_widget {
     height: 200px;
     margin: 0 17px;
     width: 4px;
+    border-radius: 3px;
   }
 
+
   a.ui-slider-handle {
-    background: $c-white;
-    border-color: $c-bar-bg;
+    border: 1px solid rgba(104, 103, 102, 0.1);
+    background-color: $c-black;
     height: .5em;
     left: -.55em;
     outline: none;
@@ -30,6 +32,10 @@ div.gv_zoom_widget {
     &.ui-state-hover {
       outline-color: $c-nav-bg;
     }
+  }
+
+  a.ui-slider-handle:hover {
+    cursor: pointer;
   }
 
   .ui-state-default, {
@@ -57,10 +63,11 @@ div.gv_colour_list {
 
 svg.graph-viewer {
   background-color: $c-white;
-  border: 1px solid $c-viewer-border;
+  border-radius: 3px;
+  border: 1px solid rgba(104, 103, 102, 0.1);
   left: 74px;
   position: absolute;
-  top: 12px;
+  top: 10px;
   z-index: 0;
 
   text {
@@ -75,7 +82,7 @@ div.gv-background {
 
 .link > line {
   @extend %clickable;
-  stroke-width: 2; 
+  stroke-width: 1;
 }
 
 .node {
@@ -83,19 +90,46 @@ div.gv-background {
 }
 
 div.gv-colour-list {
-  border: 1px solid #686766;
-  border-radius: 2px;
-  max-height: 680px;
-  overflow: auto;
+  border-radius: 3px;
   position: absolute;
   right: 8px;
   text-align: right;
   top: 20px;
   z-index: 1;
+  max-height: 350px;
+  overflow-y: auto;
+  overflow-x: none;
+  max-width: 130px;
 
   li {
     float: none;
     padding: 2px 6px;
   }
+
+  ul {
+
+    ul {
+      border-left: 1px solid rgba(104, 103, 102, 0.1);
+      border-right: 1px solid rgba(104, 103, 102, 0.1);
+    }
+
+    ul:first-child {
+      border-top: 1px solid rgba(104, 103, 102, 0.1);
+      border-left: 1px solid rgba(104, 103, 102, 0.1);
+      border-right: 1px solid rgba(104, 103, 102, 0.1);
+      border-top-left-radius: 3px;
+      border-top-right-radius: 3px;
+    }
+
+    ul:last-child {
+      border-bottom-left-radius: 3px;
+      border-bottom-right-radius: 3px;
+      border-bottom: 1px solid rgba(104, 103, 102, 0.1);
+      border-left: 1px solid rgba(104, 103, 102, 0.1);
+      border-right: 1px solid rgba(104, 103, 102, 0.1);
+    }
+
+  }
 }
+
 

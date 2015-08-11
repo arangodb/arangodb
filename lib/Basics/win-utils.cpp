@@ -124,8 +124,6 @@ void TRI_usleep (unsigned long waitTime) {
   return;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Sets up a handler when invalid (win) handles are passed to a windows function.
 // This is not of much use since no values can be returned. All we can do
@@ -174,8 +172,6 @@ static void InvalidParameterHandler (const wchar_t* expression, // expression se
 
 int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
                      const char* data) {
-  int result = 0;
-
   // ............................................................................
   // The data is used to transport information from the calling function to here
   // it may be NULL (and will be in most cases)
@@ -183,7 +179,7 @@ int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
 
   switch (finaliseWhat) {
     case TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL: {
-      result = WSACleanup();     // could this cause error on server termination?
+      int result = WSACleanup();     // could this cause error on server termination?
 
       if (result != 0) {
         // can not use LOG_ etc here since the logging may have terminated
@@ -263,7 +259,6 @@ int initialiseWindows (const TRI_win_initialise_e initialiseWhat,
   }
 
   return -1;
-
 }
 
 int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
@@ -461,7 +456,6 @@ int TRI_MapSystemError (DWORD error) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
 /// we rather are keen on logging something at all then on being able to work
@@ -512,8 +506,6 @@ void TRI_LogWindowsEventlog (char const* func,
   }
   DeregisterEventSource(hEventLog);
 }
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

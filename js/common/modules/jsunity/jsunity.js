@@ -501,7 +501,41 @@ var jsUnity = exports.jsUnity = (function () {
 
             results.passed++;
           } catch (e) {
-            tearDown(test.name); // if tearDown above throws exc, will call again!
+            try {
+              tearDown(test.name); // if tearDown above throws exc, will call again!
+            }
+            catch (x) {
+              var xstack; 
+              if (x.stack !== undefined) {
+                xstack = x.stack;
+              }
+              if (e.stack !== undefined) {
+                this.results.fail(j + 1,
+                                  test.name,
+                                  e + " - " + String(e.stack) + 
+                                  " - teardown failed - " +
+                                  x +
+                                  " - " +
+                                  xstack);
+              }
+              else {
+                this.results.fail(j + 1,
+                                  test.name,
+                                  e +
+                                  " - teardown failed - " +
+                                  x +
+                                  " - " +
+                                  xstack);
+              }             
+
+              this.log.error("Teardown failed (again): " +
+                             x +
+                             " - " +
+                             xstack +
+                             " aborting tests");
+
+              i = arguments.length; j = cnt; break;
+            }
 
             if (e.stack !== undefined) {
               this.results.fail(j + 1, test.name, e + " - " + String(e.stack));

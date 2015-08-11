@@ -131,7 +131,8 @@ Thread::~Thread () {
   if (! _joined) {
     int res = TRI_DetachThread(&_thread);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    // ignore threads that already died
+    if (res != 0 && res != ESRCH) {
       errno = res;
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
 

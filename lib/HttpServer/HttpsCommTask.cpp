@@ -117,7 +117,7 @@ bool HttpsCommTask::setup (Scheduler* scheduler, EventLoop loop) {
   SSL_set_fd(_ssl, (int) TRI_get_fd_or_handle_of_socket(_commSocket));
 
   // accept might need writes
-  _scheduler->startSocketEvents(writeWatcher);
+  _scheduler->startSocketEvents(_writeWatcher);
 
   return true;
 }
@@ -130,21 +130,21 @@ bool HttpsCommTask::handleEvent (EventToken token, EventType revents) {
 
   // try to accept the SSL connection
   if (! _accepted) {
-    if (token == readWatcher && (revents & EVENT_SOCKET_READ)) {
+    if (token == _readWatcher && (revents & EVENT_SOCKET_READ)) {
       return trySSLAccept();
     }
 
-    if (token == writeWatcher && (revents & EVENT_SOCKET_WRITE)) {
+    if (token == _writeWatcher && (revents & EVENT_SOCKET_WRITE)) {
       return trySSLAccept();
     }
   }
 
   // if we blocked on write, read can be called when the socket is writeable
-  if (_readBlockedOnWrite && token == writeWatcher && (revents & EVENT_SOCKET_WRITE)) {
+  if (_readBlockedOnWrite && token == _writeWatcher && (revents & EVENT_SOCKET_WRITE)) {
     _readBlockedOnWrite = false;
     revents &= ~EVENT_SOCKET_WRITE;
     revents |= EVENT_SOCKET_READ;
-    token = readWatcher;
+    token = _readWatcher;
   }
 
   // handle normal socket operation
@@ -153,7 +153,7 @@ bool HttpsCommTask::handleEvent (EventToken token, EventType revents) {
   // we might need to start listing for writes (even we only want to READ)
   if (result && ! _clientClosed) {
     if (_readBlockedOnWrite || _writeBlockedOnRead) {
-      _scheduler->startSocketEvents(writeWatcher);
+      _scheduler->startSocketEvents(_writeWatcher);
     }
   }
 
@@ -222,7 +222,7 @@ bool HttpsCommTask::trySSLAccept () {
     _accepted = true;
 
     // accept done, remove write events
-    _scheduler->stopSocketEvents(writeWatcher);
+    _scheduler->stopSocketEvents(_writeWatcher);
 
     return true;
   }
@@ -346,10 +346,10 @@ bool HttpsCommTask::trySSLWrite () {
   size_t len = 0;
 
   if (nullptr != _writeBuffer) {
-    TRI_ASSERT(_writeBuffer->length() >= writeLength);
+    TRI_ASSERT(_writeBuffer->length() >= _writeLength);
 
     // size_t is unsigned, should never get < 0
-    len = _writeBuffer->length() - writeLength;
+    len = _writeBuffer->length() - _writeLength;
   }
 
   // write buffer to SSL connection
@@ -357,7 +357,7 @@ bool HttpsCommTask::trySSLWrite () {
 
   if (0 < len) {
     ERR_clear_error();
-    nr = SSL_write(_ssl, _writeBuffer->begin() + writeLength, (int) len);
+    nr = SSL_write(_ssl, _writeBuffer->begin() + _writeLength, (int) len);
 
     if (nr <= 0) {
       int res = SSL_get_error(_ssl, nr);
@@ -414,14 +414,14 @@ bool HttpsCommTask::trySSLWrite () {
   }
 
   if (len == 0) {
-    if (ownBuffer) {
+    if (_ownBuffer) {
       delete _writeBuffer;
     }
 
     callCompletedWriteBuffer = true;
   }
   else {
-    writeLength += nr;
+    _writeLength += nr;
   }
 
   // we have to release the lock, before calling completedWriteBuffer
@@ -435,7 +435,7 @@ bool HttpsCommTask::trySSLWrite () {
   }
 
   // we might have a new write buffer
-  _scheduler->sendAsync(SocketTask::watcher);
+  _scheduler->sendAsync(SocketTask::_asyncWatcher);
 
   return true;
 }
@@ -448,9 +448,9 @@ void HttpsCommTask::shutdownSsl (bool initShutdown) {
   static int const SHUTDOWN_ITERATIONS = 10;
 
   if (nullptr != _ssl) {
-    bool ok = false;
-
     if (initShutdown) {
+      bool ok = false;
+
       for (int i = 0;  i < SHUTDOWN_ITERATIONS;  ++i) {
         ERR_clear_error();
         int res = SSL_shutdown(_ssl);

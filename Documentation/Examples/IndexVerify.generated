@@ -1,0 +1,34 @@
+arangosh> var explain = require("org/arangodb/aql/explainer").explain;
+arangosh> db.example.ensureSkiplist("a", "b");
+{ 
+  "id" : "example/511983184581", 
+  "type" : "skiplist", 
+  "unique" : false, 
+  "sparse" : false, 
+  "fields" : [ 
+    "a", 
+    "b" 
+  ], 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
+arangosh> explain("FOR doc IN example FILTER doc.a < 23 RETURN doc", {colors:false});
+Query string:
+ FOR doc IN example FILTER doc.a < 23 RETURN doc
+
+Execution plan:
+ Id   NodeType         Est.   Comment
+  1   SingletonNode       1   * ROOT
+  6   IndexRangeNode      1     - FOR doc IN example   /* skiplist index scan */
+  5   ReturnNode          1       - RETURN doc
+
+Indexes used:
+ Id   Type       Collection   Unique   Sparse   Selectivity Est.   Fields     Ranges
+  6   skiplist   example      false    false                 n/a   `a`, `b`   [ `a` < 23 ]
+
+Optimization rules applied:
+ Id   RuleName
+  1   use-index-range
+  2   remove-filter-covered-by-index
+
+

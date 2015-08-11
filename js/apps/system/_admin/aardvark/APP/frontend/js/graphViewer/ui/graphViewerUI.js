@@ -166,6 +166,11 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         $(searchAttrExampleList).slideToggle(200);
       };
 
+      var title = document.createElement("p");
+      title.className = "dropdown-title";
+      title.innerHTML = "Filter graph by attribute:";
+      div.appendChild(title);
+
       div.appendChild(innerDiv);
       return div;
     },
@@ -268,6 +273,11 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchAttrExampleToggle2.onclick = function() {
         $(searchAttrExampleList2).slideToggle(200);
       };
+
+      var title = document.createElement("p");
+      title.className = "dropdown-title";
+      title.innerHTML = "Add specific node by attribute:";
+      div2.appendChild(title);
 
       div2.appendChild(innerDiv2);
       return div2;
@@ -564,7 +574,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
       adapterUI.addControlChangeGraph(function() {
         updateAttributeExamples();
-        graphViewer.start();
+        graphViewer.start(true);
       });
       adapterUI.addControlChangePriority();
       // nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);

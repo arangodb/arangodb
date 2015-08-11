@@ -43,7 +43,7 @@
 #include "V8Server/ApplicationV8.h"
 
 struct TRI_json_t;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -117,7 +117,7 @@ namespace triagens {
 
       ~Profile ();
 
-      void enter (ExecutionState);
+      void setDone (ExecutionState);
 
       TRI_json_t* toJson (TRI_memory_zone_t*);
 
@@ -145,7 +145,7 @@ namespace triagens {
 
         Query (triagens::arango::ApplicationV8*,
                bool,
-               struct TRI_vocbase_s*,
+               TRI_vocbase_t*,
                char const*,
                size_t,
                struct TRI_json_t*,
@@ -154,7 +154,7 @@ namespace triagens {
 
         Query (triagens::arango::ApplicationV8*,
                bool,
-               struct TRI_vocbase_s*,
+               TRI_vocbase_t*,
                triagens::basics::Json queryStruct,
                struct TRI_json_t*,
                QueryPart);
@@ -203,7 +203,7 @@ namespace triagens {
 /// @brief get the vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline struct TRI_vocbase_s* vocbase () const {
+        inline TRI_vocbase_t* vocbase () const {
           return _vocbase;
         }
 
@@ -590,7 +590,7 @@ namespace triagens {
 /// @brief pointer to vocbase the query runs in
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s*             _vocbase;
+        TRI_vocbase_t*                    _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 code executor

@@ -107,6 +107,10 @@ the option *--disable-figures*.
 @startDocuBlock databaseDisableQueryTracking
 
 
+!SUBSECTION Throw collection not loaded error
+@startDocuBlock databaseThrowCollectionNotLoadedError
+
+
 !SUBSECTION AQL Query caching mode
 @startDocuBlock queryCacheMode
 

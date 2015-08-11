@@ -879,8 +879,9 @@ var wait = function (data, shards) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var isCluster = function () {
-  return (typeof global.ArangoServerState !== "undefined" &&
-          global.ArangoServerState.initialised());
+  var role = global.ArangoServerState.role();
+  
+  return (role !== undefined && role !== "SINGLE");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -888,10 +889,6 @@ var isCluster = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var isCoordinator = function () {
-  if (! isCluster()) {
-    return false;
-  }
-
   return global.ArangoServerState.isCoordinator();
 };
 
@@ -900,11 +897,12 @@ var isCoordinator = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var role = function () {
-  if (! isCluster()) {
-    return undefined;
-  }
+  var role = global.ArangoServerState.role();
 
-  return global.ArangoServerState.role();
+  if (role !== "SINGLE") {
+    return role;
+  }
+  return undefined;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -912,7 +910,7 @@ var role = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var status = function () {
-  if (! isCluster()) {
+  if (! isCluster() || ! global.ArangoServerState.initialised()) {
     return undefined;
   }
 
@@ -936,7 +934,7 @@ var isCoordinatorRequest = function (req) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var handlePlanChange = function () {
-  if (! isCluster() || isCoordinator()) {
+  if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialised()) {
     return;
   }
 

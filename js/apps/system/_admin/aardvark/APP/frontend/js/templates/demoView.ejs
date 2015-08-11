@@ -1,11 +1,13 @@
 <script id="demoView.ejs" type="text/template">
   <div class="headerBar">
+    <div class="search-field">
+      <input type="text" id="demoSearchInput" class="search-input" placeholder="Search...">
+      <i id="demoSearchSubmit" class="fa fa-search"></i>
+      <!-- <img id="demoSearchSubmit" class="search-submit-icon"> -->
+      <!--<div id="searchResults" class="demo-dropdown-menu"><ul></ul></div>-->
+    </div>
     <div class="pull-left">
       <a class="arangoHeader">Demo</a>
-    </div>
-    <div class="search-field">
-      <input type="text" id="demoSearchInput" class="search-input" placeholder="Search..."><img id="demoSearchSubmit" class="search-submit-icon">
-      <!--<div id="searchResults" class="demo-dropdown-menu"><ul></ul></div>-->
     </div>
     <div class="styled-select">
       <select id="flightQuerySelect" class="query-select" style="margin-top: 5px; height: 25px">

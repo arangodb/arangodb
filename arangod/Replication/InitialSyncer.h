@@ -31,7 +31,6 @@
 #define ARANGODB_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
-
 #include "Replication/Syncer.h"
 
 // -----------------------------------------------------------------------------
@@ -41,7 +40,7 @@
 struct TRI_json_t;
 struct TRI_replication_applier_configuration_s;
 struct TRI_transaction_collection_s;
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
 
@@ -87,7 +86,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        InitialSyncer (struct TRI_vocbase_s*,
+        InitialSyncer (TRI_vocbase_t*,
                        struct TRI_replication_applier_configuration_s const*,
                        std::unordered_map<std::string, bool> const&,
                        std::string const&,
@@ -117,6 +116,28 @@ namespace triagens {
 
         TRI_voc_tick_t getLastLogTick () const {
           return _masterInfo._lastLogTick;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translate a phase to a phase name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string translatePhase (sync_phase_e phase) const {
+          switch (phase) {
+            case PHASE_INIT: 
+              return "init";
+            case PHASE_VALIDATE:
+              return "validate";
+            case PHASE_DROP:
+              return "drop";
+            case PHASE_CREATE:
+              return "create";
+            case PHASE_DUMP:
+              return "dump";
+            case PHASE_NONE: 
+              break;
+          }
+          return "none";
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,10 +220,10 @@ namespace triagens {
                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over all collections from a list and apply an action
+/// @brief iterate over all collections from an array and apply an action
 ////////////////////////////////////////////////////////////////////////////////
 
-        int iterateCollections (struct TRI_json_t const*,
+        int iterateCollections (std::vector<std::pair<struct TRI_json_t const*, struct TRI_json_t const*>> const&,
                                 std::string&,
                                 sync_phase_e);
 

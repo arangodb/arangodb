@@ -62,7 +62,8 @@ namespace triagens {
                 bool canThrow,
                 bool canRunOnDBServer,
                 bool canPassArgumentsByReference,
-                FunctionImplementation implementation = nullptr);
+                FunctionImplementation implementation = nullptr,
+                ExecutionCondition = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the function
@@ -180,6 +181,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       FunctionImplementation  implementation;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief condition under which the C++ implementation of the function is 
+/// executed (if returns false, the function will be executed as its JavaScript
+/// variant)
+////////////////////////////////////////////////////////////////////////////////
+
+      ExecutionCondition      condition;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function argument conversion information

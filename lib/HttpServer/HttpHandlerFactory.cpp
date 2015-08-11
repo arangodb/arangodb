@@ -44,6 +44,12 @@ using namespace std;
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
+static HttpHandlerFactory::SizeRestriction const SizeRestrictionValues(
+     1 * 1024 * 1024,  // maximalHeaderSize
+   512 * 1024 * 1024,  // maximalBodySize
+  1024 * 1024 * 1024   // maximalPipelineSize
+);
+
 namespace {
   sig_atomic_t MaintenanceMode = 0;
 }
@@ -159,14 +165,8 @@ void HttpHandlerFactory::setMaintenance (bool value) {
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::size_restriction_t HttpHandlerFactory::sizeRestrictions () const {
-  size_restriction_t restrictions;
-
-  restrictions.maximalHeaderSize = 1 * 1024 * 1024;  // 1 MByte
-  restrictions.maximalBodySize = 512 * 1024 * 1024;  // 512 MByte
-  restrictions.maximalPipelineSize = 2 * restrictions.maximalBodySize;
-
-  return restrictions;
+HttpHandlerFactory::SizeRestriction const& HttpHandlerFactory::sizeRestrictions () const {
+  return SizeRestrictionValues;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

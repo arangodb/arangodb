@@ -1,0 +1,5 @@
+arangosh> c.toArray();
+[ 
+  2, 
+  4 
+]

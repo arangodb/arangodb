@@ -31,7 +31,7 @@
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 using namespace triagens::arango;
 
@@ -333,7 +333,7 @@ int SkiplistIndex2::fillElement(TRI_skiplist_index_element_t* skiplistElement,
     // Determine if document has that particular shape
     // ..........................................................................
 
-    TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(_collection->getShaper(), shapedJson._sid, shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
+    TRI_shape_access_t const* acc = _collection->getShaper()->findAccessor(shapedJson._sid, shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
       // OK, the document does not contain the attributed needed by 

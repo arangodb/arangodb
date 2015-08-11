@@ -1,6 +1,8 @@
 %dashboard-chart-box {
   @extend %pull-left;
   border-left: 0 solid $c-black;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
 
   &:first-child {
     margin-left: 0;
@@ -40,15 +42,18 @@
 .dashboard-large-chart {
   @extend %dashboard-chart-basic;
   margin-right: 12px;
+  border: 1px solid rgba(104, 103, 102, 0.10);
+  border-radius: 3px;
 
   .dashboard-large-chart-inner {
     @extend %dashboard-chart-box;
     @extend %pull-left;
     background-color: $c-white;
-    border-left: $dashboard-borderwidth solid $c-e1grey;
-    border-right: $dashboard-borderwidth solid $c-e1grey;
-    border-top: $dashboard-borderwidth solid $c-e1grey;
-    padding-top: $dashboard-padding;
+    border-left: $dashboard-borderwidth solid $c-white;
+    border-right: $dashboard-borderwidth solid $c-white;
+    border-top: $dashboard-borderwidth solid $c-white;
+    padding-top: $dashboard-padding + 2px;
+    padding-bottom: $dashboard-padding;
 
     .dashboard-interior-chart {
       @extend %pull-left;
@@ -60,37 +65,49 @@
 
 .dashboard-small-chart {
   @extend %dashboard-chart-basic;
+  border: 1px solid rgba(104, 103, 102, 0.10);
+  border-radius: 3px;
 
   .dashboard-small-chart-inner {
     @extend %dashboard-chart-box;
     @extend %pull-left;
     background-color: $c-white;
-    border-left: $dashboard-borderwidth solid $c-e1grey;
-    border-right: $dashboard-borderwidth solid $c-e1grey;
-    border-top: $dashboard-borderwidth solid $c-e1grey;
+    border-left: $dashboard-borderwidth solid $c-white;
+    border-right: $dashboard-borderwidth solid $c-white;
+    border-top: $dashboard-borderwidth solid $c-white;
+    padding-bottom: $dashboard-padding;
+    padding-top: $dashboard-padding - 5px;
 
     .dashboard-interior-chart {
       @extend %pull-left;
 
       .nv-bar rect {
         fill-opacity: .15;
-        stroke-opacity: 1;
-        stroke-width: 1px;
+        stroke-opacity: 0.8;
+        stroke-width: 0.5px;
       }
     }
   }
 }
 
+.dashboard-medium-chart-outer {
+  border: 1px solid rgba(104, 103, 102, 0.10);
+  border-radius: 3px;
 
+  &:first-child {
+    margin-right: 10px;
+  }
+}
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
   background-color: $c-white;
-  border-left: $dashboard-borderwidth solid $c-e1grey;
-  border-right: $dashboard-borderwidth solid $c-e1grey;
-  border-top: $dashboard-borderwidth solid $c-e1grey;
+  border-left: $dashboard-borderwidth solid $c-white;
+  border-right: $dashboard-borderwidth solid $c-white;
+  border-top: $dashboard-borderwidth solid $c-white;
   padding-top: $dashboard-padding;
-  
+  margin-bottom: 0;
+
   &:first-child {
     margin-right: 12px;
   }
@@ -99,7 +116,12 @@
     @extend %pull-left;
     margin-bottom: 0;
   }
-  
+
+  .dashboard-medium-chart-outer {
+    border: 1px solid rgba(104, 103, 102, 0.10);
+    border-radius: 3px;
+  }
+
   .dashboard-medium-chart-menu {
     @extend %clear-float;
     @include border-radius(2px);
@@ -118,7 +140,7 @@
 
   .dashboard-medium-chart-inner {
     @extend %clear-float;
-    padding-top: $dashboard-padding;
+    padding-bottom: $dashboard-padding;
   }
 
   .clusterChart .slice path {
@@ -133,13 +155,19 @@
 .dashboard-tendency-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
+  border: 1px solid rgba(104, 103, 102, 0.10);
+  border-radius: 3px;
 
   .dashboard-tendency-chart {
     @extend %clear-float;
     background-color: $c-white;
-    border-left: 5px solid $c-e1grey;
-    border-right: 5px solid $c-e1grey;
-    border-top: 5px solid $c-e1grey;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    border-top: $dashboard-borderwidth solid $c-white;
+    border-left: 5px solid $c-white;
+    border-right: 5px solid $c-white;
+    border-top: 5px solid $c-white;
+    padding-bottom: $dashboard-padding-tendency;
 
     .dashboard-tendency {
       @extend %pull-left;
@@ -169,13 +197,18 @@
 .dashboard-bar-chart-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
+  border: 1px solid rgba(104, 103, 102, 0.10);
+  border-radius: 3px;
 
   .dashboard-bar-chart {
     @extend %clear-float;
     background-color: $c-white;
-    border-left: 5px solid $c-e1grey;
-    border-right: 5px solid $c-e1grey;
-    border-top: 5px solid $c-e1grey;
+    border-left: 5px solid $c-white;
+    border-right: 5px solid $c-white;
+    border-top: 5px solid $c-white;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding-bottom: $dashboard-padding-tendency;
 
     .dashboard-bar-chart-title {
       @extend %pull-left;
@@ -198,8 +231,8 @@
 
       .nv-bar rect {
         fill-opacity: .15;
-        stroke-opacity: 1;
-        stroke-width: 1px;
+        stroke-opacity: .8;
+        stroke-width: 0.5px;
       }
     }
   }
@@ -218,6 +251,8 @@
 .dashboard-sub-bar {
   @extend %pull-left;
   background-color: $c-bar-bg;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
   color: $c-white;
   height: 24px;
   line-height: 24px;
@@ -248,7 +283,6 @@
 
     .dashboard-legend-inner {
       padding-left: 20px;
-      padding-top: 20px;
     }
   }
 

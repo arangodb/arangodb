@@ -213,8 +213,9 @@ Date.ext={};Date.ext.util={};Date.ext.util.xPad=function(a,c,b){if(typeof(b)=="u
         drawGapPoints: true,
         fillGraph: true,
         showLabelsOnHighlight: false,
-        strokeWidth: 1.5,
-        strokeBorderWidth: 1.5,
+        strokeWidth: 1.0,
+        lineWidth: 1.0,
+        strokeBorderWidth: 1.0,
         includeZero: true,
         highlightCircleSize: 2.5,
         labelsSeparateLines : true,
@@ -14723,6 +14724,29 @@ nv.models.stackedAreaChart = function() {
       };
     },
 
+    setCheckboxStatus: function(id) {
+      $.each($(id).find('ul').find('li'), function(key, element) {
+         if (!$(element).hasClass("nav-header")) {
+           if ($(element).find('input').attr('checked')) {
+             if ($(element).find('i').hasClass('css-round-label')) {
+               $(element).find('i').addClass('fa-dot-circle-o');
+             }
+             else {
+               $(element).find('i').addClass('fa-check-circle-o');
+             }
+           }
+           else {
+             if ($(element).find('i').hasClass('css-round-label')) {
+               $(element).find('i').addClass('fa-circle-o');
+             }
+             else {
+               $(element).find('i').addClass('fa-circle-o');
+             }
+           }
+         }
+      });
+    },
+
     calculateCenterDivHeight: function() {
       var navigation = $('.navbar').height();
       var footer = $('.footer').height();
@@ -16610,10 +16634,10 @@ window.StatisticsCollection = Backbone.Collection.extend({
         }
 
         if (v < 0) {
-          tempColor = "red";
+          tempColor = "#d05448";
         }
         else {
-          tempColor = "green";
+          tempColor = "#7da817";
           p = "+";
         }
         $("#" + a).html(self.history[self.server][a][0] + '<br/><span class="dashboard-figurePer" style="color: '

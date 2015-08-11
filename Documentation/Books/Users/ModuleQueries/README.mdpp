@@ -30,3 +30,13 @@ Returns the current query tracking configuration.
 `require("org/arangodb/aql/queries").kill();`
 
 Kills a running AQL query.
+
+
+
+var tasks = require("org/arangodb/tasks");
+tasks.register({
+  id: "mytask-1",
+  name: "this is a snippet task",
+  period: 15,
+  command: "require('console').log('hello from snippet task');"
+});

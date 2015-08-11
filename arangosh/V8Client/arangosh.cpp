@@ -185,12 +185,6 @@ static vector<string> JsLint;
 static uint64_t GcInterval = 10;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief console object
-////////////////////////////////////////////////////////////////////////////////
-
-static triagens::V8LineEditor* Console = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief voice mode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1504,26 +1498,6 @@ static std::string BuildPrompt () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief signal handler for CTRL-C
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-  // TODO
-
-#else
-
-static void SignalHandler (int signal) {
-  if (Console != nullptr) {
-    Console->close();
-    Console = nullptr;
-  }
-  printf("\n");
-
-  TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1531,25 +1505,8 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
-  Console = new triagens::V8LineEditor(context, ".arangosh.history");
-  Console->open(BaseClient.autoComplete());
-
-  // install signal handler for CTRL-C
-#ifdef _WIN32
-  // TODO
-
-#else
-  struct sigaction sa;
-  sa.sa_flags = 0;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_handler = &SignalHandler;
-
-  int res = sigaction(SIGINT, &sa, 0);
-
-  if (res != 0) {
-    LOG_ERROR("unable to install signal handler");
-  }
-#endif
+  triagens::V8LineEditor console(context, ".arangosh.history");
+  console.open(BaseClient.autoComplete());
 
   uint64_t nrCommands = 0;
 
@@ -1573,17 +1530,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     string badPrompt;
 
 
-#ifdef __APPLE__
-
-    // ........................................................................................
-    // MacOS uses libedit, which does not support ignoring of non-printable characters in the prompt
-    // using non-printable characters in the prompt will lead to wrong prompt lengths being calculated
-    // we will therefore disable colorful prompts for MacOS.
-    // ........................................................................................
-
-    goodPrompt = badPrompt = dynamicPrompt;
-
-#elif _WIN32
+#if _WIN32
 
     // ........................................................................................
     // Windows console is not coloured by escape sequences. So the method given below will not
@@ -1637,7 +1584,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     }
 #endif
 
-    char* input = Console->prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
+    char* input = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
 
     if (input == nullptr) {
       break;
@@ -1666,7 +1613,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
       }
     }
 
-    Console->addHistory(input);
+    console.addHistory(input);
 
     v8::TryCatch tryCatch;
 
@@ -1711,10 +1658,6 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     system("say -v zarvox 'Good-Bye' &");
   }
 #endif
-
-  Console->close();
-  delete Console;
-  Console = nullptr;
 
   BaseClient.printLine("");
 
@@ -2341,15 +2284,21 @@ static int Run (v8::Isolate* isolate, eRunMode runMode, bool promptError) {
 
 class BufferAllocator : public v8::ArrayBuffer::Allocator {
  public:
-  virtual void* Allocate(size_t length) {
+  virtual void* Allocate (size_t length) {
     void* data = AllocateUninitialized(length);
     if (data != nullptr) {
       memset(data, 0, length);
     }
     return data;
   }
-  virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
-  virtual void Free(void* data, size_t) { free(data); }
+  virtual void* AllocateUninitialized (size_t length) { 
+    return malloc(length); 
+  }
+  virtual void Free (void* data, size_t) { 
+    if (data != nullptr) {
+      free(data); 
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

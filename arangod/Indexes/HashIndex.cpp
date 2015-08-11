@@ -31,7 +31,7 @@
 #include "HashIndex/hash-index-common.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 struct TRI_hash_index_element_multi_s;
 
@@ -95,7 +95,7 @@ static int HashIndexHelper (HashIndex const* hashIndex,
                             TRI_doc_mptr_t const* document) {
   TRI_shaped_json_t shapedJson;         // the object behind document
 
-  TRI_shaper_t* shaper = hashIndex->collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper = hashIndex->collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   bool const sparse = hashIndex->sparse();
 
   // .............................................................................
@@ -121,7 +121,7 @@ static int HashIndexHelper (HashIndex const* hashIndex,
     TRI_shape_pid_t path = paths[j];
 
     // determine if document has that particular shape
-    TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, shapedJson._sid, path);
+    TRI_shape_access_t const* acc = shaper->findAccessor(shapedJson._sid, path);
 
     // field not part of the object
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {

@@ -180,7 +180,7 @@ static bool LoadJavaScriptFile (v8::Isolate* isolate,
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
 
   if (content == nullptr) {
-    LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_last_error());
+    LOG_ERROR("cannot load java script file '%s': %s", filename, TRI_last_error());
     return false;
   }
 
@@ -200,7 +200,7 @@ static bool LoadJavaScriptFile (v8::Isolate* isolate,
   }
 
   if (content == nullptr) {
-    LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    LOG_ERROR("cannot load java script file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
     return false;
   }
 
@@ -209,16 +209,29 @@ static bool LoadJavaScriptFile (v8::Isolate* isolate,
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
+  v8::TryCatch tryCatch;
+
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
+
+  if (tryCatch.HasCaught()) {
+    TRI_LogV8Exception(isolate, &tryCatch);
+    return false;
+  }
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
+    LOG_ERROR("cannot load java script file '%s': compilation failed.", filename);
     return false;
   }
 
   if (execute) {
     // execute script
     v8::Handle<v8::Value> result = script->Run();
+
+    if (tryCatch.HasCaught()) {
+      TRI_LogV8Exception(isolate, &tryCatch);
+      return false;
+    }
 
     if (result.IsEmpty()) {
       return false;
@@ -460,6 +473,7 @@ static void JS_Parse (const v8::FunctionCallbackInfo<v8::Value>& args) {
     if (tryCatch.CanContinue()) {
       string err = TRI_StringifyV8Exception(isolate, &tryCatch);
 
+      tryCatch.ReThrow();
       TRI_V8_THROW_SYNTAX_ERROR(err.c_str());
     }
     else {
@@ -825,20 +839,19 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
               endpoint.c_str(),
               url.c_str());
 
-    Endpoint* ep = Endpoint::clientFactory(endpoint);
+    std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
     if (ep == nullptr) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid URL");
     }
 
-    GeneralClientConnection* connection = GeneralClientConnection::factory(ep, timeout, timeout, 3, 0);
+    std::unique_ptr<GeneralClientConnection> connection(GeneralClientConnection::factory(ep.get(), timeout, timeout, 3, 0));
 
     if (connection == nullptr) {
-      delete ep;
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    SimpleHttpClient* client = new SimpleHttpClient(connection, timeout, false);
+    SimpleHttpClient client(connection.get(), timeout, false);
 
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -848,28 +861,26 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
 
     // send the actual request
-    SimpleHttpResult* response = client->request(method,
-                                                 relative,
-                                                 (body.size() > 0 ? body.c_str() : nullptr),
-                                                 body.size(),
-                                                 headerFields);
+    std::unique_ptr<SimpleHttpResult> response(client.request(method,
+                                                              relative,
+                                                              (body.size() > 0 ? body.c_str() : ""),
+                                                              body.size(),
+                                                              headerFields));
 
     int returnCode = 500; // set a default
     string returnMessage;
 
     if (response == nullptr || ! response->isComplete()) {
       // save error message
-      returnMessage = client->getErrorMessage();
+      returnMessage = client.getErrorMessage();
       returnCode = 500;
-
-      delete client;
 
       if (response != nullptr && response->getHttpReturnCode() > 0) {
         returnCode = response->getHttpReturnCode();
       }
     }
     else {
-      delete client;
+      TRI_ASSERT(response != nullptr);
 
       returnMessage = response->getHttpReturnMessage();
       returnCode = response->getHttpReturnCode();
@@ -878,12 +889,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       if (followRedirects &&
           (returnCode == 301 || returnCode == 302 || returnCode == 307)) {
         bool found;
-        url = response->getHeaderField(string("location"), found);
-
-        delete response;
-        delete connection;
-        connection = nullptr;
-        delete ep;
+        url = response->getHeaderField(std::string("location"), found);
 
         if (! found) {
           TRI_V8_THROW_EXCEPTION_INTERNAL("caught invalid redirect URL");
@@ -924,12 +930,10 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
             if (returnBodyAsBuffer) {
               V8Buffer* buffer = V8Buffer::New(isolate, sb.c_str(), sb.length());
               v8::Local<v8::Object> bufferObject = v8::Local<v8::Object>::New(isolate, buffer->_handle);
-              result->Set(TRI_V8_ASCII_STRING("body"),
-                          bufferObject);
+              result->Set(TRI_V8_ASCII_STRING("body"), bufferObject);
             }
             else {
-              result->Set(TRI_V8_ASCII_STRING("body"),
-                          TRI_V8_STD_STRING(sb));
+              result->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(sb));
             }
           }
         }
@@ -942,14 +946,6 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
     result->Set(TRI_V8_ASCII_STRING("code"),    v8::Number::New(isolate, returnCode));
     result->Set(TRI_V8_ASCII_STRING("message"), TRI_V8_STD_STRING(returnMessage));
 
-    if (response) {
-      delete response;
-    }
-
-    if (connection) {
-      delete connection;
-    }
-    delete ep;
     TRI_V8_RETURN(result);
   }
 
@@ -2039,20 +2035,25 @@ static void JS_RandomAlphaNum (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a salt
 ///
-/// @FUN{internal.genRandomSalt()}
+/// @FUN{internal.genRandomSalt(@FA{length})}
 ///
-/// Generates a string containing numbers and characters (length 8).
+/// Generates a string of a given @FA{length} containing ASCII characters.
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RandomSalt (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("genRandomSalt()");
+  if (args.Length() != 1 || ! args[0]->IsNumber()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("genRandomSalt(<length>)");
   }
 
-  string str = JSSaltGenerator.random(8);
+  int length = (int) TRI_ObjectToInt64(args[0]);
+  if (length <= 0 || length > 65536) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "<length> must be between 0 and 65536");
+  }
+
+  string str = JSSaltGenerator.random(length);
   TRI_V8_RETURN_STD_STRING(str);
   TRI_V8_TRY_CATCH_END
 }
@@ -4212,14 +4213,6 @@ bool TRI_ExecuteGlobalJavaScriptFile (v8::Isolate* isolate, char const* filename
 
 bool TRI_ExecuteGlobalJavaScriptDirectory (v8::Isolate* isolate, char const* path) {
   return LoadJavaScriptDirectory(isolate, path, true, false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a file in a local context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteLocalJavaScriptFile (v8::Isolate* isolate, char const* filename) {
-  return LoadJavaScriptFile(isolate, filename, true, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

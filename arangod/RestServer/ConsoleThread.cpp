@@ -71,8 +71,8 @@ ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
     _vocbase(vocbase),
     _done(0),
     _userAborted(false) {
-  allowAsynchronousCancelation();
 
+  allowAsynchronousCancelation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +94,7 @@ void ConsoleThread::run () {
   usleep(100000);
 
   // enter V8 context
-  _context = _applicationV8->enterContext("STANDARD", _vocbase, true);
+  _context = _applicationV8->enterContext(_vocbase, true);
 
   try {
     inner();

@@ -32,17 +32,16 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/hashes.h"
-
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Basics/hashes.h"
 #include "Basics/logging.h"
+#include "Basics/Thread.h"
+#include "Benchmark/BenchmarkCounter.h"
+#include "Benchmark/BenchmarkOperation.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
-#include "Benchmark/BenchmarkCounter.h"
-#include "Benchmark/BenchmarkOperation.h"
 
 namespace triagens {
   namespace arangob {
@@ -176,7 +175,7 @@ namespace triagens {
 
           // wait for start condition to be broadcasted
           {
-            basics::ConditionLocker guard(_startCondition);
+            CONDITION_LOCKER(guard, (*_startCondition));
             guard.wait();
           }
 

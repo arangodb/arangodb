@@ -1,2 +1,2 @@
-shell> curl -X HEAD --dump - http://localhost:8529/_api/document/products/1604394210
+shell> curl -X HEAD --dump - http://localhost:8529/_api/document/products/512097938117
 

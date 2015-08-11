@@ -1,0 +1,15 @@
+arangosh> db._modules.save({
+........>  path: "/db:/OwnMiddlewareTest",
+........>  content:
+........>     "exports.logRequest = function (req, res, options, next) {" +
+........>     "    console = require('console'); " + 
+........>     "    console.log('received request: %s', JSON.stringify(req));" +
+........>     "    next();" +
+........>     "    console.log('produced response: %s', JSON.stringify(res));" +
+........>     "};"
+........> });
+{ 
+  "_id" : "_modules/511992359621", 
+  "_rev" : "511992359621", 
+  "_key" : "511992359621" 
+}

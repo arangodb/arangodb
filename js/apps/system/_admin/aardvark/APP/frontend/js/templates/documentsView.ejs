@@ -5,6 +5,7 @@
 
   <!-- remove marker for docupdiv-->
   <ul class="headerButtonList">
+    <!-- Mark: removed prev/next collection button
     <li class="enabled">
       <a id="collectionNext" class="headerButton">
         <span class="icon_arangodb_arrowright" title="Next collection"></span>
@@ -15,6 +16,20 @@
         <span class="icon_arangodb_arrowleft" title="Previous collection"></span>
       </a>
     </li>
+    -->
+    <li class="enabled">
+        <select id="documentSize" class="documents-size">
+          <option value="10" selected="">10 results</option>
+          <option value="20">20 results</option>
+          <option value="50">50 results</option>
+          <option value="100">100 results</option>
+          <option value="500">500 results</option>
+          <option value="1000">1000 results</option>
+          <option value="2500">2500 results</option>
+          <option value="5000">5000 results</option>
+          <option value="all">All results</option>
+        </select>
+      </a>
     <li class="enabled">
       <a id="markDocuments" class="headerButton">
         <span class="icon_arangodb_edit" title="Edit documents"></span>
@@ -45,7 +60,7 @@
   </div>
 </div>
 
-<div class="arangoDropdown">
+<div class="arangoDropdown documentsDropdown">
   <div id="filterHeader" class="headerDropdown">
     <div class="queryline">
        <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0" class="filterSelect">
@@ -342,17 +357,6 @@
     <div id="documentsToolbarFL">
       <div id="documentsToolbarF" class="pagination-line">
       </div>
-        <select id="documentSize" class="documents-size">
-          <option value="10" selected="">10 results</option>
-          <option value="20">20 results</option>
-          <option value="50">50 results</option>
-          <option value="100">100 results</option>
-          <option value="500">500 results</option>
-          <option value="1000">1000 results</option>
-          <option value="2500">2500 results</option>
-          <option value="5000">5000 results</option>
-          <option value="all">All results</option>
-        </select>
     </div>
 
 <!-- Delete Modal -->

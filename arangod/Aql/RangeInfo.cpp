@@ -313,6 +313,16 @@ void RangeInfoMap::insert (std::string const& var,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief  insert an equality
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoMap::insert (std::string const& var, 
+                           std::string const& name, 
+                           RangeInfoBound const& bound) {
+  insert(RangeInfo(var, name, bound));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
 /// and attribute <name>, and otherwise intersection with existing range
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,15 +334,15 @@ void RangeInfoMap::insert (RangeInfo const& newRange) {
 
   if (oldMap == nullptr) {
     std::unordered_map<std::string, RangeInfo> newMap;
-    newMap.emplace(std::make_pair(newRange._attr, newRange));
-    _ranges.emplace(std::make_pair(newRange._var, newMap));
+    newMap.emplace(newRange._attr, newRange);
+    _ranges.emplace(newRange._var, newMap);
     return;
   }
   
   auto it = oldMap->find(newRange._attr); 
   
   if (it == oldMap->end()) {
-    oldMap->emplace(std::make_pair(newRange._attr, newRange));
+    oldMap->emplace(newRange._attr, newRange);
     return;
   }
 
@@ -340,6 +350,10 @@ void RangeInfoMap::insert (RangeInfo const& newRange) {
 
   oldRange.fuse(newRange);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief erase
+////////////////////////////////////////////////////////////////////////////////
 
 void RangeInfoMap::erase (RangeInfo* ri) {
   auto it = find(ri->_var);
@@ -640,18 +654,17 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief andCombineRangeInfoMaps: insert every RangeInfo in the <rhs> in the
-/// <lhs> and delete the <rhs>
+/// @brief andCombineRangeInfoMaps: insert every RangeInfo in the right argument
+/// in a new copy of the left argument
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, 
-                                                      RangeInfoMap* rhs) {
+                                                      RangeInfoMap const* rhs) {
   for (auto const& x : rhs->_ranges) {
     for (auto const& y : x.second) {
       lhs->insert(y.second.clone());
     }
   }
-  delete rhs;
   return lhs;
 }
 
@@ -684,7 +697,7 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
     std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec()); // must be a new one
     for (size_t i = 0; i < lhs->size(); i++) {
       for (size_t j = 0; j < rhs->size(); j++) {
-        rimv->emplace_back(std::move(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone())));
+        rimv->emplace_back(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]));
       }
     }
 

@@ -131,8 +131,6 @@ bool RestVersionHandler::isDirect () const {
 HttpHandler::status_t RestVersionHandler::execute () {
   TRI_json_t result;
 
-  RequestStatisticsAgentSetIgnore(this);
-
   TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, 3);
 
   TRI_json_t server;

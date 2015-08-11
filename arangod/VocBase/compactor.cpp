@@ -41,7 +41,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -542,7 +542,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write shape marker to compactor file: %s", TRI_last_error());
     }
 
-    res = TRI_MoveMarkerVocShaper(document->getShaper(), result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
+    res = document->getShaper()->moveMarker(result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
@@ -562,7 +562,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write attribute marker to compactor file: %s", TRI_last_error());
     }
 
-    res = TRI_MoveMarkerVocShaper(document->getShaper(), result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
+    res = document->getShaper()->moveMarker(result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
@@ -1376,14 +1376,12 @@ int TRI_RemoveBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CompactorVocBase (void* data) {
-  TRI_vocbase_t* vocbase;
-  TRI_vector_pointer_t collections;
-  int numCompacted = 0;
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
 
-  vocbase = (TRI_vocbase_t*) data;
+  int numCompacted = 0;
   TRI_ASSERT(vocbase->_state == 1);
 
-  TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
+  std::vector<TRI_vocbase_col_t*> collections;
 
   while (true) {
     // keep initial _state value as vocbase->_state might change during compaction loop
@@ -1395,16 +1393,16 @@ void TRI_CompactorVocBase (void* data) {
       double now = TRI_microtime();
       numCompacted = 0;
 
-      // copy all collections
-      TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-      TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
-      TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+      try {
+        READ_LOCKER(vocbase->_collectionsLock);
+        // copy all collections
+        collections = vocbase->_collections;
+      }
+      catch (...) {
+        collections.clear();
+      }
 
-      size_t const n = collections._length;
-
-      for (size_t i = 0;  i < n;  ++i) {
-        TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(collections._buffer[i]);
-
+      for (auto& collection : collections) {
         if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
           // if we can't acquire the read lock instantly, we continue directly
           // we don't want to stall here for too long
@@ -1486,8 +1484,6 @@ void TRI_CompactorVocBase (void* data) {
       break;
     }
   }
-
-  TRI_DestroyVectorPointer(&collections);
 
   LOG_TRACE("shutting down compactor thread");
 }

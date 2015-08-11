@@ -362,7 +362,6 @@ function SetRoutesFoxxControllerSpec () {
 
       app.activateSessions({
         sessionStorage: 'sessions',
-        type: 'cookie',
         cookie: {
           name: 'sid',
           secret: 'secret'
@@ -982,7 +981,7 @@ function DocumentationAndConstraintsSpec () {
       callback(req, res);
 
       assertFalse(called);
-      assertEqual(res.responseCode, 400);
+      assertEqual(res.responseCode, 422);
     },
 
     testSetParamForUndocumentedBodyParam: function () {
@@ -1414,7 +1413,6 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorage: 'sessions',
-          type: 'cookie',
           cookie: {
             name: 'sid'
           }
@@ -1434,7 +1432,6 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorage: 'sessions',
-          type: 'cookie',
           cookie: 'sid'
         });
       } catch (e) {
@@ -1452,7 +1449,6 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorage: 'sessions',
-          type: 'cookie',
           cookie: {
             name: 'sid',
             secret: 'keyboardcat'
@@ -1473,7 +1469,6 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorage: 'sessions',
-          type: 'header',
           header: 'X-Session-Id'
         });
       } catch (e) {
@@ -1481,193 +1476,6 @@ function SetupSessions () {
       }
 
       assertUndefined(err);
-    },
-
-    testWorksWithJwt: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'header',
-          header: 'X-Session-Token',
-          jwt: {
-            secret: 'secret'
-          }
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertUndefined(err);
-    },
-
-    testWorksWithJwtHS256: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'header',
-          header: 'X-Session-Token',
-          jwt: {
-            secret: 'secret',
-            algorithm: 'HS256'
-          }
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertUndefined(err);
-    },
-
-    testWorksWithJwtNone: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'header',
-          header: 'X-Session-Token',
-          jwt: {
-            algorithm: 'none'
-          }
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertUndefined(err);
-    },
-
-    testWorksWithJwtNoneWithSecret: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'header',
-          header: 'X-Session-Token',
-          jwt: {
-            algorithm: 'none',
-            secret: 'secret'
-          }
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertUndefined(err);
-    },
-
-    testWorksWithJwtUnverified: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'header',
-          header: 'X-Session-Token',
-          jwt: {
-            verify: false
-          }
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertUndefined(err);
-    },
-
-    testWorksWithJwtShorthand: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'header',
-          header: 'X-Session-Token',
-          jwt: 'secret'
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertUndefined(err);
-    },
-
-    testWorksWithJwtNoneShorthand: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'header',
-          header: 'X-Session-Token',
-          jwt: true
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertUndefined(err);
-    },
-
-    testRefusesJwtAlgorithmWithSecret: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'header',
-          header: 'X-Session-Token',
-          jwt: {
-            algorithm: 'HS256'
-          }
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertTrue(err instanceof Error);
-    },
-
-    testRefusesUnknownSessionsTypes: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateSessions({
-          sessionStorage: 'sessions',
-          type: 'magic',
-          cookie: {
-            name: 'sid',
-            secret: 'secret'
-          }
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertTrue(err instanceof Error);
     }
   };
 }

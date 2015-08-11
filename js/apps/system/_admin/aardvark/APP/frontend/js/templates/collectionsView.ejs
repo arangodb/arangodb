@@ -1,5 +1,10 @@
 <script id="collectionsView.ejs" type="text/template">
   <div class="headerBar">
+    <div class="search-field">
+      <input type="text" id="searchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="searchSubmit" class="search-submit-icon"/> -->
+      <i id="searchSubmit" class="fa fa-search"></i>
+    </div>
     <div class="headerButtonBar">
       <ul class="headerButtonList">
         <li class="enabled">
@@ -13,10 +18,6 @@
     <div class="pull-left">
       <a class="arangoHeader">Collections</a>
     </div>
-    <div class="search-field">
-      <input type="text" id="searchInput" class="search-input" placeholder="Search..."/><img id="searchSubmit"
-                                                                                            class="search-submit-icon"/>
-    </div>
   </div>
 
 
@@ -29,23 +30,28 @@
         <li><a>
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox checkSystemCollections" type="checkbox">
-            <label class="css-label"></label>System
+            <i class="fa"></i>
+            System
           </label>
         </a></li>
 
         <li><a>
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="checkDocument">
-            <label class="css-label" id="checkDocument"></label>Document
+            <i class="fa"></i>
+            Document
           </label>
         </a></li>
 
         <li><a>
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="checkEdge">
-            <label class="css-label" id="checkEdge"></label>Edge
+            <i class="fa"></i>
+            Edge
           </label>
         </a></li>
+
+        </li>
       </ul>
 
       <ul>
@@ -54,14 +60,16 @@
         <li><a href="#">
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="checkLoaded">
-            <label class="css-label"></label>Loaded
+            <i class="fa"></i>
+            Loaded
           </label>
         </a></li>
 
         <li><a href="#">
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="checkUnloaded">
-            <label class="css-label"></label>Unloaded
+            <i class="fa"></i>
+            Unloaded
           </label>
         </a></li>
 
@@ -72,21 +80,24 @@
         <li><a href="#">
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="sortName">
-            <label class="css-label css-label-round"></label>Sort by name
+            <i class="fa css-round-label"></i>
+            Sort by name
           </label>
         </a></li>
 
         <li><a href="#">
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="sortType">
-            <label class="css-label css-label-round"></label>Sort by type
+            <i class="fa css-round-label"></i>
+            Sort by type
           </label>
         </a></li>
 
         <li><a href="#">
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="sortOrder">
-            <label class="css-label"></label>Sort descending
+            <i class="fa"></i>
+            Sort descending
           </label>
         </a></li>
       </ul>

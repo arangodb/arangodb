@@ -82,6 +82,7 @@
 #define TRI_HAVE_SYS_IOCTL_H                1
 #define TRI_HAVE_TERMIOS_H                  1
 #define TRI_HAVE_UNISTD_H                   1
+#define TRI_HAVE_POLL_H                     1
 
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_SYS_TIME_H                 1
@@ -262,6 +263,7 @@
 #define TRI_HAVE_STRINGS_H                  1
 #define TRI_HAVE_TERMIOS_H                  1
 #define TRI_HAVE_UNISTD_H                   1
+#define TRI_HAVE_POLL_H                     1
 
 #define TRI_HAVE_SYS_FILE_H                 1
 #define TRI_HAVE_SYS_IOCTL_H                1
@@ -429,6 +431,7 @@
 #define TRI_HAVE_STDBOOL_H                  1
 #define TRI_HAVE_TERMIOS_H                  1
 #define TRI_HAVE_UNISTD_H                   1
+#define TRI_HAVE_POLL_H                     1
 
 #define TRI_HAVE_SYS_FILE_H                 1
 #define TRI_HAVE_SYS_IOCTL_H                1
@@ -622,8 +625,8 @@
 
 #define TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS 1
 
-#define TRI_srandom                         srand
-#define TRI_random                          rand
+#define TRI_srandom                     srand
+#define TRI_random                      rand
 
 #define strcasecmp                      _stricmp
 #define strncasecmp                     _strnicmp

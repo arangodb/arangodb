@@ -32,7 +32,6 @@
 #define ARANGODB_BASICS_READ_LOCKER_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/ReadWriteLock.h"
 
 // -----------------------------------------------------------------------------
@@ -49,8 +48,23 @@
 #define READ_LOCKER_VAR_A(a) _read_lock_variable ## a
 #define READ_LOCKER_VAR_B(a) READ_LOCKER_VAR_A(a)
 
+#ifdef TRI_SHOW_LOCK_TIME
+
 #define READ_LOCKER(b) \
   triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+
+#define READ_LOCKER_EVENTUAL(b, t) \
+  triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
+
+#else
+
+#define READ_LOCKER(b) \
+  triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b)
+
+#define READ_LOCKER_EVENTUAL(b, t) \
+  triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b, t)
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class ReadLocker
@@ -82,16 +96,31 @@ namespace triagens {
 /// The constructors read-locks the lock, the destructors unlocks the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        ReadLocker (ReadWriteLock* readWriteLock);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a read-lock
-///
-/// The constructors read-locks the lock, the destructors unlocks the lock.
-////////////////////////////////////////////////////////////////////////////////
+#ifdef TRI_SHOW_LOCK_TIME
 
         ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line);
+
+#else
+
+        explicit
+        ReadLocker (ReadWriteLock*);
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a read-lock, with periodic sleeps while not acquired
+/// sleep time is specified in nanoseconds
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_SHOW_LOCK_TIME
+
+        ReadLocker (ReadWriteLock* readWriteLock, uint64_t sleepDelay, char const* file, int line);
+
+#else
+
+        ReadLocker (ReadWriteLock*, uint64_t);
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the read-lock
@@ -111,6 +140,8 @@ namespace triagens {
 
         ReadWriteLock* _readWriteLock;
 
+#ifdef TRI_SHOW_LOCK_TIME
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief file
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,6 +153,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _line;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock time
+////////////////////////////////////////////////////////////////////////////////
+
+        double _time;
+
+#endif        
+
     };
   }
 }

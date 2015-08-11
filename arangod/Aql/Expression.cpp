@@ -39,8 +39,8 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
-#include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/shaped-json.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -148,8 +148,8 @@ Expression::~Expression () {
 /// @brief return all variables used in the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_set<Variable*> Expression::variables () const {
-  return Ast::getReferencedVariables(_node);
+void Expression::variables (std::unordered_set<Variable const*>& result) const {
+  return Ast::getReferencedVariables(_node, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +159,7 @@ std::unordered_set<Variable*> Expression::variables () const {
 AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
                               AqlItemBlock const* argv,
                               size_t startPos,
-                              std::vector<Variable*> const& vars,
+                              std::vector<Variable const*> const& vars,
                               std::vector<RegisterId> const& regs,
                               TRI_document_collection_t const** collection) {
 
@@ -462,7 +462,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               triagens::arango::AqlTransaction* trx,
                                               AqlItemBlock const* argv,
                                               size_t startPos,
-                                              std::vector<Variable*> const& vars,
+                                              std::vector<Variable const*> const& vars,
                                               std::vector<RegisterId> const& regs,
                                               bool doCopy) {
   if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -672,8 +672,16 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     try { 
       for (size_t i = 0; i < n; ++i) {
         TRI_document_collection_t const* myCollection = nullptr;
-        auto value = executeSimpleExpression(member->getMemberUnchecked(i), &myCollection, trx, argv, startPos, vars, regs, false);
-        parameters.emplace_back(std::make_pair(value, myCollection));
+        auto arg = member->getMemberUnchecked(i);
+
+        if (arg->type == NODE_TYPE_COLLECTION) {
+          char const* collectionName = arg->getStringValue();
+          parameters.emplace_back(AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, collectionName, strlen(collectionName))), nullptr);
+        }
+        else {
+          auto value = executeSimpleExpression(arg, &myCollection, trx, argv, startPos, vars, regs, false);
+          parameters.emplace_back(value, myCollection);
+        }
       }
 
       auto res2 = func->implementation(_ast->query(), trx, parameters);

@@ -45,13 +45,13 @@ PeriodicTask::PeriodicTask (string const& id,
                             double offset,
                             double interval)
   : Task(id, "PeriodicTask"),
-    watcher(0),
+    watcher(nullptr),
     offset(offset),
     interval(interval) {
 }
 
 PeriodicTask::~PeriodicTask () {
-  if (watcher != 0) {
+  if (watcher != nullptr) {
     _scheduler->uninstallEvent(watcher);
   }
 }
@@ -83,20 +83,20 @@ bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   watcher = scheduler->installPeriodicEvent(loop, this, offset, interval);
 
-  if (watcher == -1) {
+  if (watcher == nullptr) {
     return false;
   }
   return true;
 }
 
 void PeriodicTask::cleanup () {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_WARNING("In PeriodicTask::cleanup the scheduler has disappeared -- invalid pointer");
-    watcher = 0;
+    watcher = nullptr;
     return;
   }
   _scheduler->uninstallEvent(watcher);
-  watcher = 0;
+  watcher = nullptr;
 }
 
 bool PeriodicTask::handleEvent (EventToken token, EventType revents) {

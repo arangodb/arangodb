@@ -225,7 +225,20 @@ var installAssets = function (app, routes) {
   if (desc.hasOwnProperty('files')) {
     for (path in desc.files) {
       if (desc.files.hasOwnProperty(path)) {
-        var directory = desc.files[path];
+        var directory, gzip = false;
+
+        if (desc.files[path].hasOwnProperty('path')) {
+          directory = desc.files[path].path;
+        }
+        else {
+          directory = desc.files[path];
+        }
+
+        if (desc.files[path].hasOwnProperty('gzip')) {
+          if (desc.files[path].gzip === true) {
+            gzip = true;
+          }
+        }
 
         normalized = arangodb.normalizeURL("/" + path);
 
@@ -235,7 +248,8 @@ var installAssets = function (app, routes) {
             "do": "org/arangodb/actions/pathHandler",
             "options": {
               root: app._root,
-              path: fs.join(app._path, directory)
+              path: fs.join(app._path, directory),
+              gzip: gzip
             }
           }
         };
@@ -335,7 +349,7 @@ var transformControllerToRoute = function (routeInfo, route, isDevel) {
         }
       }
       // Default Error Handler
-      if (!e.statusCode) {
+      if (! e.statusCode) {
         console.errorLines(
           "Error in foxx route '%s': '%s', Stacktrace:\n%s",
           route,
@@ -556,8 +570,9 @@ var routeBrokenApp = function(app, err) {
           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
           res.contentType = "text/html; charset=utf-8";
           if (app._isDevelopment) {
-            res.body = "<html><head><title>" + escapeHTML(String(err)) +
-                     "</title></head><body><pre>" + escapeHTML(String(err.stack)) + "</pre></body></html>";
+            var errToPrint = err.cause ? err.cause : err;
+            res.body = "<html><head><title>" + escapeHTML(String(errToPrint)) +
+                     "</title></head><body><pre>" + escapeHTML(String(errToPrint.stack)) + "</pre></body></html>";
           } else {
             res.body = "<html><head><title>Service Unavailable</title></head><body><p>" +
             "This service is temporarily not available. Please check the log file for errors.</p></body></html>";

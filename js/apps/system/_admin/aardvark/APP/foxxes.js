@@ -31,6 +31,7 @@
 
   var internal = require("internal");
   var db = require("org/arangodb").db;
+  var NotFound = require("http-errors").NotFound;
   var FoxxController = require("org/arangodb/foxx").Controller;
   var UnauthorizedError = require("http-errors").Unauthorized;
   var controller = new FoxxController(applicationContext);
@@ -39,6 +40,8 @@
   var fmUtils = require("org/arangodb/foxx/manager-utils");
   var actions = require("org/arangodb/actions");
   var joi = require("joi");
+  var marked = require("marked");
+  var highlightAuto = require("highlight.js").highlightAuto;
   var docu = require("./lib/swagger").Swagger;
   var underscore = require("underscore");
   var mountPoint = {
@@ -186,7 +189,18 @@
    * Get a List of all running foxxes
    */
   controller.get('/', function (req, res) {
-    res.json(FoxxManager.listJson());
+    var foxxes = FoxxManager.listJson();
+    foxxes.forEach(function (foxx) {
+      var readme = FoxxManager.readme(foxx.mount);
+      if (readme) {
+        foxx.readme = marked(readme, {
+          highlight(code) {
+            return highlightAuto(code).value;
+          }
+        });
+      }
+    });
+    res.json(foxxes);
   });
 
   /** Get the thumbnail of a Foxx
@@ -295,6 +309,7 @@
   })
   .queryParam("mount", mountPoint);
 
+
   /** Trigger teardown script for an app
    *
    * Used to trigger the teardown script of an app
@@ -304,7 +319,6 @@
     res.json(FoxxManager.runScript("teardown", mount));
   })
   .queryParam("mount", mountPoint);
-
 
 
   /** Activate/Deactivate development mode for an app
@@ -321,6 +335,7 @@
     }
   })
   .queryParam("mount", mountPoint);
+
 
   /** Download an app as zip archive
    *
@@ -360,6 +375,12 @@
   // ------------------------------------------------------------
   // SECTION                                        documentation
   // ------------------------------------------------------------
+
+  controller.apiDocumentation('/docs/standalone', function (req, res) {
+    return {
+      appPath: req.parameters.mount
+    };
+  });
 
   controller.apiDocumentation('/docs', function (req, res) {
     return {

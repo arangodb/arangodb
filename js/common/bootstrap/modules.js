@@ -620,6 +620,11 @@ function require (path) {
     }
 
     if (description.type === "coffee") {
+      let deprecated = require('org/arangodb/deprecated');
+      deprecated('2.8', (
+        `file ${description.origin}: built-in CoffeeScript support is deprecated,`
+        + ` pre-compile CoffeeScript modules instead`
+      ));
       var cs = require("coffee-script");
       description.content = cs.compile(description.content, {bare: true});
       localModule = createModule(currentModule, currentPackage, description);
@@ -1346,7 +1351,7 @@ function require (path) {
     }
 
     // test for parse errors first and fail early if a parse error detected
-    if (!internal.parse(content)) {
+    if (!internal.parse(content, filename)) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_SYNTAX_ERROR.code,
         errorMessage: internal.errors.ERROR_MODULE_SYNTAX_ERROR.message

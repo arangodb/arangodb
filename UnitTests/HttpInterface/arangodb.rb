@@ -201,6 +201,8 @@ class ArangoDB
 
   def self.log (args)
     # disable logging if requested
+    result = args[:result]
+    response = result.parsed_response
     return if not ($silent.nil? || $silent.empty? || $silent == "0")
 
     if args.key?(:output)

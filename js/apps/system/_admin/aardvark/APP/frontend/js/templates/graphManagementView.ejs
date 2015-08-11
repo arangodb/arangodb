@@ -1,5 +1,10 @@
 <script id="graphManagementView.ejs" type="text/template">
   <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <i id="graphManagementSearchSubmit" class="fa fa-search"></i>
+      <!-- <img id="graphManagementSearchSubmit" class="search-submit-icon"> -->
+    </div>
      <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li class="enabled">
@@ -12,9 +17,6 @@
     <div class="pull-left">
       <a class="arangoHeader">Graphs</a>
     </div>
-    <div class="search-field">
-      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/><img id="graphManagementSearchSubmit" class="search-submit-icon">
-    </div>
   </div>
 
 
@@ -26,7 +28,8 @@
         <li><a>
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="graphSortDesc">
-            <label class="css-label" id="graphSortDesc"></label>Sort descending
+            <i class="fa"></i>
+            Sort descending
           </label>
         </a></li>
       </ul>
@@ -54,6 +57,7 @@
         <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
       </div>
       <span class="icon_arangodb_edge5 tile-icon"></span>
+      <span class="icon_arangodb_edge5 icon_arangodb_edge5-2 tile-icon"></span>
         <div class="tileBadge">
     </div>
 

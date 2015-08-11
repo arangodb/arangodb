@@ -38,6 +38,9 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/DocumentHelper.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
@@ -45,11 +48,8 @@
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/DocumentHelper.h"
-#include "Utils/TransactionContext.h"
 
 namespace triagens {
   namespace arango {
@@ -593,15 +593,15 @@ namespace triagens {
                     void const* data,
                     bool forceSync) {
 
-          TRI_voc_key_t key = 0;
+          TRI_voc_key_t key = nullptr;
           int res = DocumentHelper::getKey(json, &key);
 
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
 
-          TRI_shaper_t* shaper = this->shaper(trxCollection);
-          TRI_memory_zone_t* zone = shaper->_memoryZone;
+          auto shaper = this->shaper(trxCollection);
+          TRI_memory_zone_t* zone = shaper->memoryZone();
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
 
           if (shaped == nullptr) {
@@ -635,8 +635,8 @@ namespace triagens {
                     TRI_voc_rid_t* actualRevision,
                     bool forceSync) {
 
-          TRI_shaper_t* shaper = this->shaper(trxCollection);
-          TRI_memory_zone_t* zone = shaper->_memoryZone;
+          auto shaper = this->shaper(trxCollection);
+          TRI_memory_zone_t* zone = shaper->memoryZone();
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
 
           if (shaped == nullptr) {
@@ -712,7 +712,7 @@ namespace triagens {
 /// @brief return a collection's shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-         TRI_shaper_t* shaper (TRI_transaction_collection_t const* trxCollection) const {
+         VocShaper* shaper (TRI_transaction_collection_t const* trxCollection) const {
            TRI_ASSERT(_trx != nullptr);
            TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
            TRI_ASSERT(trxCollection->_collection != nullptr);

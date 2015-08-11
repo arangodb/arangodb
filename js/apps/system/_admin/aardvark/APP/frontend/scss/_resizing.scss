@@ -52,7 +52,7 @@ div.resizecontainer {
   $subbar-font: 15px;
   $subar-weight: 400;
 
-  $smallchart-height-corrector: 3px;
+  $smallchart-height-corrector: 8px;
 
   $dashboard-height: 300px;
 
@@ -145,7 +145,7 @@ div.resizecontainer {
     }
 
     .dashboard-large-chart {
-      $int-width: ($content-size * 2 / 3) - 4px;
+      $int-width: ($content-size * 2 / 3) - 4px - 2px;
       width: $int-width;
 
       .dashboard-sub-bar {
@@ -164,13 +164,19 @@ div.resizecontainer {
       font-size: $subbar-font + 2px;
     }
 
+    .dashboard-medium-chart-outer {
+      $int-width: ($content-size / 2) - 16px - 2px + 10px;
+      width: $int-width;
+      float: left;
+    }
+
     .dashboard-medium-chart {
-      $int-width: ($content-size / 2) - 16px;
+      $int-width: ($content-size / 2) - 16px - 2px;
       width: $int-width;
 
       .dashboard-sub-bar {
         margin-left: -5px;
-        width: $int-width - 2px;
+        width: $int-width - 1px;
       }
 
       .dashboard-interior-chart {
@@ -195,7 +201,7 @@ div.resizecontainer {
     }
 
     .dashboard-small-chart {
-      $int-width: ($content-size / 3) - 8px;
+      $int-width: ($content-size / 3) - 8px - 2px;
       width: $int-width;
 
       .dashboard-sub-bar {
@@ -206,7 +212,7 @@ div.resizecontainer {
         width: $int-width - 10px;
 
         .dashboard-interior-chart {
-          height: $dashboard-height - $smallchart-height-corrector;
+          height: $dashboard-height - $smallchart-height-corrector + 2px;
           width: $int-width - 10px;
 
           .nv-axis text {
@@ -221,7 +227,7 @@ div.resizecontainer {
     }
 
     .dashboard-tendency-container {
-      $int-width: ($content-size / 3) - 20px;
+      $int-width: ($content-size / 3) - 22px;
   
       .dashboard-tendency-chart {
         $int-height: (($dashboard-height - 29px)  / 2) - $tendency-height-corrector;
@@ -253,9 +259,9 @@ div.resizecontainer {
     }
 
     .dashboard-bar-chart-container {
-      $int-width: ($content-size / 3) - 18px;
+      $int-width: ($content-size / 3) - 18px - 2px;
       $int-height: (($dashboard-height - 30px)  / 2) - $tendency-height-corrector;
-      height: $int-height;
+      height: $int-height + 2px;
 
       .dashboard-bar-chart {
         height: $int-height;
@@ -338,8 +344,14 @@ div.resizecontainer {
         }
       }
 
+      .dashboard-medium-chart-outer {
+        $int-width: ($content-size / 2) - 21px - 2px;
+        width: $int-width;
+        float: left;
+      }
+
       .dashboard-medium-chart {
-        $int-width: ($content-size / 2) - 21px;
+        $int-width: ($content-size / 2) - 21px - 2px;
         width: $int-width;
 
         .dashboard-sub-bar {
@@ -356,7 +368,7 @@ div.resizecontainer {
       }
 
       .dashboard-small-chart {
-        $int-width: ($content-size / 3) - 13px;
+        $int-width: ($content-size / 3) - 13px - 2px;
         width: $int-width;
 
         .dashboard-sub-bar {
@@ -390,7 +402,7 @@ div.resizecontainer {
       }
 
       .dashboard-bar-chart-container {
-        $int-width: ($content-size / 3) - 18px;
+        $int-width: ($content-size / 3) - 18px - 2px;
 
         .dashboard-bar-chart {
           width: $int-width;
@@ -503,7 +515,7 @@ div.centralRow {
 
 div.centralContent {
   @extend %pull-left;
-  background-color: $c-content-transp;
+  background-color: rgba(0,0,0,0);
   height: 100%;
   margin-left: -5px;
   margin-right: -5px;

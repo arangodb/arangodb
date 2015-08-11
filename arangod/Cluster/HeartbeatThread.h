@@ -37,8 +37,8 @@
 #include "Basics/logging.h"
 #include "Cluster/AgencyComm.h"
 
-struct TRI_server_s;
-struct TRI_vocbase_s;
+struct TRI_server_t;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace rest {
@@ -68,7 +68,7 @@ namespace triagens {
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        HeartbeatThread (struct TRI_server_s*,
+        HeartbeatThread (TRI_server_t*,
                          triagens::rest::ApplicationDispatcher*,
                          ApplicationV8*,
                          uint64_t,
@@ -193,7 +193,7 @@ namespace triagens {
 /// @brief fetch users for a database (run on coordinator only)
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool fetchUsers (struct TRI_vocbase_s*);
+        bool fetchUsers (TRI_vocbase_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -205,7 +205,7 @@ namespace triagens {
 /// @brief server
 ////////////////////////////////////////////////////////////////////////////////
 
-         struct TRI_server_s* _server;
+         TRI_server_t* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Job dispatcher
@@ -242,7 +242,7 @@ namespace triagens {
 /// heartbeat thread runs
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<struct TRI_vocbase_s*> _refetchUsers;
+        std::unordered_set<TRI_vocbase_t*> _refetchUsers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this server's id

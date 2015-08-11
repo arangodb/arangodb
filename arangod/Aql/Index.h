@@ -82,7 +82,7 @@ namespace triagens {
       Index (TRI_json_t const* json)
         : id(triagens::basics::StringUtils::uint64(triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
           type(triagens::arango::Index::type(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
-          unique(triagens::basics::JsonHelper::checkAndGetBooleanValue(json, "unique")),
+          unique(triagens::basics::JsonHelper::getBooleanValue(json, "unique", false)),
           sparse(triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
           fields(),
           internals(nullptr) {

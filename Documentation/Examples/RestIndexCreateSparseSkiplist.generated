@@ -13,13 +13,13 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1353325794", 
+  "id" : "products/512213084869", 
   "type" : "skiplist", 
+  "unique" : false, 
+  "sparse" : true, 
   "fields" : [ 
     "a" 
   ], 
-  "unique" : false, 
-  "sparse" : true, 
   "isNewlyCreated" : true, 
   "error" : false, 
   "code" : 201 

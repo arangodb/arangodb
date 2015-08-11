@@ -226,6 +226,8 @@
 /// - 1237: @LIT{collection type mismatch}
 ///   Will be raised when a collection has a different type from what has been
 ///   expected.
+/// - 1238: @LIT{collection not loaded}
+///   Will be raised when a collection is accessed that is not yet loaded.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
@@ -1643,6 +1645,16 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH                         (1237)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1238: ERROR_ARANGO_COLLECTION_NOT_LOADED
+///
+/// collection not loaded
+///
+/// Will be raised when a collection is accessed that is not yet loaded.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            (1238)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
 ///
 /// datafile full
@@ -3021,14 +3033,14 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          (1930)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1931: ERROR_GRAPH_NO_AN_ARANGO_COLLECTION
+/// @brief 1931: ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION
 ///
 ///  is not an ArangoCollection
 ///
 /// The collection is not an ArangoCollection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_NO_AN_ARANGO_COLLECTION                           (1931)
+#define TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION                          (1931)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION

@@ -309,6 +309,29 @@ make unittest
 
 js/common/modules/loadtestrunner.js
 
+Windows debugging
+-----------------
+-----------------
+For the average *nix user windows debugging has some awkward methods.
+
+Coredump generation
+-------------------
+Coredumps can be created using the task manager; switch it to detail view, the context menu offers to *create dump file*; the generated file ends in a directory that explorer hides from you - AppData - you have to type that in the location bar. This however only for running processes which is not as usefull as having dumps of crashing processes. While its a common feature to turn on coredumps with the system facilities on *nix systems, its not as easy in windows. You need an external program [from the Sysinternals package: ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx). First look up the PID of arangod, you can finde it in the brackets in its logfile. Then call it like this:
+
+    procdump -accepteula -e -ma < PID of arangod >
+
+It will keep on running and monitor arangod until eventually a crash happenes. You will then get a core dump if an incident occurs or *Dump count not reached.* if nothing happened, *Dump count reached.* if a dump was written - the filename will be printed above.
+
+Debugging symbols
+-----------------
+Releases are supported by a public symbol server so you will be able to debug cores.
+Releases starting with 2.5.6, 2.6.3 onwards are supported.
+Either [WinDbg](http://go.microsoft.com/fwlink/p/?linkid=84137) or Visual studio support setting the symbol path
+via the environment variable or in the menu. Given we want to store the symbols on *e:\symbol_cach* we add the arangodb symbolserver like this:
+
+    set _NT_SYMBOL_PATH=cache*e:\symbol_cache\cache;srv*e:\symbol_cache\arango*https://www.arangodb.com/repositories/symsrv/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
+
+You then will be able to see stack traces.
 
 Documentation
 -------------
@@ -328,8 +351,17 @@ Where...
 generate
 --------
  - make examples - on toplevel to generate Documentation/Examples
+ - make examples FILTER_EXAMPLE=geoIndexSelect will only produce one example - *geoIndexSelect*
  - make swagger - on toplevel to generate the documentation interactively with the server
  - cd Documentation/Books; make - to generate the HTML documentation
+
+write markdown
+--------------
+mdpp files are used for the structure. To join it with parts extracted from the programm documentation
+you need to place hooks:
+  - `@startDocuBlock &ltdocuBlockName&gt;` is replaced by a Docublock extracted from source.
+  - `@startDocuBlockInline &lt;docuBlockName&gt;` till `@endDocuBlock` is replaced in with its own content,
+     where *@EXAMPLE_ARANGOSH_OUTPUT* sections are executed the same way as inside of documentation.
 
 read / use the documentation
 ----------------------------
@@ -354,7 +386,15 @@ Heres how its details work:
 OUTPUT and RUN Specialities
 ---------------------------
  - OUTPUT is intended to create samples that the users can cut'n'paste into their arangosh. Its used for javascript api documentation.
-  - it is excuted line by line. If a line is intended to fail (aka throw an exception), you have to specify *// xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)* so the exception will be caught; else the example is marked as broken.
+  - it is excuted line by line. If a line is intended to fail (aka throw an exception),
+    you have to specify *// xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)* so the exception will be caught;
+    else the example is marked as broken.
+    If you need to wrap that line, you may want to make the next line like this to suppress an empty line:
+    
+        /// | someLongStatement()
+        /// ~ // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
+    
+    
  - RUN is intended to be pasted into a unix shell with *cURL* to demonstrate how the REST-HTTP-APIs work. The whole chunk of code is executet at once, and is expected **not to throw**. You should use **assert(condition)** to ensure the result is what you've expected.
 
 Additional Example syntax
@@ -365,6 +405,8 @@ Additional Example syntax
   The command behaves similar to the arangosh: the server reply won't be printed. Hovever, the variable will be in the scope of the other lines.
 * Lines starting with a Tilde ('/// ~'):
   These lines can be used for setup/teardown purposes. They are completely invisible in the generated example transscript.
+
+
 
 Do's and Don'ts
 ---------------

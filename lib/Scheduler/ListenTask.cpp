@@ -65,16 +65,15 @@ using namespace triagens::rest;
 
 ListenTask::ListenTask (Endpoint* endpoint)
   : Task("ListenTask"),
-    readWatcher(0),
+    readWatcher(nullptr),
     _endpoint(endpoint),
     acceptFailures(0) {
   TRI_invalidatesocket(&_listenSocket);
   bindSocket();
 }
 
-
 ListenTask::~ListenTask () {
-  if (readWatcher != 0) {
+  if (readWatcher != nullptr) {
     _scheduler->uninstallEvent(readWatcher);
   }
 }
@@ -84,17 +83,14 @@ ListenTask::~ListenTask () {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::isBound () const {
-  MUTEX_LOCKER(changeLock);
+  MUTEX_LOCKER(changeLock); // FIX_MUTEX ?
 
-  return _endpoint != 0 && _endpoint->isConnected();
+  return _endpoint != nullptr && _endpoint->isConnected();
 }
-
-
 
 // -----------------------------------------------------------------------------
 // Task methods
 // -----------------------------------------------------------------------------
-
 
 bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   if (! isBound()) {
@@ -145,25 +141,21 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->_loop = loop;
   readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
 
-  if (readWatcher == -1) {
+  if (readWatcher == nullptr) {
     return false;
   }
   return true;
 }
 
-
-
 void ListenTask::cleanup () {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_WARNING("In ListenTask::cleanup the scheduler has disappeared -- invalid pointer");
-    readWatcher = 0;
+    readWatcher = nullptr;
     return;
   }
   _scheduler->uninstallEvent(readWatcher);
-  readWatcher = 0;
+  readWatcher = nullptr;
 }
-
-
 
 bool ListenTask::handleEvent (EventToken token, EventType revents) {
   if (token == readWatcher) {
@@ -249,7 +241,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
         if (p != nullptr) {
           info.clientAddress = p;
         }
-	info.clientPort = addr->sin_port;
+        info.clientPort = addr->sin_port;
       }
       else if (type == Endpoint::DOMAIN_IPV6) {
         const char *p;
@@ -258,8 +250,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
         buf[INET6_ADDRSTRLEN] = '\0';
         if (p != nullptr) {
           info.clientAddress = p;
-        }
-	info.clientPort = addrmem.sin6_port;
+        } 
+        info.clientPort = addrmem.sin6_port;
       }
     }
 

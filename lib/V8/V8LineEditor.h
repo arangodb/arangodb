@@ -45,27 +45,39 @@ namespace triagens {
 
   class V8Completer : public Completer {
 
-    enum {
-      NORMAL,             // start
-      NORMAL_1,           // from NORMAL: seen a single /
-      DOUBLE_QUOTE,       // from NORMAL: seen a single "
-      DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
-      SINGLE_QUOTE,       // from NORMAL: seen a single '
-      SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
-      BACKTICK,           // from NORMAL: seen a single `
-      BACKTICK_ESC,       // from BACKTICK: seen a backslash
-      MULTI_COMMENT,      // from NORMAL_1: seen a *
-      MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
-      SINGLE_COMMENT      // from NORMAL_1; seen a /
-    }
-    state;
+    public:
 
-    virtual bool isComplete (std::string const&, 
-                            size_t lineno, 
-                            size_t column);
+      V8Completer () {
+      }
 
-    virtual void getAlternatives (char const*, 
-                                  std::vector<std::string>&);
+      ~V8Completer () {
+      }
+
+    public: 
+    
+      bool isComplete (std::string const&, 
+                       size_t lineno, 
+                       size_t column) override final;
+
+      void getAlternatives (char const*, 
+                            std::vector<std::string>&) override final;
+
+    private:
+
+      enum LineParseState {
+        NORMAL,             // start
+        NORMAL_1,           // from NORMAL: seen a single /
+        DOUBLE_QUOTE,       // from NORMAL: seen a single "
+        DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
+        SINGLE_QUOTE,       // from NORMAL: seen a single '
+        SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
+        BACKTICK,           // from NORMAL: seen a single `
+        BACKTICK_ESC,       // from BACKTICK: seen a backslash
+        MULTI_COMMENT,      // from NORMAL_1: seen a *
+        MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
+        SINGLE_COMMENT      // from NORMAL_1; seen a /
+      };
+
   };
 
 // -----------------------------------------------------------------------------
@@ -91,7 +103,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      V8LineEditor (v8::Handle<v8::Context>, std::string const& history);
+      V8LineEditor (v8::Handle<v8::Context>, 
+                    std::string const& history);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -99,17 +112,31 @@ namespace triagens {
 
       ~V8LineEditor ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the global instance of the editor
+////////////////////////////////////////////////////////////////////////////////
+
+      static V8LineEditor* instance () {
+        return _instance.load();
+      }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief     creates a concrete Shell with the correct parameter (Completer!!)
+/// @brief creates a concrete Shell with the correct parameter (Completer!!)
 ////////////////////////////////////////////////////////////////////////////////
 
     protected:
 
-      virtual void initializeShell ();
+      void initializeShell () override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setup a signal handler for CTRL-C
+////////////////////////////////////////////////////////////////////////////////
+
+      static void setupCtrlCHandler ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -123,7 +150,17 @@ namespace triagens {
 
       v8::Handle<v8::Context> _context;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the completer
+////////////////////////////////////////////////////////////////////////////////
+
       V8Completer _completer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the active instance of the editor
+////////////////////////////////////////////////////////////////////////////////
+
+      static std::atomic<V8LineEditor*> _instance;
   };
 
 }

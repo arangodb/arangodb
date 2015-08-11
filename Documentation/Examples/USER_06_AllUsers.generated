@@ -1,0 +1,17 @@
+arangosh> require("org/arangodb/users").all();
+[ 
+  { 
+    "user" : "root", 
+    "active" : true, 
+    "extra" : { 
+    }, 
+    "changePassword" : false 
+  }, 
+  { 
+    "user" : "my-user", 
+    "active" : true, 
+    "extra" : { 
+    }, 
+    "changePassword" : false 
+  } 
+]

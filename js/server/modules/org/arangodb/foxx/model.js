@@ -27,20 +27,19 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore'),
-  joi = require('joi'),
-  is = require('org/arangodb/is'),
-  extend = require('extendible'),
-  EventEmitter = require('events').EventEmitter,
-  util = require('util'),
-  metadataSchema = {
-    _id: joi.string().optional(),
-    _key: joi.string().optional(),
-    _oldRev: joi.string().optional(),
-    _rev: joi.string().optional(),
-    _from: joi.string().optional(),
-    _to: joi.string().optional()
-  };
+const _ = require('underscore');
+const joi = require('joi');
+const is = require('org/arangodb/is');
+const extend = require('org/arangodb/extend').extend;
+const EventEmitter = require('events').EventEmitter;
+const metadataSchema = {
+  _id: joi.string().optional(),
+  _key: joi.string().optional(),
+  _oldRev: joi.string().optional(),
+  _rev: joi.string().optional(),
+  _from: joi.string().optional(),
+  _to: joi.string().optional()
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             Model
@@ -73,71 +72,63 @@ function excludeExtraAttributes(attributes, model) {
   ));
 }
 
-function Model(attributes) {
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_attributes
-///
-/// `model.attributes`
-///
-/// The *attributes* property is the internal hash containing the model's state.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+class Model extends EventEmitter {
+  constructor(attributes) {
+    super();
 
-  this.attributes = {};
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @startDocuBlock JSF_foxx_model_attributes
+  ///
+  /// `model.attributes`
+  ///
+  /// The *attributes* property is the internal hash containing the model's state.
+  /// @endDocuBlock
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_isvalid
-///
-/// `model.isValid`
-///
-/// The *isValid* flag indicates whether the model's state is currently valid.
-/// If the model does not have a schema, it will always be considered valid.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+    this.attributes = {};
 
-  this.isValid = true;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @startDocuBlock JSF_foxx_model_isvalid
+  ///
+  /// `model.isValid`
+  ///
+  /// The *isValid* flag indicates whether the model's state is currently valid.
+  /// If the model does not have a schema, it will always be considered valid.
+  /// @endDocuBlock
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_errors
-///
-/// `model.errors`
-///
-/// The *errors* property maps the names of any invalid attributes to their
-/// corresponding validation error.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+    this.isValid = true;
 
-  this.errors = {};
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @startDocuBlock JSF_foxx_model_errors
+  ///
+  /// `model.errors`
+  ///
+  /// The *errors* property maps the names of any invalid attributes to their
+  /// corresponding validation error.
+  /// @endDocuBlock
+  ////////////////////////////////////////////////////////////////////////////////
 
-  if (this.schema) {
-    if (this.schema.isJoi) {
-      this.schema = _.object(_.map(this.schema._inner.children, function (prop) {
-        return [prop.key, prop.schema];
-      }));
+    this.errors = {};
+
+    if (this.schema) {
+      if (this.schema.isJoi) {
+        this.schema = _.object(_.map(this.schema._inner.children, function (prop) {
+          return [prop.key, prop.schema];
+        }));
+      }
+      _.each(
+        _.union(_.keys(this.schema), _.keys(attributes)),
+        function (key) {
+          this.set(key, attributes && attributes[key]);
+        },
+        this
+      );
+    } else if (attributes) {
+      this.attributes = _.clone(attributes);
     }
-    _.each(
-      _.union(_.keys(this.schema), _.keys(attributes)),
-      function (key) {
-        this.set(key, attributes && attributes[key]);
-      },
-      this
-    );
-  } else if (attributes) {
-    this.attributes = _.clone(attributes);
   }
-  EventEmitter.call(this);
-}
 
-util.inherits(Model, EventEmitter);
-
-Model.fromClient = function (attributes) {
-  var model = new this();
-  model.set(excludeExtraAttributes(attributes, model));
-  return model;
-};
-
-// Instance Properties
-_.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_get
 ///
@@ -157,9 +148,9 @@ _.extend(Model.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  get: function (attributeName) {
+  get(attributeName) {
     return this.attributes[attributeName];
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_set
@@ -183,7 +174,7 @@ _.extend(Model.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  set: function (attributeName, value) {
+  set(attributeName, value) {
 
     if (is.object(attributeName)) {
       _.each(attributeName, function (value, key) {
@@ -216,7 +207,7 @@ _.extend(Model.prototype, {
     }
 
     return this;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_has
@@ -238,10 +229,10 @@ _.extend(Model.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  has: function (attributeName) {
+  has(attributeName) {
     return !(_.isUndefined(this.attributes[attributeName]) ||
              _.isNull(this.attributes[attributeName]));
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_forDB
@@ -252,9 +243,9 @@ _.extend(Model.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  forDB: function () {
+  forDB() {
     return this.attributes;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_forClient
@@ -265,10 +256,16 @@ _.extend(Model.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  forClient: function () {
+  forClient() {
     return excludeExtraAttributes(this.attributes, this);
   }
-});
+}
+
+Model.fromClient = function (attributes) {
+  var model = new this();
+  model.set(excludeExtraAttributes(attributes, model));
+  return model;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_extend

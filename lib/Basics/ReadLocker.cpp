@@ -30,6 +30,10 @@
 
 #include "ReadLocker.h"
 
+#ifdef TRI_SHOW_LOCK_TIME
+#include "Basics/logging.h"
+#endif
+
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
@@ -42,21 +46,66 @@ using namespace triagens::basics;
 /// The constructors read-lock the lock, the destructors unlock the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadLocker::ReadLocker (ReadWriteLock* readWriteLock)
-  : _readWriteLock(readWriteLock), _file(0), _line(0) {
-  _readWriteLock->readLock();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief acquires a read-lock
-///
-/// The constructors read-lock the lock, the destructors unlock the lock.
-////////////////////////////////////////////////////////////////////////////////
+#ifdef TRI_SHOW_LOCK_TIME
 
 ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line)
   : _readWriteLock(readWriteLock), _file(file), _line(line) {
+  
+  double t = TRI_microtime();
+  _readWriteLock->readLock();
+  _time = TRI_microtime() - t;
+}
+
+#else 
+
+ReadLocker::ReadLocker (ReadWriteLock* readWriteLock)
+  : _readWriteLock(readWriteLock) {
+  
   _readWriteLock->readLock();
 }
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a read-lock, with periodic sleeps while not acquired
+/// sleep time is specified in nanoseconds
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_SHOW_LOCK_TIME
+
+ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, 
+                        uint64_t sleepTime,
+                        char const* file,
+                        int line) 
+  : _readWriteLock(readWriteLock), _file(file), _line(line) {
+  
+  double t = TRI_microtime();
+  while (! _readWriteLock->tryReadLock()) {
+#ifdef _WIN32
+    usleep((unsigned long) sleepTime);
+#else
+    usleep((useconds_t) sleepTime);
+#endif
+  }
+  _time = TRI_microtime() - t;
+}
+
+#else
+
+ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, 
+                        uint64_t sleepTime) 
+  : _readWriteLock(readWriteLock) {
+  
+  while (! _readWriteLock->tryReadLock()) {
+#ifdef _WIN32
+    usleep((unsigned long) sleepTime);
+#else
+    usleep((useconds_t) sleepTime);
+#endif
+  }
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the read-lock
@@ -64,6 +113,12 @@ ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line
 
 ReadLocker::~ReadLocker () {
   _readWriteLock->unlock();
+
+#ifdef TRI_SHOW_LOCK_TIME
+  if (_time > TRI_SHOW_LOCK_THRESHOLD) {
+    LOG_WARNING("ReadLocker %s:%d took %f s", _file, _line, _time);
+  }
+#endif  
 }
 
 // -----------------------------------------------------------------------------

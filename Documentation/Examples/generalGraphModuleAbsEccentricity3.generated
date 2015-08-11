@@ -3,7 +3,7 @@ arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._absoluteEccentricity({}, {startVertexCollectionRestriction : 'germanCity',
 ........> direction : 'outbound', weight : 'distance'});
 { 
-  "germanCity/Berlin" : 1200, 
   "germanCity/Hamburg" : 1200, 
+  "germanCity/Berlin" : 1200, 
   "germanCity/Cologne" : 700 
 }

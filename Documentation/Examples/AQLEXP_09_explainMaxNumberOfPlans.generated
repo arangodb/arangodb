@@ -1,0 +1,194 @@
+arangosh> stmt.explain({ maxNumberOfPlans: 1 });
+{ 
+  "plan" : { 
+    "nodes" : [ 
+      { 
+        "type" : "SingletonNode", 
+        "dependencies" : [ ], 
+        "id" : 1, 
+        "estimatedCost" : 1, 
+        "estimatedNrItems" : 1 
+      }, 
+      { 
+        "type" : "EnumerateCollectionNode", 
+        "dependencies" : [ 
+          1 
+        ], 
+        "id" : 2, 
+        "estimatedCost" : 101, 
+        "estimatedNrItems" : 100, 
+        "database" : "_system", 
+        "collection" : "test", 
+        "outVariable" : { 
+          "id" : 0, 
+          "name" : "i" 
+        }, 
+        "random" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          2 
+        ], 
+        "id" : 3, 
+        "estimatedCost" : 201, 
+        "estimatedNrItems" : 100, 
+        "expression" : { 
+          "type" : "compare >", 
+          "subNodes" : [ 
+            { 
+              "type" : "attribute access", 
+              "name" : "value", 
+              "subNodes" : [ 
+                { 
+                  "type" : "reference", 
+                  "name" : "i", 
+                  "id" : 0 
+                } 
+              ] 
+            }, 
+            { 
+              "type" : "value", 
+              "value" : 97 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 1, 
+          "name" : "1" 
+        }, 
+        "canThrow" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          3 
+        ], 
+        "id" : 5, 
+        "estimatedCost" : 301, 
+        "estimatedNrItems" : 100, 
+        "expression" : { 
+          "type" : "attribute access", 
+          "name" : "value", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "i", 
+              "id" : 0 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 2, 
+          "name" : "2" 
+        }, 
+        "canThrow" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          5 
+        ], 
+        "id" : 7, 
+        "estimatedCost" : 401, 
+        "estimatedNrItems" : 100, 
+        "expression" : { 
+          "type" : "attribute access", 
+          "name" : "value", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "i", 
+              "id" : 0 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 3, 
+          "name" : "3" 
+        }, 
+        "canThrow" : false 
+      }, 
+      { 
+        "type" : "FilterNode", 
+        "dependencies" : [ 
+          7 
+        ], 
+        "id" : 4, 
+        "estimatedCost" : 501, 
+        "estimatedNrItems" : 100, 
+        "inVariable" : { 
+          "id" : 1, 
+          "name" : "1" 
+        } 
+      }, 
+      { 
+        "type" : "SortNode", 
+        "dependencies" : [ 
+          4 
+        ], 
+        "id" : 6, 
+        "estimatedCost" : 961.5170185988092, 
+        "estimatedNrItems" : 100, 
+        "elements" : [ 
+          { 
+            "inVariable" : { 
+              "id" : 2, 
+              "name" : "2" 
+            }, 
+            "ascending" : true 
+          } 
+        ], 
+        "stable" : false 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          6 
+        ], 
+        "id" : 8, 
+        "estimatedCost" : 1061.517018598809, 
+        "estimatedNrItems" : 100, 
+        "inVariable" : { 
+          "id" : 3, 
+          "name" : "3" 
+        } 
+      } 
+    ], 
+    "rules" : [ 
+      "move-calculations-up" 
+    ], 
+    "collections" : [ 
+      { 
+        "name" : "test", 
+        "type" : "read" 
+      } 
+    ], 
+    "variables" : [ 
+      { 
+        "id" : 3, 
+        "name" : "3" 
+      }, 
+      { 
+        "id" : 2, 
+        "name" : "2" 
+      }, 
+      { 
+        "id" : 1, 
+        "name" : "1" 
+      }, 
+      { 
+        "id" : 0, 
+        "name" : "i" 
+      } 
+    ], 
+    "estimatedCost" : 1061.517018598809, 
+    "estimatedNrItems" : 100 
+  }, 
+  "warnings" : [ ], 
+  "stats" : { 
+    "rulesExecuted" : 1, 
+    "rulesSkipped" : 20, 
+    "plansCreated" : 1 
+  } 
+}

@@ -1,9 +1,22 @@
+#documentsDiv {
+  padding-top: 1px;
+}
+
+.document-info-div {
+  margin-top: 20px;
+  min-height: 0;
+}
+
+.document-content-div {
+  margin-top: 10px;
+}
+
 .document-info {
 
   background-color: #fff;
-  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: 3px;
   margin-bottom: 8px;
-  margin-top: -10px;
+  margin-top: -13px;
   min-height: 65px;
   padding: 5px;
 
@@ -42,6 +55,10 @@
   .document-type-container {
     div {
       float: left;
+    }
+
+    #document-id {
+      margin-left: 10px;
     }
   }
 }

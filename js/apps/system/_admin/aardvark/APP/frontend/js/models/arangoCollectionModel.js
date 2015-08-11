@@ -146,14 +146,18 @@
 
     loadCollection: function () {
       var self = this;
+      window.progressView.showWithDelay(500, "Loading collection...");
       $.ajax({
-        async: false,
+        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
         success: function () {
           self.set("status", "loaded");
-          arangoHelper.arangoNotification('Collection loaded');
+          if (window.location.hash === "#collections") {
+            window.App.collectionsView.render();
+          }
+          window.progressView.hide();
         },
         error: function () {
           arangoHelper.arangoError('Collection error');
@@ -163,14 +167,18 @@
 
     unloadCollection: function () {
       var self = this;
+      window.progressView.showWithDelay(500, "Unloading collection...");
       $.ajax({
-        async:false,
+        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/unload",
         success: function () {
           self.set("status", "unloaded");
-          arangoHelper.arangoNotification('Collection unloaded');
+          if (window.location.hash === "#collections") {
+            window.App.collectionsView.render();
+          }
+          window.progressView.hide();
         },
         error: function () {
           arangoHelper.arangoError('Collection error');
@@ -206,15 +214,26 @@
       return result;
     },
 
-    changeCollection: function (wfs, journalSize) {
+    changeCollection: function (wfs, journalSize, indexBuckets) {
       var result = false;
+      if (wfs === "true") {
+        wfs = true;
+      }
+      else if (wfs === "false") {
+        wfs = false;
+      }
+      var data = {
+        waitForSync: wfs,
+        journalSize: parseInt(journalSize),
+        indexBuckets: parseInt(indexBuckets)
+      };
 
       $.ajax({
         cache: false,
         type: "PUT",
         async: false, // sequential calls!
         url: "/_api/collection/" + this.get("id") + "/properties",
-        data: '{"waitForSync":' + wfs + ',"journalSize":' + JSON.stringify(journalSize) + '}',
+        data: JSON.stringify(data),
         contentType: "application/json",
         processData: false,
         success: function() {

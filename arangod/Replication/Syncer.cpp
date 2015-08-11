@@ -63,7 +63,7 @@ using namespace triagens::httpclient;
 /// @brief base url of the replication API
 ////////////////////////////////////////////////////////////////////////////////
 
-const string Syncer::BaseUrl = "/_api/replication";
+const std::string Syncer::BaseUrl = "/_api/replication";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -85,11 +85,11 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
 
   if (configuration->_database != nullptr) {
     // use name from configuration
-    _databaseName = string(configuration->_database);
+    _databaseName = std::string(configuration->_database);
   }
   else {
     // use name of current database
-    _databaseName = string(vocbase->_name);
+    _databaseName = std::string(vocbase->_name);
   }
 
   // get our own server-id
@@ -118,11 +118,11 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
         string password;
 
         if (_configuration._username != nullptr) {
-          username = string(_configuration._username);
+          username = std::string(_configuration._username);
         }
 
         if (_configuration._password != nullptr) {
-          password = string(_configuration._password);
+          password = std::string(_configuration._password);
         }
 
         _client->setUserNamePassword("/", username, password);
@@ -138,20 +138,12 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
 
 Syncer::~Syncer () {
   // shutdown everything properly
-  if (_client != nullptr) {
-    delete _client;
-  }
+  delete _client;
+  delete _connection;
+  delete _endpoint;
 
-  if (_connection != nullptr) {
-    delete _connection;
-  }
-
-  if (_endpoint != nullptr) {
-    delete _endpoint;
-  }
-
-  TRI_DestroyMasterInfoReplication(&_masterInfo);
   TRI_DestroyConfigurationReplicationApplier(&_configuration);
+  TRI_DestroyMasterInfoReplication(&_masterInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,7 +217,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
     TRI_ASSERT(json != nullptr);
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx in trxCollection
+    TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx in trxCollection
     TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true);  // PROTECTED by trx in trxCollection
     
     if (shaped == nullptr) {
@@ -393,11 +385,12 @@ int Syncer::createCollection (TRI_json_t const* json,
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
   }
 
-  params._doCompact   = JsonHelper::getBooleanValue(json, "doCompact", true);
-  params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
-  params._isVolatile  = JsonHelper::getBooleanValue(json, "isVolatile", false);
-  params._isSystem    = (name[0] == '_');
-  params._planId      = 0;
+  params._doCompact    = JsonHelper::getBooleanValue(json, "doCompact", true);
+  params._waitForSync  = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
+  params._isVolatile   = JsonHelper::getBooleanValue(json, "isVolatile", false);
+  params._isSystem     = (name[0] == '_');
+  params._planId       = 0;
+  params._indexBuckets = JsonHelper::getNumericValue<uint32_t>(json, "indexBuckets", (uint32_t) TRI_DEFAULT_INDEX_BUCKETS);
 
   TRI_voc_cid_t planId = JsonHelper::stringUInt64(json, "planId");
   if (planId > 0) {
@@ -565,7 +558,7 @@ int Syncer::getMasterState (string& errorMsg) {
                                                 headers);
 
   if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+    errorMsg = "could not connect to master at " + std::string(_masterInfo._endpoint) +
                ": " + _client->getErrorMessage();
 
     if (response != nullptr) {
@@ -580,7 +573,7 @@ int Syncer::getMasterState (string& errorMsg) {
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
   }
@@ -596,7 +589,7 @@ int Syncer::getMasterState (string& errorMsg) {
     else {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+      errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
         ": invalid JSON";
     }
   }
@@ -612,7 +605,7 @@ int Syncer::getMasterState (string& errorMsg) {
 
 int Syncer::handleStateResponse (TRI_json_t const* json,
                                  string& errorMsg) {
-  string const endpointString = " from endpoint '" + string(_masterInfo._endpoint) + "'";
+  string const endpointString = " from endpoint '" + std::string(_masterInfo._endpoint) + "'";
 
   // process "state" section
   TRI_json_t const* state = JsonHelper::getObjectElement(json, "state");

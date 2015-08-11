@@ -33,11 +33,14 @@
 #include "Basics/ReadWriteLock.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
+// TODO: change to constexpr when feasible
+#define CONNECTION_MANAGER_BUCKETS 8 
+
 namespace triagens {
   namespace httpclient {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                ConnectionManager
+// --SECTION--                                                 ConnectionManager
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,45 +66,59 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises library
+/// @brief initializes library
 ///
 /// We are a singleton class, therefore nobody is allowed to create
 /// new instances or copy them, except we ourselves.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ConnectionManager ( ) { }
-        ConnectionManager (ConnectionManager const&);    // not implemented
-        void operator= (ConnectionManager const&);       // not implemented
+      private:
+
+        ConnectionManager () = default; 
+
+        ConnectionManager (ConnectionManager const&) = delete;
+        ConnectionManager& operator= (ConnectionManager const&) = delete;
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down library
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
         ~ConnectionManager ( );
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes library
+////////////////////////////////////////////////////////////////////////////////
+
+        static void initialize ();
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                public subclasses
+// --SECTION--                                                 public subclasses
 // -----------------------------------------------------------------------------
+
+        struct ServerConnections;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class to administrate one connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
         struct SingleServerConnection {
-          GeneralClientConnection* connection;
-          triagens::rest::Endpoint* endpoint;
-          time_t lastUsed;
-          std::string ep_spec;
+          ServerConnections*         _connections;
+          GeneralClientConnection*   _connection;
+          triagens::rest::Endpoint*  _endpoint;
+          std::string const          _endpointSpecification;
+          time_t                     _lastUsed;
 
-          SingleServerConnection (GeneralClientConnection* c,
-                                  triagens::rest::Endpoint* e,
-                                  std::string& ep_spec)
-            : connection(c), 
-              endpoint(e), 
-              lastUsed(0), 
-              ep_spec(ep_spec) {
+          SingleServerConnection (ServerConnections* manager,
+                                  GeneralClientConnection* connection,
+                                  triagens::rest::Endpoint* endpoint,
+                                  std::string const& endpointSpecification)
+            : _connections(manager),
+              _connection(connection), 
+              _endpoint(endpoint), 
+              _endpointSpecification(endpointSpecification),
+              _lastUsed(::time(0)) {
           }
 
           ~SingleServerConnection ();
@@ -113,14 +130,44 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct ServerConnections {
-          std::vector<SingleServerConnection*> connections;
-          std::list<SingleServerConnection*> unused;
-          triagens::basics::ReadWriteLock lock;
+          std::vector<SingleServerConnection*> _connections;
+          std::list<SingleServerConnection*>   _unused;
+          triagens::basics::ReadWriteLock      _lock;
 
-          ServerConnections () {
-          }
+          ServerConnections () = default;
 
           ~ServerConnections ();   // closes all connections
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a single connection
+////////////////////////////////////////////////////////////////////////////////
+
+          void addConnection (SingleServerConnection*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pop a free connection - returns nullptr if no connection is
+/// available
+////////////////////////////////////////////////////////////////////////////////
+
+          SingleServerConnection* popConnection ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push a unused connection back on the stack, allowing its re-use
+////////////////////////////////////////////////////////////////////////////////
+
+          void pushConnection (SingleServerConnection*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a (broken) connection from the list of connections
+////////////////////////////////////////////////////////////////////////////////
+
+          void removeConnection (SingleServerConnection*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes unused connections
+////////////////////////////////////////////////////////////////////////////////
+          
+          void closeUnusedConnections (double);
         };
 
 // -----------------------------------------------------------------------------
@@ -131,38 +178,13 @@ namespace triagens {
 /// @brief get the unique instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ConnectionManager* instance () {
-          // This does not have to be thread-safe, because we guarantee that
-          // this is called very early in the startup phase when there is still
-          // a single thread.
-          if (nullptr == _theinstance) {
-            _theinstance = new ConnectionManager( );
-            // this now happens exactly once
-          }
-          return _theinstance;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise function to call once when still single-threaded
-////////////////////////////////////////////////////////////////////////////////
-
-        static void initialise () {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup function to call once when shutting down
-////////////////////////////////////////////////////////////////////////////////
-
-        static void cleanup () {
-          delete _theinstance;
-          _theinstance = nullptr;
-        }
+        static ConnectionManager* instance ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open or get a previously cached connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleServerConnection* leaseConnection (std::string& endpoint);
+        SingleServerConnection* leaseConnection (std::string const& endpoint);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return leased connection to a server
@@ -190,10 +212,12 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the pointer to the singleton instance
+/// @brief hash the endpoint value into a bucket
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ConnectionManager* _theinstance;
+        size_t bucket (std::string const& endpoint) const {
+          return std::hash<std::string>()(endpoint) % CONNECTION_MANAGER_BUCKETS;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global options for connections
@@ -206,8 +230,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         // We keep connections to servers open:
-        std::map<std::string, ServerConnections*> allConnections;
-        triagens::basics::ReadWriteLock allLock;
+        struct TRI_ALIGNAS(64) ConnectionsBucket {
+          std::unordered_map<std::string, ServerConnections*> _connections;
+
+          triagens::basics::ReadWriteLock _lock;
+        };
+
+        ConnectionsBucket _connectionsBuckets[CONNECTION_MANAGER_BUCKETS];
 
     };
   }

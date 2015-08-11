@@ -5,20 +5,19 @@ content-type: application/json; charset=utf-8
 
 { 
   "server" : "arango", 
-  "version" : "2.7.0-alpha2", 
+  "version" : "2.5.5", 
   "details" : { 
     "architecture" : "64bit", 
-    "build-date" : "2015-07-14 15:15:30", 
-    "configure" : "'./configure' '--enable-maintainer-mode'", 
-    "icu-version" : "54.1", 
+    "build-date" : "2015-05-30 10:23:53", 
+    "configure" : "'./configure' 'CC=gcc' 'CXX=g++' '--program-prefix=' '--prefix=/usr' '--exec-prefix=/usr' '--bindir=/usr/bin' '--sbindir=/usr/sbin' '--sysconfdir=/etc' '--datadir=/usr/share' '--includedir=/usr/include' '--libdir=/usr/lib' '--libexecdir=/usr/lib' '--localstatedir=/var' '--sharedstatedir=/usr/com' '--mandir=/usr/share/man' '--infodir=/usr/share/info' '--enable-all-in-one-libev' '--enable-all-in-one-v8' '--enable-all-in-one-etcd' '--enable-internal-go' '--disable-mruby'", 
+    "env" : "CC='gcc' CXX='g++'", 
+    "icu-version" : "52.1", 
     "libev-version" : "4.11", 
-    "maintainer-mode" : "true", 
-    "openssl-version" : "OpenSSL 0.9.8zd 8 Jan 2015", 
-    "repository-version" : "heads/2.7-0-g0fb12ade98198dae853c6df531ee0a874691fc9c-dirty", 
-    "server-version" : "2.7.0-alpha2", 
+    "maintainer-mode" : "false", 
+    "openssl-version" : "OpenSSL 1.0.1k 8 Jan 2015", 
+    "server-version" : "2.5.5", 
     "sizeof int" : "4", 
     "sizeof void*" : "8", 
-    "v8-version" : "4.3.61", 
-    "mode" : "standalone" 
+    "v8-version" : "3.31.74.1" 
   } 
 }

@@ -423,7 +423,7 @@ void Ditches::freeDocumentDitch (DocumentDitch* ditch,
 
   bool shouldFree = false;
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(_lock); // FIX_MUTEX
 
     // First see who might still be using the ditch:
     if (fromTransaction) {
@@ -602,7 +602,7 @@ DropCollectionDitch* Ditches::createDropCollectionDitch (TRI_collection_t* colle
 void Ditches::link (Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
   
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(_lock); // FIX_MUTEX
 
   // empty list
   if (_end == nullptr) {

@@ -3,17 +3,29 @@
   width: 100%;
 
   button {
-    background: #f1f0ee;
+    background-color: $c-new-grey;
+    color: $c-white;
     border: 0;
     float: right;
     height: 27px;
     width: 82px;
+    margin-right: 5px;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+  }
+
+  button:first-child {
+    margin-right: 10px;
   }
 
   .arango-active-tab {
-    background-color: #fff;
-    border-left: 1px solid #000;
-    border-right: 1px solid #000;
-    border-top: 1px solid #000;
+    background-color: $c-white;
+    color: $c-black;
+    border-left: 1px solid $c-c2grey;
+    border-right: 1px solid $c-c2grey;
+    border-top: 1px solid $c-c2grey;
+    border-bottom: 1px solid #fff;
+    margin-bottom: -1px;
+    height: 28px;
   }
 }

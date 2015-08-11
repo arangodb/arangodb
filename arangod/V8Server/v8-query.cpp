@@ -42,13 +42,15 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
-#include "V8Server/v8-wrapshapedjson.h"
+#include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
+#include "V8Server/v8-wrapshapedjson.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/VocShaper.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -182,7 +184,7 @@ static void CalculateSkipLimitSlice (size_t length,
 
 static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
                                                       std::vector<std::string> const& fields,
-                                                      TRI_shaper_t* shaper,
+                                                      VocShaper* shaper,
                                                       v8::Handle<v8::Object> conditions) {
   TRI_index_operator_t* lastOperator = nullptr;
   size_t numEq = 0;
@@ -393,7 +395,7 @@ MEM_ERROR:
 
 static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
                                                    std::vector<std::string> const& fields,
-                                                   TRI_shaper_t* shaper,
+                                                   VocShaper* shaper,
                                                    v8::Handle<v8::Object> example) {
   TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
@@ -456,7 +458,7 @@ static void DestroySearchValue (TRI_memory_zone_t* zone,
 
 static int SetupSearchValue (std::vector<TRI_shape_pid_t> const& paths,
                              v8::Handle<v8::Object> example,
-                             TRI_shaper_t* shaper,
+                             VocShaper* shaper,
                              TRI_index_search_value_t& result,
                              std::string& errorMessage,
                              const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -478,10 +480,10 @@ static int SetupSearchValue (std::vector<TRI_shape_pid_t> const& paths,
     TRI_shape_pid_t pid = paths[i];
 
     TRI_ASSERT(pid != 0);
-    char const* name = TRI_AttributeNameShapePid(shaper, pid);
+    char const* name = shaper->attributeNameShapePid(pid);
 
     if (name == nullptr) {
-      DestroySearchValue(shaper->_memoryZone, result);
+      DestroySearchValue(shaper->memoryZone(), result);
       errorMessage = "shaper failed";
       return TRI_ERROR_BAD_PARAMETER;
     }
@@ -499,7 +501,7 @@ static int SetupSearchValue (std::vector<TRI_shape_pid_t> const& paths,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      DestroySearchValue(shaper->_memoryZone, result);
+      DestroySearchValue(shaper->memoryZone(), result);
 
       if (res != TRI_RESULT_ELEMENT_NOT_FOUND) {
         errorMessage = "cannot convert value to JSON";
@@ -562,7 +564,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
+  auto shaper = document->getShaper();  // PROTECTED by trx here
 
   // extract skip and limit
   TRI_voc_ssize_t skip;
@@ -1339,7 +1341,7 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
+  auto shaper = document->getShaper();  // PROTECTED by trx here
 
   v8::Handle<v8::Object> example = args[0]->ToObject();
 
@@ -1359,15 +1361,15 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
   try {
     matcher.reset(new ExampleMatcher(isolate, example, shaper, errorMessage));
   } 
-  catch (int e) {
-    if (e == TRI_RESULT_ELEMENT_NOT_FOUND) {
+  catch (Exception& e) {
+    if (e.code() == TRI_RESULT_ELEMENT_NOT_FOUND) {
       // empty result
       TRI_V8_RETURN(EmptyResult(isolate));
     }
     if (errorMessage.empty()) {
-      TRI_V8_THROW_EXCEPTION(res);
+      TRI_V8_THROW_EXCEPTION(e.code());
     }
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMessage);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(e.code(), errorMessage);
   }
 
   // setup result
@@ -1488,7 +1490,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   TRI_index_search_value_t searchValue;
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx from above
+  auto shaper = document->getShaper();  // PROTECTED by trx from above
   {
     std::string errorMessage;
     int res = SetupSearchValue(hashIndex->paths(), example, shaper, searchValue, errorMessage, args);
@@ -1506,7 +1508,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
 
   // find the matches
   TRI_vector_pointer_t list = static_cast<triagens::arango::HashIndex*>(idx)->lookup(&searchValue);
-  DestroySearchValue(shaper->_memoryZone, searchValue);
+  DestroySearchValue(shaper->memoryZone(), searchValue);
 
   // convert result
   size_t total = TRI_LengthVectorPointer(&list);

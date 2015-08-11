@@ -84,22 +84,22 @@ var isValidCollectionsParameter = function (x) {
 var findOrCreateCollectionByName = function (name, type, noCreate) {
   var col = db._collection(name),
     res = false;
-  if (col === null && !noCreate) {
+  if (col === null && ! noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
       col = db._create(name);
     } else {
       col = db._createEdgeCollection(name);
     }
     res = true;
-  } else if (!(col instanceof ArangoCollection)) {
+  } 
+  else if (! (col instanceof ArangoCollection)) {
     var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_NO_AN_ARANGO_COLLECTION.code;
-    err.errorMessage = name + arangodb.errors.ERROR_GRAPH_NO_AN_ARANGO_COLLECTION.message;
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.code;
+    err.errorMessage = name + arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.message;
     throw err;
   }
   return res;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name

@@ -71,11 +71,17 @@ namespace triagens {
                                    ) {
         }
 
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
+
         bool done (T* en) {
+          // make sure a node is only processed once
           if (_done.find(en) == _done.end()) {
             _done.emplace(en);
             return false;
           }
+
+          TRI_ASSERT(false);
 
           return true;
         }
@@ -84,13 +90,29 @@ namespace triagens {
           _done.clear();
         }
 
+#else
+
+        // this is a no-op in non-failure mode
+        bool done (T*) {
+          return false;
+        }
+
+        // this is a no-op in non-failure mode
+        void reset () {
+        }
+
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
       private:
 
+#ifdef TRI_ENABLE_FAILURE_TESTS
         std::unordered_set<T*> _done;
+#endif
+
     };
 
   }

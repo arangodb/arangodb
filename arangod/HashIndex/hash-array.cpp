@@ -37,7 +37,7 @@
 #include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        COMPARISON
@@ -322,17 +322,6 @@ void TRI_DestroyHashArray (TRI_hash_array_t* array) {
     }
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_tablePtr);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeHashArray (TRI_hash_array_t* array) {
-  if (array != nullptr) {
-    TRI_DestroyHashArray(array);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array);
   }
 }
 

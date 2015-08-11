@@ -12,7 +12,6 @@ describe ArangoDB do
 ################################################################################
 ## checking HTTP HEAD responses
 ################################################################################
-
     context "head requests:" do
       it "checks whether HEAD returns a body on 2xx" do
         cmd = "/_api/version"
@@ -141,6 +140,44 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.response.body.should be_nil
+      end
+    end
+
+################################################################################
+## checking GZIP requests
+################################################################################
+
+    context "gzip requests" do
+      before do
+        @headers = "DELETE, GET, HEAD, PATCH, POST, PUT"
+      end
+
+      it "checks handling of an request, with gzip support" do
+        require 'uri'
+        require 'net/http'
+
+        # only run the following test when using SSL
+        if not ArangoDB.base_uri =~ /^https:/
+          uri = URI.parse(ArangoDB.base_uri + "/_db/_system/_admin/aardvark/standalone.html")
+          http = Net::HTTP.new(uri.host, uri.port)
+
+          request = Net::HTTP::Get.new(uri.request_uri)
+          request["Accept-Encoding"] = "gzip"
+          response = http.request(request)
+
+          # check content encoding
+          response['content-encoding'].should eq('gzip')
+        end
+      end
+
+      it "checks handling of an request, without gzip support" do
+        cmd = "/_admin/aardvark/standalone.html"
+        doc = ArangoDB.log_get("admin-interface-get", cmd, :headers => { "Accept-Encoding" => "" }, :format => :plain)
+
+        # check response code
+        doc.code.should eq(200)
+        # check content encoding
+        doc.headers['Content-Encoding'].should be nil
       end
     end
 

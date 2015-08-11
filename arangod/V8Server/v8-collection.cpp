@@ -28,30 +28,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-collection.h"
-#include "v8-vocbaseprivate.h"
-#include "v8-wrapshapedjson.h"
-
+#include "Aql/Query.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
-#include "V8/v8-conv.h"
+#include "Cluster/ClusterMethods.h"
 #include "Utils/transactions.h"
-#include "Utils/V8TransactionContext.h"
-
-#include "Aql/Query.h"
 #include "Utils/V8ResolverGuard.h"
+#include "Utils/V8TransactionContext.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
-#include "Wal/LogfileManager.h"
-
+#include "V8Server/v8-shape-conv.h"
+#include "V8Server/v8-vocbase.h"
+#include "V8Server/v8-vocbaseprivate.h"
+#include "V8Server/v8-vocindex.h"
+#include "V8Server/v8-wrapshapedjson.h"
 #include "VocBase/auth.h"
 #include "VocBase/KeyGenerator.h"
-
-#include "Cluster/ClusterMethods.h"
+#include "Wal/LogfileManager.h"
 
 #include "unicode/timezone.h"
-
-#include "v8-vocbase.h"
-#include "v8-vocindex.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -545,9 +541,8 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
 /// @brief get all cluster collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase) {
-  TRI_vector_pointer_t result;
-  TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
+static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster (TRI_vocbase_t* vocbase) {
+  std::vector<TRI_vocbase_col_t*> result;
 
   std::vector<shared_ptr<CollectionInfo> > const& collections
       = ClusterInfo::instance()->getCollections(vocbase->_name);
@@ -556,7 +551,7 @@ static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase) {
     TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collections[i]));
 
     if (c != nullptr) {
-      TRI_PushBackVectorPointer(&result, c);
+      result.emplace_back(c);
     }
   }
 
@@ -567,20 +562,15 @@ static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase) {
 /// @brief get all cluster collection names
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vector_string_t GetCollectionNamesCluster (TRI_vocbase_t* vocbase) {
-  TRI_vector_string_t result;
-  TRI_InitVectorString(&result, TRI_UNKNOWN_MEM_ZONE);
+static std::vector<std::string> GetCollectionNamesCluster (TRI_vocbase_t* vocbase) {
+  std::vector<std::string> result;
 
   std::vector<shared_ptr<CollectionInfo> > const& collections
       = ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
     string const& name = collections[i]->name();
-    char* s = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size());
-
-    if (s != nullptr) {
-      TRI_PushBackVectorString(&result, s);
-    }
+    result.emplace_back(name);
   }
 
   return result;
@@ -886,7 +876,7 @@ static void ReplaceVocbaseCol (bool useCollection,
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx here
+  TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx here
 
   TRI_doc_mptr_copy_t mptr;
 
@@ -1035,7 +1025,7 @@ static void InsertVocbaseCol (TRI_vocbase_col_t* col,
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx from above
+  TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx from above
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(isolate, args[0], document->getShaper(), true);  // PROTECTED by trx from above
 
@@ -1223,7 +1213,7 @@ static void UpdateVocbaseCol (bool useCollection,
 
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx here
+  TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx here
 
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr.getDataPtr());  // PROTECTED by trx here
@@ -1239,7 +1229,7 @@ static void UpdateVocbaseCol (bool useCollection,
     const string cidString = StringUtils::itoa(document->_info._planId);
 
     if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
-      TRI_FreeJson(document->getShaper()->_memoryZone, old);  // PROTECTED by trx here
+      TRI_FreeJson(document->getShaper()->memoryZone(), old);  // PROTECTED by trx here
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
@@ -2027,16 +2017,17 @@ static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///     Not used for other key generator types.
 ///
 /// * *indexBuckets*: number of buckets into which indexes using a hash
-///   table are split. The default is 1 and this number has to be a
+///   table are split. The default is 16 and this number has to be a
 ///   power of 2 and less than or equal to 1024. 
 ///   
-///   For very large collections
-///   one should increase this to avoid long pauses when the hash table
-///   has to be resized, since buckets are resized individually. For 
+///   For very large collections one should increase this to avoid long pauses 
+///   when the hash table has to be initially built or resized, since buckets 
+///   are resized individually and can be initially built in parallel. For 
 ///   example, 64 might be a sensible value for a collection with 100
 ///   000 000 documents. Currently, only the edge index respects this
-///   value. Changes (see below) are applied when the collection is
-///   loaded the next time.
+///   value, but other index types might follow in future ArangoDB versions. 
+///   Changes (see below) are applied when the collection is loaded the next 
+///   time.
 ///
 /// In a cluster setup, the result will also contain the following attributes:
 ///
@@ -3066,7 +3057,7 @@ static void InsertEdgeCol (TRI_vocbase_col_t* col,
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx from above
+  TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx from above
   
   // fetch a barrier so nobody unlinks datafiles with the shapes & attributes we might
   // need for this document
@@ -3816,7 +3807,7 @@ static void JS_CollectionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_vector_pointer_t colls;
+  std::vector<TRI_vocbase_col_t*> colls;
 
   // if we are a coordinator, we need to fetch the collection info from the agency
   if (ServerState::instance()->isCoordinator()) {
@@ -3830,9 +3821,10 @@ static void JS_CollectionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
   // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
-  uint32_t n = (uint32_t) colls._length;
-  for (uint32_t i = 0;  i < n;  ++i) {
-    auto collection = static_cast<TRI_vocbase_col_t const*>(colls._buffer[i]);
+  size_t const n = colls.size();
+  
+  for (size_t i = 0; i < n; ++i) {
+    auto collection = colls[i];
 
     v8::Handle<v8::Value> c = WrapCollection(isolate, collection);
 
@@ -3841,10 +3833,8 @@ static void JS_CollectionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
       break;
     }
 
-    result->Set(i, c);
+    result->Set(static_cast<uint32_t>(i), c);
   }
-
-  TRI_DestroyVectorPointer(&colls);
 
   if (error) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -3868,33 +3858,24 @@ static void JS_CompletionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
     TRI_V8_RETURN(v8::Array::New(isolate));
   }
 
-  TRI_vector_string_t names;
+  std::vector<std::string> names;
+  
   if (ServerState::instance()->isCoordinator()) {
     if (ClusterInfo::instance()->doesDatabaseExist(vocbase->_name)) {
       names = GetCollectionNamesCluster(vocbase);
-    }
-    else {
-      TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
     }
   }
   else {
     names = TRI_CollectionNamesVocBase(vocbase);
   }
 
-  size_t n = names._length;
   uint32_t j = 0;
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   // add collection names
-  for (size_t i = 0;  i < n;  ++i) {
-    char const* name = TRI_AtVectorString(&names, i);
-
-    if (name != nullptr) {
-      result->Set(j++, TRI_V8_STRING(name));
-    }
+  for (auto& name : names) {
+    result->Set(j++, TRI_V8_STD_STRING(name));
   }
-
-  TRI_DestroyVectorString(&names);
 
   // add function names. these are hard coded
   result->Set(j++, TRI_V8_ASCII_STRING("_changeMode()"));

@@ -12,46 +12,9 @@ AC_ARG_ENABLE(logger,
 
 if test "x$tr_LOGGER" = xyes;  then
   AC_DEFINE_UNQUOTED(TRI_ENABLE_LOGGER, 1, [true if logging is enabled])
-  AC_DEFINE_UNQUOTED(TRI_ENABLE_LOGGER_TIMING, 1, [true if timing is enabled])
 fi
 
 AM_CONDITIONAL(ENABLE_LOGGER, test "x$tr_LOGGER" = xyes)
-AM_CONDITIONAL(ENABLE_LOGGER_TIMING, test "x$tr_LOGGER" = xyes)
-
-dnl -----------------------------------------------------------------------------------------
-dnl enable timing
-dnl -----------------------------------------------------------------------------------------
-
-AC_ARG_ENABLE(timing,
-  AS_HELP_STRING([--enable-timing], [enable timing (default: yes)]),
-  [tr_TIMING="$enableval"],
-  [tr_TIMING="yes"]
-)
-
-if test "x$tr_TIMING" = xyes;  then
-  AC_DEFINE_UNQUOTED(TRI_ENABLE_TIMING, 1, [true if timing is enabled])
-fi
-
-AM_CONDITIONAL(ENABLE_TIMING, test "x$tr_TIMING" = xyes)
-
-dnl -----------------------------------------------------------------------------------------
-dnl enable figures
-dnl -----------------------------------------------------------------------------------------
-
-AC_ARG_ENABLE(figures,
-  AS_HELP_STRING([--enable-figures], [enable figures, use 'yes', 'no', or 'hires'(default: yes)]),
-  [tr_FIGURES="$enableval"],
-  [tr_FIGURES="yes"]
-)
-
-if test "x$tr_FIGURES" = xyes;  then
-  AC_DEFINE_UNQUOTED(TRI_ENABLE_FIGURES, 1, [true if figures are enabled])
-elif test "x$tr_FIGURES" = xhires;  then
-  AC_DEFINE_UNQUOTED(TRI_ENABLE_FIGURES, 1, [true if figures are enabled])
-  AC_DEFINE_UNQUOTED(TRI_ENABLE_HIRES_FIGURES, 1, [true if high resolution clock should be used])
-fi
-
-AM_CONDITIONAL(ENABLE_FIGURES, test "x$tr_FIGURES" = xyes)
 
 dnl -----------------------------------------------------------------------------------------
 dnl informational output

@@ -36,6 +36,7 @@
 #include "Basics/json-utilities.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8Server/v8-shape-conv.h"
 
 using namespace triagens::aql;
 
@@ -82,7 +83,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
                                 triagens::arango::AqlTransaction* trx,
                                 AqlItemBlock const* argv,
                                 size_t startPos,
-                                std::vector<Variable*> const& vars,
+                                std::vector<Variable const*> const& vars,
                                 std::vector<RegisterId> const& regs) {
   size_t const n = vars.size();
   TRI_ASSERT_EXPENSIVE(regs.size() == n); // assert same vector length

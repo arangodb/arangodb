@@ -1,0 +1,13 @@
+arangosh> db.examples.ensureCapConstraint(10);
+{ 
+  "id" : "examples/512514288325", 
+  "type" : "cap", 
+  "unique" : false, 
+  "size" : 10, 
+  "byteSize" : 0, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
+arangosh> for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
+arangosh> db.examples.count();
+10

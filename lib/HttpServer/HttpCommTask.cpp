@@ -36,6 +36,7 @@
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
+#include "HttpServer/HttpServerJob.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
@@ -63,9 +64,7 @@ AsyncChunkedTask::AsyncChunkedTask (HttpCommTask* output)
 ////////////////////////////////////////////////////////////////////////////////
 
 AsyncChunkedTask::~AsyncChunkedTask () {
-  if (_data != nullptr) {
-    delete _data;
-  }
+  delete _data;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,10 +151,10 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     SocketTask(socket, keepAliveTimeout),
     _connectionInfo(info),
     _server(server),
+    _job(nullptr),
+    _handler(nullptr),
     _writeBuffers(),
-#ifdef TRI_ENABLE_FIGURES
     _writeBuffersStats(),
-#endif
     _readPosition(0),
     _bodyPosition(0),
     _bodyLength(0),
@@ -179,19 +178,21 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     _isChunked(false),
     _chunkedTask(this),
     _setupDone(false) {
+
   LOG_TRACE(
     "connection established, client %d, server ip %s, server port %d, client ip %s, client port %d",
     (int) TRI_get_fd_or_handle_of_socket(socket),
     _connectionInfo.serverAddress.c_str(),
     (int) _connectionInfo.serverPort,
     _connectionInfo.clientAddress.c_str(),
-    (int) _connectionInfo.clientPort);
+    (int) _connectionInfo.clientPort
+  );
 
-  const auto p = server->handlerFactory()->sizeRestrictions();
+  auto const& sizeRestrictions = server->handlerFactory()->sizeRestrictions();
 
-  _maximalHeaderSize = p.maximalHeaderSize;
-  _maximalBodySize = p.maximalBodySize;
-  _maximalPipelineSize = p.maximalPipelineSize;
+  _maximalHeaderSize   = sizeRestrictions.maximalHeaderSize;
+  _maximalBodySize     = sizeRestrictions.maximalBodySize;
+  _maximalPipelineSize = sizeRestrictions.maximalPipelineSize;
 
   ConnectionStatisticsAgentSetHttp(this);
   ConnectionStatisticsAgent::release();
@@ -206,26 +207,27 @@ HttpCommTask::HttpCommTask (HttpServer* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::~HttpCommTask () {
+  if (_job != nullptr) {
+    _job->beginShutdown();
+    clearCurrentJob();
+  }
+
+  delete _handler;
+
   LOG_TRACE("connection closed, client %d",
             (int) TRI_get_fd_or_handle_of_socket(_commSocket));
 
   // free write buffers
-  for (auto i : _writeBuffers) {
+  for (auto& i : _writeBuffers) {
     delete i;
   }
 
-#ifdef TRI_ENABLE_FIGURES
-
-  for (auto i : _writeBuffersStats) {
+  for (auto& i : _writeBuffersStats) {
     TRI_ReleaseRequestStatistics(i);
   }
 
-#endif
-
   // free request
-  if (_request != nullptr) {
-    delete _request;
-  }
+  delete _request;
 }
 
 // -----------------------------------------------------------------------------
@@ -241,27 +243,10 @@ int HttpCommTask::signalChunk (const string& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief begins shutdown 
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpCommTask::beginShutdown ()  {
-#ifdef _WIN32
-  // Cannot close socket descriptors here. Probably should not close
-  // these for linux as well.
-  return;
-#else
-  if (TRI_isvalidsocket(_commSocket)) {
-    TRI_CLOSE_SOCKET(_commSocket);
-    TRI_invalidatesocket(&_commSocket);
-  }
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief handles response
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::handleResponse (HttpResponse * response)  {
+void HttpCommTask::handleResponse (HttpResponse* response)  {
   if (response->isChunked()) {
     _requestPending = true;
     _isChunked = true;
@@ -290,10 +275,8 @@ bool HttpCommTask::processRead () {
 
     // starting a new request
     if (_newRequest) {
-#ifdef TRI_ENABLE_FIGURES
       RequestStatisticsAgent::acquire();
       RequestStatisticsAgentSetReadStart(this);
-#endif
 
       _newRequest      = false;
       _startPosition   = _readPosition;
@@ -306,8 +289,13 @@ bool HttpCommTask::processRead () {
       _sinceCompactification++;
     }
 
-    const char * ptr = _readBuffer->c_str() + _readPosition;
-    const char * end = _readBuffer->end() - 3;
+    char const* ptr = _readBuffer->c_str() + _readPosition;
+    char const* end = _readBuffer->end() - 3;
+
+    if (ptr >= end) {
+      // read buffer contents are way to small. we can exit here directly
+      return false;
+    }
 
     for (;  ptr < end;  ptr++) {
       if (ptr[0] == '\r' && ptr[1] == '\n' && ptr[2] == '\r' && ptr[3] == '\n') {
@@ -426,9 +414,7 @@ bool HttpCommTask::processRead () {
       // (original request object gets deleted before responding)
       _requestType = _request->requestType();
 
-#ifdef TRI_ENABLE_FIGURES
       RequestStatisticsAgentSetRequestType(this, _requestType);
-#endif
 
       // handle different HTTP methods
       switch (_requestType) {
@@ -517,10 +503,7 @@ bool HttpCommTask::processRead () {
           buffer->appendText("HTTP/1.1 100 (Continue)\r\n\r\n");
 
           _writeBuffers.push_back(buffer);
-
-#ifdef TRI_ENABLE_FIGURES
-          _writeBuffersStats.push_back(0);
-#endif
+          _writeBuffersStats.push_back(nullptr);
 
           fillWriteBuffer();
         }
@@ -673,10 +656,7 @@ bool HttpCommTask::processRead () {
 void HttpCommTask::sendChunk (StringBuffer* buffer) {
   if (_isChunked) {
     _writeBuffers.push_back(buffer);
-
-#ifdef TRI_ENABLE_FIGURES
-    _writeBuffersStats.push_back(0);
-#endif
+    _writeBuffersStats.push_back(nullptr);
 
     fillWriteBuffer();
   }
@@ -690,14 +670,12 @@ void HttpCommTask::sendChunk (StringBuffer* buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::finishedChunked () {
-  StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, 6);
+  std::unique_ptr<StringBuffer> buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE, 6));
   buffer->appendText("0\r\n\r\n");
 
-  _writeBuffers.push_back(buffer);
-
-#ifdef TRI_ENABLE_FIGURES
-  _writeBuffersStats.push_back(0);
-#endif
+  _writeBuffers.push_back(buffer.get());
+  buffer.release();
+  _writeBuffersStats.push_back(nullptr);
 
   _isChunked = false;
   _requestPending = false;
@@ -723,7 +701,6 @@ void HttpCommTask::setupDone () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::addResponse (HttpResponse* response) {
-
   // CORS response handling
   if (! _origin.empty()) {
 
@@ -807,14 +784,8 @@ void HttpCommTask::addResponse (HttpResponse* response) {
   // clear body
   response->body().clear();
           
-  double totalTime;
-
-#ifdef TRI_ENABLE_FIGURES
   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
-  totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
-#else
-  totalTime = 0.0;
-#endif
+  double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
 
   // disable the following statement to prevent excessive logging of incoming requests
   LOG_USAGE(",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
@@ -889,12 +860,8 @@ void HttpCommTask::fillWriteBuffer () {
     StringBuffer * buffer = _writeBuffers.front();
     _writeBuffers.pop_front();
 
-#ifdef TRI_ENABLE_FIGURES
     TRI_request_statistics_t* statistics = _writeBuffersStats.front();
     _writeBuffersStats.pop_front();
-#else
-    TRI_request_statistics_t* statistics = nullptr;
-#endif
 
     setWriteBuffer(buffer, statistics);
   }
@@ -941,7 +908,8 @@ void HttpCommTask::processCorsOptions (uint32_t compatibility) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::processRequest (uint32_t compatibility) {
-  HttpHandler* handler = _server->handlerFactory()->createHandler(_request);
+  std::unique_ptr<HttpHandler> handler(_server->handlerFactory()->createHandler(_request));
+
   bool ok = false;
 
   if (handler == nullptr) {
@@ -969,15 +937,12 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
 
   // clear request object
   _request = nullptr;
-  RequestStatisticsAgent::transfer(handler);
+  RequestStatisticsAgent::transfer(handler.get());
 
   // async execution
   if (found && (asyncExecution == "true" || asyncExecution == "store")) {
 
-#ifdef TRI_ENABLE_FIGURES
     RequestStatisticsAgentSetAsync(this);
-#endif
-
     uint64_t jobId = 0;
 
     if (asyncExecution == "store") {
@@ -1021,10 +986,8 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::clearRequest () {
-  if (_request != nullptr) {
-    delete _request;
-    _request = nullptr;
-  }
+  delete _request;
+  _request = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1167,7 +1130,19 @@ bool HttpCommTask::handleEvent (EventToken token, EventType events) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpCommTask::handleAsync () {
+  TRI_ASSERT(_job != nullptr);
+  TRI_ASSERT(_handler != nullptr);
+  TRI_ASSERT(! _job->hasHandler());
+
+  _job->beginShutdown(); 
+  _job = nullptr;
+
+  _server->handleResponse(this, _handler);
+  delete _handler;
+  _handler = nullptr;
+
   _server->handleAsync(this);
+
   return true;
 }
 
@@ -1216,14 +1191,12 @@ bool HttpCommTask::handleRead ()  {
 void HttpCommTask::completedWriteBuffer () {
   _writeBuffer = nullptr;
 
-#ifdef TRI_ENABLE_FIGURES
   if (_writeBufferStatistics != nullptr) {
     _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
 
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
     _writeBufferStatistics = nullptr;
   }
-#endif
 
   fillWriteBuffer();
 

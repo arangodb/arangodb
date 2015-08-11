@@ -7,8 +7,18 @@ content-type: application/json; charset=utf-8
 
 { 
   "result" : [ 
-    null, 
-    null 
+    { 
+      "_id" : "vertices/v4", 
+      "_key" : "v4", 
+      "_rev" : "512184969925", 
+      "optional1" : "val2" 
+    }, 
+    { 
+      "_id" : "vertices/v1", 
+      "_key" : "v1", 
+      "_rev" : "512183790277", 
+      "optional1" : "val1" 
+    } 
   ], 
   "hasMore" : false, 
   "extra" : { 

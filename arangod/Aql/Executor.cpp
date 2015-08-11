@@ -34,14 +34,24 @@
 #include "Aql/Variable.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
+#include "V8Server/v8-shape-conv.h"
 
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static initialization
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if code is executed in cluster or not
+////////////////////////////////////////////////////////////////////////////////
+
+static ExecutionCondition const NotInCluster = [] {
+  return ! triagens::arango::ServerState::instance()->isRunningInCluster();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal functions used in execution
@@ -117,7 +127,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "UPPER",                       Function("UPPER",                       "AQL_UPPER", "s", true, true, false, true, true) },
   { "SUBSTRING",                   Function("SUBSTRING",                   "AQL_SUBSTRING", "s,n|n", true, true, false, true, true) },
   { "CONTAINS",                    Function("CONTAINS",                    "AQL_CONTAINS", "s,s|b", true, true, false, true, true) },
-  { "LIKE",                        Function("LIKE",                        "AQL_LIKE", "s,r|b", true, true, false, true, true) },
+  { "LIKE",                        Function("LIKE",                        "AQL_LIKE", "s,r|b", true, true, false, true, true, &Functions::Like) },
   { "LEFT",                        Function("LEFT",                        "AQL_LEFT", "s,n", true, true, false, true, true) },
   { "RIGHT",                       Function("RIGHT",                       "AQL_RIGHT", "s,n", true, true, false, true, true) },
   { "TRIM",                        Function("TRIM",                        "AQL_TRIM", "s|ns", true, true, false, true, true) },
@@ -210,7 +220,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l,o", true, false, true, false, false) },
   { "GRAPH_EDGES",                 Function("GRAPH_EDGES",                 "AQL_GRAPH_EDGES", "s,als|a", false, false, true, false, false) },
   { "GRAPH_VERTICES",              Function("GRAPH_VERTICES",              "AQL_GRAPH_VERTICES", "s,als|a", false, false, true, false, false) },
-  { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l,a", true, false, true, false, false) },
+  { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l,a", true, false, true, false, false, &Functions::Neighbors, NotInCluster) },
   { "GRAPH_NEIGHBORS",             Function("GRAPH_NEIGHBORS",             "AQL_GRAPH_NEIGHBORS", "s,als|a", false, false, true, false, false) },
   { "GRAPH_COMMON_NEIGHBORS",      Function("GRAPH_COMMON_NEIGHBORS",      "AQL_GRAPH_COMMON_NEIGHBORS", "s,als,als|a,a", false, false, true, false, false) },
   { "GRAPH_COMMON_PROPERTIES",     Function("GRAPH_COMMON_PROPERTIES",     "AQL_GRAPH_COMMON_PROPERTIES", "s,als,als|a", false, false, true, false, false) },

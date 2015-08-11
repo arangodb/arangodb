@@ -45,18 +45,39 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   public typedefs
 // -----------------------------------------------------------------------------
-
+    
+    typedef std::function<bool()> ExecutionCondition;
+    
     typedef std::vector<std::pair<AqlValue, TRI_document_collection_t const*>> FunctionParameters;
 
     typedef std::function<AqlValue(triagens::aql::Query*,
                                    triagens::arango::AqlTransaction*,
                                    FunctionParameters const&)> FunctionImplementation;
 
+
+    struct Functions {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      AQL functions public helpers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called before a query starts
+/// has the chance to set up any thread-local storage
+////////////////////////////////////////////////////////////////////////////////
+
+      static void InitializeThreadContext ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called when a query ends
+/// its responsibility is to clear any thread-local storage
+////////////////////////////////////////////////////////////////////////////////
+
+      static void DestroyThreadContext ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             AQL function bindings
 // -----------------------------------------------------------------------------
-
-    struct Functions {
 
       static AqlValue IsNull        (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue IsBool        (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
@@ -70,6 +91,7 @@ namespace triagens {
       static AqlValue ToArray       (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Length        (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Concat        (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
+      static AqlValue Like          (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Passthru      (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Unset         (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Keep          (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
@@ -87,6 +109,7 @@ namespace triagens {
       static AqlValue Union         (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue UnionDistinct (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Intersection  (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
+      static AqlValue Neighbors     (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
     };
 
   }

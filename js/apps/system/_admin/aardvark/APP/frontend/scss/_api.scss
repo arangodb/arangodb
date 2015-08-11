@@ -1,3 +1,8 @@
+.swagger-ui-wrap {
+  background-color: $c-white;
+  border-radius: 3px;
+}
+
 .swagger-ui-wrap #resources li.resource {
   background-color: $c-api-docs-bg;
 }

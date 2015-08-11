@@ -44,7 +44,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        i     class RestAqlHandler
@@ -88,8 +88,8 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const& queue () const override {
-          return triagens::rest::Dispatcher::AQL_QUEUE_NAME;
+        size_t queue () const override {
+          return triagens::rest::Dispatcher::AQL_QUEUE;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,7 +226,7 @@ namespace triagens {
 /// @brief the vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our query registry

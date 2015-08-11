@@ -28,15 +28,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8LineEditor.h"
-#include "Utilities/ShellImplFactory.h"
-
-#include "Basics/tri-strings.h"
-#include "V8/v8-utils.h"
-
+#include "Basics/logging.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
+#include "Utilities/ShellImplFactory.h"
+#include "V8/v8-utils.h"
 
 using namespace std;
 using namespace triagens;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  helper functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signal handler for CTRL-C
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef _WIN32
+static void SignalHandler (int signal) {
+  // get the instance of the console
+  auto instance = triagens::V8LineEditor::instance();
+
+  if (instance != nullptr) {
+    instance->signal();
+  }
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8Completer
@@ -51,7 +69,7 @@ bool V8Completer::isComplete (std::string const& source, size_t lineno, size_t c
 
   char const* ptr = source.c_str();
   char const* end = ptr + source.length();
-  state = NORMAL;
+  LineParseState state = NORMAL;
 
   while (ptr < end) {
     if (state == DOUBLE_QUOTE) {
@@ -306,6 +324,8 @@ void V8Completer::getAlternatives (char const * text,
 // --SECTION--                                                class V8LineEditor
 // -----------------------------------------------------------------------------
 
+std::atomic<V8LineEditor*> V8LineEditor::_instance(nullptr);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -314,8 +334,18 @@ void V8Completer::getAlternatives (char const * text,
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& history)
-  : LineEditor(history), _context(context),  _completer(V8Completer()) {
+V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, 
+                            std::string const& history) 
+  : LineEditor(history), 
+    _context(context),  
+    _completer(V8Completer()) {
+
+  // register global instance
+  
+  TRI_ASSERT(_instance.load() == nullptr);
+  _instance.store(this);
+
+  setupCtrlCHandler();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -323,7 +353,30 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
 ////////////////////////////////////////////////////////////////////////////////
 
 V8LineEditor::~V8LineEditor () {
-  // nothing
+  // unregister global instance
+  TRI_ASSERT(_instance.load() != nullptr);
+  _instance.store(nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setup a signal handler for CTRL-C
+////////////////////////////////////////////////////////////////////////////////
+
+void V8LineEditor::setupCtrlCHandler () {
+#ifndef _WIN32
+  if (ShellImplFactory::hasCtrlCHandler()) {
+    struct sigaction sa;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_handler = &SignalHandler;
+
+    int res = sigaction(SIGINT, &sa, 0);
+
+    if (res != 0) {
+      LOG_ERROR("unable to install signal handler");
+    }
+  }
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -331,8 +384,7 @@ V8LineEditor::~V8LineEditor () {
 // -----------------------------------------------------------------------------
 
 void V8LineEditor::initializeShell () {
-  ShellImplFactory factory;
-  _shellImpl = factory.buildShell(_history, &_completer);
+  _shellImpl = ShellImplFactory::buildShell(_history, &_completer);
 }
 
 // -----------------------------------------------------------------------------

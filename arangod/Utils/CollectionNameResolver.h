@@ -31,6 +31,7 @@
 #define ARANGODB_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
@@ -107,7 +108,7 @@ namespace triagens {
           TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
 
           if (collection != nullptr) {
-            _resolvedNames.emplace(std::make_pair(name, collection));
+            _resolvedNames.emplace(name, collection);
           }
 
           return collection;
@@ -152,7 +153,7 @@ namespace triagens {
 
           std::string name;
           if (ServerState::instance()->isDBServer()) {
-            TRI_READ_LOCK_COLLECTIONS_VOCBASE(_vocbase);
+            READ_LOCKER(_vocbase->_collectionsLock);
 
             TRI_vocbase_col_t* found
                 = static_cast<TRI_vocbase_col_t*>(
@@ -176,8 +177,6 @@ namespace triagens {
                 name = ci->name();   // can be empty, if collection unknown
               }
             }
-
-            TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(_vocbase);
           }
           else {
             // exactly as in the non-cluster case
@@ -191,7 +190,7 @@ namespace triagens {
             name = "_unknown";
           }
 
-          _resolvedIds.emplace(std::make_pair(cid, name));
+          _resolvedIds.emplace(cid, name);
 
           return name;
         }
@@ -240,7 +239,7 @@ namespace triagens {
             return;
           }
 
-          std::string&& name(getCollectionName(cid));
+          std::string name(std::move(getCollectionName(cid)));
           buffer.appendText(name.c_str(), name.size());
         }
 

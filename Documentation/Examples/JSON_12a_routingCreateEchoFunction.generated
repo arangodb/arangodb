@@ -1,0 +1,11 @@
+arangosh> db._routing.save({ 
+........>  url: "/hello/echo",
+........>  action: { 
+........>    callback: "function(req,res) {res.statusCode=200; res.body='Hello'}" 
+........>  } 
+........> });
+{ 
+  "_id" : "_routing/511986657989", 
+  "_rev" : "511986657989", 
+  "_key" : "511986657989" 
+}

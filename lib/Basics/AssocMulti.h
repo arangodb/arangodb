@@ -38,6 +38,8 @@
 #include "Basics/Common.h"
 #include "Basics/prime-numbers.h"
 #include "Basics/logging.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 namespace triagens {
   namespace basics {
@@ -152,11 +154,11 @@ namespace triagens {
         uint64_t _nrProbesD; // statistics: number of misses while removing
 #endif
 
-        HashKeyFuncType _hashKey;
-        HashElementFuncType _hashElement;
-        IsEqualKeyElementFuncType _isEqualKeyElement;
-        IsEqualElementElementFuncType _isEqualElementElement;
-        IsEqualElementElementFuncType _isEqualElementElementByKey;
+        HashKeyFuncType const _hashKey;
+        HashElementFuncType const _hashElement;
+        IsEqualKeyElementFuncType const _isEqualKeyElement;
+        IsEqualElementElementFuncType const _isEqualElementElement;
+        IsEqualElementElementFuncType const _isEqualElementElementByKey;
         
         std::function<std::string()> _contextCallback;
 
@@ -305,8 +307,6 @@ namespace triagens {
           // index, i.e. when the index is built for a collection and we know
           // for sure no duplicate elements will be inserted
 
-          Element* old;
-
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
           check(true, true);
 #endif
@@ -314,6 +314,182 @@ namespace triagens {
           // compute the hash by the key only first
           uint64_t hashByKey = _hashElement(element, true);
           Bucket& b = _buckets[hashByKey & _bucketsMask];
+
+          auto result = doInsert(element, hashByKey, b, overwrite, checkEquality);
+
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+          check(true, true);
+#endif
+
+          return result;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds multiple elements to the array
+////////////////////////////////////////////////////////////////////////////////
+
+        int batchInsert (std::vector<Element const*> const* data,
+                         size_t numThreads) {
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+          check(true, true);
+#endif
+          std::atomic<int> res(TRI_ERROR_NO_ERROR);
+
+          std::vector<Element const*> const& elements = *(data);
+
+          if (elements.size() < numThreads) {
+            numThreads = elements.size();
+          }
+          if (numThreads > _buckets.size()) {
+            numThreads = _buckets.size();
+          }
+
+          size_t const chunkSize = elements.size() / numThreads;
+          
+          typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
+                
+          triagens::basics::Mutex bucketMapLocker;
+
+          std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
+
+          // partition the work into some buckets
+          {
+            auto partitioner = [&] (size_t chunk) -> void {
+              try {
+                std::unordered_map<uint64_t, DocumentsPerBucket> partitions;
+                size_t lower = chunk * chunkSize;
+                size_t upper = (chunk + 1) * chunkSize;
+
+                if (chunk + 1 == numThreads) {
+                  // last chunk. account for potential rounding errors
+                  upper = elements.size();
+                }
+                else if (upper > elements.size()) {
+                  upper = elements.size();
+                }
+
+                for (size_t i = lower; i < upper; ++i) {
+                  uint64_t hashByKey = _hashElement(elements[i], true);
+                  auto bucketId = hashByKey & _bucketsMask;
+
+                  auto it = partitions.find(bucketId);
+
+                  if (it == partitions.end()) {
+                    it = partitions.emplace(bucketId, DocumentsPerBucket()).first;
+                  }
+
+                  (*it).second.emplace_back(std::make_pair(const_cast<Element*>(elements[i]), hashByKey));
+                }
+
+                // transfer ownership to the central map
+                MUTEX_LOCKER(bucketMapLocker);
+
+                for (auto& it : partitions) {
+                  auto it2 = allBuckets.find(it.first);
+
+                  if (it2 == allBuckets.end()) {
+                    it2 = allBuckets.emplace(it.first, std::vector<DocumentsPerBucket>()).first;
+                  }
+
+                  (*it2).second.emplace_back(std::move(it.second));
+                }
+              }
+              catch (...) {
+                res = TRI_ERROR_INTERNAL;
+              }
+            };
+
+            std::vector<std::thread> threads;
+            threads.reserve(numThreads);
+
+            try {
+              for (size_t i = 0; i < numThreads; ++i) {
+                threads.emplace_back(std::thread(partitioner, i));
+              }
+            }
+            catch (...) {
+              res = TRI_ERROR_INTERNAL;
+            }
+
+            for (size_t i = 0; i < threads.size(); ++i) {
+              // must join threads, otherwise the program will crash
+              threads[i].join();
+            }
+          }
+
+          if (res.load() != TRI_ERROR_NO_ERROR) {
+            return res.load();
+          }
+
+          // now the data is partitioned...
+
+          // now insert the bucket data in parallel           
+          {
+            auto inserter = [&] (size_t chunk) -> void {
+              try {
+                for (auto const& it : allBuckets) {
+                  uint64_t bucketId = it.first;
+
+                  if (bucketId % numThreads != chunk) {
+                    // we're not responsible for this bucket!
+                    continue;
+                  }
+
+                  // we're responsible for this bucket!
+                  Bucket& b = _buckets[bucketId];
+            
+                  for (auto const& it2 : it.second) {
+                    for (auto const& it3 : it2) {
+                      doInsert(it3.first, it3.second, b, true, false);
+                    }
+                  }
+                }
+              }
+              catch (...) {
+                res = TRI_ERROR_INTERNAL;
+              }
+            };
+
+            std::vector<std::thread> threads;
+            threads.reserve(numThreads);
+          
+            try {  
+              for (size_t i = 0; i < numThreads; ++i) {
+                threads.emplace_back(std::thread(inserter, i));
+              }
+            }
+            catch (...) {
+              res = TRI_ERROR_INTERNAL;
+            }
+
+            for (size_t i = 0; i < threads.size(); ++i) {
+              // must join threads, otherwise the program will crash
+              threads[i].join();
+            }
+          }
+
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+          check(true, true);
+#endif
+          return res.load();
+        }
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a key/element to the array
+////////////////////////////////////////////////////////////////////////////////
+
+        Element* doInsert (Element* element, 
+                           uint64_t hashByKey,
+                           Bucket& b,
+                           bool const overwrite,
+                           bool const checkEquality) {
+
+          // if the checkEquality flag is not set, we do not check for element
+          // equality we use this flag to speed up initial insertion into the
+          // index, i.e. when the index is built for a collection and we know
+          // for sure no duplicate elements will be inserted
 
           // if we were adding and the table is more than 2/3 full, extend it
           if (2 * b._nrAlloc < 3 * b._nrUsed) {
@@ -333,9 +509,6 @@ namespace triagens {
             b._table[i] = { hashByKey, element, INVALID_INDEX, INVALID_INDEX };
             b._nrUsed++;
             // no collision generated here!
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
-            check(true, true);
-#endif
             return nullptr;
           }
 
@@ -359,11 +532,10 @@ namespace triagens {
             b._table[i] = { hashByKey, element, INVALID_INDEX, INVALID_INDEX };
             b._nrUsed++;
             // no collision generated here either!
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
-            check(true, true);
-#endif
             return nullptr;
           }
+          
+          Element* old;
 
           // Otherwise, entry i points to the beginning of the linked
           // list of which we want to make element a member. Perhaps an
@@ -375,9 +547,6 @@ namespace triagens {
               TRI_ASSERT(b._table[i].hashCache == hashByKey);
               b._table[i].ptr = element;
             }
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
-            check(true, true);
-#endif
             return old;
           }
 
@@ -393,9 +562,6 @@ namespace triagens {
               b._table[j].hashCache = hashByElm;
               b._table[j].ptr = element;
             }
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
-            check(true, true);
-#endif
             return old;
           }
 
@@ -409,9 +575,6 @@ namespace triagens {
           b._nrUsed++;
           b._nrCollisions++;
 
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
-#endif
           return nullptr;
         }
 
@@ -420,8 +583,6 @@ namespace triagens {
 /// element is the first in the hash with its key, and the hash of the key
 /// is already known. This is for example the case when resizing.
 ////////////////////////////////////////////////////////////////////////////////
-
-      private:
 
         void insertFirst (Bucket& b, Element* element, uint64_t hashByKey) {
 

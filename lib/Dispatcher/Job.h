@@ -5,8 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -41,6 +40,7 @@
 
 namespace triagens {
   namespace rest {
+    class DispatcherQueue;
     class DispatcherThread;
 
 // -----------------------------------------------------------------------------
@@ -63,22 +63,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief job types
-////////////////////////////////////////////////////////////////////////////////
-
-        enum JobType {
-          READ_JOB,
-          WRITE_JOB,
-          SPECIAL_JOB
-        };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief status of execution
 ////////////////////////////////////////////////////////////////////////////////
 
         enum status_e {
           JOB_DONE,
-          JOB_DETACH,
           JOB_REQUEUE,
           JOB_FAILED
         };
@@ -137,19 +126,37 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief assign an id to the job. note: the id might be 0
+/// @brief sets the jobs id.
+///
+/// Note: the id might be 0
 ////////////////////////////////////////////////////////////////////////////////
 
-        void assignId (uint64_t id) {
+        void setId (uint64_t id) {
           _id = id;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief assign an id to the job
+/// @brief returns the job id
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t id () const {
           return _id;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the queue position
+////////////////////////////////////////////////////////////////////////////////
+
+        void setQueuePosition (size_t id) {
+          _queuePosition = id;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the queue position
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t queuePosition () const {
+          return _queuePosition;
         }
 
 // -----------------------------------------------------------------------------
@@ -159,18 +166,10 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the type of the job
-///
-/// Note that initialise can change the job type.
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual JobType type () const = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name to use
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string const& queue () const;
+        virtual size_t queue () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the thread which currently dealing with the job
@@ -188,19 +187,13 @@ namespace triagens {
 /// @brief tries to cancel execution
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool cancel (bool running) = 0;
+        virtual bool cancel () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up after work and delete
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void cleanup () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down the execution and deletes everything
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool beginShutdown () = 0;
+        virtual void cleanup (DispatcherQueue*) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle error and delete
@@ -226,17 +219,11 @@ namespace triagens {
 
         uint64_t _id;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief name of default queue
+/// @brief queue position
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string const QUEUE_NAME;
+        size_t _queuePosition;
     };
   }
 }
@@ -249,5 +236,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|/// @startDocuBlock\\|// --SECTION--\\|/// @\\}"
 // End:

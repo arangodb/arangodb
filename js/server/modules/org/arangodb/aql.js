@@ -35,6 +35,7 @@ var ArangoError = require("org/arangodb").ArangoError;
 var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("org/arangodb/cluster").isCoordinator();
 var underscore = require("underscore");
+var graphModule = require("org/arangodb/general-graph");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -5292,7 +5293,7 @@ function DOCUMENT_IDS_BY_EXAMPLE (collectionList, example) {
   var res = [ ];
   if (example === "null" || example === null || ! example) {
     collectionList.forEach(function (c) {
-      res = res.concat(COLLECTION(c).toArray());
+      res = res.concat(COLLECTION(c).toArray().map(function(t) { return t._id; }));
     });
     return res;
   }
@@ -5914,13 +5915,13 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
 /// @brief Creates parameters for a dijkstra based shortest path traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function CREATE_DIJKSTRA_PARAMS(graphName, options) {
+function CREATE_DIJKSTRA_PARAMS (graphName, options) {
   var params = TRAVERSAL_PARAMS(options,
     TRAVERSAL_DIJKSTRA_VISITOR.bind({
       includeData: options.includeData || false
     })
-    ),
-      factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+  ),
+    factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
   params.paths = true;
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
@@ -6145,8 +6146,12 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
     return tmp;
   }
 
-  let graph_module = require("org/arangodb/general-graph");
-  let graph = graph_module._graph(graphName);
+  if (options.hasOwnProperty('edgeExamples')) {
+    // these two are the same (edgeExamples & filterEdges)...
+    options.filterEdges = options.edgeExamples;
+  }
+
+  let graph = graphModule._graph(graphName);
   let edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
   if (options.hasOwnProperty("edgeCollectionRestriction")) {
     if (!Array.isArray(options.edgeCollectionRestriction)) {
@@ -6167,7 +6172,12 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
   if (options.hasOwnProperty("startVertexCollectionRestriction")
     && Array.isArray(options.startVertexCollectionRestriction)) {
     startVertices = DOCUMENT_IDS_BY_EXAMPLE(options.startVertexCollectionRestriction, startVertexExample);
-  } else {
+  } 
+  else if (options.hasOwnProperty("startVertexCollectionRestriction") 
+    && typeof options.startVertexCollectionRestriction === 'string') {
+    startVertices = DOCUMENT_IDS_BY_EXAMPLE([ options.startVertexCollectionRestriction ], startVertexExample);
+  }
+  else {
     startVertices = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, startVertexExample);
   }
   if (startVertices.length === 0) {
@@ -6178,7 +6188,12 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
   if (options.hasOwnProperty("endVertexCollectionRestriction")
     && Array.isArray(options.endVertexCollectionRestriction)) {
     endVertices = DOCUMENT_IDS_BY_EXAMPLE(options.endVertexCollectionRestriction, endVertexExample);
-  } else {
+  } 
+  else if (options.hasOwnProperty("endVertexCollectionRestriction")
+    && typeof options.endVertexCollectionRestriction === 'string') {
+    endVertices = DOCUMENT_IDS_BY_EXAMPLE([ options.endVertexCollectionRestriction ], endVertexExample);
+  } 
+  else {
     endVertices = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, endVertexExample);
   }
   if (endVertices.length === 0) {
@@ -6721,32 +6736,38 @@ function AQL_NEIGHBORS (vertexCollection,
 
   vertex = TO_ID(vertex, vertexCollection);
   options = CLONE(options) || {};
-  if (isCoordinator) {
-    // Fallback to JS if we are in the cluster
-    let edges = AQL_EDGES(edgeCollection, vertex, direction);
-    let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
-    let vertices = [];
-    let distinct = new Set();
-    for (let i = 0; i < tmp.length; ++i) {
-      let v = tmp[i].vertex;
-      if (!distinct.has(v._id)) {
-        distinct.add(v._id);
-        if (options.includeData) {
-          vertices.push(v);
-        } else {
-          vertices.push(v._id);
+  // Fallback to JS if we are in the cluster
+  // Improve the examples. LocalServer can match String -> _id
+  if (examples !== undefined) {
+    if (typeof examples === "string") {
+      examples = [{_id: examples}];
+    }
+    if (Array.isArray(examples)) {
+      examples = examples.map(function(e) {
+        if (typeof e === "string") {
+          return {_id: e};
         }
+        return e;
+      });
+    }
+  }
+  let edges = AQL_EDGES(edgeCollection, vertex, direction);
+  let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
+  let vertices = [];
+  let distinct = new Set();
+  for (let i = 0; i < tmp.length; ++i) {
+    let v = tmp[i].vertex;
+    if (!distinct.has(v._id)) {
+      distinct.add(v._id);
+      if (options.includeData) {
+        vertices.push(v);
+      } else {
+        vertices.push(v._id);
       }
     }
-    distinct.clear();
-    return vertices;
   }
-
-  options.direction = direction;
-  if (examples !== undefined && Array.isArray(examples) && examples.length > 0) {
-    options.filterEdges = examples;
-  }
-  return CPP_NEIGHBORS([vertexCollection], [edgeCollection], vertex, options);
+  distinct.clear();
+  return vertices;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6929,8 +6950,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     }
   }
 
-  let graph_module = require("org/arangodb/general-graph");
-  let graph = graph_module._graph(graphName);
+  let graph = graphModule._graph(graphName);
   let edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
   if (options.hasOwnProperty("edgeCollectionRestriction")) {
     if (!Array.isArray(options.edgeCollectionRestriction)) {
@@ -7274,23 +7294,27 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 
   options1 = options1 || {};
   options2 = options2 || {};
-  let graph_module = require("org/arangodb/general-graph");
-  let graph = graph_module._graph(graphName);
+  if (options1.includeData) {
+    options2.includeData = true;
+  }
+  else if (options2.includeData) {
+    options1.includeData = true;
+  }
+
+  let graph = graphModule._graph(graphName);
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
   let vertices1 = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, vertex1Examples);
   let vertices2;
   if (vertex1Examples === vertex2Examples) {
     vertices2 = vertices1;
-  } else {
+  } 
+  else {
     vertices2 = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, vertex2Examples);
   }
   // Use ES6 Map. Higher performance then Object.
   let tmpNeighborsLeft = new Map();
   let tmpNeighborsRight = new Map();
   let result = [];
-
-  // Legacy Format
-  // let tmpRes = {};
 
   // Iterate over left side vertex list as left.
   // Calculate its neighbors as ln
@@ -7303,7 +7327,8 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
     let itemNeighbors;
     if(tmpNeighborsLeft.has(left)) {
       itemNeighbors = tmpNeighborsLeft.get(left);
-    } else {
+    } 
+    else {
       itemNeighbors = AQL_GRAPH_NEIGHBORS(graphName, left, options1);
       tmpNeighborsLeft.set(left, itemNeighbors);
     }
@@ -7315,15 +7340,30 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
       let rNeighbors;
       if(tmpNeighborsRight.has(right)) {
         rNeighbors = tmpNeighborsRight.get(right);
-      } else {
+      } 
+      else {
         rNeighbors = AQL_GRAPH_NEIGHBORS(graphName, right, options2);
         tmpNeighborsRight.set(right, rNeighbors);
       }
-      let neighbors = underscore.intersection(itemNeighbors, rNeighbors);
+      let neighbors;
+      if (! options1.includeData) {
+        neighbors = underscore.intersection(itemNeighbors, rNeighbors);
+      }
+      else {
+        // create a quick lookup table for left hand side
+        let lKeys = { };
+        for (let i = 0; i < itemNeighbors.length; ++i) {
+          lKeys[itemNeighbors[i]._id] = true;
+        }
+        // check which elements of the right-hand side are also present in the left hand side lookup  map
+        neighbors = [];
+        for (let i = 0; i < rNeighbors.length; ++i) {
+          if (lKeys.hasOwnProperty(rNeighbors[i]._id)) {
+            neighbors.push(rNeighbors[i]);
+          }
+        }
+      }
       if (neighbors.length > 0) {
-        // Legacy Format
-        // tmpRes[left] = tmpRes[left] || {};
-        // tmpRes[left][right] = neighbors;
         result.push({left, right, neighbors});
       }
     }
@@ -8063,8 +8103,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 
   // Make sure we ONLY extract _ids
   options.includeData = false;
-  let graph_module = require("org/arangodb/general-graph");
-  let graph = graph_module._graph(graphName);
+  let graph = graphModule._graph(graphName);
   let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
   let vertexIds = DOCUMENT_IDS_BY_EXAMPLE(vertexCollections, {});
   let result = {};

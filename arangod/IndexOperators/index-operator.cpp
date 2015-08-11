@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index-operator.h"
+#include "VocBase/VocShaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -45,7 +46,7 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e operato
                                                TRI_index_operator_t* leftOperand,
                                                TRI_index_operator_t* rightOperand,
                                                TRI_json_t* parameters,
-                                               TRI_shaper_t* shaper,
+                                               VocShaper* shaper,
                                                size_t numFields) {
 
   TRI_index_operator_t* newOperator;
@@ -138,7 +139,7 @@ static void ClearIndexOperator(TRI_index_operator_t* indexOperator) {
         for (size_t i = 0; i < relationOperator->_numFields; ++i) {
           // destroy each individual shapedJson object
           TRI_shaped_json_t* shaped = relationOperator->_fields + i;
-          TRI_DestroyShapedJson(relationOperator->base._shaper->_memoryZone, shaped);
+          TRI_DestroyShapedJson(relationOperator->base._shaper->memoryZone(), shaped);
         }
         // free the memory pointer
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields);

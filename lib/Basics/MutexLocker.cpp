@@ -30,8 +30,9 @@
 
 #include "MutexLocker.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
+#ifdef TRI_SHOW_LOCK_TIME
+#include "Basics/logging.h"
+#endif
 
 using namespace triagens::basics;
 
@@ -42,24 +43,28 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
 ///
-/// The constructors aquires a lock, the destructors releases the lock.
+/// The constructor aquires a lock, the destructors releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-MutexLocker::MutexLocker (Mutex* mutex)
-  : _mutex(mutex), _file(0), _line(0) {
-  _mutex->lock();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a lock
-///
-/// The constructors aquires a lock, the destructors releases the lock.
-////////////////////////////////////////////////////////////////////////////////
+#ifdef TRI_SHOW_LOCK_TIME
 
 MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)
-  : _mutex(mutex), _file(file), _line(line) {
+  : _mutex(mutex), _file(file), _line(line), _time(0.0) {
+  
+  double t = TRI_microtime();
+  _mutex->lock();
+  _time = TRI_microtime() - t;
+}
+
+#else
+
+MutexLocker::MutexLocker (Mutex* mutex)
+  : _mutex(mutex) {
+  
   _mutex->lock();
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
@@ -67,6 +72,12 @@ MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)
 
 MutexLocker::~MutexLocker () {
   _mutex->unlock();
+
+#ifdef TRI_SHOW_LOCK_TIME
+  if (_time > TRI_SHOW_LOCK_THRESHOLD) {
+    LOG_WARNING("MutexLocker %s:%d took %f s", _file, _line, _time);
+  }
+#endif  
 }
 
 // -----------------------------------------------------------------------------

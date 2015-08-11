@@ -35,7 +35,7 @@
 ### @author Copyright 2011-2014, triagens GmbH, Cologne, Germany
 ################################################################################
 
-import re, sys, string, os
+import re, sys, string, os, re
 from pprint import pprint
 
 ################################################################################
@@ -63,7 +63,7 @@ OutputDir = "/tmp/"
 ### commands and there output is logged.
 ################################################################################
 
-ArangoshOutput = {}
+RunTests = {}
 
 ################################################################################
 ### @brief arangosh expect
@@ -72,16 +72,6 @@ ArangoshOutput = {}
 ################################################################################
 
 ArangoshExpect = {}
-
-
-################################################################################
-### @brief arangosh run
-###
-### A list of commands that are executed in order to produce the output. This
-### is mostly used for HTTP request examples.
-################################################################################
-
-ArangoshRun = {}
 
 ################################################################################
 ### @brief arangosh run
@@ -103,23 +93,24 @@ ArangoshFiles = {}
 MapSourceFiles = {}
 
 ################################################################################
-### @brief arangosh examples, in some deterministic order
-################################################################################
-ArangoshCases = [ ]
-
-################################################################################
 ### @brief global setup for arangosh
 ################################################################################
 
 ArangoshSetup = ""
 
 ################################################################################
+### @brief filter to only output this one:
+################################################################################
+
+FilterForTestcase = None
+
+################################################################################
 ### @brief states
 ################################################################################
 
 STATE_BEGIN = 0
-STATE_ARANGOSH_OUTPUT = 1
-STATE_ARANGOSH_RUN = 2
+STATE_ARANGOSH_OUTPUT = 'HTTP_LOUTPUT'
+STATE_ARANGOSH_RUN = 'ARANGOSH_OUTPUT'
 
 ################################################################################
 ### @brief option states
@@ -128,6 +119,7 @@ STATE_ARANGOSH_RUN = 2
 OPTION_NORMAL = 0
 OPTION_ARANGOSH_SETUP = 1
 OPTION_OUTPUT_DIR = 2
+OPTION_FILTER = 3
 
 fstate = OPTION_NORMAL
 
@@ -150,6 +142,7 @@ var XXX;
 var testFunc;
 var countErrors;
 var collectionAlreadyThere = [];
+var ignoreCollectionAlreadyThere = [];
 internal.startPrettyPrint(true);
 internal.stopColorPrint(true);
 var appender = function(text) {
@@ -174,6 +167,9 @@ var curlRequest = function () {
 };
 var logJsonResponse = internal.appendJsonResponse(appender);
 var logRawResponse = internal.appendRawResponse(appender);
+var logErrorResponse = function (response) {
+    allErrors += "Server reply was: " + JSON.stringify(response) + "\\n";
+};
 var globalAssert = function(condition, testname, sourceFile) {
   if (! condition) {
     internal.output(hashes + '\\nASSERTION FAILED: ' + testname + ' in file ' + sourceFile + '\\n' + hashes + '\\n');
@@ -278,6 +274,35 @@ var checkForOrphanTestCollections = function(msg) {
   }
 };
 
+var addIgnoreCollection = function(collectionName) {
+  // print("from now on ignoring this collection whether its dropped: "  + collectionName);
+  collectionAlreadyThere.push(collectionName);
+  ignoreCollectionAlreadyThere.push(collectionName);
+};
+
+var removeIgnoreCollection = function(collectionName) {
+  // print("from now on checking again whether this collection dropped: " + collectionName);
+  for (j=0; j < collectionAlreadyThere.length; j++) {
+    if (collectionAlreadyThere[j] === collectionName) {
+      collectionAlreadyThere[j] = undefined;
+    }
+  }
+  for (j=0; j < ignoreCollectionAlreadyThere.length; j++) {
+    if (ignoreCollectionAlreadyThere[j] === collectionName) {
+      ignoreCollectionAlreadyThere[j] = undefined;
+    }
+  }
+
+};
+
+var checkIgnoreCollectionAlreadyThere = function () {
+  if (ignoreCollectionAlreadyThere.length > 0) {
+    allErrors += "some temporarily ignored collections haven't been cleaned up: " +
+                 ignoreCollectionAlreadyThere;
+  }
+
+}
+
 // Set the first available list of already there collections:
 var err = allErrors;
 checkForOrphanTestCollections('Collections already there which we will ignore from now on:');
@@ -288,11 +313,11 @@ allErrors = err;
 ################################################################################
 ### @brief Try to match the start of a command section
 ################################################################################
-regularStartLine = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
-runLine = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
+regularStartLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
+runLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
     
 def matchStartLine(line, filename):
-    global regularStartLine, errorStartLine, runLine
+    global regularStartLine, errorStartLine, runLine, FilterForTestcase
     errorName = ""
     m = regularStartLine.match(line)
 
@@ -304,9 +329,11 @@ def matchStartLine(line, filename):
         if name in ArangoshFiles:
             print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
             sys.exit(1)
+        # if we match for filters, only output these!
+        if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
+            print >> sys.stderr, "filtering test case %s" %name
+            return("", STATE_BEGIN);
 
-        ArangoshFiles[name] = True
-        ArangoshOutput[name] = []
         return (name, STATE_ARANGOSH_OUTPUT)
 
     m = runLine.match(line)
@@ -319,20 +346,28 @@ def matchStartLine(line, filename):
             print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
             sys.exit(1)
 
-        ArangoshCases.append(name)    
+        # if we match for filters, only output these!
+        if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
+            print >> sys.stderr, "filtering test case %s" %name
+            return("", STATE_BEGIN);
+
         ArangoshFiles[name] = True
-        ArangoshRun[name] = ""
         return (name, STATE_ARANGOSH_RUN)
     # Not found, remain in STATE_BEGIN
     return ("", STATE_BEGIN)
 
-endExample = re.compile(r'^(/// )?@END_EXAMPLE_')
+endExample = re.compile(r'^(/// )? *@END_EXAMPLE_')
 #r5 = re.compile(r'^ +')
 
+TESTLINES="testlines"
+TYPE="type"
+LINE_NO="lineNo"
+STRING="string"
 ################################################################################
 ### @brief loop over the lines of one input file
 ################################################################################
 def analyzeFile(f, filename): 
+    global RunTests, TESTLINES, TYPE, LINE_NO, STRING
     strip = None
     
     name = ""
@@ -356,8 +391,13 @@ def analyzeFile(f, filename):
             (name, state) = matchStartLine(line, filename)
             if state != STATE_BEGIN: 
                 MapSourceFiles[name] = filename
+                RunTests[name] = {}
+                RunTests[name][TYPE] = state
+                RunTests[name][TESTLINES] = []
+
             if state == STATE_ARANGOSH_RUN:
-                ArangoshRunLineNo[name] = lineNo
+                RunTests[name][LINE_NO] = lineNo;
+                RunTests[name][STRING] = "";
             continue
 
         # we are within a example
@@ -407,12 +447,15 @@ def analyzeFile(f, filename):
         partialLine = ""
 
         if state == STATE_ARANGOSH_OUTPUT:
-            ArangoshOutput[name].append([line, showCmd, lineNo])
-
+            RunTests[name][TESTLINES].append([line, showCmd, lineNo])
         elif state == STATE_ARANGOSH_RUN:
-            ArangoshRun[name] += line + "\n"
+            RunTests[name][STRING] += line + "\n"
 
 
+def generateSetupFunction():
+    print
+    print "(function () {\n%s}());" % ArangoshSetup
+    print
 
 
 ################################################################################
@@ -422,18 +465,17 @@ def analyzeFile(f, filename):
 loopDetectRE = re.compile(r'^[ \n]*(while|if|var|throw|for) ')
 expectErrorRE = re.compile(r'.*// *xpError\((.*)\).*')
 #expectErrorRE = re.compile(r'.*//\s*xpError\(([^)]*)\)/')
-def generateArangoshOutput():
-    print
-    print "(function () {\n%s}());" % ArangoshSetup
-    print
-    keys = ArangoshOutput.keys()
-    keys.sort()
-    for key in keys:
-        value = ArangoshOutput[key]
-        #print value
-        #print value[0][2]
+def generateArangoshOutput(testName):
+    value = RunTests[testName]
+    #print value
+    #print value[TESTLINES][0][2]
+    #print type(value[TESTLINES][0][2])
+    if (len(value[TESTLINES]) == 0) or (len(value[TESTLINES][0]) < 3):
+        print "blarg in " + testName
+        raise
+    try:
         print '''
-////////////////////////////////////////////////////////////////////////////////
+%s
 /// %s
 (function() {
   countErrors = 0;
@@ -444,32 +486,46 @@ def generateArangoshOutput():
   var sourceFile = '%s';
   var startTime = time();
   internal.startCaptureMode();
-''' %(key, key, value[0][2], OutputDir, MapSourceFiles[key])
-        for l in value:
-            # try to match for errors, and remove the comment.
-            expectError = 'undefined'
-            m = expectErrorRE.match(l[0])
-            if m: 
-                expectError = "'" + m.group(1) + "'"
-                l[0] = l[0][0:l[0].find('//')].rstrip(' ')
+'''    %   (
+        ('/'*80),
+        testName,
+        testName,
+        value[TESTLINES][0][2],
+        OutputDir,
+        MapSourceFiles[testName]
+        )
+    except Exception as x:
+        print x
+        print testName
+        print value
+        raise
 
-            m = loopDetectRE.match(l[0])
-            fakeVar = 'false'
-            if m and l[0][0:3] == 'var': 
-                count = l[0].find('=')
-                print  "  " + l[0][0:count].rstrip(' ') + ";"
-                l[0] = l[0][4:]
-                fakeVar = 'true'
+    for l in value[TESTLINES]:
+        # try to match for errors, and remove the comment.
+        expectError = 'undefined'
+        m = expectErrorRE.match(l[0])
+        if m:
+            expectError = "'" + m.group(1) + "'"
+            l[0] = l[0][0:l[0].find('//')].rstrip(' ')
 
-            print "  runTestLine('%s', testName, sourceFile, %s, lineCount++, %s, %s, %s, %s);" % (
-                l[0],                         # the test string
-                l[2],                         # line in the source file
-                'true' if l[1] else 'false',  # Is it visible in the documentation? 
-                expectError,                  # will it throw? if the errorcode else undefined.
-                'true' if m    else 'false',  # is it a loop construct? (will be evaluated different)
-                fakeVar                       # 'var ' should be printed
-                )
-        print '''  var output = internal.stopCaptureMode();
+        m = loopDetectRE.match(l[0])
+        fakeVar = 'false'
+        if m and l[0][0:3] == 'var':
+            count = l[0].find('=')
+            print  "  " + l[0][0:count].rstrip(' ') + ";"
+            l[0] = l[0][4:]
+            fakeVar = 'true'
+
+        print "  runTestLine('%s', testName, sourceFile, %s, lineCount++, %s, %s, %s, %s);" % (
+            l[0],                         # the test string
+            l[2],                         # line in the source file
+            'true' if l[1] else 'false',  # Is it visible in the documentation?
+            expectError,                  # will it throw? if the errorcode else undefined.
+            'true' if m    else 'false',  # is it a loop construct? (will be evaluated different)
+            fakeVar                       # 'var ' should be printed
+            )
+    print '''  var output = internal.stopCaptureMode();
+
   print("[" + (time () - startTime) + "s] done with  " + testName);
   fs.write(outputDir + '/' + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
@@ -481,20 +537,17 @@ def generateArangoshOutput():
 ### @brief generate arangosh run
 ################################################################################
 
-def generateArangoshRun():
+def generateArangoshRun(testName):
 
     if JS_DEBUG:
         print "internal.output('%s\\n');" % ('=' * 80)
         print "internal.output('ARANGOSH RUN\\n');"
         print "internal.output('%s\\n');" % ('=' * 80)
 
-    print
-    print "(function () {\n%s}());" % ArangoshSetup
-    print
-    for key in ArangoshCases:
-        value = ArangoshRun[key]
-        print '''
-////////////////////////////////////////////////////////////////////////////////
+    value = RunTests[testName]
+    startLineNo = RunTests[testName][LINE_NO]
+    print '''
+%s
 /// %s
 (function() {
   var ArangoshRun = {};
@@ -510,14 +563,24 @@ def generateArangoshRun():
   var assert = function(a) { globalAssert(a, testName, sourceFile); };
   testFunc = function() {
 %s};
-''' %(key, key, ArangoshRunLineNo[key], OutputDir, MapSourceFiles[key], value.lstrip().rstrip())
+''' %  (
+        ('/'*80),
+        testName,
+        testName,
+        startLineNo,
+        OutputDir,
+        MapSourceFiles[testName],
+        value[STRING].lstrip().rstrip())
 
-        if key in ArangoshExpect: 
-            print "  rc = runTestFuncCatch(testFunc, testName, errors.%s);" % (ArangoshExpect[key])
-        else:
-            print "  rc = runTestFunc(testFunc, testName, sourceFile);"
+    if testName in ArangoshExpect:
+        print "  rc = runTestFuncCatch(testFunc, testName, errors.%s);" % (ArangoshExpect[key])
+    else:
+        print "  rc = runTestFunc(testFunc, testName, sourceFile);"
 
-        print '''
+    print '''
+  if (rc === undefined || rc === '' ) {
+    rc = " FAILED in " + testName;
+  }
   print("[" + (time () - startTime) + "s] " + rc);
   fs.write(outputDir + '/' + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
@@ -540,7 +603,7 @@ if (allErrors.length > 0) {
 ### @brief get file names
 ################################################################################
 def loopDirectories():
-    global ArangoshSetup, OutputDir
+    global ArangoshSetup, OutputDir, FilterForTestcase
     argv = sys.argv
     argv.pop(0)
     filenames = []
@@ -549,7 +612,9 @@ def loopDirectories():
         if filename == "--arangosh-setup":
             fstate = OPTION_ARANGOSH_SETUP
             continue
-    
+        if filename == "--only-thisone": 
+            fstate = OPTION_FILTER
+            continue
         if filename == "--output-dir":
             fstate = OPTION_OUTPUT_DIR
             continue
@@ -558,11 +623,15 @@ def loopDirectories():
             if os.path.isdir(filename):
                 for root, dirs, files in os.walk(filename):
                     for file in files:
-                        if (file.endswith(".mdpp") or file.endswith(".js") or file.endswith(".cpp")) and not file.endswith("ahuacatl.js"):
+                        if (file.endswith(".mdpp") or file.endswith(".js") or file.endswith(".cpp")):
                             filenames.append(os.path.join(root, file))
             else:
                 filenames.append(filename)
-    
+        elif fstate == OPTION_FILTER:
+            fstate = OPTION_NORMAL
+            if (len(filename) > 0): 
+                FilterForTestcase = re.compile(filename);
+            
         elif fstate == OPTION_ARANGOSH_SETUP:
             fstate = OPTION_NORMAL
             f = open(filename, "r")
@@ -572,22 +641,39 @@ def loopDirectories():
                 ArangoshSetup += line + "\n"
     
             f.close()
-        
+
         elif fstate == OPTION_OUTPUT_DIR:
             fstate = OPTION_NORMAL
             OutputDir = filename
     for filename in filenames:
-        f = open(filename, "r")
-        analyzeFile(f, filename)
+        if (filename.find("#") < 0):
+            f = open(filename, "r")
+        
+            analyzeFile(f, filename)
     
-        f.close()
+            f.close()
+        else:
+            print >> sys.stderr, "skipping %s\n" % (filename)
+
+
+def generateTestCases():
+    global TESTLINES, TYPE, LINE_NO, STRING, RunTests
+    testNames = RunTests.keys()
+    testNames.sort()
+    for thisTest in testNames:
+        if RunTests[thisTest][TYPE] == STATE_ARANGOSH_OUTPUT:
+            generateArangoshOutput(thisTest)
+        elif RunTests[thisTest][TYPE] == STATE_ARANGOSH_RUN:
+            generateArangoshRun(thisTest)
 
 
 ################################################################################
 ### @brief main
 ################################################################################
 loopDirectories()
+
 generateArangoshHeader()
-generateArangoshOutput()
-generateArangoshRun()
+generateSetupFunction()
+generateTestCases()
+
 generateArangoshShutdown()

@@ -1,5 +1,7 @@
 div.headerDropdown {
   background-color: $c-white;
+  border: 1px solid rgba(104, 103, 102, 0.10);
+  border-radius: 3px;
   display: none;
   padding: 10px;
   position: relative;
@@ -27,6 +29,10 @@ div.headerDropdown {
   }
 }
 
+div.dropdown-title {
+  margin-bottom: 10px;
+}
+
 div.dropdownInner {
   @include box-shadow(0);
   min-height: 125px;
@@ -46,7 +52,7 @@ div.dropdownInner {
 
   & ul {
     @extend %pull-left;
-    border-left: 1px solid $c-black;
+    border-left: 1px solid $c-c2grey;
     display: inline;
     margin-top: 10px;
     min-height: 105px;
@@ -59,6 +65,20 @@ div.dropdownInner {
     label {
       color: $c-black;
       padding-left: 35px;
+    }
+  }
+
+  ul {
+    li {
+      .fa {
+        margin-right: 5px;
+        color: #8c8a89;
+
+        &.fa-check-circle-o,
+        &.fa-dot-circle-o {
+          color: $c-positive;
+        }
+      }
     }
   }
 
@@ -113,6 +133,7 @@ div.queryline {
 
 div.dropdownImport {
   background-color: $c-white;
+  border-radius: 3px;
   display: none;
   padding: {
     top: 10px;

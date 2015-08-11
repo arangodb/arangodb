@@ -28,10 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LineEditor.h"
-#include "ShellImplementation.h"
-#include "Completer.h"
-
-#include "Basics/tri-strings.h"
+#include "Utilities/ShellImplementation.h"
+#include "Utilities/Completer.h"
 
 using namespace std;
 using namespace triagens;
@@ -50,7 +48,7 @@ using namespace triagens;
 
 LineEditor::LineEditor (std::string const& history)
   : _history(history) {
-  _shellImpl = 0;
+  _shellImpl = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,6 +117,14 @@ void LineEditor::addHistory (char const* str) {
 bool LineEditor::writeHistory () {
   prepareShell();
   return _shellImpl->writeHistory();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a signal to the shell implementation
+////////////////////////////////////////////////////////////////////////////////
+
+void LineEditor::signal () {
+  _shellImpl->signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

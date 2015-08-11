@@ -28,34 +28,5 @@ Other datatypes are ignored and not indexed.
 
 !SECTION Accessing Fulltext Indexes from the Shell
 
-`collection.ensureFulltextIndex(field, minWordLength)`
-
-Creates a fulltext index on all documents on attribute *field*. 
-
-Fulltext indexes are implicitly sparse: all documents which do not have 
-the specified *field* attribute or that have a non-qualifying value in their 
-*field* attribute will be ignored for indexing.
-
-Only a single attribute can be indexed. Specifying multiple attributes is 
-unsupported.
-
-The minimum length of words that are indexed can be specified via the *minWordLength* 
-parameter. Words shorter than minWordLength characters will not be indexed. 
-*minWordLength* has a default value of 2, but this value might be changed in 
-future versions of ArangoDB. It is thus recommended to explicitly specify this value.
-
-In case the index is successfully created, the index identifier is returned.
-
-```
-arangosh> db.emails.ensureFulltextIndex("body");
-{ "id" : "emails/42725508", "unique" : false, "type" : "fulltext", "fields" : ["body"], "isNewlyCreated" : true }
-```
-
-Note that in addition to the specialized index creation method, there is also the
-general method `collection.ensureIndex`, which can be used to create indexes of any type:
-
-*Examples*
-
-```
-arangosh> db.emails.ensureIndex({ type: "fulltext", fields: [ "body" ] });
-```
+<!-- js/server/modules/org/arangodb/arango-collection.js -->
+@startDocuBlock ensureFulltextIndex

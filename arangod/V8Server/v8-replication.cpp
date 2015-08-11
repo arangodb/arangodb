@@ -80,7 +80,6 @@ static void JS_StateLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>
 /// @brief get the last WAL entries
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
 static void JS_LastLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -117,7 +116,6 @@ static void JS_LastLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>&
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sync data from a remote master
@@ -294,9 +292,10 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
     TRI_replication_applier_configuration_t config;
     TRI_InitConfigurationReplicationApplier(&config);
 
-    TRI_ReadLockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
-    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
+    {
+      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
+      TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
+    }
 
     TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
     TRI_DestroyConfigurationReplicationApplier(&config);
@@ -322,10 +321,10 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
     TRI_InitConfigurationReplicationApplier(&config);
 
     // fill with previous configuration
-    TRI_ReadLockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
-    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
-
+    {
+      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
+      TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
+    }
 
     // treat the argument as an object from now on
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
@@ -635,9 +634,7 @@ void TRI_InitV8Replication (v8::Isolate* isolate,
 
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_STATE"), JS_StateLoggerReplication, true);
-#ifdef TRI_ENABLE_MAINTAINER_MODE
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_LAST"), JS_LastLoggerReplication, true);
-#endif
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_SYNCHRONISE"), JS_SynchroniseReplication, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_SERVER_ID"), JS_ServerIdReplication, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_CONFIGURE"), JS_ConfigureApplierReplication, true);

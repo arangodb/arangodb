@@ -1305,16 +1305,21 @@ namespace triagens {
         }
 
         Path* search (VertexId& start, VertexId& end) {
-          Path* res = new Path();
+          std::unique_ptr<Path> res(new Path());
           // Init
           if (start == end) {
             res->vertices.emplace_back(start);
-            return res;
+            return res.release();
           }
           _leftFound.emplace(start, nullptr);
           _rightFound.emplace(end, nullptr);
           _leftClosure.emplace_back(start);
           _rightClosure.emplace_back(end);
+
+          TRI_IF_FAILURE("TraversalOOMInitialize") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
           std::vector<EdgeId> edges;
           std::vector<VertexId> neighbors;
           while (_leftClosure.size() > 0 && _rightClosure.size() > 0) {
@@ -1347,7 +1352,10 @@ namespace triagens {
                         it = _rightFound.find(next);
                       }
                       res->weight = res->edges.size();
-                      return res;
+                      TRI_IF_FAILURE("TraversalOOMPath") {
+                        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                      }
+                      return res.release();
                     }
                     _nextClosure.emplace_back(n);
                   }
@@ -1381,7 +1389,11 @@ namespace triagens {
                         it = _rightFound.find(next);
                       }
                       res->weight = res->edges.size();
-                      return res;
+
+                      TRI_IF_FAILURE("TraversalOOMPath") {
+                        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                      }
+                      return res.release();
                     }
                     _nextClosure.emplace_back(n);
                   }

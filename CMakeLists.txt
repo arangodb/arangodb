@@ -15,7 +15,7 @@ cmake_minimum_required(VERSION 2.6)
 ################################################################################
 
 if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE string "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE string "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif ()
 
 ################################################################################
@@ -40,6 +40,18 @@ set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 
 set(V8_VERSION        4.3.61)
+
+set(ARANGODB_DISPLAY_NAME       "ArangoDB")
+set(ARANGODB_URL_INFO_ABOUT     "http://www.arangodb.org")
+set(ARANGODB_CONTACT            "hackers@arangodb.org")
+
+set(ARANGODB_FRIENDLY_STRING    "ArangoDB - the multi-purpose database")
+set(ARANGOB_FRIENDLY_STRING     "ArangoBench - stresstester")
+set(ARANGO_DUMP_FRIENDLY_STRING "arangodump - export whole databases from ArangoDB to JSON")
+set(ARANGO_IMP_FRIENDLY_STRING  "arangoimp - import CSV files into ArangoDB")
+set(ARANGO_RESTORE_HELP_LINK    "arangrestore - import dumpfiles created with arangodump into ArangoDB")
+set(ARANGOSH_HELP_LINK          "arangosh - commandline client of ArangoDB")
+
 
 ################################################################################
 ### @brief BUILD_PACKAGE
@@ -271,7 +283,7 @@ if (USE_RELATIVE)
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
   endif ()
 
-else()
+else() # USE_RELATIVE
 
   ################################################################################
   ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
@@ -368,6 +380,28 @@ else()
     set(TRI_SBINDIR_INSTALL "sbin")
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
   endif ()
+
+endif () # USE_RELATIVE
+
+if (MSVC)
+  ################################################################################
+  ### @brief icon paths for windows
+  ################################################################################
+  file(TO_NATIVE_PATH "${TRI_RESOURCEDIR}/Icons/arangodb.ico" RELATIVE_ARANGO_ICON)
+  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.bmp" ARANGO_IMG)
+  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.ico" ARANGO_ICON)
+
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" RELATIVE_ARANGO_ICON "${RELATIVE_ARANGO_ICON}")
+
+
+  ################################################################################
+  ### @brief Versioning for windows
+  ################################################################################
+
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/Installation/Windows/version)
+  include("${PROJECT_SOURCE_DIR}/Installation/Windows/version/generate_product_version.cmake")
 
 endif ()
 
@@ -595,6 +629,18 @@ endif ()
 
 if (ICU_LIB_PATH)
   link_directories(${ICU_LIB_PATH})
+endif ()
+
+################################################################################
+### @brief BOOST
+################################################################################
+
+set(BOOST_VERSION "1.58.0" CACHE string "BOOST version")
+
+set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost/${BOOST_VERSION} CACHE path "BOOST include path")
+
+if (BOOST_INCLUDE)
+  include_directories(${BOOST_INCLUDE})
 endif ()
 
 ################################################################################
@@ -880,13 +926,6 @@ if (MSVC)
   endif()
 
   
-  file(TO_NATIVE_PATH "${TRI_RESOURCEDIR}/Icons/arangodb.ico" RELATIVE_ARANGO_ICON)
-  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.bmp" ARANGO_IMG)
-  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.ico" ARANGO_ICON)
-
-  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
-  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
-  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" RELATIVE_ARANGO_ICON "${RELATIVE_ARANGO_ICON}")
 
   message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
@@ -898,20 +937,20 @@ if (MSVC)
 
   set(CPACK_NSIS_DEFINES "
     !define BITS ${BITS}
-    !define TRI_FRIENDLY_SVC_NAME 'ArangoDB - the multi-purpose database'
+    !define TRI_FRIENDLY_SVC_NAME '${ARANGODB_FRIENDLY_STRING}'
     !define TRI_AARDVARK_URL 'http://127.0.0.1:8529'
     ")
 
-  set(CPACK_PACKAGE_ICON ${ARANGO_ICON})
+  set(CPACK_PACKAGE_ICON             ${ARANGO_ICON})
 
-  set(CPACK_NSIS_MODIFY_PATH ON)
-  set(CPACK_NSIS_MUI_ICON ${ARANGO_ICON})
-  set(CPACK_NSIS_MUI_UNIICON ${ARANGO_ICON})
+  set(CPACK_NSIS_MODIFY_PATH         ON)
+  set(CPACK_NSIS_MUI_ICON            ${ARANGO_ICON})
+  set(CPACK_NSIS_MUI_UNIICON         ${ARANGO_ICON})
   set(CPACK_NSIS_INSTALLED_ICON_NAME ${RELATIVE_ARANGO_ICON})
-  set(CPACK_NSIS_DISPLAY_NAME, "ArangoDB")
-  set(CPACK_NSIS_HELP_LINK "http://www.arangodb.org")
-  set(CPACK_NSIS_URL_INFO_ABOUT  "http://www.arangodb.org")
-  set(CPACK_NSIS_CONTACT "hackers@arangodb.org")
+  set(CPACK_NSIS_DISPLAY_NAME,       ${ARANGODB_DISPLAY_NAME})
+  set(CPACK_NSIS_HELP_LINK           ${ARANGODB_HELP_LINK})
+  set(CPACK_NSIS_URL_INFO_ABOUT      ${ARANGODB_URL_INFO_ABOUT})
+  set(CPACK_NSIS_CONTACT             ${ARANGODB_CONTACT})
 
   ##############################################################################
   ## etcd

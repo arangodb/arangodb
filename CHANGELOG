@@ -1,6 +1,118 @@
 v2.7.0-alpha2 (XXXX-XX-XX)
 -------------------
 
+* Linux startup scripts and systemd configuration for arangod now try to
+  adjust the NOFILE (number of open files) limits for the process. The limit
+  value is set to 131072 (128k) when ArangoDB is started via start/stop 
+  commands
+
+* When ArangoDB is started/stopped manually via the start/stop commands, the
+  main process will wait for up to 10 seconds after it forks the supervisor
+  and arangod child processes. If the startup fails within that period, the
+  start/stop script will fail with an exit code other than zero. If the
+  startup of the supervisor or arangod is still ongoing after 10 seconds, 
+  the main program will still return with exit code 0. The limit of 10 seconds
+  is arbitrary because the time required for a startup is not known in advance.
+
+* added startup option `--database.throw-collection-not-loaded-error`
+
+  Accessing a not-yet loaded collection will automatically load a collection
+  on first access. This flag controls what happens in case an operation
+  would need to wait for another thread to finalize loading a collection. If
+  set to *true*, then the first operation that accesses an unloaded collection
+  will load it. Further threads that try to access the same collection while
+  it is still loading immediately fail with an error (1238, *collection not loaded*). 
+  This is to prevent all server threads from being blocked while waiting on the
+  same collection to finish loading. When the first thread has completed loading 
+  the collection, the collection becomes regularly available, and all operations
+  from that point on can be carried out normally, and error 1238 will not be
+  thrown anymore for that collection.
+
+  If set to *false*, the first thread that accesses a not-yet loaded collection
+  will still load it. Other threads that try to access the collection while
+  loading will not fail with error 1238 but instead block until the collection
+  is fully loaded. This configuration might lead to all server threads being
+  blocked because they are all waiting for the same collection to complete
+  loading. Setting the option to *true* will prevent this from happening, but
+  requires clients to catch error 1238 and react on it (maybe by scheduling 
+  a retry for later).
+
+  The default value is *false*.
+
+* added better control-C support in arangosh
+
+  When CTRL-C is pressed in arangosh, it will now print a `^C` first. Pressing
+  CTRL-C again will reset the prompt if something was entered before, or quit
+  arangosh if no command was entered directly before.
+  
+  This affects the arangosh version build with Readline-support only.
+
+  The MacOS version of ArangoDB for Homebrew now depends on Readline, too. The
+  Homebrew formula has been changed accordingly.
+  When self-compiling ArangoDB on MacOS without Homebrew, Readline now is a
+  prerequisite.
+
+* increased default value collection-specific `indexBuckets` value from 1 to 16
+
+  Collections created from 2.7 on will use the new default if not overriden on
+  collection creation or later using `collection.properties({ indexBuckets: ... })`.
+
+  The `indexBuckets` value determines the number of buckets to use when creating
+  an edges index in the collection, and it may be used in future versions of ArangoDB
+  for other index types, too.
+
+* allow parallel processing of multiple buckets when loading edge indexes
+
+  Buckets will be built in parallel if the collection has an `indexBuckets` value
+  greater than 1 and the collection contains a significant amount of documents/edges.
+
+* changed HTTP client to use poll instead of select on Linux and MacOS
+
+  This affects the ArangoShell and user-defined JavaScript code running inside 
+  arangod that initiates its own HTTP calls.
+
+  Using poll instead of select allows using arbitrary high file descriptors
+  (bigger than the compiled in FD_SETSIZE). Server connections are still handled using 
+  epoll, which has never been affected by FD_SETSIZE.
+
+* implemented AQL `LIKE` function using ICU regexes
+
+* add `RETURN DISTINCT` for AQL queries to return unique results:
+
+      FOR doc IN collection
+        RETURN DISTINCT doc.status 
+
+* removed `createNamedQueue()` and `addJob()` functions from org/arangodb/tasks
+
+* moved dispatcher to atomic implementation
+
+* added shorthand notation for attribute names in AQL object literals:
+
+      LET name = "Peter"
+      LET age = 42
+      RETURN { name, age }
+
+  The above is the shorthand equivalent of the generic form
+      
+      LET name = "Peter"
+      LET age = 42
+      RETURN { name : name, age : age }
+
+* removed configure option `--enable-timings`
+
+  This option did not have any effect.
+
+* removed configure option `--enable-figures`
+
+  This option was removed to simplify some statistics code.
+
+* removed run-time manipulation methods for server endpoints:
+
+  * `db._removeEndpoint()` 
+  * `db._configureEndpoint()`
+  * HTTP POST `/_api/endpoint`
+  * HTTP DELETE `/_api/endpoint`
+
 * AQL query result cache
 
   The query result cache can optionally cache the complete results of all or selected AQL queries.
@@ -70,10 +182,24 @@ v2.7.0-alpha2 (XXXX-XX-XX)
 
 * fixed handling of optional parameters in Foxx manifest configurations
 
+* added verbose Foxx manifest dependency format
+
+* added optional Foxx dependencies
+
+* converted Foxx constructors to classes
+
 * updated chai to 3.0.
 
 
-v2.6.3 (XXXX-XX-XX)
+v2.6.4 (2015-08-01)
+-------------------
+
+* V8: Upgrade to version 4.1.0.27 - this is intended to be the stable V8 version.
+
+* fixed issue #1424: Arango shell should not processing arrows pushing on keyboard
+
+
+v2.6.3 (2015-07-21)
 -------------------
 
 * issue #1409: Document values with null character truncated
@@ -532,7 +658,7 @@ v2.6.0 (2015-06-20)
 
 * 'EDGES' AQL Function
 
-  The AQL function EDGES got a new fifth option parameter.
+  The AQL function `EDGES` got a new fifth option parameter.
   Right now only one option is available: 'includeVertices'. This is a boolean parameter
   that allows to modify the result of the `EDGES` function.
   Default is 'includeVertices: false' which does not have any effect.
@@ -626,6 +752,15 @@ v2.6.0 (2015-06-20)
   to `GRAPH_SHORTEST_PATH`:
   
       GRAPH_SHORTEST_PATH(<graph>, <source>, <target>, { includeData: true, includePath: { edges: true, vertices: true } })
+
+  The attributes `startVertex` and `vertex` that were present in the results of `GRAPH_SHORTEST_PATH`
+  in previous versions of ArangoDB will not be produced in 2.6. To calculate these attributes in 2.6,
+  please extract the first and last elements from the `vertices` result attribute.
+
+* INCOMPATIBLE CHANGE:
+
+  The AQL function `GRAPH_DISTANCE_TO` will now return only the id the destination vertex 
+  in the `vertex` attribute, and not the full vertex data with all vertex attributes.
 
 * INCOMPATIBLE CHANGE:
 
@@ -1256,7 +1391,7 @@ v2.5.0-beta2 (2015-02-23)
 
 * use exclusive native SRWLocks on Windows instead of native mutexes
 
-* added AQL functions MD5, SHA1, and RANDOM_TOKEN.
+* added AQL functions `MD5`, `SHA1`, and `RANDOM_TOKEN`.
 
 * reduced number of string allocations when parsing certain AQL queries
 

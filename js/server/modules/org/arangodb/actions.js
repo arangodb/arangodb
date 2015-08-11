@@ -1300,8 +1300,9 @@ function routeRequest (req, res, routes) {
 
     if (func === null || typeof func !== 'function') {
       func = errorFunction(action.route,
-                           'Invalid callback definition found for route '
-                           + JSON.stringify(action.route));
+                           'Invalid callback definition found for route ' +
+                           JSON.stringify(action.route) +
+                           ' while searching for callback.controller');
     }
 
     try {
@@ -2213,20 +2214,41 @@ function rewriteRequest (req, res, options, next) {
 function pathHandler (req, res, options, next) {
   'use strict';
 
-  var filename;
-
+  var filename, encodedFilename;
   filename = fs.join(options.path, fs.join.apply(fs.join, req.suffix));
 
   if (options.hasOwnProperty('root')) {
     var root = options.root;
 
     filename = fs.join(root, filename);
+    encodedFilename = filename;
   }
-
   if (fs.exists(filename)) {
     res.responseCode = exports.HTTP_OK;
     res.contentType = arangodb.guessContentType(filename);
-    res.bodyFromFile = filename;
+    if (options.hasOwnProperty('gzip')) {
+      if (options.gzip === true) {
+
+        //check if client is capable of gzip encoding
+        if (req.hasOwnProperty('headers')) {
+          if (req.headers.hasOwnProperty('accept-encoding')) {
+            var encoding = req.headers['accept-encoding'];
+            if (encoding.indexOf('gzip') > -1) {
+
+              //check if gzip file is available
+              encodedFilename = encodedFilename + '.gz';
+              if (fs.exists(encodedFilename)) {
+                if (!res.hasOwnProperty('headers')) {
+                  res.headers = {};
+                }
+                res.headers['Content-Encoding'] = "gzip";
+              }
+            }
+          }
+        }
+      }
+    }
+    res.bodyFromFile = encodedFilename;
   }
   else {
     res.responseCode = exports.HTTP_NOT_FOUND;

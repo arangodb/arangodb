@@ -1,22 +1,22 @@
-// Has to be cleaned up it is not as !important as it might look...
 .arango-tab {
   @extend %clear-float;
 
   border-bottom: 1px solid $c-tab-bottom-border;
   list-style: none;
-  margin-bottom: -1px;
   margin-left: 0;
-  margin-right: 15px;
+  padding-right: 10px;
   padding-bottom: 0;
 
   a {
     @extend %clickable;
     @include border-radius(0);
 
-    background-color: $c-tab-inactive;
+    background-color: $c-new-grey;
     border: 1px solid $c-transp;
     border-bottom-color: $c-tab-border;
-    color: $c-black;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    color: $c-white;
     display: block;
     font-size: 13px;
     line-height: 20px;
@@ -38,10 +38,11 @@
 
     &.active a {
       background: $c-tab-active;
-      border-bottom-color: $c-tab-active;
-      border-left-color: $c-tab-border;
-      border-right-color: $c-tab-border;
-      border-top-color: $c-tab-border;
+      border-bottom-color: $c-tab-active !important; /* <-- is important */
+      border-left-color: $c-c2grey;
+      border-right-color: $c-c2grey;
+      border-top-color: $c-c2grey;
+      color: $c-black;
       height: 21px;
       margin-top: -1px;
     }

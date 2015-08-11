@@ -1,5 +1,5 @@
 .arango-table {
-  border-top: 1px solid #000;
+  border-top: 1px solid $c-c2grey;
   width: 100%;
 
   thead {
@@ -18,7 +18,7 @@
     }
 
     tr:nth-child(odd) {
-      background: #f1f0ee;
+      background: $c-table-odd-color;
     }
 
     td {

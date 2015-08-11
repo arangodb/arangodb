@@ -47,6 +47,7 @@
       }
 
       var length;
+      arangoHelper.setCheckboxStatus("#collectionsDropdown");
 
       try {
         length = searchOptions.searchPhrase.length;
@@ -56,6 +57,7 @@
       $('#searchInput').val(searchOptions.searchPhrase);
       $('#searchInput').focus();
       $('#searchInput')[0].setSelectionRange(length, length);
+
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
 
@@ -98,6 +100,7 @@
       //chrome bugfix
       var clicked = e.currentTarget.id;
       $('#'+clicked).click();
+      console.log(e);
     },
 
     checkSystem: function () {

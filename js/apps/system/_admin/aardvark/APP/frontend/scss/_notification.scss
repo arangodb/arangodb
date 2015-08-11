@@ -93,16 +93,16 @@
 #stat_hd {
   @include border-radius(3px);
   background-color: $c-nav-bg;
-  border: 2px solid $c-positive;
+  border: 1px solid rgba(104, 103, 102, 0.10);
   height: 24px;
-  margin-top: 2px;
+  margin-top: 3px;
   text-align: center;
   width: 24px;
 
   #stat_hd_counter {
-    color: $c-white;
+    color: $c-c2grey;
     line-height: 24px;
-    margin-left: 0;
+    margin-left: 1px;
   }
 }
 

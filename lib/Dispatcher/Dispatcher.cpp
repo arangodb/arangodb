@@ -43,13 +43,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  static variables
-// -----------------------------------------------------------------------------
-  
-std::string const Dispatcher::QUEUE_NAME = "STANDARD";
-std::string const Dispatcher::AQL_QUEUE_NAME = "AQL";
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -57,7 +50,7 @@ std::string const Dispatcher::AQL_QUEUE_NAME = "AQL";
 /// @brief returns the default dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-static DispatcherThread* DefaultDispatcherThread (DispatcherQueue* queue, void*) {
+static DispatcherThread* CreateDispatcherThread (DispatcherQueue* queue) {
   return new DispatcherThread(queue);
 }
 
@@ -71,9 +64,10 @@ static DispatcherThread* DefaultDispatcherThread (DispatcherQueue* queue, void*)
 
 Dispatcher::Dispatcher (Scheduler* scheduler)
   : _scheduler(scheduler),
-    _accessDispatcher(),
-    _stopping(0),
-    _queues() {
+    _stopping(false) {
+  for (size_t i = 0;  i < SIZE_QUEUE;  ++i) {
+    _queues[i] = nullptr;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,8 +75,8 @@ Dispatcher::Dispatcher (Scheduler* scheduler)
 ////////////////////////////////////////////////////////////////////////////////
 
 Dispatcher::~Dispatcher () {
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    delete i->second;
+  for (size_t i = 0;  i < SIZE_QUEUE;  ++i) {
+    delete _queues[i];
   }
 }
 
@@ -91,104 +85,36 @@ Dispatcher::~Dispatcher () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief is the dispatcher still running
-////////////////////////////////////////////////////////////////////////////////
-
-bool Dispatcher::isRunning () {
-  MUTEX_LOCKER(_accessDispatcher);
-
-  bool isRunning = false;
-
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    isRunning = isRunning || i->second->isRunning();
-  }
-
-  return isRunning;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the standard queue
 ////////////////////////////////////////////////////////////////////////////////
 
-int Dispatcher::addStandardQueue (size_t nrThreads,
-                                  size_t maxSize) {
-  MUTEX_LOCKER(_accessDispatcher);
+void Dispatcher::addStandardQueue (size_t nrThreads, size_t maxSize) {
+  TRI_ASSERT(_queues[STANDARD_QUEUE] == nullptr);
 
-  if (_queues.find(QUEUE_NAME) != _queues.end()) {
-    return TRI_ERROR_QUEUE_ALREADY_EXISTS;
-  }
-
-  _queues[QUEUE_NAME] = new DispatcherQueue(
+  _queues[STANDARD_QUEUE] = new DispatcherQueue(
     _scheduler,
     this,
-    QUEUE_NAME,
-    DefaultDispatcherThread,
-    nullptr,
+    STANDARD_QUEUE,
+    CreateDispatcherThread,
     nrThreads,
     maxSize);
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the AQL queue (used for the cluster)
 ////////////////////////////////////////////////////////////////////////////////
 
-int Dispatcher::addAQLQueue (size_t nrThreads,
+void Dispatcher::addAQLQueue (size_t nrThreads,
                              size_t maxSize) {
-  MUTEX_LOCKER(_accessDispatcher);
+  TRI_ASSERT(_queues[AQL_QUEUE] == nullptr);
 
-  if (_queues.find(AQL_QUEUE_NAME) != _queues.end()) {
-    return TRI_ERROR_QUEUE_ALREADY_EXISTS;
-  }
-
-  _queues[AQL_QUEUE_NAME] = new DispatcherQueue(
+  _queues[AQL_QUEUE] = new DispatcherQueue(
     _scheduler,
     this,
-    AQL_QUEUE_NAME,
-    DefaultDispatcherThread,
-    nullptr,
+    AQL_QUEUE,
+    CreateDispatcherThread,
     nrThreads,
     maxSize);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a new named queue
-////////////////////////////////////////////////////////////////////////////////
-
-int Dispatcher::startNamedQueue (std::string const& name,
-                                 newDispatcherThread_fptr func,
-                                 void* threadData,
-                                 size_t nrThreads,
-                                 size_t maxSize) {
-  MUTEX_LOCKER(_accessDispatcher);
-
-  if (_queues.find(name) != _queues.end()) {
-    return TRI_ERROR_QUEUE_ALREADY_EXISTS;
-  }
-
-  if (_stopping != 0) {
-    return TRI_ERROR_DISPATCHER_IS_STOPPING;
-  }
-
-  _queues[name] = new DispatcherQueue(
-    _scheduler,
-    this,
-    name,
-    func,
-    threadData,
-    nrThreads,
-    maxSize);
-
-  _queues[name]->start();
-
-  while (! _queues[name]->isStarted()) {
-    usleep(10 * 1000);
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,30 +125,25 @@ int Dispatcher::addJob (Job* job) {
   RequestStatisticsAgentSetQueueStart(job);
 
   // do not start new jobs if we are already shutting down
-  if (_stopping != 0) {
+  if (_stopping.load(memory_order_relaxed)) {
     return TRI_ERROR_DISPATCHER_IS_STOPPING;
   }
 
   // try to find a suitable queue
-  string const& name = job->queue();
-  DispatcherQueue* queue = lookupQueue(name);
+  size_t qnr = job->queue();
+  DispatcherQueue* queue;
 
-  if (queue == nullptr) {
-    LOG_WARNING("unknown queue '%s'", name.c_str());
+  if (qnr >= SIZE_QUEUE || (queue = _queues[qnr]) == nullptr) {
+    LOG_WARNING("unknown queue '%lu'", (unsigned long) qnr);
     return TRI_ERROR_QUEUE_UNKNOWN;
   }
 
   // log success, but do this BEFORE the real add, because the addJob might execute
   // and delete the job before we have a chance to log something
-  LOG_TRACE("added job %p to queue '%s'", (void*) job, name.c_str());
+  LOG_TRACE("added job %p to queue '%lu'", (void*) job, (unsigned long) qnr);
 
   // add the job to the list of ready jobs
-  if (! queue->addJob(job)) {
-    return TRI_ERROR_QUEUE_FULL; // queue full etc.
-  }
-
-  // indicate success, BUT never access job after it has been added to the queue
-  return TRI_ERROR_NO_ERROR;
+  return queue->addJob(job);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,59 +153,15 @@ int Dispatcher::addJob (Job* job) {
 bool Dispatcher::cancelJob (uint64_t jobId) {
   bool done = false;
 
-  MUTEX_LOCKER(_accessDispatcher);
+  for (size_t i = 0;  ! done && i < SIZE_QUEUE;  ++i) {
+    DispatcherQueue* queue = _queues[i];
 
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end() && ! done;  ++i) {
-    DispatcherQueue* q = i->second;
-
-    done = q->cancelJob(jobId);
+    if (queue != nullptr) {
+      done = queue->cancelJob(jobId);
+    }
   }
 
   return done;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start the dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-bool Dispatcher::start () {
-  MUTEX_LOCKER(_accessDispatcher);
-
-  for (map<std::string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    bool ok = i->second->start();
-
-    if (! ok) {
-      LOG_FATAL_AND_EXIT("cannot start dispatcher queue");
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the dispatcher queues are up and running
-////////////////////////////////////////////////////////////////////////////////
-
-bool Dispatcher::isStarted () {
-  MUTEX_LOCKER(_accessDispatcher);
-
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    bool started = i->second->isStarted();
-
-    if (! started) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens the dispatcher for business
-////////////////////////////////////////////////////////////////////////////////
-
-bool Dispatcher::open () {
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,19 +169,19 @@ bool Dispatcher::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::beginShutdown () {
-  if (_stopping != 0) {
+  if (_stopping) {
     return;
   }
 
-  MUTEX_LOCKER(_accessDispatcher);
+  LOG_DEBUG("beginning shutdown sequence of dispatcher");
 
-  if (_stopping == 0) {
-    LOG_DEBUG("beginning shutdown sequence of dispatcher");
+  _stopping = true;
 
-    _stopping = 1;
+  for (size_t i = 0;  i < SIZE_QUEUE;  ++i) {
+    DispatcherQueue* queue = _queues[i];
 
-    for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-      i->second->beginShutdown();
+    if (queue != nullptr) {
+      queue->beginShutdown();
     }
   }
 }
@@ -314,12 +191,14 @@ void Dispatcher::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::shutdown () {
-  MUTEX_LOCKER(_accessDispatcher);
-
   LOG_DEBUG("shutting down the dispatcher");
 
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-    i->second->shutdown();
+  for (size_t i = 0;  i < SIZE_QUEUE;  ++i) {
+    DispatcherQueue* queue = _queues[i];
+
+    if (queue != nullptr) {
+      queue->shutdown();
+    }
   }
 }
 
@@ -328,67 +207,36 @@ void Dispatcher::shutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::reportStatus () {
-  if (TRI_IsDebugLogging(__FILE__)) {
-    MUTEX_LOCKER(_accessDispatcher);
-
-    for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-      DispatcherQueue* q = i->second;
 #ifdef TRI_ENABLE_LOGGER
-      string const& name = i->first;
 
-      LOG_DEBUG("dispatcher queue '%s': threads = %d, started: %d, running = %d, waiting = %d, stopped = %d, blocked = %d, special = %d, monopolistic = %s",
-                name.c_str(),
-                (int) q->_nrThreads,
-                (int) q->_nrStarted,
-                (int) q->_nrRunning,
-                (int) q->_nrWaiting,
-                (int) q->_nrStopped,
-                (int) q->_nrBlocked,
-                (int) q->_nrSpecial,
-                (q->_monopolizer ? "yes" : "no"));
-#endif
-      CONDITION_LOCKER(guard, q->_accessQueue);
+  for (size_t i = 0;  i < SIZE_QUEUE;  ++i) {
+    DispatcherQueue* queue = _queues[i];
 
-      for (set<DispatcherThread*>::iterator j = q->_startedThreads.begin();  j != q->_startedThreads.end(); ++j) {
-        (*j)->reportStatus();
-      }
+    if (queue != nullptr) {
+      LOG_INFO("dispatcher queue '%lu': initial = %d, running = %d, waiting = %d, blocked = %d",
+               (unsigned long) i,
+               (int) queue->_nrThreads,
+               (int) queue->_nrRunning,
+               (int) queue->_nrWaiting,
+               (int) queue->_nrBlocked);
     }
   }
+
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::setProcessorAffinity (const string& name, const vector<size_t>& cores) {
-  auto const& it = _queues.find(name);
+void Dispatcher::setProcessorAffinity (size_t id, std::vector<size_t> const& cores) {
+    DispatcherQueue* queue;
 
-  if (it == _queues.end()) {
+    if (id >= SIZE_QUEUE || (queue = _queues[id]) == nullptr) {
     return;
   }
 
-  it->second->setProcessorAffinity(cores);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a queue
-////////////////////////////////////////////////////////////////////////////////
-
-DispatcherQueue* Dispatcher::lookupQueue (const std::string& name) {
-  MUTEX_LOCKER(_accessDispatcher);
-
-  map<std::string, DispatcherQueue*>::const_iterator i = _queues.find(name);
-
-  if (i == _queues.end()) {
-    return nullptr;
-  }
-  else {
-    return i->second;
-  }
+  queue->setProcessorAffinity(cores);
 }
 
 // -----------------------------------------------------------------------------

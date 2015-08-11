@@ -36,6 +36,7 @@
 // Called before anything else starts - initialises whatever is required to be
 // initalised.
 // .............................................................................
+
 typedef enum {
   TRI_WIN_FINAL_SET_INVALID_HANLE_HANDLER,
   TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL
@@ -60,13 +61,11 @@ int initialiseWindows (const TRI_win_initialise_e, const char*);
 
 int ftruncate (int, long);
 
-
 // .............................................................................
 // windows does not have a function called getpagesize -- create one here
 // .............................................................................
 
 int getpagesize (void);
-
 
 // .............................................................................
 // This function uses the CreateFile windows method rather than _open which

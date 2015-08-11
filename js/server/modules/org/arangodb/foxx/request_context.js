@@ -28,15 +28,14 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var SwaggerDocs = require("org/arangodb/foxx/swaggerDocs").Docs,
-  joi = require("joi"),
-  _ = require("underscore"),
-  extend = _.extend,
-  internal = require("org/arangodb/foxx/internals"),
-  toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema,
-  is = require("org/arangodb/is"),
-  BadRequest = require("http-errors").BadRequest,
-  UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError;
+const SwaggerDocs = require('org/arangodb/foxx/swaggerDocs').Docs;
+const joi = require('joi');
+const _ = require('underscore');
+const internal = require('org/arangodb/foxx/internals');
+const toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema;
+const is = require('org/arangodb/is');
+const UnprocessableEntity = require('http-errors').UnprocessableEntity;
+const UnauthorizedError = require('org/arangodb/foxx/authentication').UnauthorizedError;
 
 function createBodyParamExtractor(rootElement, paramName, allowInvalid) {
   var extractElement;
@@ -101,48 +100,48 @@ function validateOrThrow(raw, schema, allowInvalid) {
   }
   var result = joi.validate(raw, schema);
   if (result.error && !allowInvalid) {
-    throw new BadRequest(result.error.message.replace(/^"value"/, 'Request body'));
+    throw new UnprocessableEntity(result.error.message.replace(/^"value"/, 'Request body'));
   }
   return result.value;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_initializer
-/// @brief Context of a Request Definition
-///
-/// Used for documenting and constraining the routes.
-////////////////////////////////////////////////////////////////////////////////
+class RequestContext {
 
-function RequestContext(executionBuffer, models, route, path, rootElement, constraints, extensions) {
-  this.path = path;
-  this.route = route;
-  this.typeToRegex = {
-    "int": "/[0-9]+/",
-    "integer": "/[0-9]+/",
-    "string": "/[^/]+/"
-  };
-  this.rootElement = rootElement;
-  this.constraints = constraints;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @fn JSF_foxx_RequestContext_initializer
+  /// @brief Context of a Request Definition
+  ///
+  /// Used for documenting and constraining the routes.
+  ////////////////////////////////////////////////////////////////////////////////
 
-  this.docs = new SwaggerDocs(this.route.docs, models);
-  this.docs.addNickname(route.docs.httpMethod, route.url.match);
+  constructor(executionBuffer, models, route, path, rootElement, constraints, extensions) {
+    this.path = path;
+    this.route = route;
+    this.typeToRegex = {
+      int: '/[0-9]+/',
+      integer: '/[0-9]+/',
+      string: '/[^/]+/'
+    };
+    this.rootElement = rootElement;
+    this.constraints = constraints;
 
-  executionBuffer.applyEachFunction(this);
-  var attr;
-  var extensionWrapper = function(scope, func) {
-    return function() {
-      func.apply(this, arguments);
-      return this;
-    }.bind(scope);
-  };
-  for (attr in extensions) {
-    if (extensions.hasOwnProperty(attr)) {
-      this[attr] = extensionWrapper(this, extensions[attr]);
+    this.docs = new SwaggerDocs(this.route.docs, models);
+    this.docs.addNickname(route.docs.httpMethod, route.url.match);
+
+    executionBuffer.applyEachFunction(this);
+    var attr;
+    var extensionWrapper = function(scope, func) {
+      return function() {
+        func.apply(this, arguments);
+        return this;
+      }.bind(scope);
+    };
+    for (attr in extensions) {
+      if (extensions.hasOwnProperty(attr)) {
+        this[attr] = extensionWrapper(this, extensions[attr]);
+      }
     }
   }
-}
-
-extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_pathParam
@@ -182,7 +181,7 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  pathParam: function (paramName, attributes) {
+  pathParam(paramName, attributes) {
     var url = this.route.url,
       urlConstraint = url.constraint || {},
       type = attributes.type,
@@ -234,12 +233,12 @@ extend(RequestContext.prototype, {
 
     urlConstraint[paramName] = this.typeToRegex[regexType];
     if (!urlConstraint[paramName]) {
-      throw new Error("Illegal attribute type: " + regexType);
+      throw new Error('Illegal attribute type: ' + regexType);
     }
     this.route.url = internal.constructUrlObject(url.match, urlConstraint, url.methods[0]);
     this.docs.addPathParam(paramName, description, type, required);
     return this;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_queryParam
@@ -291,7 +290,7 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  queryParam: function (paramName, attributes) {
+  queryParam(paramName, attributes) {
     var type = attributes.type,
       required = attributes.required,
       description = attributes.description,
@@ -356,7 +355,7 @@ extend(RequestContext.prototype, {
       Boolean(allowMultiple)
     );
     return this;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_bodyParam
@@ -436,7 +435,7 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  bodyParam: function (paramName, attributes) {
+  bodyParam(paramName, attributes) {
     var type = attributes.type,
       description = attributes.description,
       allowInvalid = attributes.allowInvalid,
@@ -493,7 +492,7 @@ extend(RequestContext.prototype, {
       construct: construct
     });
     return this;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_summary
@@ -505,13 +504,13 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  summary: function (summary) {
+  summary(summary) {
     if (summary.length > 8192) {
-      throw new Error("Summary can't be longer than 8192 characters");
+      throw new Error('Summary can\'t be longer than 8192 characters');
     }
     this.docs.addSummary(summary);
     return this;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_notes
@@ -522,11 +521,11 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  notes: function () {
+  notes() {
     var notes = Array.prototype.join.call(arguments, '\n');
     this.docs.addNotes(notes);
     return this;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_errorResponse
@@ -551,7 +550,7 @@ extend(RequestContext.prototype, {
 /// /* define our own error type, FoxxyError */
 /// var FoxxyError = function (message) {
 ///   this.name = "FError";
-///   this.message = "the following FoxxyError occurred: ' + message;
+///   this.message = "the following FoxxyError occurred: " + message;
 /// };
 /// FoxxyError.prototype = new Error();
 ///
@@ -571,7 +570,7 @@ extend(RequestContext.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  errorResponse: function (errorClass, code, reason, errorHandler) {
+  errorResponse(errorClass, code, reason, errorHandler) {
     this.route.action.errorResponses.push({
       errorClass: errorClass,
       code: code,
@@ -580,7 +579,7 @@ extend(RequestContext.prototype, {
     });
     this.route.docs.errorResponses.push(internal.constructErrorResponseDoc(code, reason));
     return this;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_onlyIf
@@ -600,12 +599,12 @@ extend(RequestContext.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  onlyIf: function (check) {
+  onlyIf(check) {
     this.route.action.checks.push({
       check: check
     });
     return this;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
@@ -627,7 +626,7 @@ extend(RequestContext.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  onlyIfAuthenticated: function (code, reason) {
+  onlyIfAuthenticated(code, reason) {
     var check;
 
     check = function (req) {
@@ -643,7 +642,7 @@ extend(RequestContext.prototype, {
       code = 401;
     }
     if (is.notExisty(reason)) {
-      reason = "Not authorized";
+      reason = 'Not authorized';
     }
 
     this.onlyIf(check);
@@ -651,14 +650,16 @@ extend(RequestContext.prototype, {
 
     return this;
   }
-});
-
-function RequestContextBuffer() {
-  this.applyChain = [];
 }
 
-extend(RequestContextBuffer.prototype, {
-  applyEachFunction: function (target) {
+class RequestContextBuffer {
+  constructor() {
+    this.applyChain = [];
+  }
+}
+
+_.extend(RequestContextBuffer.prototype, {
+  applyEachFunction(target) {
     _.each(this.applyChain, function (x) {
       target[x.functionName].apply(target, x.argumentList);
     });
@@ -666,6 +667,104 @@ extend(RequestContextBuffer.prototype, {
 });
 
 _.each([
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_RequestContextBuffer_pathParam
+///
+/// If you defined a route "/foxx/:id", you can constrain which format a path
+/// parameter (*/foxx/12*) can have by giving it a *joi* type.
+///
+/// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
+///
+/// *Parameter*
+///
+/// * *id*: name of the param.
+/// * *options*: a joi schema or an object with the following properties:
+///  * *type*: a joi schema.
+///  * *description*: documentation description for the parameter.
+///  * *required* (optional): whether the parameter is required. Default: determined by *type*.
+///
+/// *Examples*
+///
+/// ```js
+/// app.allroutes.pathParam("id", joi.number().integer().required().description("Id of the Foxx"));
+///
+/// app.get("/foxx/:id", function {
+///   // Do something
+/// });
+/// ```
+///
+/// You can also pass in a configuration object instead:
+///
+/// ```js
+/// app.allroutes.pathParam("id", {
+///   type: joi.number().integer(),
+///   required: true,
+///   description: "Id of the Foxx"
+/// });
+///
+/// app.get("/foxx/:id", function {
+///   // Do something
+/// });
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  'pathParam',
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_RequestContextBuffer_queryParam
+///
+/// `FoxxController#queryParam(id, options)`
+///
+/// Describe a query parameter:
+///
+/// If you defined a route "/foxx", you can constrain which format a query
+/// parameter (*/foxx?a=12*) can have by giving it a *joi* type.
+///
+/// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
+///
+/// You can also provide a description of this parameter and
+/// whether you can provide the parameter multiple times.
+///
+/// *Parameter*
+///
+/// * *id*: name of the parameter
+/// * *options*: a joi schema or an object with the following properties:
+///  * *type*: a joi schema
+///  * *description*: documentation description for this param.
+///  * *required* (optional): whether the param is required. Default: determined by *type*.
+///  * *allowMultiple* (optional): whether the param can be specified more than once. Default: `false`.
+///
+/// *Examples*
+///
+/// ```js
+/// app.allroutes.queryParam("id",
+///   joi.number().integer()
+///   .required()
+///   .description("Id of the Foxx")
+///   .meta({allowMultiple: false})
+/// });
+///
+/// app.get("/foxx", function {
+///   // Do something
+/// });
+/// ```
+///
+/// You can also pass in a configuration object instead:
+///
+/// ```js
+/// app.allroutes.queryParam("id", {
+///   type: joi.number().integer().required().description("Id of the Foxx"),
+///   allowMultiple: false
+/// });
+///
+/// app.get("/foxx", function {
+///   // Do something
+/// });
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  'queryParam',
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContextBuffer_errorResponse
 ///
@@ -685,7 +784,7 @@ _.each([
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  "errorResponse",
+  'errorResponse',
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIf
@@ -706,12 +805,12 @@ _.each([
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  "onlyIf",
+  'onlyIf',
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 ///
-/// `RequestContextBuffer#errorResponse(errorClass, code, description)`
+/// `RequestContextBuffer#onlyIfAuthenticated(code, description)`
 ///
 /// Defines an *onlyIfAuthenticated* for all routes of this controller. For details on
 /// *onlyIfAuthenticated* see the according method on routes.
@@ -727,9 +826,9 @@ _.each([
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  "onlyIfAuthenticated"
+  'onlyIfAuthenticated'
 ], function (functionName) {
-  extend(RequestContextBuffer.prototype[functionName] = function () {
+  _.extend(RequestContextBuffer.prototype[functionName] = function () {
     this.applyChain.push({
       functionName: functionName,
       argumentList: arguments
@@ -738,6 +837,9 @@ _.each([
   });
 });
 
+RequestContext.Buffer = RequestContextBuffer;
+
+module.exports = exports = RequestContext;
 exports.RequestContext = RequestContext;
 exports.RequestContextBuffer = RequestContextBuffer;
 

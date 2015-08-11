@@ -54,7 +54,7 @@ content-type: application/json; charset=utf-8
           ], 
           "index" : { 
             "type" : "hash", 
-            "id" : "1284250850", 
+            "id" : "512121334469", 
             "unique" : false, 
             "sparse" : false, 
             "selectivityEstimate" : 1, 
@@ -90,7 +90,7 @@ content-type: application/json; charset=utf-8
       ], 
       "variables" : [ 
         { 
-          "id" : 2, 
+          "id" : 1, 
           "name" : "1" 
         }, 
         { 
@@ -104,7 +104,7 @@ content-type: application/json; charset=utf-8
   ], 
   "warnings" : [ ], 
   "stats" : { 
-    "rulesExecuted" : 22, 
+    "rulesExecuted" : 21, 
     "rulesSkipped" : 0, 
     "plansCreated" : 1 
   }, 

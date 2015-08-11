@@ -48,7 +48,8 @@ Function::Function (std::string const& externalName,
                     bool canThrow,
                     bool canRunOnDBServer,
                     bool canPassArgumentsByReference,
-                    FunctionImplementation implementation)
+                    FunctionImplementation implementation,
+                    ExecutionCondition condition)
   : internalName(internalName),
     externalName(externalName),
     arguments(arguments),
@@ -58,9 +59,14 @@ Function::Function (std::string const& externalName,
     canRunOnDBServer(canRunOnDBServer),
     canPassArgumentsByReference(canPassArgumentsByReference),
     implementation(implementation),
+    condition(condition),
     conversions() {
 
   initializeArguments();
+
+  // condition must only be set if we also have an implementation
+  TRI_ASSERT(implementation != nullptr ||
+             (implementation == nullptr && condition == nullptr));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +146,7 @@ void Function::initializeArguments () {
         // set the conversion info for the position
         if (conversions.size() <= position) {
           // we don't yet have another parameter at this position
-          conversions.push_back(CONVERSION_REQUIRED);
+          conversions.emplace_back(CONVERSION_REQUIRED);
         }
         else if (conversions[position] == CONVERSION_NONE) {
           // we already had a parameter at this position
@@ -155,7 +161,7 @@ void Function::initializeArguments () {
         // set the conversion info for the position
         if (conversions.size() <= position) {
           // we don't yet have another parameter at this position
-          conversions.push_back(CONVERSION_NONE);
+          conversions.emplace_back(CONVERSION_NONE);
         }
         else if (conversions[position] == CONVERSION_REQUIRED) {
           // we already had a parameter at this position

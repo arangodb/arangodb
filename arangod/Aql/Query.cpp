@@ -49,6 +49,7 @@
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8Server/ApplicationV8.h"
+#include "V8Server/v8-shape-conv.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;
@@ -92,7 +93,7 @@ static_assert(sizeof(StateNames) / sizeof(std::string) == static_cast<size_t>(Ex
       
 Profile::Profile (Query* query) 
   : query(query),
-    results(static_cast<size_t>(INVALID_STATE)),
+    results(),
     stamp(TRI_microtime()),
     tracked(false) {
 
@@ -127,15 +128,15 @@ Profile::~Profile () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enter a state
+/// @brief sets a state to done
 ////////////////////////////////////////////////////////////////////////////////
 
-void Profile::enter (ExecutionState state) {
+void Profile::setDone (ExecutionState state) {
   double const now = TRI_microtime();
 
   if (state != ExecutionState::INVALID_STATE) {
     // record duration of state
-    results.emplace_back(std::make_pair(state, now - stamp)); 
+    results.emplace_back(state, now - stamp); 
   }
 
   // set timestamp
@@ -484,10 +485,10 @@ void Query::registerWarning (int code,
   }
 
   if (details == nullptr) {
-    _warnings.emplace_back(std::make_pair(code, TRI_errno_string(code)));
+    _warnings.emplace_back(code, TRI_errno_string(code));
   }
   else {
-    _warnings.emplace_back(std::make_pair(code, details));
+    _warnings.emplace_back(code, details);
   }
 }
 
@@ -632,10 +633,10 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute (QueryRegistry* registry) {
-  bool useQueryCache = canUseQueryCache();
-  uint64_t queryStringHash = 0;
-
   try {
+    bool useQueryCache = canUseQueryCache();
+    uint64_t queryStringHash = 0;
+
     if (useQueryCache) {
       // hash the query
       queryStringHash = hash();
@@ -777,10 +778,10 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
 QueryResultV8 Query::executeV8 (v8::Isolate* isolate, 
                                 QueryRegistry* registry) {
-  bool useQueryCache = canUseQueryCache();
-  uint64_t queryStringHash = 0;
-
   try {
+    bool useQueryCache = canUseQueryCache();
+    uint64_t queryStringHash = 0;
+
     if (useQueryCache) {
       // hash the query
       queryStringHash = hash();
@@ -1069,7 +1070,7 @@ char* Query::registerString (char const* p,
   char* copy = nullptr;
   if (mustUnescape) {
     size_t outLength;
-    copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
+    copy = TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
   }
   else {
     if (length < ShortStringStorage::MaxStringLength) {
@@ -1111,7 +1112,7 @@ char* Query::registerString (std::string const& p,
 void Query::enterContext () {
   if (! _contextOwnedByExterior) {
     if (_context == nullptr) {
-      _context = _applicationV8->enterContext("STANDARD", _vocbase, false);
+      _context = _applicationV8->enterContext(_vocbase, false);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot enter V8 context");
@@ -1282,14 +1283,14 @@ bool Query::canUseQueryCache () const {
     // setting `cache` attribute to false.
 
     // cannot use query cache on a coordinator at the moment
-    return ! triagens::arango::ServerState::instance()->isCoordinator();
+    return ! triagens::arango::ServerState::instance()->isRunningInCluster();
   }
   else if (queryCacheMode == CACHE_ON_DEMAND && getBooleanOption("cache", false)) {
     // cache mode is set to demand... query will only be cached if `cache`
     // attribute is set to false
     
     // cannot use query cache on a coordinator at the moment
-    return ! triagens::arango::ServerState::instance()->isCoordinator();
+    return ! triagens::arango::ServerState::instance()->isRunningInCluster();
   }
 
   return false;
@@ -1395,20 +1396,10 @@ std::vector<std::string> Query::getRulesFromOptions () const {
 
 void Query::enterState (ExecutionState state) {
   if (_profile != nullptr) {
-    _profile->enter(_state);
+    // record timing for previous state
+    _profile->setDone(_state);
   }
-
-#if 0
-  // Just for debugging:
-  std::cout << "enterState: " << state;
-  if (_queryString != nullptr) {
-    std::cout << _queryString << std::endl;
-  }
-  else {
-    std::cout << "no querystring" << std::endl;
-  }
-#endif
-
+  
   // and adjust the state
   _state = state;
 }

@@ -10,6 +10,8 @@ VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
 VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
 VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 
+VERSION_PATCH := $(wordlist 1,1,$(subst -, ,$(VERSION_PATCH)))
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   SPECIAL TARGETS
 ## -----------------------------------------------------------------------------
@@ -77,7 +79,7 @@ remove-automagic:
 ### @brief make love
 ################################################################################
 
-love: 
+love:
 	@echo ArangoDB loves you
 
 ## -----------------------------------------------------------------------------
@@ -313,7 +315,7 @@ pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
 	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
-	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Release
+	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=RelWithDebInfo
 	${MAKE} packXX BITS="$(BITS)"
 
 pack-winXX-MOREOPTS:
@@ -327,22 +329,28 @@ winXX-cmake: checkcmake
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
 		-D "ARANGODB_VERSION=${VERSION}" \
+		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
+		-D "BUILD_TYPE=RelWithDebInfo" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=4.11" \
 		-D "V8_VERSION=4.3.61" \
 		-D "ZLIB_VERSION=1.2.7" \
+		-D "BUILD_ID=${BUILD_ID}" \
 		$(MOREOPTS) \
 		..
 
 winXX-build:
+	cp Installation/Windows/Icons/arangodb.ico Build$(BITS) 
 	cd Build$(BITS) && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
 	./Installation/file-copy-js.sh . Build$(BITS)
 
-	cd Build$(BITS) && cpack -G NSIS && cpack -G ZIP
+	cd Build$(BITS) && cp -a bin/RelWithDebInfo bin/Release
+	cd Build$(BITS) && cpack -G NSIS -D "BUILD_TYPE=RelWithDebInfo"
+	cd Build$(BITS) && cpack -G ZIP -D "BUILD_TARGET=RelWithDebInfo"
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
 

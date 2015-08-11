@@ -32,10 +32,11 @@
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
 #include "Basics/StringBuffer.h"
-#include "ShapedJson/shaped-json.h"
 #include "Utils/AqlTransaction.h"
+#include "VocBase/shaped-json.h"
 
 struct TRI_document_collection_t;
+class VocShaper;
 
 namespace triagens {
   namespace aql {
@@ -88,7 +89,7 @@ namespace triagens {
         AqlValue get (triagens::arango::AqlTransaction* trx,
                       AqlItemBlock const*,
                       size_t,
-                      std::vector<Variable*> const&,
+                      std::vector<Variable const*> const&,
                       std::vector<RegisterId> const&);
 
 // -----------------------------------------------------------------------------
@@ -167,7 +168,7 @@ namespace triagens {
 /// @brief shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_shaper_t* _shaper;
+        VocShaper* _shaper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attribute path id cache for shapes

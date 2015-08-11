@@ -125,8 +125,11 @@ void QueryCacheResultEntry::use () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QueryCacheResultEntry::unuse () {
+  TRI_ASSERT(_refCount > 0);
+
   if (--_refCount == 0) {
     if (_deletionRequested == 1) {
+      // trigger the deletion
       delete this;
     }
   }
@@ -188,6 +191,8 @@ QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup (uint64_t hash,
 
   // found an entry
   auto entry = (*it).second;
+
+  // mark the entry as being used so noone else can delete it while it is in use
   entry->use();
   
   return entry;
@@ -288,13 +293,14 @@ void QueryCacheDatabaseEntry::invalidate (char const* collection) {
 
     if (it3 != _entriesByHash.end()) {
       // remove entry from the linked list
-      unlink((*it3).second);
+      auto entry = (*it3).second;
+      unlink(entry);
 
       // erase it from hash table
       _entriesByHash.erase(it3);
 
       // delete the object itself
-      tryDelete((*it3).second);
+      tryDelete(entry);
     }
   }
 

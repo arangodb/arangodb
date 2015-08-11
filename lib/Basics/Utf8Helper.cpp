@@ -303,7 +303,8 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone,
     }
   }
 
-  utf8_dest = TRI_LowerAsciiStringZ(zone, src);
+  utf8_dest = TRI_LowerAsciiString(zone, src);
+
   if (utf8_dest != nullptr) {
     dstLength = (int32_t) strlen(utf8_dest);
   }
@@ -392,7 +393,8 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone,
     }
   }
 
-  utf8_dest = TRI_UpperAsciiStringZ(zone, src);
+  utf8_dest = TRI_UpperAsciiString(zone, src);
+
   if (utf8_dest != nullptr) {
     dstLength = (int32_t) strlen(utf8_dest);
   }
@@ -659,6 +661,57 @@ bool Utf8Helper::getWords (TRI_vector_string_t*& words,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief builds a regex matcher for the specified pattern
+////////////////////////////////////////////////////////////////////////////////
+
+RegexMatcher* Utf8Helper::buildMatcher (std::string const& pattern) {
+  UErrorCode status = U_ZERO_ERROR;
+
+  std::unique_ptr<RegexMatcher> matcher(new RegexMatcher(UnicodeString::fromUTF8(pattern), 0, status));
+  if (U_FAILURE(status)) {
+    return nullptr;
+  }
+
+  return matcher.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not value matches a regex
+////////////////////////////////////////////////////////////////////////////////
+
+bool Utf8Helper::matches (RegexMatcher* matcher,
+                          std::string const& value,
+                          bool& error) {
+  return matches(matcher, value.c_str(), value.size(), error);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not value matches a regex
+////////////////////////////////////////////////////////////////////////////////
+
+bool Utf8Helper::matches (RegexMatcher* matcher,
+                          char const* value,
+                          size_t valueLength,
+                          bool& error) {
+
+  TRI_ASSERT(value != nullptr);
+  UnicodeString v = UnicodeString::fromUTF8(value);
+
+  matcher->reset(v);
+
+  UErrorCode status = U_ZERO_ERROR;
+  error = false;
+
+  TRI_ASSERT(matcher != nullptr);
+  UBool result = matcher->matches(status);
+  if (U_FAILURE(status)) {
+    error = true;
+  }
+
+  return (result ? true : false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -749,19 +802,17 @@ UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
                         char const* utf8,
                         size_t inLength,
                         size_t* outLength) {
-  UErrorCode status;
-  UChar* utf16;
   int32_t utf16Length;
 
   // 1. convert utf8 string to utf16
   // calculate utf16 string length
-  status = U_ZERO_ERROR;
+  UErrorCode status = U_ZERO_ERROR;
   u_strFromUTF8(nullptr, 0, &utf16Length, utf8, (int32_t) inLength, &status);
   if (status != U_BUFFER_OVERFLOW_ERROR) {
     return nullptr;
   }
 
-  utf16 = (UChar *) TRI_Allocate(zone, (utf16Length + 1) * sizeof(UChar), false);
+  UChar* utf16 = (UChar *) TRI_Allocate(zone, (utf16Length + 1) * sizeof(UChar), false);
   if (utf16 == nullptr) {
     return nullptr;
   }
@@ -788,18 +839,16 @@ char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
                        UChar const* uchar,
                        size_t inLength,
                        size_t* outLength) {
-  UErrorCode status;
-  char* utf8;
   int32_t utf8Length;
 
   // calculate utf8 string length
-  status = U_ZERO_ERROR;
+  UErrorCode status = U_ZERO_ERROR;
   u_strToUTF8(nullptr, 0, &utf8Length, uchar, (int32_t) inLength, &status);
   if (status != U_BUFFER_OVERFLOW_ERROR) {
     return nullptr;
   }
 
-  utf8 = static_cast<char*>(TRI_Allocate(zone, (utf8Length + 1) * sizeof(char), false));
+  char* utf8 = static_cast<char*>(TRI_Allocate(zone, (utf8Length + 1) * sizeof(char), false));
 
   if (utf8 == nullptr) {
     return nullptr;

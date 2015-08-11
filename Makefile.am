@@ -114,6 +114,7 @@ AM_CPPFLAGS = \
 	-D_SYSCONFDIR_='"${TRI_SYSCONFDIR}"' \
 	-I@top_srcdir@/lib \
 	-I@top_builddir@/lib \
+	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
@@ -226,17 +227,27 @@ arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*$(PROGRAM_SUFF
 
 JS_FILE_LIST = $(shell @srcdir@/Installation/file-list-js.sh @srcdir@)
 
-pkgdataJS1dir = $(datadir)/arangodb
-pkgdataJS2dir = $(datadir)/arangodb
-pkgdataJS3dir = $(datadir)/arangodb
-pkgdataJS4dir = $(datadir)/arangodb
-pkgdataJS5dir = $(datadir)/arangodb
+pkgdataJS01dir = $(datadir)/arangodb
+pkgdataJS02dir = $(datadir)/arangodb
+pkgdataJS03dir = $(datadir)/arangodb
+pkgdataJS04dir = $(datadir)/arangodb
+pkgdataJS05dir = $(datadir)/arangodb
+pkgdataJS06dir = $(datadir)/arangodb
+pkgdataJS07dir = $(datadir)/arangodb
+pkgdataJS08dir = $(datadir)/arangodb
+pkgdataJS09dir = $(datadir)/arangodb
+pkgdataJS10dir = $(datadir)/arangodb
 
-nobase_pkgdataJS1_DATA = $(wordlist    1,   1000, $(JS_FILE_LIST))
-nobase_pkgdataJS2_DATA = $(wordlist 1001,   2000, $(JS_FILE_LIST))
-nobase_pkgdataJS3_DATA = $(wordlist 2001,   3000, $(JS_FILE_LIST))
-nobase_pkgdataJS4_DATA = $(wordlist 3001,   4000, $(JS_FILE_LIST))
-nobase_pkgdataJS5_DATA = $(wordlist 4001, 100000, $(JS_FILE_LIST))
+nobase_pkgdataJS01_DATA = $(wordlist    1,   1000, $(JS_FILE_LIST))
+nobase_pkgdataJS02_DATA = $(wordlist 1001,   2000, $(JS_FILE_LIST))
+nobase_pkgdataJS03_DATA = $(wordlist 2001,   3000, $(JS_FILE_LIST))
+nobase_pkgdataJS04_DATA = $(wordlist 3001,   4000, $(JS_FILE_LIST))
+nobase_pkgdataJS05_DATA = $(wordlist 4001,   5000, $(JS_FILE_LIST))
+nobase_pkgdataJS06_DATA = $(wordlist 5001,   6000, $(JS_FILE_LIST))
+nobase_pkgdataJS07_DATA = $(wordlist 6001,   7000, $(JS_FILE_LIST))
+nobase_pkgdataJS08_DATA = $(wordlist 7001,   8000, $(JS_FILE_LIST))
+nobase_pkgdataJS09_DATA = $(wordlist 8001,   9000, $(JS_FILE_LIST))
+nobase_pkgdataJS10_DATA = $(wordlist 9001, 100000, $(JS_FILE_LIST))
 
 nobase_pkgdata_DATA =
 

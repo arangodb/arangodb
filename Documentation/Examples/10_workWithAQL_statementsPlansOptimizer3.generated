@@ -1,0 +1,20 @@
+arangosh> var query = "FOR doc IN mycollection FILTER doc.value > 42 RETURN doc";
+arangosh> require("org/arangodb/aql/explainer").explain(query, {colors:false});
+Query string:
+ FOR doc IN mycollection FILTER doc.value > 42 RETURN doc
+
+Execution plan:
+ Id   NodeType                  Est.   Comment
+  1   SingletonNode                1   * ROOT
+  2   EnumerateCollectionNode    201     - FOR doc IN mycollection   /* full collection scan */
+  3   CalculationNode            201       - LET #1 = doc.`value` > 42   /* undefined expression */   /* collections used: doc : mycollection */
+  4   FilterNode                 201       - FILTER #1
+  5   ReturnNode                 201       - RETURN doc
+
+Indexes used:
+ none
+
+Optimization rules applied:
+ none
+
+

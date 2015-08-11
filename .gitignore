@@ -61,6 +61,7 @@ Documentation/Books/Users/manual.pdf
 Documentation/Books/Makefile
 Documentation/Books/Users/node_modules/
 Documentation/Examples/*.generated
+Documentation/Books/ppbooks/
 UnitTests/HttpInterface/logs/
 UnitTests/basics_suite
 UnitTests/geo_suite

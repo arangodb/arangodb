@@ -1,21 +1,45 @@
 input.search-input {
-  @include border-radius(0);
-  border: 0;
-  height: 18px;
+  @include border-radius(3px);
+  background-color: $c-white !important;
+  border: 1px solid #eeeeee;
+  box-shadow: none;
+  height: 14px;
   line-height: 18px;
-  margin-top: 5px;
-  width: 214px;
+  margin-top: 6px;
+  margin-right: -1px;
+  width: 120px;
+  outline: none;
+    outline-color: $c-transp;
+    outline-style: none;
 
   &:focus {
-    @include box-shadow(0 0 10px $c-positive);
-    border-color: $c-positive;
+    border-color: #999999;
+    box-shadow: none;
     outline: none;
+    outline-color: $c-transp;
+    outline-style: none;
   }
 }
 
+
 .search-field {
-  @extend %pull-left;
-  margin-left: 15px;
+  @extend %pull-right;
+  margin-left: 10px;
+
+  .fa-search {
+    color: #D2D2D2;
+    font-size: 13pt;
+    opacity: 0.5;
+    position: absolute;
+    right: 7px;
+    top: 9px;
+
+    &:hover {
+      opacity: 1;
+      cursor: pointer;
+    }
+  }
+
 }
 
 %search-submit-icon {
@@ -47,23 +71,27 @@ input.search-input {
 
 // The bar on top of each page
 div.headerBar {
-  background-color: $c-bar-bg;
+  background-color: $c-white;
+  border-radius: 3px;
+  border: 1px solid rgba(104, 103, 102, 0.10);
   color: $c-white;
   font-size: 16px;
   height: 36px;
+  margin-top: 15px;
   margin-bottom: 5px;
   padding-left: 5px;
   padding-right: 5px;
   position: relative;
 
   .infoField {
-    background-color: white;
+    background-color: #f5f8f0;
+    border: 1px solid lightgrey;
+    border-radius: 3px !important;
     color: black;
     float: right;
     font-size: 12px;
-    margin-top: 8px;
+    margin-top: 7px;
     margin-right: 7px;
-    border-radius: 20px;
     padding-left: 5px;
     padding-right: 5px;
 
@@ -118,9 +146,10 @@ div.headerBar {
 // The title of the page
 
 div.headerBar a.arangoHeader {
-  color: $c-white;
-  font-size: 16px;
-  left: 5px;
+  color: $c-black;
+  font-size: 13pt;
+  font-weight: 100;
+  left: 0px;
   position: relative;
   top: 7px;
 }
@@ -141,19 +170,29 @@ div.headerBar > div.headerButtonBar {
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 8px 0;
+  padding: 7px 0;
 
   // Disabled breadcrumb
   .disabledBread {
-    color: $c-white;
+    font-size: 13pt;
+    font-weight: 100;
+    color: $c-darker-grey;
     float: left;
-    padding-left: 5px;
+    padding-right: 5px;
+    position: relative;
+
+    i {
+      font-size: 10pt;
+      margin-left: 10px;
+    }
+
   }
 
   .activeBread {
+    font-size: 13pt;
+    font-weight: 100;
     color: $c-breadcrumb-a-active-bread;
     float: left;
-    padding-left: 5px;
   }
 }
 

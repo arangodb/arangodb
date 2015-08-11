@@ -29,30 +29,16 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_GENERAL_SERVER_H
-#define ARANGODB_GENERAL_SERVER_GENERAL_SERVER_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTP_SERVER_H
+#define ARANGODB_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "Scheduler/TaskManager.h"
-
-#include "Basics/locks.h"
+#include "Basics/Mutex.h"
+#include "Basics/SpinLock.h"
 #include "Rest/ConnectionInfo.h"
 #include "Rest/Handler.h"
 
 // #define TRI_USE_SPIN_LOCK_GENERAL_SERVER 1
-
-#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
-#define GENERAL_SERVER_LOCK_TYPE TRI_spin_t
-#define GENERAL_SERVER_INIT TRI_InitSpin
-#define GENERAL_SERVER_DESTROY TRI_DestroySpin
-#define GENERAL_SERVER_LOCK TRI_LockSpin
-#define GENERAL_SERVER_UNLOCK TRI_UnlockSpin
-#else
-#define GENERAL_SERVER_LOCK_TYPE TRI_mutex_t
-#define GENERAL_SERVER_INIT TRI_InitMutex
-#define GENERAL_SERVER_DESTROY TRI_DestroyMutex
-#define GENERAL_SERVER_LOCK TRI_LockMutex
-#define GENERAL_SERVER_UNLOCK TRI_UnlockMutex
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class HttpServer
@@ -122,13 +108,17 @@ namespace triagens {
 /// @brief returns the protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual const char* protocol () const;
+        virtual char const* protocol () const {
+          return "http";
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Endpoint::EncryptionType encryptionType () const;
+        virtual Endpoint::EncryptionType encryptionType () const {
+          return Endpoint::ENCRYPTION_NONE;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a suitable communication task
@@ -146,37 +136,39 @@ namespace triagens {
 /// @brief returns the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-        Scheduler* scheduler () const;
+        Scheduler* scheduler () const {
+          return _scheduler;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-        Dispatcher* dispatcher () const;
+        Dispatcher* dispatcher () const {
+          return _dispatcher;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the dispatcher
+////////////////////////////////////////////////////////////////////////////////
+
+        AsyncJobManager* jobManager () const {
+          return _jobManager;
+        }
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief return the handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpHandlerFactory* handlerFactory () const;
+        HttpHandlerFactory* handlerFactory () const {
+          return _handlerFactory;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
         void setEndpointList (const EndpointList* list);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds another endpoint at runtime
-////////////////////////////////////////////////////////////////////////////////
-
-        bool addEndpoint (Endpoint*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an endpoint at runtime
-////////////////////////////////////////////////////////////////////////////////
-
-        bool removeEndpoint (Endpoint*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts listening
@@ -201,12 +193,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void unregisterChunkedTask (HttpCommTask*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down all handlers
-////////////////////////////////////////////////////////////////////////////////
-
-        void shutdownHandlers ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes all listen and comm tasks
@@ -242,19 +228,22 @@ namespace triagens {
 /// @brief creates a job for asynchronous execution
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRequestAsync (HttpHandler*, uint64_t* jobId);
+        bool handleRequestAsync (std::unique_ptr<HttpHandler>&, 
+                                 uint64_t* jobId);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the handler directly or add it to the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRequest (HttpCommTask*, HttpHandler*);
+        bool handleRequest (HttpCommTask*, 
+                            std::unique_ptr<HttpHandler>&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback if job is done
+/// @brief handle the http response of the handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        void jobDone (Job*);
+        void handleResponse (HttpCommTask*,
+                             HttpHandler*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   protected types
@@ -302,12 +291,6 @@ namespace triagens {
 
         void registerHandler (HttpHandler* handler, HttpCommTask* task);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a new job
-////////////////////////////////////////////////////////////////////////////////
-
-        void registerJob (HttpHandler* handler, HttpServerJob* job);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -354,31 +337,17 @@ namespace triagens {
 /// @brief mutex for comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-        GENERAL_SERVER_LOCK_TYPE _commTasksLock;
+#ifdef TRI_USE_SPIN_LOCK_GENERAL_SERVER
+        triagens::basics::SpinLock _commTasksLock;
+#else
+        triagens::basics::Mutex _commTasksLock;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief active comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::set<HttpCommTask*> _commTasks;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mutex for mapping structures
-////////////////////////////////////////////////////////////////////////////////
-
-        GENERAL_SERVER_LOCK_TYPE _mappingLock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief map handler to task
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_map<HttpHandler*, handler_task_job_t> _handlers;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief map task to handler
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_map<Task*, handler_task_job_t> _task2handler;
+        std::unordered_set<HttpCommTask*> _commTasks;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief keep-alive timeout

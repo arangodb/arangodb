@@ -1,5 +1,10 @@
 .shell_workspace {
   margin-top: 13px;
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
 }
 
 .replShell {
@@ -8,7 +13,12 @@
   height: 100%;
   min-width: 100px;
   position: relative;
+  overflow-y:hidden;
   width: 100%;
+
+  > div {
+    border-radius: 3px;
+  }
 
   pre {
     border-bottom: 0;

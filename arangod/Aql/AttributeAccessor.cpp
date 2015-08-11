@@ -32,8 +32,9 @@
 #include "Aql/Variable.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
-#include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/shaped-json.h"
+#include "VocBase/VocShaper.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -107,7 +108,7 @@ AttributeAccessor::~AttributeAccessor () {
 AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
                                  AqlItemBlock const* argv,
                                  size_t startPos,
-                                 std::vector<Variable*> const& vars,
+                                 std::vector<Variable const*> const& vars,
                                  std::vector<RegisterId> const& regs) {
 
   size_t i = 0;
@@ -287,7 +288,7 @@ AqlValue AttributeAccessor::extractRegular (AqlValue const& src,
                                             TRI_document_collection_t const* document) {
   if (_shaper == nullptr) {
     _shaper = document->getShaper();
-    _pid = _shaper->lookupAttributePathByName(_shaper, _combinedName.c_str());
+    _pid = _shaper->lookupAttributePathByName(_combinedName.c_str());
   }
    
   if (_pid != 0) { 
@@ -300,7 +301,7 @@ AqlValue AttributeAccessor::extractRegular (AqlValue const& src,
     TRI_shaped_json_t json;
     TRI_shape_t const* shape;
 
-    bool ok = TRI_ExtractShapedJsonVocShaper(_shaper, &shapedJson, 0, _pid, &json, &shape);
+    bool ok = _shaper->extractShapedJson(&shapedJson, 0, _pid, &json, &shape);
 
     if (ok && shape != nullptr) {
       std::unique_ptr<TRI_json_t> extracted(TRI_JsonShapedJson(_shaper, &json));

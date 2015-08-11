@@ -218,7 +218,7 @@
     buildCollectionLink : function (collection) {
       return "collection/" + encodeURIComponent(collection.get('name')) + '/documents/1';
     },
-
+    /*
     prevCollection : function () {
       if (this.collectionContext.prev !== null) {
         $('#collectionPrev').parent().removeClass('disabledPag');
@@ -251,7 +251,7 @@
       else {
         $('#collectionNext').parent().addClass('disabledPag');
       }
-    },
+    },*/
 
     markFilterToggle: function () {
       if (this.restoredFilters.length > 0) {
@@ -911,12 +911,14 @@
       //set last active collection name
       this.lastCollectionName = this.collectionName;
 
+      /*
       if (this.collectionContext.prev === null) {
         $('#collectionPrev').parent().addClass('disabledPag');
       }
       if (this.collectionContext.next === null) {
         $('#collectionNext').parent().addClass('disabledPag');
       }
+      */
 
       this.uploadSetup();
 
@@ -947,7 +949,12 @@
         );
         total = $('#totalDocuments');
       }
-      total.html("Total: " + this.collection.getTotal() + " document(s)");
+      if (this.type === 'document') {
+        total.html(this.collection.getTotal() + " document(s)");
+      }
+      if (this.type === 'edge') {
+        total.html(this.collection.getTotal() + " edge(s)");
+      }
     },
 
     breadcrumb: function () {
@@ -955,7 +962,7 @@
       $('#transparentHeader').append(
         '<div class="breadcrumb">'+
         '<a class="activeBread" href="#collections">Collections</a>'+
-        '<span class="disabledBread">&gt</span>'+
+        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
         '<a class="disabledBread">'+this.collectionName+'</a>'+
         '</div>'
       );

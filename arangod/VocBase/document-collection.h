@@ -32,10 +32,9 @@
 #define ARANGODB_VOC_BASE_DOCUMENT__COLLECTION_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/ReadWriteLockCPP11.h"
 #include "Basics/fasthash.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/ReadWriteLockCPP11.h"
 #include "VocBase/collection.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/headers.h"
@@ -53,7 +52,8 @@
 struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
 struct TRI_json_t;
-struct TRI_vector_pointer_s;
+
+class VocShaper;
 
 namespace triagens {
   namespace arango {
@@ -179,6 +179,14 @@ struct TRI_doc_mptr_t {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the beginning of the marker, without checking
+////////////////////////////////////////////////////////////////////////////////
+    
+    inline void const* getDataPtrUnchecked () const {
+      return _dataptr;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set the pointer to the beginning of the memory for the marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -226,7 +234,7 @@ struct TRI_doc_mptr_t {
 /// @brief A derived class for copies of master pointers, they
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
+struct TRI_doc_mptr_copy_t final : public TRI_doc_mptr_t {
     TRI_doc_mptr_copy_t () : TRI_doc_mptr_t() {
     }
 
@@ -272,7 +280,7 @@ struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
     // The actual code has an assertion about transactions!
     virtual void const* getDataPtr () const;
 #endif
-
+    
 #ifndef TRI_ENABLE_MAINTAINER_MODE
     inline void setDataPtr (void const* d) {
       _dataptr = d;
@@ -358,7 +366,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
 
 private:
-  TRI_shaper_t*                _shaper;
+  VocShaper*                           _shaper;
 
   // whether or not secondary indexes are filled
   bool                         _useSecondaryIndexes;
@@ -366,11 +374,11 @@ private:
 public:
   // We do some assertions with barriers and transactions in maintainer mode:
 #ifndef TRI_ENABLE_MAINTAINER_MODE
-  TRI_shaper_t* getShaper () const {
+  VocShaper* getShaper () const {
     return _shaper;
   }
 #else
-  TRI_shaper_t* getShaper () const;
+  VocShaper* getShaper () const;
 #endif
 
   inline bool useSecondaryIndexes () const {
@@ -381,7 +389,7 @@ public:
     _useSecondaryIndexes = value;
   }
 
-  void setShaper (TRI_shaper_t* s) {
+  void setShaper (VocShaper* s) {
     _shaper = s;
   }
 
@@ -849,7 +857,7 @@ int TRI_SaveIndex (TRI_document_collection_t*,
 /// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vector_pointer_s* TRI_IndexesDocumentCollection (TRI_document_collection_t*);
+std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, including index file removal and replication

@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE (tst_filesize_exists) {
   const char* buffer = "the quick brown fox";
   
   StringBuffer* filename = writeFile(buffer);
-  BOOST_CHECK_EQUAL(strlen(buffer), (int) TRI_SizeFile(filename->c_str()));
+  BOOST_CHECK_EQUAL((int) strlen(buffer), (int) TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -222,7 +222,7 @@ BOOST_AUTO_TEST_CASE (tst_slurp) {
   result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, 0);
 
   BOOST_CHECK_EQUAL(0, strcmp("{\"this\":true,\"is\":[\"a\",\"test\"]}\n", result));
-  BOOST_CHECK_EQUAL(42, length);
+  BOOST_CHECK_EQUAL(42, (int) length);
   TRI_Free(TRI_CORE_MEM_ZONE, result);
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);

@@ -28,21 +28,120 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Functions.h"
+#include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/fpconv.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Rest/SslInterface.h"
+#include "V8Server/V8Traverser.h"
+#include "VocBase/KeyGenerator.h"
+#include "VocBase/VocShaper.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
+using CollectionNameResolver = triagens::arango::CollectionNameResolver;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief thread-local cache for compiled regexes
+////////////////////////////////////////////////////////////////////////////////
+
+thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the regex cache in a thread
+////////////////////////////////////////////////////////////////////////////////
+  
+static void ClearRegexCache () {
+  if (RegexCache != nullptr) {
+    for (auto& it : *RegexCache) {
+      delete it.second;
+    }
+    delete RegexCache; 
+    RegexCache = nullptr;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a regex pattern from a string 
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string BuildRegexPattern (char const* ptr,
+                                      size_t length,
+                                      bool caseInsensitive) {
+  // pattern is always anchored
+  std::string pattern("^");
+  if (caseInsensitive) {
+    pattern.append("(?i)");
+  }
+  
+  bool escaped = false;
+
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i]; 
+
+    if (c == '\\') {
+      if (escaped) {
+        // literal backslash
+        pattern.append("\\\\");
+      }
+      escaped = ! escaped;
+    }
+    else {
+      if (c == '%') {
+        if (escaped) {
+          // literal %
+          pattern.push_back('%');
+        }
+        else {
+          // wildcard
+          pattern.append(".*");
+        }
+      }
+      else if (c == '_') {
+        if (escaped) {
+          // literal underscore
+          pattern.push_back('_');
+        }
+        else {
+          // wildcard character
+          pattern.push_back('.');
+        }
+      }
+      else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
+               c == '{' || c == '}' || c == '^' || c == '$' || c == '|' || 
+               c == '\\' || c == '.') {
+        // character with special meaning in a regex
+        pattern.push_back('\\');
+        pattern.push_back(c);
+      }
+      else {
+        if (escaped) {
+          // found a backslash followed by no special character
+          pattern.append("\\\\");
+        }
+
+        // literal character
+        pattern.push_back(c);
+      }
+
+      escaped = false;
+    }
+  }
+
+  // always anchor the pattern
+  pattern.push_back('$');
+
+  return pattern;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a function parameter from the arguments list
@@ -299,6 +398,27 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
       break;
     }
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      AQL functions public helpers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called before a query starts
+/// has the chance to set up any thread-local storage
+////////////////////////////////////////////////////////////////////////////////
+
+void Functions::InitializeThreadContext () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called when a query ends
+/// its responsibility is to clear any thread-local storage
+////////////////////////////////////////////////////////////////////////////////
+
+void Functions::DestroyThreadContext () {
+  ClearRegexCache();
 }
 
 // -----------------------------------------------------------------------------
@@ -578,6 +698,77 @@ AqlValue Functions::Concat (triagens::aql::Query*,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
   j.release();
   return AqlValue(jr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function LIKE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Like (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  if (parameters.size() < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LIKE", (int) 2, (int) 3);
+  }
+
+  bool const caseInsensitive = GetBooleanParameter(trx, parameters, 2, false);
+  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+
+  // build pattern from parameter #1
+  auto const regex = ExtractFunctionParameter(trx, parameters, 1, false);
+  AppendAsString(buffer, regex.json());
+  size_t const length = buffer.length();
+
+  std::string const pattern = std::move(BuildRegexPattern(buffer.c_str(), length, caseInsensitive));
+  RegexMatcher* matcher = nullptr;
+
+  if (RegexCache != nullptr) {
+    auto it = RegexCache->find(pattern);
+
+    // check regex cache
+    if (it != RegexCache->end()) {
+      matcher = (*it).second;
+    }
+  }
+
+  if (matcher == nullptr) {
+    matcher = triagens::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+
+    try {
+      if (RegexCache == nullptr) {
+        RegexCache = new std::unordered_map<std::string, RegexMatcher*>();
+      }
+      // insert into cache, no matter if pattern is valid or not
+      RegexCache->emplace(pattern, matcher);
+    }
+    catch (...) {
+      delete matcher;
+      ClearRegexCache();
+      throw;
+    }
+  }
+  
+  if (matcher == nullptr) {
+    // compiling regular expression failed
+    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  // extract value
+  buffer.clear();
+  auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
+  AppendAsString(buffer, value.json());
+ 
+  bool error = false;
+  bool const result = triagens::basics::Utf8Helper::DefaultUtf8Helper.matches(matcher, buffer.c_str(), buffer.length(), error);
+
+  if (error) {
+    // compiling regular expression failed
+    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(new Json(Json::Null));
+  }
+        
+  return AqlValue(new Json(result));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1171,7 +1362,7 @@ AqlValue Functions::Unique (triagens::aql::Query* query,
                             triagens::arango::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   if (parameters.size() != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE", (int) 1, (int) 1);
   }
 
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
@@ -1228,7 +1419,7 @@ AqlValue Functions::Union (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION", (int) 2, (int) Function::MaxArguments);
   }
 
   std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 16));
@@ -1288,7 +1479,7 @@ AqlValue Functions::UnionDistinct (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION_DISTINCT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION_DISTINCT", (int) 2, (int) Function::MaxArguments);
   }
 
   std::unordered_set<TRI_json_t*, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
@@ -1378,7 +1569,7 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "INTERSECTION");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "INTERSECTION", (int) 2, (int) Function::MaxArguments);
   }
 
   std::unordered_map<TRI_json_t*, size_t, triagens::basics::JsonHash, triagens::basics::JsonEqual> values(
@@ -1487,6 +1678,273 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
   return AqlValue(jr);
+}
+
+// TODO DELETE THESE HELPER FUNCTIONS.
+
+static inline Json TRI_ExpandShapedJson (VocShaper* shaper,
+                                         CollectionNameResolver const* resolver,
+                                         TRI_voc_cid_t const& cid,
+                                         TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+
+  TRI_shaped_json_t shaped;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
+  Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
+  char const* key = TRI_EXTRACT_MARKER_KEY(marker);
+  std::string id(resolver->getCollectionName(cid));
+  id.push_back('/');
+  id.append(key);
+  json(TRI_VOC_ATTRIBUTE_ID, Json(id));
+  json(TRI_VOC_ATTRIBUTE_REV, Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+  json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
+
+  if (TRI_IS_EDGE_MARKER(marker)) {
+    std::string from(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(marker)));
+    from.push_back('/');
+    from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
+    json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
+    std::string to(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
+
+    to.push_back('/');
+    to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
+    json(TRI_VOC_ATTRIBUTE_TO, Json(to));
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to Json
+////////////////////////////////////////////////////////////////////////////////
+
+static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
+                            CollectionNameResolver const* resolver,
+                            VertexId const& id) {
+  TRI_doc_mptr_copy_t mptr;
+  auto collection = trx->trxCollection(id.cid);
+  int res = trx->readSingle(collection, &mptr, id.key); 
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return TRI_ExpandShapedJson(
+    collection->_collection->_collection->getShaper(),
+    resolver,
+    id.cid,
+    &mptr
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to std::string
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string VertexIdToString (CollectionNameResolver const* resolver,
+                                     VertexId const& id) {
+  return resolver->getCollectionName(id.cid) + "/" + std::string(id.key);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms an unordered_map<VertexId> to AQL json values
+////////////////////////////////////////////////////////////////////////////////
+
+static AqlValue VertexIdsToAqlValue (triagens::arango::AqlTransaction* trx,
+                                     CollectionNameResolver const* resolver,
+                                     std::unordered_set<VertexId>& ids,
+                                     bool includeData = false) {
+  std::unique_ptr<Json> result(new Json(Json::Array, ids.size()));
+
+  if (includeData) {
+    for (auto& it : ids) {
+      result->add(Json(VertexIdToJson(trx, resolver, it)));
+    }
+  } 
+  else {
+    for (auto& it : ids) {
+      result->add(Json(VertexIdToString(resolver, it)));
+    }
+  }
+
+  AqlValue v(result.get());
+  result.release();
+
+  return v;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function NEIGHBORS
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Neighbors (triagens::aql::Query* query,
+                               triagens::arango::AqlTransaction* trx,
+                               FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  basics::traverser::NeighborsOptions opts;
+
+  if (n < 4 || n > 6) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS", (int) 4, (int) 6);
+  }
+
+  auto resolver = trx->resolver();
+
+  Json vertexCol = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! vertexCol.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+  std::string vColName = basics::JsonHelper::getStringValue(vertexCol.json(), "");
+
+  Json edgeCol = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  if (! edgeCol.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+  std::string eColName = basics::JsonHelper::getStringValue(edgeCol.json(), "");
+
+  Json vertexInfo = ExtractFunctionParameter(trx, parameters, 2, false);
+  std::string vertexId;
+  if (vertexInfo.isString()) {
+    vertexId = basics::JsonHelper::getStringValue(vertexInfo.json(), "");
+    if (vertexId.find("/") != std::string::npos) {
+      
+      // TODO tmp can be replaced by Traversal::IdStringToVertexId
+      size_t split;
+      char const* str = vertexId.c_str();
+
+      if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+      }
+
+      std::string const collectionName = vertexId.substr(0, split);
+      auto coli = resolver->getCollectionStruct(collectionName);
+
+      if (coli == nullptr || collectionName.compare(vColName) != 0) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      }
+
+      VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
+      opts.start = v;
+    }
+    else {
+      VertexId v(resolver->getCollectionId(vColName), vertexId.c_str());
+      opts.start = v;
+    }
+  }
+  else if (vertexInfo.isObject()) {
+    if (! vertexInfo.has("_id")) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+    vertexId = basics::JsonHelper::getStringValue(vertexInfo.get("_id").json(), "");
+    // TODO tmp can be replaced by Traversal::IdStringToVertexId
+    size_t split;
+    char const* str = vertexId.c_str();
+
+    if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
+
+    std::string const collectionName = vertexId.substr(0, split);
+    auto coli = resolver->getCollectionStruct(collectionName);
+
+    if (coli == nullptr || collectionName.compare(vColName) != 0) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+
+    VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
+    opts.start = v;
+  }
+  else {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+
+  Json direction = ExtractFunctionParameter(trx, parameters, 3, false);
+  if (direction.isString()) {
+    std::string const dir = basics::JsonHelper::getStringValue(direction.json(), "");
+    if (dir.compare("outbound") == 0) {
+      opts.direction = TRI_EDGE_OUT;
+    }
+    else if (dir.compare("inbound") == 0) {
+      opts.direction = TRI_EDGE_IN;
+    }
+    else if (dir.compare("any") == 0) {
+      opts.direction = TRI_EDGE_ANY;
+    }
+    else {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+  }
+  else {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+
+
+  bool includeData = false;
+
+  if (n > 5) {
+    auto options = ExtractFunctionParameter(trx, parameters, 5, false);
+    if (! options.isObject()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+    includeData = basics::JsonHelper::getBooleanValue(options.json(), "includeData", false);
+    opts.minDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "minDepth", 1);
+    if (opts.minDepth == 0) {
+      opts.maxDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "maxDepth", 1);
+    } 
+    else {
+      opts.maxDepth = basics::JsonHelper::getNumericValue<uint64_t>(options.json(), "maxDepth", opts.minDepth);
+    }
+  }
+
+  std::unordered_set<VertexId> neighbors;
+
+
+  TRI_voc_cid_t eCid = resolver->getCollectionId(eColName);
+
+
+  // Function to return constant distance
+  auto wc = [](TRI_doc_mptr_copy_t& edge) -> double { return 1; };
+
+  std::unique_ptr<EdgeCollectionInfo> eci(new EdgeCollectionInfo(
+    eCid,
+    trx->documentCollection(eCid),
+    wc
+  ));
+  TRI_IF_FAILURE("EdgeCollectionInfoOOM1") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  
+
+  if (n > 4) {
+    auto edgeExamples = ExtractFunctionParameter(trx, parameters, 4, false);
+    if (! (edgeExamples.isArray() && edgeExamples.size() == 0) ) {
+      opts.addEdgeFilter(edgeExamples, eci->getShaper(), eCid, resolver); 
+    }
+  }
+  
+  std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&edgeCollectionInfos]() -> void {
+      for (auto& p : edgeCollectionInfos) {
+        delete p;
+      }
+    }
+  };
+  edgeCollectionInfos.emplace_back(eci.get());
+  eci.release();
+  TRI_IF_FAILURE("EdgeCollectionInfoOOM2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  TRI_RunNeighborsSearch(
+    edgeCollectionInfos,
+    opts,
+    neighbors
+  );
+
+  return VertexIdsToAqlValue(trx, resolver, neighbors, includeData);
 }
 
 // -----------------------------------------------------------------------------

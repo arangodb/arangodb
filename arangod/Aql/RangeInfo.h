@@ -33,6 +33,8 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
 
+class VocShaper;
+
 namespace triagens {
   namespace aql {
 
@@ -89,6 +91,7 @@ namespace triagens {
                                                              "isConstant")),
             _defined(false),
             _expressionAst(nullptr) {
+
           triagens::basics::Json bound = json.get("bound");
 
           if (! bound.isEmpty()) {
@@ -118,6 +121,7 @@ namespace triagens {
             _isConstant(false), 
             _defined(false),
             _expressionAst(nullptr) {
+
         }
 
         RangeInfoBound (RangeInfoBound const& copy) 
@@ -126,6 +130,7 @@ namespace triagens {
             _isConstant(copy._isConstant), 
             _defined(copy._defined),
             _expressionAst(nullptr) {
+
         } 
           
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,7 +215,7 @@ namespace triagens {
 
         TRI_index_operator_t* toIndexOperator (bool high, 
                                                triagens::basics::Json parameters,
-                                               TRI_shaper_t* shaper) const {
+                                               VocShaper* shaper) const {
 
           TRI_ASSERT(_isConstant);
 
@@ -444,12 +449,14 @@ namespace triagens {
             _valid(true), 
             _defined(true),
             _equality(false) {
+
         }
 
         RangeInfo () 
           : _valid(false), 
             _defined(false), 
             _equality(false) {
+
         }
         
         RangeInfo (basics::Json const& json);
@@ -756,13 +763,21 @@ namespace triagens {
                      bool equality);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief  insert an equality
+////////////////////////////////////////////////////////////////////////////////
+        
+        void insert (std::string const& var, 
+                     std::string const& name, 
+                     RangeInfoBound const& bound); 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert, directly using a RangeInfo structure
 ////////////////////////////////////////////////////////////////////////////////
 
         void insert (RangeInfo const& range);
        
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief insert, directly using a RangeInfo structure
+/// @brief erase
 ////////////////////////////////////////////////////////////////////////////////
 
         void erase (RangeInfo*);
@@ -848,8 +863,7 @@ namespace triagens {
 /// can be private
 ////////////////////////////////////////////////////////////////////////////////
     
-        std::unordered_map<std::string, std::unordered_map<std::string,
-          RangeInfo>> _ranges; 
+        std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo>> _ranges; 
         
     };
 
@@ -1014,7 +1028,8 @@ namespace triagens {
 /// in a new copy of the left argument
 ////////////////////////////////////////////////////////////////////////////////
 
-    RangeInfoMap* andCombineRangeInfoMaps (RangeInfoMap*, RangeInfoMap*);
+    RangeInfoMap* andCombineRangeInfoMaps (RangeInfoMap*, 
+                                           RangeInfoMap const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
@@ -1024,7 +1039,8 @@ namespace triagens {
 /// The return RIMV is new unless one of the arguments is empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-    RangeInfoMapVec* orCombineRangeInfoMapVecs (RangeInfoMapVec*, RangeInfoMapVec*);
+    RangeInfoMapVec* orCombineRangeInfoMapVecs (RangeInfoMapVec*, 
+                                                RangeInfoMapVec*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief andCombineRangeInfoMapVecs: return a new RangeInfoMapVec by
@@ -1034,14 +1050,16 @@ namespace triagens {
 /// The return RIMV is new unless one of the arguments is empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-    RangeInfoMapVec* andCombineRangeInfoMapVecs (RangeInfoMapVec*, RangeInfoMapVec*);
+    RangeInfoMapVec* andCombineRangeInfoMapVecs (RangeInfoMapVec*, 
+                                                 RangeInfoMapVec*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief andCombineRangeInfoMapVecs: same as before, but will return the
 /// mapvec even if one side is a nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
-    RangeInfoMapVec* andCombineRangeInfoMapVecsIgnoreEmpty (RangeInfoMapVec*, RangeInfoMapVec*);
+    RangeInfoMapVec* andCombineRangeInfoMapVecsIgnoreEmpty (RangeInfoMapVec*, 
+                                                            RangeInfoMapVec*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IndexOrCondition, type for vector of vector of RangeInfo. The meaning

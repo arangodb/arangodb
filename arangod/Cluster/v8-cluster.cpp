@@ -1387,7 +1387,7 @@ static void JS_InitialisedServerState (const v8::FunctionCallbackInfo<v8::Value>
     TRI_V8_THROW_EXCEPTION_USAGE("initialised()");
   }
 
-  if (ServerState::instance()->initialised()) {
+  if (ServerState::instance()->initialized()) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();

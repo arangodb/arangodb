@@ -8,7 +8,7 @@
     <meta name="author" content="Florian Bartels, Michael Hackstein, gschwab">
     <link href="css/style.css" rel="stylesheet">
     <link href="css/cluster.css" rel="stylesheet">
-    <link href="css/generated.css" rel="stylesheet">
+    <link href="css/cluster2.css" rel="stylesheet">
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
 
 <script id="dashboardView.ejs" type="text/template">
@@ -39,15 +39,17 @@
   <% } %>
 
   <% var mediumChart = function(name, title, arrows) { %>
-    <div class="dashboard-medium-chart">
-      <% enlargeButton(name, true); %>
-      <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
-        <div id="<%= name %>" class="dashboard-interior-chart"></div>
-        <div class="dashboard-legend">
-          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+    <div class="dashboard-medium-chart-outer">
+      <div class="dashboard-medium-chart">
+        <% enlargeButton(name, true); %>
+        <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
+          <div id="<%= name %>" class="dashboard-interior-chart"></div>
+          <div class="dashboard-legend">
+            <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+          </div>
         </div>
+        <% subBar(title) %>
       </div>
-      <% subBar(title) %>
     </div>
   <% } %>
 
@@ -192,11 +194,16 @@
   }
 %>
 <div class="footer-left">
-  <p>Copyright (c) ArangoDB GmbH</p>
+  <div class="social-icons">
+    <p><a href="https://twitter.com/arangodb" target="_blank"><i class="fa fa-twitter"></i></a></p>
+    <p><a href="https://www.arangodb.com/community" target="_blank"></a><i class="fa fa-envelope"></i></a></p>
+    <p><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank"></a><i class="fa fa-stack-overflow"></i></a></p>
+    <p><a href="https://groups.google.com/group/arangodb" target="_blank"></a><i class="fa fa-google"></i></a></p>
+  </div>
 </div>
 
 <div class="footer-center">
-  <p>Show Help <i class="fa fa-keyboard-o"></i></p>
+  <p>Help <i class="fa fa-keyboard-o"></i></p>
 </div>
 
 <div class="footer-right">
@@ -760,7 +767,7 @@
   <nav class="navbar">
     <div class="resizecontainer">
       <div class="navlogo">
-        <a class="logo" href="#"><img src="img/logo_arangodb_white.png"/></a>
+        <a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"/></a>
       </div>
       <div id="progressPlaceholderIcon"></div>
         <div class="statmenu" id="statisticBar">

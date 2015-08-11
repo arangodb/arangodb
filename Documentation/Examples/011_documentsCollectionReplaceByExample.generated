@@ -1,8 +1,8 @@
 arangosh> db.example.save({ Hello : "world" });
 { 
-  "_id" : "example/446307554", 
-  "_rev" : "446307554", 
-  "_key" : "446307554" 
+  "_id" : "example/511833959109", 
+  "_rev" : "511833959109", 
+  "_key" : "511833959109" 
 }
 arangosh> db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
 1

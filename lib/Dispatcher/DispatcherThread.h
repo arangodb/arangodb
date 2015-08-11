@@ -33,8 +33,6 @@
 
 #include "Basics/Thread.h"
 
-#include "Dispatcher/Job.h"
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -42,6 +40,7 @@
 namespace triagens {
   namespace rest {
     class DispatcherQueue;
+    class Job;
     class Scheduler;
 
 // -----------------------------------------------------------------------------
@@ -53,12 +52,24 @@ namespace triagens {
 /////////////////////////////////////////////////////////////////////////////
 
     class DispatcherThread : public basics::Thread {
+      DispatcherThread (DispatcherThread const&) = delete;
+      DispatcherThread& operator= (DispatcherThread const&) = delete;
+
       friend class Dispatcher;
       friend class DispatcherQueue;
 
-      private:
-        DispatcherThread (DispatcherThread const&);
-        DispatcherThread& operator= (DispatcherThread const&);
+// -----------------------------------------------------------------------------
+// --SECTION--                                            thread local variables
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a global, but thread-local place to hold the current dispatcher
+/// thread. If we are not in a dispatcher thread this is set to nullptr.
+////////////////////////////////////////////////////////////////////////////////
+
+        static thread_local DispatcherThread* currentDispatcherThread;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -94,38 +105,23 @@ namespace triagens {
 /// @brief indicates that thread is doing a blocking operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        void blockThread ();
+        void block ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates that thread has resumed work
 ////////////////////////////////////////////////////////////////////////////////
 
-        void unblockThread ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a global, but thread-local place to hold the current dispatcher
-/// thread. If we are not in a dispatcher thread this is set to nullptr.
-////////////////////////////////////////////////////////////////////////////////
-
-        static thread_local DispatcherThread* currentDispatcherThread;
+        void unblock ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief report status
+/// @brief do the real work
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void reportStatus ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief called after job finished
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void tick (bool idle);
+        void handleJob (Job* job);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -138,12 +134,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         DispatcherQueue* _queue;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current job type
-////////////////////////////////////////////////////////////////////////////////
-
-        Job::JobType _jobType;
     };
   }
 }

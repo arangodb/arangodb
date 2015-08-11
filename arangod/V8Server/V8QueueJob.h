@@ -31,7 +31,7 @@
 #include "Dispatcher/Job.h"
 #include "Basics/json.h"
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class V8Job
@@ -42,9 +42,8 @@ namespace triagens {
     class ApplicationV8;
 
     class V8QueueJob : public rest::Job {
-      private:
-        V8QueueJob (V8QueueJob const&) = delete;
-        V8QueueJob& operator= (V8QueueJob const&) = delete;
+      V8QueueJob (V8QueueJob const&) = delete;
+      V8QueueJob& operator= (V8QueueJob const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -56,8 +55,8 @@ namespace triagens {
 /// @brief constructs a new V8 queue job
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8QueueJob (const std::string& queue,
-                    struct TRI_vocbase_s*,
+        V8QueueJob (size_t queue,
+                    TRI_vocbase_t*,
                     ApplicationV8*,
                     const TRI_json_t*);
 
@@ -77,13 +76,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        JobType type () const override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string const& queue () const override;
+        size_t queue () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -95,25 +88,19 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool cancel (bool running) override;
+        bool cancel () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cleanup ();
+        void cleanup (rest::DispatcherQueue*) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool beginShutdown ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void handleError (basics::Exception const& ex);
+        void handleError (basics::Exception const& ex) override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -125,13 +112,13 @@ namespace triagens {
 /// @brief queue name
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _queue;
+        const size_t _queue;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 dealer

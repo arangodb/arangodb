@@ -31,7 +31,7 @@
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
-#include "VocBase/voc-shaper.h"
+#include "VocBase/VocShaper.h"
 
 using namespace triagens::arango;
 
@@ -124,7 +124,7 @@ triagens::basics::Json GeoIndex2::toJson (TRI_memory_zone_t* zone) const {
     // index has one field
   
     // convert location to string
-    char const* location = TRI_AttributeNameShapePid(shaper, _location);
+    char const* location = shaper->attributeNameShapePid(_location);
 
     if (location != nullptr) {
       f.emplace_back(location);
@@ -132,13 +132,13 @@ triagens::basics::Json GeoIndex2::toJson (TRI_memory_zone_t* zone) const {
   }
   else {
     // index has two fields
-    char const* latitude = TRI_AttributeNameShapePid(shaper, _latitude);
+    char const* latitude = shaper->attributeNameShapePid(_latitude);
 
     if (latitude != nullptr) {
       f.emplace_back(latitude);
     }
 
-    char const* longitude = TRI_AttributeNameShapePid(shaper, _longitude);
+    char const* longitude = shaper->attributeNameShapePid(_longitude);
 
     if (longitude != nullptr) {
       f.emplace_back(longitude);
@@ -171,7 +171,7 @@ triagens::basics::Json GeoIndex2::toJson (TRI_memory_zone_t* zone) const {
   
 int GeoIndex2::insert (TRI_doc_mptr_t const* doc, 
                        bool) {
-  TRI_shaper_t* shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   // lookup latitude and longitude
   TRI_shaped_json_t shapedJson;
@@ -183,15 +183,15 @@ int GeoIndex2::insert (TRI_doc_mptr_t const* doc,
 
   if (_location != 0) {
     if (_geoJson) {
-      ok = extractDoubleList(shaper, &shapedJson, &longitude, &latitude);
+      ok = extractDoubleArray(shaper, &shapedJson, &longitude, &latitude);
     }
     else {
-      ok = extractDoubleList(shaper, &shapedJson, &latitude, &longitude);
+      ok = extractDoubleArray(shaper, &shapedJson, &latitude, &longitude);
     }
   }
   else {
-    ok = extractDoubleArray(shaper, &shapedJson, 0, &latitude);
-    ok = ok && extractDoubleArray(shaper, &shapedJson, 1, &longitude);
+    ok = extractDoubleObject(shaper, &shapedJson, 0, &latitude);
+    ok = ok && extractDoubleObject(shaper, &shapedJson, 1, &longitude);
   }
 
   if (! ok) {
@@ -202,7 +202,7 @@ int GeoIndex2::insert (TRI_doc_mptr_t const* doc,
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = CONST_CAST(doc);
+  gc.data = const_cast<void*>(static_cast<void const*>(doc));
 
   int res = GeoIndex_insert(_geoIndex, &gc);
 
@@ -228,7 +228,7 @@ int GeoIndex2::remove (TRI_doc_mptr_t const* doc,
                       bool) {
   TRI_shaped_json_t shapedJson;
 
-  TRI_shaper_t* shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   // lookup OLD latitude and longitude
@@ -237,11 +237,11 @@ int GeoIndex2::remove (TRI_doc_mptr_t const* doc,
   double longitude;
 
   if (_location != 0) {
-    ok = extractDoubleList(shaper, &shapedJson, &latitude, &longitude);
+    ok = extractDoubleArray(shaper, &shapedJson, &latitude, &longitude);
   }
   else {
-    ok = extractDoubleArray(shaper, &shapedJson, 0, &latitude);
-    ok = ok && extractDoubleArray(shaper, &shapedJson, 1, &longitude);
+    ok = extractDoubleObject(shaper, &shapedJson, 0, &latitude);
+    ok = ok && extractDoubleObject(shaper, &shapedJson, 1, &longitude);
   }
 
   // and remove old entry
@@ -249,7 +249,7 @@ int GeoIndex2::remove (TRI_doc_mptr_t const* doc,
     GeoCoordinate gc;
     gc.latitude = latitude;
     gc.longitude = longitude;
-    gc.data = CONST_CAST(doc);
+    gc.data = const_cast<void*>(static_cast<void const*>(doc));
 
     // ignore non-existing elements in geo-index
     GeoIndex_remove(_geoIndex, &gc);
@@ -292,20 +292,19 @@ GeoCoordinates* GeoIndex2::nearQuery (double lat,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a double value from an array
+/// @brief extracts a double value from an object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeoIndex2::extractDoubleArray (TRI_shaper_t* shaper,
-                                    TRI_shaped_json_t const* document,
-                                    int which,
-                                    double* result) {
+bool GeoIndex2::extractDoubleObject (VocShaper* shaper,
+                                     TRI_shaped_json_t const* document,
+                                     int which,
+                                     double* result) {
   TRI_shape_pid_t const pid = (which == 0 ? _latitude : _longitude);
 
   TRI_shape_t const* shape;
   TRI_shaped_json_t json;
 
-
-  if (! TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &json, &shape)) {
+  if (! shaper->extractShapedJson(document, 0, pid, &json, &shape)) {
     return false;
   }
 
@@ -324,17 +323,17 @@ bool GeoIndex2::extractDoubleArray (TRI_shaper_t* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a double value from a list
+/// @brief extracts a double value from an array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeoIndex2::extractDoubleList (TRI_shaper_t* shaper,
-                                   TRI_shaped_json_t const* document,
-                                   double* latitude,
-                                   double* longitude) {
+bool GeoIndex2::extractDoubleArray (VocShaper* shaper,
+                                    TRI_shaped_json_t const* document,
+                                    double* latitude,
+                                    double* longitude) {
   TRI_shape_t const* shape;
   TRI_shaped_json_t list;
 
-  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, _location, &list, &shape);
+  bool ok = shaper->extractShapedJson(document, 0, _location, &list, &shape);
 
   if (! ok) {
     return false;

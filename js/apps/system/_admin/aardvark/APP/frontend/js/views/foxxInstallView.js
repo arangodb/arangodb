@@ -292,7 +292,7 @@
     );
     window.modalView.show(
       "modalApplicationMount.ejs",
-      "Install application",
+      "Install Service",
       buttons,
       upgrade,
       undefined,

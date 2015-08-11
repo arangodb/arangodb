@@ -38,7 +38,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_vocbase_s;
+struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -135,7 +135,7 @@ static const uint32_t V8DataSlot = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_PAIR_STRING(name, length)                                \
-  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, (int) length)
+  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, (int) (length))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for current v8 globals and scope
@@ -328,7 +328,6 @@ static const uint32_t V8DataSlot = 0;
   if (collection != nullptr && ! collection->_isLocal) {                     \
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);                       \
   }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return undefined (default..)
@@ -1069,7 +1068,7 @@ typedef struct TRI_v8_global_s {
 /// @brief pointer to the vocbase (TRI_vocbase_t*)
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_vocbase_s* _vocbase;
+  TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of v8 externals used in the context

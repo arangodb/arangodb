@@ -28,12 +28,14 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "SchedulerThread.h"
+#include "Basics/logging.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/SpinLocker.h"
+
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #endif
-
-#include "Basics/logging.h"
-#include "SchedulerThread.h"
 
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/Task.h"
@@ -42,15 +44,9 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 
 #ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
-#define SCHEDULER_INIT TRI_InitSpin
-#define SCHEDULER_DESTROY TRI_DestroySpin
-#define SCHEDULER_LOCK TRI_LockSpin
-#define SCHEDULER_UNLOCK TRI_UnlockSpin
+#define SCHEDULER_LOCKER(a) SPIN_LOCKER(a)
 #else
-#define SCHEDULER_INIT TRI_InitMutex
-#define SCHEDULER_DESTROY TRI_DestroyMutex
-#define SCHEDULER_LOCK TRI_LockMutex
-#define SCHEDULER_UNLOCK TRI_UnlockMutex
+#define SCHEDULER_LOCKER(a) MUTEX_LOCKER(a)
 #endif
 
 // -----------------------------------------------------------------------------
@@ -71,9 +67,6 @@ SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool def
     _open(0),
     _hasWork(false) {
 
-  // init lock
-  SCHEDULER_INIT(&_queueLock);
-
   // allow cancelation
   allowAsynchronousCancelation();
 }
@@ -83,7 +76,6 @@ SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool def
 ////////////////////////////////////////////////////////////////////////////////
 
 SchedulerThread::~SchedulerThread () {
-  SCHEDULER_DESTROY(&_queueLock);
 }
 
 // -----------------------------------------------------------------------------
@@ -142,17 +134,17 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
     return ok;
   }
 
+  Work w(SETUP, scheduler, task);
+
   // different thread, be careful - we have to stop the event loop
   // put the register request onto the queue
-  SCHEDULER_LOCK(&_queueLock);
+  SCHEDULER_LOCKER(_queueLock);
 
-  Work w(SETUP, scheduler, task);
   _queue.push_back(w);
   _hasWork = true;
 
   scheduler->wakeupLoop(_loop);
 
-  SCHEDULER_UNLOCK(&_queueLock);
   return true;
 }
 
@@ -175,17 +167,15 @@ void SchedulerThread::unregisterTask (Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   else {
+    Work w(CLEANUP, nullptr, task);
 
-    // put the unregister request unto the queue
-    SCHEDULER_LOCK(&_queueLock);
+    // put the unregister request into the queue
+    SCHEDULER_LOCKER(_queueLock);
 
-    Work w(CLEANUP, 0, task);
     _queue.push_back(w);
     _hasWork = true;
 
     _scheduler->wakeupLoop(_loop);
-
-    SCHEDULER_UNLOCK(&_queueLock);
   }
 }
 
@@ -209,16 +199,15 @@ void SchedulerThread::destroyTask (Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   else {
-    // put the unregister request unto the queue
-    SCHEDULER_LOCK(&_queueLock);
+    // put the unregister request into the queue
+    Work w(DESTROY, nullptr, task);
 
-    Work w(DESTROY, 0, task);
+    SCHEDULER_LOCKER(_queueLock);
+
     _queue.push_back(w);
     _hasWork = true;
 
     _scheduler->wakeupLoop(_loop);
-
-    SCHEDULER_UNLOCK(&_queueLock);
   }
 }
 
@@ -264,59 +253,71 @@ void SchedulerThread::run () {
     LOG_TRACE("left scheduler loop %d", (int) threadId());
 #endif
 
-    SCHEDULER_LOCK(&_queueLock);
+    while (true) {
+      Work w;
 
-    if (_hasWork) {
-      while (! _queue.empty()) {
-        Work w = _queue.front();
-        _queue.pop_front();
+      {
+        SCHEDULER_LOCKER(_queueLock);
 
-        SCHEDULER_UNLOCK(&_queueLock);
-
-        switch (w.work) {
-
-          case CLEANUP: {
-            cleanupTask(w.task);
-            break;
-          }
-
-          case SETUP: {
-            bool ok = setupTask(w.task, w.scheduler, _loop);
-            if (! ok) {
-              cleanupTask(w.task);
-              deleteTask(w.task);
-            }
-            break;
-          }
-
-          case DESTROY: {
-            cleanupTask(w.task);
-            deleteTask(w.task);
-            break;
-          }
+        if (! _hasWork || _queue.empty()) {
+          break;
         }
 
-        SCHEDULER_LOCK(&_queueLock);
+        w = _queue.front();
+        _queue.pop_front();
       }
 
-      _hasWork = false;
-    }
+      // will only get here if there is something to do
+      switch (w.work) {
+        case CLEANUP: {
+          cleanupTask(w.task);
+          break;
+        }
 
-    SCHEDULER_UNLOCK(&_queueLock);
+        case SETUP: {
+          bool ok = setupTask(w.task, w.scheduler, _loop);
+
+          if (! ok) {
+            cleanupTask(w.task);
+            deleteTask(w.task);
+          }
+          break;
+        }
+
+        case DESTROY: {
+          cleanupTask(w.task);
+          deleteTask(w.task);
+          break;
+        }
+
+        case INVALID: {
+          LOG_ERROR("logic error. got invalid Work item");
+          break;
+        }
+      }
+    }
   }
 
   LOG_TRACE("scheduler thread stopped (%llu)", (unsigned long long) threadId());
 
   _stopped = 1;
 
-  SCHEDULER_LOCK(&_queueLock);
+  // pop all elements from the queue and delete them
+  while (true) {
+    Work w;
 
-  while (! _queue.empty()) {
-    Work w = _queue.front();
-    _queue.pop_front();
+    {
+      SCHEDULER_LOCKER(_queueLock);
 
-    SCHEDULER_UNLOCK(&_queueLock);
+      if (_queue.empty()) {
+        break;
+      }
+    
+      w = _queue.front();
+      _queue.pop_front();
+    }
 
+    // will only get here if there is something to do
     switch (w.work) {
       case CLEANUP:
         break;
@@ -327,12 +328,12 @@ void SchedulerThread::run () {
       case DESTROY:
         deleteTask(w.task);
         break;
+
+      case INVALID: 
+        LOG_ERROR("logic error. got invalid Work item");
+        break;
     }
-
-    SCHEDULER_LOCK(&_queueLock);
   }
-
-  SCHEDULER_UNLOCK(&_queueLock);
 }
 
 // -----------------------------------------------------------------------------

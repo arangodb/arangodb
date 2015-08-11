@@ -1,3 +1,7 @@
+#documentsDiv {
+  margin-top: 20px;
+}
+
 .new-index-view {
   input[type='checkbox'] {
     float: left;
@@ -104,11 +108,27 @@
   padding-right: 10px;
 }
 
+.documentsDropdown {
+  .dropdownImport, .headerDropdown {
+    margin-bottom: 5px;
+  }
+}
 
 .documents-size {
   float: right;
-  margin-top: -58px;
+  border-radius: 2px;
+  background-color: #fff !important;
+  border: 1px solid #eeeeee;
+  box-shadow: none;
+  height: 28px;
+  line-height: 18px;
+  margin-right: -2px;
+  margin-left: 10px;
+  margin-top: 0px;
   width: 115px;
+  outline: none;
+  outline-color: transparent;
+  outline-style: none;
 }
 
 .queryline {

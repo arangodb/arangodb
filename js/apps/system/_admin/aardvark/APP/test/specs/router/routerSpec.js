@@ -409,7 +409,6 @@
           "application/installed/:key",
           "application/available/:key",
           "applications",
-          "application/documentation/:key",
           "graphManagement",
           "userManagement",
           "userProfile" ,
@@ -544,26 +543,6 @@
           },
           {
           },
-          true
-        );
-      });
-
-
-      it("should navigate to the appDocumentation", function () {
-        var mount = encodeURIComponent("/_admin/aardvark");
-        simpleNavigationCheck(
-          {
-            url: "application/documentation/:mount",
-            params: [mount]
-          },
-          "AppDocumentationView",
-          "applications-menu",
-          {
-            mount: mount
-          },
-          {
-          },
-          false,
           true
         );
       });

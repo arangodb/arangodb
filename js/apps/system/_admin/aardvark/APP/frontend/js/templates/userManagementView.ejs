@@ -1,5 +1,10 @@
 <script id="userManagementView.ejs" type="text/template">
   <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="userManagementSearchSubmit" class="search-submit-icon"> -->
+      <i id="userManagementSearchSubmit" class="fa fa-search"></i>
+    </div>
     <div class="headerButtonBar">
       <ul class="headerButtonList">
         <li class="enabled">
@@ -12,9 +17,6 @@
 
     <div class="pull-left">
       <a class="arangoHeader">User Management</a>
-    </div>
-    <div class="search-field">
-      <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/><img id="userManagementSearchSubmit" class="search-submit-icon">
     </div>
   </div>
 
@@ -42,7 +44,8 @@
       <li><a href="#">
         <label class="checkbox checkboxLabel">
           <input class="css-checkbox" type="checkbox" id="userSortDesc">
-          <label class="css-label"></label>Sort descending
+          <i class="fa"></i>
+          Sort descending
         </label>
       </a></li>
     </ul>
@@ -70,7 +73,7 @@
                 avatar = '<img src="';
 
               if (! img) {
-                avatar += 'img/arangodblogoAvatar_50.png';
+                avatar += 'img/arangodb_logo_small.png';
               } else {
                 avatar += 'https://s.gravatar.com/avatar/';
                 avatar += img;

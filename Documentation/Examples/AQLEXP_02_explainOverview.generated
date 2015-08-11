@@ -1,0 +1,7 @@
+arangosh> stmt.explain().plan.nodes.map(function (node) { return node.type; });
+[ 
+  "SingletonNode", 
+  "IndexRangeNode", 
+  "CalculationNode", 
+  "ReturnNode" 
+]
