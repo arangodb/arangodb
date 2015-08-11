@@ -80,7 +80,7 @@
 
     hasUnconfiguredDependencies: function () {
       return _.any(this.get('deps'), function (dep) {
-        return dep.current === undefined;
+        return dep.current === undefined && dep.definition.required !== false;
       });
     },
 
