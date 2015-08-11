@@ -30,6 +30,8 @@
 #include "AttributeNameParser.h"
 #include "Exceptions.h"
 
+using AttributeName = triagens::basics::AttributeName;
+
 void triagens::basics::TRI_ParseAttributeString (
     std::string const& input,
     std::vector<AttributeName>& result
@@ -80,5 +82,31 @@ void triagens::basics::TRI_AttributeNamesToString (
   }
 }
 
+void triagens::basics::TRI_AttributeNamesToPidString (
+    std::vector<AttributeName> const& input,
+    std::string& result
+  ) {
+  TRI_ASSERT(result.size() == 0);
+  bool isFirst = true;
+  for (auto& it : input) {
+    if (! isFirst) {
+      result += ".";
+    }
+    isFirst = false;
+    result += it.name;
+    if (it.shouldExpand) {
+      break;
+    }
+  }
+}
 
-
+bool triagens::basics::TRI_AttributeNamesHaveExpansion (
+    std::vector<AttributeName> const& input
+  ) {
+  for (auto& it : input) {
+    if (it.shouldExpand) {
+      return true;
+    }
+  }
+  return false;
+}
