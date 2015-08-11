@@ -76,7 +76,7 @@ examples:
 		@srcdir@/lib/Admin \
 		> /tmp/arangosh.examples.js
 
-	if test -z "$(server.endpoint) "; then \
+	if test -z "$(server.endpoint)"; then \
 		$(MAKE) start-server PID=$(PID) \
 			SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" \
 			PROTO=http ;\
