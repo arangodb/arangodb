@@ -1603,6 +1603,34 @@ static void JS_QueryCacheInvalidateAql (const v8::FunctionCallbackInfo<v8::Value
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief throw collection not loaded
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ThrowCollectionNotLoaded (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (args.Length() == 0) {
+    bool value = TRI_GetThrowCollectionNotLoadedVocBase(vocbase);
+    TRI_V8_RETURN(v8::Boolean::New(isolate, value));
+  }
+  else if (args.Length() == 1) {
+    TRI_SetThrowCollectionNotLoadedVocBase(vocbase, TRI_ObjectToBoolean(args[0]));
+  }
+  else {
+    TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
+  }
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms VertexId to v8String
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3813,6 +3841,8 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_IS_KILLED"), JS_QueryIsKilledAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_PROPERTIES"), JS_QueryCachePropertiesAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_INVALIDATE"), JS_QueryCacheInvalidateAql, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("THROW_COLLECTION_NOT_LOADED"), JS_ThrowCollectionNotLoaded, true);
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_SHORTEST_PATH"), JS_QueryShortestPath, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_NEIGHBORS"), JS_QueryNeighbors, true);
