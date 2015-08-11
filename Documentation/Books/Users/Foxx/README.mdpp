@@ -139,7 +139,7 @@ of what Foxx is, how it works and how to get it up and running in short time.
 It is tutorial that should be solvable in 10 minutes or less and will guide you to your first
 application giving a few insights on the way.
 
-[Read More](Nutshell/README.md)
+[Read More](Nutshell/index.html)
 
 !SECTION Install a Foxx Application
 
@@ -147,7 +147,7 @@ You would like to get some inspiration from running Applications?
 Or you already have an Application that does what you need?
 This chapter will guide you to get an Application up and running.
 
-[Read More](Install/README.md)
+[Read More](Install/index.html)
 
 !SECTION Develop your own Foxx
 
@@ -157,7 +157,7 @@ It will explain how to use the development mode and which debugging mechanisms a
 It introduces the tips and tricks on how to build your own API.
 And presents all libraries that are available from a Foxx Application.
 
-[Read More](Develop/README.md)
+[Read More](Develop/index.html)
 
 
 !SECTION Running Foxx Applications in production
@@ -166,7 +166,7 @@ This chapter is dedicated to all the possibilities on how to run a Foxx Applicat
 It will start with how to leverage it from development to production.
 We will continue with migration of the Application to a newer version.
 
-[Read More](Production/README.md)
+[Read More](Production/index.html)
 
 !SECTION Foxx in a cluster
 
@@ -175,7 +175,7 @@ Want to setup your micro-service based application?
 This chapter will explain what has to be changed to run a Foxx application within a cluster setup.
 It will also explain how to move your application from a single server to an unlimited amount of servers.
 
-[Read More](Cluster/README.md)
+[Read More](Cluster/index.html)
 
 !SECTION Advanced features
 
@@ -184,4 +184,4 @@ It requires that you know the details presented in the chapters before.
 Here you will learn about Foxx feature exports and imports to implement abstract APIs for reuse in several Apps.
 Furthermore you will learn about background and periodical tasks in Foxx applications.
 
-[Read More](Advanced/README.md)
+[Read More](Advanced/index.html)
