@@ -67,10 +67,31 @@ clean-book-intermediate:
 # Global targets
 
 check-docublocks:
-	grep -R '@startDocuBlock' . |grep -v allComments.txt > /tmp/rawindoc.txt
-	cat /tmp/rawindoc.txt | sed "s;.*ck ;;" |sort -u > /tmp/indoc.txt
+	grep -R '@startDocuBlock' . |\
+		grep -v '@startDocuBlockInline' |\
+		grep -v ppbook |\
+		grep -v allComments.txt |\
+		grep -v Makefile |\
+		grep -v codeBlockReader.py |\
+		grep -v generateMdFiles.py \
+		   > /tmp/rawindoc.txt
+	grep -R '@startDocuBlockInline' . |\
+		grep -v ppbook |\
+		grep -v allComments.txt |\
+		grep -v Makefile |\
+		grep -v codeBlockReader.py |\
+		grep -v generateMdFiles.py \
+		   >> /tmp/rawindoc.txt
+	cat /tmp/rawindoc.txt | sed  -e "s;.*ck ;;" -e "s;.*ne ;;" |sort -u > /tmp/indoc.txt
 	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js |grep -v aardvark > /tmp/rawinprog.txt
-	grep -R '@startDocuBlockInline' >> /tmp/rawinprog.txt
+# searching the Inline docublocks needs some more blacklisting:
+	grep -R '@startDocuBlockInline' . |\
+		grep -v ppbook |\
+		grep -v allComments.txt |\
+		grep -v Makefile |\
+		grep -v codeBlockReader.py |\
+		grep -v generateMdFiles.py \
+		   >> /tmp/rawinprog.txt
 	cat /tmp/rawinprog.txt |sed -e "s;.*ck ;;" -e "s;.*ne ;;" |sort > /tmp/inprog_raw.txt
 	@cat /tmp/inprog_raw.txt |sort -u > /tmp/inprog.txt
 	@if test "`cat /tmp/inprog.txt |wc -l`" -ne "`cat /tmp/inprog_raw.txt|wc -l`"; then \
@@ -112,4 +133,4 @@ build-books-keep-md:
 	python codeBlockReader.py
 	make build-book NAME=Users
 
-build-books: clean-intermediate build-books-keep-md check-docublocks
+build-books: clean-intermediate build-books-keep-md #check-docublocks
