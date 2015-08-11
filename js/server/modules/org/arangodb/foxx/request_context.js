@@ -550,7 +550,7 @@ class RequestContext {
 /// /* define our own error type, FoxxyError */
 /// var FoxxyError = function (message) {
 ///   this.name = "FError";
-///   this.message = "the following FoxxyError occurred: ' + message;
+///   this.message = "the following FoxxyError occurred: " + message;
 /// };
 /// FoxxyError.prototype = new Error();
 ///
