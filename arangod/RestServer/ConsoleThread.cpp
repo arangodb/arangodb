@@ -71,8 +71,8 @@ ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
     _vocbase(vocbase),
     _done(0),
     _userAborted(false) {
-  allowAsynchronousCancelation();
 
+  allowAsynchronousCancelation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

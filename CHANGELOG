@@ -24,6 +24,14 @@ v2.7.0 (XXXX-XX-XX)
 
   The default value is *false*.
 
+* added better control-C support in arangosh
+
+  When CTRL-C is pressed in arangosh, it will now print a `^C` first. Pressing
+  CTRL-C again will reset the prompt if something was entered before, or quit
+  arangosh if no command was entered directly before.
+  
+  This affects the arangosh version build with Readline-support only.
+
 * increased default value collection-specific `indexBuckets` value from 1 to 16
 
   Collections created from 2.7 on will use the new default if not overriden on
