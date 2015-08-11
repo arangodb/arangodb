@@ -176,12 +176,3 @@ This chapter will explain what has to be changed to run a Foxx application withi
 It will also explain how to move your application from a single server to an unlimited amount of servers.
 
 [Read More](Cluster/index.html)
-
-!SECTION Advanced features
-
-This chapter will present the more advanced capabilities of Foxx.
-It requires that you know the details presented in the chapters before.
-Here you will learn about Foxx feature exports and imports to implement abstract APIs for reuse in several Apps.
-Furthermore you will learn about background and periodical tasks in Foxx applications.
-
-[Read More](Advanced/index.html)
