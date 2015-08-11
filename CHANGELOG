@@ -1,6 +1,19 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* Linux startup scripts and systemd configuration for arangod now try to
+  adjust the NOFILE (number of open files) limits for the process. The limit
+  value is set to 131072 (128k) when ArangoDB is started via start/stop 
+  commands
+
+* When ArangoDB is started/stopped manually via the start/stop commands, the
+  main process will wait for up to 10 seconds after it forks the supervisor
+  and arangod child processes. If the startup fails within that period, the
+  start/stop script will fail with an exit code other than zero. If the
+  startup of the supervisor or arangod is still ongoing after 10 seconds, 
+  the main program will still return with exit code 0. The limit of 10 seconds
+  is arbitrary because the time required for a startup is not known in advance.
+
 * added startup option `--database.throw-collection-not-loaded-error`
 
   Accessing a not-yet loaded collection will automatically load a collection
