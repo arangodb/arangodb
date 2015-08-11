@@ -183,7 +183,8 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  int res = fillElement(skiplistElement, doc);
+  int res = fillElement<TRI_skiplist_index_element_t>(skiplistElement, SkiplistIndex_Subobjects(skiplistElement), doc, _paths, _sparse);
+
   // ...........................................................................
   // most likely the cause of this error is that the index is sparse
   // and not all attributes the index needs are set -- so the document
@@ -231,7 +232,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  int res = fillElement(skiplistElement, doc);
+  int res = fillElement<TRI_skiplist_index_element_t>(skiplistElement, SkiplistIndex_Subobjects(skiplistElement), doc, _paths, _sparse);
 
   // ..........................................................................
   // Error returned generally implies that the document never was part of the
@@ -288,93 +289,6 @@ TRI_skiplist_iterator_t* SkiplistIndex2::lookup (TRI_index_operator_t* slOperato
   return SkiplistIndex_find(_skiplistIndex,
                             slOperator, 
                             reverse);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper for skiplist methods
-////////////////////////////////////////////////////////////////////////////////
-
-int SkiplistIndex2::fillElement(TRI_skiplist_index_element_t* skiplistElement,
-                                TRI_doc_mptr_t const* document) {
-  // ..........................................................................
-  // Assign the document to the SkiplistIndexElement structure so that it can
-  // be retrieved later.
-  // ..........................................................................
-
-  TRI_ASSERT(document != nullptr);
-  TRI_ASSERT_EXPENSIVE(document->getDataPtr() != nullptr);   // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (shapedJson._sid == TRI_SHAPE_ILLEGAL) {
-    LOG_WARNING("encountered invalid marker with shape id 0");
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  skiplistElement->_document = const_cast<TRI_doc_mptr_t*>(document);
-  char const* ptr = skiplistElement->_document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  auto subObjects = SkiplistIndex_Subobjects(skiplistElement);
-
-  size_t const n = _paths.size();
-
-  for (size_t j = 0; j < n; ++j) {
-    TRI_shape_pid_t shape = _paths[j];
-
-    // ..........................................................................
-    // Determine if document has that particular shape
-    // ..........................................................................
-
-    TRI_shape_access_t const* acc = _collection->getShaper()->findAccessor(shapedJson._sid, shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-    if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-      // OK, the document does not contain the attributed needed by 
-      // the index, are we sparse?
-      subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL; 
-
-      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-
-      if (_sparse) {
-        // no need to continue
-        return res;
-      }
-      continue;
-    }
-
-    // ..........................................................................
-    // Extract the field
-    // ..........................................................................
-
-    TRI_shaped_json_t shapedObject;
-    if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (shapedObject._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
-      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-
-      if (_sparse) {
-        // no need to continue
-        return res;
-      }
-    }
-
-    // .........................................................................
-    // Store the field
-    // .........................................................................
-
-    TRI_FillShapedSub(&subObjects[j], &shapedObject, ptr);
-  }
-
-  return res;
 }
 
 // -----------------------------------------------------------------------------
