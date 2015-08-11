@@ -39,6 +39,10 @@ A more complete example for a Manifest file:
   "description": "My Website with a blog and a shop",
   "thumbnail": "images/website-logo.png",
 
+  "engines": {
+    "arangodb": "^2.7.0"
+  },
+
   "configuration": {
     "currency": {
       "description": "Currency symbol to use for prices in the shop.",
