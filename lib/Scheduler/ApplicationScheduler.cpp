@@ -341,7 +341,8 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
     _multiSchedulerAllowed(true),
     _nrSchedulerThreads(4),
     _backend(0),
-    _descriptorMinimum(256) {
+    _descriptorMinimum(256),
+    _disableControlCHandler(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,6 +415,14 @@ void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
     }
   }
 #endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disables CTRL-C handling (because taken over by console input)
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationScheduler::disableControlCHandler () {
+  _disableControlCHandler = true;
 }
 
 // -----------------------------------------------------------------------------
@@ -566,9 +575,7 @@ void ApplicationScheduler::stop () {
     static size_t const MAX_TRIES = 10;
 
     // remove all helper tasks
-    for (vector<Task*>::iterator i = _tasks.begin();  i != _tasks.end();  ++i) {
-      Task* task = *i;
-
+    for (auto& task : _tasks) {
       _scheduler->destroyTask(task);
     }
 
@@ -619,7 +626,7 @@ void ApplicationScheduler::buildSchedulerReporter () {
     Task* reporter = new SchedulerReporterTask(_scheduler, _reportInterval);
 
     _scheduler->registerTask(reporter);
-    _tasks.push_back(reporter);
+    _tasks.emplace_back(reporter);
   }
 }
 
@@ -632,23 +639,25 @@ void ApplicationScheduler::buildControlCHandler () {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
 
-  // control C handler
-  Task* controlC = new ControlCTask(_applicationServer);
+  if (! _disableControlCHandler) {
+    // control C handler
+    Task* controlC = new ControlCTask(_applicationServer);
 
-  _scheduler->registerTask(controlC);
-  _tasks.push_back(controlC);
+    _scheduler->registerTask(controlC);
+    _tasks.emplace_back(controlC);
+  }
 
   // hangup handler
   Task* hangup = new HangupTask();
 
   _scheduler->registerTask(hangup);
-  _tasks.push_back(hangup);
+  _tasks.emplace_back(hangup);
 
   // sigusr handler
   Task* sigusr = new Sigusr1Task(this);
 
   _scheduler->registerTask(sigusr);
-  _tasks.push_back(sigusr);
+  _tasks.emplace_back(sigusr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

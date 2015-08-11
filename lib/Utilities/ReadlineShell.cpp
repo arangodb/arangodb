@@ -27,19 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "ReadlineShell.h"
+#include "Basics/tri-strings.h"
 #include "Utilities/Completer.h"
 #include "Utilities/LineEditor.h"
 
-#include <iostream>
 #include <readline/readline.h>
 #include <readline/history.h>
-
-#include "Basics/tri-strings.h"
-
-#include <vector>
-
 #include <v8.h>
 
 using namespace std;
@@ -97,9 +91,65 @@ namespace {
 // --SECTION--                                               class ReadlineShell
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback function that readline calls periodically while waiting
+/// for input and being idle
+////////////////////////////////////////////////////////////////////////////////
+
+static int ReadlineIdle () {
+  auto instance = ReadlineShell::instance();
+
+  if (instance != nullptr &&
+      instance->getLoopState() == 2) {
+    rl_done = 1;
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback function that readline calls when the input is completed
+////////////////////////////////////////////////////////////////////////////////
+
+static void ReadlineInputCompleted (char* value) {
+  // if we don't clear the prompt here, readline will display it instantly
+  // the user pressed the return key. this is not desired because when we
+  // wait for input afterwards, readline will display the prompt again
+  rl_set_prompt("");
+  
+  auto instance = ReadlineShell::instance();
+
+  if (instance == nullptr) {
+    return;
+  }
+
+  if (instance->getLoopState() == 2) {
+    // CTRL-C received
+    rl_done = 1;
+    // replace current input with nothing
+    rl_replace_line("", 0);
+
+    if (value != nullptr) {
+      // avoid memleak
+      TRI_SystemFree(value);
+    }
+    instance->setLastInput(nullptr);
+  }
+  else {
+    instance->setLoopState(1);
+    instance->setLastInput(value);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (sole) instance of a ReadlineShell
+////////////////////////////////////////////////////////////////////////////////
+
+std::atomic<ReadlineShell*> ReadlineShell::_instance(nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
@@ -107,7 +157,10 @@ namespace {
 
 ReadlineShell::ReadlineShell (std::string const& history, 
                               Completer* completer)
-  : ShellImplementation(history, completer) {
+  : ShellImplementation(history, completer),
+    _loopState(0),
+    _lastInput(nullptr),
+    _lastInputWasEmpty(false) {
 
   COMPLETER = completer;
 
@@ -116,11 +169,19 @@ ReadlineShell::ReadlineShell (std::string const& history,
   rl_attempted_completion_function = AttemptedCompletion;
   rl_completer_word_break_characters = WordBreakCharacters;
 
-#ifndef __APPLE__
-  rl_catch_signals = 0;
-#endif
+  // register ourselves
+  TRI_ASSERT(_instance == nullptr);
+  _instance = this;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+ReadlineShell::~ReadlineShell () {
+  // unregister ourselves
+  _instance = nullptr;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -188,11 +249,6 @@ bool ReadlineShell::close () {
   }
 #endif
 
-#ifndef __APPLE__
-  // reset state of the terminal to what it was before readline()
-  rl_cleanup_after_signal();
-#endif
-
   return res;
 }
 
@@ -252,8 +308,46 @@ bool ReadlineShell::writeHistory () {
   return (write_history(historyPath().c_str()) == 0);
 }
 
-char * ReadlineShell::getLine (char const * input) {
-  return readline(input);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a line from the input
+////////////////////////////////////////////////////////////////////////////////
+
+char* ReadlineShell::getLine (char const* prompt) {
+  setLoopState(0);
+  rl_event_hook = ReadlineIdle;
+  rl_callback_handler_install(prompt, ReadlineInputCompleted);
+
+  int state;
+  do {
+    rl_callback_read_char();
+    state = getLoopState();
+  }
+  while (state == 0);
+  rl_callback_handler_remove();
+
+  if (state == 2) {
+    if (_lastInputWasEmpty) {
+      setLastInput(nullptr);
+    }
+    else {
+      setLastInput(strdup("")); 
+      _lastInputWasEmpty = true;
+    }
+  }
+  else {
+    _lastInputWasEmpty = false;
+  }
+
+  return _lastInput; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a signal
+////////////////////////////////////////////////////////////////////////////////
+
+void ReadlineShell::signal () {
+  // set the global state, so the readline input loop can react on it
+  setLoopState(2);
 }
 
 // -----------------------------------------------------------------------------
