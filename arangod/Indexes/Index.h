@@ -33,7 +33,11 @@
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/logging.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
 // -----------------------------------------------------------------------------
@@ -208,8 +212,98 @@ namespace triagens {
 
         struct TRI_document_collection_t*                                      _collection;
 
-        std::vector<std::vector<triagens::basics::AttributeName>> const  _fields;
+        std::vector<std::vector<triagens::basics::AttributeName>> const        _fields;
                
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to insert a document into any index type
+////////////////////////////////////////////////////////////////////////////////
+
+        template<typename Idx_Element>
+        int fillElement(Idx_Element* element,
+                        TRI_shaped_sub_t* subObjects,
+                        TRI_doc_mptr_t const* document,
+                        std::vector<TRI_shape_pid_t> const& paths,
+                        bool const sparse) {
+          TRI_ASSERT(document != nullptr);
+          TRI_ASSERT_EXPENSIVE(document->getDataPtr() != nullptr);   // ONLY IN INDEX, PROTECTED by RUNTIME
+
+          TRI_shaped_json_t shapedJson;
+
+          TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+          if (shapedJson._sid == TRI_SHAPE_ILLEGAL) {
+            LOG_WARNING("encountered invalid marker with shape id 0");
+
+            return TRI_ERROR_INTERNAL;
+          }
+
+          int res = TRI_ERROR_NO_ERROR;
+
+          element->_document = const_cast<TRI_doc_mptr_t*>(document);
+          char const* ptr = element->_document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+          // auto subObjects = ;
+
+          size_t const n = paths.size();
+
+          for (size_t j = 0; j < n; ++j) {
+            TRI_shape_pid_t path = paths[j];
+
+            // ..........................................................................
+            // Determine if document has that particular shape
+            // ..........................................................................
+
+            TRI_shape_access_t const* acc = _collection->getShaper()->findAccessor(shapedJson._sid, path);  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+            if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
+              // OK, the document does not contain the attributed needed by 
+              // the index, are we sparse?
+              subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+
+              res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+
+              if (sparse) {
+                // no need to continue
+                return res;
+              }
+              continue;
+            }
+
+            // ..........................................................................
+            // Extract the field
+            // ..........................................................................
+
+            TRI_shaped_json_t shapedObject;
+            if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
+              return TRI_ERROR_INTERNAL;
+            }
+
+            if (shapedObject._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+              res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+
+              if (sparse) {
+                // no need to continue
+                return res;
+              }
+            }
+
+            // .........................................................................
+            // Store the field
+            // .........................................................................
+
+            TRI_FillShapedSub(&subObjects[j], &shapedObject, ptr);
+          }
+
+          return res;
+        }
     };
 
   }

@@ -89,81 +89,25 @@ static void FreeSubObjectsHashIndexElement (T* element) {
 /// hashed and the shape identifier of each part.
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename T>
-static int HashIndexHelper (HashIndex const* hashIndex,
-                            T* hashElement,
-                            TRI_doc_mptr_t const* document) {
-  TRI_shaped_json_t shapedJson;         // the object behind document
-
-  auto shaper = hashIndex->collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  bool const sparse = hashIndex->sparse();
-
-  // .............................................................................
-  // Assign the document to the TRI_hash_index_element_t structure - so that it
-  // can later be retreived.
-  // .............................................................................
-
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  hashElement->_document = const_cast<TRI_doc_mptr_t*>(document);
-  char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX
-
-  // .............................................................................
-  // Extract the attribute values
-  // .............................................................................
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  auto const& paths = hashIndex->paths();
-  size_t const n = paths.size();
-
-  for (size_t j = 0;  j < n;  ++j) {
-    TRI_shape_pid_t path = paths[j];
-
-    // determine if document has that particular shape
-    TRI_shape_access_t const* acc = shaper->findAccessor(shapedJson._sid, path);
-
-    // field not part of the object
-    if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-      hashElement->_subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL;
-
-      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-
-      if (sparse) {
-        // no need to continue
-        return res;
-      }
-
-      continue;
-    }
-
-    // extract the field
-    TRI_shaped_json_t shapedObject; 
-    if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (shapedObject._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
-      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-
-      if (sparse) {
-        // no need to continue
-        return res;
+/*
+    // TODO needs to be extracted as a helper function
+    if ( triagens::basics::TRI_AttributeNamesHaveExpansion(hashIndex->fields()[j]) ) {
+      TRI_shape_t const* shape = shaper->lookupShapeId(shapedObject._sid); 
+      if (shape->_type >= TRI_SHAPE_LIST && shape->_type <= TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
+        std::cout << "Should expand here" << std::endl;
+        auto json = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &shapedObject));
+        std::cout << "Is Array " << json.isArray() << " :: " << json << std::endl;
       }
     }
- 
-    TRI_FillShapedSub(&hashElement->_subObjects[j], &shapedObject, ptr);
-  }
-
-  return res;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index helper for hashing with allocation
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-static int HashIndexHelperAllocate (HashIndex const* hashIndex,
+static int HashIndexHelperAllocate (HashIndex* hashIndex,
                                     T* hashElement,
                                     TRI_doc_mptr_t const* document) {
   // .............................................................................
@@ -177,7 +121,7 @@ static int HashIndexHelperAllocate (HashIndex const* hashIndex,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  int res = HashIndexHelper<T>(hashIndex, hashElement, document);
+  int res = hashIndex->fillElement<T>(hashElement, hashElement->_subObjects, document, hashIndex->paths(), hashIndex->sparse());
   
   if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
     // if the document does not have the indexed attribute or has it, and it is null,
