@@ -41,13 +41,11 @@
 #endif
 
 using namespace triagens;
-using namespace std;
 
-ShellImplementation* ShellImplFactory::buildShell (string const & history, 
+ShellImplementation* ShellImplFactory::buildShell (std::string const& history, 
                                                    Completer* completer) {
-
 #ifdef _WIN32
-  //under windows the readline is not compilable
+  // under Windows the readline is not compilable
   return new LinenoiseShell(history, completer);
 #elif defined TRI_HAVE_LINENOISE
   return new LinenoiseShell(history, completer);
@@ -57,7 +55,19 @@ ShellImplementation* ShellImplFactory::buildShell (string const & history,
   // last resort!
   return new DummyShell(history, completer);
 #endif
+}
 
+bool ShellImplFactory::hasCtrlCHandler () {
+#ifdef _WIN32
+  // under Windows the readline is not compilable
+  return false;
+#elif defined TRI_HAVE_LINENOISE
+  return false;
+#elif defined TRI_HAVE_READLINE
+  return true;
+#else
+  return false;
+#endif
 }
 
 // -----------------------------------------------------------------------------
