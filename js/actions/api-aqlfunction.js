@@ -158,7 +158,7 @@ function get_api_aqlfunction (req, res) {
 ///
 ///   var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
-///   assert(response.code === 201);
+///   assert(response.code === 200 || response.code === 201 || response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
