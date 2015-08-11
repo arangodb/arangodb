@@ -137,6 +137,8 @@ v2.7.0 (XXXX-XX-XX)
 
 * added optional Foxx dependencies
 
+* converted Foxx constructors to classes
+
 * updated chai to 3.0.
 
 
