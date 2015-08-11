@@ -90,6 +90,25 @@ namespace triagens {
         bool excludeExpansion = false
       );
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transform a vector of AttributeNames into a pid string.
+///        Stops at first expansion
+////////////////////////////////////////////////////////////////////////////////
+
+    void TRI_AttributeNamesToPidString (
+        std::vector<AttributeName> const& input,
+        std::string& result
+      );
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Tests if this AttributeName uses an expansion operator
+////////////////////////////////////////////////////////////////////////////////
+
+    bool TRI_AttributeNamesHaveExpansion (
+        std::vector<AttributeName> const& input
+      );
+
   }
 }
 
