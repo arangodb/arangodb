@@ -1,7 +1,54 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* Linux startup scripts and systemd configuration for arangod now try to
+  adjust the NOFILE (number of open files) limits for the process. The limit
+  value is set to 131072 (128k) when ArangoDB is started via start/stop 
+  commands
+
+* When ArangoDB is started/stopped manually via the start/stop commands, the
+  main process will wait for up to 10 seconds after it forks the supervisor
+  and arangod child processes. If the startup fails within that period, the
+  start/stop script will fail with an exit code other than zero. If the
+  startup of the supervisor or arangod is still ongoing after 10 seconds, 
+  the main program will still return with exit code 0. The limit of 10 seconds
+  is arbitrary because the time required for a startup is not known in advance.
+
+* added startup option `--database.throw-collection-not-loaded-error`
+
+  Accessing a not-yet loaded collection will automatically load a collection
+  on first access. This flag controls what happens in case an operation
+  would need to wait for another thread to finalize loading a collection. If
+  set to *true*, then the first operation that accesses an unloaded collection
+  will load it. Further threads that try to access the same collection while
+  it is still loading will get an error (1238, *collection not loaded*). When
+  the initial operation has completed loading the collection, all operations
+  on the collection can be carried out normally, and error 1238 will not be
+  thrown.
+
+  If set to *false*, the first thread that accesses a not-yet loaded collection
+  will still load it. Other threads that try to access the collection while
+  loading will not fail with error 1238 but instead block until the collection
+  is fully loaded. This configuration might lead to all server threads being
+  blocked because they are all waiting for the same collection to complete
+  loading. Setting the option to *true* will prevent this from happening, but
+  requires clients to catch error 1238 and react on it (maybe by scheduling 
+  a retry for later).
+
+  The default value is *false*.
+
 * added better control-C support in arangosh
+
+  When CTRL-C is pressed in arangosh, it will now print a `^C` first. Pressing
+  CTRL-C again will reset the prompt if something was entered before, or quit
+  arangosh if no command was entered directly before.
+  
+  This affects the arangosh version build with Readline-support only.
+
+  The MacOS version of ArangoDB for Homebrew now depends on Readline, too. The
+  Homebrew formula has been changed accordingly.
+  When self-compiling ArangoDB on MacOS without Homebrew, Readline now is a
+  prerequisite.
 
 * increased default value collection-specific `indexBuckets` value from 1 to 16
 

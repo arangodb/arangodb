@@ -226,6 +226,8 @@
 /// - 1237: @LIT{collection type mismatch}
 ///   Will be raised when a collection has a different type from what has been
 ///   expected.
+/// - 1238: @LIT{collection not loaded}
+///   Will be raised when a collection is accessed that is not yet loaded.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
@@ -1641,6 +1643,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH                         (1237)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1238: ERROR_ARANGO_COLLECTION_NOT_LOADED
+///
+/// collection not loaded
+///
+/// Will be raised when a collection is accessed that is not yet loaded.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            (1238)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

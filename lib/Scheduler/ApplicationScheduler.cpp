@@ -523,7 +523,16 @@ bool ApplicationScheduler::start () {
   buildSchedulerReporter();
   buildControlCHandler();
 
-  bool ok = _scheduler->start(0);
+#ifdef TRI_HAVE_GETRLIMIT
+  struct rlimit rlim;
+  int res = getrlimit(RLIMIT_NOFILE, &rlim);
+
+  if (res == 0) {
+    LOG_INFO("file-descriptors (nofiles) hard limit is %d, soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
+  }
+#endif
+
+  bool ok = _scheduler->start(nullptr);
 
   if (! ok) {
     LOG_FATAL_AND_EXIT("the scheduler cannot be started");
@@ -665,8 +674,8 @@ void ApplicationScheduler::adjustFileDescriptors () {
     if (res != 0) {
       LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s", strerror(errno));
     }
-
-    LOG_DEBUG("hard limit is %d, soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
+    
+    LOG_DEBUG("file-descriptors (nofiles) hard limit is %d, soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
 
     bool changed = false;
 
@@ -705,7 +714,7 @@ void ApplicationScheduler::adjustFileDescriptors () {
         LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s", strerror(errno));
       }
 
-      LOG_DEBUG("new hard limit is %d, new soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
+      LOG_INFO("file-descriptors (nofiles) new hard limit is %d, new soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
     }
 
     // the select backend has more restrictions
