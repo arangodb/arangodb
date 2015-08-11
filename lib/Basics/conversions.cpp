@@ -58,34 +58,6 @@ int TRI_IntHex (char ch, int errorValue) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to boolean from string
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_BooleanString (char const* str) {
-  if (TRI_CaseEqualString(str, "true")) {
-    return true;
-  }
-
-  if (TRI_CaseEqualString(str, "yes")) {
-    return true;
-  }
-
-  if (TRI_CaseEqualString(str, "on")) {
-    return true;
-  }
-
-  if (TRI_CaseEqualString(str, "y")) {
-    return true;
-  }
-
-  if (TRI_EqualString(str, "1")) {
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to double from string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -203,26 +175,6 @@ uint32_t TRI_UInt32String (char const* str) {
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to uint32 from string with given length
-////////////////////////////////////////////////////////////////////////////////
-
-uint32_t TRI_UInt32String2 (char const* str, size_t length) {
-  char tmp[1024];
-
-  if (str[length] != '\0') {
-    if (length >= sizeof(tmp)) {
-      length = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, str, length);
-    tmp[length] = '\0';
-    str = tmp;
-  }
-
-  return TRI_UInt32String(str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -631,56 +583,66 @@ size_t TRI_StringUInt64InPlace (uint64_t attr, char* buffer) {
 /// @brief convert to string from int8
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringInt8 (int8_t attr) {
   char buffer[5];
   size_t len = TRI_StringInt8InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from uint8
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringUInt8 (uint8_t attr) {
   char buffer[4];
   size_t len = TRI_StringUInt8InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from int16
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringInt16 (int16_t attr) {
   char buffer[7];
   size_t len = TRI_StringInt16InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from uint16
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringUInt16 (uint16_t attr) {
   char buffer[6];
   size_t len = TRI_StringUInt16InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from int32
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringInt32 (int32_t attr) {
   char buffer[12];
   size_t len = TRI_StringInt32InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from uint32
@@ -697,12 +659,14 @@ char* TRI_StringUInt32 (uint32_t attr) {
 /// @brief convert to string from int64
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringInt64 (int64_t attr) {
   char buffer[22];
   size_t len = TRI_StringInt64InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from uint64
@@ -779,24 +743,27 @@ size_t TRI_StringUInt64HexInPlace (uint64_t attr, char* buffer) {
 /// @brief convert to hex string from uint32
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringUInt32Hex (uint32_t attr) {
   char buffer[9];
   size_t len = TRI_StringUInt32HexInPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to hex string from uint64
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringUInt64Hex (uint64_t attr) {
   char buffer[17];
   size_t len = TRI_StringUInt64HexInPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
-
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to octal string from uint32, using the specified buffer.
@@ -871,23 +838,27 @@ size_t TRI_StringUInt64OctalInPlace (uint64_t attr, char* buffer) {
 /// @brief convert to octal string from uint32
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringUInt32Octal (uint32_t attr) {
   char buffer[9];
   size_t len = TRI_StringUInt32OctalInPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to octal string from uint64
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringUInt64Octal (uint64_t attr) {
   char buffer[17];
   size_t len = TRI_StringUInt64OctalInPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a time stamp to a string

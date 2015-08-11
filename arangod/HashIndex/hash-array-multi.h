@@ -97,12 +97,6 @@ int TRI_InitHashArrayMulti (TRI_hash_array_multi_t*,
 
 void TRI_DestroyHashArrayMulti (TRI_hash_array_multi_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeHashArrayMulti (TRI_hash_array_multi_t*);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------

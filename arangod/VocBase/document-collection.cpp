@@ -1328,7 +1328,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // save the old data
     TRI_doc_mptr_copy_t oldData = *found;
 
-    TRI_doc_mptr_t* newHeader = static_cast<TRI_doc_mptr_t*>(CONST_CAST(found));
+    TRI_doc_mptr_t* newHeader = const_cast<TRI_doc_mptr_t*>(found);
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
@@ -3246,7 +3246,8 @@ static int FillIndexBatch (TRI_document_collection_t* document,
   }
 
   // process the remainder of the documents
-  if (! documents.empty()) {
+  if (res == TRI_ERROR_NO_ERROR &&
+      ! documents.empty()) {
     res = idx->batchInsert(&documents, indexPool->numThreads());
   }
   

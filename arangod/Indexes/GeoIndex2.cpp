@@ -202,7 +202,7 @@ int GeoIndex2::insert (TRI_doc_mptr_t const* doc,
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = CONST_CAST(doc);
+  gc.data = const_cast<void*>(static_cast<void const*>(doc));
 
   int res = GeoIndex_insert(_geoIndex, &gc);
 
@@ -249,7 +249,7 @@ int GeoIndex2::remove (TRI_doc_mptr_t const* doc,
     GeoCoordinate gc;
     gc.latitude = latitude;
     gc.longitude = longitude;
-    gc.data = CONST_CAST(doc);
+    gc.data = const_cast<void*>(static_cast<void const*>(doc));
 
     // ignore non-existing elements in geo-index
     GeoIndex_remove(_geoIndex, &gc);

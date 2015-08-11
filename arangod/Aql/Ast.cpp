@@ -2579,7 +2579,7 @@ void Ast::traverseReadOnly (AstNode const* node,
 std::pair<std::string, bool> Ast::normalizeFunctionName (char const* name) {
   TRI_ASSERT(name != nullptr);
 
-  char* upperName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+  char* upperName = TRI_UpperAsciiString(TRI_UNKNOWN_MEM_ZONE, name);
 
   if (upperName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

@@ -292,9 +292,10 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
     TRI_replication_applier_configuration_t config;
     TRI_InitConfigurationReplicationApplier(&config);
 
-    TRI_ReadLockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
-    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
+    {
+      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
+      TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
+    }
 
     TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
     TRI_DestroyConfigurationReplicationApplier(&config);
@@ -320,10 +321,10 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
     TRI_InitConfigurationReplicationApplier(&config);
 
     // fill with previous configuration
-    TRI_ReadLockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
-    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
-
+    {
+      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
+      TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
+    }
 
     // treat the argument as an object from now on
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);

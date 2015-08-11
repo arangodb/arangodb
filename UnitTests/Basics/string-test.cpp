@@ -68,26 +68,26 @@ BOOST_FIXTURE_TEST_SUITE(CStringTest, CStringSetup)
 BOOST_AUTO_TEST_CASE (tst_lower_ascii_no_change) {
   char* result;
 
-  result = TRI_LowerAsciiString("this is supposed to stay the same");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "this is supposed to stay the same");
   BOOST_CHECK_EQUAL("this is supposed to stay the same", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
-  result = TRI_LowerAsciiString("this is also supposed to stay the same");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "this is also supposed to stay the same");
   BOOST_CHECK_EQUAL("this is also supposed to stay the same", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
   // punctuation should not change
-  result = TRI_LowerAsciiString("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>");
   BOOST_CHECK_EQUAL("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
   // whitespace should not change
-  result = TRI_LowerAsciiString("  \t \n \r \n");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "  \t \n \r \n");
   BOOST_CHECK_EQUAL("  \t \n \r \n", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
   // test an empty string
-  result = TRI_LowerAsciiString("");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "");
   BOOST_CHECK_EQUAL("", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
 }
@@ -99,11 +99,11 @@ BOOST_AUTO_TEST_CASE (tst_lower_ascii_no_change) {
 BOOST_AUTO_TEST_CASE (tst_lower_ascii) {
   char* result;
 
-  result = TRI_LowerAsciiString("This MUST be converted into LOWER CASE!");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "This MUST be converted into LOWER CASE!");
   BOOST_CHECK_EQUAL("this must be converted into lower case!", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
-  result = TRI_LowerAsciiString("SCREAMING OUT LOUD");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "SCREAMING OUT LOUD");
   BOOST_CHECK_EQUAL("screaming out loud", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
 }
@@ -115,15 +115,15 @@ BOOST_AUTO_TEST_CASE (tst_lower_ascii) {
 BOOST_AUTO_TEST_CASE (tst_lower_ascii_non_ascii) {
   char* result;
 
-  result = TRI_LowerAsciiString("äöüÄÖÜß");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "äöüÄÖÜß");
   BOOST_CHECK_EQUAL("äöüÄÖÜß", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
-  result = TRI_LowerAsciiString("코리아닷컴");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "코리아닷컴");
   BOOST_CHECK_EQUAL("코리아닷컴", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
-  result = TRI_LowerAsciiString("своих партнеров");
+  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "своих партнеров");
   BOOST_CHECK_EQUAL("своих партнеров", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
 }
@@ -135,26 +135,26 @@ BOOST_AUTO_TEST_CASE (tst_lower_ascii_non_ascii) {
 BOOST_AUTO_TEST_CASE (tst_upper_ascii_no_change) {
   char* result;
 
-  result = TRI_UpperAsciiString("THIS IS SUPPOSED TO STAY THE SAME");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "THIS IS SUPPOSED TO STAY THE SAME");
   BOOST_CHECK_EQUAL("THIS IS SUPPOSED TO STAY THE SAME", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
-  result = TRI_UpperAsciiString("THIS IS ALSO SUPPOSED TO STAY THE SAME");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "THIS IS ALSO SUPPOSED TO STAY THE SAME");
   BOOST_CHECK_EQUAL("THIS IS ALSO SUPPOSED TO STAY THE SAME", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
   // punctuation should not change
-  result = TRI_UpperAsciiString("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>");
   BOOST_CHECK_EQUAL("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
   // whitespace should not change
-  result = TRI_UpperAsciiString("  \t \n \r \n");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "  \t \n \r \n");
   BOOST_CHECK_EQUAL("  \t \n \r \n", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
   // test an empty string
-  result = TRI_UpperAsciiString("");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "");
   BOOST_CHECK_EQUAL("", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
 }
@@ -166,11 +166,11 @@ BOOST_AUTO_TEST_CASE (tst_upper_ascii_no_change) {
 BOOST_AUTO_TEST_CASE (tst_upper_ascii) {
   char* result;
 
-  result = TRI_UpperAsciiString("This must be converted into upper CASE!");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "This must be converted into upper CASE!");
   BOOST_CHECK_EQUAL("THIS MUST BE CONVERTED INTO UPPER CASE!", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
-  result = TRI_UpperAsciiString("silently whispering");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "silently whispering");
   BOOST_CHECK_EQUAL("SILENTLY WHISPERING", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
 }
@@ -182,15 +182,15 @@ BOOST_AUTO_TEST_CASE (tst_upper_ascii) {
 BOOST_AUTO_TEST_CASE (tst_upper_ascii_non_ascii) {
   char* result;
 
-  result = TRI_UpperAsciiString("äöüÄÖÜß");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "äöüÄÖÜß");
   BOOST_CHECK_EQUAL("äöüÄÖÜß", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
-  result = TRI_UpperAsciiString("코리아닷컴");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "코리아닷컴");
   BOOST_CHECK_EQUAL("코리아닷컴", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
   
-  result = TRI_UpperAsciiString("своих партнеров");
+  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "своих партнеров");
   BOOST_CHECK_EQUAL("своих партнеров", result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
 }

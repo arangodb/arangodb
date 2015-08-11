@@ -39,6 +39,7 @@ ArangoDB and shouldn't be used if possible.
 * Foxx: the Foxx sessions option `jwt` has been removed entirely. Please use the `sesssions-jwt` app from the Foxx app store or use the `crypto` module's JWT functions directly.
 * Foxx: the Foxx sessions option `type` has been removed entirely. Please use the options `cookie` and `header` instead.
 * Foxx: the Foxx sessions option `sessionStorageApp` has been removed entirely. Please use the option `sessionStorage` instead.
+* The built-in support for CoffeeScript source files is deprecated, it will raise a warning if you use it. Please pre-compile CoffeeScript source files.
 * AQL: the AQL function `SKIPLIST` has been removed.
 * Simple queries: the following simple query functions are now deprecated: collection.near(), collection.within(), collection.geo(), collection.fulltext(), collection.range(), collection.closedRange(). It is recommended to replace calls to these functions with equivalent AQL queries, which are more flexible.
 * Simple queries: using negative values for SimpleQuery.skip() is not supported any longer.
@@ -47,4 +48,5 @@ ArangoDB and shouldn't be used if possible.
 ## 2.8
 * Foxx: the property `assets` in manifests has been removed entirely. Please use the `files` property and an external build tool instead.
 * Foxx: properties `setup` and `teardown` in manifests have been removed entirely. Please use the `scripts` property instead.
+* The built-in support for CoffeeScript source files has been removed entirely. Please pre-compile CoffeeScript source files.
 * Simple queries: the following simple query functions will be removed: collection.near(), collection.within(), collection.geo(), collection.fulltext(), collection.range(), collection.closedRange(). It is recommended to replace calls to these functions with equivalent AQL queries, which are more flexible.

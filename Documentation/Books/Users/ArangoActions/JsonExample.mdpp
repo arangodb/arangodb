@@ -2,16 +2,18 @@
 
 If you change the example slightly, then a JSON object will be delivered.
 
-```js
-arangosh> db._routing.save({ 
-  url: "/hello/json", 
-  content: { 
-    contentType: "application/json", 
-    body: "{ \"hello\" : \"world\" }" 
-  }
-});
-arangosh> require("internal").reloadRouting()
-```
+    @startDocuBlockInline routingCreateHelloWorld
+    @EXAMPLE_ARANGOSH_OUTPUT{routingCreateHelloWorld}
+    |db._routing.save({ 
+    |  url: "/hello/json", 
+    |  content: { 
+    |  contentType: "application/json", 
+    |    body: "{ \"hello\" : \"world\" }" 
+    |  }
+    });
+    require("internal").reloadRouting()
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock routingCreateHelloWorld
 
 Again check with your browser http:// localhost:8529/hello/json
 
@@ -21,10 +23,15 @@ application to display the JSON object, you can change the *contentType* to
 *"text/plain"* for the example. This makes it easier to check the example using
 a browser. Or use *curl* to access the server.
 
-```js
-bash> curl "http://127.0.0.1:8529/hello/json" && echo
-{ "hello" : "world" }
-```
+    @startDocuBlockInline routingCurlHelloWorld
+    @EXAMPLE_ARANGOSH_RUN{routingCurlHelloWorld}
+    var url = "/hello/json";
+    var response = logCurlRequest('GET', url);
+    assert(response.code === 200);
+    logJsonResponse(response);
+
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock routingCurlHelloWorld
 
 !SECTION Delivering Content
 
@@ -83,37 +90,27 @@ function (req, res, options, next)
 
 *Examples*
 
-```js
-arangosh> db._routing.save({ 
-  url: "/hello/echo",
-  action: { 
-    do: "org/arangodb/actions/echoRequest" 
-  } 
-});
-```
+    @startDocuBlockInline routingCreateHelloEcho
+    @EXAMPLE_ARANGOSH_OUTPUT{routingCreateHelloEcho}
+    |db._routing.save({ 
+    |    url: "/hello/echo",
+    |    action: { 
+    |    do: "org/arangodb/actions/echoRequest" 
+    |  } 
+    });
+    ~require("internal").reloadRouting()
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock routingCreateHelloEcho
 
 Reload the routing and check http:// 127.0.0.1:8529/hello/echo
 
 You should see something like
 
-```js
-{
-  "request": {
-    "path": "/hello/echo",
-    "headers": {
-      "accept-encoding": "gzip, deflate",
-      "accept-language": "de-de,de;q=0.8,en-us;q=0.5,en;q=0.3",
-      "connection": "keep-alive",
-      "content-length": "0",
-      "host": "localhost:8529",
-      "user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0"
-    },
-    "requestType": "GET",
-    "parameters": { }
-  },
-  "options": { }
-}
-```
+    @startDocuBlockInline fetchroutingCreateHelloEcho
+    @EXAMPLE_ARANGOSH_OUTPUT{fetchroutingCreateHelloEcho}
+    arango.GET("hello/echo")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock fetchroutingCreateHelloEcho
 
 The request might contain *path*, *prefix*, *suffix*, and *urlParameters*
 attributes.  *path* is the complete path as supplied by the user and always
@@ -151,14 +148,17 @@ called.
 
 *Examples*
 
-```js
-arangosh> db._routing.save({ 
-  url: "/hello/echo",
-  action: { 
-    controller: "org/arangodb/actions/echoController" 
-  } 
-});
-```
+    @startDocuBlockInline routingCreateEchoController
+    @EXAMPLE_ARANGOSH_OUTPUT{routingCreateEchoController}
+    |db._routing.save({ 
+    |  url: "/hello/echo",
+    |  action: { 
+    |    controller: "org/arangodb/actions/echoController" 
+    |  } 
+    });
+    ~require("internal").reloadRouting()
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock routingCreateEchoController
 
 !SUBSECTION Prefix Action Controller
 
@@ -206,14 +206,18 @@ You can also store a function directly in the routing table.
 
 *Examples*
 
-```js
-arangosh> db._routing.save({ 
-  url: "/hello/echo",
-  action: { 
-    callback: "function(req,res) {res.statusCode=200; res.body='Hello'}" 
-  } 
-});
-```
+    @startDocuBlockInline routingCreateEchoFunction
+    @EXAMPLE_ARANGOSH_OUTPUT{routingCreateEchoFunction}
+    |db._routing.save({ 
+    |  url: "/hello/echo",
+    |  action: { 
+    |    callback: "function(req,res) {res.statusCode=200; res.body='Hello'}" 
+    |  } 
+    });
+    ~require("internal").reloadRouting()
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock routingCreateEchoFunction
+
 !SUBSECTION Requests and Responses
 
 The controller must define handler functions which take a request object and
@@ -236,56 +240,44 @@ function (req, res, options, next) {
 
 Install it via:
 
-```js
-arangosh> db._routing.save({ 
-  url: "/echo",
-  action: { 
-    do: "org/arangodb/actions/echoRequest" 
-  } 
-});
-```
+    @startDocuBlockInline routingCreateEchoAction
+    @EXAMPLE_ARANGOSH_OUTPUT{routingCreateEchoAction}
+    |db._routing.save({ 
+    |  url: "/echo",
+    |  action: { 
+    |    do: "org/arangodb/actions/echoRequest" 
+    |  }
+    })
+    ~require("internal").reloadRouting()
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock routingCreateEchoAction
 
 Reload the routing and check http:// 127.0.0.1:8529/hello/echo
 
 You should see something like
 
-```js
-{
-  "request": {
-    "prefix": "/hello/echo",
-    "suffix": [
-      "hello",
-      "echo"
-    ],
-    "path": "/hello/echo",
-    "headers": {
-      "accept-encoding": "gzip, deflate",
-      "accept-language": "de-de,de;q=0.8,en-us;q=0.5,en;q=0.3",
-      "connection": "keep-alive",
-      "content-length": "0",
-      "host": "localhost:8529",
-      "user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0"
-    },
-    "requestType": "GET",
-    "parameters": { }
-  },
-  "options": { }
-}
-```
+    @startDocuBlockInline fetchroutingRequestHelloEcho
+    @EXAMPLE_ARANGOSH_OUTPUT{fetchroutingRequestHelloEcho}
+    arango.GET("hello/echo")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock fetchroutingRequestHelloEcho
 
 You may also pass options to the called function:
 
-```js
-arangosh> db._routing.save({ 
-  url: "/echo",
-  action: {
-    do: "org/arangodb/actions/echoRequest",
-    options: { 
-      "Hello": "World" 
-    } 
-  } 
-});
-```
+    @startDocuBlockInline routingCreateEchoRequestOptions
+    @EXAMPLE_ARANGOSH_OUTPUT{routingCreateEchoRequestOptions}
+    |db._routing.save({ 
+    |  url: "/echo",
+    |  action: {
+    |    do: "org/arangodb/actions/echoRequest",
+    |    options: { 
+    |      "Hello": "World" 
+    |    }
+    |  } 
+    });
+    ~require("internal").reloadRouting()
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock routingCreateEchoRequestOptions
 
 You should now see the options in the result.
 

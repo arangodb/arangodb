@@ -38,7 +38,14 @@ server after the password was entered.
 To change the current database after the connection has been made, you
 can use the `db._useDatabase()` command in arangosh:
 
-    arangosh> db._useDatabase("myapp");
+    @startDocuBlockInline shellUseDB
+    @EXAMPLE_ARANGOSH_OUTPUT{shellUseDB}
+    db._createDatabase("myapp");
+    db._useDatabase("myapp");
+    db._useDatabase("_system");
+    db._dropDatabase("myapp");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock shellUseDB
 
 To get a list of available commands, arangosh provides a *help()* function.
 Calling it will display helpful information.
@@ -54,20 +61,26 @@ current database.
 
 For a list of available methods for the *db* object, type 
     
-    arangosh> db._help(); 
+    @startDocuBlockInline shellHelp
+    @EXAMPLE_ARANGOSH_OUTPUT{shellHelp}
+    db._help(); 
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock shellHelp
 
 you can paste multiple lines into arangosh, given the first line ends with an opening brace:
 
-    arangosh> for (var i = 0; i < 10; i ++) {
-    ........>          require("internal").print("Hello world " + i + "!\n");
-    ........> }
-    Hello world 0!
-    <snip>
-    Hello world 9!
+    @startDocuBlockInline shellPaste
+    @EXAMPLE_ARANGOSH_OUTPUT{shellPaste}
+    |for (var i = 0; i < 10; i ++) {
+    |         require("internal").print("Hello world " + i + "!\n");
+    }
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock shellPaste
+
 
 To load your own javascript code into the current javascript interpreter context, use the load command:
 
     require("internal").load("/tmp/test.js")     // <- Linux / Macos
     require("internal").load("c:\\tmp\\test.js") // <- Windows
 
-Exiting arangosh can be done using the key combination ```<CTRL> + D```
+Exiting arangosh can be done using the key combination ```<CTRL> + D``` or by typing ```quit<CR>```
