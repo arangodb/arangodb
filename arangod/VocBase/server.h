@@ -33,8 +33,9 @@
 #include "Basics/Common.h"
 #include "Basics/associative.h"
 #include "Basics/locks.h"
-#include "Basics/ReadWriteLock.h"
+#include "Basics/Mutex.h"
 #include "Basics/threads.h"
+#include "Basics/DataProtector.h"
 #include "Basics/vector.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
@@ -61,32 +62,39 @@ namespace triagens {
 /// @brief server structure
 ////////////////////////////////////////////////////////////////////////////////
 
+struct DatabasesLists {
+  std::unordered_map<std::string, TRI_vocbase_t*> _databases;
+  std::unordered_map<std::string, TRI_vocbase_t*> _coordinatorDatabases;
+  std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
+};
+
 struct TRI_server_t {
   TRI_server_t ();
   ~TRI_server_t ();
 
-  TRI_associative_pointer_t        _databases;
-  TRI_associative_pointer_t        _coordinatorDatabases;
-  triagens::basics::ReadWriteLock  _databasesLock;
+  std::atomic<DatabasesLists*>       _databasesLists;
+  // TODO: Make this again a template once everybody has gcc >= 4.9.2
+  // triagens::basics::DataProtector<64>  
+  triagens::basics::DataProtector    _databasesProtector;
+  triagens::basics::Mutex            _databasesMutex;
 
-  TRI_thread_t                     _databaseManager;
-  std::vector<TRI_vocbase_t*>      _droppedDatabases;
+  TRI_thread_t                       _databaseManager;
 
-  TRI_vocbase_defaults_t           _defaults;
+  TRI_vocbase_defaults_t             _defaults;
   triagens::rest::ApplicationEndpointServer*  _applicationEndpointServer; 
-  triagens::basics::ThreadPool*    _indexPool;                 
-  triagens::aql::QueryRegistry*    _queryRegistry;
+  triagens::basics::ThreadPool*      _indexPool;                 
+  triagens::aql::QueryRegistry*      _queryRegistry;
 
-  char*                            _basePath;
-  char*                            _databasePath;
-  char*                            _lockFilename;
-  char*                            _serverIdFilename;
-  char*                            _appPath;
+  char*                              _basePath;
+  char*                              _databasePath;
+  char*                              _lockFilename;
+  char*                              _serverIdFilename;
+  char*                              _appPath;
 
-  bool                             _disableReplicationAppliers;
-  bool                             _iterateMarkersOnOpen;
-  bool                             _hasCreatedSystemDatabase;
-  bool                             _initialized;
+  bool                               _disableReplicationAppliers;
+  bool                               _iterateMarkersOnOpen;
+  bool                               _hasCreatedSystemDatabase;
+  bool                               _initialized;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,7 +188,7 @@ int TRI_CreateDatabaseServer (TRI_server_t*,
 /// the caller is responsible for freeing the result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
+std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database
@@ -189,13 +197,6 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
 int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t*,
                                            TRI_voc_tick_t,
                                            bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drops an existing coordinator database
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DropCoordinatorDatabaseServer (TRI_server_t*,
-                                       char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing database
@@ -270,26 +271,19 @@ void TRI_ReleaseDatabaseServer (TRI_server_t*,
                                 TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a database exists
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExistsDatabaseByIdServer (TRI_server_t*,
-                                   TRI_voc_tick_t);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all databases a user can see
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_GetUserDatabasesServer (TRI_server_t*,
                                 char const*,
-                                TRI_vector_string_t*);
+                                std::vector<std::string>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all database names
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_GetDatabaseNamesServer (TRI_server_t*,
-                                TRI_vector_string_t*);
+                                std::vector<std::string>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the defaults into the target

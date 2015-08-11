@@ -360,7 +360,11 @@ namespace triagens {
                 size_t lower = chunk * chunkSize;
                 size_t upper = (chunk + 1) * chunkSize;
 
-                if (upper > elements.size()) {
+                if (chunk + 1 == numThreads) {
+                  // last chunk. account for potential rounding errors
+                  upper = elements.size();
+                }
+                else if (upper > elements.size()) {
                   upper = elements.size();
                 }
 
@@ -387,9 +391,7 @@ namespace triagens {
                     it2 = allBuckets.emplace(it.first, std::vector<DocumentsPerBucket>()).first;
                   }
 
-                  for (auto& it3 : (*it2).second) {
-                    (*it2).second.emplace_back(std::move(it3));
-                  }
+                  (*it2).second.emplace_back(std::move(it.second));
                 }
               }
               catch (...) {

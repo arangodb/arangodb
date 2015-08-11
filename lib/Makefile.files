@@ -20,6 +20,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ConditionVariable.cpp \
 	lib/Basics/conversions.cpp \
 	lib/Basics/csv.cpp \
+	lib/Basics/DataProtector.cpp \
 	lib/Basics/debugging.cpp \
 	lib/Basics/error.cpp \
 	lib/Basics/Exceptions.cpp \

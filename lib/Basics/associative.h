@@ -94,22 +94,9 @@ int TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
 
 void TRI_DestroyAssociativePointer (TRI_associative_pointer_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeAssociativePointer (TRI_memory_zone_t*, TRI_associative_pointer_t*);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief General hash function that can be used to hash a pointer
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_HashPointerKeyAssociativePointer (TRI_associative_pointer_t*,
-                                               void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General hash function that can be used to hash a string key
@@ -173,13 +160,6 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t*,
                                       void const*,
                                       void*,
                                       void const**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the array
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t*,
-                                           void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element to the array

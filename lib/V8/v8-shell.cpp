@@ -209,7 +209,7 @@ static void JS_ProcessCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) 
       break;
     }
 
-    TRI_ParseCsvString2(&parser, buffer, n);
+    TRI_ParseCsvString(&parser, buffer, n);
   }
 
   TRI_CLOSE(fd);

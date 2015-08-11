@@ -443,12 +443,6 @@ bool TRI_IsSystemNameCollection (char const*);
 bool TRI_IsAllowedNameCollection (bool,
                                   char const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_TypeNameCollection (const TRI_col_type_e);
-
 #endif
 
 // -----------------------------------------------------------------------------

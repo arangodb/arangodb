@@ -52,6 +52,7 @@ add_library(
     Basics/ConditionVariable.cpp
     Basics/conversions.cpp
     Basics/csv.cpp
+    Basics/DataProtector.cpp
     Basics/debugging.cpp
     Basics/error.cpp
     Basics/Exceptions.cpp

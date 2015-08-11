@@ -174,27 +174,9 @@ void TRI_DestroyAssociativePointer (TRI_associative_pointer_t* array) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeAssociativePointer (TRI_memory_zone_t* zone, TRI_associative_pointer_t* array) {
-  TRI_DestroyAssociativePointer(array);
-  TRI_Free(zone, array);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief General hash function that can be used to hash a pointer
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_HashPointerKeyAssociativePointer (TRI_associative_pointer_t* array,
-                                               void const* ptr) {
-  return TRI_FnvHashPointer(ptr, sizeof(void const*));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General hash function that can be used to hash a key
@@ -478,62 +460,6 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
   array->_nrUsed++;
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the array
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array,
-                                           void const* element) {
-  uint64_t hash;
-  uint64_t i;
-  uint64_t k;
-  void* old;
-
-  hash = array->hashElement(array, element);
-  i = hash % array->_nrAlloc;
-
-#ifdef TRI_INTERNAL_STATS
-  // update statistics
-  array->_nrRems++;
-#endif
-
-  // search the table
-  while (array->_table[i] != nullptr && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-#ifdef TRI_INTERNAL_STATS
-    array->_nrProbesD++;
-#endif
-  }
-
-  // if we did not find such an item return 0
-  if (array->_table[i] == nullptr) {
-    return nullptr;
-  }
-
-  // remove item
-  old = array->_table[i];
-  array->_table[i] = nullptr;
-  array->_nrUsed--;
-
-  // and now check the following places for items to move here
-  k = TRI_IncModU64(i, array->_nrAlloc);
-
-  while (array->_table[k] != nullptr) {
-    uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
-
-    if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
-      array->_table[i] = array->_table[k];
-      array->_table[k] = nullptr;
-      i = k;
-    }
-
-    k = TRI_IncModU64(k, array->_nrAlloc);
-  }
-
-  // return success
-  return old;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
