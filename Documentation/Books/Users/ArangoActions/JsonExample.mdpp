@@ -8,7 +8,7 @@ If you change the example slightly, then a JSON object will be delivered.
     |  url: "/hello/json", 
     |  content: { 
     |  contentType: "application/json", 
-    |    body: "{ 'hello' : 'world'}" 
+    |    body: '{"hello" : "world"}'
     |  }
     });
     require("internal").reloadRouting()
