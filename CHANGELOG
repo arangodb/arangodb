@@ -21,10 +21,12 @@ v2.7.0 (XXXX-XX-XX)
   would need to wait for another thread to finalize loading a collection. If
   set to *true*, then the first operation that accesses an unloaded collection
   will load it. Further threads that try to access the same collection while
-  it is still loading will get an error (1238, *collection not loaded*). When
-  the initial operation has completed loading the collection, all operations
-  on the collection can be carried out normally, and error 1238 will not be
-  thrown.
+  it is still loading immediately fail with an error (1238, *collection not loaded*). 
+  This is to prevent all server threads from being blocked while waiting on the
+  same collection to finish loading. When the first thread has completed loading 
+  the collection, the collection becomes regularly available, and all operations
+  from that point on can be carried out normally, and error 1238 will not be
+  thrown anymore for that collection.
 
   If set to *false*, the first thread that accesses a not-yet loaded collection
   will still load it. Other threads that try to access the collection while
