@@ -3784,7 +3784,7 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
       TRI_ParseAttributeString(name, attrNameList);
       TRI_ASSERT(attrNameList.size() > 0);
       std::string pidPath;
-      TRI_AttributeNamesToString(attrNameList, pidPath, true);
+      TRI_AttributeNamesToPidString(attrNameList, pidPath);
 
       TRI_shape_pid_t pid;
 
@@ -3824,7 +3824,7 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
       TRI_ParseAttributeString(name, attrNameList);
       TRI_ASSERT(attrNameList.size() > 0);
       std::string pidPath;
-      TRI_AttributeNamesToString(attrNameList, pidPath, true);
+      TRI_AttributeNamesToPidString(attrNameList, pidPath);
 
       TRI_shape_pid_t pid;
     
