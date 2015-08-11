@@ -1,0 +1,3 @@
+arangosh> while (c.hasNext()) { require("internal").print(c.next()); }
+2
+4

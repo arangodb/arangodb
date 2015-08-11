@@ -41,11 +41,10 @@ content-type: application/json; charset=utf-8
           ] 
         }, 
         "outVariable" : { 
-          "id" : 2, 
+          "id" : 1, 
           "name" : "1" 
         }, 
-        "canThrow" : false, 
-        "expressionType" : "json" 
+        "canThrow" : false 
       }, 
       { 
         "type" : "NoResultsNode", 
@@ -65,7 +64,7 @@ content-type: application/json; charset=utf-8
         "estimatedCost" : 0.5, 
         "estimatedNrItems" : 0, 
         "inVariable" : { 
-          "id" : 2, 
+          "id" : 1, 
           "name" : "1" 
         }, 
         "outVariable" : { 
@@ -96,11 +95,11 @@ content-type: application/json; charset=utf-8
     "collections" : [ ], 
     "variables" : [ 
       { 
-        "id" : 4, 
-        "name" : "3" 
+        "id" : 2, 
+        "name" : "2" 
       }, 
       { 
-        "id" : 2, 
+        "id" : 1, 
         "name" : "1" 
       }, 
       { 
@@ -113,7 +112,7 @@ content-type: application/json; charset=utf-8
   }, 
   "warnings" : [ ], 
   "stats" : { 
-    "rulesExecuted" : 22, 
+    "rulesExecuted" : 21, 
     "rulesSkipped" : 0, 
     "plansCreated" : 1 
   }, 

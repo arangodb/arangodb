@@ -1,0 +1,105 @@
+arangosh> var stmt = db._createStatement("FOR doc IN @@collection FILTER doc.user == @user RETURN doc");
+arangosh> stmt.bind({ "@collection" : "_users", "user" : "root" });
+arangosh> stmt.explain();
+{ 
+  "plan" : { 
+    "nodes" : [ 
+      { 
+        "type" : "SingletonNode", 
+        "dependencies" : [ ], 
+        "id" : 1, 
+        "estimatedCost" : 1, 
+        "estimatedNrItems" : 1 
+      }, 
+      { 
+        "type" : "IndexRangeNode", 
+        "dependencies" : [ 
+          1 
+        ], 
+        "id" : 6, 
+        "estimatedCost" : 1.9899995050000001, 
+        "estimatedNrItems" : 1, 
+        "database" : "_system", 
+        "collection" : "_users", 
+        "outVariable" : { 
+          "id" : 0, 
+          "name" : "doc" 
+        }, 
+        "ranges" : [ 
+          [ 
+            { 
+              "variable" : "doc", 
+              "attr" : "user", 
+              "lowConst" : { 
+                "bound" : "root", 
+                "include" : true, 
+                "isConstant" : true 
+              }, 
+              "highConst" : { 
+                "bound" : "root", 
+                "include" : true, 
+                "isConstant" : true 
+              }, 
+              "lows" : [ ], 
+              "highs" : [ ], 
+              "valid" : true, 
+              "equality" : true 
+            } 
+          ] 
+        ], 
+        "index" : { 
+          "type" : "hash", 
+          "id" : "857777", 
+          "unique" : true, 
+          "sparse" : true, 
+          "selectivityEstimate" : 1, 
+          "fields" : [ 
+            "user" 
+          ] 
+        }, 
+        "reverse" : false 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          6 
+        ], 
+        "id" : 5, 
+        "estimatedCost" : 2.989999505, 
+        "estimatedNrItems" : 1, 
+        "inVariable" : { 
+          "id" : 0, 
+          "name" : "doc" 
+        } 
+      } 
+    ], 
+    "rules" : [ 
+      "use-index-range", 
+      "remove-filter-covered-by-index" 
+    ], 
+    "collections" : [ 
+      { 
+        "name" : "_users", 
+        "type" : "read" 
+      } 
+    ], 
+    "variables" : [ 
+      { 
+        "id" : 1, 
+        "name" : "1" 
+      }, 
+      { 
+        "id" : 0, 
+        "name" : "doc" 
+      } 
+    ], 
+    "estimatedCost" : 2.989999505, 
+    "estimatedNrItems" : 1 
+  }, 
+  "warnings" : [ ], 
+  "stats" : { 
+    "rulesExecuted" : 21, 
+    "rulesSkipped" : 0, 
+    "plansCreated" : 1 
+  } 
+}

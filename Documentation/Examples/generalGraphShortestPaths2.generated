@@ -7,9 +7,15 @@ arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
 ........> ).toArray();
 [ 
   [ 
-    null, 
-    null, 
-    1, 
-    0 
+    "germanCity/Cologne", 
+    { 
+      "_id" : "frenchCity/Lyon", 
+      "_key" : "Lyon", 
+      "_rev" : "513249536709", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    700, 
+    1 
   ] 
 ]

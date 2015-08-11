@@ -12,7 +12,5 @@ content-type: application/json; charset=utf-8
   "error" : false, 
   "created" : 2, 
   "errors" : 0, 
-  "empty" : 1, 
-  "updated" : 0, 
-  "ignored" : 0 
+  "empty" : 1 
 }

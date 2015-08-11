@@ -8,12 +8,24 @@ arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
 [ 
   [ 
     "germanCity/Cologne", 
-    "frenchCity/Lyon", 
-    1 
+    { 
+      "_id" : "frenchCity/Lyon", 
+      "_key" : "Lyon", 
+      "_rev" : "512719743685", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    700 
   ], 
   [ 
     "germanCity/Hamburg", 
-    "frenchCity/Lyon", 
-    1 
+    { 
+      "_id" : "frenchCity/Lyon", 
+      "_key" : "Lyon", 
+      "_rev" : "512719743685", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    1200 
   ] 
 ]

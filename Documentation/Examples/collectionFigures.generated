@@ -15,7 +15,7 @@ arangosh> db.demo.figures()
   }, 
   "journals" : { 
     "count" : 1, 
-    "fileSize" : 1048576 
+    "fileSize" : 33554432 
   }, 
   "compactors" : { 
     "count" : 0, 
@@ -37,6 +37,6 @@ arangosh> db.demo.figures()
     "count" : 1, 
     "size" : 2008 
   }, 
-  "lastTick" : "22107548", 
+  "lastTick" : "511405681349", 
   "uncollectedLogfileEntries" : 0 
 }

@@ -1,0 +1,3 @@
+arangosh> db.example.unload();
+arangosh> db.example;
+[ArangoCollection 511835990725, "example" (type document, status unloaded)]

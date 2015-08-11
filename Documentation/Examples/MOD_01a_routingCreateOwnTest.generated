@@ -1,0 +1,14 @@
+arangosh> db._modules.save({
+........>  path: "/db:/ownTest",
+........>  content:
+........>     "exports.do = function(req, res, options, next) {"+
+........>     "  res.body = 'test';" +
+........>     "  res.responseCode = 200;" +
+........>     "  res.contentType = 'text/plain';" +
+........>     "};"
+........> });
+{ 
+  "_id" : "_modules/511988492997", 
+  "_rev" : "511988492997", 
+  "_key" : "511988492997" 
+}

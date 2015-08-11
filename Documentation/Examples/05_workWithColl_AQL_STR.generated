@@ -1,0 +1,10 @@
+arangosh> db._query('FOR user IN example FILTER user.name == "Jane Smith" RETURN user').toArray()
+[ 
+  { 
+    "_id" : "example/511850408645", 
+    "_key" : "511850408645", 
+    "_rev" : "511850408645", 
+    "age" : 31, 
+    "name" : "Jane Smith" 
+  } 
+]

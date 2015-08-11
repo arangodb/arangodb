@@ -13,14 +13,14 @@ content-type: application/json; charset=utf-8
 { 
   "exception" : "[ArangoError 1210: unique constraint violated]", 
   "stacktrace" : [ 
-    "[ArangoError 1210: unique constraint violated]", 
+    "Error: unique constraint violated", 
     "  at Error (native)", 
     "  at eval (<anonymous>:1:99)", 
     "  at eval (<anonymous>:1:122)", 
-    "  at post_api_transaction (js/actions/api-transaction.js:268:16)", 
-    "  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)" 
+    "  at post_api_transaction (/usr/share/arangodb/js/actions/api-transaction.js:268:16)", 
+    "  at Function.actions.defineHttp.callback (/usr/share/arangodb/js/actions/api-transaction.js:288:11)", 
+    "" 
   ], 
-  "message" : "unique constraint violated", 
   "error" : true, 
   "code" : 400, 
   "errorNum" : 1210, 

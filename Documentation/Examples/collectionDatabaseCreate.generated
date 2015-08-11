@@ -1,15 +1,14 @@
 arangosh> c = db._create("users");
-[ArangoCollection 592205212, "users" (type document, status loaded)]
+[ArangoCollection 512509242053, "users" (type document, status loaded)]
 arangosh> c.properties();
 { 
   "doCompact" : true, 
-  "journalSize" : 1048576, 
+  "journalSize" : 33554432, 
   "isSystem" : false, 
   "isVolatile" : false, 
   "waitForSync" : false, 
   "keyOptions" : { 
     "type" : "traditional", 
     "allowUserKeys" : true 
-  }, 
-  "indexBuckets" : 1 
+  } 
 }

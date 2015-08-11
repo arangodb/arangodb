@@ -63,7 +63,7 @@ OutputDir = "/tmp/"
 ### commands and there output is logged.
 ################################################################################
 
-ArangoshOutput = {}
+RunTests = {}
 
 ################################################################################
 ### @brief arangosh expect
@@ -72,16 +72,6 @@ ArangoshOutput = {}
 ################################################################################
 
 ArangoshExpect = {}
-
-
-################################################################################
-### @brief arangosh run
-###
-### A list of commands that are executed in order to produce the output. This
-### is mostly used for HTTP request examples.
-################################################################################
-
-ArangoshRun = {}
 
 ################################################################################
 ### @brief arangosh run
@@ -103,11 +93,6 @@ ArangoshFiles = {}
 MapSourceFiles = {}
 
 ################################################################################
-### @brief arangosh examples, in some deterministic order
-################################################################################
-ArangoshCases = [ ]
-
-################################################################################
 ### @brief global setup for arangosh
 ################################################################################
 
@@ -124,8 +109,8 @@ FilterForTestcase = None
 ################################################################################
 
 STATE_BEGIN = 0
-STATE_ARANGOSH_OUTPUT = 1
-STATE_ARANGOSH_RUN = 2
+STATE_ARANGOSH_OUTPUT = 'HTTP_LOUTPUT'
+STATE_ARANGOSH_RUN = 'ARANGOSH_OUTPUT'
 
 ################################################################################
 ### @brief option states
@@ -182,6 +167,9 @@ var curlRequest = function () {
 };
 var logJsonResponse = internal.appendJsonResponse(appender);
 var logRawResponse = internal.appendRawResponse(appender);
+var logErrorResponse = function (response) {
+    allErrors += "Server reply was: " + JSON.stringify(response) + "\\n";
+};
 var globalAssert = function(condition, testname, sourceFile) {
   if (! condition) {
     internal.output(hashes + '\\nASSERTION FAILED: ' + testname + ' in file ' + sourceFile + '\\n' + hashes + '\\n');
@@ -346,8 +334,6 @@ def matchStartLine(line, filename):
             print >> sys.stderr, "filtering test case %s" %name
             return("", STATE_BEGIN);
 
-        ArangoshFiles[name] = True
-        ArangoshOutput[name] = []
         return (name, STATE_ARANGOSH_OUTPUT)
 
     m = runLine.match(line)
@@ -365,9 +351,7 @@ def matchStartLine(line, filename):
             print >> sys.stderr, "filtering test case %s" %name
             return("", STATE_BEGIN);
 
-        ArangoshCases.append(name)
         ArangoshFiles[name] = True
-        ArangoshRun[name] = ""
         return (name, STATE_ARANGOSH_RUN)
     # Not found, remain in STATE_BEGIN
     return ("", STATE_BEGIN)
@@ -375,10 +359,15 @@ def matchStartLine(line, filename):
 endExample = re.compile(r'^(/// )? *@END_EXAMPLE_')
 #r5 = re.compile(r'^ +')
 
+TESTLINES="testlines"
+TYPE="type"
+LINE_NO="lineNo"
+STRING="string"
 ################################################################################
 ### @brief loop over the lines of one input file
 ################################################################################
 def analyzeFile(f, filename): 
+    global RunTests, TESTLINES, TYPE, LINE_NO, STRING
     strip = None
     
     name = ""
@@ -402,8 +391,13 @@ def analyzeFile(f, filename):
             (name, state) = matchStartLine(line, filename)
             if state != STATE_BEGIN: 
                 MapSourceFiles[name] = filename
+                RunTests[name] = {}
+                RunTests[name][TYPE] = state
+                RunTests[name][TESTLINES] = []
+
             if state == STATE_ARANGOSH_RUN:
-                ArangoshRunLineNo[name] = lineNo
+                RunTests[name][LINE_NO] = lineNo;
+                RunTests[name][STRING] = "";
             continue
 
         # we are within a example
@@ -453,12 +447,15 @@ def analyzeFile(f, filename):
         partialLine = ""
 
         if state == STATE_ARANGOSH_OUTPUT:
-            ArangoshOutput[name].append([line, showCmd, lineNo])
-
+            RunTests[name][TESTLINES].append([line, showCmd, lineNo])
         elif state == STATE_ARANGOSH_RUN:
-            ArangoshRun[name] += line + "\n"
+            RunTests[name][STRING] += line + "\n"
 
 
+def generateSetupFunction():
+    print
+    print "(function () {\n%s}());" % ArangoshSetup
+    print
 
 
 ################################################################################
@@ -468,18 +465,17 @@ def analyzeFile(f, filename):
 loopDetectRE = re.compile(r'^[ \n]*(while|if|var|throw|for) ')
 expectErrorRE = re.compile(r'.*// *xpError\((.*)\).*')
 #expectErrorRE = re.compile(r'.*//\s*xpError\(([^)]*)\)/')
-def generateArangoshOutput():
-    print
-    print "(function () {\n%s}());" % ArangoshSetup
-    print
-    keys = ArangoshOutput.keys()
-    keys.sort()
-    for key in keys:
-        value = ArangoshOutput[key]
-        #print value
-        #print value[0][2]
+def generateArangoshOutput(testName):
+    value = RunTests[testName]
+    #print value
+    #print value[TESTLINES][0][2]
+    #print type(value[TESTLINES][0][2])
+    if (len(value[TESTLINES]) == 0) or (len(value[TESTLINES][0]) < 3):
+        print "blarg in " + testName
+        raise
+    try:
         print '''
-////////////////////////////////////////////////////////////////////////////////
+%s
 /// %s
 (function() {
   countErrors = 0;
@@ -490,32 +486,46 @@ def generateArangoshOutput():
   var sourceFile = '%s';
   var startTime = time();
   internal.startCaptureMode();
-''' %(key, key, value[0][2], OutputDir, MapSourceFiles[key])
-        for l in value:
-            # try to match for errors, and remove the comment.
-            expectError = 'undefined'
-            m = expectErrorRE.match(l[0])
-            if m: 
-                expectError = "'" + m.group(1) + "'"
-                l[0] = l[0][0:l[0].find('//')].rstrip(' ')
+'''    %   (
+        ('/'*80),
+        testName,
+        testName,
+        value[TESTLINES][0][2],
+        OutputDir,
+        MapSourceFiles[testName]
+        )
+    except Exception as x:
+        print x
+        print testName
+        print value
+        raise
 
-            m = loopDetectRE.match(l[0])
-            fakeVar = 'false'
-            if m and l[0][0:3] == 'var': 
-                count = l[0].find('=')
-                print  "  " + l[0][0:count].rstrip(' ') + ";"
-                l[0] = l[0][4:]
-                fakeVar = 'true'
+    for l in value[TESTLINES]:
+        # try to match for errors, and remove the comment.
+        expectError = 'undefined'
+        m = expectErrorRE.match(l[0])
+        if m:
+            expectError = "'" + m.group(1) + "'"
+            l[0] = l[0][0:l[0].find('//')].rstrip(' ')
 
-            print "  runTestLine('%s', testName, sourceFile, %s, lineCount++, %s, %s, %s, %s);" % (
-                l[0],                         # the test string
-                l[2],                         # line in the source file
-                'true' if l[1] else 'false',  # Is it visible in the documentation? 
-                expectError,                  # will it throw? if the errorcode else undefined.
-                'true' if m    else 'false',  # is it a loop construct? (will be evaluated different)
-                fakeVar                       # 'var ' should be printed
-                )
-        print '''  var output = internal.stopCaptureMode();
+        m = loopDetectRE.match(l[0])
+        fakeVar = 'false'
+        if m and l[0][0:3] == 'var':
+            count = l[0].find('=')
+            print  "  " + l[0][0:count].rstrip(' ') + ";"
+            l[0] = l[0][4:]
+            fakeVar = 'true'
+
+        print "  runTestLine('%s', testName, sourceFile, %s, lineCount++, %s, %s, %s, %s);" % (
+            l[0],                         # the test string
+            l[2],                         # line in the source file
+            'true' if l[1] else 'false',  # Is it visible in the documentation?
+            expectError,                  # will it throw? if the errorcode else undefined.
+            'true' if m    else 'false',  # is it a loop construct? (will be evaluated different)
+            fakeVar                       # 'var ' should be printed
+            )
+    print '''  var output = internal.stopCaptureMode();
+
   print("[" + (time () - startTime) + "s] done with  " + testName);
   fs.write(outputDir + '/' + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
@@ -527,20 +537,17 @@ def generateArangoshOutput():
 ### @brief generate arangosh run
 ################################################################################
 
-def generateArangoshRun():
+def generateArangoshRun(testName):
 
     if JS_DEBUG:
         print "internal.output('%s\\n');" % ('=' * 80)
         print "internal.output('ARANGOSH RUN\\n');"
         print "internal.output('%s\\n');" % ('=' * 80)
 
-    print
-    print "(function () {\n%s}());" % ArangoshSetup
-    print
-    for key in ArangoshCases:
-        value = ArangoshRun[key]
-        print '''
-////////////////////////////////////////////////////////////////////////////////
+    value = RunTests[testName]
+    startLineNo = RunTests[testName][LINE_NO]
+    print '''
+%s
 /// %s
 (function() {
   var ArangoshRun = {};
@@ -556,14 +563,24 @@ def generateArangoshRun():
   var assert = function(a) { globalAssert(a, testName, sourceFile); };
   testFunc = function() {
 %s};
-''' %(key, key, ArangoshRunLineNo[key], OutputDir, MapSourceFiles[key], value.lstrip().rstrip())
+''' %  (
+        ('/'*80),
+        testName,
+        testName,
+        startLineNo,
+        OutputDir,
+        MapSourceFiles[testName],
+        value[STRING].lstrip().rstrip())
 
-        if key in ArangoshExpect: 
-            print "  rc = runTestFuncCatch(testFunc, testName, errors.%s);" % (ArangoshExpect[key])
-        else:
-            print "  rc = runTestFunc(testFunc, testName, sourceFile);"
+    if testName in ArangoshExpect:
+        print "  rc = runTestFuncCatch(testFunc, testName, errors.%s);" % (ArangoshExpect[key])
+    else:
+        print "  rc = runTestFunc(testFunc, testName, sourceFile);"
 
-        print '''
+    print '''
+  if (rc === undefined || rc === '' ) {
+    rc = " FAILED in " + testName;
+  }
   print("[" + (time () - startTime) + "s] " + rc);
   fs.write(outputDir + '/' + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
@@ -610,12 +627,11 @@ def loopDirectories():
                             filenames.append(os.path.join(root, file))
             else:
                 filenames.append(filename)
-    
         elif fstate == OPTION_FILTER:
             fstate = OPTION_NORMAL
             if (len(filename) > 0): 
                 FilterForTestcase = re.compile(filename);
-            print dir(FilterForTestcase)
+            
         elif fstate == OPTION_ARANGOSH_SETUP:
             fstate = OPTION_NORMAL
             f = open(filename, "r")
@@ -625,7 +641,7 @@ def loopDirectories():
                 ArangoshSetup += line + "\n"
     
             f.close()
-        
+
         elif fstate == OPTION_OUTPUT_DIR:
             fstate = OPTION_NORMAL
             OutputDir = filename
@@ -640,11 +656,24 @@ def loopDirectories():
             print >> sys.stderr, "skipping %s\n" % (filename)
 
 
+def generateTestCases():
+    global TESTLINES, TYPE, LINE_NO, STRING, RunTests
+    testNames = RunTests.keys()
+    testNames.sort()
+    for thisTest in testNames:
+        if RunTests[thisTest][TYPE] == STATE_ARANGOSH_OUTPUT:
+            generateArangoshOutput(thisTest)
+        elif RunTests[thisTest][TYPE] == STATE_ARANGOSH_RUN:
+            generateArangoshRun(thisTest)
+
+
 ################################################################################
 ### @brief main
 ################################################################################
 loopDirectories()
+
 generateArangoshHeader()
-generateArangoshOutput()
-generateArangoshRun()
+generateSetupFunction()
+generateTestCases()
+
 generateArangoshShutdown()
