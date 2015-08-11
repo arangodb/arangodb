@@ -30,8 +30,8 @@
 #include "Index.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/server.h"
+#include "VocBase/VocShaper.h"
 
 using namespace triagens::arango;
 
