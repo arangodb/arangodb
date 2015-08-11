@@ -1300,8 +1300,9 @@ function routeRequest (req, res, routes) {
 
     if (func === null || typeof func !== 'function') {
       func = errorFunction(action.route,
-                           'Invalid callback definition found for route '
-                           + JSON.stringify(action.route));
+                           'Invalid callback definition found for route ' +
+                           JSON.stringify(action.route) +
+                           ' while searching for callback.controller');
     }
 
     try {
