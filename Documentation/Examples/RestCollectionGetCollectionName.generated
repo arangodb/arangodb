@@ -5,18 +5,17 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/properties
 
 { 
-  "id" : "2057983388", 
+  "id" : "512022440645", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
   "isVolatile" : false, 
-  "journalSize" : 1048576, 
+  "journalSize" : 33554432, 
   "keyOptions" : { 
     "type" : "traditional", 
     "allowUserKeys" : true 
   }, 
   "waitForSync" : true, 
-  "indexBuckets" : 1, 
   "status" : 3, 
   "type" : 2, 
   "error" : false, 

@@ -1,0 +1,7 @@
+arangosh> db._query('FOR c IN @@collection FILTER c._key == @key RETURN c._key', { 
+........>  '@collection': 'mycollection', 
+........>  'key': 'testKey'
+........> }).toArray();
+[ 
+  "testKey" 
+]

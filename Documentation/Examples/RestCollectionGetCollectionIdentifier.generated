@@ -1,22 +1,21 @@
-shell> curl --dump - http://localhost:8529/_api/collection/2057786780/properties
+shell> curl --dump - http://localhost:8529/_api/collection/512022244037/properties
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/properties
 
 { 
-  "id" : "2057786780", 
+  "id" : "512022244037", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
   "isVolatile" : false, 
-  "journalSize" : 1048576, 
+  "journalSize" : 33554432, 
   "keyOptions" : { 
     "type" : "traditional", 
     "allowUserKeys" : true 
   }, 
   "waitForSync" : true, 
-  "indexBuckets" : 1, 
   "status" : 3, 
   "type" : 2, 
   "error" : false, 

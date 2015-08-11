@@ -1,0 +1,3 @@
+arangosh> var c = stmt.execute();
+arangosh> c.count();
+4

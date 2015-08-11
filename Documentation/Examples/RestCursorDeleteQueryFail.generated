@@ -7,7 +7,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
-  "errorMessage" : "document not found (while executing)", 
   "code" : 404, 
-  "errorNum" : 1202 
+  "errorNum" : 1202, 
+  "errorMessage" : "document not found (while executing)" 
 }

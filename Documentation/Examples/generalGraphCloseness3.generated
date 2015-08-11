@@ -5,10 +5,10 @@ arangosh> db._query("RETURN GRAPH_CLOSENESS("
 ........> ).toArray();
 [ 
   { 
-    "germanCity/Berlin" : 0.15492957746478875, 
-    "germanCity/Hamburg" : 0.21153846153846154, 
-    "germanCity/Cologne" : 0.44, 
-    "frenchCity/Paris" : 1, 
+    "germanCity/Berlin" : 1, 
+    "germanCity/Hamburg" : 0.7279057017543861, 
+    "frenchCity/Paris" : 0.3355263157894737, 
+    "germanCity/Cologne" : 0.5991541353383459, 
     "frenchCity/Lyon" : 0 
   } 
 ]

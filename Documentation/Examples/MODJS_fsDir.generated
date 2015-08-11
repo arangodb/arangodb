@@ -1,0 +1,3 @@
+arangosh> var files = require("fs");
+arangosh> relativeFile = files.join(__dirname, "scripts", "test.js");
+/tmp/scripts/test.js

@@ -1,13 +1,12 @@
 arangosh> db.example.properties({ waitForSync : true });
 { 
   "doCompact" : true, 
-  "journalSize" : 1048576, 
+  "journalSize" : 33554432, 
   "isSystem" : false, 
   "isVolatile" : false, 
   "waitForSync" : true, 
   "keyOptions" : { 
     "type" : "traditional", 
     "allowUserKeys" : true 
-  }, 
-  "indexBuckets" : 1 
+  } 
 }

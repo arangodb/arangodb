@@ -1,10 +1,10 @@
 arangosh> db.examples.ensureCapConstraint(10);
 { 
-  "id" : "examples/597120412", 
+  "id" : "examples/512514288325", 
   "type" : "cap", 
+  "unique" : false, 
   "size" : 10, 
   "byteSize" : 0, 
-  "unique" : false, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }

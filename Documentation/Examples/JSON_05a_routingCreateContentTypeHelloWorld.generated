@@ -1,0 +1,13 @@
+arangosh> db._routing.save({
+........>  url: "/hello/contentType",
+........>  content: {
+........>    contentType: "text/html",
+........>    body: "<html><body>Hello World</body></html>"
+........>  }
+........> });
+{ 
+  "_id" : "_routing/511984167621", 
+  "_rev" : "511984167621", 
+  "_key" : "511984167621" 
+}
+arangosh> require("internal").reloadRouting()

@@ -1,0 +1,34 @@
+arangosh> db._routing.save({
+........>    url: "/subdirectory/ourtest/1",
+........>    action: {
+........>      do: "org/arangodb/actions/echoRequest"
+........>    }
+........> });
+{ 
+  "_id" : "_routing/511992752837", 
+  "_rev" : "511992752837", 
+  "_key" : "511992752837" 
+}
+arangosh> db._routing.save({
+........>    url: "/subdirectory/ourtest/2",
+........>    action: {
+........>      do: "org/arangodb/actions/echoRequest"
+........>    }
+........> });
+{ 
+  "_id" : "_routing/511992949445", 
+  "_rev" : "511992949445", 
+  "_key" : "511992949445" 
+}
+arangosh> db._routing.save({
+........>    url: "/subdirectory/ourtest/3",
+........>    action: {
+........>      do: "org/arangodb/actions/echoRequest"
+........>    }
+........> });
+{ 
+  "_id" : "_routing/511993146053", 
+  "_rev" : "511993146053", 
+  "_key" : "511993146053" 
+}
+arangosh> require("internal").reloadRouting()

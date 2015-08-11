@@ -1,0 +1,9 @@
+arangosh> require("org/arangodb/users").document("my-user");
+{ 
+  "user" : "my-user", 
+  "active" : true, 
+  "extra" : { 
+  }, 
+  "changePassword" : false, 
+  "code" : 200 
+}
