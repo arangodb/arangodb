@@ -362,6 +362,7 @@ class Controller {
   }
 
   addInjector(name, factory) {
+    deprecated('2.9', '"addInjector" is deprecated, use regular variables instead');
     if (factory === undefined) {
       _.extend(this.injectors, name);
     } else {

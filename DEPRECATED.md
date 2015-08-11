@@ -6,6 +6,7 @@ or are known to become deprecated in a future version of ArangoDB.
 Deprecated features will likely be removed in upcoming versions of
 ArangoDB and shouldn't be used if possible.
 
+
 ## 2.5
 
 * Foxx: method `controller.collection()` has been removed entirely. Please use `appContext.collection()` instead.
@@ -46,7 +47,14 @@ ArangoDB and shouldn't be used if possible.
 
 
 ## 2.8
+* Foxx: the method `del` of controllers is deprecated, it will raise a warning if you use it. Please use the `delete` method instead.
+* Foxx: the method `addInjector` of controllers is deprecated, it will raise a warning if you use it. Please use regular variables instead.
 * Foxx: the property `assets` in manifests has been removed entirely. Please use the `files` property and an external build tool instead.
 * Foxx: properties `setup` and `teardown` in manifests have been removed entirely. Please use the `scripts` property instead.
 * The built-in support for CoffeeScript source files has been removed entirely. Please pre-compile CoffeeScript source files.
 * Simple queries: the following simple query functions will be removed: collection.near(), collection.within(), collection.geo(), collection.fulltext(), collection.range(), collection.closedRange(). It is recommended to replace calls to these functions with equivalent AQL queries, which are more flexible.
+
+
+## 2.9
+* Foxx: the method `del` of controllers has been removed entirely. Please use the `delete` method instead.
+* Foxx: the method `addInjector` of controllers has been removed entirely. Please use regular variables instead.

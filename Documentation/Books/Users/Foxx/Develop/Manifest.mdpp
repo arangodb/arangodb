@@ -192,7 +192,7 @@ The dependencies of a mounted app can be adjusted
 from the admin frontend by clicking the *Dependencies* button in the app details
 or using the **set-dependencies** command of the **foxx-manager** command-line utility.
 
-For more information on dependencies see the chapter on Foxx Exports.
+For more information on dependencies see the chapter on [Foxx Exports](./Exports.md).
 
 !SUBSECTION Defining controllers
 

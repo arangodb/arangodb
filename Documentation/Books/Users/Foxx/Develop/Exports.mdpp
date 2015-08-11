@@ -27,7 +27,7 @@ The file **doodads.js** in the app's base path could look like this:
 
 ```js
 var Foxx = require('org/arangodb/foxx');
-var Doodad = Foxx.Model.extend({});
+class Doodad extends Foxx.Model {}
 var doodadRepo = new Foxx.Repository(
     applicationContext.collection('doodads'),
     {model: Doodad}
@@ -121,7 +121,10 @@ Let's say you want to use the `foxx_exports_example` app from earlier in your ap
     "name": "foxx_dependencies_example",
     "version": "1.0.0",
     "dependencies": {
-        "exportsExample": "foxx_exports_example:^1.0.0"
+        "exportsExample": {
+            "name": "foxx_exports_example",
+            "version": "^1.0.0"
+        }
     }
 }
 ```
