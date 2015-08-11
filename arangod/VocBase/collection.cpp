@@ -805,7 +805,7 @@ static void FillParametersFromJson (TRI_col_info_t* parameters,
   // init with defaults
   memset(parameters, 0, sizeof(TRI_col_info_t));
   parameters->_initialCount = -1;
-  parameters->_indexBuckets = 1;
+  parameters->_indexBuckets = TRI_DEFAULT_INDEX_BUCKETS;
 
   // convert json
   size_t const n = TRI_LengthVector(&json->_value._objects);
@@ -905,7 +905,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
     parameters->_maximalSize = static_cast<TRI_voc_size_t>(PageSize);
   }
   parameters->_initialCount  = -1;
-  parameters->_indexBuckets  = 1;
+  parameters->_indexBuckets  = TRI_DEFAULT_INDEX_BUCKETS;
 
   // fill name with 0 bytes
   memset(parameters->_name, 0, sizeof(parameters->_name));
