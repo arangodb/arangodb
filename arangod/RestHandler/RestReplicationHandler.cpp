@@ -934,7 +934,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 ///     assert(response.code === 204);
 ///
-///     logJsonResponse(response);
+///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// A few log events:
@@ -958,7 +958,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 ///     assert(response.code === 200);
 ///
-///     logJsonResponse(response);
+///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// More events than would fit into the response:
@@ -982,7 +982,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 ///     assert(response.code === 200);
 ///
-///     logJsonResponse(response);
+///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -2814,7 +2814,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     assert(response.code === 200);
-///     logJsonResponse(response);
+///     logRawResponse(response);
 ///
 ///     c.drop();
 /// @END_EXAMPLE_ARANGOSH_RUN
