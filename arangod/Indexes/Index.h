@@ -59,6 +59,75 @@ typedef struct TRI_index_search_value_s {
 }
 TRI_index_search_value_t;
 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              struct index_element
+// -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Unified index element. Do not directly construct it.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_element_t {
+  private:
+    TRI_doc_mptr_t* _document;
+
+     // Do not use new for this struct, use ...
+     TRI_index_element_t () {
+
+     }
+
+  public: 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get a pointer to the Document's masterpointer.
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_doc_mptr_t const* document () {
+      return _document;
+    }
+     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Set the pointer to the Document's masterpointer.
+////////////////////////////////////////////////////////////////////////////////
+
+    void document (TRI_doc_mptr_t* doc) {
+      _document = doc;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get a pointer to sub objects
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shaped_sub_t const* subObjects () {
+      return reinterpret_cast<TRI_shaped_sub_t const*>(_document + sizeof(TRI_doc_mptr_t*));
+    }
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Allocate a new index Element
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_element_t* TRI_Allocate_IndexElement (size_t numSubs, bool set) {
+  return static_cast<TRI_index_element_t*>(TRI_Allocate(
+    TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs), set)
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Free the index element.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_Free_IndexElement (TRI_index_element_t* el) {
+  TRI_ASSERT_EXPENSIVE(el != nullptr);
+  TRI_ASSERT_EXPENSIVE(el->document() != nullptr);
+  TRI_ASSERT_EXPENSIVE(element->subObjects() != nullptr);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, el);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Index
 // -----------------------------------------------------------------------------
@@ -227,6 +296,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         template<typename Idx_Element>
+        // int fillElement(std::function<Idx_Element* ()> allocator,
         int fillElement(Idx_Element* element,
                         TRI_shaped_sub_t* subObjects,
                         TRI_doc_mptr_t const* document,
@@ -249,8 +319,6 @@ namespace triagens {
 
           element->_document = const_cast<TRI_doc_mptr_t*>(document);
           char const* ptr = element->_document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-          // auto subObjects = ;
 
           size_t const n = paths.size();
 
