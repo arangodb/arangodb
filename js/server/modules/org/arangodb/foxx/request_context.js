@@ -94,11 +94,11 @@ function isJoi(schema) {
   });
 }
 
-function validateOrThrow(raw, schema, allowInvalid) {
+function validateOrThrow(raw, schema, allowInvalid, validateOptions) {
   if (!isJoi(schema)) {
     return raw;
   }
-  var result = joi.validate(raw, schema);
+  var result = joi.validate(raw, schema, validateOptions);
   if (result.error && !allowInvalid) {
     throw new UnprocessableEntity(result.error.message.replace(/^"value"/, 'Request body'));
   }
@@ -439,6 +439,7 @@ class RequestContext {
     var type = attributes.type,
       description = attributes.description,
       allowInvalid = attributes.allowInvalid,
+      validateOptions = {},
       cfg, construct;
 
     if (attributes.isJoi) {
@@ -476,8 +477,16 @@ class RequestContext {
           }
         });
       }
+      if (cfg.options) {
+        if (!is.array(cfg.options)) {
+          cfg.options = [cfg.options];
+        }
+        _.each(cfg.options, function (options) {
+          _.extend(validateOptions, options);
+        });
+      }
       construct = function (raw) {
-        return validateOrThrow(raw, type, allowInvalid);
+        return validateOrThrow(raw, type, allowInvalid, validateOptions);
       };
     }
 
