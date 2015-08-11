@@ -41,10 +41,22 @@ build-book-symlinks:
 
 build-book:
 	test -d ppbooks/$(NAME) || mkdir -p ppbooks/$(NAME)
+	WD=`pwd`; \
+	for dir in `find $(NAME) -type d `; do \
+		cd $${WD}/ppbooks; \
+		test -d $${dir} || mkdir -p $${dir}; \
+	done
 	cd ppbooks/$(NAME); test -l SUMMARY.md || ln -s ../../$(NAME)/SUMMARY.md .
 	cd ppbooks/$(NAME); test -l book.json || ln -s ../../$(NAME)/book.json .
 	cd ppbooks/$(NAME); test d styles || cp -a ../../$(NAME)/styles .
 	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/$(newVersionNumber)/g' styles/header.js
+	WD=`pwd`; \
+	for pic in `find $(NAME) -name \*.png`; do \
+		cd $${WD}/ppbooks; \
+		echo cd $${WD}/ppbooks; \
+		echo cp $${WD}/$${pic} $${pic}; \
+		ln -s $${WD}/$${pic} $${pic}; \
+	done
 	python generateMdFiles.py $(NAME) ppbooks/
 
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
