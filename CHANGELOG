@@ -133,6 +133,10 @@ v2.7.0 (XXXX-XX-XX)
 
 * fixed handling of optional parameters in Foxx manifest configurations
 
+* added verbose Foxx manifest dependency format
+
+* added optional Foxx dependencies
+
 * updated chai to 3.0.
 
 

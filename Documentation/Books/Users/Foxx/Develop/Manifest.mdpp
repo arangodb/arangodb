@@ -73,7 +73,12 @@ A more complete example for a Manifest file:
 
   "dependencies": {
     "sessions": "sessions@^1.0.0",
-    "systemUsers": "users"
+    "systemUsers": "users",
+    "mailer": {
+      "name": "mailer-postmark",
+      "version": "*",
+      "required": false
+    }
   }
 }
 ```
@@ -159,20 +164,26 @@ The **dependencies** object maps aliases to Foxx apps:
 
 * The **value** is a dependency definition.
 
-The dependency definition can use any of the following formats:
+The dependency definition is an object with any of the following properties:
+
+* **name** (optional): the name of the Foxx app this app depends on.
+* **version** (Default: `"*"`): a [semver](http://semver.org) version or version range of the Foxx app this app depends on.
+* **required** (Default: `true`): whether the dependency is required for this app to be usable or not.
+
+Alternatively the dependency definition can be a string using any of the following formats:
 
 * `*` will allow using any app to be used to meet the dependency.
-* `sessions` or `sessions@*` will match any app with the name `sessions`
+* `sessions` or `sessions:*` will match any app with the name `sessions`
   (such as the *sessions* app in the Foxx application store).
-* `sessions@1.0.0` will match the version `1.0.0` of any app with the name `sessions`.
+* `sessions:1.0.0` will match the version `1.0.0` of any app with the name `sessions`.
 
 Instead of using a specific version number, you can also use any expression supported by
 the [semver](https://github.com/npm/node-semver) module.
 
-Currently the dependency definitions are not enforced in ArangoDB
+Currently the dependency definition names and versions are not enforced in ArangoDB
 but this may change in a future version.
 
-If an app declares any dependencies,
+If an app declares any required dependencies,
 you need to fulfill its dependencies before it becomes active.
 In the meantime a fallback application will be mounted that responds to all
 requests with a HTTP 500 status code indicating a server-side error.

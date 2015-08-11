@@ -289,17 +289,19 @@ ArangoApp.prototype.updateDeps = function (deps) {
     if (!expected[name]) {
       invalid.push("Unexpected dependency " + name);
     }
-    this._options.dependencies[name] = mount;
+    this._options.dependencies[name] = mount || undefined;
   }, this);
 
   _.each(this._options.dependencies, function (mount, name) {
-    Object.defineProperty(this._dependencies, name, {
-      configurable: true,
-      enumerable: true,
-      get: function () {
-        return require("org/arangodb/foxx").requireApp(mount);
-      }
-    });
+    if (mount) {
+      Object.defineProperty(this._dependencies, name, {
+        configurable: true,
+        enumerable: true,
+        get: function () {
+          return require("org/arangodb/foxx").requireApp(mount);
+        }
+      });
+    }
   }, this);
 
   return invalid;
@@ -406,7 +408,7 @@ ArangoApp.prototype.needsConfiguration = function() {
   return _.any(config, function (cfg) {
     return cfg.current === undefined && cfg.required !== false;
   }) || _.any(deps, function (dep) {
-    return dep.current === undefined;
+    return dep.current === undefined && dep.definition.required !== false;
   });
 };
 
