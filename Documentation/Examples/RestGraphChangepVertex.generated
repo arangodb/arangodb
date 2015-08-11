@@ -6,13 +6,13 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1897682332
+etag: 512140864197
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1897682332", 
+    "_rev" : "512140864197", 
     "optional1" : "vertexPatch" 
   }, 
   "error" : false, 
@@ -26,13 +26,13 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1898206620
+etag: 512141388485
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1898206620", 
+    "_rev" : "512141388485", 
     "optional1" : null 
   }, 
   "error" : false, 

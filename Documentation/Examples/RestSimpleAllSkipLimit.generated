@@ -8,31 +8,20 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "Hello5" : "World5", 
-      "_id" : "products/2217629084", 
-      "_rev" : "2217629084", 
-      "_key" : "2217629084" 
+      "_id" : "products/512225471173", 
+      "_key" : "512225471173", 
+      "_rev" : "512225471173", 
+      "Hello5" : "World5" 
     }, 
     { 
-      "Hello3" : "World3", 
-      "_id" : "products/2216973724", 
-      "_rev" : "2216973724", 
-      "_key" : "2216973724" 
+      "_id" : "products/512224815813", 
+      "_key" : "512224815813", 
+      "_rev" : "512224815813", 
+      "Hello3" : "World3" 
     } 
   ], 
   "hasMore" : false, 
   "count" : 2, 
-  "cached" : false, 
-  "extra" : { 
-    "stats" : { 
-      "writesExecuted" : 0, 
-      "writesIgnored" : 0, 
-      "scannedFull" : 5, 
-      "scannedIndex" : 0, 
-      "filtered" : 0 
-    }, 
-    "warnings" : [ ] 
-  }, 
   "error" : false, 
   "code" : 201 
 }

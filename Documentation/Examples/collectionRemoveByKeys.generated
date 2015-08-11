@@ -5,7 +5,4 @@ arangosh> for (var i = 0; i < 10; ++i) {
 ........>   keys.push("test" + i);
 ........> }
 arangosh> db.example.removeByKeys(keys);
-{ 
-  "removed" : 10, 
-  "ignored" : 0 
-}
+[ArangoError 404: unknown path '/_api/simple/remove-by-keys']

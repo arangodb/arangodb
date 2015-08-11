@@ -1,0 +1,8 @@
+shell> curl --dump - http://localhost:8529/hello/json
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{ 
+  "hello" : "world" 
+}

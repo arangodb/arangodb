@@ -1,5 +1,5 @@
 arangosh> col = db.example;
-[ArangoCollection 606492060, "example" (type document, status loaded)]
+[ArangoCollection 512525232837, "example" (type document, status loaded)]
 arangosh> col.load();
 arangosh> col;
-[ArangoCollection 606492060, "example" (type document, status loaded)]
+[ArangoCollection 512525232837, "example" (type document, status loaded)]

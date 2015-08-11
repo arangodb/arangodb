@@ -1,0 +1,11 @@
+arangosh> db._query("FOR i IN 1..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } INTO mycollection").getExtra();
+{ 
+  "stats" : { 
+    "writesExecuted" : 100, 
+    "writesIgnored" : 0, 
+    "scannedFull" : 0, 
+    "scannedIndex" : 0, 
+    "filtered" : 0 
+  }, 
+  "warnings" : [ ] 
+}

@@ -10,25 +10,25 @@ arangosh> db.complex.near(0, 170).limit(5);
 [ArangoError 1570: no suitable geo index found for geo restriction on 'complex']
 arangosh> db.complex.ensureGeoIndex("home");
 { 
-  "id" : "complex/1784305052", 
+  "id" : "complex/513754950341", 
   "type" : "geo1", 
+  "unique" : false, 
+  "sparse" : true, 
+  "geoJson" : false, 
+  "constraint" : false, 
+  "ignoreNull" : true, 
   "fields" : [ 
     "home" 
   ], 
-  "geoJson" : false, 
-  "constraint" : false, 
-  "unique" : false, 
-  "ignoreNull" : true, 
-  "sparse" : true, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
 arangosh> db.complex.near(0, 170).limit(5).toArray();
 [ 
   { 
-    "_id" : "complex/1718375836", 
-    "_key" : "1718375836", 
-    "_rev" : "1718375836", 
+    "_id" : "complex/513689021125", 
+    "_key" : "513689021125", 
+    "_rev" : "513689021125", 
     "name" : "Name/0/170", 
     "home" : [ 
       0, 
@@ -40,9 +40,9 @@ arangosh> db.complex.near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1718572444", 
-    "_key" : "1718572444", 
-    "_rev" : "1718572444", 
+    "_id" : "complex/513689217733", 
+    "_key" : "513689217733", 
+    "_rev" : "513689217733", 
     "name" : "Name/0/180", 
     "home" : [ 
       0, 
@@ -54,9 +54,9 @@ arangosh> db.complex.near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1711101340", 
-    "_key" : "1711101340", 
-    "_rev" : "1711101340", 
+    "_id" : "complex/513681746629", 
+    "_key" : "513681746629", 
+    "_rev" : "513681746629", 
     "name" : "Name/-10/170", 
     "home" : [ 
       -10, 
@@ -68,9 +68,9 @@ arangosh> db.complex.near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1725650332", 
-    "_key" : "1725650332", 
-    "_rev" : "1725650332", 
+    "_id" : "complex/513696295621", 
+    "_key" : "513696295621", 
+    "_rev" : "513696295621", 
     "name" : "Name/10/170", 
     "home" : [ 
       10, 
@@ -82,9 +82,9 @@ arangosh> db.complex.near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1711494556", 
-    "_key" : "1711494556", 
-    "_rev" : "1711494556", 
+    "_id" : "complex/513682139845", 
+    "_key" : "513682139845", 
+    "_rev" : "513682139845", 
     "name" : "Name/0/-180", 
     "home" : [ 
       0, 
@@ -100,25 +100,25 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5);
 [ArangoError 1570: no suitable geo index found for geo restriction on 'complex']
 arangosh> db.complex.ensureGeoIndex("work");
 { 
-  "id" : "complex/1784829340", 
+  "id" : "complex/513755474629", 
   "type" : "geo1", 
+  "unique" : false, 
+  "sparse" : true, 
+  "geoJson" : false, 
+  "constraint" : false, 
+  "ignoreNull" : true, 
   "fields" : [ 
     "work" 
   ], 
-  "geoJson" : false, 
-  "constraint" : false, 
-  "unique" : false, 
-  "ignoreNull" : true, 
-  "sparse" : true, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
 arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
 [ 
   { 
-    "_id" : "complex/1711691164", 
-    "_key" : "1711691164", 
-    "_rev" : "1711691164", 
+    "_id" : "complex/513682336453", 
+    "_key" : "513682336453", 
+    "_rev" : "513682336453", 
     "name" : "Name/0/-170", 
     "home" : [ 
       0, 
@@ -130,9 +130,9 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1711494556", 
-    "_key" : "1711494556", 
-    "_rev" : "1711494556", 
+    "_id" : "complex/513682139845", 
+    "_key" : "513682139845", 
+    "_rev" : "513682139845", 
     "name" : "Name/0/-180", 
     "home" : [ 
       0, 
@@ -144,9 +144,9 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1718965660", 
-    "_key" : "1718965660", 
-    "_rev" : "1718965660", 
+    "_id" : "complex/513689610949", 
+    "_key" : "513689610949", 
+    "_rev" : "513689610949", 
     "name" : "Name/10/-170", 
     "home" : [ 
       10, 
@@ -158,9 +158,9 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1704416668", 
-    "_key" : "1704416668", 
-    "_rev" : "1704416668", 
+    "_id" : "complex/513675061957", 
+    "_key" : "513675061957", 
+    "_rev" : "513675061957", 
     "name" : "Name/-10/-170", 
     "home" : [ 
       -10, 
@@ -172,9 +172,9 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1718572444", 
-    "_key" : "1718572444", 
-    "_rev" : "1718572444", 
+    "_id" : "complex/513689217733", 
+    "_key" : "513689217733", 
+    "_rev" : "513689217733", 
     "name" : "Name/0/180", 
     "home" : [ 
       0, 

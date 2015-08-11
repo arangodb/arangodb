@@ -1,0 +1,10 @@
+arangosh> arango.GET("/hello/echo")
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 404, 
+  "errorMessage" : "unknown path '/hello/echo'" 
+}
+arangosh> db._query("FOR route IN _routing FILTER route.url == '/hello/echo' REMOVE route in _routing")
+[object ArangoQueryCursor, count: 0, hasMore: false]
+arangosh> require("internal").reloadRouting()

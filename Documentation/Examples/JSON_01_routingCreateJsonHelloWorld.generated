@@ -1,0 +1,13 @@
+arangosh> db._routing.save({ 
+........>  url: "/hello/json", 
+........>  content: { 
+........>  contentType: "application/json", 
+........>    body: "{ \"hello\" : \"world\" }" 
+........>  }
+........> });
+{ 
+  "_id" : "_routing/511983512261", 
+  "_rev" : "511983512261", 
+  "_key" : "511983512261" 
+}
+arangosh> require("internal").reloadRouting()

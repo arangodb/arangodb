@@ -5,14 +5,73 @@ arangosh> g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'
 [ 
   [ 
     { 
-      "vertices" : [ 
-        "germanCity/Cologne", 
-        "frenchCity/Lyon" 
-      ], 
-      "edges" : [ 
-        "internationalHighway/1228232092" 
-      ], 
-      "distance" : 1 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "513185245893", 
+        "isCapital" : false, 
+        "population" : 80000 
+      }, 
+      "distance" : 700, 
+      "path" : { 
+        "vertices" : [ 
+          { 
+            "_id" : "germanCity/Cologne", 
+            "_key" : "Cologne", 
+            "_rev" : "513184656069", 
+            "isCapital" : false, 
+            "population" : 1000000 
+          }, 
+          { 
+            "_id" : "frenchCity/Lyon", 
+            "_key" : "Lyon", 
+            "_rev" : "513185245893", 
+            "isCapital" : false, 
+            "population" : 80000 
+          } 
+        ], 
+        "edges" : [ 
+          { 
+            "_id" : "internationalHighway/513187605189", 
+            "_key" : "513187605189", 
+            "_rev" : "513187605189", 
+            "_from" : "germanCity/Cologne", 
+            "_to" : "frenchCity/Lyon", 
+            "distance" : 700 
+          } 
+        ] 
+      }, 
+      "startVertex" : "germanCity/Cologne", 
+      "paths" : [ 
+        { 
+          "vertices" : [ 
+            { 
+              "_id" : "germanCity/Cologne", 
+              "_key" : "Cologne", 
+              "_rev" : "513184656069", 
+              "isCapital" : false, 
+              "population" : 1000000 
+            }, 
+            { 
+              "_id" : "frenchCity/Lyon", 
+              "_key" : "Lyon", 
+              "_rev" : "513185245893", 
+              "isCapital" : false, 
+              "population" : 80000 
+            } 
+          ], 
+          "edges" : [ 
+            { 
+              "_id" : "internationalHighway/513187605189", 
+              "_key" : "513187605189", 
+              "_rev" : "513187605189", 
+              "_from" : "germanCity/Cologne", 
+              "_to" : "frenchCity/Lyon", 
+              "distance" : 700 
+            } 
+          ] 
+        } 
+      ] 
     } 
   ] 
 ]

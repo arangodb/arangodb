@@ -1,2 +1,0 @@
-arangosh> db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
-1

@@ -15,5 +15,5 @@ content-type: application/json; charset=utf-8
   "error" : true, 
   "code" : 500, 
   "errorNum" : 500, 
-  "errorMessage" : "internal server error" 
+  "errorMessage" : "An error has occurred during execution: doh!" 
 }
