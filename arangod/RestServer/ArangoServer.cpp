@@ -711,6 +711,10 @@ void ArangoServer::buildApplicationServer () {
   // disable certain options in unittest or script mode
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
+  if (mode == OperationMode::MODE_CONSOLE) {
+    _applicationScheduler->disableControlCHandler();
+  }
+ 
   if (mode == OperationMode::MODE_SCRIPT || mode == OperationMode::MODE_UNITTESTS) {
     // testing disables authentication
     _disableAuthentication = true;

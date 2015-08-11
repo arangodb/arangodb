@@ -1,6 +1,8 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* added better control-C support in arangosh
+
 * increased default value collection-specific `indexBuckets` value from 1 to 16
 
   Collections created from 2.7 on will use the new default if not overriden on

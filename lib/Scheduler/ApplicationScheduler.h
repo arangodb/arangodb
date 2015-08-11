@@ -112,6 +112,12 @@ namespace triagens {
 
         void setProcessorAffinity (const std::vector<size_t>& cores);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disables CTRL-C handling (because taken over by console input)
+////////////////////////////////////////////////////////////////////////////////
+
+        void disableControlCHandler ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
@@ -257,6 +263,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _descriptorMinimum;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disables CTRL-C handling (because taken over by console input)
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableControlCHandler;
     };
   }
 }
