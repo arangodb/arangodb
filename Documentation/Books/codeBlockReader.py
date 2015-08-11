@@ -171,7 +171,7 @@ def fetch_comments(dirpath):
         filepath = os.path.join(root, filename)
         file_comments = file_content(filepath)
         for comment in file_comments:
-          fh.write("\n<!-- filename: %s -->\n" % filename)
+          fh.write("\n<!-- filename: %s -->\n" % filepath)
           for _com in comment:
             _text = re.sub(r"//(/)+\s*\n", "<br />", _com)
             _text = re.sub(r"///+(\s+\s+)([-\*\d])", r"  \2", _text)
