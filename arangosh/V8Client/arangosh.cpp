@@ -1506,7 +1506,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
-  V8LineEditor console(context, ".arangosh.history");
+  V8LineEditor console(isolate, context, ".arangosh.history");
   console.open(BaseClient.autoComplete());
 
   uint64_t nrCommands = 0;
@@ -1621,8 +1621,12 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     // assume the command succeeds
     promptError = false;
 
+    console.isExecutingCommand(true);
+
     // execute command and register its result in __LAST__
     v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STRING(input.c_str()), name, true);
+
+    console.isExecutingCommand(false);
 
     if (v.IsEmpty()) {
       context->Global()->Set(TRI_V8_ASCII_STRING("_last"), v8::Undefined(isolate));
@@ -1633,7 +1637,14 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
 
     if (tryCatch.HasCaught()) {
       // command failed
-      string exception(TRI_StringifyV8Exception(isolate, &tryCatch));
+      string exception;
+
+      if (! tryCatch.CanContinue()) {
+        exception = "command aborted";
+      }
+      else {
+        exception = TRI_StringifyV8Exception(isolate, &tryCatch);
+      }
 
       BaseClient.printErrLine(exception);
       BaseClient.log("%s", exception.c_str());
@@ -2038,26 +2049,10 @@ static bool printHelo(bool useServer, bool promptError) {
     BaseClient.printLine("");
 
     ostringstream s;
-    s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) ArangoDB GmbH";
+    s << "arangosh (" << triagens::rest::Version::getVerboseVersionString() << ")" << std::endl;
+    s << "Copyright (c) ArangoDB GmbH";
 
     BaseClient.printLine(s.str(), true);
-
-    ostringstream info;
-    info << "Using ";
-
-#ifdef TRI_V8_VERSION
-    info << "Google V8 " << TRI_V8_VERSION << " JavaScript engine";
-#else
-    info << "Google V8 JavaScript engine";
-#endif
-
-#ifdef TRI_READLINE_VERSION
-    info << ", READLINE " << TRI_READLINE_VERSION;
-#endif
-
-    info << ", ICU " << Version::getICUVersion();
-
-    BaseClient.printLine(info.str(), true);
     BaseClient.printLine("", true);
 
     BaseClient.printWelcomeInfo();
