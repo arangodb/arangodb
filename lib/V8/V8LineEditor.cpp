@@ -52,6 +52,14 @@ static void SignalHandler (int signal) {
   auto instance = V8LineEditor::instance();
 
   if (instance != nullptr) {
+    if (instance->isExecutingCommand()) {
+      v8::Isolate* isolate = instance->isolate();
+  
+      if (! v8::V8::IsExecutionTerminating(isolate)) {
+        v8::V8::TerminateExecution(isolate);
+      }
+    }
+
     instance->signal();
   }
 }
@@ -368,11 +376,14 @@ std::atomic<V8LineEditor*> V8LineEditor::_instance(nullptr);
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, 
+V8LineEditor::V8LineEditor (v8::Isolate* isolate,
+                            v8::Handle<v8::Context> context, 
                             std::string const& history) 
   : LineEditor(history), 
+    _isolate(isolate),
     _context(context),  
-    _completer(V8Completer()) {
+    _completer(V8Completer()),
+    _executingCommand(false) {
 
   // register global instance
   TRI_ASSERT(_instance.load() == nullptr);

@@ -143,7 +143,8 @@ void ConsoleThread::inner () {
   v8::HandleScope globalScope(isolate);
 
   // run the shell
-  std::cout << "ArangoDB JavaScript emergency console (" << rest::Version::getVerboseVersionString() << ")" << std::endl;
+  std::cout << "arangod console (" << rest::Version::getVerboseVersionString() << ")" << std::endl;
+  std::cout << "Copyright (c) ArangoDB GmbH" << std::endl;
 
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
@@ -184,7 +185,7 @@ start_pretty_print();
                                 TRI_V8_ASCII_STRING("(startup)"),
                                 false);
 
-    V8LineEditor console(localContext, ".arangod.history");
+    V8LineEditor console(isolate, localContext, ".arangod.history");
 
     console.open(true);
 
@@ -226,10 +227,17 @@ start_pretty_print();
         v8::TryCatch tryCatch;
         v8::HandleScope scope(isolate);
 
+        console.isExecutingCommand(true);
         TRI_ExecuteJavaScriptString(isolate, localContext, TRI_V8_STRING(input.c_str()), name, true);
+        console.isExecutingCommand(false);
 
         if (tryCatch.HasCaught()) {
-          std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
+          if (! tryCatch.CanContinue()) {
+           std::cout << "command aborted" << std::endl;
+          }
+          else {
+            std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
+          }
         }
       }
     }
