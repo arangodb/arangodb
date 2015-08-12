@@ -97,7 +97,6 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
     return true;
   }
 
-
 #ifdef _WIN32
 
   // ..........................................................................
@@ -166,7 +165,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
                   "expect sockaddr size to be less or equal to the v6 version");
 
     sockaddr_in6 addrmem;
-    sockaddr_in *addr = (sockaddr_in *)&addrmem;
+    sockaddr_in* addr = (sockaddr_in*) &addrmem;
     socklen_t len = sizeof(sockaddr_in6);
 
     memset(addr, 0, sizeof(sockaddr_in6));
@@ -193,7 +192,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     acceptFailures = 0;
 
     struct sockaddr_in6 addr_out_mem;
-    struct sockaddr_in *addr_out = (sockaddr_in*) &addr_out_mem;;
+    struct sockaddr_in* addr_out = (sockaddr_in*) &addr_out_mem;;
     socklen_t len_out = sizeof(addr_out_mem);
 
     int res = TRI_getsockname(connectionSocket, (sockaddr*) addr_out, &len_out);
@@ -234,9 +233,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     else {
       Endpoint::DomainType type = _endpoint->getDomainType();
       if (type == Endpoint::DOMAIN_IPV4) {
-        const char *p;
         char buf[INET_ADDRSTRLEN + 1];
-        p = inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
+        char const* p = inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
         buf[INET_ADDRSTRLEN] = '\0';
         if (p != nullptr) {
           info.clientAddress = p;
@@ -244,9 +242,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
         info.clientPort = addr->sin_port;
       }
       else if (type == Endpoint::DOMAIN_IPV6) {
-        const char *p;
         char buf[INET6_ADDRSTRLEN + 1];
-        p = inet_ntop(AF_INET6, &addrmem.sin6_addr, buf, sizeof(buf) - 1);
+        char const* p = inet_ntop(AF_INET6, &addrmem.sin6_addr, buf, sizeof(buf) - 1);
         buf[INET6_ADDRSTRLEN] = '\0';
         if (p != nullptr) {
           info.clientAddress = p;

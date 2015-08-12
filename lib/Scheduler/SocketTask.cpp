@@ -134,7 +134,8 @@ bool SocketTask::fillReadBuffer () {
     _readBuffer->increaseLength(nr);
     return true;
   }
-  else if (nr == 0) {
+
+  if (nr == 0) {
     _clientClosed = true;
 
     LOG_TRACE("read returned 0");
@@ -142,17 +143,26 @@ bool SocketTask::fillReadBuffer () {
     return false;
   }
 
-  if (errno == EINTR) {
+  int myerrno = errno;
+
+  if (myerrno == EINTR) {
     return fillReadBuffer();
   }
 
-  if (errno != EWOULDBLOCK) {
-    LOG_TRACE("read failed with %d: %s", (int) errno, strerror(errno));
+  if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {
+    LOG_TRACE("read failed with %d: %s", (int) myerrno, strerror(myerrno));
 
     return false;
   }
-    
-  LOG_TRACE("read would block with %d: %s", (int) errno, strerror(errno));
+
+  TRI_ASSERT(myerrno == EWOULDBLOCK || myerrno == EAGAIN);
+
+  // from man(2) read:
+  // The  file  descriptor  fd  refers  to  a socket and has been marked nonblocking (O_NONBLOCK), 
+  // and the read would block.  POSIX.1-2001 allows
+  // either error to be returned for this case, and does not require these constants to have the same value, 
+  // so a  portable  application  should check for both possibilities.
+  LOG_TRACE("read would block with %d: %s", (int) myerrno, strerror(myerrno));
 
   return true;
 }
@@ -162,9 +172,6 @@ bool SocketTask::fillReadBuffer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::handleWrite () {
-  bool callCompletedWriteBuffer = false;
-
-  // size_t is unsigned, should never get < 0
   size_t len = 0;
 
   if (nullptr != _writeBuffer) {
@@ -178,18 +185,22 @@ bool SocketTask::handleWrite () {
     nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + _writeLength, (int) len, 0);
 
     if (nr < 0) {
-      if (errno == EINTR) {
+      int myerrno = errno;
+
+      if (myerrno == EINTR) {
         return handleWrite();
       }
-      else if (errno != EWOULDBLOCK) {
-        LOG_DEBUG("write failed with %d: %s", (int) errno, strerror(errno));
+
+      if (myerrno != EWOULDBLOCK || myerrno != EAGAIN) {
+        LOG_DEBUG("write failed with %d: %s", (int) myerrno, strerror(myerrno));
 
         return false;
       }
-      else {
-        nr = 0;
-      }
+
+      nr = 0;
     }
+
+    TRI_ASSERT(nr >= 0);
 
     len -= nr;
   }
@@ -199,18 +210,14 @@ bool SocketTask::handleWrite () {
       delete _writeBuffer;
     }
 
-    callCompletedWriteBuffer = true;
-  }
-  else {
-    _writeLength += nr;
-  }
-
-  if (callCompletedWriteBuffer) {
     completedWriteBuffer();
 
     // rearm timer for keep-alive timeout
     // TODO: do we need some lock before we modify the scheduler?
     setKeepAliveTimeout(_keepAliveTimeout);
+  }
+  else {
+    _writeLength += nr;
   }
 
   if (_clientClosed) {
@@ -237,10 +244,7 @@ bool SocketTask::handleWrite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::setWriteBuffer (StringBuffer* buffer,
-                                 TRI_request_statistics_t* statistics,
-                                 bool ownBuffer) {
-  bool callCompletedWriteBuffer = false;
-
+                                 TRI_request_statistics_t* statistics) {
   _writeBufferStatistics = statistics;
 
   if (_writeBufferStatistics != nullptr) {
@@ -251,11 +255,9 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
   _writeLength = 0;
 
   if (buffer->empty()) {
-    if (ownBuffer) {
-      delete buffer;
-    }
+    delete buffer;
 
-    callCompletedWriteBuffer = true;
+    completedWriteBuffer();
   }
   else {
     if (_writeBuffer != nullptr) {
@@ -265,12 +267,7 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
     }
 
     _writeBuffer = buffer;
-    _ownBuffer = ownBuffer;
-  }
-
-  if (callCompletedWriteBuffer) {
-    completedWriteBuffer();
-
+    _ownBuffer = true;
   }
 
   if (_clientClosed) {

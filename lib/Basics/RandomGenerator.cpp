@@ -219,7 +219,7 @@ namespace RandomHelper {
           if (r == 0) {
             LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
           }
-          else if (errno == EWOULDBLOCK) {
+          else if (errno == EWOULDBLOCK || errno == EAGAIN) {
             LOG_INFO("not enough entropy (got %d), switching to pseudo-random", (int) (sizeof(buffer) - n));
             break;
           }

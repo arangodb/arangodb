@@ -153,8 +153,6 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::unregisterTask (Task* task) {
-  deactivateTask(task);
-
   // thread has already been stopped
   if (_stopped) {
     // do nothing
@@ -184,8 +182,6 @@ void SchedulerThread::unregisterTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::destroyTask (Task* task) {
-  deactivateTask(task);
-
   // thread has already been stopped
   if (_stopped) {
     deleteTask(task);

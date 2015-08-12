@@ -162,8 +162,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void setWriteBuffer (basics::StringBuffer*,
-                             TRI_request_statistics_t*,
-                             bool ownBuffer = true);
+                             TRI_request_statistics_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for presence of an active write buffer

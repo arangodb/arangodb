@@ -50,21 +50,15 @@ namespace {
 
 Task::Task (string const& id,
             string const& name)
-  : _scheduler(0),
+  : _scheduler(nullptr),
     _loop(0),
-    _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_relaxed)),
+    _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_seq_cst)),
     _id(id),
-    _name(name),
-    _active(1) {
+    _name(name) {
 }
 
 Task::Task (string const& name)
-  : _scheduler(0),
-    _loop(0),
-    _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_relaxed)),
-    _id(),
-    _name(name),
-    _active(1) {
+  : Task("", name) {
 }
 
 Task::~Task () {
