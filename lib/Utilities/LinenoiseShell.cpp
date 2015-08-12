@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor using linenoise
+/// @brief console input using linenoise
 ///
 /// @file
 ///
@@ -28,34 +28,38 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LinenoiseShell.h"
-#include "Utilities/Completer.h"
-#include "Utilities/LineEditor.h"
 
 extern "C" {
 #include <linenoise.h>
 }
 
+#include "Utilities/Completer.h"
+#include "Utilities/LineEditor.h"
 #include "Basics/files.h"
 
 using namespace std;
 using namespace triagens;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
 namespace {
-  static Completer* COMPLETER;
+  Completer* COMPLETER;
+}
 
-  static void LinenoiseCompletionGenerator (char const* text, 
-                                            linenoiseCompletions* lc) {
-    if (COMPLETER) {
-      std::vector<string> alternatives;
-      COMPLETER->getAlternatives(text, alternatives);
-      LineEditor::sortAlternatives(alternatives);
+static void LinenoiseCompletionGenerator (char const* text, 
+					  linenoiseCompletions* lc) {
+  if (COMPLETER) {
+    std::vector<string> alternatives = COMPLETER->alternatives(text);
+    LineEditor::sortAlternatives(alternatives);
 
-      for (auto& it : alternatives) {
-        linenoiseAddCompletion(lc, it.c_str());
-      }
+    for (auto& it : alternatives) {
+      linenoiseAddCompletion(lc, it.c_str());
     }
-    lc->multiLine = 1;
   }
+
+  lc->multiLine = 1;
 }
 
 // -----------------------------------------------------------------------------
@@ -86,7 +90,7 @@ LinenoiseShell::~LinenoiseShell() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor open
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LinenoiseShell::open (bool) {
@@ -98,7 +102,7 @@ bool LinenoiseShell::open (bool) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor shutdown
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LinenoiseShell::close () {
@@ -113,7 +117,7 @@ bool LinenoiseShell::close () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 string LinenoiseShell::historyPath () {
@@ -137,7 +141,7 @@ string LinenoiseShell::historyPath () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add to history
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 void LinenoiseShell::addHistory (char const* str) {
@@ -149,7 +153,7 @@ void LinenoiseShell::addHistory (char const* str) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save history
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LinenoiseShell::writeHistory () {
@@ -157,6 +161,10 @@ bool LinenoiseShell::writeHistory () {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
 char* LinenoiseShell::getLine (char const* input) {
   return linenoise(input);
