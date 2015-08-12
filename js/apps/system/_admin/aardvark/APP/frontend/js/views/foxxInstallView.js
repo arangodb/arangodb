@@ -11,18 +11,22 @@
   };
 
   var installCallback = function(result) {
+    window.hass = result;
     if (result.error === false) {
       this.collection.fetch({ async: false });
       window.modalView.hide();
       this.reload();
     } else {
-      // TODO Error handling properly!
-      switch(result.errorNum) {
+      var res = result;
+      if (result.hasOwnProperty("responseJSON")) {
+        res = result.responseJSON;
+      } 
+      switch(res.errorNum) {
         case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
           alert("Unable to download application from the given repository.");
           break;
         default:
-          alert("Error: " + result.errorNum + ". " + result.errorMessage);
+          alert("Error: " + res.errorNum + ". " + res.errorMessage);
       }
     }
   };
