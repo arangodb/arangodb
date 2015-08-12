@@ -1,15 +1,15 @@
 arangosh> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
 { 
-  "id" : "geo2/513477208773", 
+  "id" : "geo2/2034234251", 
   "type" : "geo2", 
-  "unique" : false, 
-  "sparse" : true, 
-  "constraint" : false, 
-  "ignoreNull" : true, 
   "fields" : [ 
     "location.latitude", 
     "location.longitude" 
   ], 
+  "constraint" : false, 
+  "unique" : false, 
+  "ignoreNull" : true, 
+  "sparse" : true, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
@@ -21,9 +21,9 @@ arangosh> for (i = -90;  i <= 90;  i += 10) {
 arangosh> db.geo2.near(0, 0).limit(3).toArray();
 [ 
   { 
-    "_id" : "geo2/513546611397", 
-    "_key" : "513546611397", 
-    "_rev" : "513546611397", 
+    "_id" : "geo2/2103636875", 
+    "_key" : "2103636875", 
+    "_rev" : "2103636875", 
     "location" : { 
       "latitude" : 0, 
       "longitude" : 0 
@@ -31,9 +31,9 @@ arangosh> db.geo2.near(0, 0).limit(3).toArray();
     "name" : "Name/0/0" 
   }, 
   { 
-    "_id" : "geo2/513546808005", 
-    "_key" : "513546808005", 
-    "_rev" : "513546808005", 
+    "_id" : "geo2/2103833483", 
+    "_key" : "2103833483", 
+    "_rev" : "2103833483", 
     "location" : { 
       "latitude" : 0, 
       "longitude" : 10 
@@ -41,9 +41,9 @@ arangosh> db.geo2.near(0, 0).limit(3).toArray();
     "name" : "Name/0/10" 
   }, 
   { 
-    "_id" : "geo2/513539336901", 
-    "_key" : "513539336901", 
-    "_rev" : "513539336901", 
+    "_id" : "geo2/2096362379", 
+    "_key" : "2096362379", 
+    "_rev" : "2096362379", 
     "location" : { 
       "latitude" : -10, 
       "longitude" : 0 

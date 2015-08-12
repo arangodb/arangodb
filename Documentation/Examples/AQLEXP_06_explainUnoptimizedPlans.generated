@@ -54,10 +54,11 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all" ] } });
           ] 
         }, 
         "outVariable" : { 
-          "id" : 1, 
+          "id" : 2, 
           "name" : "1" 
         }, 
-        "canThrow" : false 
+        "canThrow" : false, 
+        "expressionType" : "simple" 
       }, 
       { 
         "type" : "FilterNode", 
@@ -68,7 +69,7 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all" ] } });
         "estimatedCost" : 301, 
         "estimatedNrItems" : 100, 
         "inVariable" : { 
-          "id" : 1, 
+          "id" : 2, 
           "name" : "1" 
         } 
       }, 
@@ -92,10 +93,11 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all" ] } });
           ] 
         }, 
         "outVariable" : { 
-          "id" : 2, 
-          "name" : "2" 
+          "id" : 4, 
+          "name" : "3" 
         }, 
-        "canThrow" : false 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
       }, 
       { 
         "type" : "SortNode", 
@@ -108,8 +110,8 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all" ] } });
         "elements" : [ 
           { 
             "inVariable" : { 
-              "id" : 2, 
-              "name" : "2" 
+              "id" : 4, 
+              "name" : "3" 
             }, 
             "ascending" : true 
           } 
@@ -136,10 +138,11 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all" ] } });
           ] 
         }, 
         "outVariable" : { 
-          "id" : 3, 
-          "name" : "3" 
+          "id" : 6, 
+          "name" : "5" 
         }, 
-        "canThrow" : false 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
       }, 
       { 
         "type" : "ReturnNode", 
@@ -150,8 +153,8 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all" ] } });
         "estimatedCost" : 1061.517018598809, 
         "estimatedNrItems" : 100, 
         "inVariable" : { 
-          "id" : 3, 
-          "name" : "3" 
+          "id" : 6, 
+          "name" : "5" 
         } 
       } 
     ], 
@@ -164,15 +167,15 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all" ] } });
     ], 
     "variables" : [ 
       { 
-        "id" : 3, 
+        "id" : 6, 
+        "name" : "5" 
+      }, 
+      { 
+        "id" : 4, 
         "name" : "3" 
       }, 
       { 
         "id" : 2, 
-        "name" : "2" 
-      }, 
-      { 
-        "id" : 1, 
         "name" : "1" 
       }, 
       { 
@@ -186,7 +189,7 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all" ] } });
   "warnings" : [ ], 
   "stats" : { 
     "rulesExecuted" : 0, 
-    "rulesSkipped" : 21, 
+    "rulesSkipped" : 22, 
     "plansCreated" : 1 
   } 
 }

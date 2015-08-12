@@ -4,73 +4,15 @@ arangosh> var query = graph._vertices({name: "Alice"});
 arangosh> query.neighbors().toArray();
 [ 
   { 
-    "vertex" : { 
-      "_id" : "male/bob", 
-      "_key" : "bob", 
-      "_rev" : "512854485701", 
-      "name" : "Bob" 
-    }, 
-    "path" : { 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndBob", 
-          "_key" : "aliceAndBob", 
-          "_rev" : "512855206597", 
-          "_from" : "female/alice", 
-          "_to" : "male/bob", 
-          "type" : "married" 
-        } 
-      ], 
-      "vertices" : [ 
-        { 
-          "_id" : "female/alice", 
-          "_key" : "alice", 
-          "_rev" : "512854158021", 
-          "name" : "Alice" 
-        }, 
-        { 
-          "_id" : "male/bob", 
-          "_key" : "bob", 
-          "_rev" : "512854485701", 
-          "name" : "Bob" 
-        } 
-      ] 
-    }, 
-    "startVertex" : "female/alice" 
+    "_id" : "male/charly", 
+    "_key" : "charly", 
+    "_rev" : "1445786507", 
+    "name" : "Charly" 
   }, 
   { 
-    "vertex" : { 
-      "_id" : "male/charly", 
-      "_key" : "charly", 
-      "_rev" : "512854682309", 
-      "name" : "Charly" 
-    }, 
-    "path" : { 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndCharly", 
-          "_key" : "aliceAndCharly", 
-          "_rev" : "512855468741", 
-          "_from" : "female/alice", 
-          "_to" : "male/charly", 
-          "type" : "friend" 
-        } 
-      ], 
-      "vertices" : [ 
-        { 
-          "_id" : "female/alice", 
-          "_key" : "alice", 
-          "_rev" : "512854158021", 
-          "name" : "Alice" 
-        }, 
-        { 
-          "_id" : "male/charly", 
-          "_key" : "charly", 
-          "_rev" : "512854682309", 
-          "name" : "Charly" 
-        } 
-      ] 
-    }, 
-    "startVertex" : "female/alice" 
+    "_id" : "male/bob", 
+    "_key" : "bob", 
+    "_rev" : "1445589899", 
+    "name" : "Bob" 
   } 
 ]

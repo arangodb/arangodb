@@ -6,8 +6,8 @@ content-type: application/json; charset=utf-8
 { 
   "result" : { 
     "name" : "_system", 
-    "id" : "71345", 
-    "path" : "/var/lib/arangodb/databases/database-71345", 
+    "id" : "127883", 
+    "path" : "/tmp/vocdir.25246/databases/database-127883", 
     "isSystem" : true 
   }, 
   "error" : false, 

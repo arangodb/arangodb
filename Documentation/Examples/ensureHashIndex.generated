@@ -1,31 +1,31 @@
 arangosh> db.test.ensureHashIndex("a");
 { 
-  "id" : "test/512566389445", 
+  "id" : "test/1177285515", 
   "type" : "hash", 
-  "unique" : false, 
-  "sparse" : false, 
-  "selectivityEstimate" : 1, 
   "fields" : [ 
     "a" 
   ], 
+  "selectivityEstimate" : 1, 
+  "unique" : false, 
+  "sparse" : false, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
 arangosh> db.test.save({ a : 1 });
 { 
-  "_id" : "test/512566651589", 
-  "_rev" : "512566651589", 
-  "_key" : "512566651589" 
+  "_id" : "test/1177547659", 
+  "_rev" : "1177547659", 
+  "_key" : "1177547659" 
 }
 arangosh> db.test.save({ a : 1 });
 { 
-  "_id" : "test/512566848197", 
-  "_rev" : "512566848197", 
-  "_key" : "512566848197" 
+  "_id" : "test/1177744267", 
+  "_rev" : "1177744267", 
+  "_key" : "1177744267" 
 }
 arangosh> db.test.save({ a : null });
 { 
-  "_id" : "test/512567110341", 
-  "_rev" : "512567110341", 
-  "_key" : "512567110341" 
+  "_id" : "test/1178006411", 
+  "_rev" : "1178006411", 
+  "_key" : "1178006411" 
 }

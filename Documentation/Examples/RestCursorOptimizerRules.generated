@@ -20,6 +20,7 @@ content-type: application/json; charset=utf-8
   ], 
   "hasMore" : false, 
   "count" : 10, 
+  "cached" : false, 
   "extra" : { 
     "stats" : { 
       "writesExecuted" : 0, 

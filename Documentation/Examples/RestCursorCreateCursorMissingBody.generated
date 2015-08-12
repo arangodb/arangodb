@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
+  "errorMessage" : "expecting atom, got end-of-file", 
   "code" : 400, 
-  "errorNum" : 1502, 
-  "errorMessage" : "query is empty" 
+  "errorNum" : 600 
 }

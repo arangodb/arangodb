@@ -54,10 +54,11 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+remove-redundant-calcul
           ] 
         }, 
         "outVariable" : { 
-          "id" : 1, 
+          "id" : 2, 
           "name" : "1" 
         }, 
-        "canThrow" : false 
+        "canThrow" : false, 
+        "expressionType" : "simple" 
       }, 
       { 
         "type" : "FilterNode", 
@@ -68,7 +69,7 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+remove-redundant-calcul
         "estimatedCost" : 4, 
         "estimatedNrItems" : 1, 
         "inVariable" : { 
-          "id" : 1, 
+          "id" : 2, 
           "name" : "1" 
         } 
       }, 
@@ -95,7 +96,7 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+remove-redundant-calcul
     ], 
     "variables" : [ 
       { 
-        "id" : 1, 
+        "id" : 2, 
         "name" : "1" 
       }, 
       { 
@@ -109,7 +110,7 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+remove-redundant-calcul
   "warnings" : [ ], 
   "stats" : { 
     "rulesExecuted" : 1, 
-    "rulesSkipped" : 20, 
+    "rulesSkipped" : 21, 
     "plansCreated" : 1 
   } 
 }
