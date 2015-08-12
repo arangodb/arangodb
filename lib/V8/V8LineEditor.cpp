@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,6 +36,7 @@
 
 using namespace std;
 using namespace triagens;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -48,7 +49,7 @@ using namespace triagens;
 #ifndef _WIN32
 static void SignalHandler (int signal) {
   // get the instance of the console
-  auto instance = triagens::V8LineEditor::instance();
+  auto instance = V8LineEditor::instance();
 
   if (instance != nullptr) {
     instance->signal();
@@ -60,7 +61,7 @@ static void SignalHandler (int signal) {
 // --SECTION--                                                 class V8Completer
 // -----------------------------------------------------------------------------
 
-bool V8Completer::isComplete (std::string const& source, size_t lineno, size_t column) {
+bool V8Completer::isComplete (std::string const& source, size_t lineno) {
   int openParen    = 0;
   int openBrackets = 0;
   int openBraces   = 0;

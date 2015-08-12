@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract line editor
+/// @brief base class for a line editor
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,8 +31,9 @@
 #define ARANGODB_UTILITIES_LINE_EDITOR_H 1
 
 #include "Basics/Common.h"
-#include "LineEditor.h"
-#include "Completer.h"
+
+namespace arangodb {
+  class ShellImplementation;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class LineEditor
@@ -42,12 +43,9 @@
 /// @brief line editor
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace triagens {
-  class ShellImplementation;
-
   class LineEditor {
-      LineEditor(LineEditor const&);
-      LineEditor& operator= (LineEditor const&);
+      LineEditor(LineEditor const&) = delete;
+      LineEditor& operator= (LineEditor const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -80,6 +78,16 @@ namespace triagens {
       virtual ~LineEditor ();
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              static public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort the alternatives results vector
+////////////////////////////////////////////////////////////////////////////////
+
+      static void sortAlternatives (std::vector<std::string>&);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -101,7 +109,9 @@ namespace triagens {
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-      char* prompt (char const*);
+      std::string prompt (const std::string& prompt,
+			  const std::string& begin,
+			  bool& eof);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the history file path
@@ -116,7 +126,7 @@ namespace triagens {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-      void addHistory (const char*);
+      void addHistory (const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the history
@@ -130,12 +140,6 @@ namespace triagens {
 
       void signal ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort the alternatives results vector
-////////////////////////////////////////////////////////////////////////////////
-
-      static void sortAlternatives (std::vector<std::string>&);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -148,8 +152,14 @@ namespace triagens {
 
       void prepareShell ();
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                         virtual protected methods
+// -----------------------------------------------------------------------------
+
+    protected:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a concrete Shell with the correct parameter (Completer!!)
+/// @brief creates a concrete Shell with the correct parameter
 ////////////////////////////////////////////////////////////////////////////////
 
       virtual void initializeShell () = 0;
@@ -160,19 +170,23 @@ namespace triagens {
 
     protected:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the shell implementation
+////////////////////////////////////////////////////////////////////////////////
+
       ShellImplementation* _shellImpl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path to the history file
+////////////////////////////////////////////////////////////////////////////////
 
       std::string _history;
 
   };
 }
+
 #endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

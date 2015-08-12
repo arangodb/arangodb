@@ -41,6 +41,7 @@
 #endif
 
 using namespace triagens;
+using namespace arangodb;
 
 ShellImplementation* ShellImplFactory::buildShell (std::string const& history, 
                                                    Completer* completer) {

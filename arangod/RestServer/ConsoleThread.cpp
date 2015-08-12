@@ -45,8 +45,10 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
+using namespace arangodb;
+using namespace std;
 
-std::atomic<triagens::V8LineEditor*> triagens::arango::serverConsole(nullptr);
+std::atomic<V8LineEditor*> triagens::arango::serverConsole(nullptr);
 triagens::basics::Mutex triagens::arango::serverConsoleMutex;
 
 // -----------------------------------------------------------------------------
@@ -180,26 +182,22 @@ start_pretty_print();
         nrCommands = 0;
       }
 
-      char* input;
+      string input;
+      bool eof;
       {
         MUTEX_LOCKER(serverConsoleMutex);
-        input = console.prompt("arangod> ");
+        input = console.prompt("arangod> ", "arangod", eof);
+      }
+
+      if (eof) {
+        _userAborted = true;
       }
 
       if (_userAborted) {
-        if (input != nullptr) {
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-        }
         break;
       }
 
-      if (input == nullptr) {
-        _userAborted = true;
-        break;
-      }
-
-      if (*input == '\0') {
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+      if (input.empty()) {
         continue;
       }
 
@@ -210,8 +208,7 @@ start_pretty_print();
         v8::TryCatch tryCatch;
         v8::HandleScope scope(isolate);
 
-        TRI_ExecuteJavaScriptString(isolate, localContext, TRI_V8_STRING(input), name, true);
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+        TRI_ExecuteJavaScriptString(isolate, localContext, TRI_V8_STRING(input.c_str()), name, true);
 
         if (tryCatch.HasCaught()) {
           std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,12 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReadlineShell.h"
+
 #include "Basics/tri-strings.h"
 #include "Utilities/Completer.h"
 #include "Utilities/LineEditor.h"
@@ -38,58 +39,60 @@
 
 using namespace std;
 using namespace triagens;
+using namespace arangodb;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
 
 namespace {
   Completer* COMPLETER;
-
-  static char WordBreakCharacters[] = {
-    ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
-    '<', '>', '=', ';', '|', '&', '{', '}', '(', ')',
-    '\0'
-  };
-
-  static char* CompletionGenerator (char const* text, int state) {
-    static size_t currentIndex;
-    static vector<string> result;
-    // compute the possible completion
-    if (state == 0) {
-      COMPLETER->getAlternatives(text, result);
-      LineEditor::sortAlternatives(result);
-    }
-
-    if (currentIndex < result.size()) {
-      return TRI_SystemDuplicateString(result[currentIndex++].c_str());
-    }
-      
-    currentIndex = 0;
-    result.clear();
-    return nullptr;
-  }
-
-  static char** AttemptedCompletion (char const* text, int start, int end) {
-    char** result = rl_completion_matches(text, CompletionGenerator);
-    rl_attempted_completion_over = true;
-
-    if (result != nullptr && result[0] != nullptr && result[1] == nullptr) {
-      size_t n = strlen(result[0]);
-
-      if (result[0][n - 1] == ')') {
-        result[0][n - 1] = '\0';
-      }
-    }
-
-#if RL_READLINE_VERSION >= 0x0500
-    // issue #289
-    rl_completion_suppress_append = 1;
-#endif
-
-    return result;
-  }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class ReadlineShell
-// -----------------------------------------------------------------------------
+static char WordBreakCharacters[] = {
+  ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
+  '<', '>', '=', ';', '|', '&', '{', '}', '(', ')',
+  '\0'
+};
+
+static char* CompletionGenerator (char const* text, int state) {
+  static size_t currentIndex;
+  static vector<string> result;
+
+  // compute the possible completion
+  if (state == 0) {
+    COMPLETER->getAlternatives(text, result);
+    LineEditor::sortAlternatives(result);
+  }
+
+  if (currentIndex < result.size()) {
+    return TRI_SystemDuplicateString(result[currentIndex++].c_str());
+  }
+      
+  currentIndex = 0;
+  result.clear();
+  return nullptr;
+}
+
+static char** AttemptedCompletion (char const* text, int start, int end) {
+  char** result = rl_completion_matches(text, CompletionGenerator);
+  rl_attempted_completion_over = true;
+
+  if (result != nullptr && result[0] != nullptr && result[1] == nullptr) {
+    size_t n = strlen(result[0]);
+
+    if (result[0][n - 1] == ')') {
+      result[0][n - 1] = '\0';
+    }
+  }
+
+#if RL_READLINE_VERSION >= 0x0500
+  // issue #289
+  rl_completion_suppress_append = 1;
+#endif
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function that readline calls periodically while waiting
@@ -99,8 +102,7 @@ namespace {
 static int ReadlineIdle () {
   auto instance = ReadlineShell::instance();
 
-  if (instance != nullptr &&
-      instance->getLoopState() == 2) {
+  if (instance != nullptr && instance->getLoopState() == 2) {
     rl_done = 1;
   }
 
@@ -124,8 +126,10 @@ static void ReadlineInputCompleted (char* value) {
   }
 
   if (instance->getLoopState() == 2) {
+
     // CTRL-C received
     rl_done = 1;
+
     // replace current input with nothing
     rl_replace_line("", 0);
 
@@ -133,16 +137,27 @@ static void ReadlineInputCompleted (char* value) {
       // avoid memleak
       TRI_SystemFree(value);
     }
-    instance->setLastInput(nullptr);
+
+    instance->setLastInput("");
+  }
+  else if (value == nullptr) {
+    rl_done = 1;
+    rl_replace_line("", 0);
+    instance->setLoopState(3);
+    instance->setLastInput("");
   }
   else {
     instance->setLoopState(1);
-    instance->setLastInput(value);
+    instance->setLastInput(value == 0 ? "" : value);
   }
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                               class ReadlineShell
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,15 +166,18 @@ static void ReadlineInputCompleted (char* value) {
 
 std::atomic<ReadlineShell*> ReadlineShell::_instance(nullptr);
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadlineShell::ReadlineShell (std::string const& history, 
-                              Completer* completer)
+ReadlineShell::ReadlineShell (std::string const& history, Completer* completer)
   : ShellImplementation(history, completer),
     _loopState(0),
-    _lastInput(nullptr),
+    _lastInput(),
     _lastInputWasEmpty(false) {
 
   COMPLETER = completer;
@@ -184,7 +202,7 @@ ReadlineShell::~ReadlineShell () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                       ShellImplementation methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,6 +211,7 @@ ReadlineShell::~ReadlineShell () {
 
 bool ReadlineShell::open (bool autoComplete) {
   if (autoComplete) {
+
     // issue #289: do not append a space after completion
     rl_completion_append_character = '\0';
 
@@ -273,31 +292,29 @@ string ReadlineShell::historyPath () {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReadlineShell::addHistory (char const* str) {
-  if (*str == '\0') {
+void ReadlineShell::addHistory (const string& str) {
+  if (str.empty()) {
     return;
   }
 
-  history_set_pos(history_length-1);
+  history_set_pos(history_length - 1);
 
   if (current_history()) {
     do {
-      if (strcmp(current_history()->line, str) == 0) {
-#ifndef __APPLE__
+      if (strcmp(current_history()->line, str.c_str()) == 0) {
         HIST_ENTRY* e = remove_history(where_history());
+
         if (e != nullptr) {
           free_history_entry(e);
         }
-#else
-        remove_history(where_history());
-#endif
+
         break;
       }
     }
     while (previous_history());
   }
 
-  add_history(str);
+  add_history(str.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,27 +329,38 @@ bool ReadlineShell::writeHistory () {
 /// @brief read a line from the input
 ////////////////////////////////////////////////////////////////////////////////
 
-char* ReadlineShell::getLine (char const* prompt) {
+string ReadlineShell::getLine (const string& prompt, bool& eof) {
   setLoopState(0);
+
   rl_event_hook = ReadlineIdle;
-  rl_callback_handler_install(prompt, ReadlineInputCompleted);
+  rl_callback_handler_install(prompt.c_str(), ReadlineInputCompleted);
 
   int state;
+
+  eof = false;
+
   do {
     rl_callback_read_char();
     state = getLoopState();
   }
   while (state == 0);
+
   rl_callback_handler_remove();
 
   if (state == 2) {
+    setLastInput("");
+
     if (_lastInputWasEmpty) {
-      setLastInput(nullptr);
+      eof = true;
     }
     else {
-      setLastInput(strdup("")); 
       _lastInputWasEmpty = true;
     }
+  }
+  else if (state == 3) {
+    setLastInput("");
+    eof = true;
+    _lastInputWasEmpty = false;
   }
   else {
     _lastInputWasEmpty = false;
@@ -353,8 +381,3 @@ void ReadlineShell::signal () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

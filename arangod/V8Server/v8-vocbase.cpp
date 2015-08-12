@@ -74,6 +74,7 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -620,7 +621,7 @@ static void JS_EnableNativeBacktraces (const v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_TRY_CATCH_END
 }
 
-extern triagens::V8LineEditor* theConsole;
+extern V8LineEditor* theConsole;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a debugging console
@@ -638,20 +639,20 @@ static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
                                  debug, args[0]);
   }
 
-  triagens::V8LineEditor* console = triagens::arango::serverConsole.load();
+  V8LineEditor* console = triagens::arango::serverConsole.load();
 
   if (console != nullptr) {
     MUTEX_LOCKER(triagens::arango::serverConsoleMutex);
     if (serverConsole.load() != nullptr) {   
       while (true) {
-        char* input = console->prompt("debug> ");
+	bool eof;
+        string input = console->prompt("debug> ", "debug", eof);
 
-        if (input == nullptr) {
+        if (eof) {
           break;
         }
 
-        if (*input == '\0') {
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+        if (input.empty()) {
           continue;
         }
 
@@ -661,8 +662,8 @@ static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
           v8::TryCatch tryCatch;
           v8::HandleScope scope(isolate);
 
-          TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), TRI_V8_STRING(input), name, true);
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+          TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), 
+				      TRI_V8_STRING(input.c_str()), name, true);
 
           if (tryCatch.HasCaught()) {
             std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);

@@ -41,7 +41,7 @@
 // --SECTION--                                                 class V8Completer
 // -----------------------------------------------------------------------------
 
-namespace triagens {
+namespace arangodb {
 
   class V8Completer : public Completer {
 
@@ -56,8 +56,7 @@ namespace triagens {
     public: 
     
       bool isComplete (std::string const&, 
-                       size_t lineno, 
-                       size_t column) override final;
+                       size_t lineno) override final;
 
       void getAlternatives (char const*, 
                             std::vector<std::string>&) override final;

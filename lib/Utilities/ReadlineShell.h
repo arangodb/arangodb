@@ -30,15 +30,21 @@
 #ifndef ARANGODB_UTILITIES_READLINE_SHELL_H
 #define ARANGODB_UTILITIES_READLINE_SHELL_H 1
 
-#include "Basics/Common.h"
-#include "Utilities/Completer.h"
 #include "Utilities/ShellImplementation.h"
 
-namespace triagens {
+#include "Utilities/Completer.h"
 
-  class Completer;
+namespace arangodb {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class ReadlineShell
+// -----------------------------------------------------------------------------
 
   class ReadlineShell : public ShellImplementation {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
     public:
 
@@ -46,14 +52,19 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      ReadlineShell (std::string const& history, 
-                     Completer*);
+      ReadlineShell (std::string const& history, Completer*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
       ~ReadlineShell ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                       ShellImplementation methods
+// -----------------------------------------------------------------------------
+
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
@@ -80,7 +91,7 @@ namespace triagens {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-      void addHistory (char const*) override final;
+      void addHistory (const std::string&) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the history
@@ -92,7 +103,7 @@ namespace triagens {
 /// @brief read a line from the input
 ////////////////////////////////////////////////////////////////////////////////
 
-      char* getLine (char const*) override final;
+      std::string getLine (const std::string& prompt, bool& eof) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a signal
@@ -100,11 +111,31 @@ namespace triagens {
 
       void signal () override final;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+    public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the currently active shell instance
+////////////////////////////////////////////////////////////////////////////////
+
+      static ReadlineShell* instance () {
+        return _instance.load();
+      }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+    public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the last input value
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setLastInput (char* input) {
+      void setLastInput (const std::string& input) {
         _lastInput = input;
       }
 
@@ -124,14 +155,6 @@ namespace triagens {
         _loopState = state;
       }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the currently active shell instance
-////////////////////////////////////////////////////////////////////////////////
-
-      static ReadlineShell* instance () {
-        return _instance.load();
-      }
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -145,11 +168,10 @@ namespace triagens {
       std::atomic<int> _loopState;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief last value entered by user. memory is allocated by readline
-/// and must be freed using TRI_SystemFree()
+/// @brief last value entered by user.
 ////////////////////////////////////////////////////////////////////////////////
 
-      char* _lastInput;
+      std::string _lastInput;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the input from the previous invocation was a CTRL-C
@@ -171,8 +193,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

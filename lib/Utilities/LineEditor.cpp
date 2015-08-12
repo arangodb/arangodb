@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,16 +23,18 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LineEditor.h"
+
 #include "Utilities/ShellImplementation.h"
 #include "Utilities/Completer.h"
 
 using namespace std;
 using namespace triagens;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class LineEditor
@@ -63,6 +65,23 @@ LineEditor::~LineEditor () {
  }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              static public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort the alternatives results vector
+////////////////////////////////////////////////////////////////////////////////
+
+void LineEditor::sortAlternatives (vector<string>& completions) {
+  std::sort(completions.begin(), completions.end(),
+    [](std::string const& l, std::string const& r) -> bool {
+      int res = strcasecmp(l.c_str(), r.c_str());
+      return (res < 0);
+    }
+  );
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -88,8 +107,10 @@ bool LineEditor::close () {
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-char* LineEditor::prompt (char const* prompt) {
-  return _shellImpl->prompt(prompt);
+string LineEditor::prompt (const string& prompt,
+			   const string& begin,
+			   bool& eof) {
+  return _shellImpl->prompt(prompt, begin, eof);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,9 +126,9 @@ string LineEditor::historyPath () {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (char const* str) {
+void LineEditor::addHistory (const string& line) {
   prepareShell();
-  return _shellImpl->addHistory(str);
+  return _shellImpl->addHistory(line);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,19 +148,6 @@ void LineEditor::signal () {
   _shellImpl->signal();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort the alternatives results vector
-////////////////////////////////////////////////////////////////////////////////
-
-void LineEditor::sortAlternatives (vector<string>& completions) {
-  std::sort(completions.begin(), completions.end(),
-    [](std::string const& l, std::string const& r) -> bool {
-      int res = strcasecmp(l.c_str(), r.c_str());
-      return (res < 0);
-    }
-  );
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -153,8 +161,3 @@ void LineEditor::prepareShell () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
