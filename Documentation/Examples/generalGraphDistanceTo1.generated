@@ -9,68 +9,32 @@ arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
 [ 
   [ 
     "frenchCity/Paris", 
-    { 
-      "_id" : "germanCity/Berlin", 
-      "_key" : "Berlin", 
-      "_rev" : "512712731333", 
-      "isCapital" : true, 
-      "population" : 3000000 
-    }, 
-    1200 
+    "germanCity/Berlin", 
+    1 
   ], 
   [ 
     "frenchCity/Paris", 
-    { 
-      "_id" : "germanCity/Cologne", 
-      "_key" : "Cologne", 
-      "_rev" : "512712927941", 
-      "isCapital" : false, 
-      "population" : 1000000 
-    }, 
-    550 
+    "germanCity/Hamburg", 
+    1 
   ], 
   [ 
     "frenchCity/Paris", 
-    { 
-      "_id" : "germanCity/Hamburg", 
-      "_key" : "Hamburg", 
-      "_rev" : "512713124549", 
-      "isCapital" : false, 
-      "population" : 1000000 
-    }, 
-    900 
+    "germanCity/Cologne", 
+    1 
   ], 
   [ 
     "frenchCity/Lyon", 
-    { 
-      "_id" : "germanCity/Hamburg", 
-      "_key" : "Hamburg", 
-      "_rev" : "512713124549", 
-      "isCapital" : false, 
-      "population" : 1000000 
-    }, 
-    1200 
+    "germanCity/Berlin", 
+    1 
   ], 
   [ 
     "frenchCity/Lyon", 
-    { 
-      "_id" : "germanCity/Cologne", 
-      "_key" : "Cologne", 
-      "_rev" : "512712927941", 
-      "isCapital" : false, 
-      "population" : 1000000 
-    }, 
-    700 
+    "germanCity/Hamburg", 
+    1 
   ], 
   [ 
     "frenchCity/Lyon", 
-    { 
-      "_id" : "germanCity/Berlin", 
-      "_key" : "Berlin", 
-      "_rev" : "512712731333", 
-      "isCapital" : true, 
-      "population" : 3000000 
-    }, 
-    1100 
+    "germanCity/Cologne", 
+    1 
   ] 
 ]

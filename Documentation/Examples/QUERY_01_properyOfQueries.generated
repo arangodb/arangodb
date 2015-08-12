@@ -1,0 +1,18 @@
+arangosh> queries.properties();
+{ 
+  "code" : 200, 
+  "enabled" : true, 
+  "trackSlowQueries" : true, 
+  "maxSlowQueries" : 64, 
+  "slowQueryThreshold" : 10, 
+  "maxQueryStringLength" : 4096 
+}
+arangosh> queries.properties({slowQueryThreshold: 1});
+{ 
+  "code" : 200, 
+  "enabled" : true, 
+  "trackSlowQueries" : true, 
+  "maxSlowQueries" : 64, 
+  "slowQueryThreshold" : 1, 
+  "maxQueryStringLength" : 4096 
+}

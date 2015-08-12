@@ -1,0 +1,6 @@
+arangosh> queries.clearSlow();
+{ 
+  "code" : 200 
+}
+arangosh> queries.slow();
+[ ]

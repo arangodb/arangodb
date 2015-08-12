@@ -1,23 +1,23 @@
 arangosh> db.example.toArray()
 [ 
   { 
-    "_id" : "example/511850212037", 
-    "_key" : "511850212037", 
-    "_rev" : "511850212037", 
+    "Hello" : "World", 
+    "_id" : "example/465695627", 
+    "_rev" : "465695627", 
+    "_key" : "465695627" 
+  }, 
+  { 
     "age" : 29, 
-    "name" : "John Doe" 
+    "name" : "John Doe", 
+    "_id" : "example/466088843", 
+    "_rev" : "466088843", 
+    "_key" : "466088843" 
   }, 
   { 
-    "_id" : "example/511849818821", 
-    "_key" : "511849818821", 
-    "_rev" : "511849818821", 
-    "Hello" : "World" 
-  }, 
-  { 
-    "_id" : "example/511850408645", 
-    "_key" : "511850408645", 
-    "_rev" : "511850408645", 
     "age" : 31, 
-    "name" : "Jane Smith" 
+    "name" : "Jane Smith", 
+    "_id" : "example/466285451", 
+    "_rev" : "466285451", 
+    "_key" : "466285451" 
   } 
 ]

@@ -7,86 +7,28 @@ arangosh> query.neighbors().path().toArray();
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "512878144197", 
+      "_rev" : "1467413387", 
       "name" : "Alice" 
     }, 
     { 
-      "vertex" : { 
-        "_id" : "male/bob", 
-        "_key" : "bob", 
-        "_rev" : "512878471877", 
-        "name" : "Bob" 
-      }, 
-      "path" : { 
-        "edges" : [ 
-          { 
-            "_id" : "relation/aliceAndBob", 
-            "_key" : "aliceAndBob", 
-            "_rev" : "512879192773", 
-            "_from" : "female/alice", 
-            "_to" : "male/bob", 
-            "type" : "married" 
-          } 
-        ], 
-        "vertices" : [ 
-          { 
-            "_id" : "female/alice", 
-            "_key" : "alice", 
-            "_rev" : "512878144197", 
-            "name" : "Alice" 
-          }, 
-          { 
-            "_id" : "male/bob", 
-            "_key" : "bob", 
-            "_rev" : "512878471877", 
-            "name" : "Bob" 
-          } 
-        ] 
-      }, 
-      "startVertex" : "female/alice" 
+      "_id" : "male/charly", 
+      "_key" : "charly", 
+      "_rev" : "1467937675", 
+      "name" : "Charly" 
     } 
   ], 
   [ 
     { 
       "_id" : "female/alice", 
       "_key" : "alice", 
-      "_rev" : "512878144197", 
+      "_rev" : "1467413387", 
       "name" : "Alice" 
     }, 
     { 
-      "vertex" : { 
-        "_id" : "male/charly", 
-        "_key" : "charly", 
-        "_rev" : "512878668485", 
-        "name" : "Charly" 
-      }, 
-      "path" : { 
-        "edges" : [ 
-          { 
-            "_id" : "relation/aliceAndCharly", 
-            "_key" : "aliceAndCharly", 
-            "_rev" : "512879454917", 
-            "_from" : "female/alice", 
-            "_to" : "male/charly", 
-            "type" : "friend" 
-          } 
-        ], 
-        "vertices" : [ 
-          { 
-            "_id" : "female/alice", 
-            "_key" : "alice", 
-            "_rev" : "512878144197", 
-            "name" : "Alice" 
-          }, 
-          { 
-            "_id" : "male/charly", 
-            "_key" : "charly", 
-            "_rev" : "512878668485", 
-            "name" : "Charly" 
-          } 
-        ] 
-      }, 
-      "startVertex" : "female/alice" 
+      "_id" : "male/bob", 
+      "_key" : "bob", 
+      "_rev" : "1467741067", 
+      "name" : "Bob" 
     } 
   ] 
 ]

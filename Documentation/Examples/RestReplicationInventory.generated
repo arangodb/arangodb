@@ -9,24 +9,25 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "407882835818", 
+        "cid" : "7205771", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "_apps", 
         "isVolatile" : false, 
         "waitForSync" : false 
       }, 
       "indexes" : [ 
         { 
-          "id" : "407883163498", 
+          "id" : "7467915", 
           "type" : "hash", 
-          "unique" : true, 
-          "sparse" : false, 
-          "selectivityEstimate" : 1, 
           "fields" : [ 
             "mount" 
-          ] 
+          ], 
+          "selectivityEstimate" : 1, 
+          "unique" : true, 
+          "sparse" : false 
         } 
       ] 
     }, 
@@ -34,7 +35,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "4855473", 
+        "cid" : "4453259", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 4194304, 
@@ -48,48 +50,14 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "467525925975", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "_fishbowl", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ 
-        { 
-          "id" : "467526188119", 
-          "type" : "fulltext", 
-          "unique" : false, 
-          "sparse" : true, 
-          "minLength" : 2, 
-          "fields" : [ 
-            "description" 
-          ] 
-        }, 
-        { 
-          "id" : "467526450263", 
-          "type" : "fulltext", 
-          "unique" : false, 
-          "sparse" : true, 
-          "minLength" : 2, 
-          "fields" : [ 
-            "name" 
-          ] 
-        } 
-      ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "2496177", 
+        "cid" : "2093963", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
         "name" : "_graphs", 
         "isVolatile" : false, 
-        "waitForSync" : true 
+        "waitForSync" : false 
       }, 
       "indexes" : [ ] 
     }, 
@@ -97,7 +65,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2627249", 
+        "cid" : "2225035", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -111,7 +80,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2758321", 
+        "cid" : "2356107", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 33554432, 
@@ -125,10 +95,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "26941105", 
+        "cid" : "14414731", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "_sessions", 
         "isVolatile" : false, 
         "waitForSync" : false 
@@ -139,10 +110,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "407892141930", 
+        "cid" : "15135627", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "_system_users_users", 
         "isVolatile" : false, 
         "waitForSync" : false 
@@ -153,22 +125,25 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "595633", 
+        "cid" : "258955", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 4194304, 
         "name" : "_users", 
         "isVolatile" : false, 
-        "waitForSync" : true 
+        "waitForSync" : false 
       }, 
       "indexes" : [ 
         { 
-          "id" : "857777", 
+          "id" : "586635", 
           "type" : "hash", 
-          "unique" : true, 
           "fields" : [ 
             "user" 
-          ] 
+          ], 
+          "selectivityEstimate" : 1, 
+          "unique" : true, 
+          "sparse" : true 
         } 
       ] 
     }, 
@@ -176,10 +151,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "511405812421", 
+        "cid" : "22606731", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "animals", 
         "isVolatile" : false, 
         "waitForSync" : false 
@@ -190,104 +166,12 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "467557383255", 
+        "cid" : "21754763", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "blablabla_providers", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "407906297706", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "blarg", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "392615929403", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "complexCollection", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "511404894917", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
+        "maximalSize" : 1048576, 
         "name" : "demo", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "467593362519", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "marvel_vertices", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 2, 
-        "cid" : "166729996718", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "profiles", 
-        "isVolatile" : false, 
-        "waitForSync" : false 
-      }, 
-      "indexes" : [ 
-        { 
-          "id" : "60301483134", 
-          "type" : "skiplist", 
-          "unique" : false, 
-          "fields" : [ 
-            "userId" 
-          ] 
-        } 
-      ] 
-    }, 
-    { 
-      "parameters" : { 
-        "version" : 5, 
-        "type" : 3, 
-        "cid" : "471199087703", 
-        "deleted" : false, 
-        "doCompact" : true, 
-        "maximalSize" : 33554432, 
-        "name" : "marvel_edges", 
         "isVolatile" : false, 
         "waitForSync" : false 
       }, 
@@ -296,9 +180,9 @@ content-type: application/json; charset=utf-8
   ], 
   "state" : { 
     "running" : true, 
-    "lastLogTick" : "512216951493", 
-    "totalEvents" : 32283, 
-    "time" : "2015-08-11T10:55:55Z" 
+    "lastLogTick" : "830403467", 
+    "totalEvents" : 5005, 
+    "time" : "2015-08-12T09:32:50Z" 
   }, 
-  "tick" : "512216951493" 
+  "tick" : "830403467" 
 }

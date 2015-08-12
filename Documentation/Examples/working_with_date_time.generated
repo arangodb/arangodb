@@ -1,28 +1,28 @@
 arangosh> db._create("exampleTime");
-[ArangoCollection 513777101509, "exampleTime" (type document, status loaded)]
+[ArangoCollection 2332357515, "exampleTime" (type document, status loaded)]
 arangosh> var timestamps = ["2014-05-07T14:19:09.522","2014-05-07T21:19:09.522","2014-05-08T04:19:09.522","2014-05-08T11:19:09.522","2014-05-08T18:19:09.522"];
 arangosh> for (i = 0; i < 5; i++) db.exampleTime.save({value:i, ts: timestamps[i]})
 arangosh> db._query("FOR d IN exampleTime FILTER d.ts > '2014-05-07T14:19:09.522' and d.ts < '2014-05-08T18:19:09.522' RETURN d").toArray()
 [ 
   { 
-    "_id" : "exampleTime/513777887941", 
-    "_key" : "513777887941", 
-    "_rev" : "513777887941", 
-    "value" : 2, 
-    "ts" : "2014-05-08T04:19:09.522" 
-  }, 
-  { 
-    "_id" : "exampleTime/513778084549", 
-    "_key" : "513778084549", 
-    "_rev" : "513778084549", 
     "value" : 3, 
-    "ts" : "2014-05-08T11:19:09.522" 
+    "ts" : "2014-05-08T11:19:09.522", 
+    "_id" : "exampleTime/2333340555", 
+    "_rev" : "2333340555", 
+    "_key" : "2333340555" 
   }, 
   { 
-    "_id" : "exampleTime/513777691333", 
-    "_key" : "513777691333", 
-    "_rev" : "513777691333", 
+    "value" : 2, 
+    "ts" : "2014-05-08T04:19:09.522", 
+    "_id" : "exampleTime/2333143947", 
+    "_rev" : "2333143947", 
+    "_key" : "2333143947" 
+  }, 
+  { 
     "value" : 1, 
-    "ts" : "2014-05-07T21:19:09.522" 
+    "ts" : "2014-05-07T21:19:09.522", 
+    "_id" : "exampleTime/2332947339", 
+    "_rev" : "2332947339", 
+    "_key" : "2332947339" 
   } 
 ]
