@@ -82,12 +82,8 @@ static void AddNewElementPointer (TRI_associative_pointer_t* array, void* elemen
 
 static bool ResizeAssociativePointer (TRI_associative_pointer_t* array,
                                       uint32_t targetSize) {
-  void** oldTable;
-  uint32_t oldAlloc;
-  uint32_t j;
-
-  oldTable = array->_table;
-  oldAlloc = array->_nrAlloc;
+  void** oldTable = array->_table;
+  uint32_t oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = targetSize;
 #ifdef TRI_INTERNAL_STATS
@@ -107,7 +103,7 @@ static bool ResizeAssociativePointer (TRI_associative_pointer_t* array,
 
   if (oldTable != nullptr) {
     // table is already cleared by allocate, copy old data
-    for (j = 0; j < oldAlloc; j++) {
+    for (uint32_t j = 0; j < oldAlloc; j++) {
       if (oldTable[j] != nullptr) {
         AddNewElementPointer(array, oldTable[j]);
       }
