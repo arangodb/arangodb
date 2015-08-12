@@ -2501,26 +2501,6 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup a database by its id
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* TRI_LookupDatabaseByIdServer (TRI_server_t* server,
-                                             TRI_voc_tick_t id) {
-  auto unuser(server->_databasesProtector.use());
-  auto theLists = server->_databasesLists.load();
-
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-
-    if (vocbase->_id == id) {
-      return vocbase;
-    }
-  }
-
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a database by its name
 ////////////////////////////////////////////////////////////////////////////////
 
