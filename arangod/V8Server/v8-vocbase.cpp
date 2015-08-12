@@ -153,7 +153,6 @@ static v8::Handle<v8::Object> WrapClass (v8::Isolate *isolate,
   return scope.Escape<v8::Object>(result);
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
@@ -2314,7 +2313,8 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     catch (Exception& e) {
       TRI_V8_THROW_EXCEPTION(e.code());
     }
-  } else {
+  } 
+  else {
     // No Data reading required for this path. Use shortcuts.
     // Compute the path
     unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
@@ -2345,13 +2345,13 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     // Adding additional locks on vertex collections at this point to the transaction
     // would cause dead-locks.
     // Will be fixed automatically with new MVCC version.
-      try {
-        auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
-        TRI_V8_RETURN(result);
-      } 
-      catch (Exception& e) {
-        TRI_V8_THROW_EXCEPTION(e.code());
-      }
+    try {
+      auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
+      TRI_V8_RETURN(result);
+    } 
+    catch (Exception& e) {
+      TRI_V8_THROW_EXCEPTION(e.code());
+    }
   }
   TRI_V8_TRY_CATCH_END
 }
