@@ -27,7 +27,7 @@
       "click #submitEditUserPassword"       : "submitEditUserPassword",
       "click #submitEditCurrentUserProfile" : "submitEditCurrentUserProfile",
       "click .css-label"                    : "checkBoxes",
-      "change #userSortDesc"                : "sorting"
+      "click #userSortDesc"                : "sorting"
 
     },
 
@@ -40,12 +40,18 @@
     },
 
     checkBoxes: function (e) {
+      e.preventDefault();
       //chrome bugfix
-      var clicked = e.currentTarget.id;
-      $('#'+clicked).click();
+      var toClick = $(e.currentTarget).closest('.checkboxLabel');
+      
+      if (toClick.length > 0) {
+        var other = $('input', toClick);
+        other[0].click();
+      }
     },
 
-    sorting: function() {
+    sorting: function(e) {
+      e.preventDefault();
       if ($('#userSortDesc').is(":checked")) {
         this.collection.setSortingDesc(true);
       }
@@ -58,7 +64,6 @@
       } else {
         this.dropdownVisible = false;
       }
-
 
       this.render();
     },

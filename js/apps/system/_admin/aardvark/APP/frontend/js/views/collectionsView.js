@@ -95,12 +95,18 @@
     },
 
     checkBoxes: function (e) {
+      e.preventDefault();
       //chrome bugfix
-      var clicked = e.currentTarget.id;
-      $('#'+clicked).click();
+      var toClick = $(e.currentTarget).closest('.checkboxLabel');
+      
+      if (toClick.length > 0) {
+        var other = $('input', toClick);
+        other[0].click();
+      }
     },
 
-    checkSystem: function () {
+    checkSystem: function (e) {
+      e.preventDefault();
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.includeSystem;
 
@@ -110,7 +116,8 @@
         this.render();
       }
     },
-    checkEdge: function () {
+    checkEdge: function (e) {
+      e.preventDefault();
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.includeEdge;
 
@@ -120,7 +127,8 @@
         this.render();
       }
     },
-    checkDocument: function () {
+    checkDocument: function (e) {
+      e.preventDefault();
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.includeDocument;
 
@@ -130,7 +138,8 @@
         this.render();
       }
     },
-    checkLoaded: function () {
+    checkLoaded: function (e) {
+      e.preventDefault();
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.includeLoaded;
 
@@ -140,7 +149,8 @@
         this.render();
       }
     },
-    checkUnloaded: function () {
+    checkUnloaded: function (e) {
+      e.preventDefault();
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.includeUnloaded;
 
@@ -150,7 +160,8 @@
         this.render();
       }
     },
-    sortName: function () {
+    sortName: function (e) {
+      e.preventDefault();
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.sortBy;
 
@@ -159,7 +170,8 @@
         this.render();
       }
     },
-    sortType: function () {
+    sortType: function (e) {
+      e.preventDefault();
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.sortBy;
 
@@ -168,7 +180,8 @@
         this.render();
       }
     },
-    sortOrder: function () {
+    sortOrder: function (e) {
+      e.preventDefault();
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.sortOrder;
 

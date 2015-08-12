@@ -19,44 +19,32 @@
 
 
     checkBoxes: function (e) {
+      e.preventDefault();
       //chrome bugfix
-
-      var isChromium = window.chrome,
-      vendorName = window.navigator.vendor,
-      clicked = e.currentTarget;
-
-      if (clicked.id === '' || clicked.id === undefined) {
-        if(isChromium !== null && isChromium !== undefined && vendorName === "Google Inc.") {
-          $(clicked).prev().click();
-        }
-      }
-      else {
-        $('#'+clicked.id).click();
+      var toClick = $(e.currentTarget).closest('.checkboxLabel');
+      
+      if (toClick.length > 0) {
+        var other = $('input', toClick);
+        other[0].click();
       }
     },
 
-    toggleDevel: function() {
-      var self = this;
+    toggleDevel: function(e) {
+      e.preventDefault();
       this._showDevel = !this._showDevel;
-      _.each(this._installedSubViews, function(v) {
-        v.toggle("devel", self._showDevel);
-      });
+      this.render();
     },
 
-    toggleProduction: function() {
-      var self = this;
+    toggleProduction: function(e) {
+      e.preventDefault();
       this._showProd = !this._showProd;
-      _.each(this._installedSubViews, function(v) {
-        v.toggle("production", self._showProd);
-      });
+      this.render();
     },
 
-    toggleSystem: function() {
+    toggleSystem: function(e) {
+      e.preventDefault();
       this._showSystem = !this._showSystem;
-      var self = this;
-      _.each(this._installedSubViews, function(v) {
-        v.toggle("system", self._showSystem);
-      });
+      this.render();
     },
 
     reload: function() {
@@ -107,6 +95,11 @@
     },
 
     render: function() {
+      var dropdownVisible = false;
+      if ($('#foxxDropdown').is(':visible')) {
+        dropdownVisible = true;
+      }
+
       this.collection.sort();
 
       $(this.el).html(this.template.render({}));
@@ -117,6 +110,10 @@
       $('#checkDevel').attr('checked', this._showDevel);
       $('#checkProduction').attr('checked', this._showProd);
       $('#checkSystem').attr('checked', this._showSystem);
+      
+      if (dropdownVisible === true) {
+        $('#foxxDropdownOut').show();
+      }
       
       var self = this;
       _.each(this._installedSubViews, function(v) {

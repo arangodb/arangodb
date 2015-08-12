@@ -90,9 +90,14 @@
     },
 
     checkBoxes: function (e) {
+      e.preventDefault();
       //chrome bugfix
-      var clicked = e.currentTarget.id;
-      $('#'+clicked).click();
+      var toClick = $(e.currentTarget).closest('.checkboxLabel');
+      
+      if (toClick.length > 0) {
+        var other = $('input', toClick);
+        other[0].click();
+      }
     },
 
     toggleGraphDropdown: function() {
@@ -103,7 +108,8 @@
       $('#graphManagementDropdown2').slideToggle(200);
     },
 
-    sorting: function() {
+    sorting: function(e) {
+      e.preventDefault();
       if ($('#graphSortDesc').is(":checked")) {
         this.collection.setSortingDesc(true);
       }
