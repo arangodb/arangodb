@@ -3,40 +3,40 @@ arangosh> db.test.getIndexes();
   { 
     "id" : "test/0", 
     "type" : "primary", 
-    "unique" : true, 
-    "sparse" : false, 
-    "selectivityEstimate" : 1, 
     "fields" : [ 
       "_key" 
-    ] 
+    ], 
+    "selectivityEstimate" : 1, 
+    "unique" : true, 
+    "sparse" : false 
   }, 
   { 
-    "id" : "test/512523791045", 
+    "id" : "test/1134621579", 
     "type" : "skiplist", 
-    "unique" : true, 
-    "sparse" : false, 
     "fields" : [ 
       "skiplistAttribute" 
-    ] 
+    ], 
+    "unique" : true, 
+    "sparse" : false 
   }, 
   { 
-    "id" : "test/512524577477", 
+    "id" : "test/1134883723", 
     "type" : "skiplist", 
-    "unique" : true, 
-    "sparse" : false, 
     "fields" : [ 
       "skiplistUniqueAttribute" 
-    ] 
+    ], 
+    "unique" : true, 
+    "sparse" : false 
   }, 
   { 
-    "id" : "test/512524970693", 
+    "id" : "test/1135276939", 
     "type" : "hash", 
-    "unique" : false, 
-    "sparse" : false, 
-    "selectivityEstimate" : 1, 
     "fields" : [ 
       "hashListAttribute", 
       "hashListSecondAttribute.subAttribute" 
-    ] 
+    ], 
+    "selectivityEstimate" : 1, 
+    "unique" : false, 
+    "sparse" : false 
   } 
 ]

@@ -1,32 +1,32 @@
 arangosh> db.ids.ensureUniqueSkiplist("myId");
 { 
-  "id" : "ids/512570714821", 
+  "id" : "ids/1181545355", 
   "type" : "skiplist", 
-  "unique" : true, 
-  "sparse" : false, 
   "fields" : [ 
     "myId" 
   ], 
+  "unique" : true, 
+  "sparse" : false, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
 arangosh> db.ids.save({ "myId": 123 });
 { 
-  "_id" : "ids/512570976965", 
-  "_rev" : "512570976965", 
-  "_key" : "512570976965" 
+  "_id" : "ids/1181807499", 
+  "_rev" : "1181807499", 
+  "_key" : "1181807499" 
 }
 arangosh> db.ids.save({ "myId": 456 });
 { 
-  "_id" : "ids/512571173573", 
-  "_rev" : "512571173573", 
-  "_key" : "512571173573" 
+  "_id" : "ids/1182004107", 
+  "_rev" : "1182004107", 
+  "_key" : "1182004107" 
 }
 arangosh> db.ids.save({ "myId": 789 });
 { 
-  "_id" : "ids/512571370181", 
-  "_rev" : "512571370181", 
-  "_key" : "512571370181" 
+  "_id" : "ids/1182200715", 
+  "_rev" : "1182200715", 
+  "_key" : "1182200715" 
 }
 arangosh> db.ids.save({ "myId": 123 });
 [ArangoError 1210: cannot create document, unique constraint violated]

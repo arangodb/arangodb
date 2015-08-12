@@ -1,15 +1,15 @@
 arangosh> db.geo.ensureGeoIndex("loc");
 { 
-  "id" : "geo/513337551557", 
+  "id" : "geo/1894642571", 
   "type" : "geo1", 
-  "unique" : false, 
-  "sparse" : true, 
-  "geoJson" : false, 
-  "constraint" : false, 
-  "ignoreNull" : true, 
   "fields" : [ 
     "loc" 
   ], 
+  "geoJson" : false, 
+  "constraint" : false, 
+  "unique" : false, 
+  "ignoreNull" : true, 
+  "sparse" : true, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
@@ -23,9 +23,9 @@ arangosh> db.geo.count();
 arangosh> db.geo.near(0, 0).limit(3).toArray();
 [ 
   { 
-    "_id" : "geo/513407019717", 
-    "_key" : "513407019717", 
-    "_rev" : "513407019717", 
+    "_id" : "geo/1964045195", 
+    "_key" : "1964045195", 
+    "_rev" : "1964045195", 
     "name" : "Name/0/0", 
     "loc" : [ 
       0, 
@@ -33,9 +33,9 @@ arangosh> db.geo.near(0, 0).limit(3).toArray();
     ] 
   }, 
   { 
-    "_id" : "geo/513407216325", 
-    "_key" : "513407216325", 
-    "_rev" : "513407216325", 
+    "_id" : "geo/1964241803", 
+    "_key" : "1964241803", 
+    "_rev" : "1964241803", 
     "name" : "Name/0/10", 
     "loc" : [ 
       0, 
@@ -43,9 +43,9 @@ arangosh> db.geo.near(0, 0).limit(3).toArray();
     ] 
   }, 
   { 
-    "_id" : "geo/513399745221", 
-    "_key" : "513399745221", 
-    "_rev" : "513399745221", 
+    "_id" : "geo/1956770699", 
+    "_key" : "1956770699", 
+    "_rev" : "1956770699", 
     "name" : "Name/-10/0", 
     "loc" : [ 
       -10, 

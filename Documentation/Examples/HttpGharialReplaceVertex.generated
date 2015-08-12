@@ -7,15 +7,15 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: application/json
-etag: 511981152965
+etag: 598733707
 
 { 
   "error" : false, 
   "code" : 202, 
   "vertex" : { 
     "_id" : "female/alice", 
-    "_rev" : "511981152965", 
-    "_oldRev" : "511978990277", 
+    "_rev" : "598733707", 
+    "_oldRev" : "596571019", 
     "_key" : "alice" 
   } 
 }

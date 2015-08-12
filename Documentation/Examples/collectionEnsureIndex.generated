@@ -1,16 +1,27 @@
-[ArangoError 1207: cannot create collection: duplicate name]
 arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
 { 
-  "id" : "test/512520121029", 
+  "id" : "test/1130951563", 
   "type" : "hash", 
-  "unique" : false, 
-  "sparse" : true, 
-  "selectivityEstimate" : 1, 
   "fields" : [ 
     "a" 
   ], 
+  "selectivityEstimate" : 1, 
+  "unique" : false, 
+  "sparse" : true, 
   "isNewlyCreated" : true, 
   "code" : 201 
 }
 arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
-[ArangoError 1210: unique constraint violated]
+{ 
+  "id" : "test/1131213707", 
+  "type" : "hash", 
+  "fields" : [ 
+    "a", 
+    "b" 
+  ], 
+  "selectivityEstimate" : 1, 
+  "unique" : true, 
+  "sparse" : false, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
+}
