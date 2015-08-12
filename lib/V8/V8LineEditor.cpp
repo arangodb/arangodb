@@ -6,7 +6,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -47,6 +46,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
+
 static void SignalHandler (int signal) {
   // get the instance of the console
   auto instance = V8LineEditor::instance();
@@ -55,11 +55,20 @@ static void SignalHandler (int signal) {
     instance->signal();
   }
 }
+
 #endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8Completer
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 Completer methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
 bool V8Completer::isComplete (std::string const& source, size_t lineno) {
   int openParen    = 0;
@@ -68,9 +77,23 @@ bool V8Completer::isComplete (std::string const& source, size_t lineno) {
   int openStrings  = 0;  // only used for template strings, which can be multi-line
   int openComments = 0;
 
+  enum line_parse_state_e {
+    NORMAL,             // start
+    NORMAL_1,           // from NORMAL: seen a single /
+    DOUBLE_QUOTE,       // from NORMAL: seen a single "
+    DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
+    SINGLE_QUOTE,       // from NORMAL: seen a single '
+    SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
+    BACKTICK,           // from NORMAL: seen a single `
+    BACKTICK_ESC,       // from BACKTICK: seen a backslash
+    MULTI_COMMENT,      // from NORMAL_1: seen a *
+    MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
+    SINGLE_COMMENT      // from NORMAL_1; seen a /
+  };
+
   char const* ptr = source.c_str();
   char const* end = ptr + source.length();
-  LineParseState state = NORMAL;
+  line_parse_state_e state = NORMAL;
 
   while (ptr < end) {
     if (state == DOUBLE_QUOTE) {
@@ -214,11 +237,12 @@ bool V8Completer::isComplete (std::string const& source, size_t lineno) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief  computes all strings which begins with the given text
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Completer::getAlternatives (char const * text, 
-                                   std::vector<std::string>& result) {
+vector<string> V8Completer::alternatives (char const * text) {
+  vector<string> result;
+
   // locate global object or sub-object
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
@@ -236,14 +260,14 @@ void V8Completer::getAlternatives (char const * text,
 
         if (! current->Has(name)) {
           TRI_DestroyVectorString(&splitted);
-          return;
+          return result;
         }
 
         v8::Handle<v8::Value> val = current->Get(name);
 
         if (! val->IsObject()) {
           TRI_DestroyVectorString(&splitted);
-          return;
+          return result;
         }
 
         current = val->ToObject();
@@ -319,11 +343,20 @@ void V8Completer::getAlternatives (char const * text,
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
+  return result;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class V8LineEditor
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the active instance of the editor
+////////////////////////////////////////////////////////////////////////////////
 
 std::atomic<V8LineEditor*> V8LineEditor::_instance(nullptr);
 
@@ -342,7 +375,6 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context,
     _completer(V8Completer()) {
 
   // register global instance
-  
   TRI_ASSERT(_instance.load() == nullptr);
   _instance.store(this);
 
@@ -358,6 +390,10 @@ V8LineEditor::~V8LineEditor () {
   TRI_ASSERT(_instance.load() != nullptr);
   _instance.store(nullptr);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static protected methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup a signal handler for CTRL-C
@@ -391,8 +427,3 @@ void V8LineEditor::initializeShell () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

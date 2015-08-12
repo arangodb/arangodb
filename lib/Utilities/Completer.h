@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a basis class which defines the methods for determining
-///        when an input is "complete"
+/// @brief a basis class to define when an input is "complete"
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -35,6 +34,14 @@
 
 namespace arangodb {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class Completer
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Completer
+////////////////////////////////////////////////////////////////////////////////
+
   class Completer {
 
 // -----------------------------------------------------------------------------
@@ -43,8 +50,16 @@ namespace arangodb {
 
     public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
       Completer () {
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
       virtual ~Completer () {
       }
@@ -59,16 +74,13 @@ namespace arangodb {
 /// @brief check if line is complete
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual bool isComplete (std::string const&, 
-                               size_t lineno) = 0;
+      virtual bool isComplete (std::string const&, size_t lineno) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  computes all strings which begins with the given text
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void getAlternatives (char const*, 
-                                    std::vector<std::string>&) = 0;
-
+      virtual std::vector<std::string> alternatives (char const*) = 0;
   };
 }
 
@@ -77,8 +89,3 @@ namespace arangodb {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

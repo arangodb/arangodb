@@ -30,8 +30,6 @@
 #ifndef ARANGODB_V8SERVER_APPLICATION_V8_H
 #define ARANGODB_V8SERVER_APPLICATION_V8_H 1
 
-#include "Basics/Common.h"
-
 #include "ApplicationServer/ApplicationFeature.h"
 
 #include <v8.h>
@@ -163,9 +161,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class ApplicationV8 : public rest::ApplicationFeature {
-      private:
-        ApplicationV8 (ApplicationV8 const&) = delete;
-        ApplicationV8& operator= (ApplicationV8 const&) = delete;
+      ApplicationV8 (ApplicationV8 const&) = delete;
+      ApplicationV8& operator= (ApplicationV8 const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -678,8 +675,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

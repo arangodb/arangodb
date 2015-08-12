@@ -23,6 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,7 +62,7 @@ static char* CompletionGenerator (char const* text, int state) {
 
   // compute the possible completion
   if (state == 0) {
-    COMPLETER->getAlternatives(text, result);
+    result = COMPLETER->alternatives(text);
     LineEditor::sortAlternatives(result);
   }
 
@@ -206,6 +207,15 @@ ReadlineShell::~ReadlineShell () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a signal
+////////////////////////////////////////////////////////////////////////////////
+
+void ReadlineShell::signal () {
+  // set the global state, so the readline input loop can react on it
+  setLoopState(2);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -261,12 +271,12 @@ bool ReadlineShell::close () {
   bool res = writeHistory();
 
   clear_history();
-#ifndef __APPLE__
+
   HIST_ENTRY** hist = history_list();
+
   if (hist != nullptr) {
     TRI_SystemFree(hist);
   }
-#endif
 
   return res;
 }
@@ -367,15 +377,6 @@ string ReadlineShell::getLine (const string& prompt, bool& eof) {
   }
 
   return _lastInput; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handle a signal
-////////////////////////////////////////////////////////////////////////////////
-
-void ReadlineShell::signal () {
-  // set the global state, so the readline input loop can react on it
-  setLoopState(2);
 }
 
 // -----------------------------------------------------------------------------

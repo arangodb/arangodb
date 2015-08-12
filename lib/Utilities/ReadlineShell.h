@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,20 @@ namespace arangodb {
 // -----------------------------------------------------------------------------
 
   class ReadlineShell : public ShellImplementation {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+    public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the currently active shell instance
+////////////////////////////////////////////////////////////////////////////////
+
+      static ReadlineShell* instance () {
+        return _instance.load();
+      }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -112,20 +126,6 @@ namespace arangodb {
       void signal () override final;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
-
-    public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the currently active shell instance
-////////////////////////////////////////////////////////////////////////////////
-
-      static ReadlineShell* instance () {
-        return _instance.load();
-      }
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -185,7 +185,6 @@ namespace arangodb {
 
       static std::atomic<ReadlineShell*> _instance;
   };
-
 }
 
 #endif

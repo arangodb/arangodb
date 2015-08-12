@@ -5,8 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,13 +22,13 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 #include "ConsoleThread.h"
+
+#include <iostream>
 
 #include "ApplicationServer/ApplicationServer.h"
 #include "Basics/logging.h"
@@ -48,12 +47,25 @@ using namespace triagens::arango;
 using namespace arangodb;
 using namespace std;
 
-std::atomic<V8LineEditor*> triagens::arango::serverConsole(nullptr);
-triagens::basics::Mutex triagens::arango::serverConsoleMutex;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ConsoleThread
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           static public variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the line editor object for use in debugging
+////////////////////////////////////////////////////////////////////////////////
+
+V8LineEditor* ConsoleThread::serverConsole = nullptr;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mutex for console access
+////////////////////////////////////////////////////////////////////////////////
+
+Mutex ConsoleThread::serverConsoleMutex;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -64,7 +76,7 @@ triagens::basics::Mutex triagens::arango::serverConsoleMutex;
 ////////////////////////////////////////////////////////////////////////////////
 
 ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
-                              ApplicationV8* applicationV8,
+			      ApplicationV8* applicationV8,
                               TRI_vocbase_t* vocbase)
   : Thread("console"),
     _applicationServer(applicationServer),
@@ -85,7 +97,7 @@ ConsoleThread::~ConsoleThread () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                    Thread methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,11 +105,12 @@ ConsoleThread::~ConsoleThread () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ConsoleThread::run () {
-  usleep(100000);
+  usleep(100 * 1000);
 
   // enter V8 context
   _context = _applicationV8->enterContext(_vocbase, true);
 
+  // work
   try {
     inner();
   }
@@ -105,14 +118,15 @@ void ConsoleThread::run () {
   }
   catch (...) {
     _applicationV8->exitContext(_context);
-    _done = 1;
+    _done = true;
     _applicationServer->beginShutdown();
 
     throw;
   }
 
+  // exit context
   _applicationV8->exitContext(_context);
-  _done = 1;
+  _done = true;
   _applicationServer->beginShutdown();
 }
 
@@ -150,16 +164,16 @@ void ConsoleThread::inner () {
 start_pretty_print();
 
 (function () {
-  var __fs__ = require("fs"); 
-  var __rcf__ = __fs__.join(__fs__.home(), ".arangod.rc"); 
-  if (__fs__.exists(__rcf__)) { 
-    try { 
-      var __content__ = __fs__.read(__rcf__); 
-      eval(__content__); 
-    } 
+  var __fs__ = require("fs");
+  var __rcf__ = __fs__.join(__fs__.home(), ".arangod.rc");
+  if (__fs__.exists(__rcf__)) {
+    try {
+      var __content__ = __fs__.read(__rcf__);
+      eval(__content__);
+    }
     catch (err) {
-      require("console").log("error in rc file '%s': %s", __rcf__, String(err.stack || err)); 
-    } 
+      require("console").log("error in rc file '%s': %s", __rcf__, String(err.stack || err));
+    }
   }
 })();
 )SCRIPT";
@@ -174,7 +188,10 @@ start_pretty_print();
 
     console.open(true);
 
-    serverConsole = &console;
+    {
+      MUTEX_LOCKER(serverConsoleMutex);
+      serverConsole = &console;
+    }
 
     while (! _userAborted) {
       if (nrCommands >= gcInterval) {
@@ -184,6 +201,7 @@ start_pretty_print();
 
       string input;
       bool eof;
+
       {
         MUTEX_LOCKER(serverConsoleMutex);
         input = console.prompt("arangod> ", "arangod", eof);
@@ -222,6 +240,7 @@ start_pretty_print();
     }
 
   }
+
   localContext->Exit();
   throw "user aborted";
 }
@@ -229,8 +248,3 @@ start_pretty_print();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
