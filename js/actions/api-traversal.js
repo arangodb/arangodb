@@ -62,8 +62,8 @@ function notFound (req, res, code, message) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a server-side traversal
 /// @startDocuBlock JSF_HTTP_API_TRAVERSAL
+/// @brief execute a server-side traversal
 ///
 /// @RESTHEADER{POST /_api/traversal,executes a traversal}
 ///
