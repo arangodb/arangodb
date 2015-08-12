@@ -72,6 +72,7 @@ ServerState::ServerState ()
     _authentication(),
     _lock(),
     _role(),
+    _idOfPrimary(""),
     _state(STATE_UNDEFINED),
     _initialized(false),
     _clusterEnabled(false) {
@@ -362,6 +363,15 @@ void ServerState::setLocalInfo (std::string const& localInfo) {
 std::string ServerState::getId () {
   READ_LOCKER(_lock);
   return _id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server id
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::getPrimaryId () {
+  READ_LOCKER(_lock);
+  return _idOfPrimary;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -949,6 +959,7 @@ ServerState::RoleEnum ServerState::checkServersList (std::string const& id) {
 
       if (name == id) {
         role = ServerState::ROLE_SECONDARY;
+        _idOfPrimary = it->first;
         break;
       }
 
