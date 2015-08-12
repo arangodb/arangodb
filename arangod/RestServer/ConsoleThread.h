@@ -52,7 +52,7 @@ namespace triagens {
 /// @brief the line editor object for use in debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern std::atomic<V8LineEditor*> serverConsole;
+    extern std::atomic<arangodb::V8LineEditor*> serverConsole;
     extern triagens::basics::Mutex serverConsoleMutex;
 
 ////////////////////////////////////////////////////////////////////////////////

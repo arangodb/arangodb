@@ -69,6 +69,7 @@ using namespace triagens::rest;
 using namespace triagens::httpclient;
 using namespace triagens::v8client;
 using namespace triagens::arango;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -1505,7 +1506,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
-  triagens::V8LineEditor console(context, ".arangosh.history");
+  V8LineEditor console(context, ".arangosh.history");
   console.open(BaseClient.autoComplete());
 
   uint64_t nrCommands = 0;
@@ -1545,6 +1546,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     if (BaseClient.colors()) {
 
 #ifdef TRI_HAVE_LINENOISE
+
       // linenoise doesn't need escape sequences for escape sequences
       goodPrompt = TRI_SHELL_COLOR_BOLD_GREEN + dynamicPrompt + TRI_SHELL_COLOR_RESET;
       badPrompt  = TRI_SHELL_COLOR_BOLD_RED   + dynamicPrompt + TRI_SHELL_COLOR_RESET;
@@ -1584,33 +1586,30 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     }
 #endif
 
-    char* input = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
+    bool eof;
+    string input
+      = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str(),
+		       "arangosh", eof);
 
-    if (input == nullptr) {
+    if (eof) {
       break;
     }
 
-    if (*input == '\0') {
+    if (input.empty()) {
       // input string is empty, but we must still free it
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       continue;
     }
 
-    BaseClient.log("%s%s\n", dynamicPrompt.c_str(), input);
+    BaseClient.log("%s%s\n", dynamicPrompt, input);
 
     string i = triagens::basics::StringUtils::trim(input);
 
     if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       break;
     }
 
     if (i == "help" || i == "help;") {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-      input = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "help()");
-      if (input == nullptr) {
-        LOG_FATAL_AND_EXIT("out of memory");
-      }
+      input = "help()";
     }
 
     console.addHistory(input);
@@ -1623,7 +1622,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     promptError = false;
 
     // execute command and register its result in __LAST__
-    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STRING(input), name, true);
+    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STRING(input.c_str()), name, true);
 
     if (v.IsEmpty()) {
       context->Global()->Set(TRI_V8_ASCII_STRING("_last"), v8::Undefined(isolate));
@@ -1631,8 +1630,6 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     else {
       context->Global()->Set(TRI_V8_ASCII_STRING("_last"), v);
     }
-
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
       // command failed

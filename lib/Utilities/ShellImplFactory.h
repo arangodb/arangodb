@@ -33,11 +33,12 @@
 
 #include "Basics/Common.h"
 
-namespace triagens {
-
+namespace arangodb {
   class ShellImplementation;
   class Completer;
+}
 
+namespace triagens {
   class ShellImplFactory {
 
      public:
@@ -46,7 +47,7 @@ namespace triagens {
 /// @brief creates a shell
 ////////////////////////////////////////////////////////////////////////////////
 
-    static ShellImplementation* buildShell (std::string const& history, Completer*);
+    static arangodb::ShellImplementation* buildShell (std::string const& history, arangodb::Completer*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the shell will have a CTRL-C handler

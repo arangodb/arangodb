@@ -33,7 +33,7 @@
 
 #include "Basics/Common.h"
 
-namespace triagens {
+namespace arangodb {
 
   class Completer {
 
@@ -60,8 +60,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       virtual bool isComplete (std::string const&, 
-                               size_t lineno, 
-                               size_t column) = 0;
+                               size_t lineno) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  computes all strings which begins with the given text
