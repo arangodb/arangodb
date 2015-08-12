@@ -100,7 +100,6 @@
       //chrome bugfix
       var clicked = e.currentTarget.id;
       $('#'+clicked).click();
-      console.log(e);
     },
 
     checkSystem: function () {
