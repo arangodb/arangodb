@@ -491,40 +491,6 @@ BOOST_AUTO_TEST_CASE (tst_set) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test copy
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (tst_copy) {
-  VECTOR_INIT
-
-  void* r = 0;
-  int a = 1;
-  int b = 2;
-  int c = 3;
-  int d = 4;
-
-  TRI_vector_t* v2;
-
-  TRI_PushBackVector(&v1, &a);
-  TRI_PushBackVector(&v1, &b);
-  TRI_PushBackVector(&v1, &c);
-  TRI_PushBackVector(&v1, &d);
-
-  v2 = TRI_CopyVector(TRI_CORE_MEM_ZONE, &v1);
-
-  VECTOR_DESTROY 
-
-  BOOST_CHECK_EQUAL((size_t) 4, TRI_LengthVector(v2));
-  BOOST_CHECK_EQUAL(1, *(int*) TRI_AtVector(v2, 0));
-  BOOST_CHECK_EQUAL(2, *(int*) TRI_AtVector(v2, 1));
-  BOOST_CHECK_EQUAL(3, *(int*) TRI_AtVector(v2, 2));
-  BOOST_CHECK_EQUAL(4, *(int*) TRI_AtVector(v2, 3));
-  BOOST_CHECK_EQUAL(r, TRI_AtVector(v2, 4));
-
-  TRI_FreeVector(TRI_CORE_MEM_ZONE, v2);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test modifications
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -536,8 +502,6 @@ BOOST_AUTO_TEST_CASE (tst_value_modifications) {
   int c = 3;
   int d = 4;
 
-  TRI_vector_t* v2;
-
   TRI_PushBackVector(&v1, &a);
   TRI_PushBackVector(&v1, &b);
   TRI_PushBackVector(&v1, &c);
@@ -548,7 +512,6 @@ BOOST_AUTO_TEST_CASE (tst_value_modifications) {
   BOOST_CHECK_EQUAL(3, *(int*) TRI_AtVector(&v1, 2));
   BOOST_CHECK_EQUAL(4, *(int*) TRI_AtVector(&v1, 3));
 
-  v2 = TRI_CopyVector(TRI_CORE_MEM_ZONE, &v1);
   a = 99;
   b = 42;
   c = -1;
@@ -560,13 +523,6 @@ BOOST_AUTO_TEST_CASE (tst_value_modifications) {
   BOOST_CHECK_EQUAL(4, *(int*) TRI_AtVector(&v1, 3));
   
   VECTOR_DESTROY 
-
-  BOOST_CHECK_EQUAL(1, *(int*) TRI_AtVector(v2, 0));
-  BOOST_CHECK_EQUAL(2, *(int*) TRI_AtVector(v2, 1));
-  BOOST_CHECK_EQUAL(3, *(int*) TRI_AtVector(v2, 2));
-  BOOST_CHECK_EQUAL(4, *(int*) TRI_AtVector(v2, 3));
-
-  TRI_FreeVector(TRI_CORE_MEM_ZONE, v2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

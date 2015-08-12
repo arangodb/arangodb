@@ -1897,38 +1897,6 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an existing, possibly corrupt datafile
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename) {
-  // this function must not be called for non-physical datafiles
-  TRI_ASSERT(filename != nullptr);
-
-  TRI_datafile_t* datafile = OpenDatafile(filename, true);
-
-  if (datafile == nullptr) {
-    return nullptr;
-  }
-
-  // check the current marker
-  bool ok = CheckDatafile(datafile, true);
-
-  if (! ok) {
-    LOG_ERROR("datafile '%s' is corrupt", datafile->getName(datafile));
-  }
-
-  // change to read-write if no footer has been found
-  else {
-    if (! datafile->_isSealed) {
-      datafile->_state = TRI_DF_STATE_WRITE;
-      TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &datafile->_mmHandle);
-    }
-  }
-
-  return datafile;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a datafile and all memory regions
 ////////////////////////////////////////////////////////////////////////////////
 
