@@ -184,6 +184,8 @@ fi
 AC_SUBST(TCMALLOC_LIBS)
 
 if test "x$tr_TCMALLOC" = "xyes";  then
+  AC_DEFINE_UNQUOTED(TRI_HAVE_TCMALLOC, 1, [true if tcmalloc is used])
+
   BASIC_INFO="$BASIC_INFO|TCMALLOC support: enabled ($TCMALLOC_LIBS)"
 else
   BASIC_INFO="$BASIC_INFO|TCMALLOC support: disabled"
