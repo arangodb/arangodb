@@ -79,7 +79,17 @@ void Version::initialise () {
   Values["maintainer-mode"] = "false";
 #endif
 
-#ifdef TRI_HAVE_LINUX_POLL
+#ifdef TRI_READLINE_VERSION
+  Values["readline-version"] = getReadlineVersion();
+#endif
+
+#ifdef TRI_HAVE_TCMALLOC
+  Values["tcmalloc"] = "true";
+#else
+  Values["tcmalloc"] = "false";
+#endif
+
+#ifdef TRI_HAVE_POLL_H
   Values["fd-client-event-handler"] = "poll";
 #else
   Values["fd-client-event-handler"] = "select";
@@ -172,6 +182,18 @@ std::string Version::getZLibVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get readline version
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Version::getReadlineVersion () {
+#ifdef TRI_READLINE_VERSION
+  return std::string(TRI_READLINE_VERSION);
+#else
+  return std::string("");
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get ICU version
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -250,9 +272,15 @@ std::string Version::getVerboseVersionString () {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
           << " maintainer mode"
 #endif
-          << " -- "
+          << ", using "
+#ifdef TRI_HAVE_TCMALLOC
+          << "tcmalloc, "
+#endif
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", "
+#ifdef TRI_READLINE_VERSION
+          << "Readline " << getReadlineVersion() << ", "
+#endif
           << getOpenSSLVersion();
 
   return version.str();
