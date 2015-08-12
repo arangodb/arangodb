@@ -68,4 +68,7 @@ dispose the server-side cursor afterwards.
 @startDocuBlock JSA_put_api_simple_within
 
 <!-- js/actions/api-simple.js -->
+@startDocuBlock JSA_put_api_simple_within_rectangle
+
+<!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_fulltext
