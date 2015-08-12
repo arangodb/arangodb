@@ -4028,7 +4028,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Isolate* isolate,
         else {
           TRI_GET_GLOBALS();
           v8g->_canceled = true;
-          scope.Escape<v8::Value>(v8::Undefined(isolate));
+          return scope.Escape<v8::Value>(v8::Undefined(isolate));
         }
       }
     }
