@@ -2492,7 +2492,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                     if (! isEmpty) {
                       // enter index into the index cache
                       {
-                        size_t indexesUsed;
+                        size_t indexesUsed = 0;
                         auto p1 = _doneIndexes.find(en);
 
                         if (p1 != _doneIndexes.end()) {
