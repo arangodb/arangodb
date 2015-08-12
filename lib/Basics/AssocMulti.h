@@ -354,7 +354,8 @@ namespace triagens {
 
           // partition the work into some buckets
           {
-            auto partitioner = [&] (size_t chunk) -> void {
+            std::function<void(size_t)> partitioner;
+            partitioner = [&] (size_t chunk) -> void {
               try {
                 std::unordered_map<uint64_t, DocumentsPerBucket> partitions;
                 size_t lower = chunk * chunkSize;
