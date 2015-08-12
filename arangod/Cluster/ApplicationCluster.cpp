@@ -444,8 +444,26 @@ bool ApplicationCluster::open () {
       }
     }
     else if (role == ServerState::ROLE_SECONDARY) {
-      locker.unlock();
-      LOG_FATAL_AND_EXIT("secondary server tasks are currently not implemented");
+      std::string keyName = std::string("\"") + _myId + std::string("\"");
+      TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, 
+                                              keyName.c_str(), keyName.size());
+
+      if (json == nullptr) {
+        locker.unlock();
+        LOG_FATAL_AND_EXIT("out of memory");
+      }
+
+      ServerState::instance()->setState(ServerState::STATE_SYNCING);
+
+      // register server
+      AgencyCommResult result = comm.setValue("Current/DBServers/" + 
+                         ServerState::instance()->getPrimaryId(), json, 0.0);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+      if (! result.successful()) {
+        locker.unlock();
+        LOG_FATAL_AND_EXIT("unable to register secondary db server in agency");
+      }
     }
   }
 
