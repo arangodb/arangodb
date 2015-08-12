@@ -83,7 +83,7 @@ namespace {
     AsyncWatcher* watcher = (AsyncWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && (revents & EV_ASYNC) && task->isActive()) {
+    if (task != nullptr && (revents & EV_ASYNC)) {
       task->handleEvent(watcher, EVENT_ASYNC);
     }
   }
@@ -119,7 +119,7 @@ namespace {
     SocketWatcher* watcher = (SocketWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && task->isActive()) {
+    if (task != nullptr) {
       if (revents & EV_READ) {
         if (revents & EV_WRITE) {
           task->handleEvent(watcher, EVENT_SOCKET_READ | EVENT_SOCKET_WRITE);
@@ -157,7 +157,7 @@ namespace {
     PeriodicWatcher* watcher = (PeriodicWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && (revents & EV_PERIODIC) && task->isActive()) {
+    if (task != nullptr && (revents & EV_PERIODIC)) {
       task->handleEvent(watcher, EVENT_PERIODIC);
     }
   }
@@ -185,7 +185,7 @@ namespace {
     SignalWatcher* watcher = (SignalWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && (revents & EV_SIGNAL) && task->isActive()) {
+    if (task != nullptr && (revents & EV_SIGNAL)) {
       task->handleEvent(watcher, EVENT_SIGNAL);
     }
   }
@@ -213,7 +213,7 @@ namespace {
     TimerWatcher* watcher = (TimerWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && (revents & EV_TIMER) && task->isActive()) {
+    if (task != nullptr && (revents & EV_TIMER)) {
       task->handleEvent(watcher, EVENT_TIMER);
     }
   }

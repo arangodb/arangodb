@@ -38,10 +38,6 @@ using namespace triagens::rest;
 // TaskManager
 // -----------------------------------------------------------------------------
 
-void TaskManager::deactivateTask (Task* task) {
-  task->_active = 0;
-}
-
 void TaskManager::deleteTask (Task* task) {
   delete task;
 }
