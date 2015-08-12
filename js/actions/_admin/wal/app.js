@@ -38,6 +38,7 @@ var actions = require("org/arangodb/actions");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_admin_wal_flush
+/// @brief Sync the WAL to disk.
 ///
 /// @RESTHEADER{PUT /_admin/wal/flush, Flushes the write-ahead log}
 ///
@@ -90,6 +91,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_admin_wal_properties
+/// @brief configure parameters of the wal
 ///
 /// @RESTHEADER{PUT /_admin/wal/properties, Configures the write-ahead log}
 ///
@@ -140,6 +142,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_wal_properties
+/// @brief fetch the current configuration.
 ///
 /// @RESTHEADER{GET /_admin/wal/properties, Retrieves the configuration of the write-ahead log}
 ///
