@@ -46,6 +46,7 @@ var arangodb = require("org/arangodb");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_time
+/// @brief Get the current time of the system
 ///
 /// @RESTHEADER{GET /_admin/time, Return system time}
 ///
@@ -72,6 +73,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_sleep
+/// @brief Suspend the execution for a specified duration before returnig
 ///
 /// @RESTHEADER{GET /_admin/sleep?duration=5, Sleep for 5 seconds}
 ///
@@ -103,6 +105,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_echo
+/// @brief Send back what was sent in, headers, post body etc.
 ///
 /// @RESTHEADER{GET /_admin/echo, Return current request}
 ///
@@ -137,6 +140,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_long_echo
+/// @brief Send back what was sent in, headers, post body etc.
 ///
 /// @RESTHEADER{GET /_admin/long_echo, Return current request and continues}
 ///
@@ -174,6 +178,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_statistics
+/// @brief return the statistics information
 ///
 /// @RESTHEADER{GET /_admin/statistics, Read the statistics}
 ///
@@ -233,6 +238,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_statistics_description
+/// @brief fetch descriptive info of statistics
 ///
 /// @RESTHEADER{GET /_admin/statistics-description, Statistics description}
 ///
@@ -602,6 +608,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_admin_test
+/// @brief show the available unittests on the server.
 ///
 /// @RESTHEADER{POST /_admin/test, Runs tests on server}
 ///
@@ -659,6 +666,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_admin_execute
+/// @brief Execute a script on the server.
 ///
 /// @RESTHEADER{POST /_admin/execute, Execute program}
 ///

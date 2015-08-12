@@ -473,6 +473,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_properties
+/// @brief reads the properties of the specified collection
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection}
 ///
@@ -561,6 +562,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_count
+/// @brief Counts the documents in a collection
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/count, Return number of documents in a collection}
 ///
@@ -610,6 +612,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_figures
+/// @brief Fetch the statistics of a collection
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/figures, Return statistics for a collection}
 ///
@@ -743,6 +746,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_revision
+/// @brief Retrieve the collections revision id
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/revision, Return collection revision id}
 ///
@@ -791,6 +795,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_checksum
+/// @brief returns a checksum for the specified collection
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/checksum, Return checksum for the collection}
 ///

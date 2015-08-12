@@ -45,7 +45,8 @@ var API = "_api/simple/";
 ///
 /// RESTHEADER{PUT /_api/simple/by-example-hash, Hash index}
 ///
-/// **Note**: This is only used internally and should not be accessible by the user.
+/// **Note**: This is only used internally and should not be accessible by the user
+///           and thus this documentation is private.
 ///
 /// RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
@@ -87,13 +88,13 @@ var API = "_api/simple/";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSA_put_api_simple_by_example_skiplist
 /// @brief returns all documents of a collection matching a given example,
 /// using a specific skiplist index
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example-skiplist, Skiplist index}
 ///
 /// **Note**: This is only used internally and should not be accesible by the user.
+///           and thus this documentation is private.
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
@@ -132,15 +133,16 @@ var API = "_api/simple/";
 /// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSA_put_api_simple_by_condition_skiplist
 /// @brief returns all documents of a collection matching a given condition,
 /// using a specific skiplist index
 ///
 /// @RESTHEADER{PUT /_api/simple/by-condition-skiplist,Query by-condition using Skiplist index}
+///
+/// **Note**: This is only used internally and should not be accesible by the user.
+///           and thus this documentation is private.
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
@@ -179,7 +181,6 @@ var API = "_api/simple/";
 /// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,7 +422,7 @@ actions.defineHttp({
 /// way for retrieving documents from a collection using the near operator is
 /// to issue an [AQL query](../Aql/GeoFunctions.md) using the *NEAR* function as follows: 
 ///
-///     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
+///     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit)
 ///       RETURN doc`
 ///
 /// @RESTRETURNCODES
@@ -611,7 +612,7 @@ actions.defineHttp({
 /// to issue an [AQL query](../Aql/GeoFunctions.md) using the *WITHIN* function as follows: 
 ///
 ///     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
-///       RETURN doc`
+///       RETURN doc
 ///
 /// @RESTRETURNCODES
 ///
