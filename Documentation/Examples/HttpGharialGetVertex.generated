@@ -2,7 +2,7 @@ shell> curl --dump - http://localhost:8529/_api/gharial/social/vertex/female/ali
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 511931804357
+etag: 552203147
 
 { 
   "error" : false, 
@@ -10,7 +10,7 @@ etag: 511931804357
   "vertex" : { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "511931804357", 
+    "_rev" : "552203147", 
     "name" : "Alice" 
   } 
 }

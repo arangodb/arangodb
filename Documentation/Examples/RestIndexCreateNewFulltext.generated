@@ -11,14 +11,14 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/512210070213", 
+  "id" : "products/824243083", 
   "type" : "fulltext", 
-  "unique" : false, 
-  "sparse" : true, 
-  "minLength" : 2, 
   "fields" : [ 
     "text" 
   ], 
+  "unique" : false, 
+  "sparse" : true, 
+  "minLength" : 2, 
   "isNewlyCreated" : true, 
   "error" : false, 
   "code" : 201 

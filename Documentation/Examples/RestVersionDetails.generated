@@ -5,19 +5,23 @@ content-type: application/json; charset=utf-8
 
 { 
   "server" : "arango", 
-  "version" : "2.5.5", 
+  "version" : "2.7.0-devel", 
   "details" : { 
     "architecture" : "64bit", 
-    "build-date" : "2015-05-30 10:23:53", 
-    "configure" : "'./configure' 'CC=gcc' 'CXX=g++' '--program-prefix=' '--prefix=/usr' '--exec-prefix=/usr' '--bindir=/usr/bin' '--sbindir=/usr/sbin' '--sysconfdir=/etc' '--datadir=/usr/share' '--includedir=/usr/include' '--libdir=/usr/lib' '--libexecdir=/usr/lib' '--localstatedir=/var' '--sharedstatedir=/usr/com' '--mandir=/usr/share/man' '--infodir=/usr/share/info' '--enable-all-in-one-libev' '--enable-all-in-one-v8' '--enable-all-in-one-etcd' '--enable-internal-go' '--disable-mruby'", 
-    "env" : "CC='gcc' CXX='g++'", 
-    "icu-version" : "52.1", 
+    "build-date" : "2015-08-12 11:03:14", 
+    "configure" : "'./configure' '--enable-relative' '--enable-maintainer-mode' '--enable-all-in-one-icu' '--with-backtrace' '--enable-v8-debug' 'CXXFLAGS=-O0 -ggdb' 'CFLAGS=-O0 -ggdb'", 
+    "env" : "CFLAGS='-O0 -ggdb' CXXFLAGS='-O0 -ggdb'", 
+    "fd-client-event-handler" : "select", 
+    "fd-setsize" : "1024", 
+    "icu-version" : "54.1", 
     "libev-version" : "4.11", 
-    "maintainer-mode" : "false", 
-    "openssl-version" : "OpenSSL 1.0.1k 8 Jan 2015", 
-    "server-version" : "2.5.5", 
+    "maintainer-mode" : "true", 
+    "openssl-version" : "OpenSSL 1.0.2 22 Jan 2015", 
+    "repository-version" : "heads/devel-0-g4142674d901fa399bde9dcfe788ce781fdbad97a-dirty", 
+    "server-version" : "2.7.0-devel", 
     "sizeof int" : "4", 
     "sizeof void*" : "8", 
-    "v8-version" : "3.31.74.1" 
+    "v8-version" : "4.3.61", 
+    "mode" : "standalone" 
   } 
 }

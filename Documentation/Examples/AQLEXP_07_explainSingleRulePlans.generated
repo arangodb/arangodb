@@ -46,7 +46,7 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } })
         ], 
         "index" : { 
           "type" : "skiplist", 
-          "id" : "511886322373", 
+          "id" : "502002571", 
           "unique" : false, 
           "sparse" : false, 
           "fields" : [ 
@@ -84,10 +84,11 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } })
           ] 
         }, 
         "outVariable" : { 
-          "id" : 1, 
+          "id" : 2, 
           "name" : "1" 
         }, 
-        "canThrow" : false 
+        "canThrow" : false, 
+        "expressionType" : "simple" 
       }, 
       { 
         "type" : "FilterNode", 
@@ -98,7 +99,7 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } })
         "estimatedCost" : 142, 
         "estimatedNrItems" : 47, 
         "inVariable" : { 
-          "id" : 1, 
+          "id" : 2, 
           "name" : "1" 
         } 
       }, 
@@ -122,10 +123,11 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } })
           ] 
         }, 
         "outVariable" : { 
-          "id" : 2, 
-          "name" : "2" 
+          "id" : 4, 
+          "name" : "3" 
         }, 
-        "canThrow" : false 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
       }, 
       { 
         "type" : "SortNode", 
@@ -138,8 +140,8 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } })
         "elements" : [ 
           { 
             "inVariable" : { 
-              "id" : 2, 
-              "name" : "2" 
+              "id" : 4, 
+              "name" : "3" 
             }, 
             "ascending" : true 
           } 
@@ -166,10 +168,11 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } })
           ] 
         }, 
         "outVariable" : { 
-          "id" : 3, 
-          "name" : "3" 
+          "id" : 6, 
+          "name" : "5" 
         }, 
-        "canThrow" : false 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
       }, 
       { 
         "type" : "ReturnNode", 
@@ -180,8 +183,8 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } })
         "estimatedCost" : 463.95693728037276, 
         "estimatedNrItems" : 47, 
         "inVariable" : { 
-          "id" : 3, 
-          "name" : "3" 
+          "id" : 6, 
+          "name" : "5" 
         } 
       } 
     ], 
@@ -196,15 +199,15 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } })
     ], 
     "variables" : [ 
       { 
-        "id" : 3, 
+        "id" : 6, 
+        "name" : "5" 
+      }, 
+      { 
+        "id" : 4, 
         "name" : "3" 
       }, 
       { 
         "id" : 2, 
-        "name" : "2" 
-      }, 
-      { 
-        "id" : 1, 
         "name" : "1" 
       }, 
       { 
@@ -218,7 +221,7 @@ arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } })
   "warnings" : [ ], 
   "stats" : { 
     "rulesExecuted" : 1, 
-    "rulesSkipped" : 20, 
+    "rulesSkipped" : 21, 
     "plansCreated" : 1 
   } 
 }

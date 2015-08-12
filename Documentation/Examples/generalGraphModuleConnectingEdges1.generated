@@ -3,11 +3,59 @@ arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._getConnectingEdges({isCapital : true}, {isCapital : true});
 [ 
   { 
-    "_id" : "internationalHighway/513078749893", 
-    "_key" : "513078749893", 
-    "_rev" : "513078749893", 
+    "_id" : "germanHighway/1653404555", 
+    "_key" : "1653404555", 
+    "_rev" : "1653404555", 
+    "_from" : "germanCity/Berlin", 
+    "_to" : "germanCity/Cologne", 
+    "distance" : 850 
+  }, 
+  { 
+    "_id" : "germanHighway/1653601163", 
+    "_key" : "1653601163", 
+    "_rev" : "1653601163", 
+    "_from" : "germanCity/Berlin", 
+    "_to" : "germanCity/Hamburg", 
+    "distance" : 400 
+  }, 
+  { 
+    "_id" : "internationalHighway/1654453131", 
+    "_key" : "1654453131", 
+    "_rev" : "1654453131", 
+    "_from" : "germanCity/Berlin", 
+    "_to" : "frenchCity/Lyon", 
+    "distance" : 1100 
+  }, 
+  { 
+    "_id" : "internationalHighway/1654649739", 
+    "_key" : "1654649739", 
+    "_rev" : "1654649739", 
     "_from" : "germanCity/Berlin", 
     "_to" : "frenchCity/Paris", 
     "distance" : 1200 
+  }, 
+  { 
+    "_id" : "frenchHighway/1654125451", 
+    "_key" : "1654125451", 
+    "_rev" : "1654125451", 
+    "_from" : "frenchCity/Paris", 
+    "_to" : "frenchCity/Lyon", 
+    "distance" : 550 
+  }, 
+  { 
+    "_id" : "internationalHighway/1655436171", 
+    "_key" : "1655436171", 
+    "_rev" : "1655436171", 
+    "_from" : "germanCity/Cologne", 
+    "_to" : "frenchCity/Paris", 
+    "distance" : 550 
+  }, 
+  { 
+    "_id" : "internationalHighway/1654846347", 
+    "_key" : "1654846347", 
+    "_rev" : "1654846347", 
+    "_from" : "germanCity/Hamburg", 
+    "_to" : "frenchCity/Paris", 
+    "distance" : 900 
   } 
 ]

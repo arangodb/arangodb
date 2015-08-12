@@ -63,7 +63,7 @@ content-type: application/json; charset=utf-8
   }, 
   "warnings" : [ ], 
   "stats" : { 
-    "rulesExecuted" : 21, 
+    "rulesExecuted" : 22, 
     "rulesSkipped" : 0, 
     "plansCreated" : 1 
   }, 

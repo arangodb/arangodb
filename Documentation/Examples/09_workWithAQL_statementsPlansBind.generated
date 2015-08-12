@@ -49,7 +49,7 @@ arangosh> stmt.explain();
         ], 
         "index" : { 
           "type" : "hash", 
-          "id" : "857777", 
+          "id" : "586635", 
           "unique" : true, 
           "sparse" : true, 
           "selectivityEstimate" : 1, 
@@ -85,7 +85,7 @@ arangosh> stmt.explain();
     ], 
     "variables" : [ 
       { 
-        "id" : 1, 
+        "id" : 2, 
         "name" : "1" 
       }, 
       { 
@@ -98,7 +98,7 @@ arangosh> stmt.explain();
   }, 
   "warnings" : [ ], 
   "stats" : { 
-    "rulesExecuted" : 21, 
+    "rulesExecuted" : 22, 
     "rulesSkipped" : 0, 
     "plansCreated" : 1 
   } 

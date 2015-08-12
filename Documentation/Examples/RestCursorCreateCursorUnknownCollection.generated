@@ -7,7 +7,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
+  "errorMessage" : "collection not found (unknowncoll)", 
   "code" : 404, 
-  "errorNum" : 1203, 
-  "errorMessage" : "collection not found (unknowncoll)" 
+  "errorNum" : 1203 
 }

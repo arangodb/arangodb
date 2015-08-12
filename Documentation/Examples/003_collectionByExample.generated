@@ -1,40 +1,40 @@
 arangosh> db.users.save({ name: "Gerhard" });
 { 
-  "_id" : "users/511409154757", 
-  "_rev" : "511409154757", 
-  "_key" : "511409154757" 
+  "_id" : "users/25817995", 
+  "_rev" : "25817995", 
+  "_key" : "25817995" 
 }
 arangosh> db.users.save({ name: "Helmut" });
 { 
-  "_id" : "users/511409416901", 
-  "_rev" : "511409416901", 
-  "_key" : "511409416901" 
+  "_id" : "users/26080139", 
+  "_rev" : "26080139", 
+  "_key" : "26080139" 
 }
 arangosh> db.users.save({ name: "Angela" });
 { 
-  "_id" : "users/511409613509", 
-  "_rev" : "511409613509", 
-  "_key" : "511409613509" 
+  "_id" : "users/26276747", 
+  "_rev" : "26276747", 
+  "_key" : "26276747" 
 }
 arangosh> db.users.all().toArray();
 [ 
   { 
-    "_id" : "users/511409154757", 
-    "_key" : "511409154757", 
-    "_rev" : "511409154757", 
-    "name" : "Gerhard" 
+    "name" : "Helmut", 
+    "_id" : "users/26080139", 
+    "_rev" : "26080139", 
+    "_key" : "26080139" 
   }, 
   { 
-    "_id" : "users/511409613509", 
-    "_key" : "511409613509", 
-    "_rev" : "511409613509", 
-    "name" : "Angela" 
+    "name" : "Angela", 
+    "_id" : "users/26276747", 
+    "_rev" : "26276747", 
+    "_key" : "26276747" 
   }, 
   { 
-    "_id" : "users/511409416901", 
-    "_key" : "511409416901", 
-    "_rev" : "511409416901", 
-    "name" : "Helmut" 
+    "name" : "Gerhard", 
+    "_id" : "users/25817995", 
+    "_rev" : "25817995", 
+    "_key" : "25817995" 
   } 
 ]
 arangosh> db.users.byExample({ "_id" : "users/20" }).toArray();
@@ -42,9 +42,9 @@ arangosh> db.users.byExample({ "_id" : "users/20" }).toArray();
 arangosh> db.users.byExample({ "name" : "Gerhard" }).toArray();
 [ 
   { 
-    "_id" : "users/511409154757", 
-    "_key" : "511409154757", 
-    "_rev" : "511409154757", 
+    "_id" : "users/25817995", 
+    "_key" : "25817995", 
+    "_rev" : "25817995", 
     "name" : "Gerhard" 
   } 
 ]

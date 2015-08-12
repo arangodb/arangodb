@@ -2,7 +2,7 @@ shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social/edge/re
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 511921121989
+etag: 542897035
 
 { 
   "error" : false, 
@@ -15,6 +15,6 @@ etag: 511921121989
       "male" 
     ], 
     "_id" : "_graphs/social", 
-    "_rev" : "511921121989" 
+    "_rev" : "542897035" 
   } 
 }
