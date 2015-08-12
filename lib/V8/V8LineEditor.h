@@ -5,8 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,60 +22,67 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_V8_V8LINE_EDITOR_H
 #define ARANGODB_V8_V8LINE_EDITOR_H 1
 
-#include "Basics/Common.h"
-
 #include "Utilities/LineEditor.h"
 #include "Utilities/Completer.h"
 
 #include <v8.h>
 
+namespace arangodb {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8Completer
 // -----------------------------------------------------------------------------
 
-namespace arangodb {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8Completer
+////////////////////////////////////////////////////////////////////////////////
 
   class V8Completer : public Completer {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
     public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
 
       V8Completer () {
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
       ~V8Completer () {
       }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 Completer methods
+// -----------------------------------------------------------------------------
+
     public: 
     
-      bool isComplete (std::string const&, 
-                       size_t lineno) override final;
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-      void getAlternatives (char const*, 
-                            std::vector<std::string>&) override final;
+      bool isComplete (std::string const&, size_t lineno) override final;
 
-    private:
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-      enum LineParseState {
-        NORMAL,             // start
-        NORMAL_1,           // from NORMAL: seen a single /
-        DOUBLE_QUOTE,       // from NORMAL: seen a single "
-        DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
-        SINGLE_QUOTE,       // from NORMAL: seen a single '
-        SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
-        BACKTICK,           // from NORMAL: seen a single `
-        BACKTICK_ESC,       // from BACKTICK: seen a backslash
-        MULTI_COMMENT,      // from NORMAL_1: seen a *
-        MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
-        SINGLE_COMMENT      // from NORMAL_1; seen a /
-      };
-
+      std::vector<std::string> alternatives (char const*) override final;
   };
 
 // -----------------------------------------------------------------------------
@@ -84,11 +90,10 @@ namespace arangodb {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor
+/// @brief V8LineEditor
 ////////////////////////////////////////////////////////////////////////////////
 
   class V8LineEditor : public LineEditor {
-
     V8LineEditor (LineEditor const&) = delete;
     V8LineEditor& operator= (LineEditor const&) = delete;
 
@@ -111,6 +116,12 @@ namespace arangodb {
 
       ~V8LineEditor ();
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the global instance of the editor
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,22 +131,40 @@ namespace arangodb {
       }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                          static protected methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a concrete Shell with the correct parameter (Completer!!)
-////////////////////////////////////////////////////////////////////////////////
-
     protected:
-
-      void initializeShell () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup a signal handler for CTRL-C
 ////////////////////////////////////////////////////////////////////////////////
 
       static void setupCtrlCHandler ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+    protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a concrete Shell with the correct completer
+////////////////////////////////////////////////////////////////////////////////
+
+      void initializeShell () override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static private variables
+// -----------------------------------------------------------------------------
+
+    private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the active instance of the editor
+////////////////////////////////////////////////////////////////////////////////
+
+      static std::atomic<V8LineEditor*> _instance;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -154,14 +183,7 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       V8Completer _completer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the active instance of the editor
-////////////////////////////////////////////////////////////////////////////////
-
-      static std::atomic<V8LineEditor*> _instance;
   };
-
 }
 
 #endif
@@ -169,8 +191,3 @@ namespace arangodb {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

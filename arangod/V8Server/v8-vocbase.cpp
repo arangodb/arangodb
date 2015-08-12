@@ -639,36 +639,35 @@ static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
                                  debug, args[0]);
   }
 
-  V8LineEditor* console = triagens::arango::serverConsole.load();
+
+  MUTEX_LOCKER(ConsoleThread::serverConsoleMutex);
+  V8LineEditor* console = ConsoleThread::serverConsole;
 
   if (console != nullptr) {
-    MUTEX_LOCKER(triagens::arango::serverConsoleMutex);
-    if (serverConsole.load() != nullptr) {   
-      while (true) {
-	bool eof;
-        string input = console->prompt("debug> ", "debug", eof);
+    while (true) {
+      bool eof;
+      string input = console->prompt("debug> ", "debug", eof);
 
-        if (eof) {
-          break;
-        }
+      if (eof) {
+	break;
+      }
 
-        if (input.empty()) {
-          continue;
-        }
+      if (input.empty()) {
+	continue;
+      }
 
-        console->addHistory(input);
+      console->addHistory(input);
 
-        {
-          v8::TryCatch tryCatch;
-          v8::HandleScope scope(isolate);
+      {
+	v8::TryCatch tryCatch;
+	v8::HandleScope scope(isolate);
 
-          TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), 
-				      TRI_V8_STRING(input.c_str()), name, true);
+	TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), 
+				    TRI_V8_STRING(input.c_str()), name, true);
 
-          if (tryCatch.HasCaught()) {
-            std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
-          }
-        }
+	if (tryCatch.HasCaught()) {
+	  std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
+	}
       }
     }
   }

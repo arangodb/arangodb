@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a basis class which defines the methods for determining
-///        when an input is "complete"
+/// @brief shell factory
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -43,6 +42,18 @@
 using namespace triagens;
 using namespace arangodb;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class ShellImplFactory
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a shell
+////////////////////////////////////////////////////////////////////////////////
+
 ShellImplementation* ShellImplFactory::buildShell (std::string const& history, 
                                                    Completer* completer) {
 #ifdef _WIN32
@@ -57,6 +68,10 @@ ShellImplementation* ShellImplFactory::buildShell (std::string const& history,
   return new DummyShell(history, completer);
 #endif
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell will have a CTRL-C handler
+////////////////////////////////////////////////////////////////////////////////
 
 bool ShellImplFactory::hasCtrlCHandler () {
 #ifdef _WIN32
@@ -74,8 +89,3 @@ bool ShellImplFactory::hasCtrlCHandler () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
