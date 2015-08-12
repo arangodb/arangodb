@@ -780,7 +780,11 @@ bool TRI_WaitReplicationApplier (TRI_replication_applier_t* applier,
   if (sleepTime > 0) {
     LOG_TRACE("replication applier going to sleep for %llu ns", (unsigned long long) sleepTime);
 
-    usleep(sleepTime);
+#ifdef _WIN32
+    usleep((unsigned long) sleepTime);
+#else
+    usleep((useconds_t) sleepTime);
+#endif
 
     if (CheckTerminateFlag(applier)) {
       return false;
