@@ -2631,6 +2631,12 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
 ///
 /// Returns the server version string. Note that this is not the version of the
 /// database.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dbVersion}
+///   require("internal").db._version();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2647,6 +2653,12 @@ static void JS_VersionServer (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// `db._path()`
 ///
 /// Returns the filesystem path of the current database as a string.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dbPath}
+///   require("internal").db._path();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2669,6 +2681,12 @@ static void JS_PathDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// `db._id()`
 ///
 /// Returns the id of the current database as a string.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dbId}
+///   require("internal").db._id();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2691,6 +2709,12 @@ static void JS_IdDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// `db._name()`
 ///
 /// Returns the name of the current database as a string.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dbName}
+///   require("internal").db._name();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
