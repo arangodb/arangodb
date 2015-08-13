@@ -1914,7 +1914,6 @@ function EdgesAndVerticesSuite() {
       graph._drop(unitTestGraphName, true);
     },
 
-
     test_connectingEdges : function () {
       fillCollections();
       var res = g._getConnectingEdges({first_name: "Tam"}, {first_name: "Tem"}, {});
@@ -1950,7 +1949,6 @@ function EdgesAndVerticesSuite() {
       var res = g._getConnectingEdges(ids.vId11, ids.vId13, {});
       assertEqual(res.length, 2);
     },
-
 
     test_dropGraph1 : function () {
       var myGraphName = unitTestGraphName + "2";
