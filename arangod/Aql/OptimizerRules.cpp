@@ -4766,6 +4766,73 @@ int triagens::aql::removeDataModificationOutVariablesRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief patch UPDATE statement on single collection that iterates over the
+/// entire collection to operate in batches
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::patchUpdateStatementsRule (Optimizer* opt, 
+                                              ExecutionPlan* plan, 
+                                              Optimizer::Rule const* rule) {
+  bool modified = false;
+
+  // not need to dive into subqueries here, as UPDATE needs to be on the top level
+  std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::UPDATE, false);
+  
+  for (auto const& n : nodes) {
+    // we should only get through here a single time
+    auto node = static_cast<ModificationNode*>(n);
+    TRI_ASSERT(node != nullptr);
+
+    auto& options = node->getOptions();
+    if (! options.readCompleteInput) {
+      // already ok
+      continue;
+    }
+
+    auto const collection = node->collection();
+
+    auto dep = n->getFirstDependency();
+
+    while (dep != nullptr) {
+      auto const type = dep->getType();
+
+      if (type == EN::ENUMERATE_LIST || 
+          type == EN::INDEX_RANGE ||
+          type == EN::SUBQUERY) {
+        // not suitable
+        modified = false;
+        break;
+      }
+
+      if (type == EN::ENUMERATE_COLLECTION) {
+        auto collectionNode = static_cast<EnumerateCollectionNode const*>(dep);
+
+        if (collectionNode->collection() != collection) {
+          // different collection, not suitable
+          modified = false;
+          break;
+        }
+        else {
+          modified = true;
+        }
+      }
+
+      dep = dep->getFirstDependency();
+    }
+
+    if (modified) {
+      options.readCompleteInput = false;
+    }
+  }
+  
+  // always re-add the original plan, be it modified or not
+  // only a flag in the plan will be modified
+  opt->addPlan(plan, rule, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
