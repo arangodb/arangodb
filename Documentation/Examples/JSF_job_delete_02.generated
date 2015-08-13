@@ -1,0 +1,30 @@
+shell> curl -X PUT --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
+
+HTTP/1.1 202 Accepted
+content-type: text/plain; charset=utf-8
+x-arango-async-id: 751235279272
+
+shell> curl --dump - http://localhost:8529/_admin/time
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "time" : 1439468550.723528, 
+  "error" : false, 
+  "code" : 200 
+}
+shell> curl -X DELETE --dump - http://localhost:8529/_api/job/expired?stamp=1439468550.723528
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true 
+}
+shell> curl --dump - http://localhost:8529/_api/job/pending
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+[ ]
