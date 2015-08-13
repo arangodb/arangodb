@@ -595,8 +595,10 @@ namespace triagens {
 /// If *true*, the Foxx queues will be available and jobs in the queues will
 /// be executed asynchronously.
 ///
-/// The default is *true*. It should only be changed if Foxx queues are not
-/// used at all
+/// The default is *true*.
+/// When set to `false` the queue manager will be disabled and any jobs
+/// are prevented from being processed, which may improve CPU load if you do not
+/// plan to use Foxx queues at all.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
     
