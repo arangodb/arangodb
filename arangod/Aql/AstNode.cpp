@@ -1705,16 +1705,16 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
 
           buffer->appendChar('"');
           buffer->appendJsonEncoded(member->getStringValue());
-          buffer->appendText("\":", 2);
+          buffer->appendText(TRI_CHAR_LENGTH_PAIR("\":"));
 
           member->getMember(0)->stringify(buffer, verbose, failIfLong);
         }
         else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
           TRI_ASSERT(member->numMembers() == 2);
 
-          buffer->appendText("$[", 2);
+          buffer->appendText(TRI_CHAR_LENGTH_PAIR("$["));
           member->getMember(0)->stringify(buffer, verbose, failIfLong);
-          buffer->appendText("]:", 2);
+          buffer->appendText(TRI_CHAR_LENGTH_PAIR("]:"));
           member->getMember(1)->stringify(buffer, verbose, failIfLong);
         }
         else {
@@ -1724,7 +1724,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
       buffer->appendChar('}');
     }
     else {
-      buffer->appendText("[object Object]");
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR("[object Object]"));
     }
     return;
   }
@@ -1788,7 +1788,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
 
   if (type == NODE_TYPE_ARRAY_LIMIT) {
     // not used by V8
-    buffer->appendText("_LIMIT(");
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("_LIMIT("));
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(1)->stringify(buffer, verbose, failIfLong);
@@ -1798,7 +1798,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
   
   if (type == NODE_TYPE_EXPANSION) {
     // not used by V8
-    buffer->appendText("_EXPANSION(");
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("_EXPANSION("));
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(1)->stringify(buffer, verbose, failIfLong);
@@ -1807,19 +1807,19 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
 
     auto filterNode = getMember(2);
     if (filterNode != nullptr) {
-      buffer->appendText(" FILTER ");
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" FILTER "));
       filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     auto limitNode = getMember(3);
     if (limitNode != nullptr) {
-      buffer->appendText(" LIMIT ");
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" LIMIT "));
       limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
       buffer->appendChar(',');
       limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
     }
     auto returnNode = getMember(4);
     if (returnNode != nullptr) {
-      buffer->appendText(" RETURN ");
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" RETURN "));
       returnNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     
@@ -1829,7 +1829,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
  
   if (type == NODE_TYPE_ITERATOR) {
     // not used by V8
-    buffer->appendText("_ITERATOR(");
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("_ITERATOR("));
     getMember(1)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(0)->stringify(buffer, verbose, failIfLong);
@@ -1883,7 +1883,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
     getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendText("..", 2);
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR(".."));
     getMember(1)->stringify(buffer, verbose, failIfLong);
     return;
   }
@@ -1916,10 +1916,10 @@ void AstNode::appendValue (triagens::basics::StringBuffer* buffer) const {
   switch (value.type) {
     case VALUE_TYPE_BOOL: {
       if (value.value._bool) {
-        buffer->appendText("true", 4);
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("true"));
       }
       else {
-        buffer->appendText("false", 5);
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("false"));
       }
       break;
     }
@@ -1943,7 +1943,7 @@ void AstNode::appendValue (triagens::basics::StringBuffer* buffer) const {
 
     case VALUE_TYPE_NULL: 
     default: {
-      buffer->appendText("null", 4);
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR("null"));
       break;
     }
   }

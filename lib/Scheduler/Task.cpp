@@ -57,6 +57,7 @@ Task::Task (std::string const& id,
   : _scheduler(nullptr),
     _loop(0),
     _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_seq_cst)),
+    _tick(0),
     _id(id),
     _name(name) {
 }
@@ -119,6 +120,14 @@ bool Task::needsMainEventLoop () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Task::shouldAbort () {
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the task progress should be tracked
+////////////////////////////////////////////////////////////////////////////////
+
+bool Task::trackProgress () {
   return false;
 }
 

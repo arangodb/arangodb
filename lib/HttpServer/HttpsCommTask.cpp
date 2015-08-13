@@ -61,10 +61,12 @@ HttpsCommTask::HttpsCommTask (HttpsServer* server,
     _accepted(false),
     _readBlockedOnWrite(false),
     _writeBlockedOnRead(false),
+    _tmpReadBuffer(nullptr),
     _ssl(nullptr),
     _ctx(ctx),
     _verificationMode(verificationMode),
     _verificationCallback(verificationCallback) {
+
   _tmpReadBuffer = new char[READ_BLOCK_SIZE];
 }
 
@@ -341,8 +343,6 @@ again:
 bool HttpsCommTask::trySSLWrite () {
   _writeBlockedOnRead = false;
 
-  bool callCompletedWriteBuffer = false;
-
   size_t len = 0;
 
   if (nullptr != _writeBuffer) {
@@ -414,19 +414,13 @@ bool HttpsCommTask::trySSLWrite () {
   }
 
   if (len == 0) {
-    if (_ownBuffer) {
-      delete _writeBuffer;
-    }
+    delete _writeBuffer;
+    _writeBuffer = nullptr;
 
-    callCompletedWriteBuffer = true;
+    completedWriteBuffer();
   }
   else {
     _writeLength += nr;
-  }
-
-  // we have to release the lock, before calling completedWriteBuffer
-  if (callCompletedWriteBuffer) {
-    completedWriteBuffer();
   }
 
   // return immediately, everything is closed down
