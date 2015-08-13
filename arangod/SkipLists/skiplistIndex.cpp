@@ -61,19 +61,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CompareKeyElement (TRI_shaped_json_t const* left,
-                              TRI_skiplist_index_element_t const* right,
+                              TRI_index_element_t const* right,
                               size_t rightPosition,
                               VocShaper* shaper) {
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
 
-  auto rightSubobjects = SkiplistIndex_Subobjects(right);
+  auto rightSubobjects = right->subObjects();
 
   return TRI_CompareShapeTypes(nullptr,
                                nullptr,
                                left,
                                shaper,
-                               right->_document->getShapedJsonPtr(),
+                               right->document()->getShapedJsonPtr(),
                                &rightSubobjects[rightPosition],
                                nullptr,
                                shaper);
@@ -83,22 +83,22 @@ static int CompareKeyElement (TRI_shaped_json_t const* left,
 /// @brief compares elements, version with proper types
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareElementElement (TRI_skiplist_index_element_t const* left,
+static int CompareElementElement (TRI_index_element_t const* left,
                                   size_t leftPosition,
-                                  TRI_skiplist_index_element_t const* right,
+                                  TRI_index_element_t const* right,
                                   size_t rightPosition,
                                   VocShaper* shaper) {
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
   
-  auto leftSubobjects = SkiplistIndex_Subobjects(left);
-  auto rightSubobjects = SkiplistIndex_Subobjects(right);
+  auto leftSubobjects = left->subObjects();
+  auto rightSubobjects = right->subObjects();
 
-  return TRI_CompareShapeTypes(left->_document->getShapedJsonPtr(),
+  return TRI_CompareShapeTypes(left->document()->getShapedJsonPtr(),
                                &leftSubobjects[leftPosition],
                                nullptr,
                                shaper,
-                               right->_document->getShapedJsonPtr(),
+                               right->document()->getShapedJsonPtr(),
                                &rightSubobjects[rightPosition],
                                nullptr,
                                shaper);
@@ -113,8 +113,8 @@ static int CmpElmElm (void* sli,
                       void* right,
                       triagens::basics::SkipListCmpType cmptype) {
 
-  auto leftElement = static_cast<TRI_skiplist_index_element_t const*>(left);
-  auto rightElement = static_cast<TRI_skiplist_index_element_t const*>(right);
+  auto leftElement = static_cast<TRI_index_element_t const*>(left);
+  auto rightElement = static_cast<TRI_index_element_t const*>(right);
 
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
@@ -124,7 +124,7 @@ static int CmpElmElm (void* sli,
   // ..........................................................................
 
   if (leftElement == rightElement ||
-      leftElement->_document == rightElement->_document) {
+      leftElement->document() == rightElement->document()) {
     return 0;
   }
 
@@ -155,8 +155,8 @@ static int CmpElmElm (void* sli,
   }
 
   // We break this tie in the key comparison by looking at the key:
-  int compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->_document),    // ONLY IN INDEX, PROTECTED by RUNTIME
-                             TRI_EXTRACT_MARKER_KEY(rightElement->_document));  // ONLY IN INDEX, PROTECTED by RUNTIME
+  int compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->document()),    // ONLY IN INDEX, PROTECTED by RUNTIME
+                             TRI_EXTRACT_MARKER_KEY(rightElement->document()));  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (compareResult < 0) {
     return -1;
@@ -175,7 +175,7 @@ static int CmpKeyElm (void* sli,
                       void* left,
                       void* right) {
   auto leftKey = static_cast<TRI_skiplist_index_key_t const*>(left);
-  auto rightElement = static_cast<TRI_skiplist_index_element_t const*>(right);
+  auto rightElement = static_cast<TRI_index_element_t const*>(right);
 
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
@@ -202,8 +202,9 @@ static int CmpKeyElm (void* sli,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeElm (void* e) {
-  auto element = static_cast<TRI_skiplist_index_element_t*>(e);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+  auto element = static_cast<TRI_index_element_t*>(e);
+  TRI_index_element_t::free(element);
+  // TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,7 +287,7 @@ static bool SkiplistHasNextIterationCallback (TRI_skiplist_iterator_t const* ite
 /// @brief Jumps backwards by jumpSize and returns the document
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_skiplist_index_element_t* SkiplistPrevIterationCallback (
+static TRI_index_element_t* SkiplistPrevIterationCallback (
                         TRI_skiplist_iterator_t* iterator) {
   static const int64_t jumpSize = 1;
 
@@ -331,14 +332,14 @@ static TRI_skiplist_index_element_t* SkiplistPrevIterationCallback (
   }
 
   TRI_ASSERT(result != nullptr);
-  return static_cast<TRI_skiplist_index_element_t*>(result->document()); //iterator->_cursor->document());
+  return static_cast<TRI_index_element_t*>(result->document()); //iterator->_cursor->document());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Jumps forwards by jumpSize and returns the document
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_skiplist_index_element_t* SkiplistNextIterationCallback (
+static TRI_index_element_t* SkiplistNextIterationCallback (
                                TRI_skiplist_iterator_t* iterator) {
   static const int64_t jumpSize = 1;
 
@@ -378,7 +379,7 @@ static TRI_skiplist_index_element_t* SkiplistNextIterationCallback (
     }
   }
 
-  return static_cast<TRI_skiplist_index_element_t*>(iterator->_cursor->document());
+  return static_cast<TRI_index_element_t*>(iterator->_cursor->document());
 }
 
 // -----------------------------------------------------------------------------
@@ -978,11 +979,11 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex* skiplistIndex,
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex_insert (SkiplistIndex* skiplistIndex,
-                          TRI_skiplist_index_element_t* element) {
+                          TRI_index_element_t* element) {
   int res = skiplistIndex->skiplist->insert(element);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+    TRI_index_element_t::free(element);
   }
 
   return res;
@@ -994,10 +995,10 @@ int SkiplistIndex_insert (SkiplistIndex* skiplistIndex,
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex_remove (SkiplistIndex* skiplistIndex,
-                          TRI_skiplist_index_element_t* element) {
+                          TRI_index_element_t* element) {
   int res = skiplistIndex->skiplist->remove(element);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+  TRI_index_element_t::free(element);
 
   if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     // This is for the case of a rollback in an aborted transaction.

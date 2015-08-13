@@ -177,47 +177,25 @@ triagens::basics::Json SkiplistIndex2::toJson (TRI_memory_zone_t* zone) const {
   
 int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc, 
                             bool) {
-  auto skiplistElement = static_cast<TRI_skiplist_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, SkiplistIndex_ElementSize(_skiplistIndex), false));
 
-  if (skiplistElement == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  auto allocate = [this] () -> TRI_index_element_t* {
+    return TRI_index_element_t::allocate(SkiplistIndex_ElementSize(_skiplistIndex), false);
+  };
+  std::vector<TRI_index_element_t*> elements;
 
-  int res = fillElement2<TRI_skiplist_index_element_t>(skiplistElement, SkiplistIndex_Subobjects(skiplistElement), doc, _paths, _sparse);
-
-  // ...........................................................................
-  // most likely the cause of this error is that the index is sparse
-  // and not all attributes the index needs are set -- so the document
-  // is ignored. So not really an error at all. Note that this does
-  // not happen in a non-sparse skiplist index, in which empty
-  // attributes are always treated as if they were bound to null, so
-  // TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING cannot happen at
-  // all.
-  // ...........................................................................
-
-  // .........................................................................
-  // It may happen that the document does not have the necessary
-  // attributes to be included within the hash index, in this case do
-  // not report back an error.
-  // .........................................................................
-
-  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-    if (_sparse) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement);
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    res = TRI_ERROR_NO_ERROR;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement);
-    return res;
-  }
+  int res = fillElement(allocate, elements, doc, _paths, _sparse);
 
   // insert into the index. the memory for the element will be owned or freed
   // by the index
-  return SkiplistIndex_insert(_skiplistIndex, skiplistElement);
+
+  for (auto& skiplistElement : elements) {
+    res = SkiplistIndex_insert(_skiplistIndex, skiplistElement);
+    if (res != TRI_ERROR_NO_ERROR) {
+      // TODO FIXME
+    }
+  }
+  // TODO FIXME
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,36 +204,25 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
          
 int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc, 
                             bool) {
-  auto skiplistElement = static_cast<TRI_skiplist_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, SkiplistIndex_ElementSize(_skiplistIndex), false));
 
-  if (skiplistElement == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  auto allocate = [this] () -> TRI_index_element_t* {
+    return TRI_index_element_t::allocate(SkiplistIndex_ElementSize(_skiplistIndex), false);
+  };
 
-  int res = fillElement2<TRI_skiplist_index_element_t>(skiplistElement, SkiplistIndex_Subobjects(skiplistElement), doc, _paths, _sparse);
-
-  // ..........................................................................
-  // Error returned generally implies that the document never was part of the
-  // skiplist index
-  // ..........................................................................
-  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-    if (_sparse) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement);
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    res = TRI_ERROR_NO_ERROR;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement);
-    return res;
-  }
+  std::vector<TRI_index_element_t*> elements;
+  int res = fillElement(allocate, elements, doc, _paths, _sparse);
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index
 
-  return SkiplistIndex_remove(_skiplistIndex, skiplistElement);
+  for (auto& skiplistElement : elements) {
+    res = SkiplistIndex_remove(_skiplistIndex, skiplistElement);
+    if (res != TRI_ERROR_NO_ERROR) {
+      // TODO FIXME
+    }
+  }
+  // TODO FIXME
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

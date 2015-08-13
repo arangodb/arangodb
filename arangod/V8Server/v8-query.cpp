@@ -634,7 +634,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   }
 
   while (limit > 0) {
-    TRI_skiplist_index_element_t* indexElement = skiplistIterator->next(skiplistIterator);
+    TRI_index_element_t* indexElement = skiplistIterator->next(skiplistIterator);
 
     if (indexElement == nullptr) {
       break;
@@ -645,7 +645,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
     if (total > skip && count < limit) {
       v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx,
                                                    col->_cid,
-                                                   ((TRI_doc_mptr_t const*) indexElement->_document)->getDataPtr());
+                                                   ((TRI_doc_mptr_t const*) indexElement->document())->getDataPtr());
 
       if (doc.IsEmpty()) {
         error = true;

@@ -389,6 +389,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
   auto allocate = [this] () -> TRI_index_element_t* {
     return TRI_index_element_t::allocate(keyEntrySize(), false);
   };
+
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(allocate, elements, doc, paths(), sparse());
   
