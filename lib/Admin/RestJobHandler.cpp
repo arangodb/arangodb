@@ -152,62 +152,59 @@ HttpHandler::status_t RestJobHandler::execute () {
 /// @EXAMPLES
 /// Not providing a job-id:
 /// 
-/// ```js
-/// unix> curl -X PUT --dump - http://localhost:8529/_api/job/
-/// 
-/// HTTP/1.1 400 Bad Request
-/// content-type: application/json; charset=utf-8
-/// 
-/// {"error":true,"errorMessage":"bad parameter","code":400,"errorNum":400}
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_fetch_result_01}
+///   var url = "/_api/job";
+///   var response = logCurlRequest('PUT', url, "");
+///
+///   assert(response.code === 400);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
 /// Providing a job-id for a non-existing job:
 /// 
-/// ```js
-/// unix> curl -X PUT --dump - http://localhost:8529/_api/job/foobar
-/// 
-/// HTTP/1.1 404 Not Found
-/// content-type: application/json; charset=utf-8
-/// 
-/// {"error":true,"errorMessage":"not found","code":404,"errorNum":404}
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_fetch_result_02}
+///   var url = "/_api/job/notthere";
+///   var response = logCurlRequest('PUT', url, "");
+///
+///   assert(response.code === 404);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
 /// Fetching the result of an HTTP GET job:
 /// 
-/// ```js
-/// unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
-/// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 265413601
-/// 
-/// unix> curl -X PUT --dump - http://localhost:8529/_api/job/265413601
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// x-arango-async-id: 265413601
-/// 
-/// {"server":"arango","version":"2.1.0"}
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_fetch_result_03}
+///   var url = "/_api/version";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('PUT', url, "", headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///   
+///   var queryId = response.headers['x-arango-async-id'];
+///   url = '/_api/job/' + queryId
+///   var response = logCurlRequest('PUT', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
 /// Fetching the result of an HTTP POST job that failed:
 /// 
-/// ```js
-/// unix> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/collection
-/// {"name":" this name is invalid "}
-/// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 265479137
-/// 
-/// unix> curl -X PUT --dump - http://localhost:8529/_api/job/265479137
-/// 
-/// HTTP/1.1 400 Bad Request
-/// content-type: application/json; charset=utf-8
-/// x-arango-async-id: 265479137
-/// 
-/// {"error":true,"code":400,"errorNum":1208,"errorMessage":"cannot create collection: illegal name"}
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_fetch_result_04}
+///   var url = "/_api/collection";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('PUT', url, {"name":" this name is invalid "}, headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///   
+///   var queryId = response.headers['x-arango-async-id'];
+///   url = '/_api/job/' + queryId
+///   var response = logCurlRequest('PUT', url, "");
+///   assert(response.code === 400);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -277,35 +274,32 @@ void RestJobHandler::putJob () {
 /// 
 /// @EXAMPLES
 /// 
-/// ```js
-/// unix> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/cursor
-/// {"query": "FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) FILTER i == 5 && j == 5 RETURN 42"}
-/// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 268952545
-/// 
-/// unix> curl --dump - http://localhost:8529/_api/job/pending
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// 
-/// ["268952545"]
-/// 
-/// unix> curl -X PUT --dump - http://localhost:8529/_api/job/268952545/cancel
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// 
-/// {"result":true}
-/// 
-/// unix> curl --dump - http://localhost:8529/_api/job/pending
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// 
-/// ["268952545"]
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_cancel}
+///   var url = "/_api/cursor";
+///   var headers = {'x-arango-async' : 'store'};
+///   var postData = {"query":
+///      "FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) FILTER i == 5 && j == 5 RETURN 42"}
+///
+///   var response = logCurlRequest('POST', url, postData, headers);
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///   
+///   var queryId = response.headers['x-arango-async-id'];
+///   url = '/_api/job/pending';
+///   var response = logCurlRequest('GET', url);
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+///
+///   url = '/_api/job/' + queryId + '/cancel'
+///   var response = logCurlRequest('PUT', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+///
+///   url = '/_api/job/pending';
+///   var response = logCurlRequest('GET', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -361,6 +355,7 @@ void RestJobHandler::getJob () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_job_getStatusById
 /// @brief Returns the status of a specific job
+///
 /// @RESTHEADER{GET /_api/job/job-id, Returns async job}
 /// 
 /// @RESTURLPARAMS
@@ -389,31 +384,38 @@ void RestJobHandler::getJob () {
 /// 
 /// Querying the status of a done job:
 /// 
-/// ```js
-/// unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
-/// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 270328801
-/// 
-/// unix> curl --dump - http://localhost:8529/_api/job/270328801
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: text/plain; charset=utf-8
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_getStatusById_01}
+///   var url = "/_api/version";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('PUT', url, "", headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///   
+///   var queryId = response.headers['x-arango-async-id'];
+///   url = '/_api/job/' + queryId
+///   var response = logCurlRequest('PUT', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
 /// Querying the status of a pending job:
+/// (we create a sleep job therefore...)
 /// 
-/// unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_admin/sleep?duration=3
-/// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 270394337
-/// 
-/// unix> curl --dump - http://localhost:8529/_api/job/270394337
-/// 
-/// HTTP/1.1 204 No Content
-/// content-type: text/plain; charset=utf-8
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_getStatusById_02}
+///   var url = "/_admin/sleep?duration=30";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('GET', url, "", headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///   
+///   var queryId = response.headers['x-arango-async-id'];
+///   url = '/_api/job/' + queryId
+///   var response = logCurlRequest('GET', url);
+///   assert(response.code === 204);
+///   logRawResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -477,40 +479,59 @@ void RestJobHandler::getJobById (std::string const& value) {
 /// 
 /// Fetching the list of done jobs:
 /// 
-/// ```js
-/// unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
-/// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 270459873
-/// 
-/// unix> curl --dump - http://localhost:8529/_api/job/done
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// 
-/// [ 
-///   "270459873" 
-/// ]
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_getByType_01}
+///   var url = "/_api/version";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('PUT', url, "", headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///   
+///   url = '/_api/job/done'
+///   var response = logCurlRequest('GET', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
 /// Fetching the list of pending jobs:
+///
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_getByType_02}
+///   var url = "/_api/version";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('PUT', url, "", headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///   
+///   url = '/_api/job/pending'
+///   var response = logCurlRequest('GET', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
-/// ```js
-/// unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
+/// Querying the status of a pending job:
+/// (we create a sleep job therefore...)
 /// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 270525409
-/// 
-/// unix> curl --dump - http://localhost:8529/_api/job/pending
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// 
-/// [ ]
-/// ```
-/// /// @endDocuBlock
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_getByType_03}
+///   var url = "/_admin/sleep?duration=30";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('GET', url, "", headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///   
+///   var queryId = response.headers['x-arango-async-id'];
+///   url = '/_api/job/pending'
+///   var response = logCurlRequest('GET', url);
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+///
+///   url = '/_api/job/' + queryId
+///   var response = logCurlRequest('DELETE', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestJobHandler::getJobByType (std::string const& type) {
@@ -606,76 +627,71 @@ void RestJobHandler::getJobByType (std::string const& type) {
 /// 
 /// Deleting all jobs:
 /// 
-/// ```js
-/// unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
-/// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 270132193
-/// 
-/// unix> curl -X DELETE --dump - http://localhost:8529/_api/job/all
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// 
-/// { 
-///   "result" : true 
-/// }
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_delete_01}
+///   var url = "/_api/version";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('PUT', url, "", headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///
+///   url = '/_api/job/all'
+///   var response = logCurlRequest('DELETE', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
 /// Deleting expired jobs:
 /// 
-/// ```js
-/// unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
-/// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 270197729
-/// 
-/// unix> curl -X DELETE --dump - http://localhost:8529/_api/job/expired?stamp=1401376184
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// 
-/// { 
-///   "result" : true 
-/// }
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_delete_02}
+///   var url = "/_api/version";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('PUT', url, "", headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///
+///   var response = logCurlRequest('GET', "/_admin/time");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+///   now = JSON.parse(response.body).time;
+///
+///   url = '/_api/job/expired?stamp=' + now
+///   var response = logCurlRequest('DELETE', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+///
+///   url = '/_api/job/pending';
+///   var response = logCurlRequest('GET', url);
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
 /// Deleting the result of a specific job:
 /// 
-/// ```js
-/// unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
-/// 
-/// HTTP/1.1 202 Accepted
-/// content-type: text/plain; charset=utf-8
-/// x-arango-async-id: 270263265
-/// 
-/// unix> curl -X DELETE --dump - http://localhost:8529/_api/job/270263265
-/// 
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// 
-/// { 
-///   "result" : true 
-/// }
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_delete_03}
+///   var url = "/_api/version";
+///   var headers = {'x-arango-async' : 'store'};
+///   var response = logCurlRequest('PUT', url, "", headers);
+///
+///   assert(response.code === 202);
+///   logRawResponse(response);
+///   
+///   var queryId = response.headers['x-arango-async-id'];
+///   url = '/_api/job/' + queryId
+///   var response = logCurlRequest('DELETE', url, "");
+///   assert(response.code === 200);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
 /// Deleting the result of a non-existing job:
 /// 
-/// ```js
-/// unix> curl -X DELETE --dump - http://localhost:8529/_api/job/foobar
-/// 
-/// HTTP/1.1 404 Not Found
-/// content-type: application/json; charset=utf-8
-/// 
-/// { 
-///   "error" : true, 
-///   "errorMessage" : "not found", 
-///   "code" : 404, 
-///   "errorNum" : 404 
-/// }
-/// ```
+/// @EXAMPLE_ARANGOSH_RUN{JSF_job_delete_04}
+///   url = '/_api/job/AreYouThere'
+///   var response = logCurlRequest('DELETE', url, "");
+///   assert(response.code === 404);
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
