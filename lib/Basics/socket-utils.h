@@ -308,7 +308,7 @@ bool TRI_SetCloseOnExecSocket (TRI_socket_t);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton4 (const char *src, unsigned char *dst);
+int TRI_InetPton4 (char const* src, unsigned char* dst);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translates for IPv6 address
@@ -316,7 +316,7 @@ int TRI_InetPton4 (const char *src, unsigned char *dst);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton6 (const char *src, unsigned char *dst);
+int TRI_InetPton6 (char const* src, unsigned char* dst);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
@@ -325,18 +325,6 @@ int TRI_InetPton6 (const char *src, unsigned char *dst);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the sockets components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitialiseSockets (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the sockets components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownSockets (void);
 
 #endif
 
