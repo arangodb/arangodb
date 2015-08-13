@@ -22,3 +22,7 @@ of `null`.
 
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock ensureSkiplist
+
+!SUBSECTION Query by example using a skiplist index
+@startDocuBlock collectionByExampleSkiplist
+

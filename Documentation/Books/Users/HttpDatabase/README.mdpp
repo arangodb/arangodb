@@ -16,4 +16,3 @@ like this:
     http://localhost:8529/_db/mydb/_api/document/test/12345
     http://localhost:8529/_db/mydb/myapp/get
 
-@startDocuBlock JSF_get_admin_database_version
