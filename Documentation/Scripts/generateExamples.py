@@ -155,6 +155,12 @@ var log = function (a) {
 
 var logCurlRequestRaw = internal.appendCurlRequest(appender);
 var logCurlRequest = function () {
+  if ((arguments.length > 1) &&
+      (arguments[1] !== undefined) &&
+      (arguments[1].length > 0) &&
+      (arguments[1][0] !== '/')) {
+    throw new Error("your URL doesn't start with a /! the example will be broken. [" + arguments[1] + "]")
+  }
   var r = logCurlRequestRaw.apply(logCurlRequestRaw, arguments);
   db._collections();
   return r;
