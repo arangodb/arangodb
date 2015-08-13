@@ -86,7 +86,7 @@ actions.defineHttp({
 ///
 /// @RESTRETURNCODE{200}
 /// Sleep was conducted successfully.
-/// @DendocuBlock
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
