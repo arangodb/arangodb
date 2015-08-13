@@ -49,7 +49,7 @@ using namespace triagens::rest;
 HttpListenTask::HttpListenTask (HttpServer* server, Endpoint* endpoint)
   : Task("HttpListenTask"),
     ListenTask(endpoint),
-    server(server) {
+    _server(server) {
 }
 
 // -----------------------------------------------------------------------------
@@ -61,7 +61,7 @@ HttpListenTask::HttpListenTask (HttpServer* server, Endpoint* endpoint)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpListenTask::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
-  server->handleConnected(s, info);
+  _server->handleConnected(s, info);
   return true;
 }
 

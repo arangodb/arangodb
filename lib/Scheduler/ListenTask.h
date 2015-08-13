@@ -72,7 +72,7 @@ namespace triagens {
 /// @brief listen to given endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        ListenTask (Endpoint*);
+        explicit ListenTask (Endpoint*);
 
       public:
 
@@ -136,19 +136,22 @@ namespace triagens {
 /// @brief event for read
 ////////////////////////////////////////////////////////////////////////////////
 
-        EventToken readWatcher;
+        EventToken _readWatcher;
 
       private:
+
         bool bindSocket ();
 
       private:
+
         Endpoint* _endpoint;
 
         TRI_socket_t _listenSocket;
 
-        size_t acceptFailures;
+        size_t _acceptFailures;
 
-        mutable basics::Mutex changeLock;
+        mutable basics::Mutex _changeLock;
+
     };
   }
 }
