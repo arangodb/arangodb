@@ -108,7 +108,7 @@ function validateOrThrow(raw, schema, allowInvalid, validateOptions) {
 class RequestContext {
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @fn JSF_foxx_RequestContext_initializer
+  /// JSF_foxx_RequestContext_initializer
   /// @brief Context of a Request Definition
   ///
   /// Used for documenting and constraining the routes.

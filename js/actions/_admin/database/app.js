@@ -38,6 +38,7 @@ var targetDatabaseVersion = require("org/arangodb/database-version").CURRENT_VER
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_database_version
+/// @brief returns the version of the database.
 ///
 /// @RESTHEADER{GET /_admin/database/target-version, Return the required version of the database}
 ///
