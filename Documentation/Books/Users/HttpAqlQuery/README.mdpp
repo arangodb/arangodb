@@ -46,7 +46,8 @@ contain the error details embedded in a JSON object.
 
 Valid query:
 
-@EXAMPLE_ARANGOSH_RUN{RestQueryValid}
+    @startDocuBlockInline RestQueryValid
+    @EXAMPLE_ARANGOSH_RUN{RestQueryValid}
     var url = "/_api/query";
     var body = '{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }';
 
@@ -55,11 +56,13 @@ Valid query:
     assert(response.code === 200);
 
     logJsonResponse(response);
-@END_EXAMPLE_ARANGOSH_RUN
+    @END_EXAMPLE_ARANGOSH_RUN
+    @endDocuBlock RestQueryValid
 
 Invalid query:
 
-@EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
+    @startDocuBlockInline RestQueryInValid
+    @EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
     var url = "/_api/query";
     var body = '{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }';
 
@@ -68,7 +71,8 @@ Invalid query:
     assert(response.code === 400);
 
     logJsonResponse(response);
-@END_EXAMPLE_ARANGOSH_RUN
+    @END_EXAMPLE_ARANGOSH_RUN
+    @endDocuBlock RestQueryInValid
 
 !SUBSECTION Query tracking
 
