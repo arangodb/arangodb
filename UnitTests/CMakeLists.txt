@@ -46,7 +46,6 @@ add_executable(
     Basics/hashes-test.cpp
     Basics/associative-pointer-test.cpp
     Basics/associative-multi-pointer-test.cpp
-    Basics/associative-synced-test.cpp
     Basics/skiplist-test.cpp
     Basics/priorityqueue-test.cpp
     Basics/string-buffer-test.cpp
