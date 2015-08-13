@@ -118,6 +118,7 @@ check-docublocks:
 		grep -v '.*~:.*' |\
 		grep -v '.*#.*:.*' \
 		   >> /tmp/rawinprog.txt
+	echo "Generated: @startDocuBlockInline errorCodes">> /tmp/rawinprog.txt
 	cat /tmp/rawinprog.txt |sed -e "s;.*ck ;;" -e "s;.*ne ;;" |sort > /tmp/inprog_raw.txt
 	@cat /tmp/inprog_raw.txt |sort -u > /tmp/inprog.txt
 	@if test "`cat /tmp/inprog.txt |wc -l`" -ne "`cat /tmp/inprog_raw.txt|wc -l`"; then \
@@ -159,4 +160,4 @@ build-books-keep-md:
 	python codeBlockReader.py
 	make build-book NAME=Users
 
-build-books: clean-intermediate build-books-keep-md #check-docublocks
+build-books: clean-intermediate build-books-keep-md check-docublocks
