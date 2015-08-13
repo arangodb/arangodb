@@ -37,7 +37,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_hash_index_element_s;
+struct TRI_index_element_t;
 struct TRI_index_search_value_s;
 
 namespace triagens {
@@ -60,8 +60,7 @@ typedef struct TRI_hash_array_s {
   uint64_t _nrAlloc; // the size of the table
   uint64_t _nrUsed;  // the number of used entries
 
-  struct TRI_hash_index_element_s* _table; // the table itself, aligned to a cache line boundary
-  struct TRI_hash_index_element_s* _tablePtr; // the table itself
+  TRI_index_element_t** _table; // the table itself, aligned to a cache line boundary
 }
 TRI_hash_array_t;
 
@@ -108,15 +107,15 @@ int TRI_ResizeHashArray (triagens::arango::HashIndex*,
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_hash_index_element_s* TRI_LookupByKeyHashArray (TRI_hash_array_t const*,
+TRI_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t const*,
                                                            struct TRI_index_search_value_s* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an element given a key, returns NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t const*,
-                                                         struct TRI_index_search_value_s* key);
+TRI_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t const*,
+                                                    struct TRI_index_search_value_s* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
@@ -125,7 +124,7 @@ struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t const*
 int TRI_InsertKeyHashArray (triagens::arango::HashIndex*,
                             TRI_hash_array_t*,
                             struct TRI_index_search_value_s const* key,
-                            struct TRI_hash_index_element_s const* element,
+                            TRI_index_element_t const* element,
                             bool isRollback);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +133,7 @@ int TRI_InsertKeyHashArray (triagens::arango::HashIndex*,
 
 int TRI_RemoveElementHashArray (triagens::arango::HashIndex*,
                                 TRI_hash_array_t*,
-                                struct TRI_hash_index_element_s* element);
+                                TRI_index_element_t* element);
 
 #endif
 
