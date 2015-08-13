@@ -63,7 +63,7 @@ describe("Foxx Manager", function() {
       app = list[i];
       if (app.name === "sessions-example-app") {
         // this app cannot be installed at the moment
-        continue; // FIXME
+        continue;
         /*
         var arangodb = require("org/arangodb");
         var errors = arangodb.errors;
