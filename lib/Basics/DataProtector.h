@@ -144,7 +144,7 @@ namespace triagens {
 
           if (id < 0) {
             id = _last++;
-            if (_last > DATA_PROTECTOR_MULTIPLICITY) {
+            if (_last >= DATA_PROTECTOR_MULTIPLICITY) {
               _last = 0;
             }
             _mySlot = id;
