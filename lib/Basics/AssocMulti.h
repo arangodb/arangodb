@@ -354,20 +354,10 @@ namespace triagens {
 
           // partition the work into some buckets
           {
-            std::function<void(size_t)> partitioner;
-            partitioner = [&] (size_t chunk) -> void {
+            std::function<void(size_t, size_t)> partitioner;
+            partitioner = [&] (size_t lower, size_t upper) -> void {
               try {
                 std::unordered_map<uint64_t, DocumentsPerBucket> partitions;
-                size_t lower = chunk * chunkSize;
-                size_t upper = (chunk + 1) * chunkSize;
-
-                if (chunk + 1 == numThreads) {
-                  // last chunk. account for potential rounding errors
-                  upper = elements.size();
-                }
-                else if (upper > elements.size()) {
-                  upper = elements.size();
-                }
 
                 for (size_t i = lower; i < upper; ++i) {
                   uint64_t hashByKey = _hashElement(elements[i], true);
@@ -405,7 +395,18 @@ namespace triagens {
 
             try {
               for (size_t i = 0; i < numThreads; ++i) {
-                threads.emplace_back(std::thread(partitioner, i));
+                size_t lower = i * chunkSize;
+                size_t upper = (i + 1) * chunkSize;
+
+                if (i + 1 == numThreads) {
+                  // last chunk. account for potential rounding errors
+                  upper = elements.size();
+                }
+                else if (upper > elements.size()) {
+                  upper = elements.size();
+                }
+
+                threads.emplace_back(std::thread(partitioner, lower, upper));
               }
             }
             catch (...) {
