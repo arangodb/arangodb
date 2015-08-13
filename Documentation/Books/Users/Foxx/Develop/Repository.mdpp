@@ -198,6 +198,7 @@ var FulltextRepository = Foxx.Repository.extend({
 @startDocuBlock JSF_foxx_repository_replaceByExample
 
 !SUBSECTION Updating entries in the repository
+@startDocuBlock JSF_foxx_repository_update
 
 @startDocuBlock JSF_foxx_repository_updateById
 
