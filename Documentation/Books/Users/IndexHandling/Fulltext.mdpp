@@ -30,3 +30,5 @@ Other datatypes are ignored and not indexed.
 
 <!-- js/server/modules/org/arangodb/arango-collection.js -->
 @startDocuBlock ensureFulltextIndex
+
+@startDocuBlock lookUpFulltextIndex

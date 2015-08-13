@@ -31,6 +31,10 @@ Use *""* to disable.
 
 !SECTION Human Readable Logging
 
+!SUBSECTION Logfiles
+<!-- lib/ApplicationServer/ApplicationServer.h -->
+@startDocuBlock logFile
+
 !SUBSECTION Level
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logLevel

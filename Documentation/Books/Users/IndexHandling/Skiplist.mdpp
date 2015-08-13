@@ -19,85 +19,8 @@ of `null`.
 
 `collection.ensureUniqueSkiplist(field1, field2, ..., fieldn)`
 
-Creates a unique skiplist index on all documents using *field1*, *field2*, ... as attribute paths.
-At least one attribute path must be given. The index will be non-sparse by default.
+<!-- js/server/modules/org/arangodb/arango-collection.js-->
+@startDocuBlock ensureSkiplist
 
-To create a sparse index, use the following command:
-
-`collection.ensureUniqueSkiplist(field1, field2, ..., fieldn, { sparse: true })`
-
-In case that the index was successfully created, the index identifier is returned.
-
-```
-arangosh> db.ids.ensureUniqueSkiplist("myId");
-{ "id" : "ids/42612360", "unique" : true, "type" : "skiplist", "fields" : ["myId"], "isNewlyCreated" : true }
-
-arangosh> db.ids.save({ "myId": 123 });
-{ "_id" : "ids/42743432", "_key" : "42743432", "_rev" : "42743432" }
-arangosh> db.ids.save({ "myId": 456 });
-{ "_id" : "ids/42808968", "_key" : "42808968", "_rev" : "42808968" }
-arangosh> db.ids.save({ "myId": 789 });
-{ "_id" : "ids/42874504", "_key" : "42874504", "_rev" : "42874504" } 
-
-arangosh> db.ids.save({ "myId": 123 });
-JavaScript exception in file '(arango)' at 1,8: [ArangoError 1210: cannot save document: unique constraint violated]
-!db.ids.save({ "myId": 123 });
-!       ^
-stacktrace: [ArangoError 1210: cannot save document: unique constraint violated]
-at (arango):1:8
-
-arangosh> db.ids.ensureUniqueSkiplist("name.first", "name.last");
-{ "id" : "ids/43362549", "unique" : true, "type" : "skiplist", "fields" : ["name.first", "name.last"], "isNewlyCreated" : true }
-
-arangosh> db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
-{ "_id" : "ids/43755765", "_rev" : "43755765", "_key" : "43755765" }
-arangosh> db.ids.save({ "name" : { "first" : "jens", "last": "jensen" }});
-{ "_id" : "ids/43821301", "_rev" : "43821301", "_key" : "43821301" }
-arangod> db.ids.save({ "name" : { "first" : "hans", "last": "jensen" }});
-{ "_id" : "ids/43886837", "_rev" : "43886837", "_key" : "43886837" }
-	
-arangosh> db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
-JavaScript exception in file '(arango)' at 1,8: [ArangoError 1210: cannot save document: unique constraint violated]
-!db.ids.save({"name" : {"first" : "hans", "last": "hansen" }});
-!       ^
-stacktrace: [ArangoError 1210: cannot save document: unique constraint violated]
-at (arango):1:8
-```
-
-`collection.ensureSkiplist(field1, field2, ..., fieldn)`
-
-Creates a non-unique skiplist index on all documents using *field1*, *field2*, ... as attribute paths.
-At least one attribute path must be given. The index will be non-sparse by default.
-
-To create a sparse index, use the following command:
-
-`collection.ensureSkiplist(field1, field2, ..., fieldn, { sparse: true })`
-
-In case that the index was successfully created, the index identifier is returned.
-
-```
-arangosh> db.names.ensureSkiplist("first");
-{ "id" : "names/42725508", "unique" : false, "type" : "skiplist", "fields" : ["first"], "isNewlyCreated" : true }
-
-arangosh> db.names.save({ "first" : "Tim" });
-{ "_id" : "names/42856580", "_key" : "42856580", "_rev" : "42856580" }
-arangosh> db.names.save({ "first" : "Tom" });
-{ "_id" : "names/42922116", "_key" : "42922116", "_rev" : "42922116" }
-arangosh> db.names.save({ "first" : "John" });
-{ "_id" : "names/42987652", "_key" : "42987652", "_rev" : "42987652" }
-arangosh> db.names.save({ "first" : "Tim" });
-{ "_id" : "names/43053188", "_key" : "43053188", "_rev" : "43053188" }
-arangosh> db.names.save({ "first" : "Tom" });
-{ "_id" : "names/43118724", "_key" : "43118724", "_rev" : "43118724" }
-```
-
-Note that in addition to the two specialized index creation methods, there is also the
-general method `collection.ensureIndex`, which can be used to create indexes of any type
-and also supports uniqueness and sparsity:
-
-*Examples*
-
-```
-arangosh> db.test.ensureIndex({ type: "skiplist", fields: [ "a" ], sparse: true });
-arangosh> db.test.ensureIndex({ type: "skiplist", fields: [ "a", "b" ], unique: true });
-```
+!SUBSECTION Query by example using a skiplist index
+@startDocuBlock collectionByExampleSkiplist
