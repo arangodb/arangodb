@@ -31,7 +31,7 @@ var _ = require("underscore"),
   is = require("org/arangodb/is");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_internals_constructUrlObject
+/// JSF_foxx_internals_constructUrlObject
 /// @brief create a new url object
 ///
 /// This creates a new `UrlObject`.
@@ -65,7 +65,7 @@ function constructUrlObject(url, constraint, method) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_internals_constructNickname
+/// JSF_foxx_internals_constructNickname
 /// @brief Construct a swagger-compatible nickname from a httpMethod and URL
 ////////////////////////////////////////////////////////////////////////////////
 

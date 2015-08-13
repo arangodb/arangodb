@@ -369,7 +369,6 @@ ArangoCollection.prototype.any = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_ArangoCollection_prototype_first
 /// @brief selects the n first documents in the collection
 /// @startDocuBlock documentsCollectionFirst
 /// `collection.first(count)`
@@ -455,9 +454,8 @@ ArangoCollection.prototype.first = function (count) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_ArangoCollection_prototype_last
-///
 /// @brief selects the n last documents in the collection
+///
 /// @startDocuBlock documentsCollectionLast
 /// `collection.last(count)`
 ///
@@ -543,8 +541,8 @@ ArangoCollection.prototype.last = function (count) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_ArangoCollection_prototype_firstExample
 /// @brief constructs a query-by-example for a collection
+///
 /// @startDocuBlock collectionFirstExample
 /// `collection.firstExample(example)`
 ///
