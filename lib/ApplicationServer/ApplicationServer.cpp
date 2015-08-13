@@ -100,11 +100,9 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _userConfigFile(),
     _systemConfigFile(),
     _uid(),
-    _realUid(0),
-    _effectiveUid(0),
+    _numericUid(0),
     _gid(),
-    _realGid(0),
-    _effectiveGid(0),
+    _numericGid(0),
     _logApplicationName("arangod"),
     _logFacility(""),
     _logLevel("info"),
@@ -123,9 +121,6 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _randomGenerator(3),
 #endif
     _finishedCondition() {
-#ifndef _WIN32
-  storeRealPrivileges();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -422,7 +417,7 @@ bool ApplicationServer::parse (int argc,
   // .............................................................................
 
   extractPrivileges();
-  dropPrivileges();
+  dropPrivilegesPermanently();
 
   // .............................................................................
   // setup logging
@@ -538,8 +533,6 @@ void ApplicationServer::start () {
   pthread_sigmask(SIG_SETMASK, &all, 0);
 #endif
 
-  raisePrivileges();
-
   // start all startable features
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ApplicationFeature* feature = *i;
@@ -567,8 +560,6 @@ void ApplicationServer::start () {
 
     LOG_TRACE("opened server feature '%s'", feature->getName().c_str());
   }
-
-  dropPrivilegesPermanently();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -630,66 +621,85 @@ void ApplicationServer::stop () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief raise the privileges
+/// @brief extract the privileges to use
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::raisePrivileges () {
+void ApplicationServer::extractPrivileges() {
 
-  // first UID
-#ifdef TRI_HAVE_SETUID
-
-  if (_effectiveUid != _realUid) {
-    int res = seteuid(_realUid);
-
-    if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set uid '%s': %s", _uid.c_str(), strerror(errno));
-    }
-  }
-
-#endif
-
-  // then GID (because we are raising)
 #ifdef TRI_HAVE_SETGID
 
-  if (_effectiveGid != _realGid) {
-    int res = setegid(_realGid);
+  if (_gid.empty()) {
+    _numericGid = getgid();
+  }
+  else {
+    int gidNumber = TRI_Int32String(_gid.c_str());
 
-    if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set gid %d: %s", (int) _effectiveGid, strerror(errno));
+    if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
+
+#ifdef TRI_HAVE_GETGRGID
+      group* g = getgrgid(gidNumber);
+
+      if (g == 0) {
+        LOG_FATAL_AND_EXIT("unknown numeric gid '%s'", _gid.c_str());
+      }
+#endif
     }
+    else {
+#ifdef TRI_HAVE_GETGRNAM
+      string name = _gid;
+      group* g = getgrnam(name.c_str());
+
+      if (g != 0) {
+        gidNumber = g->gr_gid;
+      }
+      else {
+        LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid", _gid.c_str());
+      }
+#else
+      LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid", _gid.c_str());
+#endif
+    }
+
+    _numericGid = gidNumber;
   }
 
 #endif
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drops the privileges
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationServer::dropPrivileges () {
-
-  // first GID
-#ifdef TRI_HAVE_SETGID
-
-  if (_effectiveGid != _realGid) {
-    int res = setegid(_effectiveGid);
-
-    if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set gid %d: %s", (int) _effectiveGid, strerror(errno));
-    }
-  }
-
-#endif
-
-  // then UID (because we are dropping)
 #ifdef TRI_HAVE_SETUID
 
-  if (_effectiveUid != _realUid) {
-    int res = seteuid(_effectiveUid);
+  if (_uid.empty()) {
+    _numericUid = getuid();
+  }
+  else {
+    int uidNumber = TRI_Int32String(_uid.c_str());
 
-    if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set uid %s: %s", _uid.c_str(), strerror(errno));
+    if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+
+#ifdef TRI_HAVE_GETPWUID
+      passwd* p = getpwuid(uidNumber);
+
+      if (p == 0) {
+        LOG_FATAL_AND_EXIT("unknown numeric uid '%s'", _uid.c_str());
+      }
+#endif
     }
+    else {
+#ifdef TRI_HAVE_GETPWNAM
+      string name = _uid;
+      passwd* p = getpwnam(name.c_str());
+
+      if (p != 0) {
+        uidNumber = p->pw_uid;
+      }
+      else {
+        LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid", _uid.c_str());
+      }
+#else
+      LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid", _uid.c_str());
+#endif
+    }
+
+    _numericUid = uidNumber;
   }
 
 #endif
@@ -700,32 +710,32 @@ void ApplicationServer::dropPrivileges () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::dropPrivilegesPermanently () {
-  raisePrivileges();
-
+  
   // clear all supplementary groups
 #if defined(TRI_HAVE_INITGROUPS) && defined(TRI_HAVE_SETGID) && defined(TRI_HAVE_SETUID)
 
-  struct passwd* pwent = getpwuid(_effectiveUid);
+  if (! _gid.empty() && ! _uid.empty()) {
+    struct passwd* pwent = getpwuid(_numericUid);
 
-  if (pwent != nullptr) {
-    initgroups(pwent->pw_name, _effectiveGid);
+    if (pwent != nullptr) {
+      initgroups(pwent->pw_name, _numericGid);
+    }
   }
 
 #endif  
 
+
   // first GID
 #ifdef TRI_HAVE_SETGID
 
-  if (_effectiveGid != _realGid) {
-    LOG_INFO("permanently changing the gid to %d", (int) _effectiveGid);
+  if (! _gid.empty()) {
+    LOG_INFO("permanently changing the gid to %d", (int) _numericGid);
 
-    int res = setgid(_effectiveGid);
+    int res = setgid(_numericGid);
 
     if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set gid %d: %s", (int) _effectiveGid, strerror(errno));
+      LOG_FATAL_AND_EXIT("cannot set gid %d: %s", (int) _numericGid, strerror(errno));
     }
-
-    _realGid = _effectiveGid;
   }
 
 #endif
@@ -733,32 +743,16 @@ void ApplicationServer::dropPrivilegesPermanently () {
   // then UID (because we are dropping)
 #ifdef TRI_HAVE_SETUID
 
-  if (_effectiveUid != _realUid) {
-    LOG_INFO("permanently changing the uid to %d", (int) _effectiveUid);
+  if (! _uid.empty()) {
+    LOG_INFO("permanently changing the uid to %d", (int) _numericUid);
 
-    int res = setuid(_effectiveUid);
+    int res = setuid(_numericUid);
 
     if (res != 0) {
       LOG_FATAL_AND_EXIT("cannot set uid '%s': %s", _uid.c_str(), strerror(errno));
     }
-
-    _realUid = _effectiveUid;
   }
 
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief saves the logging privileges
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationServer::storeRealPrivileges () {
-#ifdef TRI_HAVE_SETGID
-  _realGid = getgid();
-#endif
-
-#ifdef TRI_HAVE_SETUID
-  _realUid = getuid();
 #endif
 }
 
@@ -1021,91 +1015,6 @@ bool ApplicationServer::readConfigurationFile () {
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the privileges to use
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationServer::extractPrivileges() {
-
-#ifdef TRI_HAVE_SETGID
-
-  if (_gid.empty()) {
-    _effectiveGid = getgid();
-  }
-  else {
-    int gidNumber = TRI_Int32String(_gid.c_str());
-
-    if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
-
-#ifdef TRI_HAVE_GETGRGID
-      group* g = getgrgid(gidNumber);
-
-      if (g == 0) {
-        LOG_FATAL_AND_EXIT("unknown numeric gid '%s'", _gid.c_str());
-      }
-#endif
-    }
-    else {
-#ifdef TRI_HAVE_GETGRNAM
-      string name = _gid;
-      group* g = getgrnam(name.c_str());
-
-      if (g != 0) {
-        gidNumber = g->gr_gid;
-      }
-      else {
-        LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid", _gid.c_str());
-      }
-#else
-      LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid", _gid.c_str());
-#endif
-    }
-
-    _effectiveGid = gidNumber;
-  }
-
-#endif
-
-#ifdef TRI_HAVE_SETUID
-
-  if (_uid.empty()) {
-    _effectiveUid = getuid();
-  }
-  else {
-    int uidNumber = TRI_Int32String(_uid.c_str());
-
-    if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-
-#ifdef TRI_HAVE_GETPWUID
-      passwd* p = getpwuid(uidNumber);
-
-      if (p == 0) {
-        LOG_FATAL_AND_EXIT("unknown numeric uid '%s'", _uid.c_str());
-      }
-#endif
-    }
-    else {
-#ifdef TRI_HAVE_GETPWNAM
-      string name = _uid;
-      passwd* p = getpwnam(name.c_str());
-
-      if (p != 0) {
-        uidNumber = p->pw_uid;
-      }
-      else {
-        LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid", _uid.c_str());
-      }
-#else
-      LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid", _uid.c_str());
-#endif
-    }
-
-    _effectiveUid = uidNumber;
-  }
-
-#endif
 }
 
 // -----------------------------------------------------------------------------
