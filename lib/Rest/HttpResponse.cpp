@@ -38,6 +38,13 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper macro for calculating strlens for static strings at 
+/// a compile-time (unless compiled with fno-builtin-strlen etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+#define CHAR_LENGTH_PAIR(value) (value), strlen(value)
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
@@ -609,28 +616,28 @@ void HttpResponse::setCookie (string const& name, string const& value,
 
       timeinfo = gmtime(&rawtime);
       strftime(buffer2, 80, "%a, %d-%b-%Y %H:%M:%S %Z", timeinfo);
-      buffer->appendText("; expires=");
+      buffer->appendText(CHAR_LENGTH_PAIR("; expires="));
       buffer->appendText(buffer2);
     }
   }
 
-  if (path != "") {
-    buffer->appendText("; path=");
+  if (! path.empty()) {
+    buffer->appendText(CHAR_LENGTH_PAIR("; path="));
     buffer->appendText(path);
   }
 
-  if (domain != "") {
-    buffer->appendText("; domain=");
+  if (! domain.empty()) {
+    buffer->appendText(CHAR_LENGTH_PAIR("; domain="));
     buffer->appendText(domain);
   }
 
 
   if (secure) {
-    buffer->appendText("; secure");
+    buffer->appendText(CHAR_LENGTH_PAIR("; secure"));
   }
 
   if (httpOnly) {
-    buffer->appendText("; HttpOnly");
+    buffer->appendText(CHAR_LENGTH_PAIR("; HttpOnly"));
   }
 
   char const* l = StringUtils::duplicate(buffer->c_str());
@@ -669,9 +676,9 @@ HttpResponse* HttpResponse::swap () {
 void HttpResponse::writeHeader (StringBuffer* output) {
   bool const capitalizeHeaders = (_apiCompatibility >= 20100);
 
-  output->appendText("HTTP/1.1 ");
+  output->appendText(CHAR_LENGTH_PAIR("HTTP/1.1 "));
   output->appendText(responseString(_code));
-  output->appendText("\r\n");
+  output->appendText(CHAR_LENGTH_PAIR("\r\n"));
 
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
@@ -729,48 +736,48 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     else {
       output->appendText(key, keyLength);
     }
-    output->appendText(": ", 2);
+    output->appendText(CHAR_LENGTH_PAIR(": "));
     output->appendText(begin->_value);
-    output->appendText("\r\n", 2);
+    output->appendText(CHAR_LENGTH_PAIR("\r\n"));
   }
 
   for (vector<char const*>::iterator iter = _cookies.begin();
           iter != _cookies.end(); ++iter) {
     if (capitalizeHeaders) {
-      output->appendText("Set-Cookie: ", 12);
+      output->appendText(CHAR_LENGTH_PAIR("Set-Cookie: "));
     }
     else {
-      output->appendText("set-cookie: ", 12);
+      output->appendText(CHAR_LENGTH_PAIR("set-cookie: "));
     }
     output->appendText(*iter);
-    output->appendText("\r\n", 2);
+    output->appendText(CHAR_LENGTH_PAIR("\r\n"));
   }
 
   if (seenTransferEncoding && transferEncoding == "chunked") {
     if (capitalizeHeaders) {
-      output->appendText("Transfer-Encoding: chunked\r\n\r\n", 30);
+      output->appendText(CHAR_LENGTH_PAIR("Transfer-Encoding: chunked\r\n\r\n"));
     }
     else {
-      output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
+      output->appendText(CHAR_LENGTH_PAIR("transfer-encoding: chunked\r\n\r\n"));
     }
   }
   else {
     if (seenTransferEncoding) {
       if (capitalizeHeaders) {
-        output->appendText("Transfer-Encoding: ", 19);
+        output->appendText(CHAR_LENGTH_PAIR("Transfer-Encoding: "));
       }
       else {
-        output->appendText("transfer-encoding: ", 19);
+        output->appendText(CHAR_LENGTH_PAIR("transfer-encoding: "));
       }
       output->appendText(transferEncoding);
-      output->appendText("\r\n", 2);
+      output->appendText(CHAR_LENGTH_PAIR("\r\n"));
     }
 
     if (capitalizeHeaders) {
-      output->appendText("Content-Length: ", 16);
+      output->appendText(CHAR_LENGTH_PAIR("Content-Length: "));
     }
     else {
-      output->appendText("content-length: ", 16);
+      output->appendText(CHAR_LENGTH_PAIR("content-length: "));
     }
 
     if (_isHeadResponse) {
@@ -787,7 +794,7 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendInteger(_body.length());
     }
 
-    output->appendText("\r\n\r\n", 4);
+    output->appendText(CHAR_LENGTH_PAIR("\r\n\r\n"));
   }
   // end of header, body to follow
 }
