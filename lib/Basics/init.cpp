@@ -34,7 +34,6 @@
 #include "Basics/logging.h"
 #include "Basics/process-utils.h"
 #include "Basics/random.h"
-#include "Basics/socket-utils.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -54,7 +53,6 @@ void TRI_InitialiseC (int argc, char* argv[]) {
   TRI_InitialiseHashes();
   TRI_InitialiseRandom();
   TRI_InitialiseProcess(argc, argv);
-  TRI_InitialiseSockets();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +60,6 @@ void TRI_InitialiseC (int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownC () {
-  TRI_ShutdownSockets();
   TRI_ShutdownProcess();
   TRI_ShutdownRandom();
   TRI_ShutdownHashes();
