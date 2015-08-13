@@ -3184,7 +3184,7 @@ static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // return all databases for a specific user
     std::string&& username = TRI_ObjectToString(args[0]);
 
-    res = TRI_GetUserDatabasesServer((TRI_server_t*) v8g->_server, username.c_str(), names);
+    res = TRI_GetUserDatabasesServer(static_cast<TRI_server_t*>(v8g->_server), username.c_str(), names);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -3520,7 +3520,7 @@ static void DropDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>& 
   int tries = 0;
 
   while (++tries <= 6000) {
-    TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id);
+    TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), id);
 
     if (vocbase == nullptr) {
       // object has vanished
@@ -3728,7 +3728,7 @@ bool TRI_UpgradeDatabase (TRI_vocbase_t* vocbase,
   bool ok = TRI_ObjectToBoolean(result);
 
   if (! ok) {
-    ((TRI_vocbase_t*) vocbase)->_state = (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION;
+    vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION;
   }
 
   v8g->_vocbase = orig;

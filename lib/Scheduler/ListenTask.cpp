@@ -237,8 +237,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       if (type == Endpoint::DOMAIN_IPV4) {
         char buf[INET_ADDRSTRLEN + 1];
         char const* p = inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
-        buf[INET_ADDRSTRLEN] = '\0';
         if (p != nullptr) {
+          buf[INET_ADDRSTRLEN] = '\0';
           info.clientAddress = p;
         }
         info.clientPort = addr->sin_port;
@@ -246,8 +246,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       else if (type == Endpoint::DOMAIN_IPV6) {
         char buf[INET6_ADDRSTRLEN + 1];
         char const* p = inet_ntop(AF_INET6, &addrmem.sin6_addr, buf, sizeof(buf) - 1);
-        buf[INET6_ADDRSTRLEN] = '\0';
         if (p != nullptr) {
+          buf[INET6_ADDRSTRLEN] = '\0';
           info.clientAddress = p;
         } 
         info.clientPort = addrmem.sin6_port;
