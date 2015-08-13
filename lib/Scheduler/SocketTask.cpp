@@ -339,53 +339,51 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 #endif
 
-
   _scheduler = scheduler;
   _loop = loop;
 
   _asyncWatcher = _scheduler->installAsyncEvent(loop, this);
-  _readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
+  _readWatcher  = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
   _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
-
-  if (_readWatcher == nullptr || _writeWatcher == nullptr) {
-    return false;
-  }
 
   // install timer for keep-alive timeout with some high default value
   _keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
 
-  // and stop it immediately so it's not actively at the start
+  // and stop it immediately so it's not active at the start
   _scheduler->clearTimer(_keepAliveWatcher);
 
   _tid = Thread::currentThreadId();
+
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief cleans up the task by unregistering all watchers
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::cleanup () {
-  if (_scheduler == nullptr) {
-    LOG_WARNING("In SocketTask::cleanup the scheduler has disappeared -- invalid pointer");
-    _asyncWatcher = nullptr;
-    _keepAliveWatcher = nullptr;
-    _readWatcher = nullptr;
-    _writeWatcher = nullptr;
-    return;
+  if (_scheduler != nullptr) {
+    if (_asyncWatcher != nullptr) {
+      _scheduler->uninstallEvent(_asyncWatcher);
+    }
+
+    if (_keepAliveWatcher != nullptr) {
+      _scheduler->uninstallEvent(_keepAliveWatcher);
+    }
+
+    if (_readWatcher != nullptr) {
+      _scheduler->uninstallEvent(_readWatcher);
+    }
+
+    if (_writeWatcher != nullptr) {
+      _scheduler->uninstallEvent(_writeWatcher);
+    }
   }
 
-  _scheduler->uninstallEvent(_asyncWatcher);
-  _asyncWatcher = nullptr;
-
-  _scheduler->uninstallEvent(_keepAliveWatcher);
+  _asyncWatcher     = nullptr;
   _keepAliveWatcher = nullptr;
-
-  _scheduler->uninstallEvent(_readWatcher);
-  _readWatcher = nullptr;
-
-  _scheduler->uninstallEvent(_writeWatcher);
-  _writeWatcher = nullptr;
+  _readWatcher      = nullptr;
+  _writeWatcher     = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,7 +397,6 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
     // got a keep-alive timeout
     LOG_TRACE("got keep-alive timeout signal, closing connection");
 
-    // TODO: do we need some lock before we modify the scheduler?
     _scheduler->clearTimer(token);
 
     // this will close the connection and destroy the task
