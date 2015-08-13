@@ -60,8 +60,9 @@ namespace {
 #include <windows.h>
 #include <stdio.h>
 
+class ControlCTask;
 bool static CtrlHandler(DWORD eventType);
-static SignalTask* localSignalTask;
+static ControlCTask* localControlCTask;
 
 #endif
 
@@ -76,7 +77,7 @@ static SignalTask* localSignalTask;
 
       ControlCTask (ApplicationServer* server)
         : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
-        localSignalTask = this;
+        localControlCTask = this;
         int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE) CtrlHandler, true);
 
         if (result == 0) {
@@ -236,7 +237,7 @@ static SignalTask* localSignalTask;
 #ifdef _WIN32
 
   bool CtrlHandler (DWORD eventType) {
-    ControlCTask* ccTask = (ControlCTask*) localSignalTask;
+    ControlCTask* ccTask = localControlCTask;
     // string msg = ccTask->_server->getName() + " [shutting down]";
     bool shutdown = false;
     string shutdownMessage;
