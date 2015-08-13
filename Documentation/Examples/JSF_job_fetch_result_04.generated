@@ -1,0 +1,22 @@
+shell> curl -X PUT --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/collection <<EOF
+{ 
+  "name" : " this name is invalid " 
+}
+EOF
+
+HTTP/1.1 202 Accepted
+content-type: text/plain; charset=utf-8
+x-arango-async-id: 751235934632
+
+shell> curl -X PUT --dump - http://localhost:8529/_api/job/751235934632
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+x-arango-async-id: 751235934632
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 400, 
+  "errorMessage" : "expected PUT /_api/collection/<collection-name>/<action>" 
+}
