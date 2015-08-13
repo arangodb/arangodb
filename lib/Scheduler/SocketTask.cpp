@@ -63,7 +63,8 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     _writeLength(0),
     _readBuffer(nullptr),
     _clientClosed(false),
-    _tid(0) {
+    _tid(0),
+    _firstUnhandledTime(0.0) {
 
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
@@ -393,6 +394,13 @@ void SocketTask::cleanup () {
 bool SocketTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;
 
+  if ((revents & EVENT_SOCKET_KILLED)) {
+    // this will close the connection and destroy the task
+    _clientClosed = true;
+    handleTimeout();
+    return false;
+  }
+
   if (token == _keepAliveWatcher && (revents & EVENT_TIMER)) {
     // got a keep-alive timeout
     LOG_TRACE("got keep-alive timeout signal, closing connection");
@@ -400,6 +408,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
     _scheduler->clearTimer(token);
 
     // this will close the connection and destroy the task
+    _clientClosed = true;
     handleTimeout();
     return false;
   }
@@ -429,6 +438,21 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
   }
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the task should be aborted
+////////////////////////////////////////////////////////////////////////////////
+
+bool SocketTask::shouldAbort () {
+  double const now = TRI_microtime();
+
+  if (_firstUnhandledTime == 0.0) {
+    _firstUnhandledTime = now;
+    return false;
+  }
+    
+  return (now > _firstUnhandledTime + _keepAliveTimeout);
 }
 
 // -----------------------------------------------------------------------------

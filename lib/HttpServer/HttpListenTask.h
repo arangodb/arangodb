@@ -84,7 +84,7 @@ namespace triagens {
 /// @brief underlying general server
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServer* server;
+        HttpServer* _server;
     };
   }
 }

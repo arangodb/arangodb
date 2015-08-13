@@ -32,7 +32,6 @@
 
 #include <errno.h>
 
-
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -40,7 +39,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #endif
-
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include "Basics/win-utils.h"
@@ -50,10 +48,10 @@
 
 #include <sys/types.h>
 
-#include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/logging.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/socket-utils.h"
+#include "Basics/StringUtils.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
@@ -63,18 +61,19 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask (Endpoint* endpoint)
+ListenTask::ListenTask (Endpoint* endpoint) 
   : Task("ListenTask"),
-    readWatcher(nullptr),
+    _readWatcher(nullptr),
     _endpoint(endpoint),
-    acceptFailures(0) {
+    _acceptFailures(0) {
+
   TRI_invalidatesocket(&_listenSocket);
   bindSocket();
 }
 
 ListenTask::~ListenTask () {
-  if (readWatcher != nullptr) {
-    _scheduler->uninstallEvent(readWatcher);
+  if (_readWatcher != nullptr) {
+    _scheduler->uninstallEvent(_readWatcher);
   }
 }
 
@@ -83,7 +82,7 @@ ListenTask::~ListenTask () {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::isBound () const {
-  MUTEX_LOCKER(changeLock); // FIX_MUTEX ?
+  MUTEX_LOCKER(_changeLock); // FIX_MUTEX ?
 
   return _endpoint != nullptr && _endpoint->isConnected();
 }
@@ -117,7 +116,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   // never use _open_osfhandle for sockets.
   // Therefore, we do the following, although it has the potential to
   // lose the higher bits of the socket handle:
-  int res = (int)_listenSocket.fileHandle;
+  int res = (int) _listenSocket.fileHandle;
 
   if (res == - 1) {
     LOG_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
@@ -128,6 +127,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
       res = WSAGetLastError();
       LOG_ERROR("In ListenTask::setup closesocket(...) failed with error code: %d", (int) res);
     }
+
     TRI_invalidatesocket(&_listenSocket);
     return false;
   }
@@ -138,29 +138,31 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   this->_scheduler = scheduler;
   this->_loop = loop;
-  readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
+  _readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
 
-  if (readWatcher == nullptr) {
-    return false;
-  }
   return true;
 }
 
 void ListenTask::cleanup () {
-  if (_scheduler == nullptr) {
-    LOG_WARNING("In ListenTask::cleanup the scheduler has disappeared -- invalid pointer");
-    readWatcher = nullptr;
-    return;
+  if (_scheduler != nullptr &&
+      _readWatcher != nullptr) {
+    _scheduler->uninstallEvent(_readWatcher);
   }
-  _scheduler->uninstallEvent(readWatcher);
-  readWatcher = nullptr;
+  
+  _readWatcher = nullptr;
 }
 
 bool ListenTask::handleEvent (EventToken token, EventType revents) {
-  if (token == readWatcher) {
+  if (token == _readWatcher) {
+    if ((revents & EVENT_SOCKET_KILLED)) {
+      // not handled here...
+      return false;
+    }
+
     if ((revents & EVENT_SOCKET_READ) == 0) {
       return true;
     }
+
     static_assert(sizeof(sockaddr_in) <= sizeof(sockaddr_in6),
                   "expect sockaddr size to be less or equal to the v6 version");
 
@@ -175,12 +177,12 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     connectionSocket = TRI_accept(_listenSocket, (sockaddr*) addr, &len);
 
     if (! TRI_isvalidsocket(connectionSocket)) {
-      ++acceptFailures;
+      ++_acceptFailures;
 
-      if (acceptFailures < MAX_ACCEPT_ERRORS) {
+      if (_acceptFailures < MAX_ACCEPT_ERRORS) {
         LOG_WARNING("accept failed with %d (%s)", (int) errno, strerror(errno));
       }
-      else if (acceptFailures == MAX_ACCEPT_ERRORS) {
+      else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
         LOG_ERROR("too many accept failures, stopping logging");
       }
 
@@ -189,7 +191,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       return true;
     }
 
-    acceptFailures = 0;
+    _acceptFailures = 0;
 
     struct sockaddr_in6 addr_out_mem;
     struct sockaddr_in* addr_out = (sockaddr_in*) &addr_out_mem;;

@@ -122,15 +122,33 @@ namespace {
     if (task != nullptr) {
       if (revents & EV_READ) {
         if (revents & EV_WRITE) {
+          // read and write
           task->handleEvent(watcher, EVENT_SOCKET_READ | EVENT_SOCKET_WRITE);
         }
         else {
+          // read
           task->handleEvent(watcher, EVENT_SOCKET_READ);
         }
       }
       else if (revents & EV_WRITE) {
+        // write
         task->handleEvent(watcher, EVENT_SOCKET_WRITE);
       }
+      else {
+        // event not handled!
+        if (task->shouldAbort()) {
+          LOG_WARNING("task event not handled. killing socket task");
+
+          task->handleEvent(watcher, EVENT_SOCKET_KILLED);
+        }
+      }
+    }
+    else {
+      /*
+      LOG_WARNING("socketCallback called for unknown task");
+      // TODO: given that the task is unknown, is it safe to stop to I/O here?
+      ev_io_stop(watcher->loop, w);
+      */
     }
   }
 
@@ -418,14 +436,14 @@ void SchedulerLibev::uninstallEvent (EventToken watcher) {
       break;
     }
 
-    case EVENT_SOCKET_READ: {
+    case EVENT_SOCKET_READ:
+    case EVENT_SOCKET_KILLED: {
       SocketWatcher* w = (SocketWatcher*) watcher;
       ev_io_stop(w->loop, (ev_io*) w);
       delete w;
 
       break;
     }
-
 
     case EVENT_TIMER: {
       TimerWatcher* w = (TimerWatcher*) watcher;

@@ -44,14 +44,18 @@ namespace triagens {
     class Scheduler;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Scheduler
 /// @brief abstract base class for tasks
 ////////////////////////////////////////////////////////////////////////////////
 
     class Task {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
       friend class TaskManager;
-      Task (Task const&);
-      Task& operator= (Task const&);
+      Task (Task const&) = delete;
+      Task& operator= (Task const&) = delete;
 
       public:
 
@@ -67,14 +71,29 @@ namespace triagens {
 /// the task.
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Task (std::string const& id,
-                       std::string const& name);
+        Task (std::string const& id,
+              std::string const& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit Task (std::string const& name);
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a task
+///
+/// The method will only be called from after the task has been cleaned by
+/// the method cleanup.
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ~Task ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
       public:
 
@@ -129,16 +148,15 @@ namespace triagens {
 
         virtual bool handleEvent (EventToken token, EventType event) = 0;
 
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a task
-///
-/// The method will only be called from after the task has been cleaned by
-/// the method cleanup.
+/// @brief whether or not the task should be aborted
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~Task ();
+        virtual bool shouldAbort ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
 
       protected:
 
@@ -166,6 +184,10 @@ namespace triagens {
 
         virtual void cleanup () = 0;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
+
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,7 +206,11 @@ namespace triagens {
 /// @brief task id
 ////////////////////////////////////////////////////////////////////////////////
 
-        const uint64_t _taskId;
+        uint64_t const _taskId;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 

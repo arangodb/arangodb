@@ -71,7 +71,7 @@ AsyncChunkedTask::~AsyncChunkedTask () {
 /// @brief adds a chunk and signal next part
 ////////////////////////////////////////////////////////////////////////////////
 
-int AsyncChunkedTask::signalChunk (const string& data) {
+int AsyncChunkedTask::signalChunk (std::string const& data) {
   {
     MUTEX_LOCKER(_dataLock);
 
@@ -83,9 +83,7 @@ int AsyncChunkedTask::signalChunk (const string& data) {
         _data = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, data.size());
       }
 
-      if (_data == nullptr) {
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
+      TRI_ASSERT(_data != nullptr);
 
       _data->appendHex(data.size());
       _data->appendText("\r\n");
@@ -161,6 +159,10 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     _requestPending(false),
     _closeRequested(false),
     _readRequestBody(false),
+    _denyCredentials(false),
+    _acceptDeflate(false),
+    _newRequest(true),
+    _isChunked(false),
     _request(nullptr),
     _maximalHeaderSize(0),
     _maximalBodySize(0),
@@ -169,13 +171,9 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
     _fullUrl(),
     _origin(),
-    _denyCredentials(false),
-    _acceptDeflate(false),
-    _newRequest(true),
     _startPosition(0),
     _sinceCompactification(0),
     _originalBodyLength(0),
-    _isChunked(false),
     _chunkedTask(this),
     _setupDone(false) {
 
