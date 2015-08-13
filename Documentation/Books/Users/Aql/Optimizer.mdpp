@@ -360,6 +360,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   The intention of this rule is to move calculations down in the processing pipeline
   as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed 
   as late as possible and not before their results are required.
+* `patch-update-statements`: will appear if an *UpdateNode* was patched to not buffer
+  its input completely, but to process it in smaller batches. The rule will fire for an
+  *UPDATE* query that is fed by a full collection scan, and that does not use any other
+  indexes and subqueries.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 

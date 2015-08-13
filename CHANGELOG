@@ -1,6 +1,8 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL optimizer rule `patch-update-statements`
+
 * Linux startup scripts and systemd configuration for arangod now try to
   adjust the NOFILE (number of open files) limits for the process. The limit
   value is set to 131072 (128k) when ArangoDB is started via start/stop 
