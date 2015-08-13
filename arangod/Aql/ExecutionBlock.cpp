@@ -2427,7 +2427,7 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   try {
     size_t nrSent = 0;
     while (nrSent < atMost && _skiplistIterator !=nullptr) { 
-      TRI_skiplist_index_element_t* indexElement = _skiplistIterator->next(_skiplistIterator);
+      TRI_index_element_t* indexElement = _skiplistIterator->next(_skiplistIterator);
 
       if (indexElement == nullptr) {
         TRI_FreeSkiplistIterator(_skiplistIterator);
@@ -2441,7 +2441,7 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         
-        _documents.emplace_back(*(indexElement->_document));
+        _documents.emplace_back(*(indexElement->document()));
         ++nrSent;
         ++_engine->_stats.scannedIndex;
       }
