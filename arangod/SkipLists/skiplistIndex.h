@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SkipList.h"
+#include "Indexes/Index.h"
 #include "IndexOperators/index-operator.h"
 #include "VocBase/shaped-json.h"
 
@@ -62,13 +63,6 @@ typedef struct {
                        // fields indexed
 }
 TRI_skiplist_index_key_t;
-
-typedef struct {
-  struct TRI_doc_mptr_t* _document; // master document pointer
-  // note: the index element also contains a list of shaped subs as follows
-  // TRI_shaped_sub_t* _subObjects; 
-}
-TRI_skiplist_index_element_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
@@ -103,7 +97,7 @@ typedef struct TRI_skiplist_iterator_s {
                  // SkiplistPrevIterationCallback for the exact
                  // condition for the iterator to be exhausted.
   bool  (*hasNext) (struct TRI_skiplist_iterator_s const*);
-  TRI_skiplist_index_element_t* (*next)(struct TRI_skiplist_iterator_s*);
+  TRI_index_element_t* (*next)(struct TRI_skiplist_iterator_s*);
 }
 TRI_skiplist_iterator_t;
 
@@ -149,12 +143,12 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*,
                                              TRI_index_operator_t const*,
                                              bool);
 
-int SkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
+int SkiplistIndex_insert (SkiplistIndex*, TRI_index_element_t*);
 
-int SkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*);
+int SkiplistIndex_remove (SkiplistIndex*, TRI_index_element_t*);
 
-bool SkiplistIndex_update (SkiplistIndex*, const TRI_skiplist_index_element_t*,
-                           const TRI_skiplist_index_element_t*);
+bool SkiplistIndex_update (SkiplistIndex*, const TRI_index_element_t*,
+                           const TRI_index_element_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of elements in the index
@@ -180,7 +174,7 @@ inline size_t SkiplistIndex_ElementSize (SkiplistIndex const* idx) {
 /// @brief return the base address for the shaped subs inside an element
 ////////////////////////////////////////////////////////////////////////////////
   
-inline TRI_shaped_sub_t const* SkiplistIndex_Subobjects (TRI_skiplist_index_element_t const* element) {
+inline TRI_shaped_sub_t const* SkiplistIndex_Subobjects (TRI_index_element_t const* element) {
   return reinterpret_cast<TRI_shaped_sub_t const*>(reinterpret_cast<char const*>(element) + sizeof(TRI_doc_mptr_t*));
 }
 
@@ -188,7 +182,7 @@ inline TRI_shaped_sub_t const* SkiplistIndex_Subobjects (TRI_skiplist_index_elem
 /// @brief return the base address for the shaped subs inside an element
 ////////////////////////////////////////////////////////////////////////////////
   
-inline TRI_shaped_sub_t* SkiplistIndex_Subobjects (TRI_skiplist_index_element_t* element) {
+inline TRI_shaped_sub_t* SkiplistIndex_Subobjects (TRI_index_element_t* element) {
   return reinterpret_cast<TRI_shaped_sub_t*>(reinterpret_cast<char*>(element) + sizeof(TRI_doc_mptr_t*));
 }
 
