@@ -223,19 +223,24 @@ AC_ARG_ENABLE(readline,
 if test "x$tr_DARWIN" = xyes; then
   READLINE=/usr/local/opt/readline
   READLINE_CPPFLAGS="-I$READLINE/include"
+  READLINE_INCLUDE="$READLINE/include"
   READLINE_LDFLAGS="-L$READLINE/lib"
+  READLINE_LIB_PATH="$READLINE/lib"
 fi
 
 AC_ARG_WITH(readline,
   AS_HELP_STRING([--with-readline=DIR], [where the readline library and includes are located]),
   [READLINE_CPPFLAGS="-I$withval/include"
+   READLINE_INCLUDE="$withval/include"
    READLINE_LDFLAGS="-L$withval/lib"
+   READLINE_LIB_PATH="$withval/lib"
    READLINE="$withval"]
 )
 
 AC_ARG_WITH(readline-lib,
   AS_HELP_STRING([--with-readline-lib=DIR], [where the readline library is located]),
-  [READLINE_LDFLAGS="-L$withval"]
+  [READLINE_LDFLAGS="-L$withval"
+   READLINE_LIB_PATH="$withval"]
 )
 
 dnl checks for the READLINE library
@@ -343,7 +348,9 @@ dnl add substitutions
 
 AC_SUBST(READLINE_VERSION)
 AC_SUBST(READLINE_CPPFLAGS)
+AC_SUBST(READLINE_INCLUDE)
 AC_SUBST(READLINE_LDFLAGS)
+AC_SUBST(READLINE_LIB_PATH)
 AC_SUBST(READLINE_LIBS)
 
 dnl informational output
@@ -352,16 +359,8 @@ if test "x$tr_READLINE" = xyes;  then
   LIB_INFO="$LIB_INFO|READLINE VERSION:  ${READLINE_VERSION}"
 
   LIB_INFO="$LIB_INFO|READLINE_CPPFLAGS: ${READLINE_CPPFLAGS}"
-  LIB_INFO="$LIB_INFO|READLINE_LDLIBS:   ${READLINE_LDLIBS}"
+  LIB_INFO="$LIB_INFO|READLINE_LDFLAGS:  ${READLINE_LDFLAGS}"
   LIB_INFO="$LIB_INFO|READLINE_LIBS:     ${READLINE_LIBS}"
-
-elif test "x$tr_READLINE" = xlinenoise;  then
-  LIB_INFO="$LIB_INFO|LINENOISE VERSION:  ${READLINE_VERSION}"
-
-  LIB_INFO="$LIB_INFO|LINENOISE_CPPFLAGS: ${READLINE_CPPFLAGS}"
-  LIB_INFO="$LIB_INFO|LINENOISE_LDLIBS:   ${READLINE_LDLIBS}"
-  LIB_INFO="$LIB_INFO|LINENOISE_LIBS:     ${READLINE_LIBS}"
-
 else
   LIB_INFO="$LIB_INFO|READLINE VERSION: disabled"
 fi
