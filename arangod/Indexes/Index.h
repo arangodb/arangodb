@@ -75,8 +75,9 @@ struct TRI_index_element_t {
 
      // Do not use new for this struct, use ...
      TRI_index_element_t () {
+     };
 
-     }
+     ~TRI_index_element_t () = delete;
 
   public: 
 
@@ -84,7 +85,7 @@ struct TRI_index_element_t {
 /// @brief Get a pointer to the Document's masterpointer.
 ////////////////////////////////////////////////////////////////////////////////
 
-    TRI_doc_mptr_t const* document () {
+    TRI_doc_mptr_t* document () const {
       return _document;
     }
      
@@ -100,33 +101,34 @@ struct TRI_index_element_t {
 /// @brief Get a pointer to sub objects
 ////////////////////////////////////////////////////////////////////////////////
 
-    TRI_shaped_sub_t const* subObjects () {
-      return reinterpret_cast<TRI_shaped_sub_t const*>(_document + sizeof(TRI_doc_mptr_t*));
+    TRI_shaped_sub_t* subObjects () const {
+      return reinterpret_cast<TRI_shaped_sub_t*>((char*) &_document + sizeof(TRI_doc_mptr_t*));
     }
-
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Allocate a new index Element
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_element_t* TRI_Allocate_IndexElement (size_t numSubs, bool set) {
-  return static_cast<TRI_index_element_t*>(TRI_Allocate(
-    TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs), set)
-  );
-}
+    static TRI_index_element_t* allocate (size_t numSubs, bool set) {
+      void* space = TRI_Allocate(
+        TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs), set
+      );
+      return new (space) TRI_index_element_t();
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free the index element.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Free_IndexElement (TRI_index_element_t* el) {
-  TRI_ASSERT_EXPENSIVE(el != nullptr);
-  TRI_ASSERT_EXPENSIVE(el->document() != nullptr);
-  TRI_ASSERT_EXPENSIVE(element->subObjects() != nullptr);
+    static void free (TRI_index_element_t* el) {
+      TRI_ASSERT_EXPENSIVE(el != nullptr);
+      TRI_ASSERT_EXPENSIVE(el->document() != nullptr);
+      TRI_ASSERT_EXPENSIVE(el->subObjects() != nullptr);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, el);
-}
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, el);
+    }
+
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Index
@@ -295,9 +297,16 @@ namespace triagens {
 /// @brief helper function to insert a document into any index type
 ////////////////////////////////////////////////////////////////////////////////
 
+        int fillElement(std::function<TRI_index_element_t* ()> allocate,
+                        std::vector<TRI_index_element_t*>& elements,
+                        TRI_doc_mptr_t const* document,
+                        std::vector<TRI_shape_pid_t> const& paths,
+                        bool const sparse);
+
+
         template<typename Idx_Element>
         // int fillElement(std::function<Idx_Element* ()> allocator,
-        int fillElement(Idx_Element* element,
+        int fillElement2(Idx_Element* element,
                         TRI_shaped_sub_t* subObjects,
                         TRI_doc_mptr_t const* document,
                         std::vector<TRI_shape_pid_t> const& paths,

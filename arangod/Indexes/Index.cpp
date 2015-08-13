@@ -407,6 +407,92 @@ bool Index::hasBatchInsert () const {
   return false;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to insert a document into any index type
+////////////////////////////////////////////////////////////////////////////////
+
+int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
+                       std::vector<TRI_index_element_t*>& elements,
+                       TRI_doc_mptr_t const* document,
+                       std::vector<TRI_shape_pid_t> const& paths,
+                       bool const sparse) {
+  TRI_ASSERT(document != nullptr);
+  TRI_ASSERT_EXPENSIVE(document->getDataPtr() != nullptr);   // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  TRI_shaped_json_t shapedJson;
+
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  if (shapedJson._sid == TRI_SHAPE_ILLEGAL) {
+    LOG_WARNING("encountered invalid marker with shape id 0");
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  size_t const n = paths.size();
+
+  TRI_index_element_t* element = allocate();
+  if (element == nullptr) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  element->document(const_cast<TRI_doc_mptr_t*>(document));
+  TRI_shaped_sub_t* subObjects = element->subObjects();
+  for (size_t j = 0; j < n; ++j) {
+    TRI_shape_pid_t path = paths[j];
+
+    // ..........................................................................
+    // Determine if document has that particular shape
+    // ..........................................................................
+
+    TRI_shape_access_t const* acc = _collection->getShaper()->findAccessor(shapedJson._sid, path);  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+    if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
+      // OK, the document does not contain the attributed needed by 
+      // the index, are we sparse?
+      subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+
+
+      if (sparse) {
+        // no need to continue
+        // Free this element and return.
+        TRI_index_element_t::free(element);
+        return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+      }
+      continue;
+    }
+
+    // ..........................................................................
+    // Extract the field
+    // ..........................................................................
+
+    TRI_shaped_json_t shapedObject;
+    if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    if (shapedObject._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+      if (sparse) {
+        // no need to continue
+        // Free this element and return.
+        TRI_index_element_t::free(element);
+        return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+      }
+    }
+
+    // .........................................................................
+    // Store the field
+    // .........................................................................
+
+    TRI_FillShapedSub(&subObjects[j], &shapedObject, ptr);
+  }
+  elements.push_back(element);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 namespace triagens {
   namespace arango {
 

@@ -183,7 +183,7 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  int res = fillElement<TRI_skiplist_index_element_t>(skiplistElement, SkiplistIndex_Subobjects(skiplistElement), doc, _paths, _sparse);
+  int res = fillElement2<TRI_skiplist_index_element_t>(skiplistElement, SkiplistIndex_Subobjects(skiplistElement), doc, _paths, _sparse);
 
   // ...........................................................................
   // most likely the cause of this error is that the index is sparse
@@ -232,7 +232,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  int res = fillElement<TRI_skiplist_index_element_t>(skiplistElement, SkiplistIndex_Subobjects(skiplistElement), doc, _paths, _sparse);
+  int res = fillElement2<TRI_skiplist_index_element_t>(skiplistElement, SkiplistIndex_Subobjects(skiplistElement), doc, _paths, _sparse);
 
   // ..........................................................................
   // Error returned generally implies that the document never was part of the
