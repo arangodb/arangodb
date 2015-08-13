@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AsyncTask.h"
-
 #include "Basics/logging.h"
 #include "Scheduler/Scheduler.h"
 
@@ -64,37 +63,30 @@ bool AsyncTask::setup (Scheduler* scheduler,
   this->_scheduler = scheduler;
   this->_loop = loop;
 
+  // will throw if it goes wrong...
   watcher = scheduler->installAsyncEvent(loop, this);
 
-  if (watcher == nullptr) {
-    return false;
+  return true;
+}
+
+void AsyncTask::cleanup () {
+  if (_scheduler != nullptr) {
+    if (watcher != nullptr) {
+      _scheduler->uninstallEvent(watcher);
+    }
+  }
+
+  watcher = nullptr;
+}
+
+bool AsyncTask::handleEvent (EventToken token, EventType revents) {
+  if (watcher == token && (revents & EVENT_ASYNC)) {
+    return handleAsync();
   }
 
   return true;
 }
 
-
-
-void AsyncTask::cleanup () {
-  if (_scheduler == nullptr) {
-    LOG_WARNING("In AsyncTask::cleanup the scheduler has disappeared -- invalid pointer");
-    watcher = nullptr;
-    return;
-  }
-
-  _scheduler->uninstallEvent(watcher);
-  watcher = nullptr;
-}
-
-bool AsyncTask::handleEvent (EventToken token, EventType revents) {
-  bool result = true;
-
-  if (watcher == token && (revents & EVENT_ASYNC)) {
-    result = handleAsync();
-  }
-
-  return result;
-}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
