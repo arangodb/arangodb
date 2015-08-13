@@ -39,12 +39,13 @@ extern "C" {
 
 using namespace std;
 using namespace triagens;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-namespace {
+namespace arangodb {
   Completer* COMPLETER;
 }
 
@@ -52,7 +53,7 @@ static void LinenoiseCompletionGenerator (char const* text,
 					  linenoiseCompletions* lc) {
   if (COMPLETER) {
     std::vector<string> alternatives = COMPLETER->alternatives(text);
-    LineEditor::sortAlternatives(alternatives);
+    arangodb::LineEditor::sortAlternatives(alternatives);
 
     for (auto& it : alternatives) {
       linenoiseAddCompletion(lc, it.c_str());
@@ -144,12 +145,12 @@ string LinenoiseShell::historyPath () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void LinenoiseShell::addHistory (char const* str) {
-  if (*str == '\0') {
+void LinenoiseShell::addHistory (std::string const& str) {
+  if (str.empty()) {
     return;
   }
 
-  linenoiseHistoryAdd(str);
+  linenoiseHistoryAdd(str.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,8 +167,9 @@ bool LinenoiseShell::writeHistory () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char* LinenoiseShell::getLine (char const* input) {
-  return linenoise(input);
+std::string LinenoiseShell::getLine(const std::string& prompt, bool& eof) {
+  eof = false;
+  return linenoise(prompt.c_str());
 }
 
 // -----------------------------------------------------------------------------
