@@ -66,6 +66,12 @@ OutputDir = "/tmp/"
 RunTests = {}
 
 ################################################################################
+### A list of tests that were skipped by the users request.
+################################################################################
+
+filterTestList = []
+
+################################################################################
 ### @brief arangosh expect
 ###
 ### A list of commands that are here to validate the result.
@@ -322,7 +328,7 @@ regularStartLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
 runLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
     
 def matchStartLine(line, filename):
-    global regularStartLine, errorStartLine, runLine
+    global regularStartLine, errorStartLine, runLine, FilterForTestcase, filterTestList
     errorName = ""
     m = regularStartLine.match(line)
 
@@ -336,7 +342,7 @@ def matchStartLine(line, filename):
             sys.exit(1)
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
-            print >> sys.stderr, "filtering test case %s" %name
+            filterTestList.append(name)
             return("", STATE_BEGIN);
 
         return (name, STATE_ARANGOSH_OUTPUT)
@@ -354,7 +360,7 @@ def matchStartLine(line, filename):
         ArangoshCases.append(name)    
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
-            print >> sys.stderr, "filtering test case %s" %name
+            filterTestList.append(name)
             return("", STATE_BEGIN);
 
         ArangoshFiles[name] = True
@@ -675,6 +681,7 @@ def generateTestCases():
 ### @brief main
 ################################################################################
 loopDirectories()
+print >> sys.stderr, "filtering test cases %s" %(filterTestList)
 
 generateArangoshHeader()
 generateSetupFunction()
