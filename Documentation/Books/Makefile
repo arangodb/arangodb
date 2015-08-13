@@ -77,6 +77,14 @@ clean-book-intermediate:
 ################################################################################
 # Global targets
 
+
+#************************************************************
+# Check docublocks - checks whether docublock are 
+#  - files in intermediate output directories and temporary
+#    files are excludes (with # in their names)
+#  - uniq in the source 
+#  - all docublocks are used somewhere in the documentation
+#  
 check-docublocks:
 	grep -R '@startDocuBlock' . |\
 		grep -v '@startDocuBlockInline' |\
@@ -84,14 +92,18 @@ check-docublocks:
 		grep -v allComments.txt |\
 		grep -v Makefile |\
 		grep -v codeBlockReader.py |\
-		grep -v generateMdFiles.py \
+		grep -v generateMdFiles.py |\
+		grep -v '.*~:.*' |\
+		grep -v '.*#.*:.*' \
 		   > /tmp/rawindoc.txt
 	grep -R '@startDocuBlockInline' . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
 		grep -v codeBlockReader.py |\
-		grep -v generateMdFiles.py \
+		grep -v generateMdFiles.py |\
+		grep -v '.*~:.*' |\
+		grep -v '.*#.*:.*' \
 		   >> /tmp/rawindoc.txt
 	cat /tmp/rawindoc.txt | sed  -e "s;.*ck ;;" -e "s;.*ne ;;" |sort -u > /tmp/indoc.txt
 	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js |grep -v aardvark > /tmp/rawinprog.txt
@@ -101,7 +113,9 @@ check-docublocks:
 		grep -v allComments.txt |\
 		grep -v Makefile |\
 		grep -v codeBlockReader.py |\
-		grep -v generateMdFiles.py \
+		grep -v generateMdFiles.py |\
+		grep -v '.*~:.*' |\
+		grep -v '.*#.*:.*' \
 		   >> /tmp/rawinprog.txt
 	cat /tmp/rawinprog.txt |sed -e "s;.*ck ;;" -e "s;.*ne ;;" |sort > /tmp/inprog_raw.txt
 	@cat /tmp/inprog_raw.txt |sort -u > /tmp/inprog.txt
