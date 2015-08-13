@@ -240,7 +240,7 @@ void RestJobHandler::putJob () {
   _response = response;
 
   // plus a new header
-  _response->setHeader("x-arango-async-id", value);
+  _response->setHeader(TRI_CHAR_LENGTH_PAIR("x-arango-async-id"), value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

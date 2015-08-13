@@ -200,6 +200,14 @@ namespace triagens {
 
         bool shouldAbort () override;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the task progress should be tracked
+////////////////////////////////////////////////////////////////////////////////
+
+        bool trackProgress () override final {
+          return true;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -253,15 +261,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_request_statistics_t* _writeBufferStatistics;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief if true, the resource writeBuffer is owned by the write task
-///
-/// If true, the writeBuffer is deleted as soon as it has been sent to the
-/// client. If false, the writeBuffer is keep alive.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _ownBuffer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of bytes already written

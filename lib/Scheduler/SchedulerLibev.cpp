@@ -120,28 +120,57 @@ namespace {
     Task* task = watcher->task;
 
     if (task != nullptr) {
+      // initialize progress to `true` for tasks that do not have progress tracking,
+      // and to `false` for all others
+#if 0
+      bool progress = ! task->trackProgress();
+#endif
+
       if (revents & EV_READ) {
         if (revents & EV_WRITE) {
           // read and write
+#if 0
+          auto const tick = task->tick();
+#endif
           task->handleEvent(watcher, EVENT_SOCKET_READ | EVENT_SOCKET_WRITE);
+#if 0
+          progress |= (task->tick() != tick);
+#endif
         }
         else {
           // read
+#if 0
+          auto const tick = task->tick();
+#endif
           task->handleEvent(watcher, EVENT_SOCKET_READ);
+#if 0
+          progress |= (task->tick() != tick);
+#endif
         }
       }
       else if (revents & EV_WRITE) {
         // write
+#if 0
+        auto const tick = task->tick();
+#endif
         task->handleEvent(watcher, EVENT_SOCKET_WRITE);
+#if 0
+        progress |= (task->tick() != tick);
+#endif
       }
-      else {
-        // event not handled!
+
+#if 0
+      // TODO: implement for ListenTask, HttpsCommTask and turn of reporting when writing a buffer of size 0
+      if (! progress) {
+        LOG_ERROR("no progress achieved for task %s %llu", task->name().c_str(), (unsigned long long) task->taskId()); 
+        // event not handled or no progress achieved!
         if (task->shouldAbort()) {
-          LOG_WARNING("task event not handled. killing socket task");
+          LOG_WARNING("event not handled for task '%s'. now aborting task", task->name().c_str());
 
           task->handleEvent(watcher, EVENT_SOCKET_KILLED);
         }
       }
+#endif
     }
     else {
       /*

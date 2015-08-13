@@ -59,7 +59,6 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     _keepAliveTimeout(keepAliveTimeout),
     _writeBuffer(nullptr),
     _writeBufferStatistics(nullptr),
-    _ownBuffer(true),
     _writeLength(0),
     _readBuffer(nullptr),
     _clientClosed(false),
@@ -84,9 +83,7 @@ SocketTask::~SocketTask () {
     TRI_invalidatesocket(&_commSocket);
   }
 
-  if (_ownBuffer) {
-    delete _writeBuffer;
-  }
+  delete _writeBuffer;
 
   if (_writeBufferStatistics != nullptr) {
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
@@ -128,6 +125,9 @@ bool SocketTask::fillReadBuffer () {
 
     return false;
   }
+
+  // update the tick value to indicate that the task actually did something
+  updateTick();
 
   int nr = TRI_READ_SOCKET(_commSocket, _readBuffer->end(), READ_BLOCK_SIZE, 0);
 
@@ -183,6 +183,9 @@ bool SocketTask::handleWrite () {
   int nr = 0;
 
   if (0 < len) {
+    // update the tick value to indicate that the task actually did something
+    updateTick();
+
     nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + _writeLength, (int) len, 0);
 
     if (nr < 0) {
@@ -207,14 +210,14 @@ bool SocketTask::handleWrite () {
   }
 
   if (len == 0) {
-    if (nullptr != _writeBuffer && _ownBuffer) {
+    if (nullptr != _writeBuffer) {
       delete _writeBuffer;
+      _writeBuffer = nullptr;
     }
 
     completedWriteBuffer();
 
     // rearm timer for keep-alive timeout
-    // TODO: do we need some lock before we modify the scheduler?
     setKeepAliveTimeout(_keepAliveTimeout);
   }
   else {
@@ -246,6 +249,8 @@ bool SocketTask::handleWrite () {
 
 void SocketTask::setWriteBuffer (StringBuffer* buffer,
                                  TRI_request_statistics_t* statistics) {
+  TRI_ASSERT(buffer != nullptr);
+
   _writeBufferStatistics = statistics;
 
   if (_writeBufferStatistics != nullptr) {
@@ -262,13 +267,10 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
   }
   else {
     if (_writeBuffer != nullptr) {
-      if (_ownBuffer) {
-        delete _writeBuffer;
-      }
+      delete _writeBuffer;
     }
 
     _writeBuffer = buffer;
-    _ownBuffer = true;
   }
 
   if (_clientClosed) {
@@ -396,6 +398,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
 
   if ((revents & EVENT_SOCKET_KILLED)) {
     // this will close the connection and destroy the task
+    updateTick();
     _clientClosed = true;
     handleTimeout();
     return false;
@@ -408,6 +411,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
     _scheduler->clearTimer(token);
 
     // this will close the connection and destroy the task
+    updateTick();
     _clientClosed = true;
     handleTimeout();
     return false;

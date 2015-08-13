@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpCommTask.h"
-
 #include "Basics/StringBuffer.h"
 #include "Basics/logging.h"
 #include "Basics/MutexLocker.h"
@@ -86,9 +85,9 @@ int AsyncChunkedTask::signalChunk (std::string const& data) {
       TRI_ASSERT(_data != nullptr);
 
       _data->appendHex(data.size());
-      _data->appendText("\r\n");
+      _data->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
       _data->appendText(data.c_str(), data.size());
-      _data->appendText("\r\n");
+      _data->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
     }
   }
 
@@ -138,6 +137,14 @@ bool AsyncChunkedTask::handleAsync () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief static initializers
+////////////////////////////////////////////////////////////////////////////////
+
+size_t const HttpCommTask::MaximalHeaderSize   =    1 * 1024 * 1024; //   1 MB
+size_t const HttpCommTask::MaximalBodySize     =  512 * 1024 * 1024; // 512 MB
+size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024; //   1 GB
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -164,9 +171,6 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     _newRequest(true),
     _isChunked(false),
     _request(nullptr),
-    _maximalHeaderSize(0),
-    _maximalBodySize(0),
-    _maximalPipelineSize(0),
     _httpVersion(HttpRequest::HTTP_UNKNOWN),
     _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
     _fullUrl(),
@@ -185,12 +189,6 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     _connectionInfo.clientAddress.c_str(),
     (int) _connectionInfo.clientPort
   );
-
-  auto const& sizeRestrictions = server->handlerFactory()->sizeRestrictions();
-
-  _maximalHeaderSize   = sizeRestrictions.maximalHeaderSize;
-  _maximalBodySize     = sizeRestrictions.maximalBodySize;
-  _maximalPipelineSize = sizeRestrictions.maximalPipelineSize;
 
   ConnectionStatisticsAgentSetHttp(this);
   ConnectionStatisticsAgent::release();
@@ -304,9 +302,9 @@ bool HttpCommTask::processRead () {
     // check if header is too large
     size_t headerLength = ptr - (_readBuffer->c_str() + _startPosition);
 
-    if (headerLength > _maximalHeaderSize) {
+    if (headerLength > MaximalHeaderSize) {
       LOG_WARNING("maximal header size is %d, request header size is %d",
-                  (int) _maximalHeaderSize,
+                  (int) MaximalHeaderSize,
                   (int) headerLength);
 
       // header is too large
@@ -401,7 +399,7 @@ bool HttpCommTask::processRead () {
 
         // check for Access-Control-Allow-Credentials header
         bool found;
-        string const& allowCredentials = _request->header("access-control-allow-credentials", found);
+        std::string const& allowCredentials = _request->header("access-control-allow-credentials", found);
 
         if (found) {
           _denyCredentials = ! StringUtils::boolean(allowCredentials);
@@ -492,15 +490,17 @@ bool HttpCommTask::processRead () {
       // check for a 100-continue
       if (_readRequestBody) {
         bool found;
-        string const& expect = _request->header("expect", found);
+        std::string const& expect = _request->header("expect", found);
 
         if (found && StringUtils::trim(expect) == "100-continue") {
           LOG_TRACE("received a 100-continue request");
 
-          StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
-          buffer->appendText("HTTP/1.1 100 (Continue)\r\n\r\n");
+          std::unique_ptr<StringBuffer> buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE));
+          buffer->appendText(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
 
-          _writeBuffers.push_back(buffer);
+          _writeBuffers.push_back(buffer.get());
+          buffer.release();
+
           _writeBuffersStats.push_back(nullptr);
 
           fillWriteBuffer();
@@ -549,14 +549,14 @@ bool HttpCommTask::processRead () {
   RequestStatisticsAgentSetReadEnd(this);
   RequestStatisticsAgentAddReceivedBytes(this, _bodyPosition - _startPosition + _bodyLength);
 
-  bool isOptions = (_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
+  bool const isOptionsRequest = (_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
   resetState(false);
 
   // .............................................................................
   // keep-alive handling
   // .............................................................................
 
-  string connectionType = StringUtils::tolower(_request->header("connection"));
+  std::string connectionType = StringUtils::tolower(_request->header("connection"));
 
   if (connectionType == "close") {
     // client has sent an explicit "Connection: Close" header. we should close the connection
@@ -586,10 +586,10 @@ bool HttpCommTask::processRead () {
   HttpResponse::HttpResponseCode authResult = _server->handlerFactory()->authenticateRequest(_request);
 
   // authenticated or an OPTIONS request. OPTIONS requests currently go unauthenticated
-  if (authResult == HttpResponse::OK || isOptions) {
+  if (authResult == HttpResponse::OK || isOptionsRequest) {
 
     // handle HTTP OPTIONS requests directly
-    if (isOptions) {
+    if (isOptionsRequest) {
       processCorsOptions(compatibility);
     }
     else {
@@ -603,13 +603,13 @@ bool HttpCommTask::processRead () {
     response.setContentType("application/json; charset=utf-8");
 
     response.body()
-    .appendText("{\"error\":true,\"errorMessage\":\"")
+    .appendText(TRI_CHAR_LENGTH_PAIR("{\"error\":true,\"errorMessage\":\""))
     .appendText(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
-    .appendText("\",\"code\":")
+    .appendText(TRI_CHAR_LENGTH_PAIR("\",\"code\":"))
     .appendInteger((int) authResult)
-    .appendText(",\"errorNum\":")
+    .appendText(TRI_CHAR_LENGTH_PAIR(",\"errorNum\":"))
     .appendInteger(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
-    .appendText("}");
+    .appendText(TRI_CHAR_LENGTH_PAIR("}"));
 
     clearRequest();
     handleResponse(&response);
@@ -621,11 +621,11 @@ bool HttpCommTask::processRead () {
     response.setContentType("application/json; charset=utf-8");
 
     response.body()
-    .appendText("{\"error\":true,\"errorMessage\":\"change password\",\"code\":")
+    .appendText(TRI_CHAR_LENGTH_PAIR("{\"error\":true,\"errorMessage\":\"change password\",\"code\":"))
     .appendInteger((int) authResult)
-    .appendText(",\"errorNum\":")
+    .appendText(TRI_CHAR_LENGTH_PAIR(",\"errorNum\":"))
     .appendInteger(TRI_ERROR_USER_CHANGE_PASSWORD)
-    .appendText("}");
+    .appendText(TRI_CHAR_LENGTH_PAIR("}"));
 
     clearRequest();
     handleResponse(&response);
@@ -634,10 +634,10 @@ bool HttpCommTask::processRead () {
   // not authenticated
   else {
     HttpResponse response(HttpResponse::UNAUTHORIZED, compatibility);
-    const string realm = "basic realm=\"" + _server->handlerFactory()->authenticationRealm(_request) + "\"";
+    std::string const realm = "basic realm=\"" + _server->handlerFactory()->authenticationRealm(_request) + "\"";
 
     if (sendWwwAuthenticateHeader()) {
-      response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());
+      response.setHeader(TRI_CHAR_LENGTH_PAIR("www-authenticate"), realm.c_str());
     }
 
     clearRequest();
@@ -653,6 +653,8 @@ bool HttpCommTask::processRead () {
 
 void HttpCommTask::sendChunk (StringBuffer* buffer) {
   if (_isChunked) {
+    TRI_ASSERT(buffer != nullptr);
+
     _writeBuffers.push_back(buffer);
     _writeBuffersStats.push_back(nullptr);
 
@@ -669,7 +671,7 @@ void HttpCommTask::sendChunk (StringBuffer* buffer) {
 
 void HttpCommTask::finishedChunked () {
   std::unique_ptr<StringBuffer> buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE, 6));
-  buffer->appendText("0\r\n\r\n");
+  buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
 
   _writeBuffers.push_back(buffer.get());
   buffer.release();
@@ -706,8 +708,7 @@ void HttpCommTask::addResponse (HttpResponse* response) {
     // access-control-allow-origin header now
     LOG_TRACE("handling CORS response");
 
-    response->setHeader("access-control-expose-headers",
-                        strlen("access-control-expose-headers"),
+    response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-expose-headers"),
                         "etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id");
 
     // TODO: check whether anyone actually needs these headers in the browser:
@@ -715,28 +716,18 @@ void HttpCommTask::addResponse (HttpResponse* response) {
     // x-arango-replication-lasttick, x-arango-replication-active");
 
     // send back original value of "Origin" header
-    response->setHeader("access-control-allow-origin", strlen("access-control-allow-origin"), _origin);
+    response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-origin"), _origin);
 
     // send back "Access-Control-Allow-Credentials" header
-    if (_denyCredentials) {
-      response->setHeader("access-control-allow-credentials", "false");
-    }
-    else {
-      response->setHeader("access-control-allow-credentials", "true");
-    }
+    response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-credentials"), (_denyCredentials ? "false" : "true"));
   }
   // CORS request handling EOF
 
   // set "connection" header
-  if (_closeRequested) {
-    response->setHeader("connection", strlen("connection"), "Close");
-  }
-  else {
-    // keep-alive is the default
-    response->setHeader("connection", strlen("connection"), "Keep-Alive");
-  }
+  // keep-alive is the default
+  response->setHeader(TRI_CHAR_LENGTH_PAIR("connection"), (_closeRequested ? "Close" : "Keep-Alive"));
 
-  size_t responseBodyLength = response->bodySize();
+  size_t const responseBodyLength = response->bodySize();
 
   if (_requestType == HttpRequest::HTTP_REQUEST_HEAD) {
     // clear body if this is an HTTP HEAD request
@@ -744,7 +735,7 @@ void HttpCommTask::addResponse (HttpResponse* response) {
     response->headResponse(responseBodyLength);
   }
   // else {
-  //    // to enable automatic deflating of responses, active this.
+  //   // to enable automatic deflating of responses, active this.
   //   // deflate takes a lot of CPU time so it should only be enabled for
   //   // dedicated purposes and not generally
   //   if (responseBodyLength > 16384  && _acceptDeflate) {
@@ -753,21 +744,20 @@ void HttpCommTask::addResponse (HttpResponse* response) {
   //   }
   // }
 
-  // reserve some outbuffer size
-  StringBuffer* buffer
-    = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128);
+  // reserve a buffer with some spare capacity
+  std::unique_ptr<StringBuffer> buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128));
 
   // write header
-  response->writeHeader(buffer);
+  response->writeHeader(buffer.get());
 
   // write body
   if (_requestType != HttpRequest::HTTP_REQUEST_HEAD) {
     if (_isChunked) {
       if (0 != responseBodyLength) {
         buffer->appendHex(response->body().length());
-        buffer->appendText("\r\n");
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
         buffer->appendText(response->body());
-        buffer->appendText("\r\n");
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
       }
     }
     else {
@@ -775,9 +765,10 @@ void HttpCommTask::addResponse (HttpResponse* response) {
     }
   }
 
-  _writeBuffers.push_back(buffer);
+  _writeBuffers.push_back(buffer.get());
+  auto b = buffer.release();
           
-  LOG_TRACE("HTTP WRITE FOR %p: %s", (void*) this, buffer->c_str());
+  LOG_TRACE("HTTP WRITE FOR %p: %s", (void*) this, b->c_str());
           
   // clear body
   response->body().clear();
@@ -805,7 +796,7 @@ void HttpCommTask::addResponse (HttpResponse* response) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpCommTask::checkContentLength (bool expectContentLength) {
-  const int64_t bodyLength = _request->contentLength();
+  int64_t const bodyLength = _request->contentLength();
 
   if (bodyLength < 0) {
 
@@ -824,8 +815,8 @@ bool HttpCommTask::checkContentLength (bool expectContentLength) {
     LOG_WARNING("received HTTP GET/HEAD request with content-length, this should not happen");
   }
 
-  if ((size_t) bodyLength > _maximalBodySize) {
-    LOG_WARNING("maximal body size is %d, request body size is %d", (int) _maximalBodySize, (int) bodyLength);
+  if ((size_t) bodyLength > MaximalBodySize) {
+    LOG_WARNING("maximal body size is %d, request body size is %d", (int) MaximalBodySize, (int) bodyLength);
 
     // request entity too large
     HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE, getCompatibility());
@@ -855,8 +846,10 @@ bool HttpCommTask::checkContentLength (bool expectContentLength) {
 
 void HttpCommTask::fillWriteBuffer () {
   if (! hasWriteBuffer() && ! _writeBuffers.empty()) {
-    StringBuffer * buffer = _writeBuffers.front();
+    StringBuffer* buffer = _writeBuffers.front();
     _writeBuffers.pop_front();
+
+    TRI_ASSERT(buffer != nullptr);
 
     TRI_request_statistics_t* statistics = _writeBuffersStats.front();
     _writeBuffersStats.pop_front();
@@ -870,31 +863,31 @@ void HttpCommTask::fillWriteBuffer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::processCorsOptions (uint32_t compatibility) {
-  const string allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
+  std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
 
   HttpResponse response(HttpResponse::OK, compatibility);
 
-  response.setHeader("allow", strlen("allow"), allowedMethods);
+  response.setHeader(TRI_CHAR_LENGTH_PAIR("allow"), allowedMethods);
 
   if (! _origin.empty()) {
     LOG_TRACE("got CORS preflight request");
-    const string allowHeaders = StringUtils::trim(_request->header("access-control-request-headers"));
+    std::string const allowHeaders = StringUtils::trim(_request->header("access-control-request-headers"));
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    response.setHeader("access-control-allow-methods", strlen("access-control-allow-methods"), allowedMethods);
+    response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-methods"), allowedMethods);
 
     if (! allowHeaders.empty()) {
       // allow all extra headers the client requested
       // we don't verify them here. the worst that can happen is that the client
       // sends some broken headers and then later cannot access the data on the
       // server. that's a client problem.
-      response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
+      response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-headers"), allowHeaders);
       LOG_TRACE("client requested validation of the following headers: %s", allowHeaders.c_str());
     }
 
     // set caching time (hard-coded value)
-    response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
+    response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-max-age"), "1800");
   }
 
   clearRequest();
@@ -908,8 +901,6 @@ void HttpCommTask::processCorsOptions (uint32_t compatibility) {
 void HttpCommTask::processRequest (uint32_t compatibility) {
   std::unique_ptr<HttpHandler> handler(_server->handlerFactory()->createHandler(_request));
 
-  bool ok = false;
-
   if (handler == nullptr) {
     LOG_TRACE("no handler is known, giving up");
 
@@ -922,7 +913,7 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
   }
 
   bool found;
-  string const& acceptEncoding = _request->header("accept-encoding", found);
+  std::string const& acceptEncoding = _request->header("accept-encoding", found);
 
   if (found) {
     if (acceptEncoding.find("deflate") != string::npos) {
@@ -931,13 +922,15 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
   }
 
   // check for an async request
-  string const& asyncExecution = _request->header("x-arango-async", found);
+  std::string const& asyncExecution = _request->header("x-arango-async", found);
 
   // clear request object
   _request = nullptr;
   RequestStatisticsAgent::transfer(handler.get());
 
   // async execution
+  bool ok = false;
+
   if (found && (asyncExecution == "true" || asyncExecution == "store")) {
 
     RequestStatisticsAgentSetAsync(this);
@@ -957,9 +950,7 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
 
       if (jobId > 0) {
         // return the job id we just created
-        response.setHeader("x-arango-async-id",
-                           strlen("x-arango-async-id"),
-                           StringUtils::itoa(jobId));
+        response.setHeader(TRI_CHAR_LENGTH_PAIR("x-arango-async-id"), StringUtils::itoa(jobId));
       }
 
       handleResponse(&response);
@@ -996,7 +987,7 @@ void HttpCommTask::clearRequest () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::resetState (bool close) {
-  const size_t COMPACT_EVERY = 500;
+  size_t const COMPACT_EVERY = 500;
 
   if (close) {
     clearRequest();
@@ -1016,7 +1007,7 @@ void HttpCommTask::resetState (bool close) {
     if (_sinceCompactification > COMPACT_EVERY) {
       compact = true;
     }
-    else if (_readBuffer->length() > _maximalPipelineSize) {
+    else if (_readBuffer->length() > MaximalPipelineSize) {
       compact = true;
     }
 
@@ -1171,10 +1162,14 @@ bool HttpCommTask::handleRead ()  {
   }
 
   if (_clientClosed) {
+    updateTick();
+
     res = false;
     _server->handleCommunicationClosed(this);
   }
   else if (! res) {
+    updateTick();
+
     _clientClosed = true;
     _server->handleCommunicationFailure(this);
   }
@@ -1199,6 +1194,8 @@ void HttpCommTask::completedWriteBuffer () {
   fillWriteBuffer();
 
   if (! _clientClosed && _closeRequested && ! hasWriteBuffer() && _writeBuffers.empty() && ! _isChunked) {
+    updateTick();
+
     _clientClosed = true;
     _server->handleCommunicationClosed(this);
   }
