@@ -85,7 +85,8 @@ namespace triagens {
         Entry* _list;
 
         std::atomic<int> _last;
-        static thread_local int _mySlot;
+
+        static thread_local int _mySlot; // initialized to -1 in .cpp file
 
       public:
 
@@ -95,7 +96,9 @@ namespace triagens {
             int _id;
 
           public:
-            UnUser (DataProtector* p, int i) : _prot(p), _id(i) {
+            UnUser (DataProtector* p, int i) 
+              : _prot(p), 
+                _id(i) {
             }
 
             ~UnUser () {
@@ -105,7 +108,9 @@ namespace triagens {
             }
 
             // A move constructor
-            UnUser (UnUser&& that) : _prot(that._prot), _id(that._id) {
+            UnUser (UnUser&& that) 
+              : _prot(that._prot), 
+                _id(that._id) {
               // Note that return value optimization will usually avoid
               // this move constructor completely. However, it has to be
               // present for the program to compile.
@@ -119,7 +124,10 @@ namespace triagens {
             UnUser () = delete;
         };
 
-        DataProtector () : _last(0) {
+        DataProtector () 
+          : _list(nullptr),
+            _last(0) {
+
           _list = new Entry[DATA_PROTECTOR_MULTIPLICITY];
           // Just to be sure:
           for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
@@ -133,6 +141,7 @@ namespace triagens {
 
         UnUser use () {
           int id = _mySlot;
+
           if (id < 0) {
             id = _last++;
             if (_last > DATA_PROTECTOR_MULTIPLICITY) {
@@ -140,6 +149,7 @@ namespace triagens {
             }
             _mySlot = id;
           }
+
           _list[id]._count++;   // this is implicitly using memory_order_seq_cst
           return UnUser(this, id);  // return value optimization!
         }
@@ -147,6 +157,7 @@ namespace triagens {
         void scan () {
           for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
             while (_list[i]._count > 0) {
+              // let other threads do some work while we're waiting
               usleep(250);
             }
           }
