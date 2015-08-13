@@ -459,7 +459,8 @@ int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
         // no need to continue
         // Free this element and return.
         TRI_index_element_t::free(element);
-        return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+        return TRI_ERROR_NO_ERROR;
+        // return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
       }
       continue;
     }
@@ -478,7 +479,8 @@ int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
         // no need to continue
         // Free this element and return.
         TRI_index_element_t::free(element);
-        return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+        return TRI_ERROR_NO_ERROR;
+        // return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
       }
     }
 
