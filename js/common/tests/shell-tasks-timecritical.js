@@ -646,7 +646,7 @@ function TaskSuite () {
 
     testBrokenCommand : function () {
       try {
-        task = tasks.register({ 
+        tasks.register({ 
           id: "UnitTests1", 
           name: "UnitTests1", 
           command: "for (i", 
