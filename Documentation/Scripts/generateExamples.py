@@ -436,6 +436,12 @@ def analyzeFile(f, filename):
             if line[0] == "|":
                 if line.startswith("| "):
                     line = line[2:]
+                elif line.startswith("|~ "):
+                    showCmd = False
+                    line = line[3:]
+                elif line.startswith("|~"):
+                    showCmd = False
+                    line = line[2:]
                 else:
                     line = line[1:]
 
