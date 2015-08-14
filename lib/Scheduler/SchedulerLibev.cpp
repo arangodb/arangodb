@@ -64,7 +64,7 @@ namespace {
 /// @brief async event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct AsyncWatcher : public ev_async, Watcher {
+  struct AsyncWatcher final : public ev_async, Watcher {
     struct ev_loop* loop;
     Task* task;
 
@@ -100,7 +100,7 @@ namespace {
 /// @brief socket event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct SocketWatcher : public ev_io, Watcher {
+  struct SocketWatcher final : public ev_io, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -120,64 +120,27 @@ namespace {
     Task* task = watcher->task;
 
     if (task != nullptr) {
-      // initialize progress to `true` for tasks that do not have progress tracking,
-      // and to `false` for all others
-#if 0
-      bool progress = ! task->trackProgress();
-#endif
-
       if (revents & EV_READ) {
         if (revents & EV_WRITE) {
           // read and write
-#if 0
-          auto const tick = task->tick();
-#endif
           task->handleEvent(watcher, EVENT_SOCKET_READ | EVENT_SOCKET_WRITE);
-#if 0
-          progress |= (task->tick() != tick);
-#endif
         }
         else {
           // read
-#if 0
-          auto const tick = task->tick();
-#endif
           task->handleEvent(watcher, EVENT_SOCKET_READ);
-#if 0
-          progress |= (task->tick() != tick);
-#endif
         }
       }
       else if (revents & EV_WRITE) {
         // write
-#if 0
-        auto const tick = task->tick();
-#endif
         task->handleEvent(watcher, EVENT_SOCKET_WRITE);
-#if 0
-        progress |= (task->tick() != tick);
-#endif
       }
 
-#if 0
-      // TODO: implement for ListenTask, HttpsCommTask and turn of reporting when writing a buffer of size 0
-      if (! progress) {
-        LOG_ERROR("no progress achieved for task %s %llu", task->name().c_str(), (unsigned long long) task->taskId()); 
-        // event not handled or no progress achieved!
-        if (task->shouldAbort()) {
-          LOG_WARNING("event not handled for task '%s'. now aborting task", task->name().c_str());
-
-          task->handleEvent(watcher, EVENT_SOCKET_KILLED);
-        }
-      }
-#endif
+      // note: task may have been destroyed by here, so it's not safe to access it anymore
     }
     else {
-      /*
       LOG_WARNING("socketCallback called for unknown task");
       // TODO: given that the task is unknown, is it safe to stop to I/O here?
-      ev_io_stop(watcher->loop, w);
-      */
+      // ev_io_stop(watcher->loop, w);
     }
   }
 
@@ -185,7 +148,7 @@ namespace {
 /// @brief periodic event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct PeriodicWatcher : public ev_periodic, Watcher {
+  struct PeriodicWatcher final : public ev_periodic, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -213,7 +176,7 @@ namespace {
 /// @brief signal event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct SignalWatcher : public ev_signal, Watcher {
+  struct SignalWatcher final : public ev_signal, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -241,7 +204,7 @@ namespace {
 /// @brief timer event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct TimerWatcher : public ev_timer, Watcher {
+  struct TimerWatcher final : public ev_timer, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -465,8 +428,7 @@ void SchedulerLibev::uninstallEvent (EventToken watcher) {
       break;
     }
 
-    case EVENT_SOCKET_READ:
-    case EVENT_SOCKET_KILLED: {
+    case EVENT_SOCKET_READ: {
       SocketWatcher* w = (SocketWatcher*) watcher;
       ev_io_stop(w->loop, (ev_io*) w);
       delete w;

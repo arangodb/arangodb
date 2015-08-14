@@ -98,13 +98,13 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool setup (Scheduler*, EventLoop);
+        bool setup (Scheduler*, EventLoop) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleEvent (EventToken, EventType);
+        bool handleEvent (EventToken, EventType) override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Socket methods
@@ -114,13 +114,13 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool fillReadBuffer ();
+        bool fillReadBuffer () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleWrite ();
+        bool handleWrite () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

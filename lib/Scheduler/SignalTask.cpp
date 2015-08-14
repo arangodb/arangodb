@@ -44,14 +44,14 @@ using namespace triagens::rest;
 
 SignalTask::SignalTask ()
   : Task("SignalTask") {
+
   for (size_t i = 0;  i < MAX_SIGNALS;  ++i) {
-    watcher[i] = nullptr;
+    _watchers[i] = nullptr;
   }
 }
 
-
-
 SignalTask::~SignalTask () {
+  cleanup();
 }
 
 // -----------------------------------------------------------------------------
@@ -59,9 +59,9 @@ SignalTask::~SignalTask () {
 // -----------------------------------------------------------------------------
 
 bool SignalTask::addSignal (int signal) {
-  MUTEX_LOCKER(changeLock);
+  MUTEX_LOCKER(_changeLock);
 
-  if (signals.size() >= MAX_SIGNALS) {
+  if (_signals.size() >= MAX_SIGNALS) {
     LOG_ERROR("maximal number of signals reached");
     return false;
   }
@@ -70,7 +70,7 @@ bool SignalTask::addSignal (int signal) {
       _scheduler->unregisterTask(this);
     }
 
-    signals.insert(signal);
+    _signals.insert(signal);
 
     if (_scheduler != nullptr) {
       _scheduler->registerTask(this);
@@ -85,41 +85,36 @@ bool SignalTask::addSignal (int signal) {
 // -----------------------------------------------------------------------------
 
 bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
-  this->_scheduler = scheduler;
-  this->_loop = loop;
+  _scheduler = scheduler;
+  _loop = loop;
 
   size_t pos = 0;
 
-  for (std::set<int>::iterator i = signals.begin();  i != signals.end() && pos < MAX_SIGNALS;  ++i, ++pos) {
-    watcher[pos] = scheduler->installSignalEvent(loop, this, *i);
+  for (auto& it : _signals) {
+    _watchers[pos++] = _scheduler->installSignalEvent(loop, this, it);
   }
+
   return true;
 }
 
-
-
 void SignalTask::cleanup () {
-  if (_scheduler == nullptr) {
-    LOG_WARNING("In SignalTask::cleanup the scheduler has disappeared -- invalid pointer");
-  }
-  for (size_t pos = 0;  pos < signals.size() && pos < MAX_SIGNALS;  ++pos) {
+  for (size_t pos = 0;  pos < _signals.size() && pos < MAX_SIGNALS;  ++pos) {
     if (_scheduler != nullptr) {
-      _scheduler->uninstallEvent(watcher[pos]);
+      _scheduler->uninstallEvent(_watchers[pos]);
     }
-    watcher[pos] = nullptr;
+    _watchers[pos] = nullptr;
   }
 }
 
-
-
-bool SignalTask::handleEvent (EventToken token, EventType revents) {
+bool SignalTask::handleEvent (EventToken token, 
+                              EventType revents) {
   TRI_ASSERT(token != nullptr);
 
   bool result = true;
 
   if (revents & EVENT_SIGNAL) {
-    for (size_t pos = 0;  pos < signals.size() && pos < MAX_SIGNALS;  ++pos) {
-      if (token == watcher[pos]) {
+    for (size_t pos = 0;  pos < _signals.size() && pos < MAX_SIGNALS;  ++pos) {
+      if (token == _watchers[pos]) {
         result = handleSignal();
         break;
       }
@@ -128,8 +123,6 @@ bool SignalTask::handleEvent (EventToken token, EventType revents) {
 
   return result;
 }
-
-
 
 bool SignalTask::needsMainEventLoop () const {
   return true;

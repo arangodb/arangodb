@@ -128,8 +128,8 @@ bool HttpsCommTask::setup (Scheduler* scheduler, EventLoop loop) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpsCommTask::handleEvent (EventToken token, EventType revents) {
-
+bool HttpsCommTask::handleEvent (EventToken token, 
+                                 EventType revents) {
   // try to accept the SSL connection
   if (! _accepted) {
     if (token == _readWatcher && (revents & EVENT_SOCKET_READ)) {
@@ -151,6 +151,8 @@ bool HttpsCommTask::handleEvent (EventToken token, EventType revents) {
 
   // handle normal socket operation
   bool result = HttpCommTask::handleEvent(token, revents);
+
+  // warning: if _clientClosed is true here, the task (this) is already deleted!
 
   // we might need to start listing for writes (even we only want to READ)
   if (result && ! _clientClosed) {

@@ -105,17 +105,16 @@ namespace triagens {
 
         bool handleEvent (EventToken, EventType) override;
 
-      protected:
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief periodic event
 ////////////////////////////////////////////////////////////////////////////////
 
-        EventToken watcher;
+        EventToken _watcher;
 
-      private:
-        double offset;
-        double interval;
+        double _offset;
+        double _interval;
     };
   }
 }
