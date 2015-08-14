@@ -150,7 +150,7 @@ bool SocketTask::fillReadBuffer () {
     LOG_DEBUG("read from socket failed with %d: %s", (int) myerrno, strerror(myerrno));
 
     // force closing of the connection
-    _clientClosed = true;
+    handleTimeout();
     return false;
   }
 
@@ -195,7 +195,7 @@ bool SocketTask::handleWrite () {
         LOG_DEBUG("writing to socket failed with %d: %s", (int) myerrno, strerror(myerrno));
 
         // force closing of the connection
-        _clientClosed = true;
+        handleTimeout();
         return false;
       }
   
@@ -405,7 +405,6 @@ bool SocketTask::handleEvent (EventToken token,
     _scheduler->clearTimer(token);
 
     // this will close the connection and destroy the task
-    _clientClosed = true;
     handleTimeout();
     return false;
   }
