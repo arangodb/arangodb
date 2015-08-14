@@ -46,9 +46,9 @@ build-book:
 		cd $${WD}/ppbooks; \
 		test -d $${dir} || mkdir -p $${dir}; \
 	done
-	cd ppbooks/$(NAME); test -l SUMMARY.md || ln -s ../../$(NAME)/SUMMARY.md .
-	cd ppbooks/$(NAME); test -l book.json || ln -s ../../$(NAME)/book.json .
-	cd ppbooks/$(NAME); test d styles || cp -a ../../$(NAME)/styles .
+	cd ppbooks/$(NAME); test -L SUMMARY.md || ln -s ../../$(NAME)/SUMMARY.md .
+	cd ppbooks/$(NAME); test -L book.json || ln -s ../../$(NAME)/book.json .
+	cd ppbooks/$(NAME); cp -a ../../$(NAME)/styles/* styles/
 	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/$(newVersionNumber)/g' styles/header.js
 	WD=`pwd`; \
 	for pic in `find $(NAME) -name \*.png`; do \
