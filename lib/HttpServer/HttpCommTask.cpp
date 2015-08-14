@@ -55,7 +55,8 @@ AsyncChunkedTask::AsyncChunkedTask (HttpCommTask* output)
     _output(output),
     _done(false),
     _data(nullptr),
-    _dataLock() {
+    _dataLock(),
+    _watcher(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +102,13 @@ int AsyncChunkedTask::signalChunk (std::string const& data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AsyncChunkedTask::setup (Scheduler* scheduler, EventLoop loop) {
-  return AsyncTask::setup(scheduler, loop);
+  this->_scheduler = scheduler;
+  this->_loop = loop;
+
+  // will throw if it goes wrong...
+  _watcher = scheduler->installAsyncEvent(loop, this);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +116,25 @@ bool AsyncChunkedTask::setup (Scheduler* scheduler, EventLoop loop) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncChunkedTask::cleanup () {
-  return AsyncTask::cleanup();
+  if (_scheduler != nullptr) {
+    if (_watcher != nullptr) {
+      _scheduler->uninstallEvent(_watcher);
+    }
+  }
+
+  _watcher = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles the event
+////////////////////////////////////////////////////////////////////////////////
+
+bool AsyncChunkedTask::handleEvent (EventToken token, EventType revents) {
+  if (_watcher == token && (revents & EVENT_ASYNC)) {
+    return handleAsync();
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,6 +155,14 @@ bool AsyncChunkedTask::handleAsync () {
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles signal if a new chunk has arrived
+////////////////////////////////////////////////////////////////////////////////
+
+void AsyncChunkedTask::signal () {
+  _scheduler->sendAsync(_watcher);
 }
 
 // -----------------------------------------------------------------------------
@@ -155,6 +188,7 @@ HttpCommTask::HttpCommTask (HttpServer* server,
   : Task("HttpCommTask"),
     SocketTask(socket, keepAliveTimeout),
     _connectionInfo(info),
+    _watcher(nullptr),
     _server(server),
     _job(nullptr),
     _handler(nullptr),
@@ -1067,11 +1101,11 @@ bool HttpCommTask::setup (Scheduler* scheduler, EventLoop loop) {
     return false;
   }
 
-  ok = AsyncTask::setup(scheduler, loop);
+  this->_scheduler = scheduler;
+  this->_loop = loop;
 
-  if (! ok) {
-    return false;
-  }
+  // will throw if it goes wrong...
+  _watcher = scheduler->installAsyncEvent(loop, this);
 
   ok = _chunkedTask.setup(scheduler, loop);
 
@@ -1088,7 +1122,15 @@ bool HttpCommTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 void HttpCommTask::cleanup () {
   SocketTask::cleanup();
-  AsyncTask::cleanup();
+
+  if (_scheduler != nullptr) {
+    if (_watcher != nullptr) {
+      _scheduler->uninstallEvent(_watcher);
+    }
+  }
+
+  _watcher = nullptr;
+
   _chunkedTask.cleanup();
 }
 
@@ -1100,7 +1142,12 @@ bool HttpCommTask::handleEvent (EventToken token, EventType events) {
   bool result = SocketTask::handleEvent(token, events);
 
   if (result) {
-    result = AsyncTask::handleEvent(token, events);
+    if (_watcher == token && (events & EVENT_ASYNC)) {
+      result = handleAsync();
+    }
+    else {
+      result = true;
+    }
   }
 
   if (_clientClosed) {
@@ -1133,6 +1180,16 @@ bool HttpCommTask::handleAsync () {
   _server->handleAsync(this);
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signals the task
+///
+/// Note that this method can only be called after the task has been registered.
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpCommTask::signal () {
+  _scheduler->sendAsync(_watcher);
 }
 
 // -----------------------------------------------------------------------------

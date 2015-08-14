@@ -33,7 +33,6 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
-#include "Scheduler/AsyncTask.h"
 #include "Scheduler/SocketTask.h"
 
 namespace triagens {
@@ -49,7 +48,7 @@ namespace triagens {
 // --SECTION--                                            class AsyncChunkedTask
 // -----------------------------------------------------------------------------
 
-    class AsyncChunkedTask : public AsyncTask {
+    class AsyncChunkedTask : public Task {
       public:
         explicit AsyncChunkedTask (HttpCommTask*);
         ~AsyncChunkedTask ();
@@ -58,13 +57,22 @@ namespace triagens {
         int signalChunk (std::string const&);
         bool setup (Scheduler*, EventLoop) override;
         void cleanup () override;
-        bool handleAsync () override;
+        bool handleEvent (EventToken, EventType) override;
+        bool handleAsync ();
+        void signal ();
 
       private:
+
         HttpCommTask* _output;
         bool _done;
         basics::StringBuffer* _data;
         basics::Mutex _dataLock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief event for async signals
+////////////////////////////////////////////////////////////////////////////////
+
+        EventToken _watcher;
     };
 
 // -----------------------------------------------------------------------------
@@ -75,10 +83,7 @@ namespace triagens {
 /// @brief http communication
 ////////////////////////////////////////////////////////////////////////////////
  
- #pragma warning(disable : 4250)
-
     class HttpCommTask : public SocketTask,
-                         public AsyncTask,
                          public RequestStatisticsAgent {
       HttpCommTask (HttpCommTask const&) = delete;
       HttpCommTask const& operator= (HttpCommTask const&) = delete;
@@ -279,7 +284,17 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleAsync () override;
+        bool handleAsync ();
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signals the task
+///
+/// Note that this method can only be called after the task has been registered.
+////////////////////////////////////////////////////////////////////////////////
+
+        void signal ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                SocketTask methods
@@ -322,6 +337,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief event for async signals
+////////////////////////////////////////////////////////////////////////////////
+
+        EventToken _watcher;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the underlying server

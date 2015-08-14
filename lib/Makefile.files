@@ -155,7 +155,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/HttpsServer.cpp \
 	lib/HttpServer/PathHandler.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
-	lib/Scheduler/AsyncTask.cpp \
 	lib/Scheduler/ListenTask.cpp \
 	lib/Scheduler/PeriodicTask.cpp \
 	lib/Scheduler/Scheduler.cpp \
