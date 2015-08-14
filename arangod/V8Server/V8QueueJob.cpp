@@ -121,33 +121,30 @@ Job::status_t V8QueueJob::work () {
     auto current = isolate->GetCurrentContext()->Global();
     auto main = v8::Local<v8::Function>::Cast(current->Get(TRI_V8_ASCII_STRING("MAIN")));
 
-    if (main.IsEmpty()) {
-      _v8Dealer->exitContext(context);
-      return status_t(JOB_DONE);
-    }
+    if (! main.IsEmpty()) {
+      v8::Handle<v8::Value> fArgs;
 
-    v8::Handle<v8::Value> fArgs;
-
-    if (_parameters != nullptr) {
-      fArgs = TRI_ObjectJson(isolate, _parameters);
-    }
-    else {
-      fArgs = v8::Undefined(isolate);
-    }
-
-    // call the function
-    v8::TryCatch tryCatch;
-    main->Call(current, 1, &fArgs);
-
-    if (tryCatch.HasCaught()) {
-      if (tryCatch.CanContinue()) {
-        TRI_LogV8Exception(isolate, &tryCatch);
+      if (_parameters != nullptr) {
+        fArgs = TRI_ObjectJson(isolate, _parameters);
       }
       else {
-        TRI_GET_GLOBALS();
+        fArgs = v8::Undefined(isolate);
+      }
 
-        v8g->_canceled = true;
-        LOG_WARNING("caught non-catchable exception (aka termination) in V8 queue job");
+      // call the function
+      v8::TryCatch tryCatch;
+      main->Call(current, 1, &fArgs);
+
+      if (tryCatch.HasCaught()) {
+        if (tryCatch.CanContinue()) {
+          TRI_LogV8Exception(isolate, &tryCatch);
+        }
+        else {
+          TRI_GET_GLOBALS();
+
+          v8g->_canceled = true;
+          LOG_WARNING("caught non-catchable exception (aka termination) in V8 queue job");
+        }
       }
     }
   }

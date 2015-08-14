@@ -128,36 +128,32 @@ Job::status_t V8Job::work () {
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
-    if (action.IsEmpty()) {
-      _v8Dealer->exitContext(context);
-      // TODO: adjust exit code??
-      return status_t(JOB_DONE);
-    }
+    if (! action.IsEmpty()) {
+      v8::Handle<v8::Value> fArgs;
 
-    v8::Handle<v8::Value> fArgs;
+      if (_parameters != nullptr) {
+        fArgs = TRI_ObjectJson(isolate, _parameters);
+      }
+      else {
+        fArgs = v8::Undefined(isolate);
+      }
 
-    if (_parameters != nullptr) {
-      fArgs = TRI_ObjectJson(isolate, _parameters);
-    }
-    else {
-      fArgs = v8::Undefined(isolate);
-    }
+      // call the function wihtin a try/catch
+      {
+        v8::TryCatch tryCatch;
 
-    // call the function wihtin a try/catch
-    {
-      v8::TryCatch tryCatch;
+        action->Call(current, 1, &fArgs);
 
-      action->Call(current, 1, &fArgs);
+        if (tryCatch.HasCaught()) {
+          if (tryCatch.CanContinue()) {
+            TRI_LogV8Exception(isolate, &tryCatch);
+          }
+          else {
+            TRI_GET_GLOBALS();
 
-      if (tryCatch.HasCaught()) {
-        if (tryCatch.CanContinue()) {
-          TRI_LogV8Exception(isolate, &tryCatch);
-        }
-        else {
-          TRI_GET_GLOBALS();
-
-          v8g->_canceled = true;
-          LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
+            v8g->_canceled = true;
+            LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
+          }
         }
       }
     }
