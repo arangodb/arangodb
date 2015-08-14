@@ -61,7 +61,7 @@ describe("Foxx Manager", function() {
     var i, app, l = list.length;
     for (i = 0; i < l; ++i) {
       app = list[i];
-      if (app.name === "sessions-example-app") {
+      if (app.name === "sessions-example-app" || app.name === "session-service") {
         continue;
         /*
         var arangodb = require("org/arangodb");
