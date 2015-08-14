@@ -1411,7 +1411,7 @@ function startup () {
 ///
 /// You can use the functions *ResultOk* and *ResultError* to easily
 /// generate a response.
-/// @endDocuBLock
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineHttp (options) {
