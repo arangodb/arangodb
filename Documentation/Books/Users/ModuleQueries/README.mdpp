@@ -7,7 +7,7 @@ The query module provides the infrastructure for working with currently running 
 
     @startDocuBlockInline QUERY_01_properyOfQueries
     @EXAMPLE_ARANGOSH_OUTPUT{QUERY_01_properyOfQueries}
-    ~var queries = require("org/arangodb/aql/queries");
+    var queries = require("org/arangodb/aql/queries");
     queries.properties();
     queries.properties({slowQueryThreshold: 1});
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -20,15 +20,22 @@ uses resources, you may want to increase `period` (and not forget to remove it..
 
     @startDocuBlockInline QUERY_02_listQueries
     @EXAMPLE_ARANGOSH_OUTPUT{QUERY_02_listQueries}
-    var queries = require("org/arangodb/aql/queries");
+    ~var queries = require("org/arangodb/aql/queries");
+    var theQuery = 'FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLEEP(1000) RETURN sleepLoooong';
     var tasks = require("org/arangodb/tasks");
     |tasks.register({
     |  id: "mytask-1",
-    |  name: "this is a sample task to spawn slow aql queries",
-    |  period: 2,
-    |  command: "require('internal').db._query('FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLEEP(1) RETURN sleepLoooong');"
+    |  name: "this is a sample task to spawn a slow aql query",
+    |  command: "require('internal').db._query('" + theQuery + "');"
     });
-    ~require("internal").wait(5)
+    |~ while (true) {
+    |~   require("internal").wait(1);
+    |~   if (queries.current().filter(function(query) {
+    |~                           return query.query === theQuery;
+    |~                         }).length > 0) {
+    |~     break;
+    |~   }
+    ~}
     queries.current();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock QUERY_02_listQueries
@@ -63,9 +70,11 @@ Kill a running AQL query:
     @EXAMPLE_ARANGOSH_OUTPUT{QUERY_05_killQueries}
     ~var queries = require("org/arangodb/aql/queries");
     ~var tasks = require("org/arangodb/tasks");
-    var oneQuery = queries.current()[1];
-    queries.kill(oneQuery.id);
-    tasks.unregister("mytask-1");
+    ~var theQuery = 'FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLEEP(1000) RETURN sleepLoooong';
+    |var runningQueries = queries.current().filter(function(query) {
+    |   return query.query === theQuery;
+    });
+    queries.kill(runningQueries[0].id);
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock QUERY_05_killQueries
 
