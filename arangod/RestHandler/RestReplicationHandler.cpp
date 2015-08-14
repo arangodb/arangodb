@@ -1836,7 +1836,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   uint64_t numberOfShards = 1;
   TRI_json_t const* shards = JsonHelper::getObjectElement(parameters, "shards");
   if (nullptr != shards && TRI_IsObjectJson(shards)) {
-    numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
+    numberOfShards = TRI_LengthVector(&shards->_value._objects) / 2;
   }
   // We take one shard if "shards" was not given
 
@@ -1845,7 +1845,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   TRI_json_t* newId = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                                new_id.c_str(), new_id.size());
   TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id", newId);
-  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, newId);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newId);
 
   // Now put in the primary and an edge index if needed:
   TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
