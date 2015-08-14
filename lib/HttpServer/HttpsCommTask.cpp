@@ -51,7 +51,7 @@ using namespace triagens::rest;
 
 HttpsCommTask::HttpsCommTask (HttpsServer* server,
                               TRI_socket_t socket,
-                              const ConnectionInfo& info,
+                              ConnectionInfo const& info,
                               double keepAliveTimeout,
                               SSL_CTX* ctx,
                               int verificationMode,
@@ -89,7 +89,6 @@ HttpsCommTask::~HttpsCommTask () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpsCommTask::setup (Scheduler* scheduler, EventLoop loop) {
-
   // setup base class
   bool ok = HttpCommTask::setup(scheduler, loop);
 

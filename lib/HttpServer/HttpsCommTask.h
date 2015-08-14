@@ -75,7 +75,7 @@ namespace triagens {
 
         HttpsCommTask (HttpsServer*,
                        TRI_socket_t,
-                       const ConnectionInfo&,
+                       ConnectionInfo const&,
                        double keepAliveTimeout,
                        SSL_CTX* ctx,
                        int verificationMode,

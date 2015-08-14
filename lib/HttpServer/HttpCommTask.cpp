@@ -457,7 +457,7 @@ bool HttpCommTask::processRead () {
         case HttpRequest::HTTP_REQUEST_PUT:
         case HttpRequest::HTTP_REQUEST_PATCH: {
           // technically, sending a body for an HTTP DELETE request is not forbidden, but it is not explicitly supported
-          const bool expectContentLength = (_requestType == HttpRequest::HTTP_REQUEST_POST
+          bool const expectContentLength = (_requestType == HttpRequest::HTTP_REQUEST_POST
                                             || _requestType == HttpRequest::HTTP_REQUEST_PUT
                                             || _requestType == HttpRequest::HTTP_REQUEST_PATCH
                                             || _requestType == HttpRequest::HTTP_REQUEST_OPTIONS
@@ -554,7 +554,7 @@ bool HttpCommTask::processRead () {
   // readRequestBody might have changed, so cannot use else
   if (_readRequestBody) {
     if (_readBuffer->length() - _bodyPosition < _bodyLength) {
-      setKeepAliveTimeout(60.0);
+      setKeepAliveTimeout(_keepAliveTimeout);
 
       // let client send more
       return false;
@@ -1260,6 +1260,7 @@ void HttpCommTask::completedWriteBuffer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::handleTimeout () {
+  _clientClosed = true;
   _server->handleCommunicationClosed(this);
 }
 
