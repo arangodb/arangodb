@@ -20,16 +20,22 @@ def file_content(filepath):
 
   comment_indexes = []
   comments = []
+  _start = None
 
   for line in enumerate(filelines):
     if "@startDocuBlock" in line[1]:
+      # in the mdpp's we have non-terminated startDocuBlocks, else its an error:
+      if _start != None and not 'mdpp' in filepath:
+        print "next startDocuBlock found without endDocuBlock inbetween in file %s [%s]" %(filepath, line)
+        raise
       _start = line[0]
     if "@endDocuBlock" in line[1]:
       try:
         _end = line[0] + 1
         comment_indexes.append([_start, _end])
+        _start = None
       except NameError:
-        print "endDocuBlock without previous startDocublock seen while analyzing %s [%s]" %(filepath, line)
+        print "endDocuBlock without previous startDocublock seen while analyzing file %s [%s]" %(filepath, line)
         raise
 
   for index in comment_indexes:
