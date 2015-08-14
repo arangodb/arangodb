@@ -121,45 +121,42 @@ Job::status_t V8QueueJob::work () {
     auto current = isolate->GetCurrentContext()->Global();
     auto main = v8::Local<v8::Function>::Cast(current->Get(TRI_V8_ASCII_STRING("MAIN")));
 
-    if (main.IsEmpty()) {
-      _v8Dealer->exitContext(context);
-      return status_t(JOB_DONE);
-    }
+    if (! main.IsEmpty()) {
+      v8::Handle<v8::Value> fArgs;
 
-    v8::Handle<v8::Value> fArgs;
+      if (_parameters != nullptr) {
+        fArgs = TRI_ObjectJson(isolate, _parameters);
+      }
+      else {
+        fArgs = v8::Undefined(isolate);
+      }
 
-    if (_parameters != nullptr) {
-      fArgs = TRI_ObjectJson(isolate, _parameters);
-    }
-    else {
-      fArgs = v8::Undefined(isolate);
-    }
+      // call the function
+      try {
+        v8::TryCatch tryCatch;
+        main->Call(current, 1, &fArgs);
 
-    // call the function
-    try {
-      v8::TryCatch tryCatch;
-      main->Call(current, 1, &fArgs);
+        if (tryCatch.HasCaught()) {
+          if (tryCatch.CanContinue()) {
+            TRI_LogV8Exception(isolate, &tryCatch);
+          }
+          else {
+            TRI_GET_GLOBALS();
 
-      if (tryCatch.HasCaught()) {
-        if (tryCatch.CanContinue()) {
-          TRI_LogV8Exception(isolate, &tryCatch);
-        }
-        else {
-          TRI_GET_GLOBALS();
-
-          v8g->_canceled = true;
-          LOG_WARNING("caught non-catchable exception (aka termination) in V8 queue job");
+            v8g->_canceled = true;
+            LOG_WARNING("caught non-catchable exception (aka termination) in V8 queue job");
+          }
         }
       }
-    }
-    catch (triagens::basics::Exception const& ex) {
-      LOG_ERROR("caught exception in V8 queue job: %s %s", TRI_errno_string(ex.code()), ex.what());
-    }
-    catch (std::bad_alloc const&) {
-      LOG_ERROR("caught exception in V8 queue job: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
-    }
-    catch (...) {
-      LOG_ERROR("caught unknown exception in V8 queue job");
+      catch (triagens::basics::Exception const& ex) {
+        LOG_ERROR("caught exception in V8 queue job: %s %s", TRI_errno_string(ex.code()), ex.what());
+      }
+      catch (std::bad_alloc const&) {
+        LOG_ERROR("caught exception in V8 queue job: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+      }
+      catch (...) {
+        LOG_ERROR("caught unknown exception in V8 queue job");
+      }
     }
   }
 
