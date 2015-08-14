@@ -93,7 +93,7 @@ Job::status_t V8Job::work () {
 
   ApplicationV8::V8Context* context = _v8Dealer->enterContext(_vocbase, _allowUseDatabase);
 
-  // note: the context might be nullptr in case of shut-down
+  // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
     return status_t(JOB_DONE);
   }
@@ -113,44 +113,47 @@ Job::status_t V8Job::work () {
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
-    if (! action.IsEmpty()) {
-      // only go in here if action code can be compiled
-      v8::Handle<v8::Value> fArgs;
+    if (action.IsEmpty()) {
+      _v8Dealer->exitContext(context);
+      // TODO: adjust exit code??
+      return status_t(JOB_DONE);
+    }
 
-      if (_parameters != nullptr) {
-        fArgs = TRI_ObjectJson(isolate, _parameters);
-      }
-      else {
-        fArgs = v8::Undefined(isolate);
-      }
+    v8::Handle<v8::Value> fArgs;
 
-      // call the function within a try/catch
-      try {
-        v8::TryCatch tryCatch;
+    if (_parameters != nullptr) {
+      fArgs = TRI_ObjectJson(isolate, _parameters);
+    }
+    else {
+      fArgs = v8::Undefined(isolate);
+    }
 
-        action->Call(current, 1, &fArgs);
+    // call the function within a try/catch
+    try {
+      v8::TryCatch tryCatch;
 
-        if (tryCatch.HasCaught()) {
-          if (tryCatch.CanContinue()) {
-            TRI_LogV8Exception(isolate, &tryCatch);
-          }
-          else {
-            TRI_GET_GLOBALS();
+      action->Call(current, 1, &fArgs);
 
-            v8g->_canceled = true;
-            LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
-          }
+      if (tryCatch.HasCaught()) {
+        if (tryCatch.CanContinue()) {
+          TRI_LogV8Exception(isolate, &tryCatch);
+        }
+        else {
+          TRI_GET_GLOBALS();
+
+          v8g->_canceled = true;
+          LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
         }
       }
-      catch (triagens::basics::Exception const& ex) {
-        LOG_ERROR("caught exception in V8 job: %s %s", TRI_errno_string(ex.code()), ex.what());
-      }
-      catch (std::bad_alloc const&) {
-        LOG_ERROR("caught exception in V8 job: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
-      }
-      catch (...) {
-        LOG_ERROR("caught unknown exception in V8 job");
-      }
+    }
+    catch (triagens::basics::Exception const& ex) {
+      LOG_ERROR("caught exception in V8 job: %s %s", TRI_errno_string(ex.code()), ex.what());
+    }
+    catch (std::bad_alloc const&) {
+      LOG_ERROR("caught exception in V8 job: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    }
+    catch (...) {
+      LOG_ERROR("caught unknown exception in V8 job");
     }
   }
 
