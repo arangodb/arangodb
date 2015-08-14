@@ -31,8 +31,6 @@
 "use strict";
 
 var FoxxManager = require("org/arangodb/foxx/manager");
-var arangodb = require("org/arangodb");
-var errors = arangodb.errors;
 
 describe("Foxx Manager", function() {
 
@@ -65,6 +63,10 @@ describe("Foxx Manager", function() {
       app = list[i];
       if (app.name === "sessions-example-app") {
         // Requires oauth2 to be installed
+        continue;
+        /*
+        var arangodb = require("org/arangodb");
+        var errors = arangodb.errors;
         try {
           FoxxManager.uninstall("/oauth2", { force: true });
         } catch(err) {
@@ -95,6 +97,7 @@ describe("Foxx Manager", function() {
           } catch(err) {
           }
         }
+        */
       } else {
         try {
           FoxxManager.install(app.name, mount);
