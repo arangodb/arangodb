@@ -152,13 +152,9 @@ void ListenTask::cleanup () {
   _readWatcher = nullptr;
 }
 
-bool ListenTask::handleEvent (EventToken token, EventType revents) {
+bool ListenTask::handleEvent (EventToken token, 
+                              EventType revents) {
   if (token == _readWatcher) {
-    if ((revents & EVENT_SOCKET_KILLED)) {
-      // not handled here...
-      return false;
-    }
-
     if ((revents & EVENT_SOCKET_READ) == 0) {
       return true;
     }

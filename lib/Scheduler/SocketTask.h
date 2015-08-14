@@ -194,20 +194,6 @@ namespace triagens {
 
         bool handleEvent (EventToken token, EventType) override;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the task should be aborted
-////////////////////////////////////////////////////////////////////////////////
-
-        bool shouldAbort () override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the task progress should be tracked
-////////////////////////////////////////////////////////////////////////////////
-
-        bool trackProgress () override final {
-          return true;
-        }
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -294,15 +280,6 @@ namespace triagens {
 
         TRI_tid_t _tid;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief timestamp of the first time a task was not handled during a socket
-/// callback event. this is set to 0.0 initially, and will be adjusted at the
-/// very first time an event for the task is not handled. if non-handling of
-/// the task events occurs again, the timestamp is compared with the current
-/// time and the task can be aborted if not handled for some time period
-////////////////////////////////////////////////////////////////////////////////
-
-        double _firstUnhandledTime;
     };
   }
 }

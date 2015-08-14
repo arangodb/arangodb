@@ -129,7 +129,8 @@ void AsyncChunkedTask::cleanup () {
 /// @brief handles the event
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AsyncChunkedTask::handleEvent (EventToken token, EventType revents) {
+bool AsyncChunkedTask::handleEvent (EventToken token, 
+                                    EventType revents) {
   if (_watcher == token && (revents & EVENT_ASYNC)) {
     return handleAsync();
   }
@@ -1138,7 +1139,8 @@ void HttpCommTask::cleanup () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpCommTask::handleEvent (EventToken token, EventType events) {
+bool HttpCommTask::handleEvent (EventToken token, 
+                                EventType events) {
   bool result = SocketTask::handleEvent(token, events);
 
   if (result) {
@@ -1219,14 +1221,10 @@ bool HttpCommTask::handleRead ()  {
   }
 
   if (_clientClosed) {
-    updateTick();
-
     res = false;
     _server->handleCommunicationClosed(this);
   }
   else if (! res) {
-    updateTick();
-
     _clientClosed = true;
     _server->handleCommunicationFailure(this);
   }
@@ -1240,6 +1238,7 @@ bool HttpCommTask::handleRead ()  {
 
 void HttpCommTask::completedWriteBuffer () {
   _writeBuffer = nullptr;
+  _writeLength = 0;
 
   if (_writeBufferStatistics != nullptr) {
     _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
@@ -1251,8 +1250,6 @@ void HttpCommTask::completedWriteBuffer () {
   fillWriteBuffer();
 
   if (! _clientClosed && _closeRequested && ! hasWriteBuffer() && _writeBuffers.empty() && ! _isChunked) {
-    updateTick();
-
     _clientClosed = true;
     _server->handleCommunicationClosed(this);
   }
