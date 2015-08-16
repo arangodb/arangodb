@@ -152,7 +152,7 @@ bool SocketTask::fillReadBuffer () {
     if (errno == EINTR) {
       return fillReadBuffer();
     }
-    else if (errno != EWOULDBLOCK) {
+    else if (errno != EWOULDBLOCK && errno != EAGAIN) {
       LOG_TRACE("read failed with %d: %s", (int) errno, strerror(errno));
 
       return false;
@@ -189,7 +189,7 @@ bool SocketTask::handleWrite () {
       if (errno == EINTR) {
         return handleWrite();
       }
-      else if (errno != EWOULDBLOCK) {
+      else if (errno != EWOULDBLOCK && errno != EAGAIN) {
         LOG_DEBUG("write failed with %d: %s", (int) errno, strerror(errno));
 
         return false;
