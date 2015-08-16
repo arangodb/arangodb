@@ -124,7 +124,7 @@ bool SocketTask::fillReadBuffer () {
 
     return false;
   }
- 
+
   int nr = TRI_READ_SOCKET(_commSocket, _readBuffer->end(), READ_BLOCK_SIZE, 0);
 
   if (nr > 0) {
@@ -149,8 +149,6 @@ bool SocketTask::fillReadBuffer () {
   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {
     LOG_DEBUG("read from socket failed with %d: %s", (int) myerrno, strerror(myerrno));
 
-    // force closing of the connection
-    handleTimeout();
     return false;
   }
 
@@ -194,8 +192,6 @@ bool SocketTask::handleWrite () {
       if (myerrno != EWOULDBLOCK || myerrno != EAGAIN) {
         LOG_DEBUG("writing to socket failed with %d: %s", (int) myerrno, strerror(myerrno));
 
-        // force closing of the connection
-        handleTimeout();
         return false;
       }
   
