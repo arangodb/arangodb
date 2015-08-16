@@ -75,7 +75,7 @@ static ControlCTask* localControlCTask;
   class ControlCTask : public SignalTask {
     public:
 
-      ControlCTask (ApplicationServer* server)
+      explicit ControlCTask (ApplicationServer* server)
         : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         localControlCTask = this;
         int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE) CtrlHandler, true);
@@ -99,7 +99,7 @@ static ControlCTask* localControlCTask;
 
   class ControlCTask : public SignalTask {
     public:
-      ControlCTask (ApplicationServer* server)
+      explicit ControlCTask (ApplicationServer* server)
         : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         addSignal(SIGINT);
         addSignal(SIGTERM);
@@ -181,7 +181,7 @@ static ControlCTask* localControlCTask;
 
   class Sigusr1Task : public SignalTask {
     public:
-      Sigusr1Task (ApplicationScheduler* scheduler)
+      explicit Sigusr1Task (ApplicationScheduler* scheduler)
         : Task("Sigusr1"), SignalTask(), _scheduler(scheduler) {
 #ifndef _WIN32
         addSignal(SIGUSR1);
@@ -398,7 +398,7 @@ size_t ApplicationScheduler::numberOfThreads () {
 /// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
+void ApplicationScheduler::setProcessorAffinity (std::vector<size_t> const& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   size_t j = 0;
 
@@ -434,7 +434,7 @@ void ApplicationScheduler::disableControlCHandler () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>& options) {
+void ApplicationScheduler::setupOptions (std::map<std::string, ProgramOptionsDescription>& options) {
 
   // .............................................................................
   // command line options
