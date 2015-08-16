@@ -1,9 +1,12 @@
 v2.6.5 (XXXX-XX-XX)
 -------------------
 
-* handle attribute `indexBuckets` when restoring collections. Previously the attribute
-  value from the dump was ignored, and the server default value for `indexBuckets` was
-  used when restoring a collection.
+* fixed busy wait loop in scheduler threads that sometimes consumed 100% CPU while
+  waiting for events on connections closed unexpectedly by the client side
+
+* handle attribute `indexBuckets` when restoring collections via arangorestore. 
+  Previously the `indexBuckets` attribute value from the dump was ignored, and the
+   server default value for `indexBuckets` was used when restoring a collection.
 
 * fixed "EscapeValue already set error" crash in V8 actions that might have occurred when
   cancelling V8-based operations.
