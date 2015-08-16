@@ -1196,6 +1196,11 @@ bool HttpCommTask::handleRead ()  {
       }
     }
   }
+  else {
+    // if we don't close here, the scheduler thread may fall into a 
+    // busy wait state, consuming 100% CPU!
+    _clientClosed = true;
+  }
 
   if (_clientClosed) {
     res = false;
