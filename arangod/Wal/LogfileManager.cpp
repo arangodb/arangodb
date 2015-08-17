@@ -1171,9 +1171,12 @@ void LogfileManager::getActiveLogfileRegion (Logfile* logfile,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<Logfile*> LogfileManager::getLogfilesForTickRange (TRI_voc_tick_t minTick,
-                                                               TRI_voc_tick_t maxTick) {
+                                                               TRI_voc_tick_t maxTick,
+                                                               bool& minTickIncluded) {
   std::vector<Logfile*> temp;
   std::vector<Logfile*> matching;
+
+  minTickIncluded = false;
  
   // we need a two step logfile qualification procedure
   // this is to avoid holding the lock on _logfilesLock and then acquiring the
@@ -1207,6 +1210,10 @@ std::vector<Logfile*> LogfileManager::getLogfilesForTickRange (TRI_voc_tick_t mi
     TRI_voc_tick_t logMin;
     TRI_voc_tick_t logMax;
     _slots->getActiveTickRange(logfile, logMin, logMax);
+
+    if (logMin <= minTick && logMin > 0) {
+      minTickIncluded = true;
+    }
 
     if (minTick > logMax || maxTick < logMin) {
       // datafile is older than requested range

@@ -78,7 +78,7 @@ namespace triagens {
                           TRI_vocbase_t*,
                           struct TRI_replication_applier_configuration_s const*,
                           TRI_voc_tick_t,
-                          bool);
+                          bool); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -97,6 +97,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int run ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the syncer's replication applier
+////////////////////////////////////////////////////////////////////////////////
+        
+        TRI_replication_applier_t* applier () const {
+          return _applier;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -251,6 +259,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _includeSystem;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the specified from tick must be present when fetching
+/// data from a master
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _requireFromPresent;
 
     };
 

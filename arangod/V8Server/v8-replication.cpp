@@ -214,6 +214,12 @@ static void JS_SynchroniseReplication (const v8::FunctionCallbackInfo<v8::Value>
       config._includeSystem = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("includeSystem")));
     }
   }
+  
+  if (object->Has(TRI_V8_ASCII_STRING("requireFromPresent"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("requireFromPresent"))->IsBoolean()) {
+      config._requireFromPresent = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("requireFromPresent")));
+    }
+  }
 
   string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType, verbose);
@@ -432,6 +438,12 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
     if (object->Has(TRI_V8_ASCII_STRING("includeSystem"))) {
       if (object->Get(TRI_V8_ASCII_STRING("includeSystem"))->IsBoolean()) {
         config._includeSystem = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("includeSystem")));
+      }
+    }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("requireFromPresent"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("requireFromPresent"))->IsBoolean()) {
+        config._requireFromPresent = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("requireFromPresent")));
       }
     }
   

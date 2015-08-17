@@ -1363,7 +1363,8 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
             (unsigned long long) tickMax);
 
   // ask the logfile manager which datafiles qualify
-  std::vector<triagens::wal::Logfile*> logfiles = triagens::wal::LogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax);
+  bool fromTickIncluded = false;
+  std::vector<triagens::wal::Logfile*> logfiles = triagens::wal::LogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax, fromTickIncluded);
   size_t const n = logfiles.size();
     
   // setup some iteration state
@@ -1462,6 +1463,8 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
   if (outputAsArray) {
     TRI_AppendStringStringBuffer(dump->_buffer, "\n]");
   }
+
+  dump->_fromTickIncluded = fromTickIncluded;
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (lastFoundTick > 0) {
