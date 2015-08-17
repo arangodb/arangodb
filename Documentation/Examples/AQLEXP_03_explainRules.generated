@@ -1,0 +1,12 @@
+arangosh> stmt.explain().plan.rules;
+[ 
+  "move-calculations-up", 
+  "move-filters-up", 
+  "remove-redundant-calculations", 
+  "remove-unnecessary-calculations", 
+  "move-calculations-up-2", 
+  "move-filters-up-2", 
+  "use-index-range", 
+  "remove-filter-covered-by-index", 
+  "use-index-for-sort" 
+]

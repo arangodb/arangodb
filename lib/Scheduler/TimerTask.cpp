@@ -42,14 +42,15 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-TimerTask::TimerTask (string const& id,
+TimerTask::TimerTask (std::string const& id,
                       double seconds)
   : Task(id, "TimerTask"),
-    watcher(nullptr),
-    seconds(seconds) {
+    _watcher(nullptr),
+    _seconds(seconds) {
 }
 
 TimerTask::~TimerTask () {
+  cleanup();
 }
 
 // -----------------------------------------------------------------------------
@@ -62,7 +63,7 @@ TimerTask::~TimerTask () {
 
 void TimerTask::getDescription (TRI_json_t* json) const {
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "timed", strlen("timed")));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, seconds));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _seconds));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,45 +71,41 @@ void TimerTask::getDescription (TRI_json_t* json) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
-  this->_scheduler = scheduler;
-  this->_loop = loop;
+  _scheduler = scheduler;
+  _loop = loop;
 
-  if (0.0 < seconds) {
-    watcher = _scheduler->installTimerEvent(loop, this, seconds);
-    LOG_TRACE("armed TimerTask with %f seconds", seconds);
+  if (0.0 < _seconds) {
+    _watcher = _scheduler->installTimerEvent(loop, this, _seconds);
+    LOG_TRACE("armed TimerTask with %f seconds", _seconds);
   }
   else {
-    watcher = nullptr;
+    _watcher = nullptr;
   }
 
   return true;
 }
 
 void TimerTask::cleanup () {
-  if (_scheduler == nullptr) {
-    LOG_WARNING("In TimerTask::cleanup the scheduler has disappeared -- invalid pointer");
-    watcher = nullptr;
-    return;
+  if (_scheduler != nullptr) {
+    _scheduler->uninstallEvent(_watcher);
   }
-
-  _scheduler->uninstallEvent(watcher);
-  watcher = nullptr;
+  _watcher = nullptr;
 }
 
-bool TimerTask::handleEvent (EventToken token, EventType revents) {
+bool TimerTask::handleEvent (EventToken token, 
+                             EventType revents) {
   bool result = true;
 
-  if (token == watcher) {
+  if (token == _watcher) {
     if (revents & EVENT_TIMER) {
-      _scheduler->uninstallEvent(watcher);
-      watcher = nullptr;
-
+      cleanup();
       result = handleTimeout();
     }
   }
 
   return result;
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

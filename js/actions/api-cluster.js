@@ -368,7 +368,7 @@ actions.defineHttp({
 ///         the script "verion-check.js" is run on one of the coordinators
 ///         for the cluster.
 ///
-///   - *runInfo": this is needed for the "shutdown" and "isHealthy" actions
+///   - *runInfo*: this is needed for the "shutdown" and "isHealthy" actions
 ///     only and should be the structure that "launch", "relaunch" or
 ///     "upgrade" returned. It contains runtime information like process
 ///     IDs.

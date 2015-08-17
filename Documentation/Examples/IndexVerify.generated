@@ -1,7 +1,7 @@
 arangosh> var explain = require("org/arangodb/aql/explainer").explain;
 arangosh> db.example.ensureSkiplist("a", "b");
 { 
-  "id" : "example/19635732", 
+  "id" : "example/600634251", 
   "type" : "skiplist", 
   "fields" : [ 
     "a", 

@@ -95,8 +95,9 @@ HttpHandler::status_t RestQueryCacheHandler::execute () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clears the AQL query cache
 /// @startDocuBlock DeleteApiQueryCache
+/// @brief clears the AQL query cache
+///
 /// @RESTHEADER{DELETE /_api/query-cache, Clears any results in the AQL query cache}
 ///
 /// @RESTRETURNCODES
@@ -125,8 +126,9 @@ bool RestQueryCacheHandler::clearCache () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the global configuration for the AQL query cache
 /// @startDocuBlock GetApiQueryCacheProperties
+/// @brief returns the global configuration for the AQL query cache
+///
 /// @RESTHEADER{GET /_api/query-cache/properties, Returns the global properties for the AQL query cache}
 ///
 /// Returns the global AQL query cache configuration. The configuration is a
@@ -172,8 +174,9 @@ bool RestQueryCacheHandler::readProperties () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief changes the configuration for the AQL query cache
 /// @startDocuBlock PutApiQueryCacheProperties
+/// @brief changes the configuration for the AQL query cache
+///
 /// @RESTHEADER{PUT /_api/query-cache/properties, Changes the global properties for the AQL query cache}
 ///
 /// @RESTBODYPARAM{properties,json,required}

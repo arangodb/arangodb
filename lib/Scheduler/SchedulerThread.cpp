@@ -121,6 +121,9 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
     return false;
   }
 
+  TRI_ASSERT(scheduler != nullptr);
+  TRI_ASSERT(task != nullptr);
+
   // same thread, in this case it does not matter if we are inside the loop
   if (threadId() == currentThreadId()) {
     bool ok = setupTask(task, scheduler, _loop);
@@ -153,8 +156,6 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::unregisterTask (Task* task) {
-  deactivateTask(task);
-
   // thread has already been stopped
   if (_stopped) {
     // do nothing
@@ -184,8 +185,6 @@ void SchedulerThread::unregisterTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::destroyTask (Task* task) {
-  deactivateTask(task);
-
   // thread has already been stopped
   if (_stopped) {
     deleteTask(task);

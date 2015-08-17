@@ -6,7 +6,7 @@ arangosh> query.toVertices().outEdges().toArray();
   { 
     "_id" : "relation/bobAndDiana", 
     "_key" : "bobAndDiana", 
-    "_rev" : "969889180", 
+    "_rev" : "1497887627", 
     "_from" : "male/bob", 
     "_to" : "female/diana", 
     "type" : "friend" 

@@ -4265,6 +4265,7 @@ function AQL_PASSTHRU (value) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test helper function
+/// this is no actual function the end user should call
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_TEST_MODIFY (test, what) {
@@ -4985,10 +4986,13 @@ function TRAVERSAL_EDGE_VISITOR (config, result, vertex, path) {
   'use strict';
   // The this has to be bound explicitly!
   // It contains additional options.
-  if (path.edges.length >= this.minDepth) {
-    result.push(CLONE(path.edges[path.edges.length - 1]));
+  if (this.hasOwnProperty("minDepth") && path.edges.length < this.minDepth) {
+    return;
   }
-
+  if (this.hasOwnProperty("neighborExamples") && !AQL_MATCHES(vertex, this.neighborExamples, false)) {
+    return;
+  }
+  result.push(CLONE(path.edges[path.edges.length - 1]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7115,10 +7119,13 @@ function AQL_GRAPH_EDGES (graphName,
   else {
   */
  // Injecting additional options into the Visitor
-   params.visitor = TRAVERSAL_EDGE_VISITOR.bind({
-     minDepth: options.minDepth === undefined ? 1 : options.minDepth
-   });
-   // }
+  var visitorConfig = {
+    minDepth: options.minDepth === undefined ? 1 : options.minDepth
+  };
+  if (options.hasOwnProperty("neighborExamples")) {
+    visitorConfig.neighborExamples = options.neighborExamples;
+  }
+  params.visitor = TRAVERSAL_EDGE_VISITOR.bind(visitorConfig);
   
   var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_NEIGHBORS");
   if (options.edgeExamples) {

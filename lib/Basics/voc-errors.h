@@ -226,6 +226,8 @@
 /// - 1237: @LIT{collection type mismatch}
 ///   Will be raised when a collection has a different type from what has been
 ///   expected.
+/// - 1238: @LIT{collection not loaded}
+///   Will be raised when a collection is accessed that is not yet loaded.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
@@ -552,13 +554,14 @@
 ///   a graph with this name could not be found.
 /// - 1925: @LIT{graph already exists}
 ///   a graph with this name already exists.
-/// - 1926: @LIT{collection does not exist}
-///    does not exist.
+/// - 1926: @LIT{vertex collection does not exist or is not part of the graph}
+///   the specified vertex collection does not exist or is not part of the
+///   graph.
 /// - 1927: @LIT{not a vertex collection}
 ///   the collection is not a vertex collection.
 /// - 1928: @LIT{not in orphan collection}
 ///   Vertex collection not in orphan collection of the graph.
-/// - 1929: @LIT{collection used in edge def}
+/// - 1929: @LIT{collection already used in edge def}
 ///   The collection is already used in an edge definition of the graph.
 /// - 1930: @LIT{edge collection not used in graph}
 ///   The edge collection is not used in any edge definition of the graph.
@@ -578,6 +581,8 @@
 ///   Invalid id
 /// - 1938: @LIT{collection used in orphans}
 ///   The collection is already used in the orphans of the graph.
+/// - 1939: @LIT{edge collection does not exist or is not part of the graph}
+///   the specified edge collection does not exist or is not part of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -1641,6 +1646,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH                         (1237)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1238: ERROR_ARANGO_COLLECTION_NOT_LOADED
+///
+/// collection not loaded
+///
+/// Will be raised when a collection is accessed that is not yet loaded.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            (1238)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
@@ -2973,9 +2988,9 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1926: ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST
 ///
-/// collection does not exist
+/// vertex collection does not exist or is not part of the graph
 ///
-///  does not exist.
+/// the specified vertex collection does not exist or is not part of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         (1926)
@@ -3003,7 +3018,7 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
 ///
-/// collection used in edge def
+/// collection already used in edge def
 ///
 /// The collection is already used in an edge definition of the graph.
 ////////////////////////////////////////////////////////////////////////////////
@@ -3099,6 +3114,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS                        (1938)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1939: ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST
+///
+/// edge collection does not exist or is not part of the graph
+///
+/// the specified edge collection does not exist or is not part of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST                           (1939)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN

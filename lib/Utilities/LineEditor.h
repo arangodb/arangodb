@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract line editor
+/// @brief base class for a line editor
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,8 +31,9 @@
 #define ARANGODB_UTILITIES_LINE_EDITOR_H 1
 
 #include "Basics/Common.h"
-#include "LineEditor.h"
-#include "Completer.h"
+
+namespace arangodb {
+  class ShellImplementation;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class LineEditor
@@ -41,66 +42,76 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor
 ////////////////////////////////////////////////////////////////////////////////
-namespace triagens {
-  class ShellImplementation;
 
   class LineEditor {
-    LineEditor(LineEditor const&);
-    LineEditor& operator= (LineEditor const&);
+      LineEditor(LineEditor const&) = delete;
+      LineEditor& operator= (LineEditor const&) = delete;
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                                  public constants
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public constants
+// -----------------------------------------------------------------------------
 
-  public:
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of history entries
 ////////////////////////////////////////////////////////////////////////////////
 
-    static const int MAX_HISTORY_ENTRIES = 1000;
+      static const int MAX_HISTORY_ENTRIES = 1000;
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                      constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-  public:
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    LineEditor (std::string const& history);
+      LineEditor (std::string const& history);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual ~LineEditor ();
+      virtual ~LineEditor ();
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                                    public methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                              static public methods
+// -----------------------------------------------------------------------------
 
-  public:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort the alternatives results vector
+////////////////////////////////////////////////////////////////////////////////
+
+      static void sortAlternatives (std::vector<std::string>&);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool open (bool autoComplete);
+      bool open (bool autoComplete);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool close ();
+      bool close ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-    char* prompt (char const*);
+      std::string prompt (const std::string& prompt,
+			  const std::string& begin,
+			  bool& eof);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the history file path
@@ -109,66 +120,73 @@ namespace triagens {
 /// the local file _historyFilename.
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::string historyPath ();
+      std::string historyPath ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-    void addHistory (const char*);
+      void addHistory (const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the history
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool writeHistory ();
+      bool writeHistory ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sort the alternatives results vector
+/// @brief send a signal to the shell implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-    static void sortAlternatives (std::vector<std::string>&);
+      void signal ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+    protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief arranges for the correct creation of the the ShellImplementation
 ////////////////////////////////////////////////////////////////////////////////
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                                 protected methods
-    // -----------------------------------------------------------------------------
+      void prepareShell ();
 
-  protected:
+// -----------------------------------------------------------------------------
+// --SECTION--                                         virtual protected methods
+// -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief      arranges for the correct creation of the the ShellImplementation
-////////////////////////////////////////////////////////////////////////////////
-
-    void prepareShell ();
+    protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief      creates a concrete Shell with the correct parameter (Completer!!)
+/// @brief creates a concrete Shell with the correct parameter
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual void initializeShell () = 0;
+      virtual void initializeShell () = 0;
 
-  protected:
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                               protected variables
-    // -----------------------------------------------------------------------------
+    protected:
 
-    ShellImplementation * _shellImpl;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the shell implementation
+////////////////////////////////////////////////////////////////////////////////
 
-    std::string _history;
+      ShellImplementation* _shellImpl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path to the history file
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string _history;
+
   };
 }
+
 #endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

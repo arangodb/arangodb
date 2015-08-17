@@ -71,7 +71,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/FulltextIndex/fulltext-wordlist.cpp \
 	arangod/GeoIndex/GeoIndex.cpp \
 	arangod/HashIndex/hash-array.cpp \
-	arangod/HashIndex/hash-array-multi.cpp \
 	arangod/Indexes/CapConstraint.cpp \
 	arangod/Indexes/EdgeIndex.cpp \
 	arangod/Indexes/FulltextIndex.cpp \

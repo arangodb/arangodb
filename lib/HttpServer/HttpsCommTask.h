@@ -75,7 +75,7 @@ namespace triagens {
 
         HttpsCommTask (HttpsServer*,
                        TRI_socket_t,
-                       const ConnectionInfo&,
+                       ConnectionInfo const&,
                        double keepAliveTimeout,
                        SSL_CTX* ctx,
                        int verificationMode,
@@ -98,13 +98,13 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool setup (Scheduler*, EventLoop);
+        bool setup (Scheduler*, EventLoop) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleEvent (EventToken, EventType);
+        bool handleEvent (EventToken, EventType) override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Socket methods
@@ -114,13 +114,13 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool fillReadBuffer ();
+        bool fillReadBuffer () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleWrite ();
+        bool handleWrite () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -180,7 +180,7 @@ namespace triagens {
 /// @brief temporary buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        char * _tmpReadBuffer;
+        char* _tmpReadBuffer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ssl

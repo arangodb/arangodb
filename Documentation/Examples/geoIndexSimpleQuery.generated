@@ -10,7 +10,7 @@ arangosh> db.complex.near(0, 170).limit(5);
 [ArangoError 1570: no suitable geo index found for geo restriction on 'complex']
 arangosh> db.complex.ensureGeoIndex("home");
 { 
-  "id" : "complex/1784305052", 
+  "id" : "complex/2311910283", 
   "type" : "geo1", 
   "fields" : [ 
     "home" 
@@ -26,9 +26,9 @@ arangosh> db.complex.ensureGeoIndex("home");
 arangosh> db.complex.near(0, 170).limit(5).toArray();
 [ 
   { 
-    "_id" : "complex/1718375836", 
-    "_key" : "1718375836", 
-    "_rev" : "1718375836", 
+    "_id" : "complex/2245981067", 
+    "_key" : "2245981067", 
+    "_rev" : "2245981067", 
     "name" : "Name/0/170", 
     "home" : [ 
       0, 
@@ -40,9 +40,9 @@ arangosh> db.complex.near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1718572444", 
-    "_key" : "1718572444", 
-    "_rev" : "1718572444", 
+    "_id" : "complex/2246177675", 
+    "_key" : "2246177675", 
+    "_rev" : "2246177675", 
     "name" : "Name/0/180", 
     "home" : [ 
       0, 
@@ -54,23 +54,9 @@ arangosh> db.complex.near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1711101340", 
-    "_key" : "1711101340", 
-    "_rev" : "1711101340", 
-    "name" : "Name/-10/170", 
-    "home" : [ 
-      -10, 
-      170 
-    ], 
-    "work" : [ 
-      10, 
-      -170 
-    ] 
-  }, 
-  { 
-    "_id" : "complex/1725650332", 
-    "_key" : "1725650332", 
-    "_rev" : "1725650332", 
+    "_id" : "complex/2253255563", 
+    "_key" : "2253255563", 
+    "_rev" : "2253255563", 
     "name" : "Name/10/170", 
     "home" : [ 
       10, 
@@ -82,9 +68,23 @@ arangosh> db.complex.near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1711494556", 
-    "_key" : "1711494556", 
-    "_rev" : "1711494556", 
+    "_id" : "complex/2238706571", 
+    "_key" : "2238706571", 
+    "_rev" : "2238706571", 
+    "name" : "Name/-10/170", 
+    "home" : [ 
+      -10, 
+      170 
+    ], 
+    "work" : [ 
+      10, 
+      -170 
+    ] 
+  }, 
+  { 
+    "_id" : "complex/2239099787", 
+    "_key" : "2239099787", 
+    "_rev" : "2239099787", 
     "name" : "Name/0/-180", 
     "home" : [ 
       0, 
@@ -100,7 +100,7 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5);
 [ArangoError 1570: no suitable geo index found for geo restriction on 'complex']
 arangosh> db.complex.ensureGeoIndex("work");
 { 
-  "id" : "complex/1784829340", 
+  "id" : "complex/2312434571", 
   "type" : "geo1", 
   "fields" : [ 
     "work" 
@@ -116,9 +116,9 @@ arangosh> db.complex.ensureGeoIndex("work");
 arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
 [ 
   { 
-    "_id" : "complex/1711691164", 
-    "_key" : "1711691164", 
-    "_rev" : "1711691164", 
+    "_id" : "complex/2239296395", 
+    "_key" : "2239296395", 
+    "_rev" : "2239296395", 
     "name" : "Name/0/-170", 
     "home" : [ 
       0, 
@@ -130,9 +130,9 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1711494556", 
-    "_key" : "1711494556", 
-    "_rev" : "1711494556", 
+    "_id" : "complex/2239099787", 
+    "_key" : "2239099787", 
+    "_rev" : "2239099787", 
     "name" : "Name/0/-180", 
     "home" : [ 
       0, 
@@ -144,9 +144,9 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1718965660", 
-    "_key" : "1718965660", 
-    "_rev" : "1718965660", 
+    "_id" : "complex/2246570891", 
+    "_key" : "2246570891", 
+    "_rev" : "2246570891", 
     "name" : "Name/10/-170", 
     "home" : [ 
       10, 
@@ -158,9 +158,9 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1704416668", 
-    "_key" : "1704416668", 
-    "_rev" : "1704416668", 
+    "_id" : "complex/2232021899", 
+    "_key" : "2232021899", 
+    "_rev" : "2232021899", 
     "name" : "Name/-10/-170", 
     "home" : [ 
       -10, 
@@ -172,9 +172,9 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
     ] 
   }, 
   { 
-    "_id" : "complex/1718572444", 
-    "_key" : "1718572444", 
-    "_rev" : "1718572444", 
+    "_id" : "complex/2246177675", 
+    "_key" : "2246177675", 
+    "_rev" : "2246177675", 
     "name" : "Name/0/180", 
     "home" : [ 
       0, 

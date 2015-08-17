@@ -191,9 +191,10 @@ void HttpServer::stopListening () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::registerChunkedTask (HttpCommTask* task, ssize_t n) {
+  auto id = task->taskId();
   MUTEX_LOCKER(HttpCommTaskMapLock);
 
-  HttpCommTaskMap[task->taskId()] = task;
+  HttpCommTaskMap[id] = task;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,9 +202,10 @@ void HttpServer::registerChunkedTask (HttpCommTask* task, ssize_t n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::unregisterChunkedTask (HttpCommTask* task) {
+  auto id = task->taskId();
   MUTEX_LOCKER(HttpCommTaskMapLock);
 
-  HttpCommTaskMap.erase(task->taskId());
+  HttpCommTaskMap.erase(id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,14 +239,14 @@ void HttpServer::stop () {
 void HttpServer::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
   HttpCommTask* task = createCommTask(s, info);
 
-  {
+  try {
     GENERAL_SERVER_LOCKER(_commTasksLock);
-    try {
-      _commTasks.emplace(task);
-    }
-    catch (...) {
-      throw;
-    }
+    _commTasks.emplace(task);
+  }
+  catch (...) {
+    // destroy the task to prevent a leak
+    deleteTask(task);
+    throw;
   }
 
   // registers the task and get the number of the scheduler thread

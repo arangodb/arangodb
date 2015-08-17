@@ -584,7 +584,8 @@
         <li><a>
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="dbSortDesc">
-            <label class="css-label" id="dbSortDesc"></label>Sort descending
+            <i class="fa"></i>
+            Sort descending
           </label>
         </a></li>
       </ul>
@@ -1755,6 +1756,13 @@ if (list.length > 0) {
               <div class="modal-text"><%=content.get("status")%></div>
             </th>
           </tr>
+          
+          <tr>
+            <th class="collectionInfoTh2">Index buckets:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=figuresData["indexBuckets"]%></div>
+            </th>
+          </tr>
         </table>
 
       </div>
@@ -2844,7 +2852,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1438709969951"></script>
+<script src="app.js?version=1439401344440"></script>
 
   </body>
 </html>

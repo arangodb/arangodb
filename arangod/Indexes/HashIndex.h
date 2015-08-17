@@ -31,12 +31,15 @@
 #define ARANGODB_INDEXES_HASH_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/AssocMulti.h"
 #include "HashIndex/hash-array.h"
-#include "HashIndex/hash-array-multi.h"
+#include "HashIndex/hash-index-common.h"
 #include "Indexes/Index.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/VocShaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class HashIndex
@@ -118,6 +121,10 @@ namespace triagens {
           return _paths.size() * sizeof(TRI_shaped_json_t);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given shaped json objects
+////////////////////////////////////////////////////////////////////////////////
+
         TRI_vector_pointer_t lookup (TRI_index_search_value_t*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +140,7 @@ namespace triagens {
 
         int lookup (TRI_index_search_value_t*,
                     std::vector<TRI_doc_mptr_copy_t>&,
-                    struct TRI_hash_index_element_multi_s*&,
+                    TRI_index_element_t*&,
                     size_t batchSize) const;
 
 // -----------------------------------------------------------------------------
@@ -146,9 +153,98 @@ namespace triagens {
 
         int insertMulti (struct TRI_doc_mptr_t const*, bool);
         
-        int removeUnique (struct TRI_doc_mptr_t const*);
+        int removeUnique (struct TRI_doc_mptr_t const*, bool);
 
-        int removeMulti (struct TRI_doc_mptr_t const*);
+        int removeMulti (struct TRI_doc_mptr_t const*, bool);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private classes
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief given an element generates a hash integer
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        class HashElementFunc {
+            size_t _numFields;
+          public:
+            HashElementFunc (size_t s) : _numFields(s) {
+            }
+            uint64_t operator() (TRI_index_element_t const* element,
+                                 bool byKey) {
+              uint64_t hash = 0x0123456789abcdef;
+
+              for (size_t j = 0;  j < _numFields;  j++) {
+                char const* data;
+                size_t length;
+                TRI_InspectShapedSub(&element->subObjects()[j], 
+                                     element->document(), data, length);
+
+                // ignore the sid for hashing
+                // only hash the data block
+                hash = fasthash64(data, length, hash);
+              }
+
+              if (byKey) {
+                return hash;
+              }
+
+              return fasthash64(element->document(), 
+                                sizeof(TRI_doc_mptr_t*), hash);
+            }
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if a key corresponds to an element
+////////////////////////////////////////////////////////////////////////////////
+
+        class IsEqualElementElementByKey {
+
+            size_t _numFields;
+
+          public:
+
+            IsEqualElementElementByKey (size_t n) : _numFields(n) {
+            }
+
+            bool operator() (TRI_index_element_t const* left,
+                             TRI_index_element_t const* right) {
+              TRI_ASSERT_EXPENSIVE(left->document() != nullptr);
+              TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
+
+              for (size_t j = 0;  j < _numFields;  ++j) {
+                TRI_shaped_sub_t* leftSub = &left->subObjects()[j];
+                TRI_shaped_sub_t* rightSub = &right->subObjects()[j];
+
+                if (leftSub->_sid != rightSub->_sid) {
+                  return false;
+                }
+
+                char const* leftData;
+                size_t leftLength;
+                TRI_InspectShapedSub(leftSub, left->document(),
+                                     leftData, leftLength);
+
+                char const* rightData;
+                size_t rightLength;
+                TRI_InspectShapedSub(rightSub, right->document(),
+                                     rightData, rightLength);
+
+                if (leftLength != rightLength) {
+                  return false;
+                }
+
+                if (leftLength > 0 && 
+                    memcmp(leftData, rightData, leftLength) != 0) {
+                  return false;
+                }
+              }
+
+              return true;
+            }
+        };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -166,9 +262,18 @@ namespace triagens {
 /// @brief the actual hash index
 ////////////////////////////////////////////////////////////////////////////////
   
+        typedef triagens::basics::AssocMulti<TRI_index_search_value_t,
+                                             TRI_index_element_t,
+                                             uint32_t>
+                TRI_HashArrayMulti_t;
+
         union {
-          TRI_hash_array_t       _hashArray;        // the hash array itself, unique values
-          TRI_hash_array_multi_t _hashArrayMulti;   // the hash array itself, non-unique values
+          TRI_hash_array_t      _hashArray;        // the hash array itself, unique values
+          struct {
+            TRI_HashArrayMulti_t* _hashArray;   // the hash array itself, non-unique values
+            HashElementFunc*      _hashElement; // hash function for elements
+            IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
+          } _multi;
         };
 
 ////////////////////////////////////////////////////////////////////////////////

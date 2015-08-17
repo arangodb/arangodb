@@ -447,18 +447,26 @@ void Scheduler::setProcessorAffinity (size_t i, size_t c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::registerTask (Task* task, ssize_t* got, ssize_t want) {
-  SchedulerThread* thread = nullptr;
-
   if (task->isUserDefined() && task->id().empty()) {
     // user-defined task without id is invalid
     return TRI_ERROR_TASK_INVALID_ID;
   }
 
-  string const& name = task->name();
+  std::string const& name = task->name();
   LOG_TRACE("registerTask for task %p (%s)", (void*) task, name.c_str());
 
+  // determine thread
+  SchedulerThread* thread = nullptr;
+  size_t n = 0;
+  if (0 <= want) {
+    n = want;
+
+    if (nrThreads <= n) {
+      return TRI_ERROR_INTERNAL;
+    }
+  }
+
   {
-    size_t n = 0;
     MUTEX_LOCKER(schedulerLock);
 
     int res = checkInsertTask(task);
@@ -467,27 +475,20 @@ int Scheduler::registerTask (Task* task, ssize_t* got, ssize_t want) {
       return res;
     }
 
-    if (0 <= want) {
-      n = want;
-
-      if (nrThreads <= n) {
-        return TRI_ERROR_INTERNAL;
-      }
-    }
-    else {
+    if (0 > want) {
       if (multiThreading && ! task->needsMainEventLoop()) {
         n = (++nextLoop) % nrThreads;
       }
-    }
-
-    if (nullptr != got) {
-      *got = static_cast<ssize_t>(n);
     }
 
     thread = threads[n];
 
     task2thread[task] = thread;
     taskRegistered.emplace(task);
+  }
+    
+  if (nullptr != got) {
+    *got = static_cast<ssize_t>(n);
   }
 
   if (! thread->registerTask(this, task)) {
@@ -507,7 +508,7 @@ int Scheduler::checkInsertTask (Task const* task) {
     // this is a user-defined task
 
     // now check if there is an id conflict
-    string const& id = task->id();
+    std::string const& id = task->id();
 
     for (auto& it : task2thread) {
       auto const* t = it.first;

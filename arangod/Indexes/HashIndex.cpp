@@ -28,18 +28,72 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HashIndex.h"
-#include "HashIndex/hash-index-common.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
-
-struct TRI_hash_index_element_multi_s;
 
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if two elements are equal
+////////////////////////////////////////////////////////////////////////////////
+
+static bool isEqualElementElement (TRI_index_element_t const* left,
+                                   TRI_index_element_t const* right) {
+  return left->document() == right->document();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief given a key generates a hash integer
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t hashKey (TRI_index_search_value_t const* key) {
+  uint64_t hash = 0x0123456789abcdef;
+
+  for (size_t j = 0;  j < key->_length;  ++j) {
+    // ignore the sid for hashing
+    hash = fasthash64(key->_values[j]._data.data, key->_values[j]._data.length, hash);
+  }
+
+  return hash;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if a key corresponds to an element
+////////////////////////////////////////////////////////////////////////////////
+
+static bool isEqualKeyElement (TRI_index_search_value_t const* left,
+                               TRI_index_element_t const* right) {
+  TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
+
+  for (size_t j = 0;  j < left->_length; ++j) {
+    TRI_shaped_json_t* leftJson = &left->_values[j];
+    TRI_shaped_sub_t* rightSub = &right->subObjects()[j];
+
+    if (leftJson->_sid != rightSub->_sid) {
+      return false;
+    }
+
+    auto length = leftJson->_data.length;
+
+    char const* rightData;
+    size_t rightLength;
+    TRI_InspectShapedSub(rightSub, right->document(), rightData, rightLength);
+
+    if (length != rightLength) {
+      return false;
+    }
+
+    if (length > 0 && memcmp(leftJson->_data.data, rightData, length) != 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills the index search from hash index element
@@ -67,40 +121,6 @@ static int FillIndexSearchValueByHashIndexElement (HashIndex const* hashIndex,
   return TRI_ERROR_NO_ERROR;
 }
 
-static int FillIndexSearchValueByHashIndexElement (HashIndex const* hashIndex,
-                                                   TRI_index_search_value_t* key,
-                                                   TRI_hash_index_element_multi_t const* element) {
-  key->_values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, hashIndex->keyEntrySize(), false));
-
-  if (key->_values == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  char const* ptr = element->_document->getShapedJsonPtr();  // ONLY IN INDEX
-  size_t const n = hashIndex->paths().size();
-
-  for (size_t i = 0;  i < n;  ++i) {
-    auto sid = element->_subObjects[i]._sid;
-    key->_values[i]._sid = sid;
-
-    TRI_InspectShapedSub(&element->_subObjects[i], ptr, key->_values[i]);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees space for sub-objects in the hash index element
-////////////////////////////////////////////////////////////////////////////////
-
-template<typename T>
-static void FreeSubObjectsHashIndexElement (T* element) {
-  if (element->_subObjects != nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
-    element->_subObjects = nullptr;
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper for hashing
 ///
@@ -111,6 +131,7 @@ static void FreeSubObjectsHashIndexElement (T* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
+<<<<<<< HEAD
     // TODO needs to be extracted as a helper function
     if ( triagens::basics::TRI_AttributeNamesHaveExpansion(hashIndex->fields()[j]) ) {
       TRI_shape_t const* shape = shaper->lookupShapeId(shapedObject._sid); 
@@ -118,43 +139,54 @@ static void FreeSubObjectsHashIndexElement (T* element) {
         std::cout << "Should expand here" << std::endl;
         auto json = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &shapedObject));
         std::cout << "Is Array " << json.isArray() << " :: " << json << std::endl;
+=======
+static int HashIndexHelper (HashIndex const* hashIndex,
+                            TRI_hash_index_element_t* hashElement,
+                            TRI_doc_mptr_t const* document) {
+  TRI_shaped_json_t shapedJson;         // the object behind document
+
+  auto shaper = hashIndex->collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  bool const sparse = hashIndex->sparse();
+
+  // .............................................................................
+  // Assign the document to the TRI_hash_index_element_t structure - so that it
+  // can later be retreived.
+  // .............................................................................
+
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  hashElement->_document = const_cast<TRI_doc_mptr_t*>(document);
+  char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX
+
+  // .............................................................................
+  // Extract the attribute values
+  // .............................................................................
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  auto const& paths = hashIndex->paths();
+  size_t const n = paths.size();
+
+  for (size_t j = 0;  j < n;  ++j) {
+    TRI_shape_pid_t path = paths[j];
+
+    // determine if document has that particular shape
+    TRI_shape_access_t const* acc = shaper->findAccessor(shapedJson._sid, path);
+
+    // field not part of the object
+    if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
+      hashElement->_subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+
+      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+
+      if (sparse) {
+        // no need to continue
+        return res;
+>>>>>>> origin/eimerung_hashindex
       }
     }
 }
 */
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index helper for hashing with allocation
-////////////////////////////////////////////////////////////////////////////////
-
-static int HashIndexHelperAllocate (HashIndex* hashIndex,
-                                    TRI_hash_index_element_multi_t* hashElement,
-                                    TRI_doc_mptr_t const* document) {
-  // .............................................................................
-  // Allocate storage to shaped json objects stored as a simple list.  These
-  // will be used for hashing.  Fill the json field list from the document.
-  // .............................................................................
-
-  hashElement->_subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, hashIndex->keyEntrySize(), false));
-
-  if (hashElement->_subObjects == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  int res = hashIndex->fillElement2<TRI_hash_index_element_multi_t>(hashElement, hashElement->_subObjects, document, hashIndex->paths(), hashIndex->sparse());
-  
-  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-    // if the document does not have the indexed attribute or has it, and it is null,
-    // then in case of a sparse index we don't index this document
-    if (! hashIndex->sparse()) {
-      // in case of a non-sparse index, we index this document
-      res = TRI_ERROR_NO_ERROR;
-    }
-    // and for a sparse index, we return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING
-  }
-
-  return res;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates a key within the hash array part
@@ -233,11 +265,31 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
     }
   }
   else {
-    _hashArrayMulti._table = nullptr;
-    _hashArrayMulti._tablePtr = nullptr;
-    _hashArrayMulti._freelist = nullptr;
-
-    if (TRI_InitHashArrayMulti(&_hashArrayMulti, paths.size()) != TRI_ERROR_NO_ERROR) {
+    uint32_t indexBuckets = 1;
+    if (collection != nullptr) {
+      // document is a nullptr in the coordinator case
+      indexBuckets = collection->_info._indexBuckets;
+    }
+          
+    _multi._hashArray = nullptr;
+    _multi._isEqualElElByKey = nullptr;
+    _multi._hashElement = nullptr;
+    try {
+      _multi._hashElement = new HashElementFunc(paths.size());
+      _multi._isEqualElElByKey = new IsEqualElementElementByKey(paths.size());
+      _multi._hashArray = new TRI_HashArrayMulti_t(hashKey, 
+                                                 *_multi._hashElement,
+                                                 isEqualKeyElement,
+                                                 isEqualElementElement,
+                                                 *_multi._isEqualElElByKey,
+                                                 indexBuckets);
+    }
+    catch (...) {
+      delete _multi._hashElement;
+      _multi._hashElement = nullptr;
+      delete _multi._isEqualElElByKey;
+      _multi._isEqualElElByKey = nullptr;
+      _multi._hashArray = nullptr;
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
@@ -248,7 +300,9 @@ HashIndex::~HashIndex () {
     TRI_DestroyHashArray(&_hashArray);
   }
   else {
-    TRI_DestroyHashArrayMulti(&_hashArrayMulti);
+    delete _multi._hashElement;
+    delete _multi._isEqualElElByKey;
+    delete _multi._hashArray;   // FIXME: should we free the pointers in there?
   }
 }
 
@@ -265,7 +319,7 @@ double HashIndex::selectivityEstimate () const {
     return 1.0; 
   }
 
-  double estimate = TRI_SelectivityHashArrayMulti(&_hashArrayMulti);
+  double estimate = _multi._hashArray->selectivity();
   TRI_ASSERT(estimate >= 0.0 && estimate <= 1.00001); // floating-point tolerance 
   return estimate;
 }
@@ -276,8 +330,8 @@ size_t HashIndex::memory () const {
                                TRI_MemoryUsageHashArray(&_hashArray));
   }
 
-  return static_cast<size_t>(keyEntrySize() * _hashArrayMulti._nrUsed + 
-                             TRI_MemoryUsageHashArrayMulti(&_hashArrayMulti));
+  return static_cast<size_t>(keyEntrySize() * _multi._hashArray->size() +
+                             _multi._hashArray->memoryUsage());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -306,12 +360,12 @@ int HashIndex::insert (TRI_doc_mptr_t const* doc,
 ////////////////////////////////////////////////////////////////////////////////
          
 int HashIndex::remove (TRI_doc_mptr_t const* doc, 
-                       bool) {
+                       bool isRollback) {
 
   if (_unique) {
-    return removeUnique(doc);
+    return removeUnique(doc, isRollback);
   }
-  return removeMulti(doc);
+  return removeMulti(doc, isRollback);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,13 +380,11 @@ int HashIndex::sizeHint (size_t size) {
   }
 
   if (_unique) {
-    TRI_ResizeHashArray(this, &_hashArray, size);
+    return TRI_ResizeHashArray(this, &_hashArray, size);
   }
   else {
-    TRI_ResizeHashArrayMulti(this, &_hashArrayMulti, size);
+    return _multi._hashArray->resize(size);
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,12 +392,24 @@ int HashIndex::sizeHint (size_t size) {
 /// it is the callers responsibility to destroy the result
 ////////////////////////////////////////////////////////////////////////////////
 
+// FIXME: use std::vector here as well
 TRI_vector_pointer_t HashIndex::lookup (TRI_index_search_value_t* searchValue) const {
   if (_unique) {
     return HashIndex_find(&_hashArray, searchValue);
   }
 
-  return TRI_LookupByKeyHashArrayMulti(&_hashArrayMulti, searchValue);
+  std::vector<TRI_index_element_t*>* results 
+      = _multi._hashArray->lookupByKey(searchValue);
+  TRI_vector_pointer_t resultsvec;
+  int res = TRI_InitVectorPointer(&resultsvec, TRI_UNKNOWN_MEM_ZONE, 
+                                  results->size());
+  if (res == TRI_ERROR_NO_ERROR) {
+    for (size_t i = 0; i < results->size(); i++) {
+      TRI_PushBackVectorPointer(&resultsvec, (*results)[i]->document());
+    }
+  }
+  delete results;
+  return resultsvec;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,7 +423,26 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
     return HashIndex_find(&_hashArray, searchValue, documents);
   }
 
-  return TRI_LookupByKeyHashArrayMulti(&_hashArrayMulti, searchValue, documents);
+  std::vector<TRI_index_element_t*>* results = nullptr;
+  try {
+    results = _multi._hashArray->lookupByKey(searchValue);
+  }
+  catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  if (results != nullptr) {
+    try {
+      for (size_t i = 0; i < results->size(); i++) {
+        documents.emplace_back(*((*results)[i]->document()));
+      }
+      delete results;
+    }
+    catch (...) {
+      delete results;
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,7 +451,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
 
 int HashIndex::lookup (TRI_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_copy_t>& documents,
-                       struct TRI_hash_index_element_multi_s*& next,
+                       TRI_index_element_t*& next,
                        size_t batchSize) const {
 
   if (_unique) {
@@ -376,7 +459,47 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
     return HashIndex_find(&_hashArray, searchValue, documents);
   }
 
-  return TRI_LookupByKeyHashArrayMulti(&_hashArrayMulti, searchValue, documents, next, batchSize);
+  std::vector<TRI_index_element_t*>* results = nullptr;
+
+  if (next == nullptr) {
+    try {
+      results = _multi._hashArray->lookupByKey(searchValue, batchSize);
+    }
+    catch (...) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+  else {
+    try {
+      results = _multi._hashArray->lookupByKeyContinue(next, batchSize);
+    }
+    catch (...) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+
+  if (results != nullptr) {
+    if (results->size() > 0) {
+      next = results->back();  // for continuation the next time
+      try {
+        for (size_t i = 0; i < results->size(); i++) {
+          documents.emplace_back(*((*results)[i]->document()));
+        }
+      }
+      catch (...) {
+        delete results;
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+    else {
+      next = nullptr;
+    }
+    delete results;
+  }
+  else {
+    next = nullptr;
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 // -----------------------------------------------------------------------------
@@ -429,56 +552,44 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
 int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
                             bool isRollback) {
 
-  TRI_hash_index_element_multi_t hashElement;
-  int res = HashIndexHelperAllocate(this, &hashElement, doc);
-  
-  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  if (res != TRI_ERROR_NO_ERROR) {
-    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-    return res;
-  }
+  auto allocate = [this] () -> TRI_index_element_t* {
+    return TRI_index_element_t::allocate(keyEntrySize(), false);
+  };
 
+  std::vector<TRI_index_element_t*> elements;
+  int res = fillElement(allocate, elements, doc, paths(), sparse());
 
-  auto work = [this] (TRI_hash_index_element_multi_t* element, bool isRollback) -> int {
+  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("InsertHashIndex") {
       return TRI_ERROR_DEBUG;
     }
   
-    TRI_index_search_value_t key;
-    int res = FillIndexSearchValueByHashIndexElement(this, &key, element);
-  
-    if (res != TRI_ERROR_NO_ERROR) {
-      // out of memory
-      return res;
-    }
-    
-    res = TRI_InsertElementHashArrayMulti(this, &_hashArrayMulti, &key, element, isRollback);
-    
-    if (key._values != nullptr) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
-    }
-    
-    if (res == TRI_RESULT_ELEMENT_EXISTS) {
+    TRI_index_element_t* found = _multi._hashArray->insert(element,
+                                                                false,
+                                                                true);
+    if (found != nullptr) {   // bad, can only happen if we are in a rollback
+      if (isRollback) {       // in which case we silently ignore it
+        return TRI_ERROR_NO_ERROR;
+      }
+      // This is TRI_RESULT_ELEMENT_EXISTS, but this should not happen:
       return TRI_ERROR_INTERNAL;
     }
     
-    return res;
+    return TRI_ERROR_NO_ERROR;
   };
   
-  res = work(&hashElement, isRollback);
+  for (auto& hashElement : elements) {
+    //TODO FIXME Multiple elements
+    res = work(hashElement, isRollback);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_index_element_t::free(hashElement);
+    }
   }
-
   return res;
 }
 
-int HashIndex::removeUnique (TRI_doc_mptr_t const* doc) {
+int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
   auto allocate = [this] () -> TRI_index_element_t* {
     return TRI_index_element_t::allocate(keyEntrySize(), false);
   };
@@ -492,7 +603,7 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc) {
     return res;
   }
 
-  auto work = [this] (TRI_index_element_t* element) -> int {
+  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("RemoveHashIndex") {
       return TRI_ERROR_DEBUG;
     }
@@ -501,63 +612,56 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc) {
 
     // this might happen when rolling back
     if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
-      return TRI_ERROR_NO_ERROR;
+      if (isRollback) {
+        return TRI_ERROR_NO_ERROR;
+      }
+      else {
+        return TRI_ERROR_INTERNAL;
+      }
     }
 
     return res;
   };
 
   for (auto& hashElement : elements) {
-    res = work(hashElement);
+    res = work(hashElement, isRollback);
     TRI_index_element_t::free(hashElement);
   }
-
   return res;
 }
 
-int HashIndex::removeMulti (TRI_doc_mptr_t const* doc) {
-  TRI_hash_index_element_multi_t hashElement;
-  int res = HashIndexHelperAllocate(this, &hashElement, doc);
+int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
 
-  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-    return TRI_ERROR_NO_ERROR;
-  }
+  auto allocate = [this] () -> TRI_index_element_t* {
+    return TRI_index_element_t::allocate(keyEntrySize(), false);
+  };
+  std::vector<TRI_index_element_t*> elements;
+  int res = fillElement(allocate, elements, doc, paths(), sparse());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-    return res;
-  }
-
-  auto work = [&] (TRI_hash_index_element_multi_t* element) -> int {
+  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("RemoveHashIndex") {
       return TRI_ERROR_DEBUG;
     }
 
-    TRI_index_search_value_t key;
-    int res = FillIndexSearchValueByHashIndexElement(this, &key, element);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // out of memory
-      return res;
+    TRI_index_element_t* old = _multi._hashArray->remove(element);
+       
+    if (old == nullptr) {
+      // not found
+      if (isRollback) {   // ignore in this case, because it can happen
+        return TRI_ERROR_NO_ERROR;
+      }
+      else {
+        return TRI_ERROR_INTERNAL;
+      }
     }
-
-    res = TRI_RemoveElementHashArrayMulti(this, &_hashArrayMulti, &key, element);
-
-    if (key._values != nullptr) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
-    }
-
-    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
-      return TRI_ERROR_INTERNAL;
-    }
- 
-    return res;
+    return TRI_ERROR_NO_ERROR;
   };
 
-  res = work(&hashElement);
-  FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
-
+  for (auto& hashElement : elements) {
+    res = work(hashElement, isRollback);
+    TRI_index_element_t::free(hashElement);
+  }
+                 
   return res;
 }
 

@@ -1,0 +1,12 @@
+arangosh> db._routing.save({
+........>  url: "/ourtest",
+........>  action: {
+........>    controller: "db://ownTest"
+........>  }
+........> });
+{ 
+  "_id" : "_routing/607581067", 
+  "_rev" : "607581067", 
+  "_key" : "607581067" 
+}
+arangosh> require("internal").reloadRouting()

@@ -141,3 +141,7 @@ it will be removed from the set of orphan collection automatically.
 !SUBSECTION Remove
 
 @startDocuBlock JSF_general_graph_edge_collection_remove
+
+!SUBSECTION Connect
+
+@startDocuBlock JSF_general_graph_connectingEdges

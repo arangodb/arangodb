@@ -32,7 +32,6 @@
 
 #include <errno.h>
 
-
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -40,7 +39,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #endif
-
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include "Basics/win-utils.h"
@@ -50,10 +48,10 @@
 
 #include <sys/types.h>
 
-#include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/logging.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/socket-utils.h"
+#include "Basics/StringUtils.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
@@ -63,18 +61,19 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask (Endpoint* endpoint)
+ListenTask::ListenTask (Endpoint* endpoint) 
   : Task("ListenTask"),
-    readWatcher(nullptr),
+    _readWatcher(nullptr),
     _endpoint(endpoint),
-    acceptFailures(0) {
+    _acceptFailures(0) {
+
   TRI_invalidatesocket(&_listenSocket);
   bindSocket();
 }
 
 ListenTask::~ListenTask () {
-  if (readWatcher != nullptr) {
-    _scheduler->uninstallEvent(readWatcher);
+  if (_readWatcher != nullptr) {
+    _scheduler->uninstallEvent(_readWatcher);
   }
 }
 
@@ -83,7 +82,7 @@ ListenTask::~ListenTask () {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::isBound () const {
-  MUTEX_LOCKER(changeLock); // FIX_MUTEX ?
+  MUTEX_LOCKER(_changeLock); // FIX_MUTEX ?
 
   return _endpoint != nullptr && _endpoint->isConnected();
 }
@@ -96,7 +95,6 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   if (! isBound()) {
     return true;
   }
-
 
 #ifdef _WIN32
 
@@ -118,7 +116,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   // never use _open_osfhandle for sockets.
   // Therefore, we do the following, although it has the potential to
   // lose the higher bits of the socket handle:
-  int res = (int)_listenSocket.fileHandle;
+  int res = (int) _listenSocket.fileHandle;
 
   if (res == - 1) {
     LOG_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
@@ -129,6 +127,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
       res = WSAGetLastError();
       LOG_ERROR("In ListenTask::setup closesocket(...) failed with error code: %d", (int) res);
     }
+
     TRI_invalidatesocket(&_listenSocket);
     return false;
   }
@@ -139,34 +138,32 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   this->_scheduler = scheduler;
   this->_loop = loop;
-  readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
+  _readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
 
-  if (readWatcher == nullptr) {
-    return false;
-  }
   return true;
 }
 
 void ListenTask::cleanup () {
-  if (_scheduler == nullptr) {
-    LOG_WARNING("In ListenTask::cleanup the scheduler has disappeared -- invalid pointer");
-    readWatcher = nullptr;
-    return;
+  if (_scheduler != nullptr &&
+      _readWatcher != nullptr) {
+    _scheduler->uninstallEvent(_readWatcher);
   }
-  _scheduler->uninstallEvent(readWatcher);
-  readWatcher = nullptr;
+  
+  _readWatcher = nullptr;
 }
 
-bool ListenTask::handleEvent (EventToken token, EventType revents) {
-  if (token == readWatcher) {
+bool ListenTask::handleEvent (EventToken token, 
+                              EventType revents) {
+  if (token == _readWatcher) {
     if ((revents & EVENT_SOCKET_READ) == 0) {
       return true;
     }
+
     static_assert(sizeof(sockaddr_in) <= sizeof(sockaddr_in6),
                   "expect sockaddr size to be less or equal to the v6 version");
 
     sockaddr_in6 addrmem;
-    sockaddr_in *addr = (sockaddr_in *)&addrmem;
+    sockaddr_in* addr = (sockaddr_in*) &addrmem;
     socklen_t len = sizeof(sockaddr_in6);
 
     memset(addr, 0, sizeof(sockaddr_in6));
@@ -176,12 +173,12 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     connectionSocket = TRI_accept(_listenSocket, (sockaddr*) addr, &len);
 
     if (! TRI_isvalidsocket(connectionSocket)) {
-      ++acceptFailures;
+      ++_acceptFailures;
 
-      if (acceptFailures < MAX_ACCEPT_ERRORS) {
+      if (_acceptFailures < MAX_ACCEPT_ERRORS) {
         LOG_WARNING("accept failed with %d (%s)", (int) errno, strerror(errno));
       }
-      else if (acceptFailures == MAX_ACCEPT_ERRORS) {
+      else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
         LOG_ERROR("too many accept failures, stopping logging");
       }
 
@@ -190,10 +187,10 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       return true;
     }
 
-    acceptFailures = 0;
+    _acceptFailures = 0;
 
     struct sockaddr_in6 addr_out_mem;
-    struct sockaddr_in *addr_out = (sockaddr_in*) &addr_out_mem;;
+    struct sockaddr_in* addr_out = (sockaddr_in*) &addr_out_mem;;
     socklen_t len_out = sizeof(addr_out_mem);
 
     int res = TRI_getsockname(connectionSocket, (sockaddr*) addr_out, &len_out);
@@ -234,21 +231,19 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     else {
       Endpoint::DomainType type = _endpoint->getDomainType();
       if (type == Endpoint::DOMAIN_IPV4) {
-        const char *p;
         char buf[INET_ADDRSTRLEN + 1];
-        p = inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
-        buf[INET_ADDRSTRLEN] = '\0';
+        char const* p = inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
         if (p != nullptr) {
+          buf[INET_ADDRSTRLEN] = '\0';
           info.clientAddress = p;
         }
         info.clientPort = addr->sin_port;
       }
       else if (type == Endpoint::DOMAIN_IPV6) {
-        const char *p;
         char buf[INET6_ADDRSTRLEN + 1];
-        p = inet_ntop(AF_INET6, &addrmem.sin6_addr, buf, sizeof(buf) - 1);
-        buf[INET6_ADDRSTRLEN] = '\0';
+        char const* p = inet_ntop(AF_INET6, &addrmem.sin6_addr, buf, sizeof(buf) - 1);
         if (p != nullptr) {
+          buf[INET6_ADDRSTRLEN] = '\0';
           info.clientAddress = p;
         } 
         info.clientPort = addrmem.sin6_port;

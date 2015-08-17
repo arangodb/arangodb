@@ -59,7 +59,6 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     _keepAliveTimeout(keepAliveTimeout),
     _writeBuffer(nullptr),
     _writeBufferStatistics(nullptr),
-    _ownBuffer(true),
     _writeLength(0),
     _readBuffer(nullptr),
     _clientClosed(false),
@@ -83,9 +82,7 @@ SocketTask::~SocketTask () {
     TRI_invalidatesocket(&_commSocket);
   }
 
-  if (_ownBuffer) {
-    delete _writeBuffer;
-  }
+  delete _writeBuffer;
 
   if (_writeBufferStatistics != nullptr) {
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
@@ -134,25 +131,35 @@ bool SocketTask::fillReadBuffer () {
     _readBuffer->increaseLength(nr);
     return true;
   }
-  else if (nr == 0) {
-    _clientClosed = true;
 
+  if (nr == 0) {
     LOG_TRACE("read returned 0");
+    _clientClosed = true;
 
     return false;
   }
 
-  if (errno == EINTR) {
+  int myerrno = errno;
+
+  if (myerrno == EINTR) {
+    // read interrupted by signal
     return fillReadBuffer();
   }
 
-  if (errno != EWOULDBLOCK) {
-    LOG_TRACE("read failed with %d: %s", (int) errno, strerror(errno));
+  if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {
+    LOG_DEBUG("read from socket failed with %d: %s", (int) myerrno, strerror(myerrno));
 
     return false;
   }
-    
-  LOG_TRACE("read would block with %d: %s", (int) errno, strerror(errno));
+
+  TRI_ASSERT(myerrno == EWOULDBLOCK || myerrno == EAGAIN);
+
+  // from man(2) read:
+  // The  file  descriptor  fd  refers  to  a socket and has been marked nonblocking (O_NONBLOCK), 
+  // and the read would block.  POSIX.1-2001 allows
+  // either error to be returned for this case, and does not require these constants to have the same value, 
+  // so a  portable  application  should check for both possibilities.
+  LOG_TRACE("read would block with %d: %s", (int) myerrno, strerror(myerrno));
 
   return true;
 }
@@ -162,9 +169,6 @@ bool SocketTask::fillReadBuffer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::handleWrite () {
-  bool callCompletedWriteBuffer = false;
-
-  // size_t is unsigned, should never get < 0
   size_t len = 0;
 
   if (nullptr != _writeBuffer) {
@@ -178,39 +182,43 @@ bool SocketTask::handleWrite () {
     nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + _writeLength, (int) len, 0);
 
     if (nr < 0) {
-      if (errno == EINTR) {
+      int myerrno = errno;
+
+      if (myerrno == EINTR) {
+        // write interrupted by signal
         return handleWrite();
       }
-      else if (errno != EWOULDBLOCK) {
-        LOG_DEBUG("write failed with %d: %s", (int) errno, strerror(errno));
+
+      if (myerrno != EWOULDBLOCK || myerrno != EAGAIN) {
+        LOG_DEBUG("writing to socket failed with %d: %s", (int) myerrno, strerror(myerrno));
 
         return false;
       }
-      else {
-        nr = 0;
-      }
+  
+      TRI_ASSERT(myerrno == EWOULDBLOCK || myerrno == EAGAIN);
+      nr = 0;
     }
+
+    TRI_ASSERT(nr >= 0);
 
     len -= nr;
   }
 
   if (len == 0) {
-    if (nullptr != _writeBuffer && _ownBuffer) {
+    if (nullptr != _writeBuffer) {
       delete _writeBuffer;
+      _writeBuffer = nullptr;
     }
 
-    callCompletedWriteBuffer = true;
-  }
-  else {
-    _writeLength += nr;
-  }
+    TRI_ASSERT(_writeBuffer == nullptr);
 
-  if (callCompletedWriteBuffer) {
     completedWriteBuffer();
 
     // rearm timer for keep-alive timeout
-    // TODO: do we need some lock before we modify the scheduler?
     setKeepAliveTimeout(_keepAliveTimeout);
+  }
+  else {
+    _writeLength += nr;
   }
 
   if (_clientClosed) {
@@ -237,9 +245,8 @@ bool SocketTask::handleWrite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::setWriteBuffer (StringBuffer* buffer,
-                                 TRI_request_statistics_t* statistics,
-                                 bool ownBuffer) {
-  bool callCompletedWriteBuffer = false;
+                                 TRI_request_statistics_t* statistics) {
+  TRI_ASSERT(buffer != nullptr);
 
   _writeBufferStatistics = statistics;
 
@@ -251,26 +258,16 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
   _writeLength = 0;
 
   if (buffer->empty()) {
-    if (ownBuffer) {
-      delete buffer;
-    }
+    delete buffer;
 
-    callCompletedWriteBuffer = true;
+    completedWriteBuffer();
   }
   else {
     if (_writeBuffer != nullptr) {
-      if (_ownBuffer) {
-        delete _writeBuffer;
-      }
+      delete _writeBuffer;
     }
 
     _writeBuffer = buffer;
-    _ownBuffer = ownBuffer;
-  }
-
-  if (callCompletedWriteBuffer) {
-    completedWriteBuffer();
-
   }
 
   if (_clientClosed) {
@@ -342,67 +339,65 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 #endif
 
-
   _scheduler = scheduler;
   _loop = loop;
 
   _asyncWatcher = _scheduler->installAsyncEvent(loop, this);
-  _readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
+  _readWatcher  = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
   _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
-
-  if (_readWatcher == nullptr || _writeWatcher == nullptr) {
-    return false;
-  }
 
   // install timer for keep-alive timeout with some high default value
   _keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
 
-  // and stop it immediately so it's not actively at the start
+  // and stop it immediately so it's not active at the start
   _scheduler->clearTimer(_keepAliveWatcher);
 
   _tid = Thread::currentThreadId();
+
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief cleans up the task by unregistering all watchers
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::cleanup () {
-  if (_scheduler == nullptr) {
-    LOG_WARNING("In SocketTask::cleanup the scheduler has disappeared -- invalid pointer");
-    _asyncWatcher = nullptr;
-    _keepAliveWatcher = nullptr;
-    _readWatcher = nullptr;
-    _writeWatcher = nullptr;
-    return;
+  if (_scheduler != nullptr) {
+    if (_asyncWatcher != nullptr) {
+      _scheduler->uninstallEvent(_asyncWatcher);
+    }
+
+    if (_keepAliveWatcher != nullptr) {
+      _scheduler->uninstallEvent(_keepAliveWatcher);
+    }
+
+    if (_readWatcher != nullptr) {
+      _scheduler->uninstallEvent(_readWatcher);
+    }
+
+    if (_writeWatcher != nullptr) {
+      _scheduler->uninstallEvent(_writeWatcher);
+    }
   }
 
-  _scheduler->uninstallEvent(_asyncWatcher);
-  _asyncWatcher = nullptr;
-
-  _scheduler->uninstallEvent(_keepAliveWatcher);
+  _asyncWatcher     = nullptr;
   _keepAliveWatcher = nullptr;
-
-  _scheduler->uninstallEvent(_readWatcher);
-  _readWatcher = nullptr;
-
-  _scheduler->uninstallEvent(_writeWatcher);
-  _writeWatcher = nullptr;
+  _readWatcher      = nullptr;
+  _writeWatcher     = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::handleEvent (EventToken token, EventType revents) {
+bool SocketTask::handleEvent (EventToken token, 
+                              EventType revents) {
   bool result = true;
 
   if (token == _keepAliveWatcher && (revents & EVENT_TIMER)) {
     // got a keep-alive timeout
     LOG_TRACE("got keep-alive timeout signal, closing connection");
 
-    // TODO: do we need some lock before we modify the scheduler?
     _scheduler->clearTimer(token);
 
     // this will close the connection and destroy the task

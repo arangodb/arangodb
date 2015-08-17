@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,36 +30,67 @@
 #ifndef ARANGODB_UTILITIES_READLINE_SHELL_H
 #define ARANGODB_UTILITIES_READLINE_SHELL_H 1
 
-#include "Basics/Common.h"
+#include "Utilities/ShellImplementation.h"
 
-#include "ShellImplementation.h"
-#include "Completer.h"
+#include "Utilities/Completer.h"
 
-namespace triagens {
+namespace arangodb {
 
-  class Completer;
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class ReadlineShell
+// -----------------------------------------------------------------------------
 
   class ReadlineShell : public ShellImplementation {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
 
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
-///                                                           public constructor
+/// @brief return the currently active shell instance
 ////////////////////////////////////////////////////////////////////////////////
 
-      ReadlineShell (std::string const& history, Completer *);
+      static ReadlineShell* instance () {
+        return _instance.load();
+      }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+    public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+      ReadlineShell (std::string const& history, Completer*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+      ~ReadlineShell ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                       ShellImplementation methods
+// -----------------------------------------------------------------------------
+
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual bool open (bool autoComplete);
+      bool open (bool autoComplete) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual bool close ();
+      bool close () override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the history file path
@@ -68,28 +99,92 @@ namespace triagens {
 /// the local file _historyFilename.
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual std::string historyPath ();
+      std::string historyPath () override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void addHistory (char const*);
+      void addHistory (const std::string&) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the history
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual bool writeHistory ();
+      bool writeHistory () override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief todo!!
+/// @brief read a line from the input
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual char * getLine (char const *);
+      std::string getLine (const std::string& prompt, bool& eof) override final;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a signal
+////////////////////////////////////////////////////////////////////////////////
+
+      void signal () override final;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+    public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the last input value
+////////////////////////////////////////////////////////////////////////////////
+
+      void setLastInput (const std::string& input) {
+        _lastInput = input;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current input loop state
+////////////////////////////////////////////////////////////////////////////////
+
+      int getLoopState () const {
+        return _loopState;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current input loop state
+////////////////////////////////////////////////////////////////////////////////
+
+      void setLoopState (int state) {
+        _loopState = state;
+      }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+    private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current state of input loop (may be affected by out-of-band signals)
+////////////////////////////////////////////////////////////////////////////////
+
+      std::atomic<int> _loopState;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief last value entered by user.
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string _lastInput;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the input from the previous invocation was a CTRL-C
+////////////////////////////////////////////////////////////////////////////////
+
+      bool _lastInputWasEmpty;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief system-wide instance of the ReadlineShell
+////////////////////////////////////////////////////////////////////////////////
+
+      static std::atomic<ReadlineShell*> _instance;
   };
-
 }
 
 #endif
@@ -97,8 +192,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

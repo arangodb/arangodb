@@ -44,7 +44,7 @@ function createAuthenticationMiddleware(auth, applicationContext) {
     var users = new Users(applicationContext),
       authResult = auth.authenticate(req);
 
-    if (authResult.errorNum === errors.ERROR_NO_ERROR) {
+    if (authResult.errorNum === errors.ERROR_NO_ERROR.code) {
       req.currentSession = authResult.session;
       req.user = users.get(authResult.session.identifier);
     } else {
@@ -825,7 +825,7 @@ Sessions.prototype.generate = function (identifier, data) {
     } catch (err) {
       // we might have generated the same key again
       if (err.hasOwnProperty("errorNum") &&
-          err.errorNum === internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+          err.errorNum === internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
         // duplicate key, try again
         continue;
       }

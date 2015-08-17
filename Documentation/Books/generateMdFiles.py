@@ -15,17 +15,30 @@ def _mkdir_recursive(path):
 
 def replaceCode(lines):
   lines = re.sub(r"<!--(\s*.+\s)-->","", lines)
+  # remove the placeholder BR's again:
+  lines = re.sub(r"<br />\n", "\n", lines)
+  # multi line bullet lists should become one:
+  lines = re.sub(r"\n\n-", "\n-", lines)
+
   #HTTP API changing code
+  # unwrap multi-line-briefs: (up to 3 lines supported by now ;-)
+  lines = re.sub(r"@brief(.+)\n(.+)\n(.+)\n\n", r"@brief\g<1> \g<2> \g<3>\n\n", lines)
+  lines = re.sub(r"@brief(.+)\n(.+)\n\n", r"@brief\g<1> \g<2>\n\n", lines)
+  # if there is an @brief above a RESTHEADER, swap the sequence:
+  lines = re.sub(r"@brief(.+\n*)\n\n@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}",r"###\g<3>\n\g<1>\n\n`\g<2>`", lines)
+  # else simply put it into the text:
   lines = re.sub(r"@brief(.+)",r"\g<1>", lines)
-  lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
+  # there should be no RESTHEADER without brief, so we will fail offensively if by not doing:
+  #lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
+
   lines = re.sub(r"@RESTDESCRIPTION","", lines)
-  lines = re.sub(r"@RESTURLPARAM(\s+)","**URL Parameters**\n", lines)
-  lines = re.sub(r"@RESTQUERYPARAM(\s+)","**Query Parameters**\n", lines)
-  lines = re.sub(r"@RESTHEADERPARAM(\s+)","**Header Parameters**\n", lines)
-  lines = re.sub(r"@RESTBODYPARAM(\s+)","**Body Parameters**\n", lines)
-  lines = re.sub(r"@RESTRETURNCODES","**Return Codes**\n", lines)
+  lines = re.sub(r"@RESTURLPARAM(\s+)","\n**URL Parameters**\n", lines)
+  lines = re.sub(r"@RESTQUERYPARAM(\s+)","\n**Query Parameters**\n", lines)
+  lines = re.sub(r"@RESTHEADERPARAM(\s+)","\n**Header Parameters**\n", lines)
+  lines = re.sub(r"@RESTBODYPARAM(\s+)","\n**Body Parameters**\n", lines)
+  lines = re.sub(r"@RESTRETURNCODES","\n**Return Codes**\n", lines)
   lines = re.sub(r"@RESTURLPARAM", "@RESTPARAM", lines)
-  lines = re.sub(r"@PARAMS", "**Parameters**\n", lines)
+  lines = re.sub(r"@PARAMS", "\n**Parameters**\n", lines)
   lines = re.sub(r"@PARAM", "@RESTPARAM", lines)
   lines = re.sub(r"@RESTHEADERPARAM", "@RESTPARAM", lines)
   lines = re.sub(r"@RESTQUERYPARAM", "@RESTPARAM", lines)
@@ -34,7 +47,8 @@ def replaceCode(lines):
   lines = re.sub(r"@RESTPARAM{([\s\w-]*),([\s\w\_\|-]*),\s*(\w+)}", r"* *\g<1>*:", lines)
   lines = re.sub(r"@RESTRETURNCODE{(.*)}", r"* *\g<1>*:", lines)
   lines = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", lines)
-  lines = lines.replace("@EXAMPLES","**Examples**")
+  lines = lines.replace("@EXAMPLES","\n**Examples**\n")  
+  lines = lines.replace("@EXAMPLES","\n**Examples**\n")
   lines = lines.replace("@RESTPARAMETERS","")
   lines = lines.replace("@RESTPARAMS","")
   # Error codes replace
@@ -46,8 +60,8 @@ def replaceCode(lines):
 def replaceCodeIndex(lines):
   lines = re.sub(r"<!--(\s*.+\s)-->","", lines)
   #HTTP API changing code
-  lines = re.sub(r"@brief(.+)",r"\g<1>", lines)
-  lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
+  #lines = re.sub(r"@brief(.+)",r"\g<1>", lines)
+  #lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
   return lines
 
 ################################################################################

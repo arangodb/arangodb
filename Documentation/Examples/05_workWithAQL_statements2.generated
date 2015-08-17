@@ -1,0 +1,6 @@
+arangosh> c = stmt.execute();
+[ 
+  2, 
+  4 
+]
+[object ArangoQueryCursor, count: 2, hasMore: false]

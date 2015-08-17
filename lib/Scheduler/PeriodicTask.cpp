@@ -45,15 +45,13 @@ PeriodicTask::PeriodicTask (string const& id,
                             double offset,
                             double interval)
   : Task(id, "PeriodicTask"),
-    watcher(nullptr),
-    offset(offset),
-    interval(interval) {
+    _watcher(nullptr),
+    _offset(offset),
+    _interval(interval) {
 }
 
 PeriodicTask::~PeriodicTask () {
-  if (watcher != nullptr) {
-    _scheduler->uninstallEvent(watcher);
-  }
+  cleanup();
 }
 
 // -----------------------------------------------------------------------------
@@ -61,7 +59,7 @@ PeriodicTask::~PeriodicTask () {
 // -----------------------------------------------------------------------------
 
 void PeriodicTask::resetTimer (double offset, double interval) {
-  _scheduler->rearmPeriodic(watcher, offset, interval);
+  _scheduler->rearmPeriodic(_watcher, offset, interval);
 }
 
 // -----------------------------------------------------------------------------
@@ -74,40 +72,36 @@ void PeriodicTask::resetTimer (double offset, double interval) {
 
 void PeriodicTask::getDescription (TRI_json_t* json) const {
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "periodic", strlen("periodic")));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "period", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, interval));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "period", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _interval));
 }
 
 bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->_scheduler = scheduler;
   this->_loop = loop;
 
-  watcher = scheduler->installPeriodicEvent(loop, this, offset, interval);
+  _watcher = scheduler->installPeriodicEvent(loop, this, _offset, _interval);
 
-  if (watcher == nullptr) {
-    return false;
-  }
   return true;
 }
 
 void PeriodicTask::cleanup () {
-  if (_scheduler == nullptr) {
-    LOG_WARNING("In PeriodicTask::cleanup the scheduler has disappeared -- invalid pointer");
-    watcher = nullptr;
-    return;
+  if (_scheduler != nullptr) {
+    _scheduler->uninstallEvent(_watcher);
   }
-  _scheduler->uninstallEvent(watcher);
-  watcher = nullptr;
+  _watcher = nullptr;
 }
 
-bool PeriodicTask::handleEvent (EventToken token, EventType revents) {
+bool PeriodicTask::handleEvent (EventToken token, 
+                                EventType revents) {
   bool result = true;
 
-  if (token == watcher && (revents & EVENT_PERIODIC)) {
+  if (token == _watcher && (revents & EVENT_PERIODIC)) {
     result = handlePeriod();
   }
 
   return result;
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

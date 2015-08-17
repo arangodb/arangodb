@@ -50,7 +50,7 @@
 
 
   // this remains empty
-  db._create("UnitTestsDumpEmpty", { waitForSync: true });
+  db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
 
   // create lots of documents
   c = db._create("UnitTestsDumpMany");
@@ -66,7 +66,7 @@
   }
 
   // we update & modify the order
-  c = db._create("UnitTestsDumpOrder");
+  c = db._create("UnitTestsDumpOrder", { indexBuckets: 16 });
   c.save({ _key: "one", value: 1 });
   c.save({ _key: "two", value: 2 });
   c.save({ _key: "three", value: 3 });
@@ -90,7 +90,7 @@
   }
   
   // we create a lot of (meaningless) indexes here
-  c = db._create("UnitTestsDumpIndexes");
+  c = db._create("UnitTestsDumpIndexes", { indexBuckets: 32 });
   c.ensureUniqueConstraint("a_uc");
   c.ensureSkiplist("a_s1", "a_s2");
   c.ensureFulltextIndex("a_f");

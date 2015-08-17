@@ -1,0 +1,14 @@
+arangosh> db._routing.save({ 
+........>  url: "/echo",
+........>  action: {
+........>    do: "org/arangodb/actions/echoRequest",
+........>    options: { 
+........>      "Hello": "World" 
+........>    }
+........>  } 
+........> });
+{ 
+  "_id" : "_routing/605549451", 
+  "_rev" : "605549451", 
+  "_key" : "605549451" 
+}

@@ -1,0 +1,116 @@
+arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+remove-redundant-calculations" ] } });
+{ 
+  "plan" : { 
+    "nodes" : [ 
+      { 
+        "type" : "SingletonNode", 
+        "dependencies" : [ ], 
+        "id" : 1, 
+        "estimatedCost" : 1, 
+        "estimatedNrItems" : 1 
+      }, 
+      { 
+        "type" : "EnumerateCollectionNode", 
+        "dependencies" : [ 
+          1 
+        ], 
+        "id" : 2, 
+        "estimatedCost" : 2, 
+        "estimatedNrItems" : 1, 
+        "database" : "_system", 
+        "collection" : "_users", 
+        "outVariable" : { 
+          "id" : 0, 
+          "name" : "user" 
+        }, 
+        "random" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          2 
+        ], 
+        "id" : 3, 
+        "estimatedCost" : 3, 
+        "estimatedNrItems" : 1, 
+        "expression" : { 
+          "type" : "compare ==", 
+          "subNodes" : [ 
+            { 
+              "type" : "attribute access", 
+              "name" : "user", 
+              "subNodes" : [ 
+                { 
+                  "type" : "reference", 
+                  "name" : "user", 
+                  "id" : 0 
+                } 
+              ] 
+            }, 
+            { 
+              "type" : "value", 
+              "value" : "root" 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 2, 
+          "name" : "1" 
+        }, 
+        "canThrow" : false, 
+        "expressionType" : "simple" 
+      }, 
+      { 
+        "type" : "FilterNode", 
+        "dependencies" : [ 
+          3 
+        ], 
+        "id" : 4, 
+        "estimatedCost" : 4, 
+        "estimatedNrItems" : 1, 
+        "inVariable" : { 
+          "id" : 2, 
+          "name" : "1" 
+        } 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          4 
+        ], 
+        "id" : 5, 
+        "estimatedCost" : 5, 
+        "estimatedNrItems" : 1, 
+        "inVariable" : { 
+          "id" : 0, 
+          "name" : "user" 
+        } 
+      } 
+    ], 
+    "rules" : [ ], 
+    "collections" : [ 
+      { 
+        "name" : "_users", 
+        "type" : "read" 
+      } 
+    ], 
+    "variables" : [ 
+      { 
+        "id" : 2, 
+        "name" : "1" 
+      }, 
+      { 
+        "id" : 0, 
+        "name" : "user" 
+      } 
+    ], 
+    "estimatedCost" : 5, 
+    "estimatedNrItems" : 1 
+  }, 
+  "warnings" : [ ], 
+  "stats" : { 
+    "rulesExecuted" : 1, 
+    "rulesSkipped" : 21, 
+    "plansCreated" : 1 
+  } 
+}

@@ -1,0 +1,14 @@
+arangosh> db._routing.save({ 
+........>  url: { 
+........>    match: "/hello/world" 
+........>  },
+........>  content: { 
+........>    contentType: "text/html", 
+........>    body: "<html><body>Hello World</body></html>" 
+........>  }
+........> });
+{ 
+  "_id" : "_routing/507835275", 
+  "_rev" : "507835275", 
+  "_key" : "507835275" 
+}

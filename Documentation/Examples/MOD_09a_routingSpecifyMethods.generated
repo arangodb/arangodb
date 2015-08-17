@@ -1,0 +1,15 @@
+arangosh> db._routing.save({
+........>    url: {
+........>      match: "/hello/world",
+........>      methods: [ "get", "post", "put" ]
+........>    },
+........>    action: {
+........>      do: "org/arangodb/actions/echoRequest"
+........>    }
+........> });
+{ 
+  "_id" : "_routing/615838603", 
+  "_rev" : "615838603", 
+  "_key" : "615838603" 
+}
+arangosh> require("internal").reloadRouting()

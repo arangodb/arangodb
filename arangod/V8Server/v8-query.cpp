@@ -1822,21 +1822,18 @@ static void JS_ChecksumCollection (const v8::FunctionCallbackInfo<v8::Value>& ar
 /// in (inbound) a document from *vertices*, which must a list of documents
 /// or document handles.
 ///
-/// @EXAMPLES
-///
-/// ```bash
-/// arango> db.relation.edges("vertex/1593622");
-/// [
-///   {
-///     "_id" : "relation/3100950",
-///     "_key" : "3100950",
-///     "_rev" : "3100950",
-///     "_from" : "vertex/1528086",
-///     "_to" : "vertex/1593622",
-///     "label" : "knows"
-///   }
-/// ]
-/// ```
+/// @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_Relation}
+///   db._create("vertex");
+///   db._createEdgeCollection("relation");
+/// ~ var myGraph = {};
+///   myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+///   myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+///   myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows" });
+///   db._document(myGraph.e1);
+///   db.relation.edges(myGraph.e1._id);
+/// ~ db._drop("relation");
+/// ~ db._drop("vertex");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1860,21 +1857,19 @@ static void JS_EdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// *vertices*, which must a list of documents or document handles.
 ///
 /// @EXAMPLES
-/// ```bash
-/// arango> db.relation.inEdges("vertex/1528086");
-/// [ ]
-/// arango> db.relation.inEdges("vertex/1593622");
-/// [
-///   {
-///      "_id" : "inEdges/3100950",
-///      "_key" : "3100950",
-///      "_rev" : "3100950", 
-///      "_from" : "vertex/1528086",
-///      "_to" : "vertex/1593622",
-///      "label" : "knows"
-///   }
-/// ]
-/// ```
+/// @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_inEdges}
+///   db._create("vertex");
+///   db._createEdgeCollection("relation");
+/// ~ var myGraph = {};
+///   myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+///   myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+///   myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows" });
+///   db._document(myGraph.e1);
+///   db.relation.inEdges(myGraph.v1._id);
+///   db.relation.inEdges(myGraph.v2._id);
+/// ~ db._drop("relation");
+/// ~ db._drop("vertex");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1882,6 +1877,43 @@ static void JS_EdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 static void JS_InEdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_IN, args);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects all outbound edges
+/// @startDocuBlock edgeCollectionOutEdges
+/// `edge-collection.outEdges(vertex)`
+///
+/// The *edges* operator finds all edges starting from (outbound)
+/// *vertices*.
+///
+/// `edge-collection.outEdges(vertices)`
+///
+/// The *edges* operator finds all edges starting from (outbound) a document
+/// from *vertices*, which must a list of documents or document handles.
+///
+/// @EXAMPLES
+/// @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_outEdges}
+///   db._create("vertex");
+///   db._createEdgeCollection("relation");
+/// ~ var myGraph = {};
+///   myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+///   myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+///   myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows" });
+///   db._document(myGraph.e1);
+///   db.relation.outEdges(myGraph.v1._id);
+///   db.relation.outEdges(myGraph.v2._id);
+/// ~ db._drop("relation");
+/// ~ db._drop("vertex");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_OutEdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  return EdgesQuery(TRI_EDGE_OUT, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2312,44 +2344,6 @@ static void JS_NearQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   // outside a write transaction
   // .............................................................................
 
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects all outbound edges
-/// @startDocuBlock edgeCollectionOutEdges
-/// `edge-collection.outEdges(vertex)`
-///
-/// The *edges* operator finds all edges starting from (outbound)
-/// *vertices*.
-///
-/// `edge-collection.outEdges(vertices)`
-///
-/// The *edges* operator finds all edges starting from (outbound) a document
-/// from *vertices*, which must a list of documents or document handles.
-///
-/// @EXAMPLES
-///
-/// ```bash
-/// arango> db.relation.edges("vertex/1593622");
-/// [
-///   {
-///      "_id" : "relation/3100950",
-///      "_key" : "3100950",
-///      "_rev" : "3100950",
-///      "_from" : "vertex/1528086",
-///      "_to" : "vertex/1593622",
-///      "label" : "knows"
-///   }
-/// ]
-/// ```
-///
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_OutEdgesQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return EdgesQuery(TRI_EDGE_OUT, args);
   TRI_V8_TRY_CATCH_END
 }
 

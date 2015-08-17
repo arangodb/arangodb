@@ -1,6 +1,6 @@
 arangosh> db.example.ensureSkiplist("a", "b");
 { 
-  "id" : "example/19611244", 
+  "id" : "example/1170666379", 
   "type" : "skiplist", 
   "fields" : [ 
     "a", 
@@ -25,7 +25,7 @@ arangosh> indexInfo;
     "sparse" : false 
   }, 
   { 
-    "id" : "example/19611244", 
+    "id" : "example/1170666379", 
     "type" : "skiplist", 
     "fields" : [ 
       "a", 

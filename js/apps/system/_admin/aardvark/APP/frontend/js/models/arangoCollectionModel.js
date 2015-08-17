@@ -214,15 +214,26 @@
       return result;
     },
 
-    changeCollection: function (wfs, journalSize) {
+    changeCollection: function (wfs, journalSize, indexBuckets) {
       var result = false;
+      if (wfs === "true") {
+        wfs = true;
+      }
+      else if (wfs === "false") {
+        wfs = false;
+      }
+      var data = {
+        waitForSync: wfs,
+        journalSize: parseInt(journalSize),
+        indexBuckets: parseInt(indexBuckets)
+      };
 
       $.ajax({
         cache: false,
         type: "PUT",
         async: false, // sequential calls!
         url: "/_api/collection/" + this.get("id") + "/properties",
-        data: '{"waitForSync":' + wfs + ',"journalSize":' + JSON.stringify(journalSize) + '}',
+        data: JSON.stringify(data),
         contentType: "application/json",
         processData: false,
         success: function() {

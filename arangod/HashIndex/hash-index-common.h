@@ -38,29 +38,10 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_t;
-struct TRI_shaped_sub_s;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        HASH INDEX
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hash index element
-///
-/// This structure is used for the elements of a non-unique hash index.
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_hash_index_element_multi_s {
-  struct TRI_doc_mptr_t*                  _document;
-  struct TRI_shaped_sub_s*                _subObjects;
-  struct TRI_hash_index_element_multi_s*  _next;
-}
-TRI_hash_index_element_multi_t;
 
 #endif
 

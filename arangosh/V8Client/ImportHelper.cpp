@@ -513,7 +513,7 @@ namespace triagens {
 
       if (*field == '\0') {
         // do nothing
-        _lineBuffer.appendText("null", strlen("null"));
+        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
         return;
       }
 

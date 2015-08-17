@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/properties
 
 { 
-  "id" : "2057983388", 
+  "id" : "642511755", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
@@ -16,7 +16,7 @@ location: /_db/_system/_api/collection/products/properties
     "allowUserKeys" : true 
   }, 
   "waitForSync" : true, 
-  "indexBuckets" : 1, 
+  "indexBuckets" : 8, 
   "status" : 3, 
   "type" : 2, 
   "error" : false, 

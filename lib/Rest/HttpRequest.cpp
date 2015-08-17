@@ -197,7 +197,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
       continue;
     }
 
-    const size_t keyLength = strlen(key);
+    size_t const keyLength = strlen(key);
 
     if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) {
       continue;
@@ -227,7 +227,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
       TRI_AppendString2StringBuffer(buffer, "; ", 2);
     }
 
-    const size_t keyLength = strlen(key);
+    size_t const keyLength = strlen(key);
     TRI_AppendString2StringBuffer(buffer, key, keyLength);
     TRI_AppendString2StringBuffer(buffer, "=", 2);
 
@@ -741,7 +741,7 @@ HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr,
 void HttpRequest::parseHeader (char* ptr, size_t length) {
   char* start = ptr;
   char* end = start + length;
-  const size_t versionLength = strlen("http/1.x");
+  size_t const versionLength = strlen("http/1.x");
 
   // current line number
   int lineNum = 0;

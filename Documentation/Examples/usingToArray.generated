@@ -1,0 +1,36 @@
+arangosh> db._create("five")
+[ArangoCollection 2330981259, "five" (type document, status loaded)]
+arangosh> for (i = 0; i < 5; i++) db.five.save({value:i})
+arangosh> db.five.toArray()
+[ 
+  { 
+    "value" : 2, 
+    "_id" : "five/2331702155", 
+    "_rev" : "2331702155", 
+    "_key" : "2331702155" 
+  }, 
+  { 
+    "value" : 3, 
+    "_id" : "five/2331898763", 
+    "_rev" : "2331898763", 
+    "_key" : "2331898763" 
+  }, 
+  { 
+    "value" : 0, 
+    "_id" : "five/2331308939", 
+    "_rev" : "2331308939", 
+    "_key" : "2331308939" 
+  }, 
+  { 
+    "value" : 4, 
+    "_id" : "five/2332095371", 
+    "_rev" : "2332095371", 
+    "_key" : "2332095371" 
+  }, 
+  { 
+    "value" : 1, 
+    "_id" : "five/2331505547", 
+    "_rev" : "2331505547", 
+    "_key" : "2331505547" 
+  } 
+]

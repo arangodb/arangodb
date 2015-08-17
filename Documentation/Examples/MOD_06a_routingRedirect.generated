@@ -1,0 +1,16 @@
+arangosh> db._routing.save({
+........>  url: "/redirectMe",
+........>  action: {
+........>    do: "org/arangodb/actions/redirectRequest",
+........>    options: {
+........>      permanently: true,
+........>      destination: "/somewhere.else/"
+........>    }
+........>  }
+........> });
+{ 
+  "_id" : "_routing/609350539", 
+  "_rev" : "609350539", 
+  "_key" : "609350539" 
+}
+arangosh> require("internal").reloadRouting()

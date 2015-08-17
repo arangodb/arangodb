@@ -27,7 +27,7 @@
       "click #databaseSearchSubmit" : "search",
       "click #databaseToggle"       : "toggleSettingsDropdown",
       "click .css-label"            : "checkBoxes",
-      "change #dbSortDesc"          : "sorting",
+      "click #dbSortDesc"           : "sorting",
       "click svg"                   : "switchDatabase"
     },
 
@@ -51,7 +51,7 @@
     initialize: function() {
       this.collection.fetch({async:false});
     },
-
+      
     checkBoxes: function (e) {
       //chrome bugfix
       var clicked = e.currentTarget.id;
@@ -69,12 +69,14 @@
         searchString : '',
         currentDB    : this.currentDB
       }));
-
+      
       if (this.dropdownVisible === true) {
         $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
         $('#databaseToggle').toggleClass('activated');
         $('#databaseDropdown2').show();
       }
+      
+      arangoHelper.setCheckboxStatus("#databaseDropdown");
 
       this.replaceSVGs();
       return this;

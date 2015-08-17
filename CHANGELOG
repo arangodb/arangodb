@@ -1,6 +1,86 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* IMPORTANT CHANGE: make arangod actually close lingering client connections 
+  when idle for at least the duration specified via `--server.keep-alive-timeout`. 
+  In previous versions of ArangoDB, connections were not closed by the server 
+  when the timeout was reached and the client was still connected. Now the 
+  connection is properly closed by the server in case of timeout. Client
+  applications relying on the old behavior may now need to reconnect to the
+  server when their idle connections time out and get closed (note: connections 
+  being idle for a long time may be closed by the OS or firewalls anyway - 
+  client applications should be aware of that and try to reconnect).
+
+* IMPORTANT CHANGE: when starting arangod, the server will drop the process 
+  privileges to the specified values in options `--server.uid` and `--server.gid` 
+  instantly after parsing the startup options.
+
+  That means when either `--server.uid` or `--server.gid` are set, the privilege
+  change may happen earlier at startup. This may prevent binding the server to
+  and endpoint with a port number lower than 1024, if the user has no privileges
+  for that. Previous versions of ArangoDB changed the privileges later, so some
+  startup actions were still carried out under the invoking user (i.e. likely 
+  *root* when started via init.d or system scripts) and especially binding to
+  low ports was still possible there.
+
+  The default privileges for user *arangodb* will not be sufficient for binding
+  to port numbers lower than 1024. To have an ArangoDB 2.7 bind to a port number 
+  lower than 1024, it needs to be started with either a different privileged user,
+  or the privileges of the *arangodb* user have to raised manually beforehand.
+
+* added AQL optimizer rule `patch-update-statements`
+
+* Linux startup scripts and systemd configuration for arangod now try to
+  adjust the NOFILE (number of open files) limits for the process. The limit
+  value is set to 131072 (128k) when ArangoDB is started via start/stop 
+  commands
+
+* When ArangoDB is started/stopped manually via the start/stop commands, the
+  main process will wait for up to 10 seconds after it forks the supervisor
+  and arangod child processes. If the startup fails within that period, the
+  start/stop script will fail with an exit code other than zero. If the
+  startup of the supervisor or arangod is still ongoing after 10 seconds, 
+  the main program will still return with exit code 0. The limit of 10 seconds
+  is arbitrary because the time required for a startup is not known in advance.
+
+* added startup option `--database.throw-collection-not-loaded-error`
+
+  Accessing a not-yet loaded collection will automatically load a collection
+  on first access. This flag controls what happens in case an operation
+  would need to wait for another thread to finalize loading a collection. If
+  set to *true*, then the first operation that accesses an unloaded collection
+  will load it. Further threads that try to access the same collection while
+  it is still loading immediately fail with an error (1238, *collection not loaded*). 
+  This is to prevent all server threads from being blocked while waiting on the
+  same collection to finish loading. When the first thread has completed loading 
+  the collection, the collection becomes regularly available, and all operations
+  from that point on can be carried out normally, and error 1238 will not be
+  thrown anymore for that collection.
+
+  If set to *false*, the first thread that accesses a not-yet loaded collection
+  will still load it. Other threads that try to access the collection while
+  loading will not fail with error 1238 but instead block until the collection
+  is fully loaded. This configuration might lead to all server threads being
+  blocked because they are all waiting for the same collection to complete
+  loading. Setting the option to *true* will prevent this from happening, but
+  requires clients to catch error 1238 and react on it (maybe by scheduling 
+  a retry for later).
+
+  The default value is *false*.
+
+* added better control-C support in arangosh
+
+  When CTRL-C is pressed in arangosh, it will now print a `^C` first. Pressing
+  CTRL-C again will reset the prompt if something was entered before, or quit
+  arangosh if no command was entered directly before.
+  
+  This affects the arangosh version build with Readline-support only.
+
+  The MacOS version of ArangoDB for Homebrew now depends on Readline, too. The
+  Homebrew formula has been changed accordingly.
+  When self-compiling ArangoDB on MacOS without Homebrew, Readline now is a
+  prerequisite.
+
 * increased default value collection-specific `indexBuckets` value from 1 to 16
 
   Collections created from 2.7 on will use the new default if not overriden on
@@ -131,7 +211,27 @@ v2.7.0 (XXXX-XX-XX)
 
 * fixed handling of optional parameters in Foxx manifest configurations
 
+* added verbose Foxx manifest dependency format
+
+* added optional Foxx dependencies
+
+* converted Foxx constructors to classes
+
 * updated chai to 3.0.
+
+
+v2.6.5 (XXXX-XX-XX)
+-------------------
+
+* fixed busy wait loop in scheduler threads that sometimes consumed 100% CPU while
+  waiting for events on connections closed unexpectedly by the client side
+
+* handle attribute `indexBuckets` when restoring collections via arangorestore. 
+  Previously the `indexBuckets` attribute value from the dump was ignored, and the
+   server default value for `indexBuckets` was used when restoring a collection.
+
+* fixed "EscapeValue already set error" crash in V8 actions that might have occurred when
+  cancelling V8-based operations.
 
 
 v2.6.4 (2015-08-01)

@@ -10,7 +10,7 @@ arangosh> g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'
         "frenchCity/Lyon" 
       ], 
       "edges" : [ 
-        "internationalHighway/1228232092" 
+        "internationalHighway/1756230539" 
       ], 
       "distance" : 1 
     } 

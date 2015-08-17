@@ -362,15 +362,15 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
   switch (type) {
     case TRI_JSON_UNUSED: 
     case TRI_JSON_NULL: {
-      buffer.appendText("null", strlen("null"));
+      buffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
       break;
     }
     case TRI_JSON_BOOLEAN: {
       if (json->_value._boolean) {
-        buffer.appendText("true", strlen("true"));
+        buffer.appendText(TRI_CHAR_LENGTH_PAIR("true"));
       }
       else {
-        buffer.appendText("false", strlen("false"));
+        buffer.appendText(TRI_CHAR_LENGTH_PAIR("false"));
       }
       break;
     }
@@ -394,7 +394,7 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
       break;
     }
     case TRI_JSON_OBJECT: {
-      buffer.appendText("[object Object]", strlen("[object Object]"));
+      buffer.appendText(TRI_CHAR_LENGTH_PAIR("[object Object]"));
       break;
     }
   }

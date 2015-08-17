@@ -37,160 +37,25 @@ AC_ARG_WITH(readline-lib,
 )
 
 dnl ----------------------------------------------------------------------------
-dnl checks for the READLINE library
 dnl ----------------------------------------------------------------------------
 
-if test "x$READLINE_CPPFLAGS" != x;  then
-  TR_INCLUDE([READLINE_CPPFLAGS])
-fi
-
 dnl ----------------------------------------------------------------------------
-dnl save flags
 dnl ----------------------------------------------------------------------------
 
-SAVE_CPPFLAGS="$CPPFLAGS"
-CPPFLAGS="$CPPFLAGS $READLINE_CPPFLAGS"
-
-SAVE_LDFLAGS="$LDFLAGS"
-LDFLAGS="$LDFLAGS $READLINE_LDFLAGS"
-
-SAVE_LIBS="$LIBS"
-
 dnl ----------------------------------------------------------------------------
-dnl check for header and library
 dnl ----------------------------------------------------------------------------
 
-if test "x$tr_READLINE" = xyes -o "x$tr_READLINE" = xmaybe;  then
-  ch_READLINE="$tr_READLINE"
-
-  AC_CHECK_HEADERS(readline/readline.h, [tr_READLINE="yes"], [tr_READLINE="no"])
-
-  if test "x$tr_READLINE" = xyes;  then
-    AC_CHECK_LIB([readline], [readline], [READLINE_LIBS="-lreadline" tr_READLINE="yes"], [tr_READLINE="no"])
-  fi
-
-  AC_MSG_CHECKING([READLINE support])
-
-  if test "x$tr_READLINE" != xyes;  then
-    AC_MSG_RESULT([not found])
-
-    if test "x$ch_READLINE" = xyes;  then
-      AC_MSG_ERROR([Please install readline support])
-    fi
-  else
-    AC_MSG_RESULT([readline])
-  fi
-
-elif test "x$tr_READLINE" = xlinenoise;  then
-  READLINE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise -DUSE_UTF8"
-
-  AC_MSG_CHECKING([READLINE support])
-  AC_MSG_RESULT([linenoise])
-
-else
-  AC_MSG_CHECKING([READLINE support])
-  AC_MSG_RESULT([disabled])
-
-fi
-
 dnl ----------------------------------------------------------------------------
-dnl grep readline version number
 dnl ----------------------------------------------------------------------------
 
-if test "x$tr_READLINE" = xyes;  then
-
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <readline/readline.h>
-
-main () {
-#if defined(RL_VERSION_MAJOR) && defined(RL_VERSION_MINOR)
-  long sdnhg36ed = RL_VERSION_MAJOR RL_VERSION_MINOR ;
-#else
-  long sdnhg36ed = RL_READLINE_VERSION hex ;
-#endif
-}
-
-_ACEOF
-
-  AC_MSG_CHECKING([READLINE version])
-  eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
-  READLINE_VERSION=`cat conftest.output`
-
-  if test -z "$READLINE_VERSION"; then
-    AC_MSG_ERROR([Readline support is not working. Please re-install readline support])
-  fi
-
-  AC_MSG_RESULT([$READLINE_VERSION])
-  rm -f conftest*
-
-elif test "x$tr_READLINE" = xlinenoise;  then
-  READLINE_VERSION="linenoise"
-
-  AC_MSG_CHECKING([READLINE version])
-  AC_MSG_RESULT([$READLINE_VERSION])
-fi
-
 dnl ----------------------------------------------------------------------------
-dnl restore flags
 dnl ----------------------------------------------------------------------------
 
-LIBS="$SAVE_LIBS"
-LDFLAGS="$SAVE_LDFLAGS"
-CPPFLAGS="$SAVE_CPPFLAGS"
-
-if test "x$tr_READLINE" = xyes;  then
-  CPPFLAGS="$CPPFLAGS -DHAVE_READLINE=1"
-  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${READLINE_VERSION}\"'"
-
-elif test "x$tr_READLINE" = xlinenoise;  then
-  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_HAVE_LINENOISE -DTRI_READLINE_VERSION='\"${READLINE_VERSION}\"'"
-fi
-
 dnl ----------------------------------------------------------------------------
-dnl add substitutions
 dnl ----------------------------------------------------------------------------
 
-AM_CONDITIONAL(ENABLE_READLINE, test "x$tr_READLINE" = xyes)
-
-if test "x$tr_READLINE" = xyes;  then
-  AC_DEFINE_UNQUOTED(TRI_HAVE_READLINE, 1, [true if readline is used])
-fi
-
-AM_CONDITIONAL(ENABLE_LINENOISE, test "x$tr_READLINE" = xlinenoise)
-
-if test "x$tr_READLINE" = xlinenoise;  then
-  AC_DEFINE_UNQUOTED(TRI_HAVE_LINENOISE, 1, [true if linenoise is used])
-fi
-
-AC_SUBST(READLINE_VERSION)
-AC_SUBST(READLINE_CPPFLAGS)
-AC_SUBST(READLINE_LDFLAGS)
-AC_SUBST(READLINE_LIBS)
-
 dnl ----------------------------------------------------------------------------
-dnl informational output
 dnl ----------------------------------------------------------------------------
-
-if test "x$tr_READLINE" = xyes;  then
-  LIB_INFO="$LIB_INFO|READLINE VERSION:  ${READLINE_VERSION}"
-
-  LIB_INFO="$LIB_INFO|READLINE_CPPFLAGS: ${READLINE_CPPFLAGS}"
-  LIB_INFO="$LIB_INFO|READLINE_LDLIBS:   ${READLINE_LDLIBS}"
-  LIB_INFO="$LIB_INFO|READLINE_LIBS:     ${READLINE_LIBS}"
-
-elif test "x$tr_READLINE" = xlinenoise;  then
-  LIB_INFO="$LIB_INFO|LINENOISE VERSION:  ${READLINE_VERSION}"
-
-  LIB_INFO="$LIB_INFO|LINENOISE_CPPFLAGS: ${READLINE_CPPFLAGS}"
-  LIB_INFO="$LIB_INFO|LINENOISE_LDLIBS:   ${READLINE_LDLIBS}"
-  LIB_INFO="$LIB_INFO|LINENOISE_LIBS:     ${READLINE_LIBS}"
-
-else
-  LIB_INFO="$LIB_INFO|READLINE VERSION: disabled"
-fi
-
-LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                      END-OF-FILE

@@ -1,6 +1,6 @@
 arangosh> db.example.ensureSkiplist("a", "b");
 { 
-  "id" : "example/23066252", 
+  "id" : "example/599913355", 
   "type" : "skiplist", 
   "fields" : [ 
     "a", 
@@ -15,7 +15,7 @@ arangosh> var indexInfo = db.example.getIndexes().map(function(x) { return x.id;
 arangosh> indexInfo;
 [ 
   "example/0", 
-  "example/23066252" 
+  "example/599913355" 
 ]
 arangosh> db._index(indexInfo[0])
 { 
@@ -31,7 +31,7 @@ arangosh> db._index(indexInfo[0])
 }
 arangosh> db._index(indexInfo[1])
 { 
-  "id" : "example/23066252", 
+  "id" : "example/599913355", 
   "type" : "skiplist", 
   "fields" : [ 
     "a", 

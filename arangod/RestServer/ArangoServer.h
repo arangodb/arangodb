@@ -367,6 +367,9 @@ namespace triagens {
 /// are shared among multiple collections and databases. Specifying a value of 
 /// *0* will turn off parallel building, meaning that indexes for each collection
 /// are built sequentially by the thread that opened the collection.
+/// If the number of index threads is greater than 1, it will also be used to
+/// built the edge index of a collection in parallel (this also requires the
+/// edge index in the collection to be split into multiple buckets).
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -555,6 +558,36 @@ namespace triagens {
         bool _disableQueryTracking;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief throw collection not loaded error
+/// @startDocuBlock databaseThrowCollectionNotLoadedError
+/// `--database.throw-collection-not-loaded-error flag`
+///
+/// Accessing a not-yet loaded collection will automatically load a collection
+/// on first access. This flag controls what happens in case an operation
+/// would need to wait for another thread to finalize loading a collection. If
+/// set to *true*, then the first operation that accesses an unloaded collection
+/// will load it. Further threads that try to access the same collection while
+/// it is still loading will get an error (1238, *collection not loaded*). When
+/// the initial operation has completed loading the collection, all operations
+/// on the collection can be carried out normally, and error 1238 will not be
+/// thrown.
+///
+/// If set to *false*, the first thread that accesses a not-yet loaded collection
+/// will still load it. Other threads that try to access the collection while
+/// loading will not fail with error 1238 but instead block until the collection
+/// is fully loaded. This configuration might lead to all server threads being
+/// blocked because they are all waiting for the same collection to complete
+/// loading. Setting the option to *true* will prevent this from happening, but
+/// requires clients to catch error 1238 and react on it (maybe by scheduling 
+/// a retry for later).
+///
+/// The default value is *false*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _throwCollectionNotLoadedError;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enable or disable the Foxx queues feature
 /// @startDocuBlock foxxQueues
 /// `--server.foxx-queues flag`
@@ -562,8 +595,10 @@ namespace triagens {
 /// If *true*, the Foxx queues will be available and jobs in the queues will
 /// be executed asynchronously.
 ///
-/// The default is *true*. It should only be changed if Foxx queues are not
-/// used at all
+/// The default is *true*.
+/// When set to `false` the queue manager will be disabled and any jobs
+/// are prevented from being processed, which may improve CPU load if you do not
+/// plan to use Foxx queues at all.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
     
