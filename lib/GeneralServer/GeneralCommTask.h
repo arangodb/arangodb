@@ -237,6 +237,9 @@ namespace triagens {
               }
             }
           }
+          else {
+            closed = true;
+          }
 
           if (closed) {
             res = false;
