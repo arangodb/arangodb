@@ -547,8 +547,8 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
 
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "datafile", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, it.filename.c_str(), it.filename.size()));
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "status", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, it.state.c_str(), it.state.size()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMin", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, it.tickMin));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMax", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, it.tickMax));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMin", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(it.tickMin)));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMax", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(it.tickMax)));
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, r);
   }
