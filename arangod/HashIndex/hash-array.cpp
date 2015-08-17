@@ -33,7 +33,6 @@
 
 #include "Basics/fasthash.h"
 #include "Basics/logging.h"
-#include "HashIndex/hash-index-common.h"
 #include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
 #include "VocBase/document-collection.h"

@@ -33,7 +33,6 @@
 #include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
 #include "HashIndex/hash-array.h"
-#include "HashIndex/hash-index-common.h"
 #include "Indexes/Index.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
