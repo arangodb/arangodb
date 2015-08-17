@@ -187,10 +187,14 @@ std::string Version::getZLibVersion () {
 
 std::string Version::getReadlineVersion () {
 #ifdef TRI_READLINE_VERSION
-  return std::string(TRI_READLINE_VERSION);
-#else
-  return std::string("");
+  std::string const value(TRI_READLINE_VERSION);
+
+  if (value.size() >= 2) {
+    return value;
+  }
+  // fallthrough
 #endif
+  return std::string("unknown version");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +271,7 @@ std::string Version::getVerboseVersionString () {
   std::ostringstream version;
 
   version << "ArangoDB "
-          << getServerVersion()
+          << TRI_VERSION_FULL
           << " " << (sizeof(void*) == 4 ? "32" : "64") << "bit"
 #ifdef TRI_ENABLE_MAINTAINER_MODE
           << " maintainer mode"

@@ -59,12 +59,10 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     _keepAliveTimeout(keepAliveTimeout),
     _writeBuffer(nullptr),
     _writeBufferStatistics(nullptr),
-    _ownBuffer(true),
     _writeLength(0),
     _readBuffer(nullptr),
     _clientClosed(false),
-    _tid(0),
-    _firstUnhandledTime(0.0) {
+    _tid(0) {
 
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
@@ -84,9 +82,7 @@ SocketTask::~SocketTask () {
     TRI_invalidatesocket(&_commSocket);
   }
 
-  if (_ownBuffer) {
-    delete _writeBuffer;
-  }
+  delete _writeBuffer;
 
   if (_writeBufferStatistics != nullptr) {
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
@@ -137,9 +133,8 @@ bool SocketTask::fillReadBuffer () {
   }
 
   if (nr == 0) {
-    _clientClosed = true;
-
     LOG_TRACE("read returned 0");
+    _clientClosed = true;
 
     return false;
   }
@@ -147,11 +142,12 @@ bool SocketTask::fillReadBuffer () {
   int myerrno = errno;
 
   if (myerrno == EINTR) {
+    // read interrupted by signal
     return fillReadBuffer();
   }
 
   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {
-    LOG_TRACE("read failed with %d: %s", (int) myerrno, strerror(myerrno));
+    LOG_DEBUG("read from socket failed with %d: %s", (int) myerrno, strerror(myerrno));
 
     return false;
   }
@@ -189,15 +185,17 @@ bool SocketTask::handleWrite () {
       int myerrno = errno;
 
       if (myerrno == EINTR) {
+        // write interrupted by signal
         return handleWrite();
       }
 
       if (myerrno != EWOULDBLOCK || myerrno != EAGAIN) {
-        LOG_DEBUG("write failed with %d: %s", (int) myerrno, strerror(myerrno));
+        LOG_DEBUG("writing to socket failed with %d: %s", (int) myerrno, strerror(myerrno));
 
         return false;
       }
-
+  
+      TRI_ASSERT(myerrno == EWOULDBLOCK || myerrno == EAGAIN);
       nr = 0;
     }
 
@@ -207,14 +205,16 @@ bool SocketTask::handleWrite () {
   }
 
   if (len == 0) {
-    if (nullptr != _writeBuffer && _ownBuffer) {
+    if (nullptr != _writeBuffer) {
       delete _writeBuffer;
+      _writeBuffer = nullptr;
     }
+
+    TRI_ASSERT(_writeBuffer == nullptr);
 
     completedWriteBuffer();
 
     // rearm timer for keep-alive timeout
-    // TODO: do we need some lock before we modify the scheduler?
     setKeepAliveTimeout(_keepAliveTimeout);
   }
   else {
@@ -246,6 +246,8 @@ bool SocketTask::handleWrite () {
 
 void SocketTask::setWriteBuffer (StringBuffer* buffer,
                                  TRI_request_statistics_t* statistics) {
+  TRI_ASSERT(buffer != nullptr);
+
   _writeBufferStatistics = statistics;
 
   if (_writeBufferStatistics != nullptr) {
@@ -262,13 +264,10 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
   }
   else {
     if (_writeBuffer != nullptr) {
-      if (_ownBuffer) {
-        delete _writeBuffer;
-      }
+      delete _writeBuffer;
     }
 
     _writeBuffer = buffer;
-    _ownBuffer = true;
   }
 
   if (_clientClosed) {
@@ -391,15 +390,9 @@ void SocketTask::cleanup () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::handleEvent (EventToken token, EventType revents) {
+bool SocketTask::handleEvent (EventToken token, 
+                              EventType revents) {
   bool result = true;
-
-  if ((revents & EVENT_SOCKET_KILLED)) {
-    // this will close the connection and destroy the task
-    _clientClosed = true;
-    handleTimeout();
-    return false;
-  }
 
   if (token == _keepAliveWatcher && (revents & EVENT_TIMER)) {
     // got a keep-alive timeout
@@ -408,7 +401,6 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
     _scheduler->clearTimer(token);
 
     // this will close the connection and destroy the task
-    _clientClosed = true;
     handleTimeout();
     return false;
   }
@@ -438,21 +430,6 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the task should be aborted
-////////////////////////////////////////////////////////////////////////////////
-
-bool SocketTask::shouldAbort () {
-  double const now = TRI_microtime();
-
-  if (_firstUnhandledTime == 0.0) {
-    _firstUnhandledTime = now;
-    return false;
-  }
-    
-  return (now > _firstUnhandledTime + _keepAliveTimeout);
 }
 
 // -----------------------------------------------------------------------------

@@ -60,8 +60,9 @@ namespace {
 #include <windows.h>
 #include <stdio.h>
 
+class ControlCTask;
 bool static CtrlHandler(DWORD eventType);
-static SignalTask* localSignalTask;
+static ControlCTask* localControlCTask;
 
 #endif
 
@@ -74,9 +75,9 @@ static SignalTask* localSignalTask;
   class ControlCTask : public SignalTask {
     public:
 
-      ControlCTask (ApplicationServer* server)
+      explicit ControlCTask (ApplicationServer* server)
         : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
-        localSignalTask = this;
+        localControlCTask = this;
         int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE) CtrlHandler, true);
 
         if (result == 0) {
@@ -98,7 +99,7 @@ static SignalTask* localSignalTask;
 
   class ControlCTask : public SignalTask {
     public:
-      ControlCTask (ApplicationServer* server)
+      explicit ControlCTask (ApplicationServer* server)
         : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         addSignal(SIGINT);
         addSignal(SIGTERM);
@@ -180,7 +181,7 @@ static SignalTask* localSignalTask;
 
   class Sigusr1Task : public SignalTask {
     public:
-      Sigusr1Task (ApplicationScheduler* scheduler)
+      explicit Sigusr1Task (ApplicationScheduler* scheduler)
         : Task("Sigusr1"), SignalTask(), _scheduler(scheduler) {
 #ifndef _WIN32
         addSignal(SIGUSR1);
@@ -236,7 +237,7 @@ static SignalTask* localSignalTask;
 #ifdef _WIN32
 
   bool CtrlHandler (DWORD eventType) {
-    ControlCTask* ccTask = (ControlCTask*) localSignalTask;
+    ControlCTask* ccTask = localControlCTask;
     // string msg = ccTask->_server->getName() + " [shutting down]";
     bool shutdown = false;
     string shutdownMessage;
@@ -397,7 +398,7 @@ size_t ApplicationScheduler::numberOfThreads () {
 /// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
+void ApplicationScheduler::setProcessorAffinity (std::vector<size_t> const& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   size_t j = 0;
 
@@ -433,7 +434,7 @@ void ApplicationScheduler::disableControlCHandler () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>& options) {
+void ApplicationScheduler::setupOptions (std::map<std::string, ProgramOptionsDescription>& options) {
 
   // .............................................................................
   // command line options

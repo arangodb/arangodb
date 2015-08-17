@@ -177,7 +177,7 @@ const manifestSchema = {
     )
   ),
   thumbnail: joi.string().optional(),
-  version: joi.string().regex(/^\d+\.\d+(\.\d+)?$/).required(),
+  version: joi.string().required(),
   rootElement: joi.boolean().default(false)
 };
 
@@ -336,6 +336,13 @@ function checkManifest(filename, manifest) {
       console.error(message);
     }
   });
+
+  if (manifest.version && !semver.valid(manifest.version)) {
+    console.warn(
+      `Manifest "${filename}" for app "${manifest.name}":`
+      + ` not a valid semver version: ${manifest.version}.`
+    );
+  }
 
   if (manifest.engines && manifest.engines.arangodb && !semver.satisfies(internal.version, manifest.engines.arangodb)) {
     console.warn(

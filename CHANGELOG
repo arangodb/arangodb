@@ -1,6 +1,16 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* IMPORTANT CHANGE: make arangod actually close lingering client connections 
+  when idle for at least the duration specified via `--server.keep-alive-timeout`. 
+  In previous versions of ArangoDB, connections were not closed by the server 
+  when the timeout was reached and the client was still connected. Now the 
+  connection is properly closed by the server in case of timeout. Client
+  applications relying on the old behavior may now need to reconnect to the
+  server when their idle connections time out and get closed (note: connections 
+  being idle for a long time may be closed by the OS or firewalls anyway - 
+  client applications should be aware of that and try to reconnect).
+
 * IMPORTANT CHANGE: when starting arangod, the server will drop the process 
   privileges to the specified values in options `--server.uid` and `--server.gid` 
   instantly after parsing the startup options.
@@ -213,9 +223,12 @@ v2.7.0 (XXXX-XX-XX)
 v2.6.5 (XXXX-XX-XX)
 -------------------
 
-* handle attribute `indexBuckets` when restoring collections. Previously the attribute
-  value from the dump was ignored, and the server default value for `indexBuckets` was
-  used when restoring a collection.
+* fixed busy wait loop in scheduler threads that sometimes consumed 100% CPU while
+  waiting for events on connections closed unexpectedly by the client side
+
+* handle attribute `indexBuckets` when restoring collections via arangorestore. 
+  Previously the `indexBuckets` attribute value from the dump was ignored, and the
+   server default value for `indexBuckets` was used when restoring a collection.
 
 * fixed "EscapeValue already set error" crash in V8 actions that might have occurred when
   cancelling V8-based operations.

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tasks used to handle asynchronous events
+/// @brief document change subscription handler
 ///
 /// @file
 ///
@@ -23,69 +23,70 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Achim Brandt
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AsyncTask.h"
-#include "Basics/logging.h"
-#include "Scheduler/Scheduler.h"
+#ifndef ARANGODB_REST_HANDLER_REST_SUBSCRIBE_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_SUBSCRIBE_HANDLER_H 1
 
-using namespace triagens::rest;
-
-// -----------------------------------------------------------------------------
-// constructors and destructors
-// -----------------------------------------------------------------------------
-
-AsyncTask::AsyncTask ()
-  : Task("AsyncTask"),
-    watcher(nullptr) {
-}
-
-AsyncTask::~AsyncTask () {
-}
+#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 // -----------------------------------------------------------------------------
-// public methods
+// --SECTION--                                        class RestSubscribeHandler
 // -----------------------------------------------------------------------------
 
-void AsyncTask::signal () {
-  _scheduler->sendAsync(watcher);
-}
+namespace triagens {
+  namespace arango {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document changes subscription handler
+////////////////////////////////////////////////////////////////////////////////
+
+    class RestSubscribeHandler : public RestVocbaseBaseHandler {
 
 // -----------------------------------------------------------------------------
-// Task methods
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-bool AsyncTask::setup (Scheduler* scheduler,
-                       EventLoop loop) {
-  this->_scheduler = scheduler;
-  this->_loop = loop;
+      public:
 
-  // will throw if it goes wrong...
-  watcher = scheduler->installAsyncEvent(loop, this);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
 
-  return true;
-}
+        RestSubscribeHandler (rest::HttpRequest*);
 
-void AsyncTask::cleanup () {
-  if (_scheduler != nullptr) {
-    if (watcher != nullptr) {
-      _scheduler->uninstallEvent(watcher);
-    }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   Handler methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        status_t execute () override final;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        void addSubscription ();
+
+    };
   }
-
-  watcher = nullptr;
 }
 
-bool AsyncTask::handleEvent (EventToken token, EventType revents) {
-  if (watcher == token && (revents & EVENT_ASYNC)) {
-    return handleAsync();
-  }
-
-  return true;
-}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

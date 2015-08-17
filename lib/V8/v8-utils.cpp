@@ -4133,7 +4133,7 @@ void TRI_LogV8Exception (v8::Isolate* isolate,
   v8::HandleScope handle_scope(isolate);
 
   TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());
-  const char* exceptionString = *exception;
+  char const* exceptionString = *exception;
   v8::Handle<v8::Message> message = tryCatch->Message();
 
   // V8 didn't provide any extra information about this error; just print the exception.

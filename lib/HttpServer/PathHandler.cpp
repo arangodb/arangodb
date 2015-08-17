@@ -30,10 +30,10 @@
 #include "PathHandler.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
 #include "Basics/logging.h"
 #include "Basics/mimetypes.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -85,7 +85,7 @@ namespace triagens {
 
         _response = createResponse(HttpResponse::MOVED_PERMANENTLY);
 
-        _response->setHeader("location", url);
+        _response->setHeader(TRI_CHAR_LENGTH_PAIR("location"), url);
         _response->setContentType("text/html");
 
         _response->body().appendText("<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"");
@@ -173,7 +173,7 @@ namespace triagens {
       if (cacheMaxAge > 0 &&
           _request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
         // yes, then set a pro-caching header
-        _response->setHeader("cache-control", strlen("cache-control"), maxAgeHeader);
+        _response->setHeader(TRI_CHAR_LENGTH_PAIR("cache-control"), maxAgeHeader);
       }
 
       std::string::size_type d = last.find_last_of('.');

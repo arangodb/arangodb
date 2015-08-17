@@ -64,6 +64,22 @@ class ArangoDB
   default_options[:verify] = false
 
 ################################################################################
+## adjust the global client-side timeout value
+################################################################################
+
+  def self.set_timeout (value) 
+    old_value = default_options[:timeout] 
+    default_options[:timeout] = value
+    old_value
+  end
+
+  def self.set_read_timeout (value) 
+    old_value = default_options[:read_timeout] 
+    default_options[:read_timeout] = value
+    old_value
+  end
+  
+################################################################################
 ## create a collection
 ################################################################################
 
