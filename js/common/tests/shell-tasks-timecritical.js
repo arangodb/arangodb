@@ -638,6 +638,25 @@ function TaskSuite () {
 
       assertTrue(db[cn].count() > 0);
       assertTrue(db[cn].byExample({ value: 42 }).toArray().length > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a task with broken function code
+////////////////////////////////////////////////////////////////////////////////
+
+    testBrokenCommand : function () {
+      try {
+        tasks.register({ 
+          id: "UnitTests1", 
+          name: "UnitTests1", 
+          command: "for (i", 
+          offset: 0
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
     }
 
   };

@@ -403,27 +403,23 @@ namespace triagens {
       _writeBuffer.appendText(l);
 
       // append protocol
-      static char const* ProtocolHeader = " HTTP/1.1\r\n";
-      _writeBuffer.appendText(ProtocolHeader, strlen(ProtocolHeader));
+      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
 
       // append hostname
       string&& hostname = _connection->getEndpoint()->getHost();
 
-      static char const* HostHeader = "Host: ";
-      _writeBuffer.appendText(HostHeader, strlen(HostHeader));
+      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
       _writeBuffer.appendText(hostname);
-      _writeBuffer.appendText("\r\n", 2);
+      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
       if (_keepAlive) {
-        static char const* ConnectionKeepAliveHeader = "Connection: Keep-Alive\r\n";
-        _writeBuffer.appendText(ConnectionKeepAliveHeader, strlen(ConnectionKeepAliveHeader));
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
       }
       else {
-        static char const* ConnectionCloseHeader = "Connection: Close\r\n";
-        _writeBuffer.appendText(ConnectionCloseHeader, strlen(ConnectionCloseHeader));
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
       }
-      _writeBuffer.appendText("User-Agent: ArangoDB\r\n");
-      _writeBuffer.appendText("Accept-Encoding: deflate\r\n");
+      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("User-Agent: ArangoDB\r\n"));
+      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Accept-Encoding: deflate\r\n"));
 
       // do basic authorization
       if (! _pathToBasicAuth.empty()) {
@@ -444,28 +440,28 @@ namespace triagens {
         }
 
         if (! foundValue.empty()) {
-          _writeBuffer.appendText("Authorization: Basic ");
+          _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
           _writeBuffer.appendText(foundValue);
-          _writeBuffer.appendText("\r\n", 2);
+          _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
         }
       }
 
       for (auto const& header : headerFields) {
         // TODO: check Header name and value
         _writeBuffer.appendText(header.first);
-        _writeBuffer.appendText(": ", strlen(": "));
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
         _writeBuffer.appendText(header.second);
-        _writeBuffer.appendText("\r\n", 2);
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
       }
 
       if (method != HttpRequest::HTTP_REQUEST_GET) {
         static char const* ContentLengthHeader = "Content-Length: ";
         _writeBuffer.appendText(ContentLengthHeader, strlen(ContentLengthHeader));
         _writeBuffer.appendInteger(bodyLength);
-        _writeBuffer.appendText("\r\n\r\n", 4);
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
       }
       else {
-        _writeBuffer.appendText("\r\n", 2);
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
       }
 
       if (body != nullptr) {

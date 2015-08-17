@@ -257,13 +257,13 @@ namespace triagens {
           }
           for (unsigned long i = 0; i < numOperations; ++i) {
             // append boundary
-            batchPayload.appendText("--", 2);
+            batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("--"));
             batchPayload.appendText(boundary, blen);
-            batchPayload.appendText("\r\n", 2);
+            batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
             // append content-type, this will also begin the body
-            batchPayload.appendText("Content-Type: ", 14);
+            batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: "));
             batchPayload.appendText(rest::HttpRequest::BatchContentType);
-            batchPayload.appendText("\r\n\r\n", 4);
+            batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
             // everything else (i.e. part request header & body) will get into the body
             const size_t threadCounter = _counter++;
@@ -279,17 +279,13 @@ namespace triagens {
 
             // headline, e.g. POST /... HTTP/1.1
             rest::HttpRequest::appendMethod(type, &batchPayload);
-            size_t oldLength = batchPayload.length();
             batchPayload.appendText(url);
-            if (batchPayload.length() == oldLength) {
-              LOG_WARNING("URL nonempty empty, but nothing appended!");
-            }              
-            batchPayload.appendText(" HTTP/1.1\r\n", 11);
-            batchPayload.appendText("\r\n", 2);
+            batchPayload.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
+            batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
             // body
             batchPayload.appendText(payload, payloadLength);
-            batchPayload.appendText("\r\n", 2);
+            batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
             if (mustFree) {
               TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) payload);
@@ -297,9 +293,9 @@ namespace triagens {
           }
 
           // end of MIME
-          batchPayload.appendText("--", 2);
+          batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("--"));
           batchPayload.appendText(boundary, blen);
-          batchPayload.appendText("--\r\n", 2);
+          batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("--\r\n"));
 
           _headers.erase("Content-Type");
           _headers["Content-Type"] = rest::HttpRequest::MultiPartContentType +

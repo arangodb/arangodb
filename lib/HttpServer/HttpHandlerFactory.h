@@ -93,24 +93,6 @@ namespace triagens {
 
         typedef bool (*context_fptr) (HttpRequest*, void*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief size restrictions
-////////////////////////////////////////////////////////////////////////////////
-        
-        struct SizeRestriction {
-          SizeRestriction (size_t maximalHeaderSize,
-                           size_t maximalBodySize,
-                           size_t maximalPipelineSize)
-            : maximalHeaderSize(maximalHeaderSize),
-              maximalBodySize(maximalBodySize),
-              maximalPipelineSize(maximalPipelineSize) {
-          }
-
-          size_t maximalHeaderSize;
-          size_t maximalBodySize;
-          size_t maximalPipelineSize;
-        };
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -162,12 +144,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns header and body size restrictions
-////////////////////////////////////////////////////////////////////////////////
-
-        SizeRestriction const& sizeRestrictions () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request, wrapper method

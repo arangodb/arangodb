@@ -360,17 +360,17 @@ Handler::status_t RestBatchHandler::execute () {
       _response->body().appendText("\r\nContent-Id: " + string(helper.contentId, helper.contentIdLength));
     }
 
-    _response->body().appendText("\r\n\r\n", 4);
+    _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
     // remove some headers we don't need
-    partResponse->setHeader("connection", 10, "");
-    partResponse->setHeader("server", 6, "");
+    partResponse->setHeader(TRI_CHAR_LENGTH_PAIR("connection"), "");
+    partResponse->setHeader(TRI_CHAR_LENGTH_PAIR("server"), "");
 
     // append the part response header
     partResponse->writeHeader(&_response->body());
     // append the part response body
     _response->body().appendText(partResponse->body());
-    _response->body().appendText("\r\n", 2);
+    _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
     delete handler;
 

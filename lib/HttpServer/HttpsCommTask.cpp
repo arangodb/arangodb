@@ -51,7 +51,7 @@ using namespace triagens::rest;
 
 HttpsCommTask::HttpsCommTask (HttpsServer* server,
                               TRI_socket_t socket,
-                              const ConnectionInfo& info,
+                              ConnectionInfo const& info,
                               double keepAliveTimeout,
                               SSL_CTX* ctx,
                               int verificationMode,
@@ -61,10 +61,12 @@ HttpsCommTask::HttpsCommTask (HttpsServer* server,
     _accepted(false),
     _readBlockedOnWrite(false),
     _writeBlockedOnRead(false),
+    _tmpReadBuffer(nullptr),
     _ssl(nullptr),
     _ctx(ctx),
     _verificationMode(verificationMode),
     _verificationCallback(verificationCallback) {
+
   _tmpReadBuffer = new char[READ_BLOCK_SIZE];
 }
 
@@ -87,7 +89,6 @@ HttpsCommTask::~HttpsCommTask () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpsCommTask::setup (Scheduler* scheduler, EventLoop loop) {
-
   // setup base class
   bool ok = HttpCommTask::setup(scheduler, loop);
 
@@ -126,8 +127,8 @@ bool HttpsCommTask::setup (Scheduler* scheduler, EventLoop loop) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpsCommTask::handleEvent (EventToken token, EventType revents) {
-
+bool HttpsCommTask::handleEvent (EventToken token, 
+                                 EventType revents) {
   // try to accept the SSL connection
   if (! _accepted) {
     if (token == _readWatcher && (revents & EVENT_SOCKET_READ)) {
@@ -149,6 +150,8 @@ bool HttpsCommTask::handleEvent (EventToken token, EventType revents) {
 
   // handle normal socket operation
   bool result = HttpCommTask::handleEvent(token, revents);
+
+  // warning: if _clientClosed is true here, the task (this) is already deleted!
 
   // we might need to start listing for writes (even we only want to READ)
   if (result && ! _clientClosed) {
@@ -341,8 +344,6 @@ again:
 bool HttpsCommTask::trySSLWrite () {
   _writeBlockedOnRead = false;
 
-  bool callCompletedWriteBuffer = false;
-
   size_t len = 0;
 
   if (nullptr != _writeBuffer) {
@@ -414,19 +415,13 @@ bool HttpsCommTask::trySSLWrite () {
   }
 
   if (len == 0) {
-    if (_ownBuffer) {
-      delete _writeBuffer;
-    }
+    delete _writeBuffer;
+    _writeBuffer = nullptr;
 
-    callCompletedWriteBuffer = true;
+    completedWriteBuffer();
   }
   else {
     _writeLength += nr;
-  }
-
-  // we have to release the lock, before calling completedWriteBuffer
-  if (callCompletedWriteBuffer) {
-    completedWriteBuffer();
   }
 
   // return immediately, everything is closed down

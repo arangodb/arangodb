@@ -34,7 +34,6 @@
 #define ARANGODB_SCHEDULER_TASK_H 1
 
 #include "Basics/Common.h"
-
 #include "Scheduler/events.h"
 
 struct TRI_json_t;
@@ -147,12 +146,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual bool handleEvent (EventToken token, EventType event) = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the task should be aborted
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool shouldAbort ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods

@@ -64,7 +64,7 @@ namespace {
 /// @brief async event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct AsyncWatcher : public ev_async, Watcher {
+  struct AsyncWatcher final : public ev_async, Watcher {
     struct ev_loop* loop;
     Task* task;
 
@@ -100,7 +100,7 @@ namespace {
 /// @brief socket event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct SocketWatcher : public ev_io, Watcher {
+  struct SocketWatcher final : public ev_io, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -134,21 +134,13 @@ namespace {
         // write
         task->handleEvent(watcher, EVENT_SOCKET_WRITE);
       }
-      else {
-        // event not handled!
-        if (task->shouldAbort()) {
-          LOG_WARNING("task event not handled. killing socket task");
 
-          task->handleEvent(watcher, EVENT_SOCKET_KILLED);
-        }
-      }
+      // note: task may have been destroyed by here, so it's not safe to access it anymore
     }
     else {
-      /*
       LOG_WARNING("socketCallback called for unknown task");
       // TODO: given that the task is unknown, is it safe to stop to I/O here?
-      ev_io_stop(watcher->loop, w);
-      */
+      // ev_io_stop(watcher->loop, w);
     }
   }
 
@@ -156,7 +148,7 @@ namespace {
 /// @brief periodic event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct PeriodicWatcher : public ev_periodic, Watcher {
+  struct PeriodicWatcher final : public ev_periodic, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -184,7 +176,7 @@ namespace {
 /// @brief signal event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct SignalWatcher : public ev_signal, Watcher {
+  struct SignalWatcher final : public ev_signal, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -212,7 +204,7 @@ namespace {
 /// @brief timer event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct TimerWatcher : public ev_timer, Watcher {
+  struct TimerWatcher final : public ev_timer, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -436,8 +428,7 @@ void SchedulerLibev::uninstallEvent (EventToken watcher) {
       break;
     }
 
-    case EVENT_SOCKET_READ:
-    case EVENT_SOCKET_KILLED: {
+    case EVENT_SOCKET_READ: {
       SocketWatcher* w = (SocketWatcher*) watcher;
       ev_io_stop(w->loop, (ev_io*) w);
       delete w;

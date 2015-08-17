@@ -206,6 +206,13 @@ static inline uint32_t TRI_64to32 (uint64_t x) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper macro for calculating strlens for static strings at 
+/// a compile-time (unless compiled with fno-builtin-strlen etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fake spinlocks
 /// spin locks seem to have issues when used under Valgrind
 /// we thus mimic spinlocks using ordinary mutexes when in maintainer mode
