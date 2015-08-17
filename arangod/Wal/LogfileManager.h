@@ -580,7 +580,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Logfile*> getLogfilesForTickRange (TRI_voc_tick_t,
-                                                       TRI_voc_tick_t);
+                                                       TRI_voc_tick_t,
+                                                       bool& minTickIncluded);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return logfiles for a tick range

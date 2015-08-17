@@ -1162,6 +1162,10 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
       _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE,
                            strlen(TRI_REPLICATION_HEADER_ACTIVE),
                            "true");
+      
+      _response->setHeader(TRI_REPLICATION_HEADER_FROMPRESENT,
+                           strlen(TRI_REPLICATION_HEADER_FROMPRESENT),
+                           dump._fromTickIncluded ? "true" : "false");
 
       if (length > 0) {
         // transfer ownership of the buffer contents
