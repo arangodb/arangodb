@@ -338,6 +338,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _ignoreDatafileErrors(false),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
+    _throwCollectionNotLoadedError(false),
     _foxxQueues(true),
     _foxxQueuesPollInterval(1.0),
     _server(nullptr),
@@ -585,6 +586,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.ignore-datafile-errors", &_ignoreDatafileErrors, "load collections even if datafiles may contain errors")
     ("database.disable-query-tracking", &_disableQueryTracking, "turn off AQL query tracking by default")
     ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
+    ("database.throw-collection-not-loaded-error", &_throwCollectionNotLoadedError, "throw an error when accessing a collection that is still loading")
   ;
 
   // .............................................................................
@@ -735,6 +737,8 @@ void ArangoServer::buildApplicationServer () {
     // testing disables authentication
     _disableAuthentication = true;
   }
+
+  TRI_SetThrowCollectionNotLoadedVocBase(nullptr, _throwCollectionNotLoadedError);
   
   // set global query tracking flag
   triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);

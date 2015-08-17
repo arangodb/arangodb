@@ -655,6 +655,19 @@ bool TRI_IsAllowedNameVocBase (bool,
 
 TRI_voc_tick_t TRI_NextQueryIdVocBase (TRI_vocbase_t*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the "throw collection not loaded error"
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_GetThrowCollectionNotLoadedVocBase (TRI_vocbase_t*); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the "throw collection not loaded error"
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetThrowCollectionNotLoadedVocBase (TRI_vocbase_t*, 
+                                             bool);
+
 #endif
 
 // -----------------------------------------------------------------------------
