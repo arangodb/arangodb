@@ -48,7 +48,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-#ifndef _WIN32
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
 #include <openssl/md5.h>
 #else
 #define hexStr ""
@@ -665,11 +665,13 @@ static int ProcessInputDirectory (string& errorMsg) {
         continue;
       }
 
-#ifndef _WIN32
-      // Cut of the dirty md5 hash on the wintendo:
-      string nname;
-      nname = name.substr(0, name.length() - 32);
-      name = nname;
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+      // Cut of the dirty md5 hash on the wintendo and on mac:
+      if (name.length() > 32) {
+        string nname;
+        nname = name.substr(0, name.length() - 32);
+        name = nname;
+      }
 #endif
 
       if (restrictList.size() > 0 &&
@@ -779,7 +781,7 @@ static int ProcessInputDirectory (string& errorMsg) {
       if (ImportData) {
         // import data. check if we have a datafile
         // TODO: externalise file extension
-#ifndef _WIN32
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
         size_t   dstLen;
         char     *hexStr = NULL;
         char     rawdigest[16];
@@ -793,7 +795,7 @@ static int ProcessInputDirectory (string& errorMsg) {
         hexStr = TRI_EncodeHexString(rawdigest, 16, &dstLen);
 #endif
         const string datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + cname + hexStr + ".data.json";
-#ifndef _WIN32
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
         TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
 #endif
 

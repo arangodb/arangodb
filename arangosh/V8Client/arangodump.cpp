@@ -48,7 +48,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-#ifdef _WIN32
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
 #include <openssl/md5.h>
 #else
 #define hexStr ""
@@ -841,7 +841,7 @@ static int RunDump (string& errorMsg) {
       continue;
     }
 
-#ifdef _WIN32
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
     size_t   dstLen;
     char     *hexStr = NULL;
     char     rawdigest[16];
@@ -933,7 +933,7 @@ static int RunDump (string& errorMsg) {
         return res;
       }
     }
-#ifdef _WIN32
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
     TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
 #endif
   }
@@ -1229,7 +1229,7 @@ static int RunClusterDump (string& errorMsg) {
 
       // Now set up the output file:
       string fileName;
-#ifdef _WIN32
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
       size_t   dstLen;
       char     *hexStr = NULL;
       char     rawdigest[16];
@@ -1244,7 +1244,7 @@ static int RunClusterDump (string& errorMsg) {
 #endif
       fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".data.json";
 
-#ifdef _WIN32
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
       TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
 #endif
 
