@@ -48,6 +48,11 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+#include <openssl/md5.h>
+#else
+#define hexStr ""
+#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -836,6 +841,21 @@ static int RunDump (string& errorMsg) {
       continue;
     }
 
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+    size_t   dstLen;
+    char     *hexStr = NULL;
+    char     rawdigest[16];
+    MD5_CTX  md5context;
+    MD5_Init(&md5context);
+      
+    MD5_Update(&md5context,
+               (const unsigned char*)name.c_str(), name.length());
+      
+    MD5_Final((u_char*)rawdigest, &md5context);
+    hexStr = TRI_EncodeHexString(rawdigest, 16, &dstLen);
+#endif
+      
+
     // found a collection!
     if (Progress) {
       cout << "dumping collection '" << name << "'..." << endl;
@@ -846,7 +866,7 @@ static int RunDump (string& errorMsg) {
 
     {
       // save meta data
-      string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
+      string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".structure.json";
 
       int fd;
 
@@ -881,7 +901,7 @@ static int RunDump (string& errorMsg) {
     if (DumpData) {
       // save the actual data
       string fileName;
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
+      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".data.json";
 
       int fd;
 
@@ -913,6 +933,9 @@ static int RunDump (string& errorMsg) {
         return res;
       }
     }
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+    TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
+#endif
   }
 
 
@@ -1206,7 +1229,24 @@ static int RunClusterDump (string& errorMsg) {
 
       // Now set up the output file:
       string fileName;
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+      size_t   dstLen;
+      char     *hexStr = NULL;
+      char     rawdigest[16];
+      MD5_CTX  md5context;
+      MD5_Init(&md5context);
+      
+      MD5_Update(&md5context,
+                 (const unsigned char*)name.c_str(), name.length());
+      
+      MD5_Final((u_char*)rawdigest, &md5context);
+      hexStr = TRI_EncodeHexString(rawdigest, 16, &dstLen);
+#endif
+      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".data.json";
+
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+      TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
+#endif
 
       int fd;
 
