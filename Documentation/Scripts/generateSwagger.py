@@ -34,7 +34,7 @@
 ### @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ################################################################################
 
-import sys, re, json, string, os, cgi
+import sys, re, json, string, os
 
 rc = re.compile
 MS = re.M | re.S
@@ -567,11 +567,10 @@ def example_arangosh_run(cargo, r=Regexen()):
 
     # new examples code TODO should include for each example own object in json file
     examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated'))
-
     operation['examples'] += '<br><br><pre><code class="json">'
 
     for line in examplefile.readlines():
-        operation['examples'] += cgi.escape(line)
+        operation['examples'] += line
 
     operation['examples'] += '</code></pre><br>'
 
