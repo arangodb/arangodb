@@ -2,7 +2,6 @@ import os
 import sys
 import re
 import inspect
-import cgi
 
 validExtensions = (".cpp", ".h", ".js", ".mdpp")
 # specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
@@ -68,12 +67,12 @@ def example_content(filepath, fh, tag):
 
   for line in infile:
     if first:
-      arangosh = line.startswith("arangosh>")
-      curl = line.startswith("shell> curl")
+      arangosh = line.startswith("arangosh&gt;")
+      curl = line.startswith("shell&gt; curl")
       first = False
 
     if arangosh:
-      if line.startswith("arangosh>") or line.startswith("........>"):
+      if line.startswith("arangosh&gt;") or line.startswith("........&gt;"):
         if lastline != None:
           # short = short + lastline
           # shortLines = shortLines + 1
@@ -97,15 +96,14 @@ def example_content(filepath, fh, tag):
             lastline = None
 
     if curl:
-      if line.startswith("shell> curl"):
+      if line.startswith("shell&gt; curl"):
         curlState = CURL_STATE_CMD
-      elif curlState == CURL_STATE_CMD and line.startswith("HTTP/1.1 "):
+      elif curlState == CURL_STATE_CMD and line.startswith("HTTP/"):
         curlState = CURL_STATE_HEADER
       elif curlState == CURL_STATE_HEADER and line.startswith("{"):
         curlState = CURL_STATE_BODY
 
       if curlState == CURL_STATE_CMD or curlState == CURL_STATE_HEADER:
-        line = cgi.escape(line)
         short = short + line
         shortLines = shortLines + 1
       else:
