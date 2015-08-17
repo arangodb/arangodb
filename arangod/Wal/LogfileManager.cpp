@@ -1052,7 +1052,7 @@ bool LogfileManager::removeLogfiles () {
       break;
     }
 
-    removeLogfile(logfile, true);
+    removeLogfile(logfile);
     worked = true;
   }
 
@@ -1318,7 +1318,7 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
 
           // and physically remove the file
           // note: this will also delete the logfile object!
-          removeLogfile(logfile, false);
+          removeLogfile(logfile);
         }
         else {
           ++it;
@@ -1387,6 +1387,8 @@ Logfile* LogfileManager::getCollectableLogfile () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a logfile to remove. this may return nullptr
+/// if it returns a logfile, the logfile is removed from the list of available
+/// logfiles
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile* LogfileManager::getRemovableLogfile () {
@@ -1411,7 +1413,7 @@ Logfile* LogfileManager::getRemovableLogfile () {
     uint32_t numberOfLogfiles = 0;
     Logfile* first = nullptr;
 
-    READ_LOCKER(_logfilesLock);
+    WRITE_LOCKER(_logfilesLock);
 
     for (auto& it : _logfiles) {
       Logfile* logfile = it.second;
@@ -1429,6 +1431,10 @@ Logfile* LogfileManager::getRemovableLogfile () {
 
         if (++numberOfLogfiles > historicLogfiles()) {
           TRI_ASSERT(first != nullptr);
+          _logfiles.erase(first->id());
+
+          TRI_ASSERT(_logfiles.find(first->id()) == _logfiles.end());
+
           return first;
         }
       }
@@ -1532,20 +1538,42 @@ LogfileManagerState LogfileManager::state () {
   return state;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current available logfile ranges
+////////////////////////////////////////////////////////////////////////////////
+
+LogfileRanges LogfileManager::ranges () {
+  LogfileRanges result;
+
+  READ_LOCKER(_logfilesLock);
+
+  for (auto const& it : _logfiles) {
+    Logfile* logfile = it.second;
+
+    if (logfile == nullptr) {
+      continue;
+    }
+
+    auto df = logfile->df();
+    if (df->_tickMin == 0 && df->_tickMax == 0) {
+      continue;
+    }
+
+    result.emplace_back(LogfileRange(it.first, logfile->filename(), logfile->statusText(), df->_tickMin, df->_tickMax));
+  }
+
+  return result;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a logfile from the inventory and in the file system
+/// @brief remove a logfile in the file system
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::removeLogfile (Logfile* logfile,
-                                    bool unlink) {
-  if (unlink) {
-    unlinkLogfile(logfile);
-  }
-
+void LogfileManager::removeLogfile (Logfile* logfile) {
   // old filename
   Logfile::IdType const id = logfile->id();
   std::string const filename = logfileName(id);
@@ -1996,6 +2024,7 @@ int LogfileManager::inspectLogfiles () {
       if (! _ignoreLogfileErrors) {
         // we don't ignore errors, so we abort here
         int res = TRI_errno();
+
         if (res == TRI_ERROR_NO_ERROR) {
           // must have an error!
           res = TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
@@ -2012,13 +2041,21 @@ int LogfileManager::inspectLogfiles () {
       _recoverState->logfilesToProcess.push_back(logfile);
     }
         
-    LOG_TRACE("inspecting logfile %llu (%s)", (unsigned long long) logfile->id(), logfile->statusText().c_str());
-
+    LOG_TRACE("inspecting logfile %llu (%s)", 
+              (unsigned long long) logfile->id(), 
+              logfile->statusText().c_str());
+    
     // update the tick statistics  
     if (! TRI_IterateDatafile(logfile->df(), &RecoverState::InitialScanMarker, static_cast<void*>(_recoverState))) {
       LOG_WARNING("WAL inspection failed when scanning logfile '%s'", logfile->filename().c_str());
       return TRI_ERROR_ARANGO_RECOVERY;
     }
+    
+    LOG_TRACE("inspected logfile %llu (%s), tickMin: %llu, tickMax: %llu", 
+              (unsigned long long) logfile->id(), 
+              logfile->statusText().c_str(),
+              (unsigned long long) logfile->df()->_tickMin, 
+              (unsigned long long) logfile->df()->_tickMax);
 
     {
       MUTEX_LOCKER(_idLock);
