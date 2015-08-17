@@ -127,7 +127,6 @@ function RequestContext(executionBuffer, models, route, path, rootElement, const
   this.docs = new SwaggerDocs(this.route.docs, models);
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
 
-  executionBuffer.applyEachFunction(this);
   var attr;
   var extensionWrapper = function(scope, func) {
     return function() {
@@ -140,6 +139,7 @@ function RequestContext(executionBuffer, models, route, path, rootElement, const
       this[attr] = extensionWrapper(this, extensions[attr]);
     }
   }
+  executionBuffer.applyEachFunction(this);
 }
 
 extend(RequestContext.prototype, {

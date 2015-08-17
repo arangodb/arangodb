@@ -834,9 +834,19 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   extend: function(extensions) {
     var attr;
+    var extensionWrapper = function(scope, functionName) {
+      return function() {
+        this.applyChain.push({
+          functionName: functionName,
+          argumentList: arguments
+        });
+        return this;
+      }.bind(scope);
+    };
     for (attr in extensions) {
       if (extensions.hasOwnProperty(attr)) {
         this.extensions[attr] = extensions[attr];
+        this.allRoutes[attr] = extensionWrapper(this.allRoutes, attr);
       }
     }
   }
