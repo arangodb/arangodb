@@ -1026,7 +1026,7 @@ bool LogfileManager::removeLogfiles () {
       break;
     }
 
-    removeLogfile(logfile, true);
+    removeLogfile(logfile);
     worked = true;
   }
 
@@ -1274,7 +1274,7 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
 
           // and physically remove the file
           // note: this will also delete the logfile object!
-          removeLogfile(logfile, false);
+          removeLogfile(logfile);
         }
         else {
           ++it;
@@ -1343,16 +1343,20 @@ Logfile* LogfileManager::getRemovableLogfile () {
   uint32_t numberOfLogfiles = 0;
   Logfile* first = nullptr;
 
-  READ_LOCKER(_logfilesLock);
+  {
+    READ_LOCKER(_logfilesLock);
 
-  // iterate over all active readers and find their minimum used logfile id
-  for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
-    Logfile::IdType lastCollectedId = (*it).second.first;
+    // iterate over all active readers and find their minimum used logfile id
+    for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
+      Logfile::IdType lastCollectedId = (*it).second.first;
 
-    if (lastCollectedId < minId) {
-      minId = lastCollectedId;
+      if (lastCollectedId < minId) {
+        minId = lastCollectedId;
+      }
     }
   }
+
+  WRITE_LOCKER(_logfilesLock);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;
@@ -1365,6 +1369,9 @@ Logfile* LogfileManager::getRemovableLogfile () {
 
       if (++numberOfLogfiles > historicLogfiles()) {
         TRI_ASSERT(first != nullptr);
+        _logfiles.erase(first->id());
+        TRI_ASSERT(_logfiles.find(first->id()) == _logfiles.end());
+
         return first;
       }
     }
@@ -1462,6 +1469,33 @@ LogfileManagerState LogfileManager::state () {
   return state;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current available logfile ranges
+////////////////////////////////////////////////////////////////////////////////
+
+LogfileRanges LogfileManager::ranges () {
+  LogfileRanges result;
+
+  READ_LOCKER(_logfilesLock);
+
+  for (auto const& it : _logfiles) {
+    Logfile* logfile = it.second;
+
+    if (logfile == nullptr) {
+      continue;
+    }
+
+    auto df = logfile->df();
+    if (df->_tickMin == 0 && df->_tickMax == 0) {
+      continue;
+    }
+
+    result.emplace_back(LogfileRange(it.first, logfile->filename(), logfile->statusText(), df->_tickMin, df->_tickMax));
+  }
+
+  return result;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -1470,12 +1504,7 @@ LogfileManagerState LogfileManager::state () {
 /// @brief remove a logfile from the inventory and in the file system
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::removeLogfile (Logfile* logfile,
-                                    bool unlink) {
-  if (unlink) {
-    unlinkLogfile(logfile);
-  }
-
+void LogfileManager::removeLogfile (Logfile* logfile) {
   // old filename
   Logfile::IdType const id = logfile->id();
   std::string const filename = logfileName(id);
