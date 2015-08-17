@@ -48,6 +48,12 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#ifndef _WIN32
+#include <openssl/md5.h>
+#else
+#define hexStr ""
+#endif
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -653,11 +659,18 @@ static int ProcessInputDirectory (string& errorMsg) {
 
       // found a structure.json file
 
-      const string name = files[i].substr(0, files[i].size() - suffix.size());
+      string name = files[i].substr(0, files[i].size() - suffix.size());
 
       if (name[0] == '_' && ! IncludeSystemCollections) {
         continue;
       }
+
+#ifndef _WIN32
+      // Cut of the dirty md5 hash on the wintendo:
+      string nname;
+      nname = name.substr(0, name.length() - 32);
+      name = nname;
+#endif
 
       if (restrictList.size() > 0 &&
           restrictList.find(name) == restrictList.end()) {
@@ -766,7 +779,23 @@ static int ProcessInputDirectory (string& errorMsg) {
       if (ImportData) {
         // import data. check if we have a datafile
         // TODO: externalise file extension
-        const string datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + cname + ".data.json";
+#ifndef _WIN32
+        size_t   dstLen;
+        char     *hexStr = NULL;
+        char     rawdigest[16];
+        MD5_CTX  md5context;
+        MD5_Init(&md5context);
+      
+        MD5_Update(&md5context,
+                   (const unsigned char*)cname.c_str(), cname.length());
+      
+        MD5_Final((u_char*)rawdigest, &md5context);
+        hexStr = TRI_EncodeHexString(rawdigest, 16, &dstLen);
+#endif
+        const string datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + cname + hexStr + ".data.json";
+#ifndef _WIN32
+        TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
+#endif
 
         if (TRI_ExistsFile(datafile.c_str())) {
           // found a datafile
