@@ -128,7 +128,6 @@ class RequestContext {
     this.docs = new SwaggerDocs(this.route.docs, models);
     this.docs.addNickname(route.docs.httpMethod, route.url.match);
 
-    executionBuffer.applyEachFunction(this);
     var attr;
     var extensionWrapper = function(scope, func) {
       return function() {
@@ -141,6 +140,7 @@ class RequestContext {
         this[attr] = extensionWrapper(this, extensions[attr]);
       }
     }
+    executionBuffer.applyEachFunction(this);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
