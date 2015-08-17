@@ -236,12 +236,6 @@ sub formatFile ($$$) {
       $line = '/// @author Dr. Oreste Costa-Panaia';
     }
 
-    if ($line =~ /^\/\/ outline-regexp:/) {
-      if ($isJavaScript == 1) {
-	$line = '// outline-regexp: "/// @brief\\\\|/// @addtogroup\\\\|/// @page\\\\|/// @startDocuBlock\\\\|// --SECTION--\\\\|/// @\\\\}\\\\|/\\\\*jslint"';
-      }
-    }
-
     if ($line =~ /^[ \t]*(\/\/\/.*)$/) {
       $line = "$1";
     }
@@ -387,11 +381,6 @@ sub formatFile ($$$) {
   print $out "// -----------------------------------------------------------------------------\n";
   print $out "// --SECTION--                                                       END-OF-FILE\n";
   print $out "// -----------------------------------------------------------------------------\n";
-  print $out "\n";
-  print $out "// Local Variables:\n";
-  print $out "// mode: outline-minor\n";
-  print $out "// outline-regexp: \"/// \@brief\\\\|/// {\@inheritDoc}\\\\|/// \@page\\\\|/// \@startDocuBlock\\\\|// --SECTION--\\\\|/// \@\\\\}\"\n";
-  print $out "// End:\n";
 
   if (! $dryRun) {
     close($out)

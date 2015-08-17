@@ -1,0 +1,32 @@
+shell> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
+{ 
+  "query" : "FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) FILTER i == 5 && j == 5 RETURN 42" 
+}
+EOF
+
+HTTP/1.1 202 Accepted
+content-type: text/plain; charset=utf-8
+x-arango-async-id: 751235082664
+
+shell> curl --dump - http://localhost:8529/_api/job/pending
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+[ 
+  "751235082664" 
+]
+shell> curl -X PUT --dump - http://localhost:8529/_api/job/751235082664/cancel
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true 
+}
+shell> curl --dump - http://localhost:8529/_api/job/pending
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+[ ]

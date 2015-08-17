@@ -1,0 +1,9 @@
+arangosh> queries.slow();
+[ 
+  { 
+    "id" : "130", 
+    "query" : "FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLEEP(1) RETURN sleepLoooong", 
+    "started" : "2015-08-12T09:32:14Z", 
+    "runTime" : 5.040858030319214 
+  } 
+]

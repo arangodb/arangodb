@@ -118,6 +118,7 @@ namespace triagens {
 
       EventType const type;
     };
+
   }
 }
 

@@ -1,0 +1,65 @@
+arangosh> var stmt = db._createStatement("FOR doc IN @@collection FILTER doc.foo == @bar RETURN doc");
+arangosh> stmt.parse();
+{ 
+  "bindVars" : [ 
+    "bar", 
+    "@collection" 
+  ], 
+  "collections" : [ ], 
+  "ast" : [ 
+    { 
+      "type" : "root", 
+      "subNodes" : [ 
+        { 
+          "type" : "for", 
+          "subNodes" : [ 
+            { 
+              "type" : "variable", 
+              "name" : "doc", 
+              "id" : 0 
+            }, 
+            { 
+              "type" : "parameter", 
+              "name" : "@collection" 
+            } 
+          ] 
+        }, 
+        { 
+          "type" : "filter", 
+          "subNodes" : [ 
+            { 
+              "type" : "compare ==", 
+              "subNodes" : [ 
+                { 
+                  "type" : "attribute access", 
+                  "name" : "foo", 
+                  "subNodes" : [ 
+                    { 
+                      "type" : "reference", 
+                      "name" : "doc", 
+                      "id" : 0 
+                    } 
+                  ] 
+                }, 
+                { 
+                  "type" : "parameter", 
+                  "name" : "bar" 
+                } 
+              ] 
+            } 
+          ] 
+        }, 
+        { 
+          "type" : "return", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "doc", 
+              "id" : 0 
+            } 
+          ] 
+        } 
+      ] 
+    } 
+  ] 
+}

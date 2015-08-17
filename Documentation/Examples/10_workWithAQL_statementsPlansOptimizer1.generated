@@ -1,0 +1,11 @@
+arangosh> stmt.explain({ allPlans: true }).plans.map(function(plan) { return formatPlan(plan); });
+[ 
+  { 
+    "estimatedCost" : 2.989999505, 
+    "nodes" : [ 
+      "SingletonNode", 
+      "IndexRangeNode", 
+      "ReturnNode" 
+    ] 
+  } 
+]

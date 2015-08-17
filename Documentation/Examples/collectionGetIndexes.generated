@@ -11,7 +11,7 @@ arangosh> db.test.getIndexes();
     "sparse" : false 
   }, 
   { 
-    "id" : "test/20157362", 
+    "id" : "test/1134621579", 
     "type" : "skiplist", 
     "fields" : [ 
       "skiplistAttribute" 
@@ -20,7 +20,7 @@ arangosh> db.test.getIndexes();
     "sparse" : false 
   }, 
   { 
-    "id" : "test/20419506", 
+    "id" : "test/1134883723", 
     "type" : "skiplist", 
     "fields" : [ 
       "skiplistUniqueAttribute" 
@@ -29,7 +29,7 @@ arangosh> db.test.getIndexes();
     "sparse" : false 
   }, 
   { 
-    "id" : "test/20812722", 
+    "id" : "test/1135276939", 
     "type" : "hash", 
     "fields" : [ 
       "hashListAttribute", 

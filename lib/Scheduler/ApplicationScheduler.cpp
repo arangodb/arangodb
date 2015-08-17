@@ -60,8 +60,9 @@ namespace {
 #include <windows.h>
 #include <stdio.h>
 
+class ControlCTask;
 bool static CtrlHandler(DWORD eventType);
-static SignalTask* localSignalTask;
+static ControlCTask* localControlCTask;
 
 #endif
 
@@ -74,9 +75,9 @@ static SignalTask* localSignalTask;
   class ControlCTask : public SignalTask {
     public:
 
-      ControlCTask (ApplicationServer* server)
+      explicit ControlCTask (ApplicationServer* server)
         : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
-        localSignalTask = this;
+        localControlCTask = this;
         int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE) CtrlHandler, true);
 
         if (result == 0) {
@@ -98,7 +99,7 @@ static SignalTask* localSignalTask;
 
   class ControlCTask : public SignalTask {
     public:
-      ControlCTask (ApplicationServer* server)
+      explicit ControlCTask (ApplicationServer* server)
         : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         addSignal(SIGINT);
         addSignal(SIGTERM);
@@ -180,7 +181,7 @@ static SignalTask* localSignalTask;
 
   class Sigusr1Task : public SignalTask {
     public:
-      Sigusr1Task (ApplicationScheduler* scheduler)
+      explicit Sigusr1Task (ApplicationScheduler* scheduler)
         : Task("Sigusr1"), SignalTask(), _scheduler(scheduler) {
 #ifndef _WIN32
         addSignal(SIGUSR1);
@@ -236,7 +237,7 @@ static SignalTask* localSignalTask;
 #ifdef _WIN32
 
   bool CtrlHandler (DWORD eventType) {
-    ControlCTask* ccTask = (ControlCTask*) localSignalTask;
+    ControlCTask* ccTask = localControlCTask;
     // string msg = ccTask->_server->getName() + " [shutting down]";
     bool shutdown = false;
     string shutdownMessage;
@@ -341,7 +342,8 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
     _multiSchedulerAllowed(true),
     _nrSchedulerThreads(4),
     _backend(0),
-    _descriptorMinimum(256) {
+    _descriptorMinimum(256),
+    _disableControlCHandler(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,7 +398,7 @@ size_t ApplicationScheduler::numberOfThreads () {
 /// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
+void ApplicationScheduler::setProcessorAffinity (std::vector<size_t> const& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   size_t j = 0;
 
@@ -416,6 +418,14 @@ void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
 #endif
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disables CTRL-C handling (because taken over by console input)
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationScheduler::disableControlCHandler () {
+  _disableControlCHandler = true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
@@ -424,7 +434,7 @@ void ApplicationScheduler::setProcessorAffinity (const vector<size_t>& cores) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>& options) {
+void ApplicationScheduler::setupOptions (std::map<std::string, ProgramOptionsDescription>& options) {
 
   // .............................................................................
   // command line options
@@ -514,7 +524,16 @@ bool ApplicationScheduler::start () {
   buildSchedulerReporter();
   buildControlCHandler();
 
-  bool ok = _scheduler->start(0);
+#ifdef TRI_HAVE_GETRLIMIT
+  struct rlimit rlim;
+  int res = getrlimit(RLIMIT_NOFILE, &rlim);
+
+  if (res == 0) {
+    LOG_INFO("file-descriptors (nofiles) hard limit is %d, soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
+  }
+#endif
+
+  bool ok = _scheduler->start(nullptr);
 
   if (! ok) {
     LOG_FATAL_AND_EXIT("the scheduler cannot be started");
@@ -557,9 +576,7 @@ void ApplicationScheduler::stop () {
     static size_t const MAX_TRIES = 10;
 
     // remove all helper tasks
-    for (vector<Task*>::iterator i = _tasks.begin();  i != _tasks.end();  ++i) {
-      Task* task = *i;
-
+    for (auto& task : _tasks) {
       _scheduler->destroyTask(task);
     }
 
@@ -610,7 +627,7 @@ void ApplicationScheduler::buildSchedulerReporter () {
     Task* reporter = new SchedulerReporterTask(_scheduler, _reportInterval);
 
     _scheduler->registerTask(reporter);
-    _tasks.push_back(reporter);
+    _tasks.emplace_back(reporter);
   }
 }
 
@@ -623,23 +640,25 @@ void ApplicationScheduler::buildControlCHandler () {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
 
-  // control C handler
-  Task* controlC = new ControlCTask(_applicationServer);
+  if (! _disableControlCHandler) {
+    // control C handler
+    Task* controlC = new ControlCTask(_applicationServer);
 
-  _scheduler->registerTask(controlC);
-  _tasks.push_back(controlC);
+    _scheduler->registerTask(controlC);
+    _tasks.emplace_back(controlC);
+  }
 
   // hangup handler
   Task* hangup = new HangupTask();
 
   _scheduler->registerTask(hangup);
-  _tasks.push_back(hangup);
+  _tasks.emplace_back(hangup);
 
   // sigusr handler
   Task* sigusr = new Sigusr1Task(this);
 
   _scheduler->registerTask(sigusr);
-  _tasks.push_back(sigusr);
+  _tasks.emplace_back(sigusr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,8 +675,8 @@ void ApplicationScheduler::adjustFileDescriptors () {
     if (res != 0) {
       LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s", strerror(errno));
     }
-
-    LOG_DEBUG("hard limit is %d, soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
+    
+    LOG_DEBUG("file-descriptors (nofiles) hard limit is %d, soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
 
     bool changed = false;
 
@@ -696,7 +715,7 @@ void ApplicationScheduler::adjustFileDescriptors () {
         LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s", strerror(errno));
       }
 
-      LOG_DEBUG("new hard limit is %d, new soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
+      LOG_INFO("file-descriptors (nofiles) new hard limit is %d, new soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
     }
 
     // the select backend has more restrictions

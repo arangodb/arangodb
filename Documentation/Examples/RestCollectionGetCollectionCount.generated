@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/count
 
 { 
-  "id" : "2058179996", 
+  "id" : "620884875", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
@@ -16,7 +16,7 @@ location: /_db/_system/_api/collection/products/count
     "allowUserKeys" : true 
   }, 
   "waitForSync" : true, 
-  "indexBuckets" : 1, 
+  "indexBuckets" : 8, 
   "count" : 100, 
   "status" : 3, 
   "type" : 2, 

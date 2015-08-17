@@ -1,0 +1,9 @@
+arangosh> require("org/arangodb/users").replace("my-user", "my-changed-password");
+{ 
+  "user" : "my-user", 
+  "active" : true, 
+  "extra" : { 
+  }, 
+  "changePassword" : false, 
+  "code" : 200 
+}

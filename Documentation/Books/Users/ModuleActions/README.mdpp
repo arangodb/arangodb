@@ -9,6 +9,8 @@ The action module provides the infrastructure for defining HTTP actions.
 
 !SECTION Standard HTTP Result Generators
 
+@startDocuBlock actionsDefineHttp
+
 !SUBSECTION Result ok
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultOk

@@ -1,0 +1,7 @@
+arangosh> stmt.explain().plan.collections
+[ 
+  { 
+    "name" : "test", 
+    "type" : "read" 
+  } 
+]

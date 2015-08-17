@@ -1,0 +1,1 @@
+arangosh> require("org/arangodb/users").remove("my-user");

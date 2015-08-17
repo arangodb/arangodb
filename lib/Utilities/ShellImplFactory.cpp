@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a basis class which defines the methods for determining
-///        when an input is "complete"
+/// @brief shell factory
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -41,13 +40,24 @@
 #endif
 
 using namespace triagens;
-using namespace std;
+using namespace arangodb;
 
-ShellImplementation* ShellImplFactory::buildShell (string const & history, 
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class ShellImplFactory
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a shell
+////////////////////////////////////////////////////////////////////////////////
+
+ShellImplementation* ShellImplFactory::buildShell (std::string const& history, 
                                                    Completer* completer) {
-
 #ifdef _WIN32
-  //under windows the readline is not compilable
+  // under Windows the readline is not compilable
   return new LinenoiseShell(history, completer);
 #elif defined TRI_HAVE_LINENOISE
   return new LinenoiseShell(history, completer);
@@ -57,14 +67,25 @@ ShellImplementation* ShellImplFactory::buildShell (string const & history,
   // last resort!
   return new DummyShell(history, completer);
 #endif
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell will have a CTRL-C handler
+////////////////////////////////////////////////////////////////////////////////
+
+bool ShellImplFactory::hasCtrlCHandler () {
+#ifdef _WIN32
+  // under Windows the readline is not compilable
+  return false;
+#elif defined TRI_HAVE_LINENOISE
+  return false;
+#elif defined TRI_HAVE_READLINE
+  return true;
+#else
+  return false;
+#endif
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

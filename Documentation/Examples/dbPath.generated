@@ -1,0 +1,2 @@
+arangosh> require("internal").db._path();
+/tmp/vocdir.25246/databases/database-127883

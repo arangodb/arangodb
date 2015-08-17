@@ -1,0 +1,8 @@
+arangosh> stmt = db._createStatement( { 
+........>  "query": "FOR i IN [ @one, @two ] RETURN i * 2", 
+........>  "bindVars": { 
+........>    "one": 1, 
+........>    "two": 2 
+........>  } 
+........> } );
+[object ArangoStatement]

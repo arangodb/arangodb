@@ -1,0 +1,227 @@
+arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } });
+{ 
+  "plan" : { 
+    "nodes" : [ 
+      { 
+        "type" : "SingletonNode", 
+        "dependencies" : [ ], 
+        "id" : 1, 
+        "estimatedCost" : 1, 
+        "estimatedNrItems" : 1 
+      }, 
+      { 
+        "type" : "IndexRangeNode", 
+        "dependencies" : [ 
+          1 
+        ], 
+        "id" : 9, 
+        "estimatedCost" : 48, 
+        "estimatedNrItems" : 47, 
+        "database" : "_system", 
+        "collection" : "test", 
+        "outVariable" : { 
+          "id" : 0, 
+          "name" : "i" 
+        }, 
+        "ranges" : [ 
+          [ 
+            { 
+              "variable" : "i", 
+              "attr" : "value", 
+              "lowConst" : { 
+                "bound" : 97, 
+                "include" : false, 
+                "isConstant" : true 
+              }, 
+              "highConst" : { 
+                "include" : false, 
+                "isConstant" : true 
+              }, 
+              "lows" : [ ], 
+              "highs" : [ ], 
+              "valid" : true, 
+              "equality" : false 
+            } 
+          ] 
+        ], 
+        "index" : { 
+          "type" : "skiplist", 
+          "id" : "502002571", 
+          "unique" : false, 
+          "sparse" : false, 
+          "fields" : [ 
+            "value" 
+          ] 
+        }, 
+        "reverse" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          9 
+        ], 
+        "id" : 3, 
+        "estimatedCost" : 95, 
+        "estimatedNrItems" : 47, 
+        "expression" : { 
+          "type" : "compare >", 
+          "subNodes" : [ 
+            { 
+              "type" : "attribute access", 
+              "name" : "value", 
+              "subNodes" : [ 
+                { 
+                  "type" : "reference", 
+                  "name" : "i", 
+                  "id" : 0 
+                } 
+              ] 
+            }, 
+            { 
+              "type" : "value", 
+              "value" : 97 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 2, 
+          "name" : "1" 
+        }, 
+        "canThrow" : false, 
+        "expressionType" : "simple" 
+      }, 
+      { 
+        "type" : "FilterNode", 
+        "dependencies" : [ 
+          3 
+        ], 
+        "id" : 4, 
+        "estimatedCost" : 142, 
+        "estimatedNrItems" : 47, 
+        "inVariable" : { 
+          "id" : 2, 
+          "name" : "1" 
+        } 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          4 
+        ], 
+        "id" : 5, 
+        "estimatedCost" : 189, 
+        "estimatedNrItems" : 47, 
+        "expression" : { 
+          "type" : "attribute access", 
+          "name" : "value", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "i", 
+              "id" : 0 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 4, 
+          "name" : "3" 
+        }, 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
+      }, 
+      { 
+        "type" : "SortNode", 
+        "dependencies" : [ 
+          5 
+        ], 
+        "id" : 6, 
+        "estimatedCost" : 369.95693728037276, 
+        "estimatedNrItems" : 47, 
+        "elements" : [ 
+          { 
+            "inVariable" : { 
+              "id" : 4, 
+              "name" : "3" 
+            }, 
+            "ascending" : true 
+          } 
+        ], 
+        "stable" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          6 
+        ], 
+        "id" : 7, 
+        "estimatedCost" : 416.95693728037276, 
+        "estimatedNrItems" : 47, 
+        "expression" : { 
+          "type" : "attribute access", 
+          "name" : "value", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "i", 
+              "id" : 0 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 6, 
+          "name" : "5" 
+        }, 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          7 
+        ], 
+        "id" : 8, 
+        "estimatedCost" : 463.95693728037276, 
+        "estimatedNrItems" : 47, 
+        "inVariable" : { 
+          "id" : 6, 
+          "name" : "5" 
+        } 
+      } 
+    ], 
+    "rules" : [ 
+      "use-index-range" 
+    ], 
+    "collections" : [ 
+      { 
+        "name" : "test", 
+        "type" : "read" 
+      } 
+    ], 
+    "variables" : [ 
+      { 
+        "id" : 6, 
+        "name" : "5" 
+      }, 
+      { 
+        "id" : 4, 
+        "name" : "3" 
+      }, 
+      { 
+        "id" : 2, 
+        "name" : "1" 
+      }, 
+      { 
+        "id" : 0, 
+        "name" : "i" 
+      } 
+    ], 
+    "estimatedCost" : 463.95693728037276, 
+    "estimatedNrItems" : 47 
+  }, 
+  "warnings" : [ ], 
+  "stats" : { 
+    "rulesExecuted" : 1, 
+    "rulesSkipped" : 21, 
+    "plansCreated" : 1 
+  } 
+}

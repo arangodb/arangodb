@@ -72,10 +72,16 @@
 #define COLLECTION_STATUS_POLL_INTERVAL (1000 * 10)
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 static std::atomic<TRI_voc_tick_t> QueryId(1);
+
+static std::atomic<bool> ThrowCollectionNotLoaded(false);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auxiliary struct for index iteration
@@ -989,7 +995,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads an existing (document) collection
 ///
-/// Note that this will READ lock the collection you have to release the
+/// Note that this will READ lock the collection. You have to release the
 /// collection lock by yourself.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1076,7 +1082,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
   // currently loading
   if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
     // loop until the status changes
-    while (1) {
+    while (true) {
       TRI_vocbase_col_status_e status = collection->_status;
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1084,6 +1090,12 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
       if (status != TRI_VOC_COL_STATUS_LOADING) {
         break;
       }
+
+      // only throw this particular error if the server is configured to do so
+      if (ThrowCollectionNotLoaded.load(std::memory_order_relaxed)) {
+        return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED;      
+      }
+
       usleep(COLLECTION_STATUS_POLL_INTERVAL);
 
       TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1094,8 +1106,6 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
 
   // unloaded, load collection
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    TRI_document_collection_t* document;
-
     // set the status to loading
     collection->_status = TRI_VOC_COL_STATUS_LOADING;
 
@@ -1105,7 +1115,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     // disk activity, index creation etc.)
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    document = TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
+    TRI_document_collection_t* document = TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
 
     // lock again the adjust the status
     TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -2329,6 +2339,23 @@ bool TRI_IsAllowedNameVocBase (bool allowSystem,
 
 TRI_voc_tick_t TRI_NextQueryIdVocBase (TRI_vocbase_t* vocbase) {
   return QueryId.fetch_add(1, std::memory_order_seq_cst);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the "throw collection not loaded error"
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_GetThrowCollectionNotLoadedVocBase (TRI_vocbase_t* vocbase) {
+  return ThrowCollectionNotLoaded.load(std::memory_order_seq_cst);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the "throw collection not loaded error"
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetThrowCollectionNotLoadedVocBase (TRI_vocbase_t* vocbase, 
+                                             bool value) {
+  ThrowCollectionNotLoaded.store(value, std::memory_order_seq_cst);
 }
 
 // -----------------------------------------------------------------------------

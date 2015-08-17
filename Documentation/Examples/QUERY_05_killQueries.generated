@@ -1,0 +1,9 @@
+arangosh> var oneQuery = queries.current()[1];
+arangosh> queries.kill(oneQuery.id);
+{ 
+  "code" : 200 
+}
+arangosh> tasks.unregister("mytask-1");
+{ 
+  "code" : 200 
+}

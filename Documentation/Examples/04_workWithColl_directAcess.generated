@@ -1,0 +1,23 @@
+arangosh> db.example.toArray()
+[ 
+  { 
+    "Hello" : "World", 
+    "_id" : "example/465695627", 
+    "_rev" : "465695627", 
+    "_key" : "465695627" 
+  }, 
+  { 
+    "age" : 29, 
+    "name" : "John Doe", 
+    "_id" : "example/466088843", 
+    "_rev" : "466088843", 
+    "_key" : "466088843" 
+  }, 
+  { 
+    "age" : 31, 
+    "name" : "Jane Smith", 
+    "_id" : "example/466285451", 
+    "_rev" : "466285451", 
+    "_key" : "466285451" 
+  } 
+]

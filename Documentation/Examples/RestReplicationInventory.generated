@@ -9,8 +9,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "7165340", 
-        "indexBuckets" : 1, 
+        "cid" : "7205771", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -20,7 +20,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "7427484", 
+          "id" : "7467915", 
           "type" : "hash", 
           "fields" : [ 
             "mount" 
@@ -35,8 +35,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "4412828", 
-        "indexBuckets" : 1, 
+        "cid" : "4453259", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 4194304, 
@@ -50,8 +50,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2053532", 
-        "indexBuckets" : 1, 
+        "cid" : "2093963", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -65,8 +65,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2184604", 
-        "indexBuckets" : 1, 
+        "cid" : "2225035", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -80,8 +80,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2315676", 
-        "indexBuckets" : 1, 
+        "cid" : "2356107", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 33554432, 
@@ -95,8 +95,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "14374300", 
-        "indexBuckets" : 1, 
+        "cid" : "14414731", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -110,8 +110,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "15095196", 
-        "indexBuckets" : 1, 
+        "cid" : "15135627", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -125,8 +125,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "218524", 
-        "indexBuckets" : 1, 
+        "cid" : "258955", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 4194304, 
@@ -136,7 +136,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "546204", 
+          "id" : "586635", 
           "type" : "hash", 
           "fields" : [ 
             "user" 
@@ -151,8 +151,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1789154716", 
-        "indexBuckets" : 1, 
+        "cid" : "22606731", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -166,8 +166,8 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1788237212", 
-        "indexBuckets" : 1, 
+        "cid" : "21754763", 
+        "indexBuckets" : 8, 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -180,9 +180,9 @@ content-type: application/json; charset=utf-8
   ], 
   "state" : { 
     "running" : true, 
-    "lastLogTick" : "2187351452", 
-    "totalEvents" : 12957, 
-    "time" : "2015-08-04T11:30:50Z" 
+    "lastLogTick" : "830403467", 
+    "totalEvents" : 5005, 
+    "time" : "2015-08-12T09:32:50Z" 
   }, 
-  "tick" : "2187351452" 
+  "tick" : "830403467" 
 }

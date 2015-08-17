@@ -350,24 +350,27 @@
       var tableContent = _.map(this.model.get('deps'), function(obj, name) {
         var currentValue = obj.current === undefined ? '' : String(obj.current);
         var defaultValue = '';
-        var description = obj.definition;
-        var checks = [
-          {
-            rule: Joi.string().optional().allow(''),
-            msg: 'Has to be a string.'
-          },
-          {
+        var description = obj.definition.name;
+        if (obj.definition.version !== '*') {
+          description += '@' + obj.definition.version;
+        }
+        var checks = [{
+          rule: Joi.string().optional().allow(''),
+          msg: 'Has to be a string.'
+        }];
+        if (obj.definition.required) {
+          checks.push({
             rule: Joi.string().required(),
             msg: 'This value is required.'
-          }
-        ];
+          });
+        }
         return window.modalView.createTextEntry(
           'app_deps_' + name,
           obj.title,
           currentValue,
           description,
           defaultValue,
-          true,
+          obj.definition.required,
           checks
         );
       });

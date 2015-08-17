@@ -1,0 +1,20 @@
+arangosh> db._users.toArray()
+[ 
+  { 
+    "user" : "root", 
+    "userData" : { 
+    }, 
+    "authData" : { 
+      "active" : true, 
+      "changePassword" : false, 
+      "simple" : { 
+        "method" : "sha256", 
+        "hash" : "335ba091903845660bd6a7b78ec6dc7f2d7f2c1f10c3132552196fe16c24c309", 
+        "salt" : "Ttb8Coua4yPcyzyY" 
+      } 
+    }, 
+    "_id" : "_users/1766283", 
+    "_rev" : "1766283", 
+    "_key" : "1766283" 
+  } 
+]

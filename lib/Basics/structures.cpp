@@ -65,38 +65,6 @@ void TRI_FreeBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a blob
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_blob_t* TRI_CopyBlob (TRI_memory_zone_t* zone, TRI_blob_t const* src) {
-  TRI_blob_t* dst;
-
-  dst = (TRI_blob_t*) TRI_Allocate(zone, sizeof(TRI_blob_t), false);
-
-  if (dst == nullptr) {
-    return nullptr;
-  }
-
-  if (src->length == 0 || src->data == nullptr) {
-    dst->length = 0;
-    dst->data = nullptr;
-  }
-  else {
-    dst->length = src->length;
-    dst->data = static_cast<char*>(TRI_Allocate(zone, dst->length, false));
-
-    if (dst->data == nullptr) {
-      TRI_Free(zone, dst);
-      return nullptr;
-    }
-
-    memcpy(dst->data, src->data, src->length);
-  }
-
-  return dst;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a blob into given destination
 ////////////////////////////////////////////////////////////////////////////////
 

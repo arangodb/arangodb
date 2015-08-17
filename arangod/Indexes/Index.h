@@ -70,6 +70,7 @@ TRI_index_search_value_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_element_t {
+
   private:
     TRI_doc_mptr_t* _document;
 

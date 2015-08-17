@@ -38,6 +38,7 @@ var users = require("org/arangodb/users");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_fetch
+/// @brief fetch the properties of a user.
 ///
 /// @RESTHEADER{GET /_api/user/{user}, Fetch User}
 ///
@@ -97,6 +98,7 @@ function get_api_user (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_create
+/// @brief Create a new user.
 ///
 /// @RESTHEADER{POST /_api/user, Create User}
 ///
@@ -189,6 +191,7 @@ function post_api_user (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_replace
+/// @brief replace an existing user with a new one.
 ///
 /// @RESTHEADER{PUT /_api/user/{user}, Replace User}
 ///
@@ -272,6 +275,7 @@ function put_api_user (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_update
+/// @brief modify attributes of an existing user
 ///
 /// @RESTHEADER{PATCH /_api/user/{user}, Update User}
 ///
@@ -357,6 +361,7 @@ function patch_api_user (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_delete
+/// @brief delete a user permanently.
 ///
 /// @RESTHEADER{DELETE /_api/user/{user}, Remove User}
 ///

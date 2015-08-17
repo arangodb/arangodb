@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a basis class for concrete implementations for a shell
+/// @brief a base class for implementations for a shell
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Dr. Frank Celler
 /// @author Esteban Lombeyda
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -32,34 +33,82 @@
 
 #include "Basics/Common.h"
 
-#include "Completer.h"
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
 
-namespace triagens {
+namespace arangodb {
+  class Completer;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         class ShellImplementation
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ShellImplementation
+////////////////////////////////////////////////////////////////////////////////
 
   class ShellImplementation {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief state of the console                                  protected types
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   protected types
+// -----------------------------------------------------------------------------
 
   protected:
 
-    typedef enum {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief state of the console
+////////////////////////////////////////////////////////////////////////////////
+
+    enum console_state_e {
       STATE_NONE = 0,
-      STATE_OPENED,
-      STATE_CLOSED
-    }
-    console_state_e;
+      STATE_OPENED = 1,
+      STATE_CLOSED = 2
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
   public:
 
 ////////////////////////////////////////////////////////////////////////////////
-///                                               public constructor, destructor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
     ShellImplementation (std::string const& history, Completer*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
     virtual ~ShellImplementation ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+  public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief line editor prompt
+////////////////////////////////////////////////////////////////////////////////
+
+    std::string prompt (const std::string& prompt,
+			const std::string& begin,
+			bool& eof);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            virtual public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a signal
+////////////////////////////////////////////////////////////////////////////////
+
+    virtual void signal ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
@@ -74,12 +123,6 @@ namespace triagens {
     virtual bool close () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
-////////////////////////////////////////////////////////////////////////////////
-
-    virtual char* prompt (char const* prompt);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the history file path
 ///
 /// The path is "$HOME" plus _historyFilename, if $HOME is set. Else
@@ -92,7 +135,7 @@ namespace triagens {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual void addHistory (const char*) = 0;
+    virtual void addHistory (const std::string&) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the history
@@ -101,10 +144,10 @@ namespace triagens {
     virtual bool writeHistory () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief todo!!
+/// @brief get next line
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual char* getLine (const char*) = 0;
+    virtual std::string getLine (const std::string& prompt, bool& eof) = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -144,8 +187,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

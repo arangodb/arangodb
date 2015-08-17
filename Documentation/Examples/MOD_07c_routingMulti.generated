@@ -1,0 +1,23 @@
+arangosh> db._routing.save({
+........>  urlPrefix: "/test",
+........>  routes: [
+........>    {
+........>      url: "/url1",
+........>      content: "route 1"
+........>    },
+........>    {
+........>      url: "/url2",
+........>      content: "route 2"
+........>    },
+........>    {
+........>      url: "/url3",
+........>      content: "route 3"
+........>    }
+........>  ]
+........> });
+{ 
+  "_id" : "_routing/611054475", 
+  "_rev" : "611054475", 
+  "_key" : "611054475" 
+}
+arangosh> require("internal").reloadRouting()

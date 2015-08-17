@@ -1,0 +1,17 @@
+arangosh> db._routing.save({
+........>  middleware: [
+........>    {
+........>      url: {
+........>        match: "/subdirectory/*"
+........>      },
+........>      action: {
+........>        do: "db://OwnMiddlewareTest/logRequest"
+........>      }
+........>    }
+........>  ]
+........> });
+{ 
+  "_id" : "_routing/612299659", 
+  "_rev" : "612299659", 
+  "_key" : "612299659" 
+}

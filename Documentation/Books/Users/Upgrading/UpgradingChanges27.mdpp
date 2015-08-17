@@ -1,0 +1,30 @@
+!CHAPTER Incompatible changes in ArangoDB 2.7
+
+It is recommended to check the following list of incompatible changes **before** 
+upgrading to ArangoDB 2.7, and adjust any client programs if necessary.
+
+!SECTION Foxx changes
+
+!SUBSECTION ES2015 Classes
+
+All Foxx constructors have been replaced with ES2015 classes and can be extended using the class syntax. The `extend` method is still supported at the moment but will become deprecated in ArangoDB 2.8 and removed in ArangoDB 2.9.
+
+**Before:**
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var MyModel = Foxx.Model.extend({
+  // ...
+  schema: {/* ... */}
+});
+```
+
+**After:**
+
+```js
+var Foxx = require('org/arangodb/foxx');
+class MyModel extends Foxx.Model {
+  // ...
+}
+MyModel.prototype.schema = {/* ... */};
+```

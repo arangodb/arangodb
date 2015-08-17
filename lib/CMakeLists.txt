@@ -178,7 +178,6 @@ add_library(
     HttpServer/HttpsServer.cpp
     HttpServer/PathHandler.cpp
     Scheduler/ApplicationScheduler.cpp
-    Scheduler/AsyncTask.cpp
     Scheduler/ListenTask.cpp
     Scheduler/PeriodicTask.cpp
     Scheduler/Scheduler.cpp

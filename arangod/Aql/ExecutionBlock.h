@@ -825,7 +825,7 @@ namespace triagens {
 /// @brief reentrant hash index iterator state
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_hash_index_element_multi_s* _hashNextElement;
+        TRI_index_element_t* _hashNextElement;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reentrant edge index iterator state

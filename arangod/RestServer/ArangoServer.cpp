@@ -354,6 +354,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _ignoreDatafileErrors(false),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
+    _throwCollectionNotLoadedError(false),
     _foxxQueues(true),
     _foxxQueuesPollInterval(1.0),
     _server(nullptr),
@@ -576,6 +577,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.query-cache-mode", &_queryCacheMode, "mode for the AQL query cache (on, off, demand)")
     ("database.query-cache-max-results", &_queryCacheMaxResults, "maximum number of results in query cache per database")
     ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
+    ("database.throw-collection-not-loaded-error", &_throwCollectionNotLoadedError, "throw an error when accessing a collection that is still loading")
   ;
 
   // .............................................................................
@@ -711,10 +713,16 @@ void ArangoServer::buildApplicationServer () {
   // disable certain options in unittest or script mode
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
+  if (mode == OperationMode::MODE_CONSOLE) {
+    _applicationScheduler->disableControlCHandler();
+  }
+ 
   if (mode == OperationMode::MODE_SCRIPT || mode == OperationMode::MODE_UNITTESTS) {
     // testing disables authentication
     _disableAuthentication = true;
   }
+
+  TRI_SetThrowCollectionNotLoadedVocBase(nullptr, _throwCollectionNotLoadedError);
   
   // set global query tracking flag
   triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);

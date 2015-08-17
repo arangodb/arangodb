@@ -5,8 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,93 +22,96 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_UTILITIES_DUMMY_SHELL_H
 #define ARANGODB_UTILITIES_DUMMY_SHELL_H 1
 
-#include <string>
-
-#include "Completer.h"
 #include "ShellImplementation.h"
 
-#include "Basics/tri-strings.h"
-#include "V8/v8-utils.h"
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
 
-namespace triagens {
+namespace arangodb {
+  class Completer;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class DummyShell
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DummyShell
+////////////////////////////////////////////////////////////////////////////////
 
   class DummyShell : public ShellImplementation {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
-///                                               public constructor, destructor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      DummyShell (std::string const& history,   
-                  Completer*);
+      DummyShell (std::string const& history, Completer*);
   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
       virtual ~DummyShell();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor open
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                       ShellImplementation methods
+// -----------------------------------------------------------------------------
 
-      virtual bool open (bool autoComplete);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor shutdown
-////////////////////////////////////////////////////////////////////////////////
-
-      virtual bool close();
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual char* prompt (char const* prompt);
+      bool open (bool autoComplete) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
-///
-/// The path is "$HOME" plus _historyFilename, if $HOME is set. Else
-/// the local file _historyFilename.
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual std::string historyPath();
+      bool close () override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add to history
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void addHistory (const char*);
+      std::string historyPath() override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save the history
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual bool writeHistory();
+      void addHistory (const std::string&) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the characters which the user has typed
-/// @arg  is the prompt of the shell
-/// Note: this is the interface between our shell world and some implementation
-///       of key events (linenoise, readline)
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual char* getLine (char const*);
+      bool writeHistory () override final;
 
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string getLine (const std::string& prompt, bool& eof) override final;
   };
 }
+
 #endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

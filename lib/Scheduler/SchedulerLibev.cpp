@@ -64,7 +64,7 @@ namespace {
 /// @brief async event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct AsyncWatcher : public ev_async, Watcher {
+  struct AsyncWatcher final : public ev_async, Watcher {
     struct ev_loop* loop;
     Task* task;
 
@@ -83,7 +83,7 @@ namespace {
     AsyncWatcher* watcher = (AsyncWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && (revents & EV_ASYNC) && task->isActive()) {
+    if (task != nullptr && (revents & EV_ASYNC)) {
       task->handleEvent(watcher, EVENT_ASYNC);
     }
   }
@@ -100,7 +100,7 @@ namespace {
 /// @brief socket event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct SocketWatcher : public ev_io, Watcher {
+  struct SocketWatcher final : public ev_io, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -119,18 +119,28 @@ namespace {
     SocketWatcher* watcher = (SocketWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && task->isActive()) {
+    if (task != nullptr) {
       if (revents & EV_READ) {
         if (revents & EV_WRITE) {
+          // read and write
           task->handleEvent(watcher, EVENT_SOCKET_READ | EVENT_SOCKET_WRITE);
         }
         else {
+          // read
           task->handleEvent(watcher, EVENT_SOCKET_READ);
         }
       }
       else if (revents & EV_WRITE) {
+        // write
         task->handleEvent(watcher, EVENT_SOCKET_WRITE);
       }
+
+      // note: task may have been destroyed by here, so it's not safe to access it anymore
+    }
+    else {
+      LOG_WARNING("socketCallback called for unknown task");
+      // TODO: given that the task is unknown, is it safe to stop to I/O here?
+      // ev_io_stop(watcher->loop, w);
     }
   }
 
@@ -138,7 +148,7 @@ namespace {
 /// @brief periodic event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct PeriodicWatcher : public ev_periodic, Watcher {
+  struct PeriodicWatcher final : public ev_periodic, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -157,7 +167,7 @@ namespace {
     PeriodicWatcher* watcher = (PeriodicWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && (revents & EV_PERIODIC) && task->isActive()) {
+    if (task != nullptr && (revents & EV_PERIODIC)) {
       task->handleEvent(watcher, EVENT_PERIODIC);
     }
   }
@@ -166,7 +176,7 @@ namespace {
 /// @brief signal event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct SignalWatcher : public ev_signal, Watcher {
+  struct SignalWatcher final : public ev_signal, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -185,7 +195,7 @@ namespace {
     SignalWatcher* watcher = (SignalWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && (revents & EV_SIGNAL) && task->isActive()) {
+    if (task != nullptr && (revents & EV_SIGNAL)) {
       task->handleEvent(watcher, EVENT_SIGNAL);
     }
   }
@@ -194,7 +204,7 @@ namespace {
 /// @brief timer event watcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct TimerWatcher : public ev_timer, Watcher {
+  struct TimerWatcher final : public ev_timer, Watcher {
     struct ev_loop* loop;
     Task* task;
     
@@ -213,7 +223,7 @@ namespace {
     TimerWatcher* watcher = (TimerWatcher*) w; // cast from C type to C++ class
     Task* task = watcher->task;
 
-    if (task != nullptr && (revents & EV_TIMER) && task->isActive()) {
+    if (task != nullptr && (revents & EV_TIMER)) {
       task->handleEvent(watcher, EVENT_TIMER);
     }
   }
@@ -425,7 +435,6 @@ void SchedulerLibev::uninstallEvent (EventToken watcher) {
 
       break;
     }
-
 
     case EVENT_TIMER: {
       TimerWatcher* w = (TimerWatcher*) watcher;

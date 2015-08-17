@@ -1,0 +1,33 @@
+arangosh> var queries = require("org/arangodb/aql/queries");
+arangosh> var tasks = require("org/arangodb/tasks");
+arangosh> tasks.register({
+........>  id: "mytask-1",
+........>  name: "this is a sample task to spawn slow aql queries",
+........>  period: 2,
+........>  command: "require('internal').db._query('FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLEEP(1) RETURN sleepLoooong');"
+........> });
+{ 
+  "id" : "mytask-1", 
+  "name" : "this is a sample task to spawn slow aql queries", 
+  "type" : "periodic", 
+  "period" : 2, 
+  "created" : 1439371933.453324, 
+  "command" : "require('internal').db._query('FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLE...", 
+  "database" : "_system", 
+  "code" : 200 
+}
+arangosh> queries.current();
+[ 
+  { 
+    "id" : "132", 
+    "query" : "FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLEEP(1) RETURN sleepLoooong", 
+    "started" : "2015-08-12T09:32:18Z", 
+    "runTime" : 1.1665658950805664 
+  }, 
+  { 
+    "id" : "131", 
+    "query" : "FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLEEP(1) RETURN sleepLoooong", 
+    "started" : "2015-08-12T09:32:16Z", 
+    "runTime" : 3.180997848510742 
+  } 
+]

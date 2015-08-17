@@ -1,6 +1,6 @@
 arangosh> db.test.ensureUniqueConstraint("a", "b.c");
 { 
-  "id" : "test/651974044", 
+  "id" : "test/1180103563", 
   "type" : "hash", 
   "fields" : [ 
     "a", 
@@ -14,17 +14,17 @@ arangosh> db.test.ensureUniqueConstraint("a", "b.c");
 }
 arangosh> db.test.save({ a : 1, b : { c : 1 } });
 { 
-  "_id" : "test/652301724", 
-  "_rev" : "652301724", 
-  "_key" : "652301724" 
+  "_id" : "test/1180431243", 
+  "_rev" : "1180431243", 
+  "_key" : "1180431243" 
 }
 arangosh> db.test.save({ a : 1, b : { c : 1 } });
 [ArangoError 1210: cannot create document, unique constraint violated]
 arangosh> db.test.save({ a : 1, b : { c : null } });
 { 
-  "_id" : "test/652760476", 
-  "_rev" : "652760476", 
-  "_key" : "652760476" 
+  "_id" : "test/1180889995", 
+  "_rev" : "1180889995", 
+  "_key" : "1180889995" 
 }
 arangosh> db.test.save({ a : 1 });
 [ArangoError 1210: cannot create document, unique constraint violated]

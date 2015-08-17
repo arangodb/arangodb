@@ -34,7 +34,6 @@
 #define ARANGODB_SCHEDULER_TASK_H 1
 
 #include "Basics/Common.h"
-
 #include "Scheduler/events.h"
 
 struct TRI_json_t;
@@ -44,14 +43,18 @@ namespace triagens {
     class Scheduler;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Scheduler
 /// @brief abstract base class for tasks
 ////////////////////////////////////////////////////////////////////////////////
 
     class Task {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
       friend class TaskManager;
-      Task (Task const&);
-      Task& operator= (Task const&);
+      Task (Task const&) = delete;
+      Task& operator= (Task const&) = delete;
 
       public:
 
@@ -67,14 +70,29 @@ namespace triagens {
 /// the task.
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Task (std::string const& id,
-                       std::string const& name);
+        Task (std::string const& id,
+              std::string const& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit Task (std::string const& name);
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a task
+///
+/// The method will only be called from after the task has been cleaned by
+/// the method cleanup.
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ~Task ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
       public:
 
@@ -92,14 +110,6 @@ namespace triagens {
 
         std::string id () const {
           return _id;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if task is still active
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isActive () const {
-          return _active != 0;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,16 +147,9 @@ namespace triagens {
 
         virtual bool handleEvent (EventToken token, EventType event) = 0;
 
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a task
-///
-/// The method will only be called from after the task has been cleaned by
-/// the method cleanup.
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual ~Task ();
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
 
       protected:
 
@@ -174,6 +177,10 @@ namespace triagens {
 
         virtual void cleanup () = 0;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
+
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,7 +199,11 @@ namespace triagens {
 /// @brief task id
 ////////////////////////////////////////////////////////////////////////////////
 
-        const uint64_t _taskId;
+        uint64_t const _taskId;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 
@@ -208,11 +219,6 @@ namespace triagens {
 
         std::string const _name;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the task is active
-////////////////////////////////////////////////////////////////////////////////
-
-        volatile sig_atomic_t _active;
     };
   }
 }

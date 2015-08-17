@@ -12,11 +12,11 @@ fashion. The collection *_users* contains all users and a salted SHA256 hash
 of their passwords. A user can be active or inactive. A typical document of this
 collection is
 
-    @startDocuBlockInline authFetch
-    @EXAMPLE_ARANGOSH_OUTPUT{authFetch}
+    @startDocuBlockInline USER_01_authFetch
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_01_authFetch}
     db._users.toArray()
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock authFetch
+    @endDocuBlock USER_01_authFetch
 
 !SUBSECTION Command-Line Options for the Authentication and Authorization
 
@@ -62,9 +62,32 @@ the server authentication cache is [reloaded](#examples_reload).
 
 *Examples*
 
-```js
-arangosh> require("org/arangodb/users").save("my-user", "my-secret-password");
-```
+    @startDocuBlockInline USER_02_saveUser
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_02_saveUser}
+    require("org/arangodb/users").save("my-user", "my-secret-password");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock USER_02_saveUser
+
+!SUBSECTION Reload
+
+`users.reload()`
+
+Reloads the user authentication data on the server
+
+All user authentication data is loaded by the server once on startup only and is
+cached after that. When users get added or deleted, a cache flush is required,
+and this can be performed by called this method.
+
+*Examples*
+
+    @startDocuBlockInline USER_03_reloadUser
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_03_reloadUser}
+    require("org/arangodb/users").reload();
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock USER_03_reloadUser
+
+**Note**: this function will not work from within the web interface
+
 
 !SUBSECTION Document
 
@@ -75,6 +98,14 @@ Fetches an existing ArangoDB user from the database.
 The username must be specified in *user*.
 
 This method will fail if the user cannot be found in the database.
+
+*Examples*
+
+    @startDocuBlockInline USER_04_documentUser
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_04_documentUser}
+    require("org/arangodb/users").document("my-user");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock USER_04_documentUser
 
 **Note**: this function will not work from within the web interface
 
@@ -104,9 +135,11 @@ database.
 
 *Examples*
 
-```js
-arangosh> require("org/arangodb/users").replace("my-user", "my-changed-password");
-```
+    @startDocuBlockInline USER_03_replaceUser
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_03_replaceUser}
+    require("org/arangodb/users").replace("my-user", "my-changed-password");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock USER_03_replaceUser
 
 !SUBSECTION Update
 
@@ -131,9 +164,46 @@ database.
 
 *Examples*
 
-```js
-arangosh> require("org/arangodb/users").update("my-user", "my-secret-password");
-```
+    @startDocuBlockInline USER_04_updateUser
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_04_updateUser}
+    require("org/arangodb/users").update("my-user", "my-secret-password");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock USER_04_updateUser
+
+!SUBSECTION isValid
+
+`users.isValid(user, password)`
+
+Checks whether the given combination of username and password is valid.  The
+function will return a boolean value if the combination of username and password
+is valid.
+
+Each call to this function is penalized by the server sleeping a random
+amount of time.
+
+*Examples*
+
+    @startDocuBlockInline USER_05_isValidUser
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_05_isValidUser}
+    require("org/arangodb/users").isValid("my-user", "my-secret-password");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock USER_05_isValidUser
+
+**Note**: this function will not work from within the web interface
+
+!SUBSECTION all()
+
+`users.all()`
+
+Fetches all existing ArangoDB users from the database.
+
+*Examples*
+
+    @startDocuBlockInline USER_06_AllUsers
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_06_AllUsers}
+    require("org/arangodb/users").all();
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock USER_06_AllUsers
 
 !SUBSECTION Remove
 
@@ -150,37 +220,9 @@ This method will fail if the user cannot be found in the database.
 
 *Examples*
 
-```js
-arangosh> require("org/arangodb/users").remove("my-user");
-```
+    @startDocuBlockInline USER_07_removeUser
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_07_removeUser}
+    require("org/arangodb/users").remove("my-user");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock USER_07_removeUser
 
-!SUBSECTION Reload
-
-`users.reload()`
-
-Reloads the user authentication data on the server
-
-All user authentication data is loaded by the server once on startup only and is
-cached after that. When users get added or deleted, a cache flush is required,
-and this can be performed by called this method.
-
-**Note**: this function will not work from within the web interface
-
-!SUBSECTION isValid
-
-`users.isvalid(user, password)`
-
-Checks whether the given combination of username and password is valid.  The
-function will return a boolean value if the combination of username and password
-is valid.
-
-Each call to this function is penalized by the server sleeping a random
-amount of time.
-
-**Note**: this function will not work from within the web interface
-
-!SUBSECTION all()
-
-`users.all()`
-
-Fetches all existing ArangoDB users from the database.

@@ -639,7 +639,7 @@ function byCondition (data) {
   if (typeof condition !== "object" || Array.isArray(condition)) {
     // invalid datatype for condition
     var err2 = new ArangoError();
-    err2.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    err2.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code;
     err2.errorMessage = "invalid document type";
     throw err2;
   }
@@ -943,7 +943,7 @@ SimpleQueryNear.prototype.execute = function () {
 
   if (this._skip < 0) {
     var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
     err.errorMessage = "skip must be non-negative";
     throw err;
   }
@@ -1084,7 +1084,7 @@ SimpleQueryWithin.prototype.execute = function () {
 
   if (this._skip < 0) {
     var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
     err.errorMessage = "skip must be non-negative";
     throw err;
   }
@@ -1222,7 +1222,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
 
   if (this._skip < 0) {
     var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
     err.errorMessage = "skip must be non-negative";
     throw err;
   }

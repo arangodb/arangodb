@@ -814,15 +814,15 @@ void ArangoClient::log (const char* format,
 /// @brief logs output, with prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::log (const char* format,
-                        const char* prompt,
-                        const char* str) {
+void ArangoClient::log (const string& format,
+                        const string& prompt,
+                        const string& str) {
   if (_log) {
-    string sanitised = StripBinary(str);
+    string sanitised = StripBinary(str.c_str());
 
     if (! sanitised.empty()) {
       // do not print terminal escape sequences into log
-      fprintf(_log, format, prompt, sanitised.c_str());
+      fprintf(_log, format.c_str(), prompt.c_str(), sanitised.c_str());
     }
   }
 }

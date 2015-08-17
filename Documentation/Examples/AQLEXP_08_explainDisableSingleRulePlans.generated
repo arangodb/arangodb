@@ -1,0 +1,176 @@
+arangosh> stmt.explain({ optimizer: { rules: [ "-use-index-range", "-use-index-for-sort" ] } });
+{ 
+  "plan" : { 
+    "nodes" : [ 
+      { 
+        "type" : "SingletonNode", 
+        "dependencies" : [ ], 
+        "id" : 1, 
+        "estimatedCost" : 1, 
+        "estimatedNrItems" : 1 
+      }, 
+      { 
+        "type" : "EnumerateCollectionNode", 
+        "dependencies" : [ 
+          1 
+        ], 
+        "id" : 2, 
+        "estimatedCost" : 101, 
+        "estimatedNrItems" : 100, 
+        "database" : "_system", 
+        "collection" : "test", 
+        "outVariable" : { 
+          "id" : 0, 
+          "name" : "i" 
+        }, 
+        "random" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          2 
+        ], 
+        "id" : 3, 
+        "estimatedCost" : 201, 
+        "estimatedNrItems" : 100, 
+        "expression" : { 
+          "type" : "compare >", 
+          "subNodes" : [ 
+            { 
+              "type" : "attribute access", 
+              "name" : "value", 
+              "subNodes" : [ 
+                { 
+                  "type" : "reference", 
+                  "name" : "i", 
+                  "id" : 0 
+                } 
+              ] 
+            }, 
+            { 
+              "type" : "value", 
+              "value" : 97 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 2, 
+          "name" : "1" 
+        }, 
+        "canThrow" : false, 
+        "expressionType" : "simple" 
+      }, 
+      { 
+        "type" : "FilterNode", 
+        "dependencies" : [ 
+          3 
+        ], 
+        "id" : 4, 
+        "estimatedCost" : 301, 
+        "estimatedNrItems" : 100, 
+        "inVariable" : { 
+          "id" : 2, 
+          "name" : "1" 
+        } 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          4 
+        ], 
+        "id" : 5, 
+        "estimatedCost" : 401, 
+        "estimatedNrItems" : 100, 
+        "expression" : { 
+          "type" : "attribute access", 
+          "name" : "value", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "i", 
+              "id" : 0 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 4, 
+          "name" : "3" 
+        }, 
+        "canThrow" : false, 
+        "expressionType" : "attribute" 
+      }, 
+      { 
+        "type" : "SortNode", 
+        "dependencies" : [ 
+          5 
+        ], 
+        "id" : 6, 
+        "estimatedCost" : 861.5170185988092, 
+        "estimatedNrItems" : 100, 
+        "elements" : [ 
+          { 
+            "inVariable" : { 
+              "id" : 4, 
+              "name" : "3" 
+            }, 
+            "ascending" : true 
+          } 
+        ], 
+        "stable" : false 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          6 
+        ], 
+        "id" : 8, 
+        "estimatedCost" : 961.5170185988092, 
+        "estimatedNrItems" : 100, 
+        "inVariable" : { 
+          "id" : 4, 
+          "name" : "3" 
+        } 
+      } 
+    ], 
+    "rules" : [ 
+      "move-calculations-up", 
+      "move-filters-up", 
+      "remove-redundant-calculations", 
+      "remove-unnecessary-calculations", 
+      "move-calculations-up-2", 
+      "move-filters-up-2" 
+    ], 
+    "collections" : [ 
+      { 
+        "name" : "test", 
+        "type" : "read" 
+      } 
+    ], 
+    "variables" : [ 
+      { 
+        "id" : 6, 
+        "name" : "5" 
+      }, 
+      { 
+        "id" : 4, 
+        "name" : "3" 
+      }, 
+      { 
+        "id" : 2, 
+        "name" : "1" 
+      }, 
+      { 
+        "id" : 0, 
+        "name" : "i" 
+      } 
+    ], 
+    "estimatedCost" : 961.5170185988092, 
+    "estimatedNrItems" : 100 
+  }, 
+  "warnings" : [ ], 
+  "stats" : { 
+    "rulesExecuted" : 20, 
+    "rulesSkipped" : 2, 
+    "plansCreated" : 1 
+  } 
+}

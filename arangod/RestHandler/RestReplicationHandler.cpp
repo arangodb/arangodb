@@ -515,6 +515,8 @@ void RestReplicationHandler::handleCommandLoggerState () {
 ///
 /// @RESTHEADER{POST /_api/replication/batch, Create new dump batch}
 ///
+/// **Note**: These calls are uninteresting to users.
+///
 /// @RESTBODYPARAM{body,json,required}
 /// A JSON object with the batch configuration.
 ///
@@ -551,6 +553,8 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{PUT /_api/replication/batch/{id}, Prolong existing dump batch}
+///
+/// **Note**: These calls are uninteresting to users.
 ///
 /// @RESTBODYPARAM{body,json,required}
 /// A JSON object with the batch configration.
@@ -591,6 +595,8 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump batch}
+///
+/// **Note**: These calls are uninteresting to users.
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -789,6 +795,8 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_replication_logger_returns
+/// @brief Fetch log lines from the server
+///
 /// @RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
 ///
 /// @RESTQUERYPARAMETERS
@@ -1087,6 +1095,8 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_inventory
+/// @brief Returns an overview of collections and their indexes
+///
 /// @RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes}
 ///
 /// @RESTQUERYPARAMETERS
@@ -1273,6 +1283,8 @@ void RestReplicationHandler::handleCommandInventory () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_replication_cluster_inventory
+/// @brief returs an overview of collections and indexes in a cluster
+///
 /// @RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory of collections and indexes}
 ///
 /// @RESTQUERYPARAMETERS
@@ -1469,11 +1481,12 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
   }
 
-  params._doCompact   = JsonHelper::getBooleanValue(json, "doCompact", true);
-  params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
-  params._isVolatile  = JsonHelper::getBooleanValue(json, "isVolatile", false);
-  params._isSystem    = (name[0] == '_');
-  params._planId      = 0;
+  params._doCompact    = JsonHelper::getBooleanValue(json, "doCompact", true);
+  params._waitForSync  = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
+  params._isVolatile   = JsonHelper::getBooleanValue(json, "isVolatile", false);
+  params._isSystem     = (name[0] == '_');
+  params._indexBuckets = JsonHelper::getNumericValue<uint32_t>(json, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+  params._planId       = 0;
 
   TRI_voc_cid_t planId = JsonHelper::stringUInt64(json, "planId");
   if (planId > 0) {
@@ -1823,7 +1836,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   uint64_t numberOfShards = 1;
   TRI_json_t const* shards = JsonHelper::getObjectElement(parameters, "shards");
   if (nullptr != shards && TRI_IsObjectJson(shards)) {
-    numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
+    numberOfShards = TRI_LengthVector(&shards->_value._objects) / 2;
   }
   // We take one shard if "shards" was not given
 
@@ -1832,7 +1845,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   TRI_json_t* newId = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                                new_id.c_str(), new_id.size());
   TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id", newId);
-  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, newId);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newId);
 
   // Now put in the primary and an edge index if needed:
   TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
@@ -2689,6 +2702,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_replication_dump
+/// @brief returns the whole content of one collection
+///
 /// @RESTHEADER{GET /_api/replication/dump, Return data of a collection}
 ///
 /// @RESTQUERYPARAMETERS
@@ -2962,6 +2977,8 @@ void RestReplicationHandler::handleCommandDump () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_synchronize
+/// @brief start a replication
+///
 /// @RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote endpoint}
 ///
 /// @RESTBODYPARAM{configuration,json,required}
@@ -3154,6 +3171,8 @@ void RestReplicationHandler::handleCommandSync () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_serverID
+/// @brief fetch this servers uniq identifier
+///
 /// @RESTHEADER{GET /_api/replication/server-id, Return server id}
 ///
 /// @RESTDESCRIPTION
@@ -3203,6 +3222,8 @@ void RestReplicationHandler::handleCommandServerId () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_applier
+/// @brief fetch the current replication configuration
+///
 /// @RESTHEADER{GET /_api/replication/applier-config, Return configuration of replication applier}
 ///
 /// @RESTDESCRIPTION
@@ -3292,6 +3313,8 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_applier_adjust
+/// @brief set configuration values of an applier
+///
 /// @RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier}
 ///
 /// @RESTBODYPARAM{configuration,json,required}
@@ -3493,6 +3516,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_applier_start
+/// @brief start the replication applier
+///
 /// @RESTHEADER{PUT /_api/replication/applier-start, Start replication applier}
 ///
 /// @RESTQUERYPARAMETERS
@@ -3586,6 +3611,8 @@ void RestReplicationHandler::handleCommandApplierStart () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_applier_stop
+/// @brief stop the replication
+///
 /// @RESTHEADER{PUT /_api/replication/applier-stop, Stop replication applier}
 ///
 /// @RESTDESCRIPTION
@@ -3642,6 +3669,8 @@ void RestReplicationHandler::handleCommandApplierStop () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_replication_applier_state
+/// @brief output the current status of the replication
+///
 /// @RESTHEADER{GET /_api/replication/applier-state, State of the replication applier}
 ///
 /// @RESTDESCRIPTION

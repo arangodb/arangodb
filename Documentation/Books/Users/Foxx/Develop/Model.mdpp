@@ -8,8 +8,9 @@ your model file, export the model as **model**.
 ```js
 var Foxx = require("org/arangodb/foxx");
 
-var TodoModel = Foxx.Model.extend({
-});
+class TodoModel extends Foxx.Model {
+  // ...
+}
 
 exports.model = TodoModel;
 ```
@@ -26,13 +27,14 @@ For more information on the syntax see [the official joi documentation](https://
 var Foxx = require("org/arangodb/foxx");
 var joi = require("joi");
 
-var PersonModel = Foxx.Model.extend({
-    schema: {
-        name: joi.string().required(),
-        age: joi.number().integer(),
-        active: joi.boolean().default(true)
-    }
-});
+class PersonModel extends Foxx.Model {
+  // ...
+}
+PersonModel.prototype.schema = {
+    name: joi.string().required(),
+    age: joi.number().integer(),
+    active: joi.boolean().default(true)
+};
 
 exports.model = PersonModel;
 ```
@@ -40,12 +42,13 @@ exports.model = PersonModel;
 You can also use `joi.object` schemas directly:
 
 ```js
-var PersonModel = Foxx.Model.extend({
-  schema: joi.object().keys({
-    name: joi.string().required(),
-    age: joi.number().integer(),
-    active: joi.boolean().default(true)
-  })
+class PersonModel extends Foxx.Model {
+  // ...
+}
+PersonModel.prototype.schema = joi.object().keys({
+  name: joi.string().required(),
+  age: joi.number().integer(),
+  active: joi.boolean().default(true)
 });
 ```
 

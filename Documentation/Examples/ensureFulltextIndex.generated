@@ -1,6 +1,6 @@
 arangosh> db.example.ensureFulltextIndex("text");
 { 
-  "id" : "example/22923567", 
+  "id" : "example/1175057291", 
   "type" : "fulltext", 
   "fields" : [ 
     "text" 
@@ -13,79 +13,79 @@ arangosh> db.example.ensureFulltextIndex("text");
 }
 arangosh> db.example.save({ text : "the quick brown", b : { c : 1 } });
 { 
-  "_id" : "example/23447855", 
-  "_rev" : "23447855", 
-  "_key" : "23447855" 
+  "_id" : "example/1175581579", 
+  "_rev" : "1175581579", 
+  "_key" : "1175581579" 
 }
 arangosh> db.example.save({ text : "quick brown fox", b : { c : 2 } });
 { 
-  "_id" : "example/23644463", 
-  "_rev" : "23644463", 
-  "_key" : "23644463" 
+  "_id" : "example/1175778187", 
+  "_rev" : "1175778187", 
+  "_key" : "1175778187" 
 }
 arangosh> db.example.save({ text : "brown fox jums", b : { c : 3 } });
 { 
-  "_id" : "example/23841071", 
-  "_rev" : "23841071", 
-  "_key" : "23841071" 
+  "_id" : "example/1175974795", 
+  "_rev" : "1175974795", 
+  "_key" : "1175974795" 
 }
 arangosh> db.example.save({ text : "fox jumps over", b : { c : 4 } });
 { 
-  "_id" : "example/24037679", 
-  "_rev" : "24037679", 
-  "_key" : "24037679" 
+  "_id" : "example/1176171403", 
+  "_rev" : "1176171403", 
+  "_key" : "1176171403" 
 }
 arangosh> db.example.save({ text : "jumps over the", b : { c : 5 } });
 { 
-  "_id" : "example/24234287", 
-  "_rev" : "24234287", 
-  "_key" : "24234287" 
+  "_id" : "example/1176368011", 
+  "_rev" : "1176368011", 
+  "_key" : "1176368011" 
 }
 arangosh> db.example.save({ text : "over the lazy", b : { c : 6 } });
 { 
-  "_id" : "example/24430895", 
-  "_rev" : "24430895", 
-  "_key" : "24430895" 
+  "_id" : "example/1176564619", 
+  "_rev" : "1176564619", 
+  "_key" : "1176564619" 
 }
 arangosh> db.example.save({ text : "the lazy dog", b : { c : 7 } });
 { 
-  "_id" : "example/24627503", 
-  "_rev" : "24627503", 
-  "_key" : "24627503" 
+  "_id" : "example/1176761227", 
+  "_rev" : "1176761227", 
+  "_key" : "1176761227" 
 }
 arangosh> db._query("FOR document IN FULLTEXT(example, 'text', 'the') RETURN document");
 [ 
   { 
-    "_id" : "example/23447855", 
-    "_key" : "23447855", 
-    "_rev" : "23447855", 
+    "_id" : "example/1175581579", 
+    "_key" : "1175581579", 
+    "_rev" : "1175581579", 
     "b" : { 
       "c" : 1 
     }, 
     "text" : "the quick brown" 
   }, 
   { 
-    "_id" : "example/24234287", 
-    "_key" : "24234287", 
-    "_rev" : "24234287", 
+    "_id" : "example/1176368011", 
+    "_key" : "1176368011", 
+    "_rev" : "1176368011", 
     "b" : { 
       "c" : 5 
     }, 
     "text" : "jumps over the" 
   }, 
   { 
-    "_id" : "example/24430895", 
-    "_key" : "24430895", 
-    "_rev" : "24430895", 
+    "_id" : "example/1176564619", 
+    "_key" : "1176564619", 
+    "_rev" : "1176564619", 
     "b" : { 
       "c" : 6 
     }, 
     "text" : "over the lazy" 
   }, 
   { 
-    "_id" : "example/24627503", 
-    "_key" : "24627503", 
-    "_rev" : "24627503", 
+    "_id" : "example/1176761227", 
+    "_key" : "1176761227", 
+    "_rev" : "1176761227", 
     "b" : { 
       "c" : 7 
     }, 

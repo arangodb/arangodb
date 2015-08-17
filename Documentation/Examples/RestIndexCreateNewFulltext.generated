@@ -11,7 +11,7 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1794528668", 
+  "id" : "products/824243083", 
   "type" : "fulltext", 
   "fields" : [ 
     "text" 

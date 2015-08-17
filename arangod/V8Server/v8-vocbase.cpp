@@ -74,6 +74,7 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -151,7 +152,6 @@ static v8::Handle<v8::Object> WrapClass (v8::Isolate *isolate,
 
   return scope.Escape<v8::Object>(result);
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
@@ -620,7 +620,7 @@ static void JS_EnableNativeBacktraces (const v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_TRY_CATCH_END
 }
 
-extern triagens::V8LineEditor* theConsole;
+extern V8LineEditor* theConsole;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a debugging console
@@ -638,36 +638,35 @@ static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
                                  debug, args[0]);
   }
 
-  triagens::V8LineEditor* console = triagens::arango::serverConsole.load();
+
+  MUTEX_LOCKER(ConsoleThread::serverConsoleMutex);
+  V8LineEditor* console = ConsoleThread::serverConsole;
 
   if (console != nullptr) {
-    MUTEX_LOCKER(triagens::arango::serverConsoleMutex);
-    if (serverConsole.load() != nullptr) {   
-      while (true) {
-        char* input = console->prompt("debug> ");
+    while (true) {
+      bool eof;
+      string input = console->prompt("debug> ", "debug", eof);
 
-        if (input == nullptr) {
-          break;
-        }
+      if (eof) {
+	break;
+      }
 
-        if (*input == '\0') {
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-          continue;
-        }
+      if (input.empty()) {
+	continue;
+      }
 
-        console->addHistory(input);
+      console->addHistory(input);
 
-        {
-          v8::TryCatch tryCatch;
-          v8::HandleScope scope(isolate);
+      {
+	v8::TryCatch tryCatch;
+	v8::HandleScope scope(isolate);
 
-          TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), TRI_V8_STRING(input), name, true);
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+	TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), 
+				    TRI_V8_STRING(input.c_str()), name, true);
 
-          if (tryCatch.HasCaught()) {
-            std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
-          }
-        }
+	if (tryCatch.HasCaught()) {
+	  std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
+	}
       }
     }
   }
@@ -1603,6 +1602,34 @@ static void JS_QueryCacheInvalidateAql (const v8::FunctionCallbackInfo<v8::Value
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief throw collection not loaded
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ThrowCollectionNotLoaded (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (args.Length() == 0) {
+    bool value = TRI_GetThrowCollectionNotLoadedVocBase(vocbase);
+    TRI_V8_RETURN(v8::Boolean::New(isolate, value));
+  }
+  else if (args.Length() == 1) {
+    TRI_SetThrowCollectionNotLoadedVocBase(vocbase, TRI_ObjectToBoolean(args[0]));
+  }
+  else {
+    TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
+  }
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms VertexId to v8String
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2286,7 +2313,8 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     catch (Exception& e) {
       TRI_V8_THROW_EXCEPTION(e.code());
     }
-  } else {
+  } 
+  else {
     // No Data reading required for this path. Use shortcuts.
     // Compute the path
     unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
@@ -2317,13 +2345,13 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
     // Adding additional locks on vertex collections at this point to the transaction
     // would cause dead-locks.
     // Will be fixed automatically with new MVCC version.
-      try {
-        auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
-        TRI_V8_RETURN(result);
-      } 
-      catch (Exception& e) {
-        TRI_V8_THROW_EXCEPTION(e.code());
-      }
+    try {
+      auto result = PathIdsToV8(isolate, vocbase, resolver, *path, ditches, includeData);
+      TRI_V8_RETURN(result);
+    } 
+    catch (Exception& e) {
+      TRI_V8_THROW_EXCEPTION(e.code());
+    }
   }
   TRI_V8_TRY_CATCH_END
 }
@@ -2836,6 +2864,12 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
 ///
 /// Returns the server version string. Note that this is not the version of the
 /// database.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dbVersion}
+///   require("internal").db._version();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2852,6 +2886,12 @@ static void JS_VersionServer (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// `db._path()`
 ///
 /// Returns the filesystem path of the current database as a string.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dbPath}
+///   require("internal").db._path();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2874,6 +2914,12 @@ static void JS_PathDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// `db._id()`
 ///
 /// Returns the id of the current database as a string.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dbId}
+///   require("internal").db._id();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2896,6 +2942,12 @@ static void JS_IdDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// `db._name()`
 ///
 /// Returns the name of the current database as a string.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{dbName}
+///   require("internal").db._name();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3132,7 +3184,7 @@ static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // return all databases for a specific user
     std::string&& username = TRI_ObjectToString(args[0]);
 
-    res = TRI_GetUserDatabasesServer((TRI_server_t*) v8g->_server, username.c_str(), names);
+    res = TRI_GetUserDatabasesServer(static_cast<TRI_server_t*>(v8g->_server), username.c_str(), names);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -3468,7 +3520,7 @@ static void DropDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>& 
   int tries = 0;
 
   while (++tries <= 6000) {
-    TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id);
+    TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), id);
 
     if (vocbase == nullptr) {
       // object has vanished
@@ -3676,7 +3728,7 @@ bool TRI_UpgradeDatabase (TRI_vocbase_t* vocbase,
   bool ok = TRI_ObjectToBoolean(result);
 
   if (! ok) {
-    ((TRI_vocbase_t*) vocbase)->_state = (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION;
+    vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION;
   }
 
   v8g->_vocbase = orig;
@@ -3813,6 +3865,8 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_IS_KILLED"), JS_QueryIsKilledAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_PROPERTIES"), JS_QueryCachePropertiesAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_INVALIDATE"), JS_QueryCacheInvalidateAql, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("THROW_COLLECTION_NOT_LOADED"), JS_ThrowCollectionNotLoaded, true);
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_SHORTEST_PATH"), JS_QueryShortestPath, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_NEIGHBORS"), JS_QueryNeighbors, true);

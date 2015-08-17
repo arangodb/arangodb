@@ -352,6 +352,9 @@ generate
 --------
  - make examples - on toplevel to generate Documentation/Examples
  - make examples FILTER_EXAMPLE=geoIndexSelect will only produce one example - *geoIndexSelect*
+ - make examples FILTER_EXAMPLE='MOD.*' will only produce the examples matching that regex
+ - make examples server.endpoint=tcp://127.0.0.1:8529 will utilize an existing arangod instead of starting anown.
+   this does seriously cut down the execution time.
  - make swagger - on toplevel to generate the documentation interactively with the server
  - cd Documentation/Books; make - to generate the HTML documentation
 
@@ -360,32 +363,50 @@ write markdown
 mdpp files are used for the structure. To join it with parts extracted from the programm documentation
 you need to place hooks:
   - `@startDocuBlock &ltdocuBlockName&gt;` is replaced by a Docublock extracted from source.
-  - `@startDocuBlockInline &lt;docuBlockName&gt;` till `@endDocuBlock` is replaced in with its own content,
-     where *@EXAMPLE_ARANGOSH_OUTPUT* sections are executed the same way as inside of documentation.
+  - `@startDocuBlockInline &lt;docuBlockName&gt;` till `@endDocuBlock &lt;docuBlockName&gt;`
+     is replaced in with its own evaluated content - so  *@EXAMPLE_ARANGOSH_OUTPUT* sections are executed
+     the same way as inside of sourcecode documentation.
 
 read / use the documentation
 ----------------------------
  - file:///Documentation/Books/books/Users/index.html contains the generated documentation
  - JS-Console - Tools/API - Interactive documentation which you can play with.
 
-
 arangod Example tool
 --------------------
 --------------------
-
 `make example` picks examples from the source code documentation, executes them, and creates a transcript including their results.
+
+To update 
 Heres how its details work:
-  - all ending with *.cpp*, *.js* and *.mdpp* are matched.
-  - all lines starting with '///' are matched
-  - example starts are marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
+  - all ending with *.cpp*, *.js* and *.mdpp* are searched.
+  - all lines inside of sourcecode starting with '///' are matched, all lines in .mdpp files.
+  - an example start is marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
   - the example is named by the string provided in brackets after the above key
   - the output is written to *Documentation/Examples/<name>.generated*
-  - examples end with *@END_EXAMPLE_*
+  - examples end with *@END_EXAMPLE_[OUTPUT|RUN]*
   - all code inbetween is executed as javascript in the **arangosh** while talking to a valid **arangod**.
 
 OUTPUT and RUN Specialities
 ---------------------------
- - OUTPUT is intended to create samples that the users can cut'n'paste into their arangosh. Its used for javascript api documentation.
+By default, Examples should be self contained and thus not depend on each other. They should clean up the collections they create.
+Building will fail if resources aren't cleaned.
+However, if you intend a set of OUTPUT and RUN to demonstrate interactively, you have to use an alphabeticaly sorteable
+namingscheme so they're executed in sequence. Using <modulename>_<sequencenumber>[abcd]_thisDoesThat seems to be a good scheme.
+
+  - OUTPUT is intended to create samples that the users can cut'n'paste into their arangosh. Its used for javascript api documentation.
+    * wrapped lines:
+      Lines starting with a pipe ('/// |') are joined together with the next following line.
+      You have to do this, if you want to execute loops, functions or commands which shouldn't be torn appart by the framework.
+    * Lines starting with *var*:
+      The command behaves similar to the arangosh: the server reply won't be printed.
+      Hovever, the variable will be in the scope of the other lines - else it won't.
+    * Lines starting with a Tilde ('/// ~'):
+      These lines can be used for setup/teardown purposes. They are completely invisible in the generated example transscript.
+
+    * ~removeIgnoreCollection("test") - the collection test may live across several tests.
+    * ~addIgnoreCollection("test") - the collection test will again be alarmed if left over.
+
   - it is excuted line by line. If a line is intended to fail (aka throw an exception),
     you have to specify *// xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)* so the exception will be caught;
     else the example is marked as broken.
@@ -394,22 +415,14 @@ OUTPUT and RUN Specialities
         /// | someLongStatement()
         /// ~ // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
     
-    
- - RUN is intended to be pasted into a unix shell with *cURL* to demonstrate how the REST-HTTP-APIs work. The whole chunk of code is executet at once, and is expected **not to throw**. You should use **assert(condition)** to ensure the result is what you've expected.
+ - RUN is intended to be pasted into a unix shell with *cURL* to demonstrate how the REST-HTTP-APIs work.
+   The whole chunk of code is executet at once, and is expected **not to throw**.
+   You should use **assert(condition)** to ensure the result is what you've expected.
 
-Additional Example syntax
--------------------------
-* wrapped lines:
-  Lines starting with a pipe ('/// |') are joined together with the next following line. You have to do this, if you want to execute loops, functions or commands which shouldn't be torn appart by the framework.
-* Lines starting with *var*:
-  The command behaves similar to the arangosh: the server reply won't be printed. Hovever, the variable will be in the scope of the other lines.
-* Lines starting with a Tilde ('/// ~'):
-  These lines can be used for setup/teardown purposes. They are completely invisible in the generated example transscript.
+    * Send the HTTP-request: `var response = logCurlRequest('GET', url);`
+    * check its response:    `assert(response.code === 200);`
+    * output a JSON server Reply: `logJsonResponse(response);`
+    * output HTML or text to dump to the user: `logRawResponse(response);`
+    * dump the reply to the errorlog for testing (will mark run as failed): `logErrorResponse(response);`
 
-
-
-Do's and Don'ts
----------------
-* examples have to be complete in themselves, and musn't depend on preconditions of other examples.
-* examples should clean up their additions again, so the next example finds a predictable clean enrironment.
 

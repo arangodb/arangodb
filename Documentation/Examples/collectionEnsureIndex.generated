@@ -1,6 +1,6 @@
 arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
 { 
-  "id" : "test/603084188", 
+  "id" : "test/1130951563", 
   "type" : "hash", 
   "fields" : [ 
     "a" 
@@ -13,7 +13,7 @@ arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
 }
 arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
 { 
-  "id" : "test/603346332", 
+  "id" : "test/1131213707", 
   "type" : "hash", 
   "fields" : [ 
     "a", 

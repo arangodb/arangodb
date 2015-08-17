@@ -169,7 +169,7 @@ the `_id` using *byExample*:
     @EXAMPLE_ARANGOSH_OUTPUT{07_workWithColl_remove}
     db.example.remove(db.example.byExample({ name: "John Doe" }).toArray()[0]._id)
     db.example.toArray()
-    ~addIgnoreCollection("example")
+    ~removeIgnoreCollection("example")
     ~db._drop("example")
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 07_workWithColl_remove

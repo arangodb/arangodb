@@ -1,0 +1,126 @@
+shell> curl --dump - http://localhost:8529/subdirectory/ourtest/1
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "request" : { 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/subdirectory/ourtest/1", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 35246 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 7051, 
+      "id" : "11" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive", 
+      "content-length" : "0", 
+      "host" : "127.0.0.1", 
+      "user-agent" : "ArangoDB" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "compatibility" : 20700, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+shell> curl --dump - http://localhost:8529/subdirectory/ourtest/2
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "request" : { 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/subdirectory/ourtest/2", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 35246 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 7051, 
+      "id" : "11" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive", 
+      "content-length" : "0", 
+      "host" : "127.0.0.1", 
+      "user-agent" : "ArangoDB" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "compatibility" : 20700, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+shell> curl --dump - http://localhost:8529/subdirectory/ourtest/3
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "request" : { 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/subdirectory/ourtest/3", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 35246 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 7051, 
+      "id" : "11" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive", 
+      "content-length" : "0", 
+      "host" : "127.0.0.1", 
+      "user-agent" : "ArangoDB" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "compatibility" : 20700, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}

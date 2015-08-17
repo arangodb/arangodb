@@ -1,0 +1,8 @@
+arangosh> var stmt = db._createStatement("FOR i IN 1..10 RETURN 1 / 0")
+arangosh> stmt.explain().warnings;
+[ 
+  { 
+    "code" : 1562, 
+    "message" : "division by zero" 
+  } 
+]

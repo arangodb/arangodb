@@ -33,6 +33,7 @@ var db = require("org/arangodb").db;
 var internal = require("internal");
 var errors = internal.errors;
 var helper = require("org/arangodb/aql-helper");
+var cluster = require("org/arangodb/cluster");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
 var assertQueryError = helper.assertQueryError;
@@ -1936,7 +1937,7 @@ jsunity.run(ahuacatlQueryShortestPathTestSuite);
 jsunity.run(ahuacatlQueryTraversalFilterTestSuite);
 jsunity.run(ahuacatlQueryTraversalTestSuite);
 jsunity.run(ahuacatlQueryTraversalTreeTestSuite);
-if (internal.debugCanUseFailAt()) {
+if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
   jsunity.run(ahuacatlQueryNeighborsErrorsSuite);
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }

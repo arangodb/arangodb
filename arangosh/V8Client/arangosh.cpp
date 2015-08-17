@@ -69,6 +69,7 @@ using namespace triagens::rest;
 using namespace triagens::httpclient;
 using namespace triagens::v8client;
 using namespace triagens::arango;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -183,12 +184,6 @@ static vector<string> JsLint;
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GcInterval = 10;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief console object
-////////////////////////////////////////////////////////////////////////////////
-
-static triagens::V8LineEditor* Console = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief voice mode
@@ -1504,26 +1499,6 @@ static std::string BuildPrompt () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief signal handler for CTRL-C
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-  // TODO
-
-#else
-
-static void SignalHandler (int signal) {
-  if (Console != nullptr) {
-    Console->close();
-    Console = nullptr;
-  }
-  printf("\n");
-
-  TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1531,25 +1506,8 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
-  Console = new triagens::V8LineEditor(context, ".arangosh.history");
-  Console->open(BaseClient.autoComplete());
-
-  // install signal handler for CTRL-C
-#ifdef _WIN32
-  // TODO
-
-#else
-  struct sigaction sa;
-  sa.sa_flags = 0;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_handler = &SignalHandler;
-
-  int res = sigaction(SIGINT, &sa, 0);
-
-  if (res != 0) {
-    LOG_ERROR("unable to install signal handler");
-  }
-#endif
+  V8LineEditor console(isolate, context, ".arangosh.history");
+  console.open(BaseClient.autoComplete());
 
   uint64_t nrCommands = 0;
 
@@ -1573,17 +1531,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     string badPrompt;
 
 
-#ifdef __APPLE__
-
-    // ........................................................................................
-    // MacOS uses libedit, which does not support ignoring of non-printable characters in the prompt
-    // using non-printable characters in the prompt will lead to wrong prompt lengths being calculated
-    // we will therefore disable colorful prompts for MacOS.
-    // ........................................................................................
-
-    goodPrompt = badPrompt = dynamicPrompt;
-
-#elif _WIN32
+#if _WIN32
 
     // ........................................................................................
     // Windows console is not coloured by escape sequences. So the method given below will not
@@ -1598,6 +1546,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     if (BaseClient.colors()) {
 
 #ifdef TRI_HAVE_LINENOISE
+
       // linenoise doesn't need escape sequences for escape sequences
       goodPrompt = TRI_SHELL_COLOR_BOLD_GREEN + dynamicPrompt + TRI_SHELL_COLOR_RESET;
       badPrompt  = TRI_SHELL_COLOR_BOLD_RED   + dynamicPrompt + TRI_SHELL_COLOR_RESET;
@@ -1637,36 +1586,33 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     }
 #endif
 
-    char* input = Console->prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
+    bool eof;
+    string input
+      = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str(),
+		       "arangosh", eof);
 
-    if (input == nullptr) {
+    if (eof) {
       break;
     }
 
-    if (*input == '\0') {
+    if (input.empty()) {
       // input string is empty, but we must still free it
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       continue;
     }
 
-    BaseClient.log("%s%s\n", dynamicPrompt.c_str(), input);
+    BaseClient.log("%s%s\n", dynamicPrompt, input);
 
     string i = triagens::basics::StringUtils::trim(input);
 
     if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       break;
     }
 
     if (i == "help" || i == "help;") {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-      input = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "help()");
-      if (input == nullptr) {
-        LOG_FATAL_AND_EXIT("out of memory");
-      }
+      input = "help()";
     }
 
-    Console->addHistory(input);
+    console.addHistory(input);
 
     v8::TryCatch tryCatch;
 
@@ -1675,8 +1621,12 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     // assume the command succeeds
     promptError = false;
 
+    console.isExecutingCommand(true);
+
     // execute command and register its result in __LAST__
-    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STRING(input), name, true);
+    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STRING(input.c_str()), name, true);
+
+    console.isExecutingCommand(false);
 
     if (v.IsEmpty()) {
       context->Global()->Set(TRI_V8_ASCII_STRING("_last"), v8::Undefined(isolate));
@@ -1685,11 +1635,16 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
       context->Global()->Set(TRI_V8_ASCII_STRING("_last"), v);
     }
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-
     if (tryCatch.HasCaught()) {
       // command failed
-      string exception(TRI_StringifyV8Exception(isolate, &tryCatch));
+      string exception;
+
+      if (! tryCatch.CanContinue()) {
+        exception = "command locally aborted";
+      }
+      else {
+        exception = TRI_StringifyV8Exception(isolate, &tryCatch);
+      }
 
       BaseClient.printErrLine(exception);
       BaseClient.log("%s", exception.c_str());
@@ -1711,10 +1666,6 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     system("say -v zarvox 'Good-Bye' &");
   }
 #endif
-
-  Console->close();
-  delete Console;
-  Console = nullptr;
 
   BaseClient.printLine("");
 
@@ -2098,26 +2049,10 @@ static bool printHelo(bool useServer, bool promptError) {
     BaseClient.printLine("");
 
     ostringstream s;
-    s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) ArangoDB GmbH";
+    s << "arangosh (" << triagens::rest::Version::getVerboseVersionString() << ")" << std::endl;
+    s << "Copyright (c) ArangoDB GmbH";
 
     BaseClient.printLine(s.str(), true);
-
-    ostringstream info;
-    info << "Using ";
-
-#ifdef TRI_V8_VERSION
-    info << "Google V8 " << TRI_V8_VERSION << " JavaScript engine";
-#else
-    info << "Google V8 JavaScript engine";
-#endif
-
-#ifdef TRI_READLINE_VERSION
-    info << ", READLINE " << TRI_READLINE_VERSION;
-#endif
-
-    info << ", ICU " << Version::getICUVersion();
-
-    BaseClient.printLine(info.str(), true);
     BaseClient.printLine("", true);
 
     BaseClient.printWelcomeInfo();

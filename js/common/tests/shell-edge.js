@@ -143,11 +143,11 @@ function CollectionEdgeSuite () {
 
     setUp : function () {
       db._drop(en);
-      edge = db._createEdgeCollection(en, { waitForSync : false });
+      edge = db._createEdgeCollection(en);
       assertEqual(ArangoCollection.TYPE_EDGE, edge.type());
 
       db._drop(vn);
-      vertex = db._create(vn, { waitForSync : false });
+      vertex = db._create(vn);
 
       v1 = vertex.save({ a : 1 });
       v2 = vertex.save({ a : 2 });

@@ -66,6 +66,7 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertTrue(p.waitForSync);
       assertFalse(p.isVolatile);
+      assertEqual(256, p.indexBuckets);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -165,6 +166,7 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
       assertFalse(p.isVolatile);
+      assertEqual(16, p.indexBuckets);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -231,6 +233,7 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
       assertFalse(p.isVolatile);
+      assertEqual(32, p.indexBuckets);
 
       assertEqual(10, c.getIndexes().length); 
       assertEqual("primary", c.getIndexes()[0].type);

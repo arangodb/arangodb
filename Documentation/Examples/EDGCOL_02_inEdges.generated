@@ -1,0 +1,44 @@
+arangosh> db._create("vertex");
+[ArangoCollection 504427403, "vertex" (type document, status loaded)]
+arangosh> db._createEdgeCollection("relation");
+[ArangoCollection 504558475, "relation" (type edge, status loaded)]
+arangosh> myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+{ 
+  "_id" : "vertex/504886155", 
+  "_rev" : "504886155", 
+  "_key" : "504886155" 
+}
+arangosh> myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+{ 
+  "_id" : "vertex/505082763", 
+  "_rev" : "505082763", 
+  "_key" : "505082763" 
+}
+arangosh> myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows" });
+{ 
+  "_id" : "relation/505410443", 
+  "_rev" : "505410443", 
+  "_key" : "505410443" 
+}
+arangosh> db._document(myGraph.e1);
+{ 
+  "label" : "knows", 
+  "_id" : "relation/505410443", 
+  "_rev" : "505410443", 
+  "_key" : "505410443", 
+  "_from" : "vertex/504886155", 
+  "_to" : "vertex/505082763" 
+}
+arangosh> db.relation.inEdges(myGraph.v1._id);
+[ ]
+arangosh> db.relation.inEdges(myGraph.v2._id);
+[ 
+  { 
+    "_id" : "relation/505410443", 
+    "_key" : "505410443", 
+    "_rev" : "505410443", 
+    "_from" : "vertex/504886155", 
+    "_to" : "vertex/505082763", 
+    "label" : "knows" 
+  } 
+]

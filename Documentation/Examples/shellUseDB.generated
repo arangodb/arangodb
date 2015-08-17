@@ -1,0 +1,8 @@
+arangosh> db._createDatabase("myapp");
+true
+arangosh> db._useDatabase("myapp");
+true
+arangosh> db._useDatabase("_system");
+true
+arangosh> db._dropDatabase("myapp");
+true

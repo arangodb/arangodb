@@ -27,14 +27,13 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
-  RequestContextBuffer = require("org/arangodb/foxx/request_context").RequestContextBuffer,
-  BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
-  _ = require("underscore"),
-  extend = _.extend,
-  is = require("org/arangodb/is"),
-  internal = require("org/arangodb/foxx/internals"),
-  swagger = require("org/arangodb/foxx/swagger");
+const deprecated = require('org/arangodb/deprecated');
+const RequestContext = require('org/arangodb/foxx/request_context');
+const BaseMiddleware = require('org/arangodb/foxx/base_middleware').BaseMiddleware;
+const _ = require('underscore');
+const is = require('org/arangodb/is');
+const internal = require('org/arangodb/foxx/internals');
+const swagger = require('org/arangodb/foxx/swagger');
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Controller
@@ -42,21 +41,19 @@ var RequestContext = require("org/arangodb/foxx/request_context").RequestContext
 
 var authControllerProps = {
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_getUsers
+/// JSF_foxx_controller_getUsers
 /// @brief Get the users of this controller
 ////////////////////////////////////////////////////////////////////////////////
-  getUsers: function () {
-    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
-      users = new foxxAuthentication.Users(this.applicationContext);
-
-    return users;
+  getUsers() {
+    const foxxAuthentication = require('org/arangodb/foxx/authentication');
+    return new foxxAuthentication.Users(this.applicationContext);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_getAuth
+/// JSF_foxx_controller_getAuth
 /// @brief Get the auth object of this controller
 ////////////////////////////////////////////////////////////////////////////////
-  getAuth: function () {
+  getAuth() {
     return this.auth;
   },
 
@@ -85,7 +82,7 @@ var authControllerProps = {
 ///
 /// ```js
 /// app.login('/login', {
-///   onSuccess: function (req, res) {
+///   onSuccess(req, res) {
 ///     res.json({"success": true});
 ///   }
 /// });
@@ -93,8 +90,8 @@ var authControllerProps = {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  login: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  login(route, opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     return this.post(route, authentication.createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
   },
 
@@ -122,7 +119,7 @@ var authControllerProps = {
 ///
 /// ```js
 /// app.logout('/logout', {
-///   onSuccess: function (req, res) {
+///   onSuccess(req, res) {
 ///     res.json({"message": "Bye, Bye"});
 ///   }
 /// });
@@ -130,8 +127,8 @@ var authControllerProps = {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  logout: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  logout(route, opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     return this.post(route, authentication.createStandardLogoutHandler(this.getAuth(), opts));
   },
 
@@ -178,12 +175,12 @@ var authControllerProps = {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  register: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  register(route, opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     return this.post(
       route,
       authentication.createStandardRegistrationHandler(this.getAuth(), this.getUsers(), opts)
-    ).errorResponse(authentication.UserAlreadyExistsError, 400, "User already exists");
+    ).errorResponse(authentication.UserAlreadyExistsError, 400, 'User already exists');
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +208,7 @@ var authControllerProps = {
 ///
 /// ```js
 /// app.changePassword('/changePassword', {
-///   onSuccess: function (req, res) {
+///   onSuccess(req, res) {
 ///     res.json({"success": true});
 ///   }
 /// });
@@ -219,18 +216,18 @@ var authControllerProps = {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  changePassword: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  changePassword(route, opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     return this.post(route, authentication.createStandardChangePasswordHandler(this.getUsers(), opts));
   }
 };
 
 var sessionControllerProps = {
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_getSessions
+/// JSF_foxx_controller_getSessions
 /// @brief Get the sessions object of this controller
 ////////////////////////////////////////////////////////////////////////////////
-  getSessions: function () {
+  getSessions() {
     return this.sessions;
   },
 
@@ -260,7 +257,7 @@ var sessionControllerProps = {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  destroySession: function (route, opts) {
+  destroySession(route, opts) {
     var method = opts.method;
     if (typeof method === 'string') {
       method = method.toLowerCase();
@@ -268,10 +265,12 @@ var sessionControllerProps = {
     if (!method || typeof this[method] !== 'function') {
       method = 'post';
     }
-    var sessions = require("org/arangodb/foxx/sessions");
+    var sessions = require('org/arangodb/foxx/sessions');
     return this[method](route, sessions.createDestroySessionHandler(this.getSessions(), opts));
   }
 };
+
+class Controller {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_initializer
@@ -295,81 +294,81 @@ var sessionControllerProps = {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function Controller(context, options) {
-  var urlPrefix, baseMiddleware;
-  context.clearComments();
+  constructor(context, options) {
+    this.currentPriority = 0;
 
-  if (is.notExisty(context)) {
-    throw new Error("parameter <context> is missing");
-  }
-  context.clearComments();
+    var urlPrefix, baseMiddleware;
+    context.clearComments();
 
-  this.routingInfo = {
-    routes: []
-  };
+    if (is.notExisty(context)) {
+      throw new Error('parameter <context> is missing');
+    }
+    context.clearComments();
 
-  // Models for the Documentation
-  this.models = {};
+    this.routingInfo = {
+      routes: []
+    };
 
-  options = options || {};
-  urlPrefix = options.urlPrefix || "";
+    // Models for the Documentation
+    this.models = {};
 
-  if (urlPrefix === "") {
-    urlPrefix = context.prefix;
-  } else if (context.prefix !== "") {
-    urlPrefix = context.prefix + "/" + urlPrefix;
-  }
+    options = options || {};
+    urlPrefix = options.urlPrefix || '';
 
-  this.injected = Object.create(null);
-  this.injectors = Object.create(null);
-  this.routingInfo.urlPrefix = urlPrefix;
-  this.collectionPrefix = context.collectionPrefix;
+    if (urlPrefix === '') {
+      urlPrefix = context.prefix;
+    } else if (context.prefix !== '') {
+      urlPrefix = context.prefix + '/' + urlPrefix;
+    }
 
-  this.extensions = {};
+    this.injected = Object.create(null);
+    this.injectors = Object.create(null);
+    this.routingInfo.urlPrefix = urlPrefix;
+    this.collectionPrefix = context.collectionPrefix;
 
-  baseMiddleware = new BaseMiddleware();
+    this.extensions = {};
 
-  this.routingInfo.middleware = [
-    {
-      url: { match: "/*" },
-      action: {
-        callback: baseMiddleware.functionRepresentation,
-        options: {
-          name: context.name,
-          version: context.version,
-          mount: context.mount,
-          isDevelopment: context.isDevelopment,
-          isProduction: context.isProduction,
-          prefix: context.prefix,
-          options: context.options
+    baseMiddleware = new BaseMiddleware();
+
+    this.routingInfo.middleware = [
+      {
+        url: { match: '/*' },
+        action: {
+          callback: baseMiddleware.functionRepresentation,
+          options: {
+            name: context.name,
+            version: context.version,
+            mount: context.mount,
+            isDevelopment: context.isDevelopment,
+            isProduction: context.isProduction,
+            prefix: context.prefix,
+            options: context.options
+          }
         }
       }
+    ];
+
+    this.allRoutes = new RequestContext.Buffer();
+
+    context.foxxes.push(this);
+
+    if (is.existy(context.manifest.rootElement)) {
+      this.rootElement = context.manifest.rootElement;
+    } else {
+      this.rootElement = false;
     }
-  ];
 
-  this.allRoutes = new RequestContextBuffer();
-
-  context.foxxes.push(this);
-
-  if (is.existy(context.manifest.rootElement)) {
-    this.rootElement = context.manifest.rootElement;
-  } else {
-    this.rootElement = false;
+    this.applicationContext = context;
   }
 
-  this.applicationContext = context;
-}
-
-extend(Controller.prototype, {
-  currentPriority: 0,
-
-  addInjector: function (name, factory) {
+  addInjector(name, factory) {
+    deprecated('2.9', '"addInjector" is deprecated, use regular variables instead');
     if (factory === undefined) {
       _.extend(this.injectors, name);
     } else {
       this.injectors[name] = factory;
     }
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -381,7 +380,7 @@ extend(Controller.prototype, {
 /// provided for *barn* via the *params* function (see the Request object).
 ////////////////////////////////////////////////////////////////////////////////
 
-  handleRequest: function (method, route, callback) {
+  handleRequest(method, route, callback) {
     var constraints = {queryParams: {}, urlParams: {}};
     var newRoute = internal.constructRoute(method, route, callback, this, constraints);
     var requestContext = new RequestContext(
@@ -395,24 +394,25 @@ extend(Controller.prototype, {
     if (this.applicationContext.comments.length > 0) {
       do {
         summary = this.applicationContext.comments.shift();
-      } while (summary === "");
-      requestContext.summary(summary || "");
-      requestContext.notes(this.applicationContext.comments.join("\n"));
+      } while (summary === '');
+      requestContext.summary(summary || '');
+      requestContext.notes(this.applicationContext.comments.join('\n'));
     }
 
     this.applicationContext.clearComments();
 
     if (method === 'post' || method === 'put' || method === 'patch') {
-      undocumentedBody = require('org/arangodb/foxx').Model.extend();
-      requestContext.bodyParam("undocumented body", {
-        description: "Undocumented body param",
+      const Model = require('org/arangodb/foxx').Model;
+      undocumentedBody = class UndocumentedBody extends Model {};
+      requestContext.bodyParam('undocumented body', {
+        description: 'Undocumented body param',
         type: undocumentedBody,
         allowInvalid: true
       });
     }
 
     return requestContext;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_head
@@ -425,9 +425,9 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  head: function (route, callback) {
-    return this.handleRequest("head", route, callback);
-  },
+  head(route, callback) {
+    return this.handleRequest('head', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_get
@@ -452,9 +452,9 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  get: function (route, callback) {
-    return this.handleRequest("get", route, callback);
-  },
+  get(route, callback) {
+    return this.handleRequest('get', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_post
@@ -475,9 +475,9 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  post: function (route, callback) {
-    return this.handleRequest("post", route, callback);
-  },
+  post(route, callback) {
+    return this.handleRequest('post', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_put
@@ -498,9 +498,9 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  put: function (route, callback) {
-    return this.handleRequest("put", route, callback);
-  },
+  put(route, callback) {
+    return this.handleRequest('put', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_patch
@@ -521,9 +521,9 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  patch: function (route, callback) {
-    return this.handleRequest("patch", route, callback);
-  },
+  patch(route, callback) {
+    return this.handleRequest('patch', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_delete
@@ -533,18 +533,10 @@ extend(Controller.prototype, {
 /// This handles requests from the HTTP verb *delete*.  See above for the
 /// arguments you can give.
 ///
-/// **Warning**: Do not forget that *delete* is a reserved word in JavaScript and
-/// therefore needs to be called as app['delete']. There is also an alias *del*
-/// for this very reason.
-///
 /// @EXAMPLES
 ///
 /// ```js
-/// app['delete']('/goose/barn', function (req, res) {
-///   // Take this request and deal with it!
-/// });
-///
-/// app.del('/goose/barn', function (req, res) {
+/// app.delete('/goose/barn', function (req, res) {
 ///   // Take this request and deal with it!
 /// });
 /// ```
@@ -552,13 +544,14 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  delete: function (route, callback) {
-    return this.handleRequest("delete", route, callback);
-  },
+  delete(route, callback) {
+    return this.handleRequest('delete', route, callback);
+  }
 
-  del: function (route, callback) {
+  del(route, callback) {
+    deprecated('2.9', '"del" is deprecated, use "delete" instead');
     return this.delete(route, callback);
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_before
@@ -585,17 +578,17 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  before: function (path, func) {
+  before(path, func) {
     if (is.notExisty(func)) {
       func = path;
-      path = "/*";
+      path = '/*';
     }
 
     this.routingInfo.middleware.push({
       priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
-        callback: function (req, res, opts, next) {
+        callback(req, res, opts, next) {
           var result = func(req, res, opts);
           if (result !== false) {
             next();
@@ -603,7 +596,7 @@ extend(Controller.prototype, {
         }
       }
     });
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_after
@@ -624,20 +617,20 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  after: function (path, func) {
+  after(path, func) {
     if (is.notExisty(func)) {
       func = path;
-      path = "/*";
+      path = '/*';
     }
 
     this.routingInfo.middleware.push({
       priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
-        callback: function (req, res, opts, next) { next(); func(req, res, opts); }
+        callback(req, res, opts, next) { next(); func(req, res, opts); }
       }
     });
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_around
@@ -663,23 +656,23 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  around: function (path, func) {
+  around(path, func) {
 
     if (is.notExisty(func)) {
       func = path;
-      path = "/*";
+      path = '/*';
     }
 
     this.routingInfo.middleware.push({
       priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
-        callback: function (req, res, opts, next) {
+        callback(req, res, opts, next) {
           func(req, res, opts, next);
         }
       }
     });
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_activateAuthentication
@@ -707,14 +700,14 @@ extend(Controller.prototype, {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  activateAuthentication: function (opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  activateAuthentication(opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     _.extend(this, authControllerProps);
 
     this.auth = authentication.createAuthObject(this.applicationContext, opts);
-    this.before("/*", authentication.createAuthenticationMiddleware(this.auth, this.applicationContext));
-    this.after("/*", authentication.createSessionUpdateMiddleware());
-  },
+    this.before('/*', authentication.createAuthenticationMiddleware(this.auth, this.applicationContext));
+    this.after('/*', authentication.createSessionUpdateMiddleware());
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_activateSessions
@@ -744,13 +737,13 @@ extend(Controller.prototype, {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  activateSessions: function (opts) {
-    var sessions = require("org/arangodb/foxx/sessions");
+  activateSessions(opts) {
+    var sessions = require('org/arangodb/foxx/sessions');
     _.extend(this, sessionControllerProps);
 
     this.sessions = new sessions.Sessions(opts);
     sessions.decorateController(this.sessions, this);
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_apiDocumentation
@@ -815,13 +808,13 @@ extend(Controller.prototype, {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  apiDocumentation: function (route, opts) {
+  apiDocumentation(route, opts) {
     if (route.charAt(route.length - 1) !== '/') {
       route += '/';
     }
     var mountPath = this.applicationContext.mount;
     return this.get(route + '*', swagger.createSwaggerRouteHandler(mountPath, opts));
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_extend
@@ -832,7 +825,7 @@ extend(Controller.prototype, {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  extend: function(extensions) {
+  extend(extensions) {
     var attr;
     for (attr in extensions) {
       if (extensions.hasOwnProperty(attr)) {
@@ -841,7 +834,7 @@ extend(Controller.prototype, {
     }
   }
 
-});
+}
 
 exports.Controller = Controller;
 

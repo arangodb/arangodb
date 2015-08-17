@@ -612,12 +612,12 @@ void Executor::generateCodeExpression (AstNode const* node) {
 
   // write prologue
   // this checks if global variable _AQL is set and populates if it not
-  _buffer->appendText("(function (vars, consts) { if (_AQL === undefined) { _AQL = require(\"org/arangodb/aql\"); } return ");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("(function (vars, consts) { if (_AQL === undefined) { _AQL = require(\"org/arangodb/aql\"); } return "));
 
   generateCodeNode(node);
 
   // write epilogue
-  _buffer->appendText(";})");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR(";})"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -657,7 +657,7 @@ void Executor::generateCodeArray (AstNode const* node) {
     auto it = _constantRegisters.find(node);
 
     if (it != _constantRegisters.end()) {
-      _buffer->appendText("consts.r");
+      _buffer->appendText(TRI_CHAR_LENGTH_PAIR("consts.r"));
       _buffer->appendInteger((*it).second);
       return;
     }
@@ -686,7 +686,7 @@ void Executor::generateCodeForcedArray (AstNode const* node,
   TRI_ASSERT(node != nullptr);
 
   if (levels > 1) {
-    _buffer->appendText("_AQL.AQL_FLATTEN(");
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.AQL_FLATTEN("));
   }
 
   bool castToArray = true;
@@ -706,7 +706,7 @@ void Executor::generateCodeForcedArray (AstNode const* node,
 
   if (castToArray) {
     // force the value to be an array
-    _buffer->appendText("_AQL.AQL_TO_ARRAY(");
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.AQL_TO_ARRAY("));
     generateCodeNode(node);
     _buffer->appendChar(')');
   } 
@@ -747,25 +747,25 @@ void Executor::generateCodeDynamicObject (AstNode const* node) {
   // very conservative minimum bound
   _buffer->reserve(64 + n * 10);
 
-  _buffer->appendText("(function() { var o={};");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("(function() { var o={};"));
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
 
     if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-      _buffer->appendText("o[", 2);
+      _buffer->appendText(TRI_CHAR_LENGTH_PAIR("o["));
       generateCodeString(member->getStringValue());
-      _buffer->appendText("]=", 2);
+      _buffer->appendText(TRI_CHAR_LENGTH_PAIR("]="));
       generateCodeNode(member->getMember(0));
     }
     else {
-      _buffer->appendText("o[_AQL.AQL_TO_STRING(");
+      _buffer->appendText(TRI_CHAR_LENGTH_PAIR("o[_AQL.AQL_TO_STRING("));
       generateCodeNode(member->getMember(0));
-      _buffer->appendText(")]=", 3);
+      _buffer->appendText(TRI_CHAR_LENGTH_PAIR(")]="));
       generateCodeNode(member->getMember(1));
     }
     _buffer->appendChar(';');
   }
-  _buffer->appendText("return o;})()");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("return o;})()"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -784,7 +784,7 @@ void Executor::generateCodeRegularObject (AstNode const* node) {
     auto it = _constantRegisters.find(node);
 
     if (it != _constantRegisters.end()) {
-      _buffer->appendText("consts.r");
+      _buffer->appendText(TRI_CHAR_LENGTH_PAIR("consts.r"));
       _buffer->appendInteger((*it).second);
       return;
     }
@@ -825,7 +825,7 @@ void Executor::generateCodeUnaryOperator (AstNode const* node) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
   }
 
-  _buffer->appendText("_AQL.", 5);
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
   _buffer->appendText((*it).second);
   _buffer->appendChar('(');
 
@@ -851,14 +851,14 @@ void Executor::generateCodeBinaryOperator (AstNode const* node) {
   bool wrap = (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
                node->type == NODE_TYPE_OPERATOR_BINARY_OR);
 
-  _buffer->appendText("_AQL.", 5);
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
   _buffer->appendText((*it).second);
   _buffer->appendChar('(');
 
   if (wrap) {
-    _buffer->appendText("function () { return ");
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("function () { return "));
     generateCodeNode(node->getMember(0));
-    _buffer->appendText("}, function () { return ");
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("}, function () { return "));
     generateCodeNode(node->getMember(1));
    _buffer->appendChar('}');
   }
@@ -886,16 +886,16 @@ void Executor::generateCodeTernaryOperator (AstNode const* node) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
   }
 
-  _buffer->appendText("_AQL.", 5);
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
   _buffer->appendText((*it).second);
   _buffer->appendChar('(');
 
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(", function () { return ");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR(", function () { return "));
   generateCodeNode(node->getMember(1));
-  _buffer->appendText("}, function () { return ");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("}, function () { return "));
   generateCodeNode(node->getMember(2));
-  _buffer->appendText("})");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("})"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -908,7 +908,7 @@ void Executor::generateCodeReference (AstNode const* node) {
  
   auto variable = static_cast<Variable*>(node->getData());
 
-  _buffer->appendText("vars[", 5);
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("vars["));
   generateCodeString(variable->name.c_str());
   _buffer->appendChar(']');
 }
@@ -923,7 +923,7 @@ void Executor::generateCodeVariable (AstNode const* node) {
   
   auto variable = static_cast<Variable*>(node->getData());
   
-  _buffer->appendText("vars[", 5);
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("vars["));
   generateCodeString(variable->name.c_str());
   _buffer->appendChar(']');
 }
@@ -938,7 +938,7 @@ void Executor::generateCodeCollection (AstNode const* node) {
   
   char const* name = node->getStringValue();
 
-  _buffer->appendText("_AQL.GET_DOCUMENTS(");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.GET_DOCUMENTS("));
   generateCodeString(name);
   _buffer->appendChar(')');
 }
@@ -957,7 +957,7 @@ void Executor::generateCodeFunctionCall (AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
-  _buffer->appendText("_AQL.", 5);
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
   _buffer->appendText(func->internalName);
   _buffer->appendChar('(');
 
@@ -1009,12 +1009,12 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
-  _buffer->appendText("_AQL.FCALL_USER(");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.FCALL_USER("));
   generateCodeString(name);
-  _buffer->appendText(",", 1);
+  _buffer->appendChar(',');
 
   generateCodeNode(args);
-  _buffer->appendText(")", 1);
+  _buffer->appendChar(')');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1035,7 +1035,7 @@ void Executor::generateCodeExpansion (AstNode const* node) {
   auto limitNode = node->getMember(3);
 
   if (limitNode->type != NODE_TYPE_NOP) {
-    _buffer->appendText("_AQL.AQL_SLICE(");
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.AQL_SLICE("));
   }
 
   generateCodeForcedArray(node->getMember(0), levels);
@@ -1044,13 +1044,13 @@ void Executor::generateCodeExpansion (AstNode const* node) {
   auto filterNode = node->getMember(2);
 
   if (filterNode->type != NODE_TYPE_NOP) {
-    _buffer->appendText(".filter(function (v) { ");
-    _buffer->appendText("vars[\"");
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(".filter(function (v) { "));
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("vars[\""));
     _buffer->appendText(variable->name);
-    _buffer->appendText("\"]=v; ");
-    _buffer->appendText("return _AQL.AQL_TO_BOOL(");
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\"]=v; "));
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("return _AQL.AQL_TO_BOOL("));
     generateCodeNode(filterNode);
-    _buffer->appendText("); })");
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("); })"));
   }
 
   // finish LIMIT
@@ -1059,23 +1059,23 @@ void Executor::generateCodeExpansion (AstNode const* node) {
     generateCodeNode(limitNode->getMember(0));
     _buffer->appendChar(',');
     generateCodeNode(limitNode->getMember(1));
-    _buffer->appendText(",true)");
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(",true)"));
   }
 
   // RETURN
-  _buffer->appendText(".map(function (v) { ");
-  _buffer->appendText("vars[\"");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR(".map(function (v) { "));
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("vars[\""));
   _buffer->appendText(variable->name);
-  _buffer->appendText("\"]=v; ");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\"]=v; "));
 
   size_t projectionNode = 1;
   if (node->getMember(4)->type != NODE_TYPE_NOP) {
     projectionNode = 4;
   }
 
-  _buffer->appendText("return ");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("return "));
   generateCodeNode(node->getMember(projectionNode));
-  _buffer->appendText("; })");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("; })"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1098,7 +1098,7 @@ void Executor::generateCodeRange (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
   
-  _buffer->appendText("_AQL.AQL_RANGE(");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.AQL_RANGE("));
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));
@@ -1113,7 +1113,7 @@ void Executor::generateCodeNamedAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
 
-  _buffer->appendText("_AQL.DOCUMENT_MEMBER(");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.DOCUMENT_MEMBER("));
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
   generateCodeString(node->getStringValue());
@@ -1128,7 +1128,7 @@ void Executor::generateCodeBoundAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  _buffer->appendText("_AQL.DOCUMENT_MEMBER(");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.DOCUMENT_MEMBER("));
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));
@@ -1144,7 +1144,7 @@ void Executor::generateCodeIndexedAccess (AstNode const* node) {
   TRI_ASSERT(node->numMembers() == 2);
 
   // indexed access
-  _buffer->appendText("_AQL.GET_INDEX(");
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.GET_INDEX("));
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));

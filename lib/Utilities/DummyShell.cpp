@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor using getline
+/// @brief a trivial implementation of a console input (shell)
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +22,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,6 +35,7 @@
 
 using namespace std;
 using namespace triagens;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class DummyShell
@@ -46,11 +46,10 @@ using namespace triagens;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new editor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-DummyShell::DummyShell (std::string const& history,
-                        Completer* completer)
+DummyShell::DummyShell (std::string const& history, Completer* completer)
   : ShellImplementation(history, completer) {
 }
 
@@ -63,7 +62,7 @@ DummyShell::~DummyShell () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                       ShellImplementation methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +75,7 @@ bool DummyShell::open (bool) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor shutdown
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DummyShell::close () {
@@ -85,86 +84,7 @@ bool DummyShell::close () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
-////////////////////////////////////////////////////////////////////////////////
-
-char* DummyShell::prompt (char const* prompt) {
-  string dotdot;
-  char const* p = prompt;
-  size_t len1 = strlen(prompt);
-  size_t len2 = len1;
-  size_t lineno = 0;
-
-  if (len1 < 3) {
-    dotdot = "> ";
-    len2 = 2;
-  }
-  else {
-    dotdot = string(len1 - 2, '.') + "> ";
-  }
-
-  char const* sep = "";
-
-  while (true) {
-    fprintf(stdout, "%s", p);
-    fflush(stdout);
-
-    string line;
-    getline(cin, line);
-
-    p = dotdot.c_str();
-
-    if (cin.eof()) {
-      return nullptr;
-    }
-
-    _current += sep;
-    sep = "\n";
-    ++lineno;
-
-    // remove any prompt at the beginning of the line
-    char* result = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, line.c_str());
-
-    if (result == nullptr) {
-      return nullptr;
-    }
-
-    bool c1 = strncmp(result, prompt, len1) == 0;
-    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-
-    while (c1 || c2) {
-      if (c1) {
-        result += len1;
-      }
-      else if (c2) {
-        result += len2;
-      }
-
-      c1 = strncmp(result, prompt, len1) == 0;
-      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-    }
-
-    // extend line and check
-    _current += result;
-
-    bool ok = _completer->isComplete(_current, lineno, strlen(result));
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
-
-    // stop if line is complete
-    if (ok) {
-      break;
-    }
-  }
-
-  char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
-
-  _current.clear();
-
-  return line;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 string DummyShell::historyPath () {
@@ -172,14 +92,14 @@ string DummyShell::historyPath () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add to history
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void DummyShell::addHistory (char const* str) {
+void DummyShell::addHistory (const string&) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save history
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DummyShell::writeHistory () {
@@ -187,14 +107,21 @@ bool DummyShell::writeHistory () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the characters which the user has typed
-/// @arg  is the prompt of the shell
-/// Note: this is the interface between our shell world and some implementation
-///       of key events (linenoise, readline)
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char* DummyShell::getLine (char const* prompt) {
-  return this->prompt(prompt);
+string DummyShell::getLine (const std::string& prompt, bool& eof) {
+  cout << prompt << flush;
+
+  string line;
+  getline(cin, line);
+
+  if (cin.eof()) {
+    eof = true;
+    return "";
+  }
+
+  return line;
 }
 
 // -----------------------------------------------------------------------------

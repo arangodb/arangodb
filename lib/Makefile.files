@@ -106,18 +106,9 @@ lib_libarango_a_SOURCES += \
 	lib/Utilities/ReadlineShell.cpp
 
 else
-if ENABLE_LINENOISE
-
-lib_libarango_a_SOURCES += \
-	lib/Utilities/LinenoiseShell.cpp \
-	3rdParty/linenoise/linenoise.c \
-	3rdParty/linenoise/utf8.c
-
-else
 
 lib_libarango_a_SOURCES += \
 	lib/Utilities/DummyShell.cpp 
-endif
 endif
 
 ################################################################################
@@ -165,7 +156,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/HttpsServer.cpp \
 	lib/HttpServer/PathHandler.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
-	lib/Scheduler/AsyncTask.cpp \
 	lib/Scheduler/ListenTask.cpp \
 	lib/Scheduler/PeriodicTask.cpp \
 	lib/Scheduler/Scheduler.cpp \

@@ -1,0 +1,12 @@
+arangosh> db._create("mycollection")
+[ArangoCollection 451408779, "mycollection" (type document, status loaded)]
+arangosh> db.mycollection.save({ _key: "testKey", Hello : "World" })
+{ 
+  "_id" : "mycollection/testKey", 
+  "_rev" : "451736459", 
+  "_key" : "testKey" 
+}
+arangosh> db._query('FOR my IN mycollection RETURN my._key').toArray()
+[ 
+  "testKey" 
+]

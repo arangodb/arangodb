@@ -113,7 +113,6 @@ add_executable(
     FulltextIndex/fulltext-wordlist.cpp
     GeoIndex/GeoIndex.cpp
     HashIndex/hash-array.cpp
-    HashIndex/hash-array-multi.cpp
     Indexes/CapConstraint.cpp
     Indexes/EdgeIndex.cpp
     Indexes/FulltextIndex.cpp
