@@ -16,7 +16,7 @@ content-type: application/json; charset=utf-8
       "sparse" : false 
     }, 
     { 
-      "id" : "products/1395050073", 
+      "id" : "products/1395447163", 
       "type" : "hash", 
       "fields" : [ 
         "name" 
@@ -26,7 +26,7 @@ content-type: application/json; charset=utf-8
       "sparse" : false 
     }, 
     { 
-      "id" : "products/1395312217", 
+      "id" : "products/1395709307", 
       "type" : "skiplist", 
       "fields" : [ 
         "price" 
@@ -46,8 +46,8 @@ content-type: application/json; charset=utf-8
       "unique" : true, 
       "sparse" : false 
     }, 
-    "products/1395050073" : { 
-      "id" : "products/1395050073", 
+    "products/1395447163" : { 
+      "id" : "products/1395447163", 
       "type" : "hash", 
       "fields" : [ 
         "name" 
@@ -56,8 +56,8 @@ content-type: application/json; charset=utf-8
       "unique" : false, 
       "sparse" : false 
     }, 
-    "products/1395312217" : { 
-      "id" : "products/1395312217", 
+    "products/1395709307" : { 
+      "id" : "products/1395709307", 
       "type" : "skiplist", 
       "fields" : [ 
         "price" 
