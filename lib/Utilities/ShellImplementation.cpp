@@ -99,7 +99,7 @@ string ShellImplementation::prompt (const string& prompt,
 
   while (true) {
 
-    // calling concrete implmentation of the shell
+    // calling concrete implementation of the shell
     line = getLine(p, eof);
     p = dotdot;
 

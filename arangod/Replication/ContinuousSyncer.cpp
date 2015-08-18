@@ -836,6 +836,8 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     return TRI_ERROR_REPLICATION_NO_START_TICK;
   }
 
+  // TODO: get the applier into a sensible start state...
+
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
   while (true) {
