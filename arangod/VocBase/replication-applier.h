@@ -118,6 +118,20 @@ struct TRI_replication_applier_t {
 
   ~TRI_replication_applier_t ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pauses and checks whether the apply thread should terminate
+////////////////////////////////////////////////////////////////////////////////
+
+  bool wait (uint64_t);
+
+  bool isTerminated () {
+    return _terminateThread.load();
+  }
+  
+  void setTermination (bool value) {
+    _terminateThread.store(value);
+  }
+
   void addRemoteTransaction (triagens::arango::ReplicationTransaction* trx) {
     _runningRemoteTransactions.insert(std::make_pair(trx->externalId(), trx));
   }
@@ -162,13 +176,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t*,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether the apply thread should terminate
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_WaitReplicationApplier (TRI_replication_applier_t*,
-                                 uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication apply configuration
