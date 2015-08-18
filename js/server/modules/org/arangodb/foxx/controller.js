@@ -276,7 +276,7 @@ var sessionControllerProps = {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_initializer
 ///
-/// `new FoxxController(applicationContext, options)`
+/// `new Controller(applicationContext, options)`
 ///
 /// This creates a new Controller. The first argument is the controller
 /// context available in the variable *applicationContext*. The second one is an
@@ -417,11 +417,25 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_head
 ///
-/// `FoxxController#head(path, callback)`
+/// `Controller.head(path, callback)`
 ///
-/// This handles requests from the HTTP verb *head*.  You have to give a
-/// function as *callback*. It will get a request and response object as its
-/// arguments
+/// Defines a new route on `path` that handles requests from the HTTP verb `head`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.head('/goose/barn', function (req, res) {
+///   // Take this request and deal with it!
+/// });
+/// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -432,14 +446,16 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_get
 ///
-/// `FoxxController#get(path, callback)`
+/// `Controller.get(path, callback)`
 ///
-/// This handles requests from the HTTP verb *get*.
-///
-/// When defining a route you can also define a so called 'parameterized'
-/// *path* like */goose/:barn*. In this case you can later get the value
-/// the user provided for *barn* via the *params* function (see the Request
-/// object).
+/// Defines a new route on `path` that handles requests from the HTTP verb `get`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// @EXAMPLES
 ///
@@ -459,10 +475,16 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_post
 ///
-/// `FoxxController#post(path, callback)`
+/// `Controller.post(path, callback)`
 ///
-/// This handles requests from the HTTP verb *post*.  See above for the
-/// arguments you can give.
+/// Defines a new route on `path` that handles requests from the HTTP verb `post`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// @EXAMPLES
 ///
@@ -482,10 +504,16 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_put
 ///
-/// `FoxxController#put(path, callback)`
+/// `Controller.put(path, callback)`
 ///
-/// This handles requests from the HTTP verb *put*.  See above for the arguments
-/// you can give.
+/// Defines a new route on `path` that handles requests from the HTTP verb `put`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// @EXAMPLES
 ///
@@ -505,10 +533,16 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_patch
 ///
-/// `FoxxController#patch(path, callback)`
+/// `Controller.patch(path, callback)`
 ///
-/// This handles requests from the HTTP verb *patch*.  See above for the
-/// arguments you can give.
+/// Defines a new route on `path` that handles requests from the HTTP verb `patch`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// @EXAMPLES
 ///
@@ -528,10 +562,16 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_delete
 ///
-/// `FoxxController#delete(path, callback)`
+/// `Controller.delete(path, callback)`
 ///
-/// This handles requests from the HTTP verb *delete*.  See above for the
-/// arguments you can give.
+/// Defines a new route on `path` that handles requests from the HTTP verb `delete`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// **Warning**: Do not forget that *delete* is a reserved word in JavaScript and
 /// therefore needs to be called as app['delete']. There is also an alias *del*
@@ -563,14 +603,16 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_before
 ///
-/// `FoxxController#before(path, callback)`
+/// `Controller.before(path, callback)`
 ///
-/// The before function takes a *path* on which it should watch and a
-/// function that it should execute before the routing takes place. If you do
-/// omit the path, the function will be executed before each request, no matter
-/// the path. Your function gets a Request and a Response object.
+/// Defines an additional function on the route `path` which will be executed
+/// before the callback defined for a specific HTTP verb is executed.
+/// The `callback` function has the same signature as the `callback` in the
+/// specific route.
+/// You can also omit the `path`, in this case `callback` will be executed
+/// before handleing any request in this Controller.
 ///
-/// If your callback returns the Boolean value *false*, the route handling
+/// If `callback` returns the Boolean value `false`, the route handling
 /// will not proceed. You can use this to intercept invalid or unauthorized
 /// requests and prevent them from being passed to the matching routes.
 ///
@@ -608,10 +650,10 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_after
 ///
-/// `FoxxController#after(path, callback)`
+/// `Controller.after(path, callback)`
 ///
-/// This works pretty similar to the before function.  But it acts after the
-/// execution of the handlers (Big surprise, I suppose).
+/// Similar to `Controller.before(path, callback)` but `callback` will be invoked
+/// after the request is handled in the specific route.
 ///
 /// @EXAMPLES
 ///
@@ -642,14 +684,17 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_around
 ///
-/// `FoxxController#around(path, callback)`
+/// `Controller.around(path, callback)`
 ///
-/// The around function takes a *path* on which it should watch and a function
-/// that it should execute around the function which normally handles the
-/// route. If you do omit the path, the function will be executed before each
-/// request, no matter the path.  Your function gets a Request and a Response
-/// object and a next function, which you must call to execute the handler for
-/// that route.
+/// Similar to `Controller.before(path, callback)` `callback` will be invoked
+/// instead of the specific handler.
+/// `callback` takes two additional paramaters `opts` and `next` where
+/// `opts` contains options assigned to the route and `next` is a function.
+/// Whenever you call `next` in `callback` the specific handler is invoked,
+/// if you do not call `next` the specific handler will not be invoked at all.
+/// So using around you can execute code before and after a specific handler
+/// and even call the handler only under certain circumstances.
+/// If you omit `path` `callback` will be called on every request.
 ///
 /// @EXAMPLES
 ///
@@ -684,10 +729,10 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_activateAuthentication
 ///
-/// `FoxxController#activateAuthentication(opts)`
+/// `Controller.activateAuthentication(opts)`
 ///
-/// To activate authentication for this controller, first call this function.
-/// Provide the following arguments:
+/// To activate authentication for this controller, call this function before defining any routes.
+/// In the `opts` object you can set the following keys:
 ///
 /// * *type*: Currently we only support *cookie*, but this will change in the future
 /// * *cookieLifetime*: An integer. Lifetime of cookies in seconds
@@ -719,10 +764,10 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_activateSessions
 ///
-/// `FoxxController#activateAuthentication(opts)`
+/// `Controller.activateSessions(opts)`
 ///
-/// To activate sessions for this sessions, first call this function.
-/// Provide the following arguments:
+/// To activate sessions for this controller, call this function before defining any routes.
+/// In the `opts` object you can set the following keys:
 ///
 /// * *type*: Currently we only support *cookie*, but this will change in the future. Defaults to *"cookie"*.
 /// * *cookieName*: A string used as the name of the cookie. Defaults to *"sid"*.
@@ -755,11 +800,11 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_apiDocumentation
 ///
-/// `FoxxController#apiDocumentation(path, [opts])`
+/// `Controller.apiDocumentation(path, [opts])`
 ///
-/// Mounts the API documentation (Swagger) at the given *path*.
+/// Mounts the API documentation (Swagger) at the given `path`.
 ///
-/// Note that the **path** can use URL parameters as usual but must not use any
+/// Note that the `path` can use URL parameters as usual but must not use any
 /// wildcard (`*`) or optional (`:name?`) parameters.
 ///
 /// The optional **opts** can be an object with any of the following properties:
@@ -826,10 +871,46 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_extend
 ///
-/// `FoxxController#extend(extensions)`
+/// `Controller.extend(extensions)`
+///
+/// Extends all functions to define routes in this controller.
+/// This allows to combine several route extensions with the invocation
+/// of a single function.
+/// This is especially useful if you use the same input parameter in several routes of
+/// your controller and want to apply the same validation, documentation and error handling
+/// for it.
+///
+/// The `extensions` parameter is a JSON object with arbitrary keys.
+/// Each key is used as the name of the function you want to define (you cannot overwrite
+/// internal functions like `pathParam`) and the value is a function that will be invoked.
+/// This function can get arbitrary many arguments and the `this` of the function is bound
+/// to the route definition object (e.g. you can use `this.pathParam()`).
+/// Your newly defined function is chainable similar to the internal functions.
 ///
 /// **Examples**
 ///
+/// Define a validator for a queryParameter, including documentation and errorResponses
+/// in a single command:
+///
+/// ```js
+/// controller.extend({
+///   myParam: function (maxValue) {
+///     this.queryParam("value", {type: joi.number().required()});
+///     this.onlyIf(function(req) {
+///       var v = req.param("value");
+///       if (v > maxValue) {
+///         throw new NumberTooLargeError();
+///       }
+///     });
+///     this.errorResponse(NumberTooLargeError, 400, "The given value is too large");
+///   }
+/// });
+///
+/// controller.get("/goose/barn", function(req, res) {
+///   // Will only be invoked if the request has parameter value and it is less or equal 5.
+/// }).myParam(5);
+/// ```
+/// 
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   extend: function(extensions) {

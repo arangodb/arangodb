@@ -31,7 +31,7 @@ var db = require("org/arangodb").db,
   _ = require("underscore");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_TemplateMiddleware_initializer
+/// @start Docu Block JSF_foxx_TemplateMiddleware_initializer
 ///
 /// Initialize with the name of a collection or a collection and optionally
 /// a set of helper functions.
@@ -48,7 +48,7 @@ var db = require("org/arangodb").db,
 ///
 /// app.before(templateMiddleware);
 /// ```
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 function TemplateMiddleware(templateCollection, helper) {
@@ -59,7 +59,7 @@ function TemplateMiddleware(templateCollection, helper) {
     responseFunctions = {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_TemplateMiddleware_response_render
+/// @start Docu Block JSF_foxx_TemplateMiddleware_response_render
 ///
 /// `response.render(templatePath, data)`
 ///
@@ -74,7 +74,7 @@ function TemplateMiddleware(templateCollection, helper) {
 /// ```js
 /// response.render("high/way", {username: 'Application'})
 /// ```
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
       render: function (templatePath, data) {
