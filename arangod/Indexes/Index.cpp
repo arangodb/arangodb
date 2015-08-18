@@ -413,7 +413,7 @@ bool Index::hasBatchInsert () const {
 
 static void insertExpandedElements (std::function<TRI_index_element_t* ()> const& allocate,
                                     TRI_index_element_t* baseElement,
-                                    std::deque<std::pair<size_t, std::unordered_set<TRI_shaped_json_t*>>>& expansions,
+                                    std::deque<std::pair<size_t, std::vector<TRI_shaped_json_t*>>>& expansions,
                                     std::vector<TRI_index_element_t*>& result,
                                     char const* ptr,
                                     size_t const paths) {
@@ -454,6 +454,54 @@ static void insertExpandedElements (std::function<TRI_index_element_t* ()> const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to expand a list element.
+////////////////////////////////////////////////////////////////////////////////
+
+static void expandField (VocShaper* shaper,
+                         TRI_shaped_json_t const* list,
+                         std::vector<TRI_shaped_json_t*> result) {
+
+  size_t len;
+  bool ok;
+  std::function<bool (size_t index, TRI_shaped_json_t* entry)> access;
+  TRI_shape_t const* shape = shaper->lookupShapeId(list->_sid); 
+  switch (shape->_type) {
+    case TRI_SHAPE_LIST:
+      len = TRI_LengthListShapedJson((const TRI_list_shape_t*) shape, list);
+      access = [&] (size_t index, TRI_shaped_json_t* entry) -> bool {
+        return TRI_AtListShapedJson((const TRI_list_shape_t*) shape, list, index, entry);
+      };
+      break;
+    case TRI_SHAPE_HOMOGENEOUS_LIST:
+      len = TRI_LengthHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, list);
+      access = [&] (size_t index, TRI_shaped_json_t* entry) -> bool {
+        return TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, list, index, entry);
+      };
+      break;
+    case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
+      len = TRI_LengthHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, list);
+      access = [&] (size_t index, TRI_shaped_json_t* entry) -> bool {
+        return TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, list, index, entry);
+      };
+      break;
+    default:
+      return;
+  }
+  for (size_t i = 0; i < len; ++i) {
+    TRI_shaped_json_t entry;
+    ok = access(i, &entry);
+    if (ok && entry._sid != BasicShapes::TRI_SHAPE_SID_NULL) {
+      // Check duplicates
+      // TRI_CompareValuesJson
+      result.push_back(&entry);
+    }
+    else {
+      // TODO Fix ME
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to insert a document into any index type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -485,7 +533,7 @@ int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
   }
   element->document(const_cast<TRI_doc_mptr_t*>(document));
   TRI_shaped_sub_t* subObjects = element->subObjects();
-  std::deque<std::pair<size_t, std::unordered_set<TRI_shaped_json_t*>>> expansions;
+  std::deque<std::pair<size_t, std::vector<TRI_shaped_json_t*>>> expansions;
   // We assume that _fields and paths correspond to oneanother and have the same order
   for (size_t j = 0; j < n; ++j) {
     TRI_shape_pid_t path = paths[j];
@@ -537,9 +585,9 @@ int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
 
     bool hasExpansion = TRI_AttributeNamesHaveExpansion(_fields[j]);
     if (hasExpansion) {
-      std::unordered_set<TRI_shaped_json_t*> insertFields;
+      std::vector<TRI_shaped_json_t*> insertFields;
       expansions.emplace_back(j, insertFields);
-      //TODO fill insertFields
+      expandField(_collection->getShaper(), &shapedObject, insertFields);
     }
     else {
       TRI_FillShapedSub(&subObjects[j], &shapedObject, ptr);
