@@ -2433,7 +2433,7 @@ TRI_vocbase_t::~TRI_vocbase_t () {
 
   // free replication
   if (_replicationApplier != nullptr) {
-    TRI_FreeReplicationApplier(_replicationApplier);
+    delete _replicationApplier;
   }
 
   delete _oldTransactions;

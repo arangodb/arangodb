@@ -483,15 +483,19 @@ static int SetError (TRI_replication_applier_t* applier,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ApplyThread (void* data) {
-  triagens::arango::ContinuousSyncer* s = static_cast<triagens::arango::ContinuousSyncer*>(data);
+  auto syncer = static_cast<triagens::arango::ContinuousSyncer*>(data);
 
   // get number of running remote transactions so we can forge the transaction
   // statistics
-  int const n = static_cast<int>(s->applier()->_runningRemoteTransactions.size());
+  int const n = static_cast<int>(syncer->applier()->_runningRemoteTransactions.size());
   triagens::arango::TransactionBase::setNumbers(n, n);
 
-  s->run();
-  delete s;
+  try {
+    syncer->run();
+  }
+  catch (...) {
+  }
+  delete syncer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,6 +509,7 @@ static int StartApplier (TRI_replication_applier_t* applier,
   TRI_replication_applier_state_t* state = &applier->_state;
 
   if (state->_active) {
+    // already running
     return TRI_ERROR_INTERNAL;
   }
 
@@ -518,15 +523,11 @@ static int StartApplier (TRI_replication_applier_t* applier,
   
   // TODO: prevent restart of the applier with a tick after a shutdown
 
-  auto fetcher = new triagens::arango::ContinuousSyncer(applier->_server,
-                                                        applier->_vocbase,
-                                                        &applier->_configuration,
-                                                        initialTick,
-                                                        useTick);
-
-  if (fetcher == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  std::unique_ptr<triagens::arango::ContinuousSyncer> syncer(new triagens::arango::ContinuousSyncer(applier->_server,
+                                                         applier->_vocbase,
+                                                         &applier->_configuration,
+                                                         initialTick,
+                                                         useTick));
 
   // reset error
   if (state->_lastError._msg != nullptr) {
@@ -544,11 +545,11 @@ static int StartApplier (TRI_replication_applier_t* applier,
 
   TRI_InitThread(&applier->_thread);
 
-  if (! TRI_StartThread(&applier->_thread, nullptr, "[applier]", ApplyThread, static_cast<void*>(fetcher))) {
-    delete fetcher;
-
+  if (! TRI_StartThread(&applier->_thread, nullptr, "[applier]", ApplyThread, static_cast<void*>(syncer.get()))) {
     return TRI_ERROR_INTERNAL;
   }
+
+  syncer.release();
 
   LOG_INFO("started replication applier for database '%s'",
            applier->_databaseName);
@@ -759,37 +760,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
   return applier;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyReplicationApplier (TRI_replication_applier_t* applier) {
-  TRI_ASSERT(applier != nullptr);
-  TRI_StopReplicationApplier(applier, true);
-  
-#if 0  
-  // TODO: fix thread-specific assertions about transactions
-  for (auto& it : applier->_runningRemoteTransactions) {
-    auto trx = it.second;
-    trx->abort();
-    delete trx;
-  }
-  applier->_runningRemoteTransactions.clear();
-#endif
-
-  TRI_DestroyStateReplicationApplier(&applier->_state);
-  TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeReplicationApplier (TRI_replication_applier_t* applier) {
-  TRI_DestroyReplicationApplier(applier);
-  delete applier;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -807,14 +777,32 @@ bool TRI_WaitReplicationApplier (TRI_replication_applier_t* applier,
   if (sleepTime > 0) {
     LOG_TRACE("replication applier going to sleep for %llu ns", (unsigned long long) sleepTime);
 
+    static uint64_t const SleepChunk = 500 * 1000;
+
+    while (sleepTime >= SleepChunk) {
 #ifdef _WIN32
-    usleep((unsigned long) sleepTime);
+      usleep((unsigned long) SleepChunk);
 #else
-    usleep((useconds_t) sleepTime);
+      usleep((useconds_t) SleepChunk);
+#endif
+      
+      sleepTime -= SleepChunk;
+
+      if (CheckTerminateFlag(applier)) {
+        return false;
+      }
+    }
+
+    if (sleepTime > 0) {
+#ifdef _WIN32
+      usleep((unsigned long) sleepTime);
+#else
+      usleep((useconds_t) sleepTime);
 #endif
 
-    if (CheckTerminateFlag(applier)) {
-      return false;
+      if (CheckTerminateFlag(applier)) {
+        return false;
+      }
     }
   }
 
@@ -1489,6 +1477,42 @@ int TRI_ForgetReplicationApplier (TRI_replication_applier_t* applier) {
   TRI_InitConfigurationReplicationApplier(&applier->_configuration);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         TRI_replication_applier_t
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a replication applier
+////////////////////////////////////////////////////////////////////////////////
+  
+TRI_replication_applier_t::TRI_replication_applier_t (TRI_server_t* server,
+                                                      TRI_vocbase_t* vocbase) 
+  : _server(server),
+    _vocbase(vocbase),
+    _terminateThread(false),
+    _databaseName(TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name)) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_replication_applier_t::~TRI_replication_applier_t () {
+  TRI_StopReplicationApplier(this, true);
+  TRI_DestroyStateReplicationApplier(&_state);
+  TRI_DestroyConfigurationReplicationApplier(&_configuration);
+
+  for (auto it = _runningRemoteTransactions.begin(); it != _runningRemoteTransactions.end(); ++it) {
+    auto trx = (*it).second;
+
+    // do NOT write abort markers so we can resume running transactions later
+    trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
+    delete trx;
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, _databaseName);
 }
 
 // -----------------------------------------------------------------------------
