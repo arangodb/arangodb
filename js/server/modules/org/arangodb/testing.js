@@ -57,6 +57,7 @@ var optionsDocumentation = [
   '   - `skipGeo`: if set to true the geo index tests are skipped',
   '   - `skipGraph`: if set to true the Graph tests are skipped',
   '   - `skipAql`: if set to true the AQL tests are skipped',
+  '   - `skipArangoB`: if set to true benchmark tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipMemoryIntense`: tests using lots of resources will be skippet.',
@@ -122,6 +123,7 @@ var optionsDefaults = { "cluster": false,
                         "skipTimeCritical": false,
                         "skipMemoryIntense": false,
                         "skipAql": false,
+                        "skipArangoB": false,
                         "skipRanges": false,
                         "skipLogAnalysis": false,
                         "username": "root",
@@ -1866,6 +1868,10 @@ var benchTodo = [
 ];
 
 testFuncs.arangob = function (options) {
+  if (options.skipArangoB === true) {
+    print("skipping Benchmark tests!");
+    return {};
+  }
   print("arangob tests...");
   var instanceInfo = startInstance("tcp",options, [], "arangob");
   if (instanceInfo === false) {
