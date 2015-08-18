@@ -91,7 +91,8 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
     _restrictType(RESTRICT_NONE),
     _initialTick(initialTick),
     _useTick(useTick),
-    _includeSystem(configuration->_includeSystem) {
+    _includeSystem(configuration->_includeSystem),
+    _requireFromPresent(configuration->_requireFromPresent) {
 
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
@@ -101,11 +102,6 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
   TRI_ASSERT(c > 0);
 
   _chunkSize = StringUtils::itoa(c);
-
-  // get number of running remote transactions so we can forge the transaction
-  // statistics
-  int const n = static_cast<int>(_applier->_runningRemoteTransactions.size());
-  triagens::arango::TransactionBase::setNumbers(n, n);
 
   if (configuration->_restrictType == "include") {
     _restrictType = RESTRICT_INCLUDE;
@@ -465,15 +461,16 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
   }
 
   // transaction id
-  // note: this is the remote trasnaction id!
+  // note: this is the remote transaction id!
   TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
   auto it = _applier->_runningRemoteTransactions.find(tid);
 
   if (it != _applier->_runningRemoteTransactions.end()) {
+    auto trx = (*it).second;
+
     _applier->_runningRemoteTransactions.erase(tid);
 
-    auto trx = (*it).second;
     // abort ongoing trx
     delete trx; 
   }
@@ -527,8 +524,8 @@ int ContinuousSyncer::abortTransaction (TRI_json_t const* json) {
 
   LOG_TRACE("abort replication transaction %llu", (unsigned long long) tid);
 
-  _applier->_runningRemoteTransactions.erase(tid);
   auto trx = (*it).second;
+  _applier->_runningRemoteTransactions.erase(tid);
 
   int res = trx->abort();
   delete trx;
@@ -562,9 +559,8 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
 
   LOG_TRACE("committing replication transaction %llu", (unsigned long long) tid);
   
-  _applier->_runningRemoteTransactions.erase(tid);
-
   auto trx = (*it).second;
+  _applier->_runningRemoteTransactions.erase(tid);
 
   int res = trx->commit();
   delete trx;
@@ -993,8 +989,9 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   }
 
   int res;
-  bool checkMore = false;
-  bool active    = false;
+  bool checkMore    = false;
+  bool active       = false;
+  bool fromIncluded = false;
   TRI_voc_tick_t tick;
 
   bool found;
@@ -1003,6 +1000,12 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   if (found) {
     checkMore = StringUtils::boolean(header);
     res = TRI_ERROR_NO_ERROR;
+   
+    // was the specified from value included the result? 
+    header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+    if (found) {
+      fromIncluded = StringUtils::boolean(header);
+    }
 
     header = response->getHeaderField(TRI_REPLICATION_HEADER_ACTIVE, found);
     if (found) {
@@ -1038,6 +1041,12 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
                 ": required header is missing";
   }
 
+  if (res == TRI_ERROR_NO_ERROR &&
+      ! fromIncluded && 
+      _requireFromPresent) {
+    res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+    errorMsg = "required tick value '" + tickString + "' is not present on master at " + string(_masterInfo._endpoint);
+  }
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_voc_tick_t lastAppliedTick;

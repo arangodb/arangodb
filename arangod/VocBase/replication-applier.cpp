@@ -187,6 +187,11 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
   
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
+                       "requireFromPresent",
+                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_requireFromPresent));
+  
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
+                       json,
                        "restrictType",
                        TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_restrictType.c_str(), config->_restrictType.size()));
   
@@ -347,6 +352,12 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     config->_includeSystem = value->_value._boolean;
   }
   
+  value = TRI_LookupObjectJson(json, "requireFromPresent");
+
+  if (TRI_IsBooleanJson(value)) {
+    config->_requireFromPresent = value->_value._boolean;
+  }
+  
   value = TRI_LookupObjectJson(json, "ignoreErrors");
 
   if (TRI_IsNumberJson(value)) {
@@ -473,6 +484,12 @@ static int SetError (TRI_replication_applier_t* applier,
 
 static void ApplyThread (void* data) {
   triagens::arango::ContinuousSyncer* s = static_cast<triagens::arango::ContinuousSyncer*>(data);
+
+  // get number of running remote transactions so we can forge the transaction
+  // statistics
+  int const n = static_cast<int>(s->applier()->_runningRemoteTransactions.size());
+  triagens::arango::TransactionBase::setNumbers(n, n);
+
   s->run();
   delete s;
 }
@@ -749,6 +766,16 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
 void TRI_DestroyReplicationApplier (TRI_replication_applier_t* applier) {
   TRI_ASSERT(applier != nullptr);
   TRI_StopReplicationApplier(applier, true);
+  
+#if 0  
+  // TODO: fix thread-specific assertions about transactions
+  for (auto& it : applier->_runningRemoteTransactions) {
+    auto trx = it.second;
+    trx->abort();
+    delete trx;
+  }
+  applier->_runningRemoteTransactions.clear();
+#endif
 
   TRI_DestroyStateReplicationApplier(&applier->_state);
   TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
@@ -1288,21 +1315,22 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configuration_t* config) {
-  config->_endpoint          = nullptr;
-  config->_database          = nullptr;
-  config->_username          = nullptr;
-  config->_password          = nullptr;
+  config->_endpoint            = nullptr;
+  config->_database            = nullptr;
+  config->_username            = nullptr;
+  config->_password            = nullptr;
 
-  config->_requestTimeout    = 300.0;
-  config->_connectTimeout    = 10.0;
-  config->_ignoreErrors      = 0;
-  config->_maxConnectRetries = 100;
-  config->_chunkSize         = 0;
-  config->_sslProtocol       = 0;
-  config->_autoStart         = false;
-  config->_adaptivePolling   = true;
-  config->_includeSystem     = true;
-  config->_restrictType      = "";
+  config->_requestTimeout      = 300.0;
+  config->_connectTimeout      = 10.0;
+  config->_ignoreErrors        = 0;
+  config->_maxConnectRetries   = 100;
+  config->_chunkSize           = 0;
+  config->_sslProtocol         = 0;
+  config->_autoStart           = false;
+  config->_adaptivePolling     = true;
+  config->_includeSystem       = true;
+  config->_requireFromPresent  = false;
+  config->_restrictType        = "";
   config->_restrictCollections.clear();
 }
 
@@ -1375,6 +1403,7 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
   dst->_autoStart           = src->_autoStart;
   dst->_adaptivePolling     = src->_adaptivePolling;
   dst->_includeSystem       = src->_includeSystem;
+  dst->_requireFromPresent  = src->_requireFromPresent;
   dst->_restrictType        = src->_restrictType;
   dst->_restrictCollections = src->_restrictCollections;
 }
