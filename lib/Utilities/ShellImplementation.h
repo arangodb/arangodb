@@ -102,7 +102,7 @@ namespace arangodb {
 // --SECTION--                                            virtual public methods
 // -----------------------------------------------------------------------------
 
-      public:
+  public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a signal
@@ -148,6 +148,18 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
     virtual std::string getLine (const std::string& prompt, bool& eof) = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell implementation supports colors
+////////////////////////////////////////////////////////////////////////////////
+
+    virtual bool supportsColors () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell supports a CTRL-C handler
+////////////////////////////////////////////////////////////////////////////////
+
+    virtual bool supportsCtrlCHandler () = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables

@@ -91,6 +91,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp \
 	lib/Statistics/statistics.cpp \
+	lib/Utilities/DummyShell.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Utilities/ShellImplFactory.cpp \
@@ -104,10 +105,6 @@ if ENABLE_READLINE
 lib_libarango_a_SOURCES += \
 	lib/Utilities/ReadlineShell.cpp
 
-else
-
-lib_libarango_a_SOURCES += \
-	lib/Utilities/DummyShell.cpp 
 endif
 
 ################################################################################

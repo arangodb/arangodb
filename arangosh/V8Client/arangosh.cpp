@@ -1543,7 +1543,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
 
 #else
 
-    if (BaseClient.colors()) {
+    if (BaseClient.colors() && console.supportsColors()) {
 
 #ifdef TRI_HAVE_LINENOISE
 
