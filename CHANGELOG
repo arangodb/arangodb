@@ -1,4 +1,4 @@
-v2.6.5 (XXXX-XX-XX)
+v2.6.5 (2015-08-17)
 -------------------
 
 * added startup option `--database.throw-collection-not-loaded-error`

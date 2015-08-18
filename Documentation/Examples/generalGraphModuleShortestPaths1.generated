@@ -10,7 +10,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Paris" 
       ], 
       "edges" : [ 
-        "internationalHighway/1097647705" 
+        "internationalHighway/1097651579" 
       ], 
       "distance" : 1 
     }, 
@@ -20,7 +20,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Lyon" 
       ], 
       "edges" : [ 
-        "internationalHighway/1097451097" 
+        "internationalHighway/1097454971" 
       ], 
       "distance" : 1 
     }, 
@@ -30,7 +30,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Paris" 
       ], 
       "edges" : [ 
-        "internationalHighway/1097844313" 
+        "internationalHighway/1097848187" 
       ], 
       "distance" : 1 
     }, 
@@ -40,7 +40,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Lyon" 
       ], 
       "edges" : [ 
-        "internationalHighway/1098040921" 
+        "internationalHighway/1098044795" 
       ], 
       "distance" : 1 
     }, 
@@ -50,7 +50,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Paris" 
       ], 
       "edges" : [ 
-        "internationalHighway/1098434137" 
+        "internationalHighway/1098438011" 
       ], 
       "distance" : 1 
     }, 
@@ -60,7 +60,7 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         "frenchCity/Lyon" 
       ], 
       "edges" : [ 
-        "internationalHighway/1098237529" 
+        "internationalHighway/1098241403" 
       ], 
       "distance" : 1 
     } 
