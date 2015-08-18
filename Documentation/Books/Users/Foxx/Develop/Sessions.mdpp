@@ -3,7 +3,6 @@
 Foxx provides some convenience methods to make working with sessions easier.
 
 !SUBSECTION Activate sessions
-@startDocuBlock JSF_foxx_controller_activateSessions
 
 Enables session features for the controller.
 
@@ -102,5 +101,3 @@ When using cookie sessions, this function will clear the session cookie (if *aut
   * *method* (optional): HTTP method to handle. Default: `"post"`.
   * *before* (optional): function to execute before the session is destroyed. Receives the same arguments as a regular route handler.
   * *after* (optional): function to execute after the session is destroyed. Receives the same arguments as a regular route handler. Default: a function that sends a *{"message": "logged out"}* JSON response.
-
-@startDocuBlock JSF_foxx_controller_destroySession
