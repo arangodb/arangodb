@@ -113,25 +113,10 @@ struct TRI_replication_applier_state_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_replication_applier_t {
-  TRI_replication_applier_t (TRI_server_t* server,
-                             TRI_vocbase_t* vocbase) 
-    : _server(server),
-      _vocbase(vocbase),
-      _terminateThread(false),
-      _databaseName(TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name)) {
-  }
+  TRI_replication_applier_t (TRI_server_t*,
+                             TRI_vocbase_t*);
 
-  ~TRI_replication_applier_t () {
-    for (auto it = _runningRemoteTransactions.begin(); it != _runningRemoteTransactions.end(); ++it) {
-      auto trx = (*it).second;
-
-      // do NOT write abort markers so we can resume running transactions later
-      trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
-      delete trx;
-    }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, _databaseName);
-  }
+  ~TRI_replication_applier_t ();
 
   void addRemoteTransaction (triagens::arango::ReplicationTransaction* trx) {
     _runningRemoteTransactions.insert(std::make_pair(trx->externalId(), trx));
@@ -173,18 +158,6 @@ struct TRI_replication_applier_t {
 
 TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t*,
                                                          TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyReplicationApplier (TRI_replication_applier_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeReplicationApplier (TRI_replication_applier_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

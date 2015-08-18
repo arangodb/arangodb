@@ -268,12 +268,10 @@ bool ContinuousSyncer::excludeCollection (std::string const& masterName) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::getLocalState (string& errorMsg) {
-  int res;
-
   uint64_t oldTotalRequests       = _applier->_state._totalRequests;
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
 
-  res = TRI_LoadStateReplicationApplier(_vocbase, &_applier->_state);
+  int res = TRI_LoadStateReplicationApplier(_vocbase, &_applier->_state);
   _applier->_state._active              = true;
   _applier->_state._totalRequests       = oldTotalRequests;
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
