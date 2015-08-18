@@ -8,28 +8,28 @@ all: build64 build32
 
 
 build64:
-	./v8-build.bat x86_amd64 x64 x64 64 
+	./v8-build.bat x86_amd64   x64    x64  64 
 
 build32:
-	./v8-build.bat x86 ia32 Win32 32
+	./v8-build.bat       x86  ia32  Win32  32
 
 
 clean: clean32 clean64
 
 clean64:
-	./v8-clean.bat cmd x86_amd64 x64 x64 64
+	./v8-clean.bat cmd x86_amd64    x64  x64  64
 
 clean32:
-	./v8-clean.bat x86 ia32 Win32 32
+	./v8-clean.bat x86      ia32  Win32  32   32
 
 
 distclean: distclean32 distclean64
 
 distclean64:
-	./v8-distclean.bat x86_amd64 x64 x64 64
+	./v8-distclean.bat x86_amd64   x64    x64  64
 
 distclean32:
-	./v8-distclean.bat x86 ia32 Win32 32
+	./v8-distclean.bat       x86  ia32  Win32  32
 
 
 install:
@@ -37,7 +37,7 @@ install:
 	$(MAKE) -f Makefile.v8-windows install_bits BITS=64
 
 install_bits:
-	mkdir -p ../WindowsLibraries/$(BITS)/lib
+	mkdir -p ../WindowsLibraries/$(BITS)/lib/RelWithDebInfo
 	mkdir -p ../WindowsLibraries/$(BITS)/include/unicode
 	for i in `find $(V8)/build -name $(PDBNAME) | grep $(BITS)`; do \
 		LIBNAME=`echo $$i|sed "s;.*/\(.*\)/$(PDBNAME);\1;"`; \
