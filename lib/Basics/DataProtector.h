@@ -84,9 +84,9 @@ namespace triagens {
 
         Entry* _list;
 
-        std::atomic<int> _last;
+        static std::atomic<int> _last;
 
-        static thread_local int _mySlot; // initialized to -1 in .cpp file
+        static thread_local int _mySlot;
 
       public:
 
@@ -124,10 +124,7 @@ namespace triagens {
             UnUser () = delete;
         };
 
-        DataProtector () 
-          : _list(nullptr),
-            _last(0) {
-
+        DataProtector () : _list(nullptr) {
           _list = new Entry[DATA_PROTECTOR_MULTIPLICITY];
           // Just to be sure:
           for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
@@ -140,16 +137,7 @@ namespace triagens {
         }
 
         UnUser use () {
-          int id = _mySlot;
-
-          if (id < 0) {
-            id = _last++;
-            if (_last >= DATA_PROTECTOR_MULTIPLICITY) {
-              _last = 0;
-            }
-            _mySlot = id;
-          }
-
+          int id = getMyId();
           _list[id]._count++;   // this is implicitly using memory_order_seq_cst
           return UnUser(this, id);  // return value optimization!
         }
@@ -167,6 +155,23 @@ namespace triagens {
 
         void unUse (int id) {
           _list[id]._count--;   // this is implicitly using memory_order_seq_cst
+        }
+
+        int getMyId () {
+          int id = _mySlot;
+          if (id >= 0) {
+            return id;
+          }
+          while (true) {
+            int newId = _last + 1;
+            if (newId >= DATA_PROTECTOR_MULTIPLICITY) {
+              newId = 0;
+            }
+            if (_last.compare_exchange_strong(id, newId)) {
+              _mySlot = newId;
+              return newId;
+            }
+          }
         }
     };
 

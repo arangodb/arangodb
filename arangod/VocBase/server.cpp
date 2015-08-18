@@ -724,6 +724,16 @@ static void StopReplicationAppliers (TRI_server_t* server) {
     TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
     if (vocbase->_replicationApplier != nullptr) {
       TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
+
+#if 0
+      // stop pending transactions 
+      for (auto& it : vocbase->_replicationApplier->_runningRemoteTransactions) {
+        auto trx = it.second;
+        trx->abort();
+        delete trx;
+      }
+      vocbase->_replicationApplier->_runningRemoteTransactions.clear();
+#endif      
     }
   }
 }

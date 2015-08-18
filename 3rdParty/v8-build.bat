@@ -42,6 +42,7 @@ echo %CMD%
 
 cd V8-%V8_VERSION%
 
+set PATH=.\third_party\python_26\;%PATH%
 .\third_party\python_26\python.exe build\gyp_v8 %CMD%
 
 cd build

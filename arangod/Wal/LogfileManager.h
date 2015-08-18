@@ -53,6 +53,28 @@ namespace triagens {
     class Slot;
     class SynchroniserThread;
 
+    struct LogfileRange {
+      LogfileRange (Logfile::IdType id,
+                    std::string const& filename,
+                    std::string const& state,
+                    TRI_voc_tick_t tickMin,
+                    TRI_voc_tick_t tickMax)
+        : id(id),
+          filename(filename),
+          state(state),
+          tickMin(tickMin),
+          tickMax(tickMax) {
+      }
+
+      Logfile::IdType id;
+      std::string filename;
+      std::string state;
+      TRI_voc_tick_t tickMin;
+      TRI_voc_tick_t tickMax;
+    };
+
+    typedef std::vector<LogfileRange> LogfileRanges; 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               LogfileManagerState
 // -----------------------------------------------------------------------------
@@ -558,7 +580,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Logfile*> getLogfilesForTickRange (TRI_voc_tick_t,
-                                                       TRI_voc_tick_t);
+                                                       TRI_voc_tick_t,
+                                                       bool& minTickIncluded);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return logfiles for a tick range
@@ -594,6 +617,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a logfile to remove. this may return nullptr
+/// if it returns a logfile, the logfile is removed from the list of available
+/// logfiles
 ////////////////////////////////////////////////////////////////////////////////
 
         Logfile* getRemovableLogfile ();
@@ -635,6 +660,12 @@ namespace triagens {
 
         LogfileManagerState state ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current available logfile ranges
+////////////////////////////////////////////////////////////////////////////////
+
+        LogfileRanges ranges ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -642,11 +673,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a logfile from the inventory and in the file system
+/// @brief remove a logfile in the file system
 ////////////////////////////////////////////////////////////////////////////////
 
-        void removeLogfile (Logfile*,
-                            bool);
+        void removeLogfile (Logfile*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the collector thread to collect a specific logfile

@@ -188,11 +188,12 @@ static void FreeOperations (TRI_transaction_t* trx) {
 
   for (size_t i = 0; i < n; ++i) {
     auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
-
+    
     if (trxCollection->_operations == nullptr) {
       continue;
     }
+
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
     if (mustRollback) {
       // revert all operations

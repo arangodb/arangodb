@@ -107,6 +107,18 @@ Handler::status_t RestReplicationHandler::execute () {
       }
       handleCommandLoggerState();
     }
+    else if (command == "logger-tick-ranges") {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
+        goto BAD_CALL;
+      }
+      handleCommandLoggerTickRanges();
+    }
+    else if (command == "logger-first-tick") {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
+        goto BAD_CALL;
+      }
+      handleCommandLoggerFirstTick();
+    }
     else if (command == "logger-follow") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
@@ -504,6 +516,87 @@ void RestReplicationHandler::handleCommandLoggerState () {
   TRI_json_t* clients = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
   if (clients != nullptr) {
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "clients", clients);
+  }
+
+  generateResult(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the available logfile range
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandLoggerTickRanges () {
+  auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
+  
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ranges.size());
+
+  if (json == nullptr) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+
+  for (auto& it : ranges) {
+    auto r = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+
+    if (r == nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+      return;
+    }
+
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "datafile", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, it.filename.c_str(), it.filename.size()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "status", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, it.state.c_str(), it.state.size()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMin", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(it.tickMin)));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMax", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(it.tickMax)));
+
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, r);
+  }
+
+  generateResult(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the first tick available in a logfile 
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandLoggerFirstTick () {
+  auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
+  
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
+
+  if (json == nullptr) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+
+  TRI_voc_tick_t tick = UINT64_MAX;
+
+  for (auto& it : ranges) {
+    auto r = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+
+    if (r == nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+      return;
+    }
+
+    if (it.tickMin == 0) {
+      continue;
+    }
+
+    if (it.tickMin < tick) {
+      tick = it.tickMin;
+    }
+  }
+
+  if (tick == UINT64_MAX) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "firstTick", TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
+  }
+  else {
+    auto tickString = std::to_string(tick);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "firstTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString.c_str(), tickString.size()));
   }
 
   generateResult(json);
@@ -1069,6 +1162,10 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
       _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE,
                            strlen(TRI_REPLICATION_HEADER_ACTIVE),
                            "true");
+      
+      _response->setHeader(TRI_REPLICATION_HEADER_FROMPRESENT,
+                           strlen(TRI_REPLICATION_HEADER_FROMPRESENT),
+                           dump._fromTickIncluded ? "true" : "false");
 
       if (length > 0) {
         // transfer ownership of the buffer contents

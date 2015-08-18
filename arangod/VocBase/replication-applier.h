@@ -71,6 +71,7 @@ typedef struct TRI_replication_applier_configuration_s {
   bool          _autoStart;
   bool          _adaptivePolling;
   bool          _includeSystem;
+  bool          _requireFromPresent;
   std::string   _restrictType;
   std::unordered_map<std::string, bool> _restrictCollections;
 }
