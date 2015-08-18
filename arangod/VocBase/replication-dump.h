@@ -132,6 +132,14 @@ int TRI_DumpLogReplication (TRI_replication_dump_t*,
                             TRI_voc_tick_t,
                             bool);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the transactions that were open at a given point in time
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DetermineOpenTransactionsReplication (TRI_replication_dump_t*,
+                                              TRI_voc_tick_t,
+                                              TRI_voc_tick_t);
+
 #endif
 
 // -----------------------------------------------------------------------------

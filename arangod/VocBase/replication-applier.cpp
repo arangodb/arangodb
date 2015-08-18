@@ -202,11 +202,10 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
 
 static int LoadConfiguration (TRI_vocbase_t* vocbase,
                               TRI_replication_applier_configuration_t* config) {
-  char* filename;
-
   TRI_DestroyConfigurationReplicationApplier(config);
   TRI_InitConfigurationReplicationApplier(config);
-  filename = GetConfigurationFilename(vocbase);
+
+  char* filename = GetConfigurationFilename(vocbase);
 
   if (! TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -431,7 +430,6 @@ static TRI_json_t* JsonApplyState (TRI_replication_applier_state_t const* state)
 static int SetError (TRI_replication_applier_t* applier,
                      int errorCode,
                      char const* msg) {
-  TRI_replication_applier_state_t* state;
   char const* realMsg;
 
   if (msg == nullptr || strlen(msg) == 0) {
@@ -446,7 +444,7 @@ static int SetError (TRI_replication_applier_t* applier,
     LOG_ERROR("replication applier error for database '%s': %s", applier->_databaseName, realMsg);
   }
 
-  state = &applier->_state;
+  TRI_replication_applier_state_t* state = &applier->_state;
   state->_lastError._code = errorCode;
 
   TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
