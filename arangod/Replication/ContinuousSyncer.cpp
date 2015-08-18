@@ -53,25 +53,6 @@ using namespace triagens::arango;
 using namespace triagens::httpclient;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-static inline void LocalGetline (char const*& p, 
-                                 string& line, 
-                                 char delim) {
-  char const* q = p;
-  while (*p != 0 && *p != delim) {
-    p++;
-  }
-
-  line.assign(q, p - q);
-
-  if (*p == delim) {
-    p++;
-  }
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -729,27 +710,40 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::applyLog (SimpleHttpResult* response,
-                                string& errorMsg,
+                                std::string& errorMsg,
                                 uint64_t& processedMarkers,
                                 uint64_t& ignoreCount) {
 
   StringBuffer& data = response->getBody();
+  char* p = data.begin(); 
+  char* end = p + data.length();
 
-  char const* p = data.c_str();
+  // buffer must end with a NUL byte
+  TRI_ASSERT(*end == '\0');
 
-  while (true) {
-    string line;
+  while (p < end) {
+    char* q = strchr(p, '\n');
 
-    LocalGetline(p, line, '\n');
+    if (q == nullptr) {
+      q = end;
+    }
 
-    if (line.size() < 2) {
+    char const* lineStart = p;
+    size_t const lineLength = q - p;
+    
+    if (lineLength < 2) {
       // we are done
       return TRI_ERROR_NO_ERROR;
     }
 
+    TRI_ASSERT(q <= end);
+    *q = '\0';
+
     processedMarkers++;
 
-    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, line.c_str());
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, p));
+    
+    p = q + 1;
 
     if (json == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -757,17 +751,15 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
 
     int res;
     bool skipped;
-    if (excludeCollection(json)) {
+    if (excludeCollection(json.get())) {
       // entry is skipped
       res = TRI_ERROR_NO_ERROR;
       skipped = true;
     }
     else {
-      res = applyLogMarker(json, errorMsg);
+      res = applyLogMarker(json.get(), errorMsg);
       skipped = false;
     }
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // apply error
@@ -778,11 +770,11 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       }
 
       if (ignoreCount == 0) {
-        if (line.size() > 256) {
-          errorMsg += ", offending marker: " + line.substr(0, 256) + "...";
+        if (lineLength > 256) {
+          errorMsg += ", offending marker: " + std::string(lineStart, 256) + "...";
         }
         else {
-          errorMsg += ", offending marker: " + line;;
+          errorMsg += ", offending marker: " + std::string(lineStart, lineLength);
         }
 
         return res;
@@ -806,6 +798,9 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       ++_applier->_state._skippedOperations;
     }
   }
+
+  // reached the end      
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
