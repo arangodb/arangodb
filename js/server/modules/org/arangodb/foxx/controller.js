@@ -235,30 +235,7 @@ var sessionControllerProps = {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_destroySession
-///
-/// `FoxxController#destroySession(path, opts)`
-///
-/// This adds a path to your app for the destroySession functionality.
-/// You can customize it with custom *before* and *after* function:
-/// *before* is a function that you can define to do something before
-/// the session is destroyed.
-/// *after* is a function that you can define to do something after the
-/// session is destroyed. This defaults to a function that returns a
-/// JSON object with *message* set to "logged out".
-/// Both *before* and *after* should take request and result as arguments.
-/// If you only want to provide an *after* function, you can pass the
-/// function directly instead of an object.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// app.destroySession('/logout', function (req, res) {
-///   res.json({"message": "Bye, Bye"});
-/// });
-/// ```
-///
-/// @endDocuBlock
+/// @brief defines a route to logout/destroy the session
 ////////////////////////////////////////////////////////////////////////////////
   destroySession: function (route, opts) {
     var method = opts.method;
@@ -762,32 +739,7 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_activateSessions
-///
-/// `Controller.activateSessions(opts)`
-///
-/// To activate sessions for this controller, call this function before defining any routes.
-/// In the `opts` object you can set the following keys:
-///
-/// * *type*: Currently we only support *cookie*, but this will change in the future. Defaults to *"cookie"*.
-/// * *cookieName*: A string used as the name of the cookie. Defaults to *"sid"*.
-/// * *cookieSecret*: A secret string used to sign the cookie (as "*cookieName*_sig"). Optional.
-/// * *autoCreateSession*: Whether to always create a session if none exists. Defaults to *true*.
-/// * *sessionStorage*: Mount path of the app to use for sessions. Defaults to */_system/sessions*
-///
-///
-/// @EXAMPLES
-///
-/// ```js
-/// app.activateSessions({
-///   type: "cookie",
-///   cookieName: "my_cookie",
-///   autoCreateSession: true,
-///   sessionStorage: "/my-sessions"
-/// });
-/// ```
-///
-/// @endDocuBlock
+/// @brief activate sessions with the giveon options for this controller
 ////////////////////////////////////////////////////////////////////////////////
   activateSessions: function (opts) {
     var sessions = require("org/arangodb/foxx/sessions");
