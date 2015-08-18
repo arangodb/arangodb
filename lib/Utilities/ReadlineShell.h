@@ -125,6 +125,22 @@ namespace arangodb {
 
       void signal () override final;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell implementation supports colors
+////////////////////////////////////////////////////////////////////////////////
+
+      bool supportsColors () override final {
+        return true;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell supports a CTRL-C handler
+////////////////////////////////////////////////////////////////////////////////
+
+      bool supportsCtrlCHandler () override final {
+        return true;
+      }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------

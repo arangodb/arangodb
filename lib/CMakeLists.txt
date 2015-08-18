@@ -118,9 +118,9 @@ add_library(
     Rest/SslInterface.cpp
     Rest/Version.cpp
     Statistics/statistics.cpp
-    Utilities/ScriptLoader.cpp
-    Utilities/ShellImplementation.cpp
+    Utilities/DummyShell.cpp
     Utilities/LineEditor.cpp
+    Utilities/ScriptLoader.cpp
     Utilities/ShellImplementation.cpp
     Utilities/ShellImplFactory.cpp
     Zip/ioapi.cpp
