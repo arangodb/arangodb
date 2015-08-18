@@ -54,24 +54,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set flag to terminate the applier thread
-////////////////////////////////////////////////////////////////////////////////
-
-static void SetTerminateFlag (TRI_replication_applier_t* applier,
-                              bool value) {
-
-  applier->_terminateThread.store(value);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the applier thread should terminate
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CheckTerminateFlag (TRI_replication_applier_t* applier) {
-  return applier->_terminateThread.load();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read a tick value from a JSON struct
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -540,7 +522,7 @@ static int StartApplier (TRI_replication_applier_t* applier,
   TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
 
 
-  SetTerminateFlag(applier, false);
+  applier->setTermination(false);
   state->_active = true;
 
   TRI_InitThread(&applier->_thread);
@@ -572,7 +554,7 @@ static int StopApplier (TRI_replication_applier_t* applier,
 
   state->_active = false;
 
-  SetTerminateFlag(applier, true);
+  applier->setTermination(true);
 
   TRI_SetProgressReplicationApplier(applier, "applier stopped", false);
 
@@ -604,7 +586,7 @@ static int ShutdownApplier (TRI_replication_applier_t* applier) {
 
   state->_active = false;
 
-  SetTerminateFlag(applier, true);
+  applier->setTermination(true);
 
   TRI_SetProgressReplicationApplier(applier, "applier shut down", false);
 
@@ -751,7 +733,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
     }
   }
 
-  SetTerminateFlag(applier, false);
+  applier->setTermination(false);
 
   TRI_ASSERT(applier->_databaseName != nullptr);
 
@@ -763,51 +745,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether the applier thread should terminate
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_WaitReplicationApplier (TRI_replication_applier_t* applier,
-                                 uint64_t sleepTime) {
-  if (CheckTerminateFlag(applier)) {
-    return false;
-  }
-
-  if (sleepTime > 0) {
-    LOG_TRACE("replication applier going to sleep for %llu ns", (unsigned long long) sleepTime);
-
-    static uint64_t const SleepChunk = 500 * 1000;
-
-    while (sleepTime >= SleepChunk) {
-#ifdef _WIN32
-      usleep((unsigned long) SleepChunk);
-#else
-      usleep((useconds_t) SleepChunk);
-#endif
-      
-      sleepTime -= SleepChunk;
-
-      if (CheckTerminateFlag(applier)) {
-        return false;
-      }
-    }
-
-    if (sleepTime > 0) {
-#ifdef _WIN32
-      usleep((unsigned long) sleepTime);
-#else
-      usleep((useconds_t) sleepTime);
-#endif
-
-      if (CheckTerminateFlag(applier)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication applier configuration
@@ -833,7 +770,7 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
   }
 
   // wait until previous applier thread is shut down
-  while (! TRI_WaitReplicationApplier(applier, 10 * 1000));
+  while (! applier->wait(10 * 1000));
 
   WRITE_LOCKER(applier->_statusLock);
 
@@ -885,7 +822,7 @@ int TRI_StopReplicationApplier (TRI_replication_applier_t* applier,
     }
   }
 
-  SetTerminateFlag(applier, false);
+  applier->setTermination(false);
 
   LOG_INFO("stopped replication applier for database '%s'",
            applier->_databaseName);
@@ -935,7 +872,7 @@ int TRI_ShutdownReplicationApplier (TRI_replication_applier_t* applier) {
     }
   }
 
-  SetTerminateFlag(applier, false);
+  applier->setTermination(false);
  
   {
     WRITE_LOCKER(applier->_statusLock); 
@@ -1515,6 +1452,50 @@ TRI_replication_applier_t::~TRI_replication_applier_t () {
   TRI_FreeString(TRI_CORE_MEM_ZONE, _databaseName);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pauses and checks whether the apply thread should terminate
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_replication_applier_t::wait (uint64_t sleepTime) {
+  if (isTerminated()) {
+    return false;
+  }
+
+  if (sleepTime > 0) {
+    LOG_TRACE("replication applier going to sleep for %llu ns", (unsigned long long) sleepTime);
+
+    static uint64_t const SleepChunk = 500 * 1000;
+
+    while (sleepTime >= SleepChunk) {
+#ifdef _WIN32
+      usleep((unsigned long) SleepChunk);
+#else
+      usleep((useconds_t) SleepChunk);
+#endif
+      
+      sleepTime -= SleepChunk;
+
+      if (isTerminated()) {
+        return false;
+      }
+    }
+
+    if (sleepTime > 0) {
+#ifdef _WIN32
+      usleep((unsigned long) sleepTime);
+#else
+      usleep((useconds_t) sleepTime);
+#endif
+
+      if (isTerminated()) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

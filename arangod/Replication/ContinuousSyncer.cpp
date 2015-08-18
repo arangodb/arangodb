@@ -143,7 +143,7 @@ int ContinuousSyncer::run () {
 
       if (connectRetries <= _configuration._maxConnectRetries) {
         // check if we are aborted externally
-        if (TRI_WaitReplicationApplier(_applier, 10 * 1000 * 1000)) {
+        if (_applier->wait(10 * 1000 * 1000)) {
           continue;
         }
 
@@ -918,7 +918,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
 
     // this will make the applier thread sleep if there is nothing to do,
     // but will also check for cancellation
-    if (! TRI_WaitReplicationApplier(_applier, sleepTime)) {
+    if (! _applier->wait(sleepTime)) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
   }
