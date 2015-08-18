@@ -407,6 +407,51 @@ bool Index::hasBatchInsert () const {
   return false;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper to recursively insert expanded elements in to list of index_elements.
+////////////////////////////////////////////////////////////////////////////////
+
+static void insertExpandedElements (std::function<TRI_index_element_t* ()> const& allocate,
+                                    TRI_index_element_t* baseElement,
+                                    std::deque<std::pair<size_t, std::unordered_set<TRI_shaped_json_t*>>>& expansions,
+                                    std::vector<TRI_index_element_t*>& result,
+                                    char const* ptr,
+                                    size_t const paths) {
+  // Invariant: The baseElement is allocated and properly has space.
+  // For each expansion place we have to allocate another index_element and copy the values
+  // of baseElement into it.
+  if (expansions.empty()) {
+    result.push_back(baseElement);
+    return;
+  }
+  // In each step we reduce expansions.size() by 1, so will terminate.
+  auto current = expansions.front();
+  expansions.pop_front();
+  bool first = true;
+  for (auto& el : current.second) {
+    TRI_index_element_t* element = nullptr;
+    if (first) {
+      // One index_element is allocated, we use this space for the first entry in the expansion
+      element = baseElement;
+    }
+    else {
+      // Allocate a new index element and copy all baseElement values over.
+      // baseElement might contain expansions from levels further down
+      // but they will be overwritten again later.
+      element = allocate();
+      element->document(baseElement->document());
+      for (size_t j = 0; j < paths; ++j) {
+        element->subObjects()[j] = baseElement->subObjects()[j];
+      }
+    }
+    TRI_FillShapedSub(&(element->subObjects()[current.first]), el, ptr);
+    insertExpandedElements(allocate, element, expansions, result, ptr, paths);
+  }
+  // If we are done with this level we push it back on the stack,
+  // a higher level has done expansion as well and expects expansions to be
+  // non-modified.
+  expansions.push_front(current);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to insert a document into any index type
@@ -440,6 +485,8 @@ int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
   }
   element->document(const_cast<TRI_doc_mptr_t*>(document));
   TRI_shaped_sub_t* subObjects = element->subObjects();
+  std::deque<std::pair<size_t, std::unordered_set<TRI_shaped_json_t*>>> expansions;
+  // We assume that _fields and paths correspond to oneanother and have the same order
   for (size_t j = 0; j < n; ++j) {
     TRI_shape_pid_t path = paths[j];
 
@@ -488,9 +535,17 @@ int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
     // Store the field
     // .........................................................................
 
-    TRI_FillShapedSub(&subObjects[j], &shapedObject, ptr);
+    bool hasExpansion = TRI_AttributeNamesHaveExpansion(_fields[j]);
+    if (hasExpansion) {
+      std::unordered_set<TRI_shaped_json_t*> insertFields;
+      expansions.emplace_back(j, insertFields);
+      //TODO fill insertFields
+    }
+    else {
+      TRI_FillShapedSub(&subObjects[j], &shapedObject, ptr);
+    }
   }
-  elements.push_back(element);
+  insertExpandedElements(allocate, element, expansions, elements, ptr, n);
 
   return TRI_ERROR_NO_ERROR;
 }
