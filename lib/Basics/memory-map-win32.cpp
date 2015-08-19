@@ -230,7 +230,7 @@ int TRI_MMFile (void* memoryAddress,
   // ...........................................................................
   if (*mmHandle == nullptr) {
     DWORD errorCode = GetLastError();
-    LOG_DEBUG("File descriptor converted to an invalid handle",errorCode);
+    LOG_DEBUG("File descriptor converted to an invalid handle: %d", errorCode);
     return TRI_ERROR_SYS_ERROR;
   }
 
@@ -252,10 +252,10 @@ int TRI_MMFile (void* memoryAddress,
     // we have failure for some reason
     // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD WINAPI GetLastError(void) );
     if (errorCode == ERROR_NOT_ENOUGH_MEMORY) {
-      LOG_DEBUG("MapViewOfFile failed with out of memory error %d",errorCode);
+      LOG_DEBUG("MapViewOfFile failed with out of memory error %d", (int) errorCode);
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    LOG_DEBUG("MapViewOfFile failed with error code = %d",errorCode);
+    LOG_DEBUG("MapViewOfFile failed with error code = %d", (int) errorCode);
     return TRI_ERROR_SYS_ERROR;
   }
 
