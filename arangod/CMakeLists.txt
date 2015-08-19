@@ -58,13 +58,6 @@ add_executable(
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
     Admin/ApplicationAdminServer.cpp
-    Admin/RestAdminBaseHandler.cpp
-    Admin/RestAdminLogHandler.cpp
-    Admin/RestBaseHandler.cpp
-    Admin/RestDebugHelperHandler.cpp
-    Admin/RestJobHandler.cpp
-    Admin/RestShutdownHandler.cpp
-    Admin/RestVersionHandler.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
     Aql/AggregationOptions.cpp
@@ -154,19 +147,26 @@ add_executable(
     Replication/InitialSyncer.cpp
     Replication/Syncer.cpp
     Rest/AnyServer.cpp
+    RestHandler/RestAdminBaseHandler.cpp
+    RestHandler/RestAdminLogHandler.cpp
+    RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp
+    RestHandler/RestDebugHelperHandler.cpp
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
     RestHandler/RestExportHandler.cpp
     RestHandler/RestImportHandler.cpp
+    RestHandler/RestJobHandler.cpp
     RestHandler/RestPleaseUpgradeHandler.cpp
     RestHandler/RestQueryCacheHandler.cpp
     RestHandler/RestQueryHandler.cpp
     RestHandler/RestReplicationHandler.cpp
+    RestHandler/RestShutdownHandler.cpp
     RestHandler/RestSimpleHandler.cpp
     RestHandler/RestSimpleQueryHandler.cpp
     RestHandler/RestUploadHandler.cpp
+    RestHandler/RestVersionHandler.cpp
     RestHandler/RestVocbaseBaseHandler.cpp
     RestServer/ArangoServer.cpp
     RestServer/ConsoleThread.cpp

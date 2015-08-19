@@ -31,12 +31,11 @@
 #define ARANGODB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Admin/RestBaseHandler.h"
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/json-utilities.h"
 #include "Rest/HttpResponse.h"
+#include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
 #include "Utils/transactions.h"
 
@@ -150,7 +149,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestVocbaseBaseHandler (rest::HttpRequest*);
+        explicit RestVocbaseBaseHandler (rest::HttpRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor

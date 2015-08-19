@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shard request handler
+/// @brief job control request handler
 ///
 /// @file
 ///
@@ -27,28 +27,30 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_REST_SHARD_HANDLER_H
-#define ARANGODB_CLUSTER_REST_SHARD_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_JOB_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_JOB_HANDLER_H 1
 
 #include "Basics/Common.h"
+#include "HttpServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
   namespace rest {
+    class AsyncJobManager;
     class Dispatcher;
   }
 
-  namespace arango {
+  namespace admin {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            class RestShardHandler
+// --SECTION--                                              class RestJobHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shard control request handler
+/// @brief job control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestShardHandler : public admin::RestBaseHandler {
+    class RestJobHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -60,8 +62,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestShardHandler (rest::HttpRequest* request,
-                          rest::Dispatcher*);
+        RestJobHandler (rest::HttpRequest* request,
+                        std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -82,6 +84,46 @@ namespace triagens {
         status_t execute () override;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief put handler
+////////////////////////////////////////////////////////////////////////////////
+
+        void putJob ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief put method handler
+////////////////////////////////////////////////////////////////////////////////
+
+        void putJobMethod ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get handler
+////////////////////////////////////////////////////////////////////////////////
+
+        void getJob ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a job's status by its id
+////////////////////////////////////////////////////////////////////////////////
+
+        void getJobById (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get job status by type
+////////////////////////////////////////////////////////////////////////////////
+
+        void getJobByType (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete handler
+////////////////////////////////////////////////////////////////////////////////
+
+        void deleteJob ();
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -91,7 +133,13 @@ namespace triagens {
 /// @brief dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-        rest::Dispatcher* TRI_UNUSED _dispatcher;
+        rest::Dispatcher* _dispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief async job manager
+////////////////////////////////////////////////////////////////////////////////
+
+        rest::AsyncJobManager* _jobManager;
 
     };
   }

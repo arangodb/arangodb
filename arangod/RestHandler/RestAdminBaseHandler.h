@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown request handler
+/// @brief default handler for admin handlers
 ///
 /// @file
 ///
@@ -22,30 +22,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H
-#define ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_ADMIN_BASE_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_ADMIN_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Admin/RestBaseHandler.h"
-#include "ApplicationServer/ApplicationServer.h"
-#include "Rest/HttpResponse.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
   namespace admin {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         class RestShutdownHandler
+// --SECTION--                                        class RestAdminBaseHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown request handler
+/// @brief default handler for admin handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestShutdownHandler : public RestBaseHandler {
+    class RestAdminBaseHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -57,37 +56,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestShutdownHandler (rest::HttpRequest*, void* applicationServer);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDirect () const override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initiates the shutdown process
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute () override;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief application server
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::rest::ApplicationServer* _applicationServer;
+        explicit RestAdminBaseHandler (rest::HttpRequest* request);
     };
   }
 }

@@ -31,14 +31,13 @@
 #define ARANGODB_AQL_REST_AQL_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Dispatcher/Dispatcher.h"
-#include "Admin/RestBaseHandler.h"
-#include "V8Server/ApplicationV8.h"
-#include "RestServer/VocbaseContext.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/types.h"
+#include "Dispatcher/Dispatcher.h"
+#include "RestHandler/RestBaseHandler.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "RestServer/VocbaseContext.h"
+#include "V8Server/ApplicationV8.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
