@@ -332,7 +332,7 @@ namespace triagens {
         };
 
         auto isSubDirectory = [] (struct _finddata_t item) -> bool {
-          return ((item->attrib & _A_SUBDIR) != 0);
+          return ((item.attrib & _A_SUBDIR) != 0);
         };
 
         struct _finddata_t oneItem;
