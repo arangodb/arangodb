@@ -127,6 +127,13 @@ namespace triagens {
 
         Variable const* getVariable (std::string const&) const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable, allowing usage of special pseudo vars such
+/// as OLD and NEW
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* getVariable (char const*, bool) const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -241,6 +248,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         Variable const* getVariable (char const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable by name - this respects the current scopes
+/// this also allows using special pseudo vars such as OLD and NEW
+////////////////////////////////////////////////////////////////////////////////
+        
+        Variable const* getVariable (char const*, bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the $CURRENT variable
