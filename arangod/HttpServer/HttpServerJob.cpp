@@ -124,7 +124,7 @@ Job::status_t HttpServerJob::work () {
 
   RequestStatisticsAgentSetRequestStart(_handler);
   _handler->prepareExecute();
-  Handler::status_t status;
+  HttpHandler::status_t status;
 
   try {
     status = _handler->execute();

@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Dispatcher/Job.h"
-#include "Rest/Handler.h"
+#include "HttpServer/HttpHandler.h"
 
 struct TRI_server_t;
 

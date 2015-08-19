@@ -154,7 +154,6 @@ add_executable(
     Replication/InitialSyncer.cpp
     Replication/Syncer.cpp
     Rest/AnyServer.cpp
-    Rest/Handler.cpp
     RestHandler/RestBatchHandler.cpp
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp

@@ -32,11 +32,11 @@
 #ifndef ARANGODB_HTTP_SERVER_HTTP_SERVER_H
 #define ARANGODB_HTTP_SERVER_HTTP_SERVER_H 1
 
-#include "Scheduler/TaskManager.h"
 #include "Basics/Mutex.h"
 #include "Basics/SpinLock.h"
+#include "HttpServer/HttpHandler.h"
 #include "Rest/ConnectionInfo.h"
-#include "Rest/Handler.h"
+#include "Scheduler/TaskManager.h"
 
 // #define TRI_USE_SPIN_LOCK_GENERAL_SERVER 1
 
@@ -51,7 +51,6 @@ namespace triagens {
     class EndpointList;
     class HttpServerJob;
     class HttpCommTask;
-    class HttpHandler;
     class HttpHandlerFactory;
     class Job;
     class ListenTask;
@@ -277,7 +276,7 @@ namespace triagens {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-        Handler::status_t handleRequestDirectly (HttpCommTask* task, HttpHandler * handler);
+        HttpHandler::status_t handleRequestDirectly (HttpCommTask* task, HttpHandler* handler);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut downs a handler for a task
