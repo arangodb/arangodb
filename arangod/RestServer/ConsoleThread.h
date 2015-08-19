@@ -137,7 +137,7 @@ namespace triagens {
 /// @brief whether or not the thread is chatty on shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isSilent () {
+        bool isSilent () override {
           return true;
         }
 

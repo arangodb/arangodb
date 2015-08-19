@@ -118,7 +118,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cleanup (rest::DispatcherQueue* queue);
+        void cleanup (rest::DispatcherQueue* queue) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -133,7 +133,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (basics::Exception const& ex) {
+        void handleError (basics::Exception const& ex) override {
         }
 
 // -----------------------------------------------------------------------------

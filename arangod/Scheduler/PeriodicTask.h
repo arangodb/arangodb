@@ -77,7 +77,7 @@ namespace triagens {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void getDescription (struct TRI_json_t*) const;
+        virtual void getDescription (struct TRI_json_t*) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resets the timer
