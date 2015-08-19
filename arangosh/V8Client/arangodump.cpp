@@ -48,6 +48,11 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+#include <openssl/md5.h>
+#else
+#define hexStr ""
+#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -500,7 +505,7 @@ static void EndBatch (string DBserver) {
   const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
   string urlExt;
   if (! DBserver.empty()) {
-    urlExt = "?DBserver="+DBserver;
+    urlExt = "?DBserver=" + DBserver;
   }
 
   BatchId = 0;
@@ -716,6 +721,7 @@ static int RunDump (string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
+  // read the server's max tick value
   const string tickString = JsonHelper::getStringValue(json, "tick", "");
 
   if (tickString == "") {
@@ -726,14 +732,61 @@ static int RunDump (string& errorMsg) {
   }
 
   cout << "Last tick provided by server is: " << tickString << endl;
-
-  // read the server's max tick value
+  
   uint64_t maxTick = StringUtils::uint64(tickString);
-
-  // check if the user specific a max tick value
+  // check if the user specified a max tick value
   if (TickEnd > 0 && maxTick > TickEnd) {
     maxTick = TickEnd;
   }
+
+
+  {
+    TRI_json_t* meta = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+
+    if (meta == nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      errorMsg = "out of memory";
+
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, meta, "database", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, BaseClient.databaseName().c_str(), BaseClient.databaseName().size()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, meta, "lastTickAtDumpStart", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString.c_str(), tickString.size()));
+
+    // save last tick in file
+    string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
+
+    int fd;
+
+    // remove an existing file first
+    if (TRI_ExistsFile(fileName.c_str())) {
+      TRI_UnlinkFile(fileName.c_str());
+    }
+
+    fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+    if (fd < 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, meta);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      errorMsg = "cannot write to file '" + fileName + "'";
+
+      return TRI_ERROR_CANNOT_WRITE_FILE;
+    }
+
+    const string metaString = JsonHelper::toString(meta);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, meta);
+
+    if (! TRI_WritePointer(fd, metaString.c_str(), metaString.size())) {
+      TRI_CLOSE(fd);
+      errorMsg = "cannot write to file '" + fileName + "'";
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+      return TRI_ERROR_CANNOT_WRITE_FILE;
+    }
+
+    TRI_CLOSE(fd);
+  }
+
 
   // create a lookup table for collections
   map<string, bool> restrictList;
@@ -788,6 +841,21 @@ static int RunDump (string& errorMsg) {
       continue;
     }
 
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+    size_t   dstLen;
+    char     *hexStr = NULL;
+    char     rawdigest[16];
+    MD5_CTX  md5context;
+    MD5_Init(&md5context);
+      
+    MD5_Update(&md5context,
+               (const unsigned char*)name.c_str(), name.length());
+      
+    MD5_Final((u_char*)rawdigest, &md5context);
+    hexStr = TRI_EncodeHexString(rawdigest, 16, &dstLen);
+#endif
+      
+
     // found a collection!
     if (Progress) {
       cout << "dumping collection '" << name << "'..." << endl;
@@ -798,8 +866,7 @@ static int RunDump (string& errorMsg) {
 
     {
       // save meta data
-      string fileName;
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
+      string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".structure.json";
 
       int fd;
 
@@ -834,7 +901,7 @@ static int RunDump (string& errorMsg) {
     if (DumpData) {
       // save the actual data
       string fileName;
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
+      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".data.json";
 
       int fd;
 
@@ -866,6 +933,9 @@ static int RunDump (string& errorMsg) {
         return res;
       }
     }
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+    TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
+#endif
   }
 
 
@@ -1159,7 +1229,24 @@ static int RunClusterDump (string& errorMsg) {
 
       // Now set up the output file:
       string fileName;
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+      size_t   dstLen;
+      char     *hexStr = NULL;
+      char     rawdigest[16];
+      MD5_CTX  md5context;
+      MD5_Init(&md5context);
+      
+      MD5_Update(&md5context,
+                 (const unsigned char*)name.c_str(), name.length());
+      
+      MD5_Final((u_char*)rawdigest, &md5context);
+      hexStr = TRI_EncodeHexString(rawdigest, 16, &dstLen);
+#endif
+      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".data.json";
+
+#ifdef TRI_FILESYSTEM_CASE_BROKEN
+      TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
+#endif
 
       int fd;
 

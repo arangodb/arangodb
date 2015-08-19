@@ -30,6 +30,7 @@
 #include "Basics/logging.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Utilities/ShellImplementation.h"
 #include "Utilities/ShellImplFactory.h"
 #include "V8/v8-utils.h"
 
@@ -388,8 +389,6 @@ V8LineEditor::V8LineEditor (v8::Isolate* isolate,
   // register global instance
   TRI_ASSERT(_instance.load() == nullptr);
   _instance.store(this);
-
-  setupCtrlCHandler();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -403,7 +402,23 @@ V8LineEditor::~V8LineEditor () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          static protected methods
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell implementation supports colors
+////////////////////////////////////////////////////////////////////////////////
+
+bool V8LineEditor::supportsColors () const {
+  if (_shellImpl == nullptr) {
+    return false;
+  }
+
+  return _shellImpl->supportsColors();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,7 +427,8 @@ V8LineEditor::~V8LineEditor () {
 
 void V8LineEditor::setupCtrlCHandler () {
 #ifndef _WIN32
-  if (ShellImplFactory::hasCtrlCHandler()) {
+  if (_shellImpl != nullptr &&
+      _shellImpl->supportsCtrlCHandler()) {
     struct sigaction sa;
     sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
@@ -433,6 +449,8 @@ void V8LineEditor::setupCtrlCHandler () {
 
 void V8LineEditor::initializeShell () {
   _shellImpl = ShellImplFactory::buildShell(_history, &_completer);
+  
+  setupCtrlCHandler();
 }
 
 // -----------------------------------------------------------------------------

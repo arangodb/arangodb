@@ -30,13 +30,13 @@
 #include <iostream>
 
 #include "Basics/Common.h"
-
-#include "Basics/messages.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
-#include "Rest/InitialiseRest.h"
 #include "Basics/files.h"
+#include "Basics/logging.h"
+#include "Basics/messages.h"
+//#include "Basics/tri-strings.h"
+#include "Rest/InitialiseRest.h"
 #include "RestServer/ArangoServer.h"
+#include "Statistics/statistics.h"
 #include <signal.h>
 
 using namespace triagens;
@@ -110,6 +110,8 @@ int main (int argc, char* argv[]) {
   // initialise sub-systems
   TRI_GlobalEntryFunction();
   TRIAGENS_REST_INITIALISE(argc, argv);
+      
+  TRI_InitialiseStatistics();
 
   if (startAsService) {
     TRI_StartService(argc, argv);
@@ -133,6 +135,8 @@ int main (int argc, char* argv[]) {
     }
     ArangoInstance = nullptr;
   }
+  
+  TRI_ShutdownStatistics();
 
   // shutdown sub-systems
   TRIAGENS_REST_SHUTDOWN;

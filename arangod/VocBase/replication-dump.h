@@ -72,7 +72,8 @@ struct TRI_replication_dump_t {
       _failed(false),
       _bufferFull(false),
       _hasMore(false),
-      _includeSystem(includeSystem) {
+      _includeSystem(includeSystem),
+      _fromTickIncluded(false) {
  
     if (_chunkSize == 0) {
       // default chunk size
@@ -104,6 +105,7 @@ struct TRI_replication_dump_t {
   bool                         _bufferFull;
   bool                         _hasMore;
   bool                         _includeSystem;
+  bool                         _fromTickIncluded;
 };
 
 // -----------------------------------------------------------------------------
@@ -129,6 +131,14 @@ int TRI_DumpLogReplication (TRI_replication_dump_t*,
                             TRI_voc_tick_t,
                             TRI_voc_tick_t,
                             bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the transactions that were open at a given point in time
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DetermineOpenTransactionsReplication (TRI_replication_dump_t*,
+                                              TRI_voc_tick_t,
+                                              TRI_voc_tick_t);
 
 #endif
 

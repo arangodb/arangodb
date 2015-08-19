@@ -53,25 +53,6 @@ using namespace triagens::arango;
 using namespace triagens::httpclient;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-static inline void LocalGetline (char const*& p, 
-                                 string& line, 
-                                 char delim) {
-  char const* q = p;
-  while (*p != 0 && *p != delim) {
-    p++;
-  }
-
-  line.assign(q, p - q);
-
-  if (*p == delim) {
-    p++;
-  }
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -91,7 +72,8 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
     _restrictType(RESTRICT_NONE),
     _initialTick(initialTick),
     _useTick(useTick),
-    _includeSystem(configuration->_includeSystem) {
+    _includeSystem(configuration->_includeSystem),
+    _requireFromPresent(configuration->_requireFromPresent) {
 
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
@@ -101,11 +83,6 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
   TRI_ASSERT(c > 0);
 
   _chunkSize = StringUtils::itoa(c);
-
-  // get number of running remote transactions so we can forge the transaction
-  // statistics
-  int const n = static_cast<int>(_applier->_runningRemoteTransactions.size());
-  triagens::arango::TransactionBase::setNumbers(n, n);
 
   if (configuration->_restrictType == "include") {
     _restrictType = RESTRICT_INCLUDE;
@@ -166,7 +143,7 @@ int ContinuousSyncer::run () {
 
       if (connectRetries <= _configuration._maxConnectRetries) {
         // check if we are aborted externally
-        if (TRI_WaitReplicationApplier(_applier, 10 * 1000 * 1000)) {
+        if (_applier->wait(10 * 1000 * 1000)) {
           continue;
         }
 
@@ -291,12 +268,10 @@ bool ContinuousSyncer::excludeCollection (std::string const& masterName) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::getLocalState (string& errorMsg) {
-  int res;
-
   uint64_t oldTotalRequests       = _applier->_state._totalRequests;
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
 
-  res = TRI_LoadStateReplicationApplier(_vocbase, &_applier->_state);
+  int res = TRI_LoadStateReplicationApplier(_vocbase, &_applier->_state);
   _applier->_state._active              = true;
   _applier->_state._totalRequests       = oldTotalRequests;
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
@@ -465,15 +440,16 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
   }
 
   // transaction id
-  // note: this is the remote trasnaction id!
+  // note: this is the remote transaction id!
   TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
   auto it = _applier->_runningRemoteTransactions.find(tid);
 
   if (it != _applier->_runningRemoteTransactions.end()) {
+    auto trx = (*it).second;
+
     _applier->_runningRemoteTransactions.erase(tid);
 
-    auto trx = (*it).second;
     // abort ongoing trx
     delete trx; 
   }
@@ -527,8 +503,8 @@ int ContinuousSyncer::abortTransaction (TRI_json_t const* json) {
 
   LOG_TRACE("abort replication transaction %llu", (unsigned long long) tid);
 
-  _applier->_runningRemoteTransactions.erase(tid);
   auto trx = (*it).second;
+  _applier->_runningRemoteTransactions.erase(tid);
 
   int res = trx->abort();
   delete trx;
@@ -562,9 +538,8 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
 
   LOG_TRACE("committing replication transaction %llu", (unsigned long long) tid);
   
-  _applier->_runningRemoteTransactions.erase(tid);
-
   auto trx = (*it).second;
+  _applier->_runningRemoteTransactions.erase(tid);
 
   int res = trx->commit();
   delete trx;
@@ -733,27 +708,40 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::applyLog (SimpleHttpResult* response,
-                                string& errorMsg,
+                                std::string& errorMsg,
                                 uint64_t& processedMarkers,
                                 uint64_t& ignoreCount) {
 
   StringBuffer& data = response->getBody();
+  char* p = data.begin(); 
+  char* end = p + data.length();
 
-  char const* p = data.c_str();
+  // buffer must end with a NUL byte
+  TRI_ASSERT(*end == '\0');
 
-  while (true) {
-    string line;
+  while (p < end) {
+    char* q = strchr(p, '\n');
 
-    LocalGetline(p, line, '\n');
+    if (q == nullptr) {
+      q = end;
+    }
 
-    if (line.size() < 2) {
+    char const* lineStart = p;
+    size_t const lineLength = q - p;
+    
+    if (lineLength < 2) {
       // we are done
       return TRI_ERROR_NO_ERROR;
     }
 
+    TRI_ASSERT(q <= end);
+    *q = '\0';
+
     processedMarkers++;
 
-    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, line.c_str());
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, p));
+    
+    p = q + 1;
 
     if (json == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -761,17 +749,15 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
 
     int res;
     bool skipped;
-    if (excludeCollection(json)) {
+    if (excludeCollection(json.get())) {
       // entry is skipped
       res = TRI_ERROR_NO_ERROR;
       skipped = true;
     }
     else {
-      res = applyLogMarker(json, errorMsg);
+      res = applyLogMarker(json.get(), errorMsg);
       skipped = false;
     }
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // apply error
@@ -782,11 +768,11 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       }
 
       if (ignoreCount == 0) {
-        if (line.size() > 256) {
-          errorMsg += ", offending marker: " + line.substr(0, 256) + "...";
+        if (lineLength > 256) {
+          errorMsg += ", offending marker: " + std::string(lineStart, 256) + "...";
         }
         else {
-          errorMsg += ", offending marker: " + line;;
+          errorMsg += ", offending marker: " + std::string(lineStart, lineLength);
         }
 
         return res;
@@ -810,6 +796,9 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       ++_applier->_state._skippedOperations;
     }
   }
+
+  // reached the end      
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -846,6 +835,8 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
   if (fromTick == 0) {
     return TRI_ERROR_REPLICATION_NO_START_TICK;
   }
+
+  // TODO: get the applier into a sensible start state...
 
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
@@ -929,7 +920,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
 
     // this will make the applier thread sleep if there is nothing to do,
     // but will also check for cancellation
-    if (! TRI_WaitReplicationApplier(_applier, sleepTime)) {
+    if (! _applier->wait(sleepTime)) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
   }
@@ -993,8 +984,9 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   }
 
   int res;
-  bool checkMore = false;
-  bool active    = false;
+  bool checkMore    = false;
+  bool active       = false;
+  bool fromIncluded = false;
   TRI_voc_tick_t tick;
 
   bool found;
@@ -1003,6 +995,12 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   if (found) {
     checkMore = StringUtils::boolean(header);
     res = TRI_ERROR_NO_ERROR;
+   
+    // was the specified from value included the result? 
+    header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+    if (found) {
+      fromIncluded = StringUtils::boolean(header);
+    }
 
     header = response->getHeaderField(TRI_REPLICATION_HEADER_ACTIVE, found);
     if (found) {
@@ -1038,6 +1036,12 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
                 ": required header is missing";
   }
 
+  if (res == TRI_ERROR_NO_ERROR &&
+      ! fromIncluded && 
+      _requireFromPresent) {
+    res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+    errorMsg = "required tick value '" + tickString + "' is not present on master at " + string(_masterInfo._endpoint);
+  }
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_voc_tick_t lastAppliedTick;

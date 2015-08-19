@@ -78,20 +78,18 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/xxhash.cpp \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
-	lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp \
 	lib/Rest/Endpoint.cpp \
 	lib/Rest/EndpointIp.cpp \
 	lib/Rest/EndpointIpV4.cpp \
 	lib/Rest/EndpointIpV6.cpp \
 	lib/Rest/EndpointUnixDomain.cpp \
-	lib/Rest/Handler.cpp \
 	lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpResponse.cpp \
 	lib/Rest/InitialiseRest.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp \
-	lib/Statistics/statistics.cpp \
+	lib/Utilities/DummyShell.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Utilities/ShellImplFactory.cpp \
@@ -105,10 +103,6 @@ if ENABLE_READLINE
 lib_libarango_a_SOURCES += \
 	lib/Utilities/ReadlineShell.cpp
 
-else
-
-lib_libarango_a_SOURCES += \
-	lib/Utilities/DummyShell.cpp 
 endif
 
 ################################################################################
@@ -122,50 +116,6 @@ lib_libarango_client_a_SOURCES = \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp \
 	lib/SimpleHttpClient/ConnectionManager.cpp
-
-################################################################################
-### @brief library "libarango.a", front-end part
-################################################################################
-
-lib_libarango_fe_a_SOURCES = \
-	lib/Admin/ApplicationAdminServer.cpp \
-	lib/Admin/RestAdminBaseHandler.cpp \
-	lib/Admin/RestAdminLogHandler.cpp \
-	lib/Admin/RestBaseHandler.cpp \
-	lib/Admin/RestDebugHelperHandler.cpp \
-	lib/Admin/RestJobHandler.cpp \
-	lib/Admin/RestShutdownHandler.cpp \
-	lib/Admin/RestVersionHandler.cpp \
-	lib/ApplicationServer/ApplicationFeature.cpp \
-	lib/ApplicationServer/ApplicationServer.cpp \
-	lib/Dispatcher/ApplicationDispatcher.cpp \
-	lib/Dispatcher/Dispatcher.cpp \
-	lib/Dispatcher/DispatcherQueue.cpp \
-	lib/Dispatcher/DispatcherThread.cpp \
-	lib/Dispatcher/Job.cpp \
-	lib/Dispatcher/RequeueTask.cpp \
-	lib/HttpServer/ApplicationEndpointServer.cpp \
-	lib/HttpServer/AsyncJobManager.cpp \
-	lib/HttpServer/HttpCommTask.cpp \
-	lib/HttpServer/HttpHandler.cpp \
-	lib/HttpServer/HttpHandlerFactory.cpp \
-	lib/HttpServer/HttpListenTask.cpp \
-	lib/HttpServer/HttpServer.cpp \
-	lib/HttpServer/HttpServerJob.cpp \
-	lib/HttpServer/HttpsCommTask.cpp \
-	lib/HttpServer/HttpsServer.cpp \
-	lib/HttpServer/PathHandler.cpp \
-	lib/Scheduler/ApplicationScheduler.cpp \
-	lib/Scheduler/ListenTask.cpp \
-	lib/Scheduler/PeriodicTask.cpp \
-	lib/Scheduler/Scheduler.cpp \
-	lib/Scheduler/SchedulerLibev.cpp \
-	lib/Scheduler/SchedulerThread.cpp \
-	lib/Scheduler/SignalTask.cpp \
-	lib/Scheduler/SocketTask.cpp \
-	lib/Scheduler/Task.cpp \
-	lib/Scheduler/TaskManager.cpp \
-	lib/Scheduler/TimerTask.cpp
 
 ################################################################################
 ### @brief library "libarango.a", JavaScript part

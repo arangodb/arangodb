@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpRequest.h"
-
 #include "Basics/conversions.h"
 #include "Basics/logging.h"
 #include "Basics/StringBuffer.h"

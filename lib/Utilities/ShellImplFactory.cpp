@@ -35,9 +35,8 @@
 #include "LinenoiseShell.h"
 #elif defined TRI_HAVE_READLINE
 #include "ReadlineShell.h"
-#else 
-#include "DummyShell.h"
 #endif
+#include "DummyShell.h"
 
 using namespace triagens;
 using namespace arangodb;
@@ -50,12 +49,19 @@ using namespace arangodb;
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
+#include <iostream>
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a shell
 ////////////////////////////////////////////////////////////////////////////////
 
 ShellImplementation* ShellImplFactory::buildShell (std::string const& history, 
                                                    Completer* completer) {
+  if (! isatty(STDIN_FILENO)) {
+    // no keyboard input. use low-level shell without fancy color codes 
+    // and with proper pipe handling
+    return new DummyShell(history, completer);
+  }
+
 #ifdef _WIN32
   // under Windows the readline is not compilable
   return new LinenoiseShell(history, completer);
@@ -74,6 +80,10 @@ ShellImplementation* ShellImplFactory::buildShell (std::string const& history,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ShellImplFactory::hasCtrlCHandler () {
+  if (! isatty(STDIN_FILENO)) {
+    return false;
+  }
+
 #ifdef _WIN32
   // under Windows the readline is not compilable
   return false;

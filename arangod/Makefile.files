@@ -15,6 +15,16 @@ arangod_libarangod_a_CPPFLAGS = \
 arangod_libarangod_a_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
+	arangod/Admin/ApplicationAdminServer.cpp \
+	arangod/Admin/RestAdminBaseHandler.cpp \
+	arangod/Admin/RestAdminLogHandler.cpp \
+	arangod/Admin/RestBaseHandler.cpp \
+	arangod/Admin/RestDebugHelperHandler.cpp \
+	arangod/Admin/RestJobHandler.cpp \
+	arangod/Admin/RestShutdownHandler.cpp \
+	arangod/Admin/RestVersionHandler.cpp \
+	arangod/ApplicationServer/ApplicationFeature.cpp \
+	arangod/ApplicationServer/ApplicationServer.cpp \
 	arangod/Aql/AggregationOptions.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
 	arangod/Aql/AqlItemBlockManager.cpp \
@@ -63,6 +73,12 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Cluster/ServerState.cpp \
 	arangod/Cluster/v8-cluster.cpp \
 	arangod/Cluster/ClusterMethods.cpp \
+	arangod/Dispatcher/ApplicationDispatcher.cpp \
+	arangod/Dispatcher/Dispatcher.cpp \
+	arangod/Dispatcher/DispatcherQueue.cpp \
+	arangod/Dispatcher/DispatcherThread.cpp \
+	arangod/Dispatcher/Job.cpp \
+	arangod/Dispatcher/RequeueTask.cpp \
 	arangod/FulltextIndex/fulltext-handles.cpp \
 	arangod/FulltextIndex/fulltext-index.cpp \
 	arangod/FulltextIndex/fulltext-list.cpp \
@@ -71,6 +87,17 @@ arangod_libarangod_a_SOURCES = \
 	arangod/FulltextIndex/fulltext-wordlist.cpp \
 	arangod/GeoIndex/GeoIndex.cpp \
 	arangod/HashIndex/hash-array.cpp \
+	arangod/HttpServer/ApplicationEndpointServer.cpp \
+	arangod/HttpServer/AsyncJobManager.cpp \
+	arangod/HttpServer/HttpCommTask.cpp \
+	arangod/HttpServer/HttpHandler.cpp \
+	arangod/HttpServer/HttpHandlerFactory.cpp \
+	arangod/HttpServer/HttpListenTask.cpp \
+	arangod/HttpServer/HttpServer.cpp \
+	arangod/HttpServer/HttpServerJob.cpp \
+	arangod/HttpServer/HttpsCommTask.cpp \
+	arangod/HttpServer/HttpsServer.cpp \
+	arangod/HttpServer/PathHandler.cpp \
 	arangod/Indexes/CapConstraint.cpp \
 	arangod/Indexes/EdgeIndex.cpp \
 	arangod/Indexes/FulltextIndex.cpp \
@@ -83,6 +110,8 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
 	arangod/Replication/Syncer.cpp \
+	arangod/Rest/AnyServer.cpp \
+	arangod/Rest/Handler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestCursorHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
@@ -101,7 +130,19 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestServer/ConsoleThread.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arangod.cpp \
+	arangod/Scheduler/ApplicationScheduler.cpp \
+	arangod/Scheduler/ListenTask.cpp \
+	arangod/Scheduler/PeriodicTask.cpp \
+	arangod/Scheduler/Scheduler.cpp \
+	arangod/Scheduler/SchedulerLibev.cpp \
+	arangod/Scheduler/SchedulerThread.cpp \
+	arangod/Scheduler/SignalTask.cpp \
+	arangod/Scheduler/SocketTask.cpp \
+	arangod/Scheduler/Task.cpp \
+	arangod/Scheduler/TaskManager.cpp \
+	arangod/Scheduler/TimerTask.cpp \
 	arangod/SkipLists/skiplistIndex.cpp \
+	arangod/Statistics/statistics.cpp \
 	arangod/Utils/CollectionExport.cpp \
 	arangod/Utils/Cursor.cpp \
 	arangod/Utils/CursorRepository.cpp \
@@ -123,6 +164,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-replication.cpp \
 	arangod/V8Server/v8-shape-conv.cpp \
+	arangod/V8Server/v8-statistics.cpp \
 	arangod/V8Server/v8-vocbase.cpp \
 	arangod/V8Server/v8-vocindex.cpp \
 	arangod/V8Server/v8-voccursor.cpp \
