@@ -4,7 +4,7 @@
 
 An AQL query must either return a result (indicated by usage of the *RETURN*
 keyword) or execute a data-modification operation (indicated by usage
-of one of the keywords *INSERT*, *UPDATE*, *REPLACE* or *REMOVE*). The AQL
+of one of the keywords *INSERT*, *UPDATE*, *REPLACE*, *REMOVE* or *UPSERT*). The AQL
 parser will return an error if it detects more than one data-modification 
 operation in the same query or if it cannot figure out if the query is meant
 to be a data retrieval or a modification operation.
