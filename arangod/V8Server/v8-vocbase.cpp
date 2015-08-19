@@ -55,6 +55,7 @@
 #include "V8/V8LineEditor.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-replication.h"
+#include "V8Server/v8-statistics.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
 #include "V8Server/v8-wrapshapedjson.h"
@@ -3835,6 +3836,8 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_dropDatabase"), JS_DropDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_listDatabases"), JS_ListDatabases);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_useDatabase"), JS_UseDatabase);
+  
+  TRI_InitV8Statistics(isolate, context);
 
   TRI_InitV8indexArangoDB(isolate, ArangoNS);
 

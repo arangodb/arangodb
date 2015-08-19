@@ -26,7 +26,6 @@ project(arangodb)
 
 set(LIB_ARANGO        arango)
 set(LIB_ARANGO_CLIENT arango_client)
-set(LIB_ARANGO_FE     arango_fe)
 set(LIB_ARANGO_V8     arango_v8)
 
 set(BIN_ARANGOB       arangob)

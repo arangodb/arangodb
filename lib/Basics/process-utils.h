@@ -31,7 +31,6 @@
 #define ARANGODB_BASICS_C_PROCESS__UTILS_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/threads.h"
 
 // -----------------------------------------------------------------------------
@@ -51,6 +50,12 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief physical memory
+////////////////////////////////////////////////////////////////////////////////
+
+extern uint64_t TRI_PhysicalMemory;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
@@ -173,11 +178,12 @@ void TRI_SetProcessTitle (char const* title);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
-void TRI_CreateExternalProcess (const char* executable,
-                                const char** arguments,
+
+void TRI_CreateExternalProcess (char const* executable,
+                                char const** arguments,
                                 size_t n,
                                 bool usePipes,
-                                TRI_external_id_t * pid);
+                                TRI_external_id_t* pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
