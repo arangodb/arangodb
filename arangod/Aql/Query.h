@@ -385,16 +385,23 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         char* registerString (char const*,
-                              size_t,
-                              bool);
+                              size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a string
 /// the string is freed when the query is destroyed
 ////////////////////////////////////////////////////////////////////////////////
 
-        char* registerString (std::string const&,
-                              bool);
+        char* registerString (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a potentially UTF-8-escaped string
+/// the string is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+        char* registerEscapedString (char const*,
+                                     size_t,
+                                     size_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the engine, if prepared

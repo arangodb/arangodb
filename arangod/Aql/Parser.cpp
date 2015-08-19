@@ -252,10 +252,11 @@ void Parser::pushArrayElement (AstNode* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Parser::pushObjectElement (char const* attributeName,
+                                size_t nameLength,
                                 AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
-  auto element = _ast->createNodeObjectElement(attributeName, node);
+  auto element = _ast->createNodeObjectElement(attributeName, nameLength, node);
   object->addMember(element);
 }
 
