@@ -457,7 +457,7 @@ namespace triagens {
                            size_t atMost,
                            bool skipping,
                            AqlItemBlock*& result,
-                           size_t& skipped);
+                           size_t& skipped) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _inputRegisterValues
@@ -1153,7 +1153,7 @@ namespace triagens {
                            size_t atMost,
                            bool skipping,
                            AqlItemBlock*& result,
-                           size_t& skipped);
+                           size_t& skipped) override;
 
         bool hasMore () override final;
 
@@ -1203,7 +1203,7 @@ namespace triagens {
                            size_t atMost,
                            bool skipping,
                            AqlItemBlock*& result,
-                           size_t& skipped);
+                           size_t& skipped) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes the current group data into the result
@@ -1271,7 +1271,7 @@ namespace triagens {
                            size_t atMost,
                            bool skipping,
                            AqlItemBlock*& result,
-                           size_t& skipped);
+                           size_t& skipped) override;
 
       private:
 
@@ -1423,7 +1423,7 @@ namespace triagens {
                                    size_t atMost,
                                    bool skipping,
                                    AqlItemBlock*& result,
-                                   size_t& skipped);
+                                   size_t& skipped) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _offset
@@ -1854,7 +1854,7 @@ namespace triagens {
                            size_t atMost,
                            bool skipping,
                            AqlItemBlock*& result,
-                           size_t& skipped);
+                           size_t& skipped) override;
 
     };
 
@@ -2205,13 +2205,13 @@ namespace triagens {
 /// @brief hasMoreForShard: any more for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool hasMoreForShard (std::string const& shardId);
+        bool hasMoreForShard (std::string const& shardId) override;
        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remainingForShard: remaining for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
         
-        int64_t remainingForShard (std::string const& shardId);
+        int64_t remainingForShard (std::string const& shardId) override;
 
 
       private: 
@@ -2225,7 +2225,7 @@ namespace triagens {
                                    bool skipping, 
                                    AqlItemBlock*& result, 
                                    size_t& skipped, 
-                                   std::string const& shardId);
+                                   std::string const& shardId) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _posForClient:
@@ -2275,7 +2275,7 @@ namespace triagens {
 /// @brief remainingForShard: remaining for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
         
-        int64_t remainingForShard (std::string const& shardId) {
+        int64_t remainingForShard (std::string const& shardId) override {
           return -1;
         }
 
@@ -2283,7 +2283,7 @@ namespace triagens {
 /// @brief hasMoreForShard: any more for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool hasMoreForShard (std::string const& shardId);
+        bool hasMoreForShard (std::string const& shardId) override;
   
 
       private: 
@@ -2297,7 +2297,7 @@ namespace triagens {
                                    bool skipping, 
                                    AqlItemBlock*& result, 
                                    size_t& skipped, 
-                                   std::string const& shardId);
+                                   std::string const& shardId) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getBlockForClient: try to get at atLeast/atMost pairs into
