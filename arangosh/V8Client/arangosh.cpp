@@ -1543,7 +1543,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
 
 #else
 
-    if (BaseClient.colors()) {
+    if (BaseClient.colors() && console.supportsColors()) {
 
 #ifdef TRI_HAVE_LINENOISE
 
@@ -1587,9 +1587,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
 #endif
 
     bool eof;
-    string input
-      = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str(),
-		       "arangosh", eof);
+    string input = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str(), "arangosh", eof);
 
     if (eof) {
       break;
@@ -1951,7 +1949,7 @@ static void arangoshExitFunction (int exitCode, void* data) {
 
 #endif
 
-static bool printHelo(bool useServer, bool promptError) {
+static bool printHelo (bool useServer, bool promptError) {
   // .............................................................................
   // banner
   // .............................................................................

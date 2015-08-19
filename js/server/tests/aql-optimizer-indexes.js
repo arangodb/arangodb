@@ -2569,6 +2569,18 @@ function optimizerEdgeIndexTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test continuous index scan
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindContinuous : function () {
+      for (var i = 0; i < 20; ++i) {
+        var query = "FOR i IN " + e.name() + " FILTER i._from == 'UnitTestsCollection/nono' && i._to == 'UnitTestsCollection/to" + i + "' LIMIT 1 RETURN i._key";
+        var results = AQL_EXECUTE(query);
+        assertEqual(0, results.json.length, query);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 

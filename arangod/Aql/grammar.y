@@ -972,7 +972,7 @@ object_element:
     T_STRING {
       // attribute-name-only (comparable to JS enhanced object literals, e.g. { foo, bar })
       auto ast = parser->ast();
-      auto variable = ast->scopes()->getVariable($1);
+      auto variable = ast->scopes()->getVariable($1, true);
       
       if (variable == nullptr) {
         // variable does not exist
@@ -1051,32 +1051,22 @@ reference:
       auto ast = parser->ast();
       AstNode* node = nullptr;
 
-      auto variable = ast->scopes()->getVariable($1);
+      auto variable = ast->scopes()->getVariable($1, true);
       
-      if (variable != nullptr) {
-        // variable exists, now use it
-        node = ast->createNodeReference(variable);
-      }
-      else {
+      if (variable == nullptr) {
         // variable does not exist
-        // now try variable aliases OLD (= $OLD) and NEW (= $NEW)
-        if (strcmp($1, "OLD") == 0) {
-          variable = ast->scopes()->getVariable(Variable::NAME_OLD);
-        }
-        else if (strcmp($1, "NEW") == 0) {
-          variable = ast->scopes()->getVariable(Variable::NAME_NEW);
-        }
-        else if (ast->scopes()->canUseCurrentVariable() && strcmp($1, "CURRENT") == 0) {
+        // now try special variables
+        if (ast->scopes()->canUseCurrentVariable() && strcmp($1, "CURRENT") == 0) {
           variable = ast->scopes()->getCurrentVariable();
         }
         else if (strcmp($1, Variable::NAME_CURRENT) == 0) {
           variable = ast->scopes()->getCurrentVariable();
         }
+      }
         
-        if (variable != nullptr) {
-          // variable alias exists, now use it
-          node = ast->createNodeReference(variable);
-        }
+      if (variable != nullptr) {
+        // variable alias exists, now use it
+        node = ast->createNodeReference(variable);
       }
 
       if (node == nullptr) {
