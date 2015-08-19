@@ -83,14 +83,14 @@ RestReplicationHandler::~RestReplicationHandler () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                               HttpHandler methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_t RestReplicationHandler::execute () {
+HttpHandler::status_t RestReplicationHandler::execute () {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -195,7 +195,7 @@ Handler::status_t RestReplicationHandler::execute () {
       }
 
       if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+        return status_t(HttpHandler::HANDLER_DONE);
       }
 
       handleCommandSync();
@@ -223,7 +223,7 @@ Handler::status_t RestReplicationHandler::execute () {
       }
 
       if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+        return status_t(HttpHandler::HANDLER_DONE);
       }
 
       handleCommandApplierStart();
@@ -234,7 +234,7 @@ Handler::status_t RestReplicationHandler::execute () {
       }
 
       if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+        return status_t(HttpHandler::HANDLER_DONE);
       }
 
       handleCommandApplierStop();
@@ -268,7 +268,7 @@ Handler::status_t RestReplicationHandler::execute () {
                     "invalid command");
     }
 
-    return status_t(Handler::HANDLER_DONE);
+    return status_t(HttpHandler::HANDLER_DONE);
   }
 
 BAD_CALL:
@@ -281,7 +281,7 @@ BAD_CALL:
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
-  return status_t(Handler::HANDLER_DONE);
+  return status_t(HttpHandler::HANDLER_DONE);
 }
 
 // -----------------------------------------------------------------------------
