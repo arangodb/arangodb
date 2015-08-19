@@ -413,7 +413,7 @@ bool Index::hasBatchInsert () const {
 
 static void insertExpandedElements (std::function<TRI_index_element_t* ()> const& allocate,
                                     TRI_index_element_t* baseElement,
-                                    std::deque<std::pair<size_t, std::vector<TRI_shaped_json_t*>>>& expansions,
+                                    std::deque<std::pair<size_t, std::vector<TRI_shaped_json_t>>>& expansions,
                                     std::vector<TRI_index_element_t*>& result,
                                     char const* ptr,
                                     size_t const paths) {
@@ -433,6 +433,7 @@ static void insertExpandedElements (std::function<TRI_index_element_t* ()> const
     if (first) {
       // One index_element is allocated, we use this space for the first entry in the expansion
       element = baseElement;
+      first = false;
     }
     else {
       // Allocate a new index element and copy all baseElement values over.
@@ -444,7 +445,7 @@ static void insertExpandedElements (std::function<TRI_index_element_t* ()> const
         element->subObjects()[j] = baseElement->subObjects()[j];
       }
     }
-    TRI_FillShapedSub(&(element->subObjects()[current.first]), el, ptr);
+    TRI_FillShapedSub(&(element->subObjects()[current.first]), &el, ptr);
     insertExpandedElements(allocate, element, expansions, result, ptr, paths);
   }
   // If we are done with this level we push it back on the stack,
@@ -459,7 +460,7 @@ static void insertExpandedElements (std::function<TRI_index_element_t* ()> const
 
 static void expandField (VocShaper* shaper,
                          TRI_shaped_json_t const* list,
-                         std::vector<TRI_shaped_json_t*> result) {
+                         std::vector<TRI_shaped_json_t>& result) {
 
   size_t len;
   bool ok;
@@ -493,7 +494,7 @@ static void expandField (VocShaper* shaper,
     if (ok && entry._sid != BasicShapes::TRI_SHAPE_SID_NULL) {
       // Check duplicates
       // TRI_CompareValuesJson
-      result.push_back(&entry);
+      result.emplace_back(entry);
     }
     else {
       // TODO Fix ME
@@ -533,7 +534,7 @@ int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
   }
   element->document(const_cast<TRI_doc_mptr_t*>(document));
   TRI_shaped_sub_t* subObjects = element->subObjects();
-  std::deque<std::pair<size_t, std::vector<TRI_shaped_json_t*>>> expansions;
+  std::deque<std::pair<size_t, std::vector<TRI_shaped_json_t>>> expansions;
   // We assume that _fields and paths correspond to oneanother and have the same order
   for (size_t j = 0; j < n; ++j) {
     TRI_shape_pid_t path = paths[j];
@@ -585,9 +586,9 @@ int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
 
     bool hasExpansion = TRI_AttributeNamesHaveExpansion(_fields[j]);
     if (hasExpansion) {
-      std::vector<TRI_shaped_json_t*> insertFields;
-      expansions.emplace_back(j, insertFields);
+      std::vector<TRI_shaped_json_t> insertFields;
       expandField(_collection->getShaper(), &shapedObject, insertFields);
+      expansions.push_back(std::make_pair(j, insertFields));
     }
     else {
       TRI_FillShapedSub(&subObjects[j], &shapedObject, ptr);
