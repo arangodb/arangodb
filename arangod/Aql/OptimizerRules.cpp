@@ -667,10 +667,7 @@ class PropagateConstantAttributesHelper {
       TRI_ASSERT(name.empty());
 
       while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        char const* attributeName = attribute->getStringValue();
-
-        TRI_ASSERT(attributeName != nullptr);
-        name = std::string(".") + std::string(attributeName) + name;
+        name = std::string(".") + std::string(attribute->getStringValue(), attribute->getStringLength()) + name;
         attribute = attribute->getMember(0);
       }
 
@@ -1760,8 +1757,7 @@ static void FindVarAndAttr (ExecutionPlan const* plan,
     FindVarAndAttr(plan, node->getMember(0), enumCollVar, attr);
 
     if (enumCollVar != nullptr) {
-      char const* attributeName = node->getStringValue();
-      attr.append(attributeName);
+      attr.append(node->getStringValue(), node->getStringLength());
       attr.push_back('.');
     }
     return;
@@ -3205,7 +3201,7 @@ struct FilterCondition {
               attributeName.push_back('.');
             } 
 
-            attributeName.append(node->getStringValue()); 
+            attributeName.append(node->getStringValue(), node->getStringLength()); 
           }
           else if (node->type == NODE_TYPE_REFERENCE) { 
             auto variable = static_cast<Variable const*>(node->getData());

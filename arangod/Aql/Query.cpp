@@ -1055,8 +1055,7 @@ Executor* Query::executor () {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* Query::registerString (char const* p, 
-                             size_t length,
-                             bool mustUnescape) {
+                             size_t length) {
 
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1067,18 +1066,11 @@ char* Query::registerString (char const* p,
     return const_cast<char*>(EmptyString);
   }
 
-  char* copy = nullptr;
-  if (mustUnescape) {
-    size_t outLength;
-    copy = TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
+  if (length < ShortStringStorage::MaxStringLength) {
+    return _shortStringStorage.registerString(p, length); 
   }
-  else {
-    if (length < ShortStringStorage::MaxStringLength) {
-      return _shortStringStorage.registerString(p, length); 
-    }
 
-    copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, p, length);
-  }
+  char* copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, p, length);
 
   if (copy == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1099,10 +1091,43 @@ char* Query::registerString (char const* p,
 /// the string is freed when the query is destroyed
 ////////////////////////////////////////////////////////////////////////////////
 
-char* Query::registerString (std::string const& p,
-                             bool mustUnescape) {
+char* Query::registerString (std::string const& p) {
+  return registerString(p.c_str(), p.length());
+}
 
-  return registerString(p.c_str(), p.length(), mustUnescape);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a potentially UTF-8-escaped string
+/// the string is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+char* Query::registerEscapedString (char const* p, 
+                                    size_t length,
+                                    size_t& outLength) {
+
+  if (p == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (length == 0) {
+    // optimization for the empty string
+    outLength = 0;
+    return const_cast<char*>(EmptyString);
+  }
+
+  char* copy = TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
+
+  if (copy == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  try {
+    _strings.emplace_back(copy);
+  }
+  catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  return copy;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1249,18 +1274,18 @@ uint64_t Query::hash () const {
   // handle "fullCount" option. if this option is set, the query result will
   // be different to when it is not set! 
   if (getBooleanOption("fullcount", false)) {
-    hash = fasthash64("fullcount:true", strlen("fullcount:true"), hash);
+    hash = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:true"), hash);
   }
   else {
-    hash = fasthash64("fullcount:false", strlen("fullcount:false"), hash);
+    hash = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:false"), hash);
   }
 
   // handle "count" option
   if (getBooleanOption("count", false)) {
-    hash = fasthash64("count:true", strlen("count:true"), hash);
+    hash = fasthash64(TRI_CHAR_LENGTH_PAIR("count:true"), hash);
   }
   else {
-    hash = fasthash64("count:false", strlen("count:false"), hash);
+    hash = fasthash64(TRI_CHAR_LENGTH_PAIR("count:false"), hash);
   }
 
   // blend query hash with bind parameters
