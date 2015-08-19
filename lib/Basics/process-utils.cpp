@@ -29,6 +29,17 @@
 
 #include "process-utils.h"
 
+#ifndef BSD
+#ifdef __FreeBSD__
+#define BSD
+#endif
+#endif
+
+#if (defined(BSD) || defined(TRI_HAVE_MACOS_MEM_STATS))
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
@@ -37,7 +48,7 @@
 #include <mach/mach_host.h>
 #include <mach/mach_port.h>
 #include <mach/mach_traps.h>
-// #include <mach/shared_memory_server.h>
+#include <mach/shared_memory_server.h>
 #include <mach/task.h>
 #include <mach/thread_act.h>
 #include <mach/vm_map.h>

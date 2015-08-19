@@ -33,17 +33,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/threads.h"
 
-#ifndef BSD
-#ifdef __FreeBSD__
-#define BSD
-#endif
-#endif
-
-#if (defined(BSD) || defined(TRI_HAVE_MACOS_MEM_STATS))
-#include <sys/types.h>
-#include <sys/sysctl.h>
-#endif
-
 #include <boost/lockfree/queue.hpp>
 
 using namespace triagens::basics;
