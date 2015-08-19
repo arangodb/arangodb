@@ -43,12 +43,22 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 
+#if defined(_WIN32) && defined(_MSC_VER)
+
+#define TRI_DIR_FN(item)                item.name
+
+#else
+
+#define TRI_DIR_FN(item)                item->d_name
+
+#endif
+
 using namespace std;
 
 namespace triagens {
   namespace basics {
     namespace FileUtils {
-            
+
       void throwFileReadError (int fd, std::string const& filename) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         int res = TRI_errno();
@@ -243,13 +253,13 @@ namespace triagens {
 
 
       bool remove (string const& fileName, int* errorNumber) {
-        if (errorNumber != 0) {
+        if (errorNumber != nullptr) {
           *errorNumber = 0;
         }
 
         int result = std::remove(fileName.c_str());
 
-        if (errorNumber != 0) {
+        if (errorNumber != nullptr) {
           *errorNumber = errno;
         }
 
@@ -259,13 +269,13 @@ namespace triagens {
 
 
       bool rename (string const& oldName, string const& newName, int* errorNumber) {
-        if (errorNumber != 0) {
+        if (errorNumber != nullptr) {
           *errorNumber = 0;
         }
 
         int result = std::rename(oldName.c_str(), newName.c_str());
 
-        if (errorNumber) {
+        if (errorNumber != nullptr) {
           *errorNumber = errno;
         }
 
@@ -285,7 +295,7 @@ namespace triagens {
 
 
       bool createDirectory (string const& name, int mask, int* errorNumber) {
-        if (errorNumber != 0) {
+        if (errorNumber != nullptr) {
           *errorNumber = 0;
         }
 
@@ -299,7 +309,7 @@ namespace triagens {
           TRI_set_errno(TRI_ERROR_SYS_ERROR);
         }
 
-        if (errorNumber) {
+        if (errorNumber != nullptr) {
           *errorNumber = res;
         }
 
@@ -317,6 +327,13 @@ namespace triagens {
       bool copyDirectoryRecursive (std::string const& source, std::string const& target, std::string& error) {
         bool rc = true;
 #ifdef TRI_HAVE_WIN32_LIST_FILES
+        auto isSymlink = [] (struct _finddata_t item) -> bool {
+          return false;
+        };
+
+        auto isSubDirectory = [] (struct _finddata_t item) -> bool {
+          return ((item->attrib & _A_SUBDIR) != 0);
+        };
 
         struct _finddata_t oneItem;
         intptr_t handle;
@@ -331,6 +348,14 @@ namespace triagens {
 
         do {
 #else
+        auto isSymlink = [] (struct dirent* item) -> bool {
+          return (item->d_type == DT_LNK);
+        };
+
+        auto isSubDirectory = [] (struct dirent* item) -> bool {
+          return (item->d_type == DT_DIR);
+        };
+
         struct dirent* d = (struct dirent*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (offsetof(struct dirent, d_name) + PATH_MAX + 1), false); 
 
         if (d == nullptr) {
@@ -361,7 +386,7 @@ namespace triagens {
           std::string src = source + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
             
           // Handle subdirectories:
-          if (TRI_DIR_IS_SUB_DIRECTORY(oneItem)) {
+          if (isSubDirectory(oneItem)) {
             long systemError;
             int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
             if (rc != TRI_ERROR_NO_ERROR) {
@@ -374,7 +399,7 @@ namespace triagens {
               break;
             }
           }
-          else if (TRI_DIR_IS_SYMLINK(oneItem)) {
+          else if (isSymlink(oneItem)) {
             if (! TRI_CopySymlink(src, dst, error)) {
               break;
             }
