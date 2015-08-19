@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief admin log request handler
+/// @brief debug helper handler
 ///
 /// @file
 ///
@@ -22,30 +22,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
+/// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_ADMIN_LOG_HANDLER_H
-#define ARANGODB_ADMIN_REST_ADMIN_LOG_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_DEBUG_HELPER_HANDLER_H
+#define ARANGODB_REST_HNDLER_REST_DEBUG_HELPER_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Admin/RestAdminBaseHandler.h"
+#include "Rest/HttpResponse.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
   namespace admin {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         class RestAdminLogHandler
+// --SECTION--                                          class RestVersionHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief admin log request handler
+/// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestAdminLogHandler : public RestAdminBaseHandler {
+    class RestDebugHelperHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -57,7 +56,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestAdminLogHandler (rest::HttpRequest*);
+        explicit RestDebugHelperHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -72,10 +71,11 @@ namespace triagens {
         bool isDirect () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the log files (inheritDoc)
+/// @brief returns the server version number
 ////////////////////////////////////////////////////////////////////////////////
 
         status_t execute () override;
+
     };
   }
 }

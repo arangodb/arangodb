@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief version request handler
+/// @brief admin log request handler
 ///
 /// @file
 ///
@@ -27,27 +27,24 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_VERSION_HANDLER_H
-#define ARANGODB_ADMIN_REST_VERSION_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Admin/RestBaseHandler.h"
-
-#include "Rest/HttpResponse.h"
+#include "RestHandler/RestAdminBaseHandler.h"
 
 namespace triagens {
   namespace admin {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          class RestVersionHandler
+// --SECTION--                                         class RestAdminLogHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief version request handler
+/// @brief admin log request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestVersionHandler : public RestBaseHandler {
+    class RestAdminLogHandler : public RestAdminBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -59,7 +56,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestVersionHandler (rest::HttpRequest*);
+        RestAdminLogHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -74,11 +71,10 @@ namespace triagens {
         bool isDirect () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the server version number
+/// @brief returns the log files (inheritDoc)
 ////////////////////////////////////////////////////////////////////////////////
 
         status_t execute () override;
-
     };
   }
 }

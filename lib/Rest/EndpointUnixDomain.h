@@ -50,7 +50,7 @@ namespace triagens {
 // --SECTION--                                                EndpointUnixDomain
 // -----------------------------------------------------------------------------
 
-    class EndpointUnixDomain : public Endpoint {
+    class EndpointUnixDomain final : public Endpoint {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

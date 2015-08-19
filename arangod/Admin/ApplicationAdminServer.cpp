@@ -28,17 +28,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationAdminServer.h"
-
-#include "Admin/RestAdminLogHandler.h"
-#include "Admin/RestHandlerCreator.h"
-#include "Admin/RestJobHandler.h"
-#include "Basics/ProgramOptionsDescription.h"
 #include "Basics/logging.h"
+#include "Basics/ProgramOptionsDescription.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/PathHandler.h"
 #include "Rest/HttpResponse.h"
-#include "Admin/RestVersionHandler.h"
-#include "Admin/RestDebugHelperHandler.h"
+#include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestDebugHelperHandler.h"
+#include "RestHandler/RestJobHandler.h"
+#include "RestHandler/RestHandlerCreator.h"
+#include "RestHandler/RestVersionHandler.h"
 
 using namespace std;
 using namespace triagens;
@@ -69,9 +68,7 @@ static bool UnusedDisableAdminInterface;
 
 ApplicationAdminServer::ApplicationAdminServer ()
   : ApplicationFeature("admin"),
-    _allowLogViewer(false),
-    _pathOptions(nullptr),
-    _jobPayload(nullptr) {
+    _pathOptions(nullptr) {
 
   _pathOptions = new PathHandler::Options();
 }
@@ -81,59 +78,7 @@ ApplicationAdminServer::ApplicationAdminServer ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationAdminServer::~ApplicationAdminServer () {
-  delete _jobPayload;
-  delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a log viewer
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationAdminServer::allowLogViewer () {
-  _allowLogViewer = true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds the http handlers
-///
-/// Note that the server does not claim ownership of the factory.
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory,
-                                               string const& prefix,
-                                               Dispatcher* dispatcher,
-                                               AsyncJobManager* jobManager) {
-  factory->addHandler(prefix + "/version", RestHandlerCreator<RestVersionHandler>::createNoData, 0);
-  factory->addHandler(prefix + "/debug-helper", RestHandlerCreator<RestDebugHelperHandler>::createNoData, 0);
-
-  if (_jobPayload == nullptr) {
-    _jobPayload = new pair<Dispatcher*, AsyncJobManager*>(dispatcher, jobManager);
-  }
-
-  factory->addPrefixHandler(prefix + "/job",
-                            RestHandlerCreator<RestJobHandler>::createData< pair<Dispatcher*, AsyncJobManager*>* >,
-                            _jobPayload);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds the http handlers for administration
-///
-/// Note that the server does not claim ownership of the factory.
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string const& prefix) {
-
-  // .............................................................................
-  // add log viewer
-  // .............................................................................
-
-  if (_allowLogViewer) {
-    factory->addHandler(prefix + "/log", RestHandlerCreator<RestAdminLogHandler>::createNoData, 0);
-  }
+  delete _pathOptions;
 }
 
 // -----------------------------------------------------------------------------

@@ -28,10 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVersionHandler.h"
-
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
-#include "Basics/conversions.h"
 #include "Rest/AnyServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"

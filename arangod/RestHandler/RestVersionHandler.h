@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief debug helper handler
+/// @brief version request handler
 ///
 /// @file
 ///
@@ -22,18 +22,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Achim Brandt
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_DEBUG_HELPER_HANDLER_H
-#define ARANGODB_ADMIN_REST_DEBUG_HELPER_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_VERSION_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_VERSION_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Admin/RestBaseHandler.h"
-
 #include "Rest/HttpResponse.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
   namespace admin {
@@ -46,7 +45,7 @@ namespace triagens {
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestDebugHelperHandler : public RestBaseHandler {
+    class RestVersionHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -58,7 +57,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestDebugHelperHandler (rest::HttpRequest*);
+        explicit RestVersionHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods

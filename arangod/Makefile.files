@@ -16,13 +16,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/Admin/ApplicationAdminServer.cpp \
-	arangod/Admin/RestAdminBaseHandler.cpp \
-	arangod/Admin/RestAdminLogHandler.cpp \
-	arangod/Admin/RestBaseHandler.cpp \
-	arangod/Admin/RestDebugHelperHandler.cpp \
-	arangod/Admin/RestJobHandler.cpp \
-	arangod/Admin/RestShutdownHandler.cpp \
-	arangod/Admin/RestVersionHandler.cpp \
 	arangod/ApplicationServer/ApplicationFeature.cpp \
 	arangod/ApplicationServer/ApplicationServer.cpp \
 	arangod/Aql/AggregationOptions.cpp \
@@ -112,19 +105,26 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Replication/InitialSyncer.cpp \
 	arangod/Replication/Syncer.cpp \
 	arangod/Rest/AnyServer.cpp \
+	arangod/RestHandler/RestAdminBaseHandler.cpp \
+	arangod/RestHandler/RestAdminLogHandler.cpp \
+	arangod/RestHandler/RestBaseHandler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestCursorHandler.cpp \
+	arangod/RestHandler/RestDebugHelperHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestExportHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
+	arangod/RestHandler/RestJobHandler.cpp \
 	arangod/RestHandler/RestPleaseUpgradeHandler.cpp \
 	arangod/RestHandler/RestQueryCacheHandler.cpp \
 	arangod/RestHandler/RestQueryHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
+	arangod/RestHandler/RestShutdownHandler.cpp \
 	arangod/RestHandler/RestSimpleHandler.cpp \
 	arangod/RestHandler/RestSimpleQueryHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
+	arangod/RestHandler/RestVersionHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/ConsoleThread.cpp \

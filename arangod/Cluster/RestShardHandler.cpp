@@ -28,15 +28,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestShardHandler.h"
-
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 #include "Dispatcher/Dispatcher.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 
 using namespace std;
 using namespace triagens::arango;
