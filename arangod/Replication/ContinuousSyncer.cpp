@@ -166,7 +166,7 @@ int ContinuousSyncer::run () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     // stop ourselves
-    TRI_StopReplicationApplier(_applier, false);
+    _applier->stop(false);
 
     return TRI_SetErrorReplicationApplier(_applier, res, errorMsg.c_str());
   }
@@ -179,7 +179,7 @@ int ContinuousSyncer::run () {
     TRI_SetErrorReplicationApplier(_applier, res, errorMsg.c_str());
 
     // stop ourselves
-    TRI_StopReplicationApplier(_applier, false);
+    _applier->stop(false);
 
     return res;
   }

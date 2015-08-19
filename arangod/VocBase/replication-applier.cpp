@@ -465,11 +465,6 @@ static int SetError (TRI_replication_applier_t* applier,
 static void ApplyThread (void* data) {
   auto syncer = static_cast<triagens::arango::ContinuousSyncer*>(data);
 
-  // get number of running remote transactions so we can forge the transaction
-  // statistics
-  int const n = static_cast<int>(syncer->applier()->_runningRemoteTransactions.size());
-  triagens::arango::TransactionBase::setNumbers(n, n);
-
   try {
     syncer->run();
   }
@@ -566,36 +561,6 @@ static int StopApplier (TRI_replication_applier_t* applier,
 
     TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
   }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shut down the replication applier
-/// note: must hold the lock when calling this
-////////////////////////////////////////////////////////////////////////////////
-
-static int ShutdownApplier (TRI_replication_applier_t* applier) {
-  TRI_replication_applier_state_t* state = &applier->_state;
-
-  if (! state->_active) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  state->_active = false;
-
-  applier->setTermination(true);
-
-  TRI_SetProgressReplicationApplier(applier, "applier shut down", false);
-
-  if (state->_lastError._msg != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
-    state->_lastError._msg = nullptr;
-  }
-
-  state->_lastError._code = TRI_ERROR_NO_ERROR;
-
-  TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -777,55 +742,6 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_StopReplicationApplier (TRI_replication_applier_t* applier,
-                                bool resetError) {
-  if (applier == nullptr) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  LOG_TRACE("requesting replication applier stop");
-
-  if (applier->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
-    return TRI_ERROR_CLUSTER_UNSUPPORTED;
-  }
-
-  int res;
-  {
-    WRITE_LOCKER(applier->_statusLock);
-
-    if (! applier->_state._active) {
-      return TRI_ERROR_NO_ERROR;
-    }
-    res = ShutdownApplier(applier);
-  }
-
-  // join the thread without the status lock (otherwise it would probably not join)
-  if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_JoinThread(&applier->_thread);
-  }
-  else {
-    // stop the thread but keep original error code
-    int res2 = TRI_JoinThread(&applier->_thread);
-
-    if (res2 != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("could not join replication applier for database '%s': %s",
-                applier->_databaseName,
-                TRI_errno_string(res2));
-    }
-  }
-
-  applier->setTermination(false);
-
-  LOG_INFO("stopped replication applier for database '%s'",
-           applier->_databaseName);
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1397,7 +1313,7 @@ int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ForgetReplicationApplier (TRI_replication_applier_t* applier) {
-  int res = TRI_StopReplicationApplier(applier, true);
+  int res = applier->stop(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1435,7 +1351,7 @@ TRI_replication_applier_t::TRI_replication_applier_t (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_applier_t::~TRI_replication_applier_t () {
-  TRI_StopReplicationApplier(this, true);
+  stop(true);
   TRI_DestroyStateReplicationApplier(&_state);
   TRI_DestroyConfigurationReplicationApplier(&_configuration);
 
@@ -1448,6 +1364,50 @@ TRI_replication_applier_t::~TRI_replication_applier_t () {
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, _databaseName);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_replication_applier_t::stop (bool resetError) {
+  LOG_TRACE("requesting replication applier stop");
+
+  if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
+
+  int res;
+  {
+    WRITE_LOCKER(_statusLock);
+
+    if (! _state._active) {
+      return TRI_ERROR_NO_ERROR;
+    }
+    res = shutdown();
+  }
+
+  // join the thread without the status lock (otherwise it would probably not join)
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_JoinThread(&_thread);
+  }
+  else {
+    // stop the thread but keep original error code
+    int res2 = TRI_JoinThread(&_thread);
+
+    if (res2 != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("could not join replication applier for database '%s': %s",
+                _databaseName,
+                TRI_errno_string(res2));
+    }
+  }
+
+  setTermination(false);
+
+  LOG_INFO("stopped replication applier for database '%s'",
+           _databaseName);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1493,7 +1453,39 @@ bool TRI_replication_applier_t::wait (uint64_t sleepTime) {
 
   return true;
 }
-  
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shut down the replication applier
+/// note: must hold the lock when calling this
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_replication_applier_t::shutdown () {
+  if (! _state._active) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  _state._active = false;
+
+  setTermination(true);
+
+  TRI_SetProgressReplicationApplier(this, "applier shut down", false);
+
+  if (_state._lastError._msg != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
+    _state._lastError._msg = nullptr;
+  }
+
+  _state._lastError._code = TRI_ERROR_NO_ERROR;
+
+  TRI_GetTimeStampReplication(_state._lastError._time, sizeof(_state._lastError._time) - 1);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
