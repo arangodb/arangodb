@@ -165,6 +165,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-replication.cpp \
 	arangod/V8Server/v8-shape-conv.cpp \
+	arangod/V8Server/v8-statistics.cpp \
 	arangod/V8Server/v8-vocbase.cpp \
 	arangod/V8Server/v8-vocindex.cpp \
 	arangod/V8Server/v8-voccursor.cpp \
