@@ -525,9 +525,7 @@ static void JS_StartApplierReplication (const v8::FunctionCallbackInfo<v8::Value
     useTick = true;
   }
 
-  int res = TRI_StartReplicationApplier(vocbase->_replicationApplier,
-                                        initialTick,
-                                        useTick);
+  int res = vocbase->_replicationApplier->start(initialTick, useTick);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot start replication applier");
@@ -559,7 +557,7 @@ static void JS_ShutdownApplierReplication (const v8::FunctionCallbackInfo<v8::Va
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  int res = TRI_ShutdownReplicationApplier(vocbase->_replicationApplier);
+  int res = vocbase->_replicationApplier->shutdown();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot shut down replication applier");
@@ -626,7 +624,7 @@ static void JS_ForgetApplierReplication (const v8::FunctionCallbackInfo<v8::Valu
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  int res = TRI_ForgetReplicationApplier(vocbase->_replicationApplier);
+  int res = vocbase->_replicationApplier->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

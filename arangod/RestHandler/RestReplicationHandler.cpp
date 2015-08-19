@@ -3764,9 +3764,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
     initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
 
-  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier,
-                                        initialTick,
-                                        found);
+  int res = _vocbase->_replicationApplier->start(initialTick, found);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
@@ -3981,7 +3979,7 @@ void RestReplicationHandler::handleCommandApplierGetState () {
 void RestReplicationHandler::handleCommandApplierDeleteState () {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
-  int res = TRI_ForgetReplicationApplier(_vocbase->_replicationApplier);
+  int res = _vocbase->_replicationApplier->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
