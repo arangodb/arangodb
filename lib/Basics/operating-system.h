@@ -186,10 +186,6 @@
 #define TRI_STAT_ATIME_SEC(statbuf)     statbuf.st_atimespec.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf)     statbuf.st_mtimespec.tv_sec
 
-#define TRI_DIR_FN(item)                item->d_name
-#define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->d_type == DT_DIR)
-#define TRI_DIR_IS_SYMLINK(item)        (item->d_type == DT_LNK)
-
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
 #define TRI_lseek_t                     off_t
@@ -348,10 +344,6 @@
 #define TRI_FSTAT                       fstat
 #define TRI_STAT_ATIME_SEC(statbuf)     statbuf.st_atimespec.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf)     statbuf.st_mtimespec.tv_sec
-
-#define TRI_DIR_FN(item)                item->d_name
-#define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->d_type == DT_DIR)
-#define TRI_DIR_IS_SYMLINK(item)        (item->d_type == DT_LNK)
 
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
@@ -526,10 +518,6 @@
 #define TRI_FSTAT                       fstat
 #define TRI_STAT_ATIME_SEC(statbuf)     statbuf.st_atim.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf)     statbuf.st_mtim.tv_sec
-
-#define TRI_DIR_FN(item)                item->d_name
-#define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->d_type == DT_DIR)
-#define TRI_DIR_IS_SYMLINK(item)        (item->d_type == DT_LNK)
 
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
@@ -752,10 +740,6 @@ typedef unsigned char bool;
 #define TRI_WRITE                       _write
 #define TRI_STAT                        _stat64
 #define TRI_FSTAT                       _fstat64
-
-#define TRI_DIR_FN(item)                item.name
-#define TRI_DIR_IS_SUB_DIRECTORY(item)  ((item.attrib & _A_SUBDIR) != 0)
-#define TRI_DIR_IS_SYMLINK(item)        (false)
 
 #define TRI_write_t                     unsigned int
 #define TRI_read_t                      unsigned int
