@@ -2963,8 +2963,8 @@ static string GetId (const v8::FunctionCallbackInfo<v8::Value>& args, int which)
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_01_SaveEdgeCol}
-/// ~ db._create("vertex");
-/// ~ db._createEdgeCollection("relation");
+///   db._create("vertex");
+///   db._createEdgeCollection("relation");
 ///   v1 = db.vertex.insert({ name : "vertex 1" });
 ///   v2 = db.vertex.insert({ name : "vertex 2" });
 ///   e1 = db.relation.insert(v1, v2, { label : "knows" });

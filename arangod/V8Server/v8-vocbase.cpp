@@ -3358,8 +3358,13 @@ static void CreateDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>
 ///   require("org/arangodb/users").update(username, password, true);
 ///   require("org/arangodb/users").remove(username);
 /// ```
+/// Alternatively, you can specify user data directly. For example:
 ///
-/// This method can only be used from within the *_system* database.
+/// ```js
+///   db._createDatabase("newDB", [], [{ username: "newUser", passwd: "123456", active: true}])
+/// ```
+///
+/// Those methods can only be used from within the *_system* database.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
