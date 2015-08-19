@@ -118,6 +118,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_REPLICATION_RUNNING, "cannot change applier configuration while running");
   REG_ERROR(ERROR_REPLICATION_APPLIER_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_NO_START_TICK, "no start tick");
+  REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
   REG_ERROR(ERROR_CLUSTER_NO_AGENCY, "could not connect to agency");
   REG_ERROR(ERROR_CLUSTER_NO_COORDINATOR_HEADER, "missing coordinator header");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, "could not lock plan in agency");

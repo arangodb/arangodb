@@ -161,7 +161,6 @@ LIBS = \
 noinst_LIBRARIES = \
 	lib/libarango.a \
 	lib/libarango_v8.a \
-	lib/libarango_fe.a \
 	lib/libarango_client.a \
 	arangod/libarangod.a
 

@@ -270,8 +270,11 @@
 ///   Special error code used to indicate the replication applier was stopped
 ///   by a user.
 /// - 1413: @LIT{no start tick}
-///   Will be raised when the replication error is started without a known
+///   Will be raised when the replication applier is started without a known
 ///   start tick value.
+/// - 1414: @LIT{start tick not present}
+///   Will be raised when the replication applier fetches data using a start
+///   tick, but that start tick is not present on the logger server anymore.
 /// - 1450: @LIT{could not connect to agency}
 ///   Will be raised when none of the agency servers can be connected to.
 /// - 1451: @LIT{missing coordinator header}
@@ -1822,11 +1825,22 @@ void TRI_InitialiseErrorMessages ();
 ///
 /// no start tick
 ///
-/// Will be raised when the replication error is started without a known start
-/// tick value.
+/// Will be raised when the replication applier is started without a known
+/// start tick value.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_NO_START_TICK                               (1413)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1414: ERROR_REPLICATION_START_TICK_NOT_PRESENT
+///
+/// start tick not present
+///
+/// Will be raised when the replication applier fetches data using a start
+/// tick, but that start tick is not present on the logger server anymore.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      (1414)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1450: ERROR_CLUSTER_NO_AGENCY

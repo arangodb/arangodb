@@ -31,11 +31,9 @@
 #define ARANGODB_REST_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Statistics/StatisticsAgent.h"
-
 #include "Basics/Exceptions.h"
 #include "Dispatcher/Job.h"
+#include "Statistics/StatisticsAgent.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

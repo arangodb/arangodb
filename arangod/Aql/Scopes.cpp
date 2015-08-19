@@ -137,6 +137,29 @@ Variable const* Scope::getVariable (std::string const& name) const {
   return (*it).second;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable, allowing usage of special pseudo vars such
+/// as OLD and NEW
+////////////////////////////////////////////////////////////////////////////////
+
+Variable const* Scope::getVariable (char const* name,
+                                    bool allowSpecial) const {
+  auto variable = getVariable(name);
+
+  if (variable == nullptr && allowSpecial) {
+    // variable does not exist
+    // now try variable aliases OLD (= $OLD) and NEW (= $NEW)
+    if (strcmp(name, "OLD") == 0) {
+      variable = getVariable(Variable::NAME_OLD);
+    }
+    else if (strcmp(name, "NEW") == 0) {
+      variable = getVariable(Variable::NAME_NEW);
+    }
+  }
+
+  return variable;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -259,6 +282,25 @@ Variable const* Scopes::getVariable (char const* name) const {
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
     auto variable = (*it)->getVariable(name);
+
+    if (variable != nullptr) {
+      return variable;
+    }
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable by name - this respects the current scopes
+////////////////////////////////////////////////////////////////////////////////
+        
+Variable const* Scopes::getVariable (char const* name, 
+                                     bool allowSpecial) const {
+  TRI_ASSERT(! _activeScopes.empty());
+
+  for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
+    auto variable = (*it)->getVariable(name, allowSpecial);
 
     if (variable != nullptr) {
       return variable;

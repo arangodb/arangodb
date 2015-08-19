@@ -152,7 +152,8 @@ ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION,1409,"invalid replication logger 
 ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,1410,"invalid replication applier configuration","Will be raised when the configuration for the replication applier is invalid."
 ERROR_REPLICATION_RUNNING,1411,"cannot change applier configuration while running","Will be raised when there is an attempt to change the configuration for the replication applier while it is running."
 ERROR_REPLICATION_APPLIER_STOPPED,1412,"replication stopped","Special error code used to indicate the replication applier was stopped by a user."
-ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the replication error is started without a known start tick value."
+ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the replication applier is started without a known start tick value."
+ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."
 
 ################################################################################
 ## ArangoDB cluster errors

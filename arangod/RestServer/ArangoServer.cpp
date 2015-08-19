@@ -1141,6 +1141,11 @@ int ArangoServer::startupServer () {
 
   shutDownBegins();
 
+#if 0
+  // stop the replication appliers so all replication transactions can end
+  TRI_StopReplicationAppliersServer(_server);
+#endif
+
   _applicationServer->stop();
 
   _server->_queryRegistry = nullptr;

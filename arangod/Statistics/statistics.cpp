@@ -335,67 +335,6 @@ static TRI_thread_t StatisticsThread;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the physical memory
-////////////////////////////////////////////////////////////////////////////////
-
-#if (defined(BSD) || defined(TRI_HAVE_MACOS_MEM_STATS))
-
-static uint64_t GetPhysicalMemory () {
-  int mib[2];
-  int64_t physicalMemory;
-  size_t length;
-
-  // Get the Physical memory size
-  mib[0] = CTL_HW;
-#ifdef TRI_HAVE_MACOS_MEM_STATS
-  mib[1] = HW_MEMSIZE;
-#else
-  mib[1] = HW_PHYSMEM; // The bytes of physical memory. (kenel + user space)
-#endif
-  length = sizeof(int64_t);
-  sysctl(mib, 2, &physicalMemory, &length, nullptr, 0);
-
-  return (uint64_t) physicalMemory;
-}
-
-#else
-#ifdef TRI_HAVE_SC_PHYS_PAGES
-
-static uint64_t GetPhysicalMemory () {
-  long pages = sysconf(_SC_PHYS_PAGES);
-  long page_size = sysconf(_SC_PAGE_SIZE);
-
-  return (uint64_t)(pages * page_size);
-}
-
-#else
-#ifdef TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
-
-static uint64_t GetPhysicalMemory () {
-  MEMORYSTATUSEX status;
-  status.dwLength = sizeof(status);
-  GlobalMemoryStatusEx(&status);
-
-  return (uint64_t) status.ullTotalPhys;
-}
-
-#else
-
-static uint64_t TRI_GetPhysicalMemory () {
-  PROCESS_MEMORY_COUNTERS  pmc;
-  memset(&result, 0, sizeof(result));
-  pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS);
-  // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
-  if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, pmc.cb)) {
-    return pmc.PeakWorkingSetSize;
-  }
-  return 0;
-}
-#endif
-#endif
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for new statistics and process them
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -550,12 +489,6 @@ StatisticsDistribution* TRI_BytesReceivedDistributionStatistics;
 
 TRI_server_statistics_t TRI_ServerStatistics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief physical memory
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_PhysicalMemory;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -578,7 +511,6 @@ double TRI_StatisticsTime () {
 
 void TRI_InitialiseStatistics () {
   TRI_ServerStatistics._startTime = TRI_microtime();
-  TRI_PhysicalMemory = GetPhysicalMemory();
 
   // .............................................................................
   // sets up the statistics

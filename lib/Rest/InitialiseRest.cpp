@@ -46,7 +46,6 @@
 #include "Basics/threads.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
-#include "Statistics/statistics.h"
 
 // -----------------------------------------------------------------------------
 // OPEN SSL support
@@ -138,8 +137,6 @@ namespace triagens {
     void InitialiseRest (int argc, char* argv[]) {
       TRIAGENS_BASICS_INITIALISE(argc, argv);
 
-      TRI_InitialiseStatistics();
-
       SSL_library_init();
       SSL_load_error_strings();
       OpenSSL_add_all_algorithms();
@@ -154,8 +151,6 @@ namespace triagens {
 
     void ShutdownRest () {
       opensslCleanup();
-
-      TRI_ShutdownStatistics();
 
       TRIAGENS_BASICS_SHUTDOWN;
     }
