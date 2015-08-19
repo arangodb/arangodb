@@ -780,7 +780,7 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       else {
         ignoreCount--;
         LOG_WARNING("ignoring replication error for database '%s': %s",
-                    _applier->_databaseName,
+                    _applier->databaseName(),
                     errorMsg.c_str());
         errorMsg = "";
       }
