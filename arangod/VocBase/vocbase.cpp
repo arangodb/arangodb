@@ -1501,7 +1501,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // stop replication
   if (vocbase->_replicationApplier != nullptr) {
-    TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
+    vocbase->_replicationApplier->stop(false);
   }
 
   // mark all cursors as deleted so underlying collections can be freed soon

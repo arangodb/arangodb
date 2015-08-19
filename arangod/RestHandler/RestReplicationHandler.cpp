@@ -3830,7 +3830,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 void RestReplicationHandler::handleCommandApplierStop () {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
-  int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier, true);
+  int res = _vocbase->_replicationApplier->stop(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
