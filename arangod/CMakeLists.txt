@@ -57,6 +57,16 @@ add_executable(
     ${ProductVersionFiles}
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
+    Admin/ApplicationAdminServer.cpp
+    Admin/RestAdminBaseHandler.cpp
+    Admin/RestAdminLogHandler.cpp
+    Admin/RestBaseHandler.cpp
+    Admin/RestDebugHelperHandler.cpp
+    Admin/RestJobHandler.cpp
+    Admin/RestShutdownHandler.cpp
+    Admin/RestVersionHandler.cpp
+    ApplicationServer/ApplicationFeature.cpp
+    ApplicationServer/ApplicationServer.cpp
     Aql/AggregationOptions.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlItemBlockManager.cpp
@@ -105,6 +115,12 @@ add_executable(
     Cluster/ServerJob.cpp
     Cluster/ServerState.cpp
     Cluster/v8-cluster.cpp
+    Dispatcher/ApplicationDispatcher.cpp
+    Dispatcher/Dispatcher.cpp
+    Dispatcher/DispatcherQueue.cpp
+    Dispatcher/DispatcherThread.cpp
+    Dispatcher/Job.cpp
+    Dispatcher/RequeueTask.cpp
     FulltextIndex/fulltext-handles.cpp
     FulltextIndex/fulltext-index.cpp
     FulltextIndex/fulltext-list.cpp
@@ -114,6 +130,17 @@ add_executable(
     GeoIndex/GeoIndex.cpp
     HashIndex/hash-array.cpp
     HashIndex/hash-array-multi.cpp
+    HttpServer/ApplicationEndpointServer.cpp
+    HttpServer/AsyncJobManager.cpp
+    HttpServer/HttpCommTask.cpp
+    HttpServer/HttpHandler.cpp
+    HttpServer/HttpHandlerFactory.cpp
+    HttpServer/HttpListenTask.cpp
+    HttpServer/HttpServer.cpp
+    HttpServer/HttpServerJob.cpp
+    HttpServer/HttpsCommTask.cpp
+    HttpServer/HttpsServer.cpp
+    HttpServer/PathHandler.cpp
     Indexes/CapConstraint.cpp
     Indexes/EdgeIndex.cpp
     Indexes/FulltextIndex.cpp
@@ -126,6 +153,8 @@ add_executable(
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
     Replication/Syncer.cpp
+    Rest/AnyServer.cpp
+    Rest/Handler.cpp
     RestHandler/RestBatchHandler.cpp
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
@@ -144,7 +173,19 @@ add_executable(
     RestServer/ConsoleThread.cpp
     RestServer/VocbaseContext.cpp
     RestServer/arangod.cpp
+    Scheduler/ApplicationScheduler.cpp
+    Scheduler/ListenTask.cpp
+    Scheduler/PeriodicTask.cpp
+    Scheduler/Scheduler.cpp
+    Scheduler/SchedulerLibev.cpp
+    Scheduler/SchedulerThread.cpp
+    Scheduler/SignalTask.cpp
+    Scheduler/SocketTask.cpp
+    Scheduler/Task.cpp
+    Scheduler/TaskManager.cpp
+    Scheduler/TimerTask.cpp
     SkipLists/skiplistIndex.cpp
+    Statistics/statistics.cpp
     Utils/CollectionExport.cpp
     Utils/Cursor.cpp
     Utils/CursorRepository.cpp
