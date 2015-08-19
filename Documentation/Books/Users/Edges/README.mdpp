@@ -13,6 +13,9 @@ The values of *_from* and *_to* are immutable once saved.
 are connection documents that reference other documents. The type of a collection 
 must be specified when a collection is created and cannot be changed afterwards.
 
+To change edge endpoints you would need to remove old document/edge and insert new one.
+Other fields can be updated as in default collection.
+
 !SECTION Working with Edges
 
 !SUBSECTION Insert
