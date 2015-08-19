@@ -125,6 +125,12 @@ Handler::status_t RestReplicationHandler::execute () {
       }
       handleCommandLoggerFollow();
     }
+    else if (command == "determine-open-transactions") {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
+        goto BAD_CALL;
+      }
+      handleCommandDetermineOpenTransactions();
+    }
     else if (command == "batch") {
 
       if (ServerState::instance()->isCoordinator()) {
@@ -1176,6 +1182,76 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
       }
 
       insertClient(dump._lastFoundTick);
+    }
+  }
+  catch (triagens::basics::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+}
+
+void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
+  // determine start and end tick
+  triagens::wal::LogfileManagerState state = triagens::wal::LogfileManager::instance()->state();
+  TRI_voc_tick_t tickStart = 0;
+  TRI_voc_tick_t tickEnd   = state.lastDataTick;
+
+  bool found;
+  char const* value;
+
+  value = _request->value("from", found);
+  if (found) {
+    tickStart = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+  }
+  
+  // determine end tick for dump
+  value = _request->value("to", found);
+  if (found) {
+    tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+  }
+
+  if (found && (tickStart > tickEnd || tickEnd == 0)) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid from/to values");
+    return;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    // initialize the dump container
+    TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), false);
+
+    // and dump
+    res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      // generate the result
+      size_t const length = TRI_LengthStringBuffer(dump._buffer);
+
+      if (length == 0) {
+        _response = createResponse(HttpResponse::NO_CONTENT);
+      }
+      else {
+        _response = createResponse(HttpResponse::OK);
+      }
+
+      _response->setContentType("application/x-arango-dump; charset=utf-8");
+
+      if (length > 0) {
+        // transfer ownership of the buffer contents
+        _response->body().set(dump._buffer);
+
+        // to avoid double freeing
+        TRI_StealStringBuffer(dump._buffer);
+      }
     }
   }
   catch (triagens::basics::Exception const& ex) {

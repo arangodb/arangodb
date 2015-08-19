@@ -122,34 +122,32 @@ static void ReadlineInputCompleted (char* value) {
   
   auto instance = ReadlineShell::instance();
 
-  if (instance == nullptr) {
-    return;
-  }
+  if (instance != nullptr) {
+    if (instance->getLoopState() == 2) {
 
-  if (instance->getLoopState() == 2) {
+      // CTRL-C received
+      rl_done = 1;
 
-    // CTRL-C received
-    rl_done = 1;
+      // replace current input with nothing
+      rl_replace_line("", 0);
 
-    // replace current input with nothing
-    rl_replace_line("", 0);
-
-    if (value != nullptr) {
-      // avoid memleak
-      TRI_SystemFree(value);
+      instance->setLastInput("");
     }
-
-    instance->setLastInput("");
+    else if (value == nullptr) {
+      rl_done = 1;
+      rl_replace_line("", 0);
+      instance->setLoopState(3);
+      instance->setLastInput("");
+    }
+    else {
+      instance->setLoopState(1);
+      instance->setLastInput(value == 0 ? "" : value);
+    }
   }
-  else if (value == nullptr) {
-    rl_done = 1;
-    rl_replace_line("", 0);
-    instance->setLoopState(3);
-    instance->setLastInput("");
-  }
-  else {
-    instance->setLoopState(1);
-    instance->setLastInput(value == 0 ? "" : value);
+    
+  if (value != nullptr) {
+    // avoid memleak
+    TRI_SystemFree(value);
   }
 }
 

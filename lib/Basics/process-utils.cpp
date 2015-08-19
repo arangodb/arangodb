@@ -29,6 +29,17 @@
 
 #include "process-utils.h"
 
+#ifndef BSD
+#ifdef __FreeBSD__
+#define BSD
+#endif
+#endif
+
+#if (defined(BSD) || defined(TRI_HAVE_MACOS_MEM_STATS))
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
@@ -37,7 +48,6 @@
 #include <mach/mach_host.h>
 #include <mach/mach_port.h>
 #include <mach/mach_traps.h>
-// #include <mach/shared_memory_server.h>
 #include <mach/task.h>
 #include <mach/thread_act.h>
 #include <mach/vm_map.h>
@@ -59,6 +69,15 @@
 #include "Basics/logging.h"
 #include "Basics/StringUtils.h"
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  global variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief physical memory
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_PhysicalMemory;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -1318,8 +1337,70 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
   TRI_RemoveVectorPointer(&ExternalProcesses, i);
   TRI_UnlockMutex(&ExternalProcessesLock);
   FreeExternal(external);
+
   return ok;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the physical memory
+////////////////////////////////////////////////////////////////////////////////
+
+#if (defined(BSD) || defined(TRI_HAVE_MACOS_MEM_STATS))
+
+static uint64_t GetPhysicalMemory () {
+  int mib[2];
+  int64_t physicalMemory;
+  size_t length;
+
+  // Get the Physical memory size
+  mib[0] = CTL_HW;
+#ifdef TRI_HAVE_MACOS_MEM_STATS
+  mib[1] = HW_MEMSIZE;
+#else
+  mib[1] = HW_PHYSMEM; // The bytes of physical memory. (kenel + user space)
+#endif
+  length = sizeof(int64_t);
+  sysctl(mib, 2, &physicalMemory, &length, nullptr, 0);
+
+  return (uint64_t) physicalMemory;
+}
+
+#else
+#ifdef TRI_HAVE_SC_PHYS_PAGES
+
+static uint64_t GetPhysicalMemory () {
+  long pages = sysconf(_SC_PHYS_PAGES);
+  long page_size = sysconf(_SC_PAGE_SIZE);
+
+  return (uint64_t)(pages * page_size);
+}
+
+#else
+#ifdef TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
+
+static uint64_t GetPhysicalMemory () {
+  MEMORYSTATUSEX status;
+  status.dwLength = sizeof(status);
+  GlobalMemoryStatusEx(&status);
+
+  return (uint64_t) status.ullTotalPhys;
+}
+
+#else
+
+static uint64_t GetPhysicalMemory () {
+  PROCESS_MEMORY_COUNTERS pmc;
+  memset(&result, 0, sizeof(result));
+  pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS);
+  // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
+  if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, pmc.cb)) {
+    return pmc.PeakWorkingSetSize;
+  }
+  return 0;
+}
+#endif
+#endif
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
@@ -1334,6 +1415,8 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseProcess (int argc, char* argv[]) {
+  TRI_PhysicalMemory = GetPhysicalMemory();
+
   if (ProcessName != nullptr) {
     return;
   }

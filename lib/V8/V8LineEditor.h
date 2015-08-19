@@ -161,8 +161,14 @@ namespace arangodb {
         return _instance.load();
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell implementation supports colors
+////////////////////////////////////////////////////////////////////////////////
+
+      bool supportsColors () const;
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                          static protected methods
+// --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
     protected:
@@ -171,13 +177,7 @@ namespace arangodb {
 /// @brief setup a signal handler for CTRL-C
 ////////////////////////////////////////////////////////////////////////////////
 
-      static void setupCtrlCHandler ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-    protected:
+      void setupCtrlCHandler ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a concrete Shell with the correct completer

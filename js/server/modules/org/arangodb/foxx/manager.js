@@ -337,13 +337,6 @@ function checkManifest(filename, manifest) {
     }
   });
 
-  if (manifest.version && !semver.valid(manifest.version)) {
-    console.warn(
-      `Manifest "${filename}" for app "${manifest.name}":`
-      + ` not a valid semver version: ${manifest.version}.`
-    );
-  }
-
   if (manifest.engines && manifest.engines.arangodb && !semver.satisfies(internal.version, manifest.engines.arangodb)) {
     console.warn(
       `Manifest "${filename}" for app "${manifest.name}":`

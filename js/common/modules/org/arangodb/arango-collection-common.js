@@ -989,6 +989,9 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 /// The document meta-attributes such as *_id*, *_key*, *_from*,
 /// *_to* cannot be updated.
 ///
+/// Partial update could also be used to append new fields,
+/// if there were no old field with same name.
+///
 /// `collection.updateByExample(document, newValue, keepNull, waitForSync)`
 ///
 /// The optional *keepNull* parameter can be used to modify the behavior when
@@ -1019,8 +1022,9 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
 /// ~ db._create("example");
-///   db.example.save({ Hello : "world" });
+///   db.example.save({ Hello : "world", foo : "bar" });
 ///   db.example.updateByExample({ Hello: "world" }, { Hello: "foo", World: "bar" }, false);
+///   db.example.byExample({ Hello: "foo" }).toArray()
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
