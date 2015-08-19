@@ -46,7 +46,7 @@
 struct TRI_col_info_s;
 struct TRI_document_collection_t;
 struct TRI_json_t;
-struct TRI_replication_applier_t;
+class TRI_replication_applier_t;
 struct TRI_server_t;
 struct TRI_vocbase_col_s;
 struct TRI_vocbase_defaults_s;
@@ -308,7 +308,7 @@ struct TRI_vocbase_t {
 
   std::set<TRI_voc_tid_t>*                _oldTransactions;
 
-  struct TRI_replication_applier_t*       _replicationApplier;
+  class TRI_replication_applier_t*       _replicationApplier;
 
   // state of the database
   // 0 = inactive
