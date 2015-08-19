@@ -1506,7 +1506,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // mark all cursors as deleted so underlying collections can be freed soon
   if (vocbase->_cursorRepository != nullptr) {
-    static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository)->garbageCollect(true);
+    vocbase->_cursorRepository->garbageCollect(true);
   }
 
   std::vector<TRI_vocbase_col_t*> collections;
@@ -2446,8 +2446,8 @@ TRI_vocbase_t::~TRI_vocbase_t () {
   TRI_DestroyAssociativePointer(&_collectionsByName);
   TRI_DestroyAssociativePointer(&_collectionsById);
 
-  delete static_cast<triagens::arango::CursorRepository*>(_cursorRepository);
-  delete static_cast<triagens::aql::QueryList*>(_queries);
+  delete _cursorRepository;
+  delete _queries;
   
   // free name and path
   if (_path != nullptr) {

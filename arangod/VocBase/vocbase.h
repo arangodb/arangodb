@@ -51,6 +51,15 @@ struct TRI_server_t;
 struct TRI_vocbase_col_s;
 struct TRI_vocbase_defaults_s;
 
+namespace triagens {
+  namespace aql {
+    class QueryList;
+  }
+  namespace arango {
+    class CursorRepository;
+  }
+}
+
 extern bool IGNORE_DATAFILE_ERRORS;
 
 // -----------------------------------------------------------------------------
@@ -287,8 +296,8 @@ struct TRI_vocbase_t {
 
   // structures for user-defined volatile data
   void*                                   _userStructures;
-  void*                                   _queries;
-  void*                                   _cursorRepository;
+  triagens::aql::QueryList*               _queries;
+  triagens::arango::CursorRepository*     _cursorRepository;
 
   TRI_associative_pointer_t               _authInfo;
   TRI_associative_pointer_t               _authCache;
