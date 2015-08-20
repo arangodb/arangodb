@@ -634,7 +634,7 @@
 
 #define TRI_HAVE_LINENOISE                  1
 
-#define GLOBAL_TIMEZONE                     timezone
+#define GLOBAL_TIMEZONE                     _timezone
 #define TRI_HAVE_GLOBAL_TIMEZONE_PROTO      1
 
 #define YY_NO_UNISTD_H                      1
