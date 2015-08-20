@@ -42,17 +42,10 @@
 #include <functional>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for multi-operation remote transaction
-////////////////////////////////////////////////////////////////////////////////
-
-#define RemoteTransactionType triagens::arango::ReplicationTransaction
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for single-operation write transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 #define SingleWriteTransactionType triagens::arango::SingleCollectionWriteTransaction<1>
-
 
 namespace triagens {
   namespace wal {
@@ -135,14 +128,6 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not there are remote transactions
-////////////////////////////////////////////////////////////////////////////////
-      
-      inline bool hasRunningRemoteTransactions () const {
-        return ! runningRemoteTransactions.empty();
-      }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the recovery procedure must be run
 ////////////////////////////////////////////////////////////////////////////////
       
@@ -156,32 +141,6 @@ namespace triagens {
 
       inline bool ignoreTransaction (TRI_voc_tid_t transactionId) const {
         return (transactionId > 0 && failedTransactions.find(transactionId) != failedTransactions.end());
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a transaction was started remotely
-////////////////////////////////////////////////////////////////////////////////
-
-      inline bool isRemoteTransaction (TRI_voc_tid_t transactionId) const {
-        return (transactionId > 0 && remoteTransactions.find(transactionId) != remoteTransactions.end());
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a collection for a remote transaction
-////////////////////////////////////////////////////////////////////////////////
-
-      inline void registerRemoteUsage (TRI_voc_tick_t databaseId,
-                                       TRI_voc_cid_t collectionId) {
-        remoteTransactionDatabases.insert(databaseId);
-        remoteTransactionCollections.insert(collectionId);
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a transaction was started remotely
-////////////////////////////////////////////////////////////////////////////////
-
-      inline bool isUsedByRemoteTransaction (TRI_voc_tid_t collectionId) const {
-        return (remoteTransactionCollections.find(collectionId) != remoteTransactionCollections.end());
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,17 +185,6 @@ namespace triagens {
 
       TRI_document_collection_t* getCollection (TRI_voc_tick_t,
                                                 TRI_voc_cid_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an operation in a remote transaction
-////////////////////////////////////////////////////////////////////////////////
-
-      int executeRemoteOperation (TRI_voc_tick_t,
-                                  TRI_voc_cid_t,
-                                  TRI_voc_tid_t,
-                                  TRI_df_marker_t const*,
-                                  TRI_voc_fid_t,
-                                  std::function<int(RemoteTransactionType*, Marker*)>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a single operation inside a transaction
@@ -302,9 +250,6 @@ namespace triagens {
 
       TRI_server_t*                                                               server;
       std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>>          failedTransactions;
-      std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, TRI_voc_tid_t>> remoteTransactions;
-      std::unordered_set<TRI_voc_cid_t>                                           remoteTransactionCollections;
-      std::unordered_set<TRI_voc_tick_t>                                          remoteTransactionDatabases;
       std::unordered_set<TRI_voc_cid_t>                                           droppedCollections;
       std::unordered_set<TRI_voc_tick_t>                                          droppedDatabases;
       std::unordered_set<TRI_voc_cid_t>                                           droppedIds;
@@ -313,7 +258,6 @@ namespace triagens {
       std::vector<Logfile*>                                                       logfilesToProcess;
       std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*>                       openedCollections;
       std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*>                          openedDatabases;
-      std::unordered_map<TRI_voc_tid_t, RemoteTransactionType*>                   runningRemoteTransactions;
       std::vector<std::string>                                                    emptyLogfiles;
 
       TRI_doc_update_policy_t                                                     policy;

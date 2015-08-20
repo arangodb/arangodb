@@ -120,7 +120,8 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       handleCommandLoggerFirstTick();
     }
     else if (command == "logger-follow") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
+      if (type != HttpRequest::HTTP_REQUEST_GET &&
+          type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
       handleCommandLoggerFollow();
@@ -1098,7 +1099,8 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
   // determine start and end tick
   triagens::wal::LogfileManagerState state = triagens::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd   = state.lastDataTick;
+  TRI_voc_tick_t tickEnd = state.lastDataTick;
+  TRI_voc_tick_t firstRegularTick = 0;
 
   bool found;
   char const* value;
@@ -1128,6 +1130,39 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     includeSystem = StringUtils::boolean(value);
   }
 
+  // grab list of transactions from the body value
+  std::unordered_set<TRI_voc_tid_t> transactionIds;
+
+  if (_request->requestType() == triagens::rest::HttpRequest::HTTP_REQUEST_PUT) {
+    value = _request->value("firstRegularTick", found);
+    if (found) {
+      firstRegularTick = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+    }
+
+    char const* ptr = _request->body();
+    
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, ptr));
+
+    if (! TRI_IsArrayJson(json.get())) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid body value. expecting array");
+      return;
+    }
+  
+    for (size_t i = 0; i < TRI_LengthArrayJson(json.get()); ++i) {
+      auto id = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
+      if (! TRI_IsStringJson(id)) {
+        generateError(HttpResponse::BAD,
+                      TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "invalid body value. expecting array of ids");
+        return;
+      }
+    
+      transactionIds.emplace(StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1));
+    }
+  }
+  
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -1135,7 +1170,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), includeSystem);
 
     // and dump
-    res = TRI_DumpLogReplication(&dump, tickStart, tickEnd, false);
+    res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick, tickStart, tickEnd, false);
 
     if (res == TRI_ERROR_NO_ERROR) {
       bool const checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state.lastDataTick);
@@ -1244,6 +1279,9 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
       }
 
       _response->setContentType("application/x-arango-dump; charset=utf-8");
+    
+      _response->setHeader(TRI_CHAR_LENGTH_PAIR(TRI_REPLICATION_HEADER_FROMPRESENT), dump._fromTickIncluded ? "true" : "false");
+      _response->setHeader(TRI_CHAR_LENGTH_PAIR(TRI_REPLICATION_HEADER_LASTTICK), StringUtils::itoa(dump._lastFoundTick));
 
       if (length > 0) {
         // transfer ownership of the buffer contents
@@ -2201,7 +2239,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  const size_t n = TRI_LengthArrayJson(indexes);
+  size_t const n = TRI_LengthArrayJson(indexes);
+
   if (n == 0) {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
@@ -3661,6 +3700,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   if (TRI_IsArrayJson(value)) {
     config._restrictCollections.clear();
     size_t const n = TRI_LengthArrayJson(value);
+
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* collection = TRI_LookupArrayJson(value, i);
       if (TRI_IsStringJson(collection)) {
