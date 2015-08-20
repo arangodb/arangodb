@@ -905,7 +905,6 @@ namespace std {
           return false;
         }
       }
-      std::cout << "Isse equal" << std::endl;
       return true;
     }
   };
