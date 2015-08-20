@@ -97,6 +97,15 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 ContinuousSyncer::~ContinuousSyncer () {
+  // abort all running transactions
+  for (auto& it : _openInitialTransactions) {
+    auto trx = it.second;
+
+    if (trx != nullptr) {
+      trx->abort();
+      delete trx;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -217,15 +226,49 @@ int ContinuousSyncer::saveApplierState () {
   return res;
 }
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a collection should be excluded
+/// @brief whether or not a marker should be skipped
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ContinuousSyncer::excludeCollection (TRI_json_t const* json) const {
-  if (_restrictType == RESTRICT_NONE && _includeSystem) {
-    return false;
+bool ContinuousSyncer::skipMarker (TRI_voc_tick_t firstRegularTick,
+                                   TRI_json_t const* json) const {
+  bool tooOld = false;
+  string const tick = JsonHelper::getStringValue(json, "tick", "");
+
+  if (! tick.empty()) {
+    tooOld = (static_cast<TRI_voc_tick_t>(StringUtils::uint64(tick.c_str(), tick.size())) < firstRegularTick);
+
+    if (tooOld) {
+      int typeValue = JsonHelper::getNumericValue<int>(json, "type", 0);
+      // handle marker type
+      TRI_replication_operation_e type = (TRI_replication_operation_e) typeValue;
+
+      if (type == REPLICATION_MARKER_DOCUMENT || 
+          type == REPLICATION_MARKER_EDGE || 
+          type == REPLICATION_MARKER_REMOVE ||
+          type == REPLICATION_TRANSACTION_START ||
+          type == REPLICATION_TRANSACTION_ABORT ||
+          type == REPLICATION_TRANSACTION_COMMIT) {
+        // read "tid" entry from marker
+        string const id = JsonHelper::getStringValue(json, "tid", "");
+
+        if (! id.empty()) {
+          TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
+
+          if (tid > 0 && 
+              _openInitialTransactions.find(tid) != _openInitialTransactions.end()) {
+            // must still use this marker as it belongs to a transaction we need to finish
+            tooOld = false;
+          }
+        }
+      }
+    }
   }
 
-  if (! TRI_IsObjectJson(json)) {
+  if (tooOld) {
+    return true;
+  }
+
+  if (_restrictType == RESTRICT_NONE && _includeSystem) {
     return false;
   }
 
@@ -369,14 +412,17 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   }
 
   if (tid > 0) {
-    auto it = _applier->_runningRemoteTransactions.find(tid);
+    auto it = _openInitialTransactions.find(tid);
 
-    if (it == _applier->_runningRemoteTransactions.end()) {
+    if (it == _openInitialTransactions.end()) {
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
     auto trx = (*it).second;
-    TRI_ASSERT(trx != nullptr);
+
+    if (trx == nullptr) {
+      return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
+    }
 
     TRI_transaction_collection_t* trxCollection = trx->trxCollection(cid);
 
@@ -443,35 +489,35 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
   // note: this is the remote transaction id!
   TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  auto it = _applier->_runningRemoteTransactions.find(tid);
+  auto it = _openInitialTransactions.find(tid);
 
-  if (it != _applier->_runningRemoteTransactions.end()) {
+  if (it != _openInitialTransactions.end()) {
+    // found a previous version of the same transaction - should not happen...
     auto trx = (*it).second;
+    
+    _openInitialTransactions.erase(tid);
 
-    _applier->_runningRemoteTransactions.erase(tid);
+    if (trx != nullptr) {
+      // abort ongoing trx
+      delete trx; 
+    }
 
-    // abort ongoing trx
-    delete trx; 
   }
   
   TRI_ASSERT(tid > 0);
 
-  LOG_TRACE("starting replication transaction %llu", (unsigned long long) tid);
+  LOG_TRACE("starting transaction %llu", (unsigned long long) tid);
  
-  auto trx = new ReplicationTransaction(_server, _vocbase, tid);
-
-  if (trx == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  std::unique_ptr<ReplicationTransaction> trx(new ReplicationTransaction(_server, _vocbase, tid));
 
   int res = trx->begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    delete trx;
     return res;
   }
 
-  _applier->_runningRemoteTransactions.insert(it, std::make_pair(tid, trx));
+  _openInitialTransactions[tid] = trx.get();
+  trx.release();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -489,12 +535,12 @@ int ContinuousSyncer::abortTransaction (TRI_json_t const* json) {
   }
 
   // transaction id
-  // note: this is the remote trasnaction id!
+  // note: this is the remote transaction id!
   TRI_voc_tid_t const tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  auto it = _applier->_runningRemoteTransactions.find(tid);
+  auto it = _openInitialTransactions.find(tid);
 
-  if (it == _applier->_runningRemoteTransactions.end()) {
+  if (it == _openInitialTransactions.end()) {
     // invalid state, no transaction was started.
     return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
   }
@@ -504,12 +550,16 @@ int ContinuousSyncer::abortTransaction (TRI_json_t const* json) {
   LOG_TRACE("abort replication transaction %llu", (unsigned long long) tid);
 
   auto trx = (*it).second;
-  _applier->_runningRemoteTransactions.erase(tid);
+  _openInitialTransactions.erase(tid);
 
-  int res = trx->abort();
-  delete trx;
+  if (trx != nullptr) {
+    int res = trx->abort();
+    delete trx;
 
-  return res;
+    return res;
+  }
+
+  return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -528,8 +578,9 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
   // note: this is the remote trasnaction id!
   TRI_voc_tid_t const tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  auto it = _applier->_runningRemoteTransactions.find(tid);
-  if (it == _applier->_runningRemoteTransactions.end()) {
+  auto it = _openInitialTransactions.find(tid);
+
+  if (it == _openInitialTransactions.end()) {
     // invalid state, no transaction was started.
     return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
   }
@@ -539,12 +590,16 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
   LOG_TRACE("committing replication transaction %llu", (unsigned long long) tid);
   
   auto trx = (*it).second;
-  _applier->_runningRemoteTransactions.erase(tid);
+  _openInitialTransactions.erase(tid);
 
-  int res = trx->commit();
-  delete trx;
+  if (trx != nullptr) {
+    int res = trx->commit();
+    delete trx;
 
-  return res;
+    return res;
+  }
+    
+  return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -620,15 +675,6 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
 
 int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
                                       string& errorMsg) {
-
-  static const string invalidMsg = "received invalid JSON data";
-
-  // check data
-  if (! JsonHelper::isObject(json)) {
-    errorMsg = invalidMsg;
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
 
   // fetch marker "type"
   int typeValue = JsonHelper::getNumericValue<int>(json, "type", 0);
@@ -708,6 +754,7 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::applyLog (SimpleHttpResult* response,
+                                TRI_voc_tick_t firstRegularTick,
                                 std::string& errorMsg,
                                 uint64_t& processedMarkers,
                                 uint64_t& ignoreCount) {
@@ -746,10 +793,16 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
     if (json == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
+  
+    if (! TRI_IsObjectJson(json.get())) {
+      errorMsg = "received invalid JSON data";
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
 
     int res;
     bool skipped;
-    if (excludeCollection(json.get())) {
+    if (skipMarker(firstRegularTick, json.get())) {
       // entry is skipped
       res = TRI_ERROR_NO_ERROR;
       skipped = true;
@@ -808,7 +861,6 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
 int ContinuousSyncer::runContinuousSync (string& errorMsg) {
   uint64_t connectRetries = 0;
   uint64_t inactiveCycles = 0;
-  int res                 = TRI_ERROR_INTERNAL;
 
   // get start tick
   // ---------------------------------------
@@ -836,7 +888,19 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     return TRI_ERROR_REPLICATION_NO_START_TICK;
   }
 
-  // TODO: get the applier into a sensible start state...
+  // get the applier into a sensible start state by fetching the list of
+  // open transactions from the master
+  TRI_voc_tick_t fetchTick = 0;
+  int res = fetchMasterState(errorMsg, 0, fromTick, fetchTick);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  if (fetchTick > fromTick) {
+    // must not happen
+    return TRI_ERROR_INTERNAL;
+  }
 
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
@@ -844,8 +908,8 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     bool worked;
     bool masterActive = false;
 
-    // fromTick is passed by reference!
-    res = followMasterLog(errorMsg, fromTick, _configuration._ignoreErrors, worked, masterActive);
+    // fetchTick is passed by reference!
+    res = followMasterLog(errorMsg, fetchTick, fromTick, _configuration._ignoreErrors, worked, masterActive);
 
     uint64_t sleepTime;
 
@@ -929,11 +993,124 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the initial master state
+////////////////////////////////////////////////////////////////////////////////
+
+int ContinuousSyncer::fetchMasterState (string& errorMsg,
+                                        TRI_voc_tick_t fromTick,
+                                        TRI_voc_tick_t toTick,
+                                        TRI_voc_tick_t& startTick) {
+  string const baseUrl = BaseUrl + "/determine-open-transactions";
+
+  map<string, string> headers;
+
+  string const url = baseUrl + 
+                     "?serverId=" + _localServerIdString +
+                     "&from=" + StringUtils::itoa(fromTick) +
+                     "&to=" + StringUtils::itoa(toTick);
+  
+  string const progress = "fetching initial master state with from tick " + StringUtils::itoa(fromTick) + ", toTick " + StringUtils::itoa(toTick);
+
+  LOG_TRACE("fetching initial master state with from tick %llu, to tick %llu, url %s",
+            (unsigned long long) fromTick,
+            (unsigned long long) toTick,
+            url.c_str());
+
+  // send request
+  setProgress(progress.c_str());
+
+  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
+                                                url,
+                                                nullptr,
+                                                0,
+                                                headers);
+
+  if (response == nullptr || ! response->isComplete()) {
+    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+               ": " + _client->getErrorMessage();
+
+    if (response != nullptr) {
+      delete response;
+    }
+
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  if (response->wasHttpError()) {
+    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+               ": " + response->getHttpReturnMessage();
+
+    delete response;
+
+    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+  }
+
+  bool fromIncluded = false;
+
+  bool found;
+  string header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+
+  if (found) {
+    fromIncluded = StringUtils::boolean(header);
+  }
+  
+  if (! fromIncluded && 
+      _requireFromPresent) {
+    errorMsg = "required tick value '" + StringUtils::itoa(fromTick) + "' is not present on master at " + string(_masterInfo._endpoint);
+    delete response;
+
+    return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+  }
+
+  // fetch the tick from where we need to start scanning later
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
+
+  if (! found) {
+    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+                ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing";
+
+    delete response;
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  startTick = StringUtils::uint64(header);
+
+  StringBuffer& data = response->getBody();
+  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.begin()));
+
+  delete response;
+
+  if (! TRI_IsArrayJson(json.get())) {
+    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+                ": invalid response type for initial data. expecting array";
+    
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  for (size_t i = 0; i < TRI_LengthArrayJson(json.get()); ++i) {
+    auto id = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
+
+    if (! TRI_IsStringJson(id)) {
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+                  ": invalid response type for initial data. expecting array of ids";
+    
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+
+    _openInitialTransactions.emplace(StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1), nullptr);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief run the continuous synchronisation
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::followMasterLog (string& errorMsg,
-                                       TRI_voc_tick_t& fromTick,
+                                       TRI_voc_tick_t& fetchTick,
+                                       TRI_voc_tick_t firstRegularTick,
                                        uint64_t& ignoreCount,
                                        bool& worked,
                                        bool& masterActive) {
@@ -942,24 +1119,48 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   map<string, string> headers;
   worked = false;
 
-  string const tickString = StringUtils::itoa(fromTick);
+  string const tickString = StringUtils::itoa(fetchTick);
   string const url = baseUrl + 
                      "&from=" + tickString + 
+                     "&firstRegular=" + StringUtils::itoa(firstRegularTick) + 
                      "&serverId=" + _localServerIdString + 
                      "&includeSystem=" + (_includeSystem ? "true" : "false");
 
   LOG_TRACE("running continuous replication request with tick %llu, url %s",
-            (unsigned long long) fromTick,
+            (unsigned long long) fetchTick,
             url.c_str());
 
   // send request
   string const progress = "fetching master log from offset " + tickString;
   setProgress(progress.c_str());
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::string body;
+
+  if (! _openInitialTransactions.empty()) {
+    // stringify list of open transactions
+    body.append("[\"");
+    bool first = true;
+
+    for (auto& it : _openInitialTransactions) {
+      if (first) {
+        first = false;
+      }
+      else {
+        body.append("\",\"");
+      }
+
+      body.append(StringUtils::itoa(it.first));
+    }
+    body.append("\"]");
+  }
+  else {
+    body.append("[]");
+  }
+
+  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                 url,
-                                                nullptr,
-                                                0,
+                                                body.c_str(),
+                                                body.size(),
                                                 headers);
 
   if (response == nullptr || ! response->isComplete()) {
@@ -1011,8 +1212,8 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
     if (found) {
       tick = StringUtils::uint64(header);
 
-      if (tick > fromTick) {
-        fromTick = tick;
+      if (tick > fetchTick) {
+        fetchTick = tick;
         worked = true;
       }
       else {
@@ -1052,7 +1253,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
     }
 
     uint64_t processedMarkers = 0;
-    res = applyLog(response, errorMsg, processedMarkers, ignoreCount);
+    res = applyLog(response, firstRegularTick, errorMsg, processedMarkers, ignoreCount);
 
     if (processedMarkers > 0) {
       worked = true;

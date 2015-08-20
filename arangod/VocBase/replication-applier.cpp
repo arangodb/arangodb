@@ -1055,14 +1055,6 @@ TRI_replication_applier_t::~TRI_replication_applier_t () {
   stop(true);
   TRI_DestroyStateReplicationApplier(&_state);
   TRI_DestroyConfigurationReplicationApplier(&_configuration);
-
-  for (auto it = _runningRemoteTransactions.begin(); it != _runningRemoteTransactions.end(); ++it) {
-    auto trx = (*it).second;
-
-    // do NOT write abort markers so we can resume running transactions later
-    trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
-    delete trx;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1233,12 +1225,6 @@ int TRI_replication_applier_t::shutdown () {
 
   setTermination(false);
  
-  {
-    WRITE_LOCKER(_statusLock); 
-    // really abort all ongoing transactions
-    abortRunningRemoteTransactions();
-  }
-
   LOG_INFO("stopped replication applier for database '%s'", _databaseName.c_str());
 
   return res;

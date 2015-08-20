@@ -31,7 +31,6 @@
 #define ARANGODB_VOC_BASE_REPLICATION__COMMON_H 1
 
 #include "Basics/Common.h"
-
 #include "VocBase/voc-types.h"
 
 // -----------------------------------------------------------------------------

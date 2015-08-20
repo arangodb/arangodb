@@ -98,7 +98,7 @@ static void JS_LastLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>&
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
 
-  int res = TRI_DumpLogReplication(&dump, tickStart, tickEnd, true);
+  int res = TRI_DumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(), 0, tickStart, tickEnd, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

@@ -136,10 +136,6 @@ class TRI_replication_applier_t {
       _terminateThread.store(value);
     }
 
-    void addRemoteTransaction (triagens::arango::ReplicationTransaction* trx) {
-      _runningRemoteTransactions.insert(std::make_pair(trx->externalId(), trx));
-    }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database name
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,21 +168,6 @@ class TRI_replication_applier_t {
 ////////////////////////////////////////////////////////////////////////////////
 
     int shutdown ();
-
-    void abortRunningRemoteTransactions () {
-      size_t const n = _runningRemoteTransactions.size();
-      triagens::arango::TransactionBase::increaseNumbers((int) n, (int) n);
-
-      for (auto it = _runningRemoteTransactions.begin(); it != _runningRemoteTransactions.end(); ++it) {
-        auto trx = (*it).second;
-
-        // do NOT write abort markers so we can resume running transactions later
-        trx->removeHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
-        delete trx;
-      }
-
-      _runningRemoteTransactions.clear();
-    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the progress with or without a lock
@@ -228,7 +209,6 @@ class TRI_replication_applier_t {
     TRI_replication_applier_state_t          _state;
     TRI_replication_applier_configuration_t  _configuration;
     TRI_thread_t                             _thread;
-    std::unordered_map<TRI_voc_tid_t, triagens::arango::ReplicationTransaction*> _runningRemoteTransactions;
 };
 
 // -----------------------------------------------------------------------------

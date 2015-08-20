@@ -1071,6 +1071,42 @@ static TRI_voc_tick_t GetCollectionFromWalMarker (TRI_df_marker_t const* marker)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to extract a transaction id from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+static TRI_voc_tid_t GetTransactionId (TRI_df_marker_t const* marker) {
+  T const* m = reinterpret_cast<T const*>(marker);
+  return m->_transactionId;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction id from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_voc_tid_t GetTransactionFromWalMarker (TRI_df_marker_t const* marker) {
+  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
+
+  switch (marker->_type) {
+    case TRI_WAL_MARKER_DOCUMENT: 
+      return GetTransactionId<triagens::wal::document_marker_t>(marker);
+    case TRI_WAL_MARKER_EDGE: 
+      return GetTransactionId<triagens::wal::edge_marker_t>(marker);
+    case TRI_WAL_MARKER_REMOVE: 
+      return GetTransactionId<triagens::wal::remove_marker_t>(marker);
+    case TRI_WAL_MARKER_BEGIN_TRANSACTION: 
+      return GetTransactionId<triagens::wal::transaction_begin_marker_t>(marker);
+    case TRI_WAL_MARKER_COMMIT_TRANSACTION: 
+      return GetTransactionId<triagens::wal::transaction_commit_marker_t>(marker);
+    case TRI_WAL_MARKER_ABORT_TRANSACTION: 
+      return GetTransactionId<triagens::wal::transaction_abort_marker_t>(marker);
+    default: {
+      return 0;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a marker belongs to a transaction
 ////////////////////////////////////////////////////////////////////////////////
      
@@ -1094,7 +1130,9 @@ static bool IsTransactionWalMarker (TRI_replication_dump_t* dump,
 ////////////////////////////////////////////////////////////////////////////////
      
 static bool MustReplicateWalMarker (TRI_replication_dump_t* dump,
-                                    TRI_df_marker_t const* marker) { 
+                                    TRI_df_marker_t const* marker,
+                                    TRI_voc_tick_t firstRegularTick,
+                                    std::unordered_set<TRI_voc_tid_t> const& transactionIds) { 
   // first check the marker type
   if (! MustReplicateWalMarkerType(marker)) {
     return false;
@@ -1111,6 +1149,18 @@ static bool MustReplicateWalMarker (TRI_replication_dump_t* dump,
     char const* name = NameFromCid(dump, cid);
 
     if (name != nullptr && TRI_ExcludeCollectionReplication(name, dump->_includeSystem)) {
+      return false;
+    }
+  }
+
+  if (marker->_tick >= firstRegularTick) {
+    return true;
+  }
+
+  if (! transactionIds.empty()) {
+    TRI_voc_tid_t tid = GetTransactionFromWalMarker(marker);
+    if (tid == 0 ||
+        transactionIds.find(tid) == transactionIds.end()) {
       return false;
     }
   }
@@ -1384,6 +1434,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
+                            std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                            TRI_voc_tick_t firstRegularTick,
                             TRI_voc_tick_t tickMin,
                             TRI_voc_tick_t tickMax,
                             bool outputAsArray) {
@@ -1438,14 +1490,14 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
 
         if (foundTick >= tickMax) {
           hasMore = false;
-        }
         
-        if (foundTick > tickMax) {
-          // marker too new
-          break;
+          if (foundTick > tickMax) {
+            // marker too new
+            break;
+          }
         }
 
-        if (! MustReplicateWalMarker(dump, marker)) {
+        if (! MustReplicateWalMarker(dump, marker, firstRegularTick, transactionIds)) {
           continue;
         }
 
