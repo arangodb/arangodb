@@ -150,8 +150,12 @@ namespace triagens {
         int insertUnique (struct TRI_doc_mptr_t const*, bool);
 
         int insertMulti (struct TRI_doc_mptr_t const*, bool);
-        
+
+        int removeUniqueElement(TRI_index_element_t*, bool);
+
         int removeUnique (struct TRI_doc_mptr_t const*, bool);
+
+        int removeMultiElement(TRI_index_element_t*, bool);
 
         int removeMulti (struct TRI_doc_mptr_t const*, bool);
 
