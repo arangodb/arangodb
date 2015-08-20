@@ -460,7 +460,7 @@ static void DestroySearchValue (TRI_memory_zone_t* zone,
 /// @brief sets up the example object for a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SetupSearchValue (std::vector<TRI_shape_pid_t> const& paths,
+static int SetupSearchValue (std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const paths,
                              v8::Handle<v8::Object> example,
                              VocShaper* shaper,
                              TRI_index_search_value_t& result,
@@ -481,7 +481,7 @@ static int SetupSearchValue (std::vector<TRI_shape_pid_t> const& paths,
 
   // convert
   for (size_t i = 0;  i < n;  ++i) {
-    TRI_shape_pid_t pid = paths[i];
+    TRI_shape_pid_t pid = paths[i][0].first;
 
     TRI_ASSERT(pid != 0);
     char const* name = shaper->attributeNameShapePid(pid);

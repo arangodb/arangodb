@@ -128,19 +128,20 @@ static int FillLookupOperator (TRI_index_operator_t* slOperator,
 SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
                                 TRI_document_collection_t* collection,
                                 std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
-                                std::vector<TRI_shape_pid_t> const& paths,
                                 bool unique,
                                 bool sparse) 
   : Index(iid, collection, fields),
-    _paths(paths),
+    _paths(fillPidPaths()),
     _skiplistIndex(nullptr),
     _unique(unique),
     _sparse(sparse) {
-  
+
+  TRI_ASSERT(! fields.empty());
+
   TRI_ASSERT(iid != 0);
   
   _skiplistIndex = SkiplistIndex_new(collection,
-                                     paths.size(),
+                                     _paths.size(),
                                      unique);
 }
 

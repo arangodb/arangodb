@@ -247,20 +247,21 @@ static int HashIndex_find (TRI_hash_array_t const* hashArray,
 HashIndex::HashIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection,
                       std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
-                      std::vector<TRI_shape_pid_t> const& paths,
                       bool unique,
                       bool sparse) 
   : Index(iid, collection, fields),
-    _paths(paths),
+    _paths(fillPidPaths()),
     _unique(unique),
     _sparse(sparse) {
+
+  TRI_ASSERT(! fields.empty());
 
   TRI_ASSERT(iid != 0);
 
   if (unique) {
     _hashArray._table = nullptr;
 
-    if (TRI_InitHashArray(&_hashArray, paths.size()) != TRI_ERROR_NO_ERROR) {
+    if (TRI_InitHashArray(&_hashArray, _paths.size()) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
@@ -275,8 +276,8 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
     _multi._isEqualElElByKey = nullptr;
     _multi._hashElement = nullptr;
     try {
-      _multi._hashElement = new HashElementFunc(paths.size());
-      _multi._isEqualElElByKey = new IsEqualElementElementByKey(paths.size());
+      _multi._hashElement = new HashElementFunc(_paths.size());
+      _multi._isEqualElElByKey = new IsEqualElementElementByKey(_paths.size());
       _multi._hashArray = new TRI_HashArrayMulti_t(hashKey, 
                                                  *_multi._hashElement,
                                                  isEqualKeyElement,

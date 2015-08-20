@@ -32,6 +32,31 @@
 
 using AttributeName = triagens::basics::AttributeName;
 
+namespace triagens {
+  namespace basics {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the index description to an output stream
+////////////////////////////////////////////////////////////////////////////////
+     
+    std::ostream& operator<< (std::ostream& stream,
+                              AttributeName const* name) {
+      stream << name->name << " (" << (name->shouldExpand ? "true" : "false") << ")";
+      return stream;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the index description to an output stream
+////////////////////////////////////////////////////////////////////////////////
+
+    std::ostream& operator<< (std::ostream& stream,
+                              AttributeName const& name) {
+      stream << name.name << " (" << (name.shouldExpand ? "true" : "false") << ")";
+      return stream;
+    }
+
+  } // namespace basics
+} // namespace triagens
+
 void triagens::basics::TRI_ParseAttributeString (
     std::string const& input,
     std::vector<AttributeName>& result
@@ -40,12 +65,7 @@ void triagens::basics::TRI_ParseAttributeString (
   size_t length = input.length();
   for (size_t pos = 0; pos < length; ++pos) {
     auto token = input.at(pos);
-    if (token == '.') {
-      result.emplace_back(input.substr(parsedUntil, pos - parsedUntil), false);
-      ++pos; // Drop the .
-      parsedUntil = pos; 
-    }
-    else if (token == '[') {
+    if (token == '[') {
       // We only allow attr[*] and attr[*].attr2 as valid patterns
       if (   length - pos < 3
           || input.at(pos + 1) != '*'
@@ -78,24 +98,6 @@ void triagens::basics::TRI_AttributeNamesToString (
     result += it.name;
     if (! excludeExpansion && it.shouldExpand) {
       result += "[*]";
-    }
-  }
-}
-
-void triagens::basics::TRI_AttributeNamesToPidString (
-    std::vector<AttributeName> const& input,
-    std::string& result
-  ) {
-  TRI_ASSERT(result.size() == 0);
-  bool isFirst = true;
-  for (auto& it : input) {
-    if (! isFirst) {
-      result += ".";
-    }
-    isFirst = false;
-    result += it.name;
-    if (it.shouldExpand) {
-      break;
     }
   }
 }
