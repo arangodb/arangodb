@@ -1,6 +1,27 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* IMPORTANT CHANGE: the filenames in dumps created by arangodump now contain
+  not only the name of the dumped collection, but also an additional 32-digit hash
+  value. This is done to prevent overwriting dump files in case-insensitive file
+  systems when there exist multiple collections with the same name (but with
+  different cases). 
+  
+  For example, if a database has two collections: `test` and `Test`, previous
+  versions of ArangoDB created the files 
+  
+  * `test.structure.json` and `test.data.json` for collection `test`
+  * `Test.structure.json` and `Test.data.json` for collection `Test`
+
+  This did not work for case-insensitive filesystems, because the files for the
+  second collection would have overwritten the files of the first. arangodump in 
+  2.7 will create the following filenames instead:
+
+  * `test_098f6bcd4621d373cade4e832627b4f6.structure.json` and `test_098f6bcd4621d373cade4e832627b4f6.data.json`
+  * `Test_0cbc6611f5540bd0809a388dc95a615b.structure.json` and `Test_0cbc6611f5540bd0809a388dc95a615b.data.json`
+
+  These filenames will be unambiguous even in case-insensitive filesystems.
+
 * IMPORTANT CHANGE: make arangod actually close lingering client connections 
   when idle for at least the duration specified via `--server.keep-alive-timeout`. 
   In previous versions of ArangoDB, connections were not closed by the server 
