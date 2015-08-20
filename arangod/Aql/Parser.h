@@ -286,7 +286,8 @@ namespace triagens {
 /// @brief push an AstNode into the object element on top of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-        void pushObjectElement (char const*,
+        void pushObjectElement (char const*, 
+                                size_t,
                                 AstNode*);
 
 ////////////////////////////////////////////////////////////////////////////////

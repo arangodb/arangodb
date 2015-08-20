@@ -871,7 +871,7 @@ std::pair<std::string, std::string> Expression::getAttributeAccess () {
   }
 
   while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attributeVector.emplace_back(expNode->getStringValue());
+    attributeVector.emplace_back(std::string(expNode->getStringValue(), expNode->getStringLength()));
     expNode = expNode->getMember(0);
   }
   

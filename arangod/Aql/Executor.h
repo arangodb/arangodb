@@ -136,7 +136,8 @@ namespace triagens {
 /// @brief generates code for a string value
 ////////////////////////////////////////////////////////////////////////////////
         
-        void generateCodeString (char const*);
+        void generateCodeString (char const*, 
+                                 size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates code for a string value

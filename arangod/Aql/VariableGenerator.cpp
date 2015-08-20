@@ -87,17 +87,18 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables (
 ////////////////////////////////////////////////////////////////////////////////
 
 Variable* VariableGenerator::createVariable (char const* name,
+                                             size_t length,
                                              bool isUserDefined) {
   TRI_ASSERT(name != nullptr);
 
-  auto variable = new Variable(std::string(name), nextId());
+  auto variable = new Variable(std::string(name, length), nextId());
   
   if (isUserDefined) {
     TRI_ASSERT(variable->isUserDefined());
   }
 
   try {
-    _variables.emplace(std::make_pair(variable->id, variable));
+    _variables.emplace(variable->id, variable);
   }
   catch (...) {
     // prevent memleak
@@ -121,7 +122,7 @@ Variable* VariableGenerator::createVariable (std::string const& name,
   }
 
   try {
-    _variables.emplace(std::make_pair(variable->id, variable));
+    _variables.emplace(variable->id, variable);
   }
   catch (...) {
     // prevent memleak
@@ -137,7 +138,7 @@ Variable* VariableGenerator::createVariable (Variable const* original) {
   auto variable = original->clone();
   
   try {
-    _variables.emplace(std::make_pair(variable->id, variable));
+    _variables.emplace(variable->id, variable);
   }
   catch (...) {
     // prevent memleak
@@ -163,7 +164,7 @@ Variable* VariableGenerator::createVariable (triagens::basics::Json const& json)
   }
   
   try {
-    _variables.emplace(std::make_pair(variable->id, variable));
+    _variables.emplace(variable->id, variable);
   }
   catch (...) {
     // prevent memleak
