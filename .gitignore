@@ -14,6 +14,9 @@ js-*.h
 *.gcno
 *.gcda
 
+*.diff
+*.patch
+
 .libev-build-64
 .v8-build-64
 .idea
@@ -31,6 +34,7 @@ js-*.h
 3rdParty/zlib-1.2.7/
 
 Build*
+WindowsLibraries
 
 Makefile
 Makefile.in
