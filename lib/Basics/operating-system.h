@@ -196,8 +196,6 @@
 #define TRI_ERRORBUF                    {}
 #define TRI_GET_ERRORBUF                strerror(errno)
 
-#define TRI_FILESYSTEM_CASE_BROKEN      1
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sockets
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,7 +352,6 @@
 #define TRI_SYSTEM_ERROR()              {}
 #define TRI_ERRORBUF                    {}
 #define TRI_GET_ERRORBUF                strerror(errno)
-#define TRI_FILESYSTEM_CASE_BROKEN      0
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sockets
@@ -528,7 +525,6 @@
 #define TRI_SYSTEM_ERROR()              {}
 #define TRI_ERRORBUF                    {}
 #define TRI_GET_ERRORBUF                strerror(errno)
-#define TRI_FILESYSTEM_CASE_BROKEN      0
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sockets
@@ -750,7 +746,6 @@ typedef unsigned char bool;
 
 #define TRI_ERRORBUF                    char windowsErrorBuf[256] = "";
 #define TRI_GET_ERRORBUF                windowsErrorBuf
-#define TRI_FILESYSTEM_CASE_BROKEN      1
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return system error string
