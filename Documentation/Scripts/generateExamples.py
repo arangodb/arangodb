@@ -125,6 +125,7 @@ STATE_ARANGOSH_RUN = 'ARANGOSH_OUTPUT'
 OPTION_NORMAL = 0
 OPTION_ARANGOSH_SETUP = 1
 OPTION_OUTPUT_DIR = 2
+OPTION_FILTER = 3
 
 fstate = OPTION_NORMAL
 
@@ -173,7 +174,6 @@ def matchStartLine(line, filename):
             print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
             sys.exit(1)
 
-        ArangoshCases.append(name)    
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
             filterTestList.append(name)
@@ -439,7 +439,7 @@ if (allErrors.length > 0) {
 ### @brief get file names
 ################################################################################
 def loopDirectories():
-    global ArangoshSetup, OutputDir
+    global ArangoshSetup, OutputDir, FilterForTestcase
     argv = sys.argv
     argv.pop(0)
     filenames = []
@@ -448,7 +448,9 @@ def loopDirectories():
         if filename == "--arangosh-setup":
             fstate = OPTION_ARANGOSH_SETUP
             continue
-    
+        if filename == "--only-thisone": 
+            fstate = OPTION_FILTER
+            continue
         if filename == "--output-dir":
             fstate = OPTION_OUTPUT_DIR
             continue
