@@ -44,15 +44,10 @@
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#ifdef TRI_FILESYSTEM_CASE_BROKEN
-#include <openssl/md5.h>
-#else
-#define hexStr ""
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -282,13 +277,11 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
   StringBuffer const& body = result->getBody();
   string details;
 
-  TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
+  std::unique_ptr<TRI_json_t> json(JsonHelper::fromString(body.c_str(), body.length()));
 
   if (json != nullptr) {
-    const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
-    const int errorNum = JsonHelper::getNumericValue<int>(json, "errorNum", 0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    const string& errorMessage = JsonHelper::getStringValue(json.get(), "errorMessage", "");
+    const int errorNum = JsonHelper::getNumericValue<int>(json.get(), "errorNum", 0);
 
     if (errorMessage != "" && errorNum > 0) {
       details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
@@ -329,20 +322,17 @@ static string GetArangoVersion () {
     version = "arango";
 
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                      response->getBody().c_str());
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
     if (json != nullptr) {
       // look up "server" value
-      const string server = JsonHelper::getStringValue(json, "server", "");
+      const string server = JsonHelper::getStringValue(json.get(), "server", "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
         // look up "version" value
-        version = JsonHelper::getStringValue(json, "version", "");
+        version = JsonHelper::getStringValue(json.get(), "version", "");
       }
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
   }
   else {
@@ -382,14 +372,11 @@ static bool GetArangoIsCluster () {
 
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                      response->getBody().c_str());
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
     if (json != nullptr) {
       // look up "server" value
-      role = JsonHelper::getStringValue(json, "role", "UNDEFINED");
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      role = JsonHelper::getStringValue(json.get(), "role", "UNDEFINED");
     }
   }
   else {
@@ -448,7 +435,7 @@ static int StartBatch (string DBserver, string& errorMsg) {
   }
 
   // convert response body to json
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str());
+  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
   delete response;
 
   if (json == nullptr) {
@@ -458,9 +445,7 @@ static int StartBatch (string DBserver, string& errorMsg) {
   }
 
   // look up "id" value
-  const string id = JsonHelper::getStringValue(json, "id", "");
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  const string id = JsonHelper::getStringValue(json.get(), "id", "");
 
   BatchId = StringUtils::uint64(id);
 
@@ -698,34 +683,28 @@ static int RunDump (string& errorMsg) {
   StringBuffer const& data = response->getBody();
 
 
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
+  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
 
   delete response;
 
-  if (! JsonHelper::isObject(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
-
+  if (! JsonHelper::isObject(json.get())) {
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_json_t const* collections = JsonHelper::getObjectElement(json, "collections");
+  TRI_json_t const* collections = JsonHelper::getObjectElement(json.get(), "collections");
 
   if (! JsonHelper::isArray(collections)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
   // read the server's max tick value
-  const string tickString = JsonHelper::getStringValue(json, "tick", "");
+  const string tickString = JsonHelper::getStringValue(json.get(), "tick", "");
 
   if (tickString == "") {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
@@ -744,7 +723,6 @@ static int RunDump (string& errorMsg) {
     TRI_json_t* meta = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
     if (meta == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "out of memory";
 
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -767,7 +745,6 @@ static int RunDump (string& errorMsg) {
 
     if (fd < 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, meta);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "cannot write to file '" + fileName + "'";
 
       return TRI_ERROR_CANNOT_WRITE_FILE;
@@ -779,7 +756,6 @@ static int RunDump (string& errorMsg) {
     if (! TRI_WritePointer(fd, metaString.c_str(), metaString.size())) {
       TRI_CLOSE(fd);
       errorMsg = "cannot write to file '" + fileName + "'";
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
@@ -801,7 +777,6 @@ static int RunDump (string& errorMsg) {
     TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
 
     if (! JsonHelper::isObject(collection)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -810,7 +785,6 @@ static int RunDump (string& errorMsg) {
     TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
     if (! JsonHelper::isObject(parameters)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -821,7 +795,6 @@ static int RunDump (string& errorMsg) {
     const bool deleted = JsonHelper::getBooleanValue(parameters, "deleted", false);
 
     if (cid == "" || name == "") {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -841,20 +814,7 @@ static int RunDump (string& errorMsg) {
       continue;
     }
 
-#ifdef TRI_FILESYSTEM_CASE_BROKEN
-    size_t   dstLen;
-    char     *hexStr = NULL;
-    char     rawdigest[16];
-    MD5_CTX  md5context;
-    MD5_Init(&md5context);
-      
-    MD5_Update(&md5context,
-               (const unsigned char*)name.c_str(), name.length());
-      
-    MD5_Final((u_char*)rawdigest, &md5context);
-    hexStr = TRI_EncodeHexString(rawdigest, 16, &dstLen);
-#endif
-      
+    std::string const hexString(triagens::rest::SslInterface::sslMD5(name));
 
     // found a collection!
     if (Progress) {
@@ -866,7 +826,7 @@ static int RunDump (string& errorMsg) {
 
     {
       // save meta data
-      string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".structure.json";
+      string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" + hexString + ".structure.json";
 
       int fd;
 
@@ -879,7 +839,6 @@ static int RunDump (string& errorMsg) {
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -889,7 +848,6 @@ static int RunDump (string& errorMsg) {
       if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
         TRI_CLOSE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -901,7 +859,7 @@ static int RunDump (string& errorMsg) {
     if (DumpData) {
       // save the actual data
       string fileName;
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".data.json";
+      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" + hexString + ".data.json";
 
       int fd;
 
@@ -914,7 +872,6 @@ static int RunDump (string& errorMsg) {
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -928,18 +885,11 @@ static int RunDump (string& errorMsg) {
         if (errorMsg.empty()) {
           errorMsg = "cannot write to file '" + fileName + "'";
         }
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return res;
       }
     }
-#ifdef TRI_FILESYSTEM_CASE_BROKEN
-    TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
-#endif
   }
-
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1099,24 +1049,19 @@ static int RunClusterDump (string& errorMsg) {
   StringBuffer const& data = response->getBody();
 
 
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
+  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
 
   delete response;
 
-  if (! JsonHelper::isObject(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
-
+  if (! JsonHelper::isObject(json.get())) {
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_json_t const* collections = JsonHelper::getObjectElement(json, "collections");
+  TRI_json_t const* collections = JsonHelper::getObjectElement(json.get(), "collections");
 
   if (! JsonHelper::isArray(collections)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
@@ -1135,7 +1080,6 @@ static int RunClusterDump (string& errorMsg) {
     TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
 
     if (! JsonHelper::isObject(collection)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -1144,7 +1088,6 @@ static int RunClusterDump (string& errorMsg) {
     TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
     if (! JsonHelper::isObject(parameters)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -1155,7 +1098,6 @@ static int RunClusterDump (string& errorMsg) {
     const bool deleted = JsonHelper::getBooleanValue(parameters, "deleted", false);
 
     if (id == "" || name == "") {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -1199,7 +1141,6 @@ static int RunClusterDump (string& errorMsg) {
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -1209,7 +1150,6 @@ static int RunClusterDump (string& errorMsg) {
       if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
         TRI_CLOSE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -1228,38 +1168,18 @@ static int RunClusterDump (string& errorMsg) {
       // This is now a map from shardIDs to DBservers
 
       // Now set up the output file:
-      string fileName;
-#ifdef TRI_FILESYSTEM_CASE_BROKEN
-      size_t   dstLen;
-      char     *hexStr = NULL;
-      char     rawdigest[16];
-      MD5_CTX  md5context;
-      MD5_Init(&md5context);
-      
-      MD5_Update(&md5context,
-                 (const unsigned char*)name.c_str(), name.length());
-      
-      MD5_Final((u_char*)rawdigest, &md5context);
-      hexStr = TRI_EncodeHexString(rawdigest, 16, &dstLen);
-#endif
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + hexStr + ".data.json";
-
-#ifdef TRI_FILESYSTEM_CASE_BROKEN
-      TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
-#endif
-
-      int fd;
+      std::string const hexString(triagens::rest::SslInterface::sslMD5(name));
+      string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" + hexString + ".data.json";
 
       // remove an existing file first
       if (TRI_ExistsFile(fileName.c_str())) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+      int fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -1274,13 +1194,11 @@ static int RunClusterDump (string& errorMsg) {
         }
         res = StartBatch(DBserver, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           TRI_CLOSE(fd);
           return res;
         }
         res = DumpShard(fd, DBserver, shardName, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           TRI_CLOSE(fd);
           return res;
         }
@@ -1289,19 +1207,15 @@ static int RunClusterDump (string& errorMsg) {
 
       res = TRI_CLOSE(fd);
 
-      if (res != 0) {
+      if (res != TRI_ERROR_NO_ERROR) {
         if (errorMsg.empty()) {
           errorMsg = "cannot write to file '" + fileName + "'";
         }
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return res;
       }
     }
   }
-
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return TRI_ERROR_NO_ERROR;
 }

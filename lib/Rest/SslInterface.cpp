@@ -57,8 +57,23 @@ namespace triagens {
       // public methods
 // -----------------------------------------------------------------------------
 
+      std::string sslMD5 (std::string const& inputStr) {
+        char hash[17];
+        char* p = &hash[0];
+        size_t length;
+
+        sslMD5(inputStr.c_str(), inputStr.size(), p, length);
+  
+        char hex[33];
+        p = &hex[0];
+
+        SslInterface::sslHEX(hash, 16, p, length);
+
+        return std::string(hex, 32);
+      }
+
       void sslMD5 (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
-        if (outputStr == 0) {
+        if (outputStr == nullptr) {
           outputStr = new char[MD5_DIGEST_LENGTH];
           outputLen = MD5_DIGEST_LENGTH;
         }
@@ -75,7 +90,7 @@ namespace triagens {
 
 
       void sslMD5 (char const* input1, size_t length1, char const* input2, size_t length2, char*& outputStr, size_t& outputLen) {
-        if (outputStr == 0) {
+        if (outputStr == nullptr) {
           outputStr = new char[MD5_DIGEST_LENGTH];
           outputLen = MD5_DIGEST_LENGTH;
         }
@@ -91,7 +106,7 @@ namespace triagens {
 
 
       void sslSHA1 (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
-        if (outputStr == 0) {
+        if (outputStr == nullptr) {
           outputStr = new char[SHA_DIGEST_LENGTH];
           outputLen = SHA_DIGEST_LENGTH;
         }
@@ -108,7 +123,7 @@ namespace triagens {
 
 
       void sslSHA224 (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
-        if (outputStr == 0) {
+        if (outputStr == nullptr) {
           outputStr = new char[SHA224_DIGEST_LENGTH];
           outputLen = SHA224_DIGEST_LENGTH;
         }
@@ -125,7 +140,7 @@ namespace triagens {
 
 
       void sslSHA256 (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
-        if (outputStr == 0) {
+        if (outputStr == nullptr) {
           outputStr = new char[SHA256_DIGEST_LENGTH];
           outputLen = SHA256_DIGEST_LENGTH;
         }
@@ -141,7 +156,7 @@ namespace triagens {
 
 
       void sslSHA384 (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
-        if (outputStr == 0) {
+        if (outputStr == nullptr) {
           outputStr = new char[SHA384_DIGEST_LENGTH];
           outputLen = SHA384_DIGEST_LENGTH;
         }
@@ -158,7 +173,7 @@ namespace triagens {
 
 
       void sslSHA512 (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
-        if (outputStr == 0) {
+        if (outputStr == nullptr) {
           outputStr = new char[SHA512_DIGEST_LENGTH];
           outputLen = SHA512_DIGEST_LENGTH;
         }
@@ -177,7 +192,7 @@ namespace triagens {
       void sslHEX (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
         static char const hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
-        if (outputStr == 0) {
+        if (outputStr == nullptr) {
           outputStr = new char[length * 2 + 1];
           outputLen = length * 2;
         }
