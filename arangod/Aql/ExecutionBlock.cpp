@@ -2199,7 +2199,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
 
 
   for (size_t i = 0; i < n; ++i) {
-    TRI_shape_pid_t pid = paths[i];
+    TRI_shape_pid_t pid = paths[i][0].first;
     TRI_ASSERT(pid != 0);
    
     char const* name = shaper->attributeNameShapePid(pid);

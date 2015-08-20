@@ -3784,8 +3784,7 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
       std::vector<triagens::basics::AttributeName> attrNameList;
       TRI_ParseAttributeString(name, attrNameList);
       TRI_ASSERT(attrNameList.size() > 0);
-      std::string pidPath;
-      TRI_AttributeNamesToPidString(attrNameList, pidPath);
+      std::string pidPath = attrNameList.front().name;
 
       TRI_shape_pid_t pid;
 
@@ -3824,8 +3823,7 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
       std::vector<triagens::basics::AttributeName> attrNameList;
       TRI_ParseAttributeString(name, attrNameList);
       TRI_ASSERT(attrNameList.size() > 0);
-      std::string pidPath;
-      TRI_AttributeNamesToPidString(attrNameList, pidPath);
+      std::string pidPath = attrNameList.front().name;
 
       TRI_shape_pid_t pid;
     
@@ -4433,7 +4431,7 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
 
   // create the hash index. we'll provide it with the current number of documents
   // in the collection so the index can do a sensible memory preallocation
-  std::unique_ptr<triagens::arango::HashIndex> hashIndex(new triagens::arango::HashIndex(iid, document, fields, paths, unique, sparse));
+  std::unique_ptr<triagens::arango::HashIndex> hashIndex(new triagens::arango::HashIndex(iid, document, fields, unique, sparse));
   idx = static_cast<triagens::arango::Index*>(hashIndex.get());
 
   // initialises the index with all existing documents
@@ -4597,7 +4595,7 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
   }
 
   // Create the skiplist index
-  std::unique_ptr<triagens::arango::SkiplistIndex2> skiplistIndex(new triagens::arango::SkiplistIndex2(iid, document, fields, paths, unique, sparse));
+  std::unique_ptr<triagens::arango::SkiplistIndex2> skiplistIndex(new triagens::arango::SkiplistIndex2(iid, document, fields, unique, sparse));
   idx = static_cast<triagens::arango::Index*>(skiplistIndex.get());
 
   // initialises the index with all existing documents

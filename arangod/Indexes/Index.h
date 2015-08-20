@@ -292,17 +292,24 @@ namespace triagens {
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
-      public:
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to transform AttributeNames into pid lists
+/// This will create PIDs for all indexed Attributes
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const fillPidPaths ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to insert a document into any index type
 ////////////////////////////////////////////////////////////////////////////////
 
-        int fillElement(std::function<TRI_index_element_t* ()> allocate,
-                        std::vector<TRI_index_element_t*>& elements,
-                        TRI_doc_mptr_t const* document,
-                        std::vector<TRI_shape_pid_t> const& paths,
-                        bool const sparse);
+        int fillElement (std::function<TRI_index_element_t* ()> allocate,
+                         std::vector<TRI_index_element_t*>& elements,
+                         TRI_doc_mptr_t const* document,
+                         std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths,
+                         bool const sparse);
     };
 
   }
