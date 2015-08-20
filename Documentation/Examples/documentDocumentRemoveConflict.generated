@@ -1,18 +1,18 @@
-arangosh> a1 = db.example.insert({ a : 1 });
+arangosh&gt; a1 = db.example.insert({ a : <span class="hljs-number">1</span> });
 { 
-  "_id" : "example/477877627", 
-  "_rev" : "477877627", 
-  "_key" : "477877627" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1154639539"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1154639539"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1154639539"</span> 
 }
-arangosh> a2 = db.example.replace(a1, { a : 2 });
+arangosh&gt; a2 = db.example.replace(a1, { a : <span class="hljs-number">2</span> });
 { 
-  "_id" : "example/477877627", 
-  "_rev" : "478074235", 
-  "_key" : "477877627" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1154639539"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1154836147"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1154639539"</span> 
 }
-arangosh> db.example.remove(a1);
-[ArangoError 1200: precondition failed]
-arangosh> db.example.remove(a1, true);
-true
-arangosh> db.example.document(a1);
-[ArangoError 1202: document not found]
+arangosh&gt; db.example.remove(a1);
+[ArangoError <span class="hljs-number">1200</span>: precondition failed]
+arangosh&gt; db.example.remove(a1, <span class="hljs-literal">true</span>);
+<span class="hljs-literal">true</span>
+arangosh&gt; db.example.document(a1);
+[ArangoError <span class="hljs-number">1202</span>: <span class="hljs-built_in">document</span> not found]

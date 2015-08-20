@@ -1,19 +1,19 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=documents&details=true <<EOF
-{ "_key": "abc", "value1": 25, "value2": "test" }
-{ "_key": "abc", "value1": "bar", "value2": "baz" }
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/import?collection=products&amp;type=documents&amp;details=true &lt;&lt;EOF</span>
+{ <span class="hljs-string">"_key"</span>: <span class="hljs-string">"abc"</span>, <span class="hljs-string">"value1"</span>: <span class="hljs-number">25</span>, <span class="hljs-string">"value2"</span>: <span class="hljs-string">"test"</span> }
+{ <span class="hljs-string">"_key"</span>: <span class="hljs-string">"abc"</span>, <span class="hljs-string">"value1"</span>: <span class="hljs-string">"bar"</span>, <span class="hljs-string">"value2"</span>: <span class="hljs-string">"baz"</span> }
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : false, 
-  "created" : 1, 
-  "errors" : 1, 
-  "empty" : 0, 
-  "updated" : 0, 
-  "ignored" : 0, 
-  "details" : [ 
-    "at position 2: creating document failed with error 'unique constraint violated', offending document: {\"_key\":\"abc\",\"value1\":\"bar\",\"value2\":\"baz\"}" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"errors"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"empty"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"updated"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"ignored"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"details"</span> : [ 
+    <span class="hljs-string">"at position 2: creating document failed with error 'unique constraint violated', offending document: {\"_key\":\"abc\",\"value1\":\"bar\",\"value2\":\"baz\"}"</span> 
   ] 
 }

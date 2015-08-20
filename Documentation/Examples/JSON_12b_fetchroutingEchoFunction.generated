@@ -1,0 +1,5 @@
+arangosh&gt; arango.GET(<span class="hljs-string">"hello/echo"</span>)
+Hello
+arangosh&gt; db._query(<span class="hljs-string">"FOR route IN _routing FILTER route.url == '/hello/echo' REMOVE route in _routing"</span>)
+[object ArangoQueryCursor, count: <span class="hljs-number">0</span>, hasMore: <span class="hljs-literal">false</span>]
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

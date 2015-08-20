@@ -1,21 +1,21 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex <<EOF
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph/graph/vertex &lt;&lt;EOF</span>
 { 
-  "_key" : "v1", 
-  "optional1" : "val1" 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v1"</span>, 
+  <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 1341576571
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+etag: <span class="hljs-number">769287859</span>
 
 { 
-  "vertex" : { 
-    "_id" : "vertices/v1", 
-    "_key" : "v1", 
-    "_rev" : "1341576571", 
-    "optional1" : "val1" 
+  <span class="hljs-string">"vertex"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v1"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v1"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"769287859"</span>, 
+    <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
   }, 
-  "error" : false, 
-  "code" : 202 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

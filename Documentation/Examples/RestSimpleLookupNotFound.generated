@@ -1,12 +1,12 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/lookup-by-keys <<EOF
-{"keys":["foo","bar","baz"],"collection":"test"}
+shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/simple/lookup-by-keys &lt;&lt;EOF</span>
+{<span class="hljs-string">"keys"</span>:[<span class="hljs-string">"foo"</span>,<span class="hljs-string">"bar"</span>,<span class="hljs-string">"baz"</span>],<span class="hljs-string">"collection"</span>:<span class="hljs-string">"test"</span>}
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "documents" : [ ], 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"documents"</span> : [ ], 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

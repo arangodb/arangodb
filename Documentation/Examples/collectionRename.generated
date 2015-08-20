@@ -1,5 +1,5 @@
-arangosh> c = db.example;
-[ArangoCollection 469489019, "example" (type document, status loaded)]
-arangosh> c.rename("better-example");
-arangosh> c;
-[ArangoCollection 469489019, "better-example" (type document, status loaded)]
+arangosh&gt; c = db.example;
+[ArangoCollection <span class="hljs-number">1146250931</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+arangosh&gt; c.rename(<span class="hljs-string">"better-example"</span>);
+arangosh&gt; c;
+[ArangoCollection <span class="hljs-number">1146250931</span>, <span class="hljs-string">"better-example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]

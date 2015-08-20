@@ -1,54 +1,54 @@
-arangosh> db.example.ensureSkiplist("a", "b");
+arangosh&gt; db.example.ensureSkiplist(<span class="hljs-string">"a"</span>, <span class="hljs-string">"b"</span>);
 { 
-  "id" : "example/19614214", 
-  "type" : "skiplist", 
-  "fields" : [ 
-    "a", 
-    "b" 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/1123641011"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+  <span class="hljs-string">"fields"</span> : [ 
+    <span class="hljs-string">"a"</span>, 
+    <span class="hljs-string">"b"</span> 
   ], 
-  "unique" : false, 
-  "sparse" : false, 
-  "isNewlyCreated" : true, 
-  "code" : 201 
+  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
-arangosh> var indexInfo = db.example.getIndexes();
-arangosh> indexInfo;
+arangosh&gt; <span class="hljs-keyword">var</span> indexInfo = db.example.getIndexes();
+arangosh&gt; indexInfo;
 [ 
   { 
-    "id" : "example/0", 
-    "type" : "primary", 
-    "fields" : [ 
-      "_key" 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/0"</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
+    <span class="hljs-string">"fields"</span> : [ 
+      <span class="hljs-string">"_key"</span> 
     ], 
-    "selectivityEstimate" : 1, 
-    "unique" : true, 
-    "sparse" : false 
+    <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
   }, 
   { 
-    "id" : "example/19614214", 
-    "type" : "skiplist", 
-    "fields" : [ 
-      "a", 
-      "b" 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/1123641011"</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+    <span class="hljs-string">"fields"</span> : [ 
+      <span class="hljs-string">"a"</span>, 
+      <span class="hljs-string">"b"</span> 
     ], 
-    "unique" : false, 
-    "sparse" : false 
+    <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
   } 
 ]
-arangosh> db.example.dropIndex(indexInfo[0])
-false
-arangosh> db.example.dropIndex(indexInfo[1].id)
-true
-arangosh> indexInfo = db.example.getIndexes();
+arangosh&gt; db.example.dropIndex(indexInfo[<span class="hljs-number">0</span>])
+<span class="hljs-literal">false</span>
+arangosh&gt; db.example.dropIndex(indexInfo[<span class="hljs-number">1</span>].id)
+<span class="hljs-literal">true</span>
+arangosh&gt; indexInfo = db.example.getIndexes();
 [ 
   { 
-    "id" : "example/0", 
-    "type" : "primary", 
-    "fields" : [ 
-      "_key" 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/0"</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
+    <span class="hljs-string">"fields"</span> : [ 
+      <span class="hljs-string">"_key"</span> 
     ], 
-    "selectivityEstimate" : 1, 
-    "unique" : true, 
-    "sparse" : false 
+    <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
   } 
 ]

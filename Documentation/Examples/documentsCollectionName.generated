@@ -1,6 +1,6 @@
-arangosh> db.example.document("example/2873916");
+arangosh&gt; db.example.document(<span class="hljs-string">"example/2873916"</span>);
 { 
-  "_id" : "example/2873916", 
-  "_rev" : "483775867", 
-  "_key" : "2873916" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/2873916"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1160537779"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2873916"</span> 
 }

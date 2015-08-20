@@ -1,16 +1,16 @@
-shell> curl --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph/graph/vertex/v1</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
-etag: 1343411579
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+etag: <span class="hljs-number">792225459</span>
 
 { 
-  "vertex" : { 
-    "_id" : "vertices/v1", 
-    "_key" : "v1", 
-    "_rev" : "1343411579", 
-    "optional1" : "val1" 
+  <span class="hljs-string">"vertex"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v1"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v1"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"792225459"</span>, 
+    <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
   }, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

@@ -1,4 +1,4 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("routeplanner");
-arangosh> graph._radius({direction : 'outbound', weight : 'distance'});
-550
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; graph._radius({direction : <span class="hljs-string">'outbound'</span>, weight : <span class="hljs-string">'distance'</span>});
+<span class="hljs-number">550</span>

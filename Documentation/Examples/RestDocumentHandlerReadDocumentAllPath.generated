@@ -1,12 +1,12 @@
-shell> curl --dump - http://localhost:8529/_api/document/?collection=products
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/?collection=products</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "documents" : [ 
-    "/_db/_system/_api/document/products/1660147067", 
-    "/_db/_system/_api/document/products/1660474747", 
-    "/_db/_system/_api/document/products/1659819387" 
+  <span class="hljs-string">"documents"</span> : [ 
+    <span class="hljs-string">"/_db/_system/_api/document/products/720922291"</span>, 
+    <span class="hljs-string">"/_db/_system/_api/document/products/720594611"</span>, 
+    <span class="hljs-string">"/_db/_system/_api/document/products/720266931"</span> 
   ] 
 }

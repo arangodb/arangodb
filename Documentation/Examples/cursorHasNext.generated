@@ -1,32 +1,32 @@
-arangosh> var a = db.five.all();
-arangosh> while (a.hasNext()) print(a.next());
+arangosh&gt; <span class="hljs-keyword">var</span> a = db.five.all();
+arangosh&gt; <span class="hljs-keyword">while</span> (a.hasNext()) print(a.next());
 { 
-  "_id" : "five/474142075", 
-  "_key" : "474142075", 
-  "_rev" : "474142075", 
-  "name" : "one" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/1150903987"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1150903987"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1150903987"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"one"</span> 
 }
 { 
-  "_id" : "five/474535291", 
-  "_key" : "474535291", 
-  "_rev" : "474535291", 
-  "name" : "three" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/1151493811"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1151493811"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1151493811"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"four"</span> 
 }
 { 
-  "_id" : "five/474928507", 
-  "_key" : "474928507", 
-  "_rev" : "474928507", 
-  "name" : "five" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/1151100595"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1151100595"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1151100595"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"two"</span> 
 }
 { 
-  "_id" : "five/474338683", 
-  "_key" : "474338683", 
-  "_rev" : "474338683", 
-  "name" : "two" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/1151690419"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1151690419"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1151690419"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"five"</span> 
 }
 { 
-  "_id" : "five/474731899", 
-  "_key" : "474731899", 
-  "_rev" : "474731899", 
-  "name" : "four" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/1151297203"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1151297203"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1151297203"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"three"</span> 
 }

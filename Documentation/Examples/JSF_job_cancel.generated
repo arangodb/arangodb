@@ -1,32 +1,34 @@
-shell> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
+shell&gt; curl -X POST --header <span class="hljs-string">'x-arango-async: store'</span> --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/cursor &lt;&lt;EOF</span>
 { 
-  "query" : "FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) FILTER i == 5 && j == 5 RETURN 42" 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) FILTER i == 5 &amp;&amp; j == 5 RETURN 42"</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
-content-type: text/plain; charset=utf-8
-x-arango-async-id: 751235082664
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+content-type: text/plain; charset=utf-<span class="hljs-number">8</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">603547315</span>
 
-shell> curl --dump - http://localhost:8529/_api/job/pending
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/pending</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 [ 
-  "751235082664" 
+  <span class="hljs-string">"603547315"</span> 
 ]
-shell> curl -X PUT --dump - http://localhost:8529/_api/job/751235082664/cancel
+shell&gt; curl -X PUT --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/603547315/cancel</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : true 
+  <span class="hljs-string">"result"</span> : <span class="hljs-literal">true</span> 
 }
-shell> curl --dump - http://localhost:8529/_api/job/pending
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/pending</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
-[ ]
+[ 
+  <span class="hljs-string">"603547315"</span> 
+]

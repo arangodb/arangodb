@@ -1,29 +1,29 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> graph._vertices().toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; graph._vertices().toArray();
 [ 
   { 
-    "_id" : "female/diana", 
-    "_key" : "diana", 
-    "_rev" : "1232131451", 
-    "name" : "Diana" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1907189427"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
   }, 
   { 
-    "_id" : "female/alice", 
-    "_key" : "alice", 
-    "_rev" : "1231410555", 
-    "name" : "Alice" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1906468531"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   }, 
   { 
-    "_id" : "male/bob", 
-    "_key" : "bob", 
-    "_rev" : "1231738235", 
-    "name" : "Bob" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1906796211"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   }, 
   { 
-    "_id" : "male/charly", 
-    "_key" : "charly", 
-    "_rev" : "1231934843", 
-    "name" : "Charly" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1906992819"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
   } 
 ]

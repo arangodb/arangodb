@@ -1,11 +1,11 @@
-shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/1671812475
+shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/709977779</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : false, 
-  "_id" : "products/1671812475", 
-  "_rev" : "1671812475", 
-  "_key" : "1671812475" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/709977779"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"709977779"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"709977779"</span> 
 }

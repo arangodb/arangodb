@@ -1,15 +1,15 @@
-arangosh> c = db._create("users", { waitForSync : true, journalSize : 1024 * 1204 });
-[ArangoCollection 456054139, "users" (type document, status loaded)]
-arangosh> c.properties();
+arangosh&gt; c = db._create(<span class="hljs-string">"users"</span>, { waitForSync : <span class="hljs-literal">true</span>, journalSize : <span class="hljs-number">1024</span> * <span class="hljs-number">1204</span> });
+[ArangoCollection <span class="hljs-number">1125738163</span>, <span class="hljs-string">"users"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+arangosh&gt; c.properties();
 { 
-  "doCompact" : true, 
-  "journalSize" : 1232896, 
-  "isSystem" : false, 
-  "isVolatile" : false, 
-  "waitForSync" : true, 
-  "keyOptions" : { 
-    "type" : "traditional", 
-    "allowUserKeys" : true 
+  <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">1232896</span>, 
+  <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"keyOptions"</span> : { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
+    <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span> 
   }, 
-  "indexBuckets" : 1 
+  <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">1</span> 
 }

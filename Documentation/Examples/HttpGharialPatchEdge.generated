@@ -1,20 +1,20 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/aliceAndBob <<EOF
+shell&gt; curl -X PATCH --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial/social/edge/relation/aliceAndBob &lt;&lt;EOF</span>
 { 
-  "since" : "01.01.2001" 
+  <span class="hljs-string">"since"</span> : <span class="hljs-string">"01.01.2001"</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json
-etag: 1641207163
+etag: <span class="hljs-number">580413107</span>
 
 { 
-  "error" : false, 
-  "code" : 202, 
-  "edge" : { 
-    "_id" : "relation/aliceAndBob", 
-    "_rev" : "1641207163", 
-    "_oldRev" : "1640093051", 
-    "_key" : "aliceAndBob" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
+  <span class="hljs-string">"edge"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"580413107"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"579298995"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span> 
   } 
 }

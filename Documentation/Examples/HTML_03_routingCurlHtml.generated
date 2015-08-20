@@ -1,0 +1,6 @@
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/hello/world</span>
+
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: text/html
+
+<span class="hljs-string">"&lt;html&gt;&lt;body&gt;Hello World&lt;/body&gt;&lt;/html&gt;"</span>

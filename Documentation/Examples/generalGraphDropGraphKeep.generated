@@ -1,9 +1,9 @@
-arangosh> var graph_module = require("org/arangodb/general-graph");
-arangosh> graph_module._drop("social");
-true
-arangosh> db._collection("female");
-[ArangoCollection 653645179, "female" (type document, status loaded)]
-arangosh> db._collection("male");
-[ArangoCollection 653776251, "male" (type document, status loaded)]
-arangosh> db._collection("relation");
-[ArangoCollection 653907323, "relation" (type edge, status loaded)]
+arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/general-graph"</span>);
+arangosh&gt; graph_module._drop(<span class="hljs-string">"social"</span>);
+<span class="hljs-literal">true</span>
+arangosh&gt; db._collection(<span class="hljs-string">"female"</span>);
+[ArangoCollection <span class="hljs-number">1332307635</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+arangosh&gt; db._collection(<span class="hljs-string">"male"</span>);
+[ArangoCollection <span class="hljs-number">1332438707</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+arangosh&gt; db._collection(<span class="hljs-string">"relation"</span>);
+[ArangoCollection <span class="hljs-number">1332569779</span>, <span class="hljs-string">"relation"</span> (type edge, status loaded)]

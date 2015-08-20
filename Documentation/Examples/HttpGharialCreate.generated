@@ -1,42 +1,42 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial <<EOF
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial &lt;&lt;EOF</span>
 { 
-  "name" : "myGraph", 
-  "edgeDefinitions" : [ 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span>, 
+  <span class="hljs-string">"edgeDefinitions"</span> : [ 
     { 
-      "collection" : "edges", 
-      "from" : [ 
-        "startVertices" 
+      <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges"</span>, 
+      <span class="hljs-string">"from"</span> : [ 
+        <span class="hljs-string">"startVertices"</span> 
       ], 
-      "to" : [ 
-        "endVertices" 
+      <span class="hljs-string">"to"</span> : [ 
+        <span class="hljs-string">"endVertices"</span> 
       ] 
     } 
   ] 
 }
 EOF
 
-HTTP/1.1 201 Created
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
 content-type: application/json
-etag: 1566102907
+etag: <span class="hljs-number">530409139</span>
 
 { 
-  "error" : false, 
-  "code" : 201, 
-  "graph" : { 
-    "name" : "myGraph", 
-    "edgeDefinitions" : [ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span>, 
+  <span class="hljs-string">"graph"</span> : { 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span>, 
+    <span class="hljs-string">"edgeDefinitions"</span> : [ 
       { 
-        "collection" : "edges", 
-        "from" : [ 
-          "startVertices" 
+        <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges"</span>, 
+        <span class="hljs-string">"from"</span> : [ 
+          <span class="hljs-string">"startVertices"</span> 
         ], 
-        "to" : [ 
-          "endVertices" 
+        <span class="hljs-string">"to"</span> : [ 
+          <span class="hljs-string">"endVertices"</span> 
         ] 
       } 
     ], 
-    "orphanCollections" : [ ], 
-    "_id" : "_graphs/myGraph", 
-    "_rev" : "1566102907" 
+    <span class="hljs-string">"orphanCollections"</span> : [ ], 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"530409139"</span> 
   } 
 }

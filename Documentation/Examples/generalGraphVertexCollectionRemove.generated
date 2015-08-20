@@ -1,14 +1,14 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> graph.male.save({name: "Kermit", _key: "kermit"});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; graph.male.save({name: <span class="hljs-string">"Kermit"</span>, _key: <span class="hljs-string">"kermit"</span>});
 { 
-  "_id" : "male/kermit", 
-  "_rev" : "1200280955", 
-  "_key" : "kermit" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/kermit"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1875338931"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"kermit"</span> 
 }
-arangosh> db._exists("male/kermit")
-true
-arangosh> graph.male.remove("male/kermit")
-true
-arangosh> db._exists("male/kermit")
-false
+arangosh&gt; db._exists(<span class="hljs-string">"male/kermit"</span>)
+<span class="hljs-literal">true</span>
+arangosh&gt; graph.male.remove(<span class="hljs-string">"male/kermit"</span>)
+<span class="hljs-literal">true</span>
+arangosh&gt; db._exists(<span class="hljs-string">"male/kermit"</span>)
+<span class="hljs-literal">false</span>

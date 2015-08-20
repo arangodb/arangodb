@@ -1,0 +1,18 @@
+arangosh&gt; db.example.save({ Hello : <span class="hljs-string">"World"</span> });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/467494579"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"467494579"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"467494579"</span> 
+}
+arangosh&gt; db.example.save({ <span class="hljs-string">"name"</span> : <span class="hljs-string">"John Doe"</span>, <span class="hljs-string">"age"</span> : <span class="hljs-number">29</span> });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/467887795"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"467887795"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"467887795"</span> 
+}
+arangosh&gt; db.example.save({ <span class="hljs-string">"name"</span> : <span class="hljs-string">"Jane Smith"</span>, <span class="hljs-string">"age"</span> : <span class="hljs-number">31</span> });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/468084403"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"468084403"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"468084403"</span> 
+}

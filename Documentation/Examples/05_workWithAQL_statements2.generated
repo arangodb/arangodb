@@ -1,0 +1,6 @@
+arangosh&gt; c = stmt.execute();
+[ 
+  <span class="hljs-number">2</span>, 
+  <span class="hljs-number">4</span> 
+]
+[object ArangoQueryCursor, count: <span class="hljs-number">2</span>, hasMore: <span class="hljs-literal">false</span>]

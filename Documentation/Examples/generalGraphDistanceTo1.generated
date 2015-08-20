@@ -1,40 +1,40 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
-........> +"'routeplanner', {}, {}, { " +
-........> " weight : 'distance', endVertexCollectionRestriction : 'germanCity', " +
-........> "startVertexCollectionRestriction : 'frenchCity'}) RETURN [e.startVertex, e.vertex, " +
-........> "e.distance]"
-........> ).toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_DISTANCE_TO("</span>
+........&gt; +<span class="hljs-string">"'routeplanner', {}, {}, { "</span> +
+........&gt; <span class="hljs-string">" weight : 'distance', endVertexCollectionRestriction : 'germanCity', "</span> +
+........&gt; <span class="hljs-string">"startVertexCollectionRestriction : 'frenchCity'}) RETURN [e.startVertex, e.vertex, "</span> +
+........&gt; <span class="hljs-string">"e.distance]"</span>
+........&gt; ).toArray();
 [ 
   [ 
-    "frenchCity/Paris", 
-    "germanCity/Berlin", 
-    1 
+    <span class="hljs-string">"frenchCity/Paris"</span>, 
+    <span class="hljs-string">"germanCity/Berlin"</span>, 
+    <span class="hljs-number">1</span> 
   ], 
   [ 
-    "frenchCity/Paris", 
-    "germanCity/Hamburg", 
-    1 
+    <span class="hljs-string">"frenchCity/Paris"</span>, 
+    <span class="hljs-string">"germanCity/Hamburg"</span>, 
+    <span class="hljs-number">1</span> 
   ], 
   [ 
-    "frenchCity/Paris", 
-    "germanCity/Cologne", 
-    1 
+    <span class="hljs-string">"frenchCity/Paris"</span>, 
+    <span class="hljs-string">"germanCity/Cologne"</span>, 
+    <span class="hljs-number">1</span> 
   ], 
   [ 
-    "frenchCity/Lyon", 
-    "germanCity/Berlin", 
-    1 
+    <span class="hljs-string">"frenchCity/Lyon"</span>, 
+    <span class="hljs-string">"germanCity/Berlin"</span>, 
+    <span class="hljs-number">1</span> 
   ], 
   [ 
-    "frenchCity/Lyon", 
-    "germanCity/Hamburg", 
-    1 
+    <span class="hljs-string">"frenchCity/Lyon"</span>, 
+    <span class="hljs-string">"germanCity/Hamburg"</span>, 
+    <span class="hljs-number">1</span> 
   ], 
   [ 
-    "frenchCity/Lyon", 
-    "germanCity/Cologne", 
-    1 
+    <span class="hljs-string">"frenchCity/Lyon"</span>, 
+    <span class="hljs-string">"germanCity/Cologne"</span>, 
+    <span class="hljs-number">1</span> 
   ] 
 ]

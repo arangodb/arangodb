@@ -1,28 +1,28 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction <<EOF
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/transaction &lt;&lt;EOF</span>
 { 
-  "collections" : { 
-    "write" : "products" 
+  <span class="hljs-string">"collections"</span> : { 
+    <span class="hljs-string">"write"</span> : <span class="hljs-string">"products"</span> 
   }, 
-  "action" : "function () {var db = require('internal').db;db.products.save({ _key: 'abc'});db.products.save({ _key: 'abc'});}" 
+  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () {var db = require('internal').db;db.products.save({ _key: 'abc'});db.products.save({ _key: 'abc'});}"</span> 
 }
 EOF
 
-HTTP/1.1 400 Bad Request
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "exception" : "[ArangoError 1210: unique constraint violated]", 
-  "stacktrace" : [ 
-    "[ArangoError 1210: unique constraint violated]", 
-    "  at Error (native)", 
-    "  at eval (<anonymous>:1:99)", 
-    "  at eval (<anonymous>:1:122)", 
-    "  at post_api_transaction (js/actions/api-transaction.js:268:16)", 
-    "  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)" 
+  <span class="hljs-string">"exception"</span> : <span class="hljs-string">"[ArangoError 1210: unique constraint violated]"</span>, 
+  <span class="hljs-string">"stacktrace"</span> : [ 
+    <span class="hljs-string">"[ArangoError 1210: unique constraint violated]"</span>, 
+    <span class="hljs-string">"  at Error (native)"</span>, 
+    <span class="hljs-string">"  at eval (&lt;anonymous&gt;:1:99)"</span>, 
+    <span class="hljs-string">"  at eval (&lt;anonymous&gt;:1:122)"</span>, 
+    <span class="hljs-string">"  at post_api_transaction (js/actions/api-transaction.js:268:16)"</span>, 
+    <span class="hljs-string">"  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)"</span> 
   ], 
-  "message" : "unique constraint violated", 
-  "error" : true, 
-  "code" : 400, 
-  "errorNum" : 1210, 
-  "errorMessage" : "unique constraint violated" 
+  <span class="hljs-string">"message"</span> : <span class="hljs-string">"unique constraint violated"</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">400</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1210</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"unique constraint violated"</span> 
 }

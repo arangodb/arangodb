@@ -1,14 +1,14 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=documents&complete=true <<EOF
-{ "_key": "abc", "value1": 25, "value2": "test" }
-{ "_key": "abc", "value1": "bar", "value2": "baz" }
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/import?collection=products&amp;type=documents&amp;complete=true &lt;&lt;EOF</span>
+{ <span class="hljs-string">"_key"</span>: <span class="hljs-string">"abc"</span>, <span class="hljs-string">"value1"</span>: <span class="hljs-number">25</span>, <span class="hljs-string">"value2"</span>: <span class="hljs-string">"test"</span> }
+{ <span class="hljs-string">"_key"</span>: <span class="hljs-string">"abc"</span>, <span class="hljs-string">"value1"</span>: <span class="hljs-string">"bar"</span>, <span class="hljs-string">"value2"</span>: <span class="hljs-string">"baz"</span> }
 EOF
 
-HTTP/1.1 409 Conflict
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">409</span> Conflict
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : true, 
-  "errorMessage" : "cannot create document, unique constraint violated", 
-  "code" : 409, 
-  "errorNum" : 1210 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"cannot create document, unique constraint violated"</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">409</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1210</span> 
 }

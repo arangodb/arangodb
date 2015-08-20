@@ -1,36 +1,36 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
-........> startVertexCollectionRestriction : 'germanCity'});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; g._distanceTo({}, {}, {weight : <span class="hljs-string">'distance'</span>, endVertexCollectionRestriction : <span class="hljs-string">'frenchCity'</span>,
+........&gt; startVertexCollectionRestriction : <span class="hljs-string">'germanCity'</span>});
 [ 
   { 
-    "startVertex" : "germanCity/Berlin", 
-    "vertex" : "frenchCity/Paris", 
-    "distance" : 1 
+    <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    "startVertex" : "germanCity/Berlin", 
-    "vertex" : "frenchCity/Lyon", 
-    "distance" : 1 
+    <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    "startVertex" : "germanCity/Hamburg", 
-    "vertex" : "frenchCity/Paris", 
-    "distance" : 1 
+    <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    "startVertex" : "germanCity/Hamburg", 
-    "vertex" : "frenchCity/Lyon", 
-    "distance" : 1 
+    <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    "startVertex" : "germanCity/Cologne", 
-    "vertex" : "frenchCity/Paris", 
-    "distance" : 1 
+    <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    "startVertex" : "germanCity/Cologne", 
-    "vertex" : "frenchCity/Lyon", 
-    "distance" : 1 
+    <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
   } 
 ]

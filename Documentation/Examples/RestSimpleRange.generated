@@ -1,27 +1,27 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/range <<EOF
-{ "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 }
+shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/simple/range &lt;&lt;EOF</span>
+{ <span class="hljs-string">"collection"</span>: <span class="hljs-string">"products"</span>, <span class="hljs-string">"attribute"</span> : <span class="hljs-string">"i"</span>, <span class="hljs-string">"left"</span> : <span class="hljs-number">2</span>, <span class="hljs-string">"right"</span> : <span class="hljs-number">4</span> }
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : [ 
+  <span class="hljs-string">"result"</span> : [ 
     { 
-      "_id" : "products/1440535931", 
-      "_key" : "1440535931", 
-      "_rev" : "1440535931", 
-      "i" : 2 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/877553331"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"877553331"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"877553331"</span>, 
+      <span class="hljs-string">"i"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      "_id" : "products/1440732539", 
-      "_key" : "1440732539", 
-      "_rev" : "1440732539", 
-      "i" : 3 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/877749939"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"877749939"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"877749939"</span>, 
+      <span class="hljs-string">"i"</span> : <span class="hljs-number">3</span> 
     } 
   ], 
-  "hasMore" : false, 
-  "count" : 2, 
-  "error" : false, 
-  "code" : 201 
+  <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }

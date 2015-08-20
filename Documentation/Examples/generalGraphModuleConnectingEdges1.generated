@@ -1,13 +1,13 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("routeplanner");
-arangosh> graph._getConnectingEdges({isCapital : true}, {isCapital : true});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; graph._getConnectingEdges({isCapital : <span class="hljs-literal">true</span>}, {isCapital : <span class="hljs-literal">true</span>});
 [ 
   { 
-    "_id" : "internationalHighway/997643643", 
-    "_key" : "997643643", 
-    "_rev" : "997643643", 
-    "_from" : "germanCity/Berlin", 
-    "_to" : "frenchCity/Paris", 
-    "distance" : 1200 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/1676306099"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1676306099"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1676306099"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1200</span> 
   } 
 ]

@@ -1,10 +1,10 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("routeplanner");
-arangosh> graph._absoluteCloseness({});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; graph._absoluteCloseness({});
 { 
-  "germanCity/Berlin" : 4, 
-  "germanCity/Hamburg" : 4, 
-  "germanCity/Cologne" : 4, 
-  "frenchCity/Paris" : 4, 
-  "frenchCity/Lyon" : 4 
+  <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">4</span>, 
+  <span class="hljs-string">"germanCity/Hamburg"</span> : <span class="hljs-number">4</span>, 
+  <span class="hljs-string">"germanCity/Cologne"</span> : <span class="hljs-number">4</span>, 
+  <span class="hljs-string">"frenchCity/Paris"</span> : <span class="hljs-number">4</span>, 
+  <span class="hljs-string">"frenchCity/Lyon"</span> : <span class="hljs-number">4</span> 
 }

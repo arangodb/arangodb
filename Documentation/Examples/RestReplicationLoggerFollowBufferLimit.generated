@@ -1,10 +1,10 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=1691669883&chunkSize=400
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=838035123&amp;chunkSize=400</span>
 
-HTTP/1.1 200 OK
-content-type: application/x-arango-dump; charset=utf-8
-x-arango-replication-active: true
-x-arango-replication-checkmore: true
-x-arango-replication-lastincluded: 1692128635
-x-arango-replication-lasttick: 1692915067
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/x-arango-dump; charset=utf-<span class="hljs-number">8</span>
+x-arango-replication-active: <span class="hljs-literal">true</span>
+x-arango-replication-checkmore: <span class="hljs-literal">true</span>
+x-arango-replication-lastincluded: <span class="hljs-number">838493875</span>
+x-arango-replication-lasttick: <span class="hljs-number">841377459</span>
 
-"{\"tick\":\"1691800955\",\"type\":2000,\"database\":\"120187\",\"cid\":\"1691735419\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"1691735419\",\"indexBuckets\":1,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"1692128635\",\"type\":2300,\"database\":\"120187\",\"cid\":\"1691735419\",\"tid\":\"0\",\"key\":\"p1\",\"rev\":\"1692063099\",\"data\":{\"_key\":\"p1\",\"_rev\":\"1692063099\",\"name\":\"flux compensator\"}}\n"
+<span class="hljs-string">"{\"tick\":\"838100659\",\"type\":2001,\"database\":\"91827\",\"cid\":\"837772979\"}\n{\"tick\":\"838231731\",\"type\":2000,\"database\":\"91827\",\"cid\":\"838166195\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"838166195\",\"indexBuckets\":1,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"IndexedCollection1\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"838493875\",\"type\":2100,\"database\":\"91827\",\"cid\":\"838166195\",\"id\":\"838428339\",\"index\":{\"id\":\"838428339\",\"type\":\"hash\",\"fields\":[\"name\"],\"selectivityEstimate\":1,\"unique\":false,\"sparse\":false}}\n"</span>

@@ -1,11 +1,11 @@
-shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social/vertex/male
+shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial/social/vertex/male</span>
 
-HTTP/1.1 400 Bad Request
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
 content-type: application/json
 
 { 
-  "error" : true, 
-  "code" : 400, 
-  "errorNum" : 1928, 
-  "errorMessage" : "not in orphan collection" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">400</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1928</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"not in orphan collection"</span> 
 }

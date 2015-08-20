@@ -1,13 +1,13 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
-{"query":"FOR u IN unknowncoll LIMIT 2 RETURN u","count":true,"batchSize":2}
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/cursor &lt;&lt;EOF</span>
+{<span class="hljs-string">"query"</span>:<span class="hljs-string">"FOR u IN unknowncoll LIMIT 2 RETURN u"</span>,<span class="hljs-string">"count"</span>:<span class="hljs-literal">true</span>,<span class="hljs-string">"batchSize"</span>:<span class="hljs-number">2</span>}
 EOF
 
-HTTP/1.1 404 Not Found
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : true, 
-  "errorMessage" : "collection not found (unknowncoll)", 
-  "code" : 404, 
-  "errorNum" : 1203 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"collection not found (unknowncoll)"</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1203</span> 
 }

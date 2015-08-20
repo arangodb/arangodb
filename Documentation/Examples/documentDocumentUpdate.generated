@@ -1,14 +1,14 @@
-arangosh> a1 = db.example.insert({ a : 1 });
+arangosh&gt; a1 = db.example.insert({ a : <span class="hljs-number">1</span> });
 { 
-  "_id" : "example/478991739", 
-  "_rev" : "478991739", 
-  "_key" : "478991739" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1155753651"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1155753651"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1155753651"</span> 
 }
-arangosh> a2 = db._update(a1, { b : 2 });
+arangosh&gt; a2 = db._update(a1, { b : <span class="hljs-number">2</span> });
 { 
-  "_id" : "example/478991739", 
-  "_rev" : "479319419", 
-  "_key" : "478991739" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1155753651"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1156081331"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1155753651"</span> 
 }
-arangosh> a3 = db._update(a1, { c : 3 });
-[ArangoError 1200: precondition failed]
+arangosh&gt; a3 = db._update(a1, { c : <span class="hljs-number">3</span> });
+[ArangoError <span class="hljs-number">1200</span>: precondition failed]

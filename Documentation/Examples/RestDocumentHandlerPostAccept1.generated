@@ -1,15 +1,15 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products <<EOF
-{ "Hello": "World" }
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/document?collection=products &lt;&lt;EOF</span>
+{ <span class="hljs-string">"Hello"</span>: <span class="hljs-string">"World"</span> }
 EOF
 
-HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: "1657066875"
-location: /_db/_system/_api/document/products/1657066875
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+etag: <span class="hljs-string">"716334771"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">716334771</span>
 
 { 
-  "error" : false, 
-  "_id" : "products/1657066875", 
-  "_rev" : "1657066875", 
-  "_key" : "1657066875" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/716334771"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"716334771"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"716334771"</span> 
 }

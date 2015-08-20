@@ -1,54 +1,54 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> var query = graph._edges({type: "married"});
-arangosh> query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> query = graph._edges({type: <span class="hljs-string">"married"</span>});
+arangosh&gt; query.fromVertices([{name: <span class="hljs-string">"Alice"</span>}, {name: <span class="hljs-string">"Charly"</span>}]).toArray();
 [ 
   { 
-    "_id" : "female/diana", 
-    "_key" : "diana", 
-    "_rev" : "740414843", 
-    "name" : "Diana" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1419077299"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
   }, 
   { 
-    "_id" : "female/alice", 
-    "_key" : "alice", 
-    "_rev" : "739693947", 
-    "name" : "Alice" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1418356403"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   }, 
   { 
-    "_id" : "male/bob", 
-    "_key" : "bob", 
-    "_rev" : "740021627", 
-    "name" : "Bob" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1418684083"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   }, 
   { 
-    "_id" : "male/charly", 
-    "_key" : "charly", 
-    "_rev" : "740218235", 
-    "name" : "Charly" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1418880691"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
   }, 
   { 
-    "_id" : "female/diana", 
-    "_key" : "diana", 
-    "_rev" : "740414843", 
-    "name" : "Diana" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1419077299"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
   }, 
   { 
-    "_id" : "female/alice", 
-    "_key" : "alice", 
-    "_rev" : "739693947", 
-    "name" : "Alice" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1418356403"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   }, 
   { 
-    "_id" : "male/bob", 
-    "_key" : "bob", 
-    "_rev" : "740021627", 
-    "name" : "Bob" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1418684083"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   }, 
   { 
-    "_id" : "male/charly", 
-    "_key" : "charly", 
-    "_rev" : "740218235", 
-    "name" : "Charly" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1418880691"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
   } 
 ]

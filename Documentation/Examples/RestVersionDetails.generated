@@ -1,24 +1,24 @@
-shell> curl --dump - http://localhost:8529/_api/version?details=true
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/version?details=true</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "server" : "arango", 
-  "version" : "2.6.5", 
-  "details" : { 
-    "architecture" : "64bit", 
-    "build-date" : "2015-08-17 18:52:10", 
-    "configure" : "'./configure' '--enable-maintainer-mode'", 
-    "icu-version" : "54.1", 
-    "libev-version" : "4.11", 
-    "maintainer-mode" : "true", 
-    "openssl-version" : "OpenSSL 0.9.8zd 8 Jan 2015", 
-    "repository-version" : "heads/2.6-0-gb72b6ad79eaacfea8c71c7225c952acddb8f52ec-dirty", 
-    "server-version" : "2.6.5", 
-    "sizeof int" : "4", 
-    "sizeof void*" : "8", 
-    "v8-version" : "4.1.0.27", 
-    "mode" : "standalone" 
+  <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.6.5"</span>, 
+  <span class="hljs-string">"details"</span> : { 
+    <span class="hljs-string">"architecture"</span> : <span class="hljs-string">"64bit"</span>, 
+    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2015-08-20 17:12:39"</span>, 
+    <span class="hljs-string">"configure"</span> : <span class="hljs-string">"'./configure' '--enable-relative' '--enable-all-in-one-icu' '--with-backtrace'"</span>, 
+    <span class="hljs-string">"icu-version"</span> : <span class="hljs-string">"54.1"</span>, 
+    <span class="hljs-string">"libev-version"</span> : <span class="hljs-string">"4.11"</span>, 
+    <span class="hljs-string">"maintainer-mode"</span> : <span class="hljs-string">"false"</span>, 
+    <span class="hljs-string">"openssl-version"</span> : <span class="hljs-string">"OpenSSL 1.0.2 22 Jan 2015"</span>, 
+    <span class="hljs-string">"repository-version"</span> : <span class="hljs-string">"heads/2.6-0-g8174b70a3490fe1bcbc2465fff0ccdcef62b382e"</span>, 
+    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"2.6.5"</span>, 
+    <span class="hljs-string">"sizeof int"</span> : <span class="hljs-string">"4"</span>, 
+    <span class="hljs-string">"sizeof void*"</span> : <span class="hljs-string">"8"</span>, 
+    <span class="hljs-string">"v8-version"</span> : <span class="hljs-string">"4.1.0.27"</span>, 
+    <span class="hljs-string">"mode"</span> : <span class="hljs-string">"standalone"</span> 
   } 
 }
