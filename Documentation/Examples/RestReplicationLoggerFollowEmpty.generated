@@ -1,9 +1,9 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=841377459</span>
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=842676172</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">204</span> No Content
 content-type: application/x-arango-dump; charset=utf-<span class="hljs-number">8</span>
 x-arango-replication-active: <span class="hljs-literal">true</span>
 x-arango-replication-checkmore: <span class="hljs-literal">false</span>
 x-arango-replication-lastincluded: <span class="hljs-number">0</span>
-x-arango-replication-lasttick: <span class="hljs-number">841377459</span>
+x-arango-replication-lasttick: <span class="hljs-number">842676172</span>
 

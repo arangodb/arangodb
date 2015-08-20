@@ -1,10 +1,10 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=838035123&amp;chunkSize=400</span>
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=839333836&amp;chunkSize=400</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/x-arango-dump; charset=utf-<span class="hljs-number">8</span>
 x-arango-replication-active: <span class="hljs-literal">true</span>
 x-arango-replication-checkmore: <span class="hljs-literal">true</span>
-x-arango-replication-lastincluded: <span class="hljs-number">838493875</span>
-x-arango-replication-lasttick: <span class="hljs-number">841377459</span>
+x-arango-replication-lastincluded: <span class="hljs-number">839792588</span>
+x-arango-replication-lasttick: <span class="hljs-number">842676172</span>
 
-<span class="hljs-string">"{\"tick\":\"838100659\",\"type\":2001,\"database\":\"91827\",\"cid\":\"837772979\"}\n{\"tick\":\"838231731\",\"type\":2000,\"database\":\"91827\",\"cid\":\"838166195\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"838166195\",\"indexBuckets\":1,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"IndexedCollection1\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"838493875\",\"type\":2100,\"database\":\"91827\",\"cid\":\"838166195\",\"id\":\"838428339\",\"index\":{\"id\":\"838428339\",\"type\":\"hash\",\"fields\":[\"name\"],\"selectivityEstimate\":1,\"unique\":false,\"sparse\":false}}\n"</span>
+<span class="hljs-string">"{\"tick\":\"839399372\",\"type\":2001,\"database\":\"79820\",\"cid\":\"839071692\"}\n{\"tick\":\"839530444\",\"type\":2000,\"database\":\"79820\",\"cid\":\"839464908\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"839464908\",\"indexBuckets\":1,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"IndexedCollection1\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"839792588\",\"type\":2100,\"database\":\"79820\",\"cid\":\"839464908\",\"id\":\"839727052\",\"index\":{\"id\":\"839727052\",\"type\":\"hash\",\"fields\":[\"name\"],\"selectivityEstimate\":1,\"unique\":false,\"sparse\":false}}\n"</span>

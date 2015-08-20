@@ -1,9 +1,9 @@
 arangosh&gt; db._users.toArray()
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/1730227"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1730227"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1730227"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/1718220"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1718220"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1718220"</span>, 
     <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
     <span class="hljs-string">"userData"</span> : { 
     }, 
@@ -12,8 +12,8 @@ arangosh&gt; db._users.toArray()
       <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"simple"</span> : { 
         <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span>, 
-        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"3471179626c80ac61b1aaaded121458dbd3048d6898b287dce8a10df4e1096a0"</span>, 
-        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"gxU7A1P0FFQEqffT"</span> 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"fc3a690ef1d3493df44318b20bed6acf5a7f357ac0b2815f4cf33f9c9ef93179"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"Y6Uamy4yyyOrGVUY"</span> 
       } 
     } 
   } 

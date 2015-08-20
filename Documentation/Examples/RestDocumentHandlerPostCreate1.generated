@@ -4,12 +4,12 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"716859059"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">716859059</span>
+etag: <span class="hljs-string">"714946508"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">714946508</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/716859059"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"716859059"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"716859059"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/714946508"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"714946508"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"714946508"</span> 
 }

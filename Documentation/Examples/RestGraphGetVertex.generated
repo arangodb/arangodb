@@ -2,13 +2,13 @@ shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/gr
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-number">792225459</span>
+etag: <span class="hljs-number">793524172</span>
 
 { 
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v1"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v1"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"792225459"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"793524172"</span>, 
     <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
   }, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

@@ -1,17 +1,17 @@
-shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/725771955?rev=726099635 &lt;&lt;EOF</span>
+shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/723859404?rev=724187084 &lt;&lt;EOF</span>
 {<span class="hljs-string">"other"</span>:<span class="hljs-string">"content"</span>}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">412</span> Precondition Failed
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"725771955"</span>
+etag: <span class="hljs-string">"723859404"</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">412</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1200</span>, 
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"precondition failed"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/725771955"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"725771955"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"725771955"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/723859404"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"723859404"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"723859404"</span> 
 }

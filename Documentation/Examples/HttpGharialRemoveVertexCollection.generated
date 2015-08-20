@@ -2,7 +2,7 @@ shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:85
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json
-etag: <span class="hljs-number">588539571</span>
+etag: <span class="hljs-number">586823628</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -24,6 +24,6 @@ etag: <span class="hljs-number">588539571</span>
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"588539571"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"586823628"</span> 
   } 
 }
