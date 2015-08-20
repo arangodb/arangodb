@@ -107,6 +107,9 @@ the option *--disable-figures*.
 @startDocuBlock databaseDisableQueryTracking
 
 
+!SUBSECTION Throw collection not loaded error
+@startDocuBlock databaseThrowCollectionNotLoadedError
+
 !SUBSECTION Index threads
 @startDocuBlock indexThreads
 

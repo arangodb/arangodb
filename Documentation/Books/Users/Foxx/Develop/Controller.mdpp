@@ -139,13 +139,6 @@ ctrl.get('/another/route', function (req, res) {
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 
-!SUBSECTION pathParam
-@startDocuBlock JSF_foxx_RequestContextBuffer_pathParam
-
-!SUBSECTION bodyParam
-@startDocuBlock JSF_foxx_RequestContextBuffer_queryParam
-
-
 !SECTION Before and After Hooks
 
 You can use the following two functions to do something before or respectively
