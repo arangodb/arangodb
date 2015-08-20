@@ -363,7 +363,7 @@
 /// 
 /// @EXAMPLES
 /// 
-/// /// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetGraph}
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetGraph}
 ///   var graph = require("org/arangodb/general-graph");
 /// | if (graph._exists("myGraph")) {
 /// |    graph._drop("myGraph", true);
