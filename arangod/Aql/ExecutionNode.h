@@ -1643,7 +1643,7 @@ namespace triagens {
 /// @brief can the node throw?
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool canThrow () {
+        bool canThrow () override {
           return _expression->canThrow();
         }
 
@@ -1796,7 +1796,7 @@ namespace triagens {
 /// return true just because a dependent node can throw an exception.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool canThrow ();
+        bool canThrow () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

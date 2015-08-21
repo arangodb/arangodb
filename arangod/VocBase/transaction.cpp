@@ -148,7 +148,7 @@ void ClearQueryCache (TRI_transaction_t* trx) {
     }
   }
   catch (...) {
-    // in case something goes wrong, we have to disable the query cache
+    // in case something goes wrong, we have to remove all queries from the cache
     triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase);
   }
 }
@@ -1413,6 +1413,7 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
 
     // if a write query, clear the query cache for the participating collections
     if (trx->_type == TRI_TRANSACTION_WRITE &&
+        trx->_collections._length > 0 && 
         triagens::aql::QueryCache::instance()->mayBeActive()) {
       ClearQueryCache(trx);
     }

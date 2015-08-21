@@ -198,10 +198,6 @@ void TRI_InitV8Statistics (v8::Isolate* isolate,
                            v8::Handle<v8::Context> context) {
   v8::HandleScope scope(isolate);
 
-  // check the isolate
-  TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
-  TRI_ASSERT(v8g != nullptr);
-
   // .............................................................................
   // create the global functions
   // .............................................................................

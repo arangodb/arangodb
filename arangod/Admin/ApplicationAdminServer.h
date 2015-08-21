@@ -31,8 +31,8 @@
 #define ARANGODB_ADMIN_APPLICATION_ADMIN_SERVER_H 1
 
 #include "Basics/Common.h"
-
 #include "ApplicationServer/ApplicationFeature.h"
+#include "HttpServer/PathHandler.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -82,38 +82,6 @@ namespace triagens {
         ~ApplicationAdminServer ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a log viewer
-////////////////////////////////////////////////////////////////////////////////
-
-        void allowLogViewer ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds the http handlers
-///
-/// Note that the server does not claim ownership of the factory.
-////////////////////////////////////////////////////////////////////////////////
-
-        void addBasicHandlers (rest::HttpHandlerFactory*,
-                               std::string const &prefix,
-                               rest::Dispatcher*,
-                               rest::AsyncJobManager*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds the http handlers for administration
-///
-/// Note that the server does not claim ownership of the factory.
-////////////////////////////////////////////////////////////////////////////////
-
-        void addHandlers (rest::HttpHandlerFactory*,
-                          std::string const& prefix);
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
 
@@ -144,22 +112,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allow log viewer requests
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _allowLogViewer;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief path options for the admin directory
 ////////////////////////////////////////////////////////////////////////////////
 
-        void* _pathOptions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief data that needs to be freed at shutdown
-////////////////////////////////////////////////////////////////////////////////
-
-        std::pair<rest::Dispatcher*, rest::AsyncJobManager*>* _jobPayload;
+        triagens::rest::PathHandler::Options* _pathOptions;
 
     };
   }

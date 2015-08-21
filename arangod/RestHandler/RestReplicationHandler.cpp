@@ -83,14 +83,14 @@ RestReplicationHandler::~RestReplicationHandler () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                               HttpHandler methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_t RestReplicationHandler::execute () {
+HttpHandler::status_t RestReplicationHandler::execute () {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -195,7 +195,7 @@ Handler::status_t RestReplicationHandler::execute () {
       }
 
       if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+        return status_t(HttpHandler::HANDLER_DONE);
       }
 
       handleCommandSync();
@@ -223,7 +223,7 @@ Handler::status_t RestReplicationHandler::execute () {
       }
 
       if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+        return status_t(HttpHandler::HANDLER_DONE);
       }
 
       handleCommandApplierStart();
@@ -234,7 +234,7 @@ Handler::status_t RestReplicationHandler::execute () {
       }
 
       if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+        return status_t(HttpHandler::HANDLER_DONE);
       }
 
       handleCommandApplierStop();
@@ -268,7 +268,7 @@ Handler::status_t RestReplicationHandler::execute () {
                     "invalid command");
     }
 
-    return status_t(Handler::HANDLER_DONE);
+    return status_t(HttpHandler::HANDLER_DONE);
   }
 
 BAD_CALL:
@@ -281,7 +281,7 @@ BAD_CALL:
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
-  return status_t(Handler::HANDLER_DONE);
+  return status_t(HttpHandler::HANDLER_DONE);
 }
 
 // -----------------------------------------------------------------------------
@@ -3764,9 +3764,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
     initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
 
-  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier,
-                                        initialTick,
-                                        found);
+  int res = _vocbase->_replicationApplier->start(initialTick, found);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
@@ -3830,7 +3828,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 void RestReplicationHandler::handleCommandApplierStop () {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
-  int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier, true);
+  int res = _vocbase->_replicationApplier->stop(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -3981,7 +3979,7 @@ void RestReplicationHandler::handleCommandApplierGetState () {
 void RestReplicationHandler::handleCommandApplierDeleteState () {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
-  int res = TRI_ForgetReplicationApplier(_vocbase->_replicationApplier);
+  int res = _vocbase->_replicationApplier->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);

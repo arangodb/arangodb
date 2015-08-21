@@ -35,8 +35,6 @@
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
-#include "Admin/RestHandlerCreator.h"
-#include "Admin/RestShutdownHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/RestAqlHandler.h"
@@ -63,19 +61,25 @@
 #include "Rest/InitialiseRest.h"
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
+#include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
+#include "RestHandler/RestDebugHelperHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestExportHandler.h"
+#include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestReplicationHandler.h"
+#include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestHandler/RestVersionHandler.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -127,13 +131,7 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
 
   // First the "_api" handlers:
  
-  // add "/version" handler
-  _applicationAdminServer->addBasicHandlers(
-      factory, "/_api",
-      _applicationDispatcher->dispatcher(),
-      _jobManager);
-
-  // add a upgrade warning
+  // add an upgrade warning
   factory->addPrefixHandler("/_msg/please-upgrade",
                             RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
@@ -144,7 +142,7 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/cursor" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::CURSOR_PATH,
                             RestHandlerCreator<RestCursorHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
 
   // add "/document" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
@@ -169,17 +167,17 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/simple/all" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
                             RestHandlerCreator<RestSimpleQueryHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
   
   // add "/simple/lookup-by-key" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
                             RestHandlerCreator<RestSimpleHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
   
   // add "/simple/remove-by-key" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
                             RestHandlerCreator<RestSimpleHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
 
   // add "/upload" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
@@ -193,7 +191,7 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/aql" handler
   factory->addPrefixHandler("/_api/aql",
                             RestHandlerCreator<aql::RestAqlHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
 
   factory->addPrefixHandler("/_api/query",
                             RestHandlerCreator<RestQueryHandler>::createData<ApplicationV8*>,
@@ -202,21 +200,40 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   factory->addPrefixHandler("/_api/query-cache",
                             RestHandlerCreator<RestQueryCacheHandler>::createNoData);
 
-  // And now the "_admin" handlers
+  // And now some handlers which are registered in both /_api and /_admin
+  factory->addPrefixHandler("/_api/job",
+                            RestHandlerCreator<triagens::admin::RestJobHandler>::createData<pair<Dispatcher*, AsyncJobManager*>*>,
+                            _pairForJobHandler);
 
-  // add "/_admin/version" handler
-  _applicationAdminServer->addBasicHandlers(
-      factory, "/_admin", 
-      _applicationDispatcher->dispatcher(),
-      _jobManager);
+  factory->addHandler("/_api/version", 
+                      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData, 
+                      nullptr);
 
-  // add "/_admin/shutdown" handler
+  factory->addHandler("/_api/debug-helper", 
+                      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData, 
+                      nullptr);
+
+  // And now the _admin handlers
+  factory->addPrefixHandler("/_admin/job",
+                            RestHandlerCreator<triagens::admin::RestJobHandler>::createData<pair<Dispatcher*, AsyncJobManager*>*>,
+                            _pairForJobHandler);
+
+  factory->addHandler("/_admin/version", 
+                      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData, 
+                      nullptr);
+
+  factory->addHandler("/_admin/debug-helper", 
+                      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData, 
+                      nullptr);
+
+  // further admin handlers
+  factory->addHandler("/_admin/log", 
+                      RestHandlerCreator<triagens::admin::RestAdminLogHandler>::createNoData, 
+                      nullptr);
+
   factory->addPrefixHandler("/_admin/shutdown",
-                   RestHandlerCreator<RestShutdownHandler>::createData<void*>,
-                   static_cast<void*>(_applicationServer));
-
-  // add admin handlers
-  _applicationAdminServer->addHandlers(factory, "/_admin");
+                            RestHandlerCreator<triagens::admin::RestShutdownHandler>::createData<void*>,
+                            static_cast<void*>(_applicationServer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,7 +376,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _foxxQueuesPollInterval(1.0),
     _server(nullptr),
     _queryRegistry(nullptr),
-    _pairForAql(nullptr),
+    _pairForAqlHandler(nullptr),
+    _pairForJobHandler(nullptr),
     _indexPool(nullptr),
     _threadAffinity(0) {
 
@@ -484,7 +502,6 @@ void ArangoServer::buildApplicationServer () {
   _applicationAdminServer = new ApplicationAdminServer();
 
   _applicationServer->addFeature(_applicationAdminServer);
-  _applicationAdminServer->allowLogViewer();
 
   // .............................................................................
   // define server options
@@ -918,7 +935,7 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
-  const auto role = ServerState::instance()->getRole();
+  auto const role = ServerState::instance()->getRole();
 
   // now we can create the queues
   if (startServer) {
@@ -958,9 +975,8 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
-  _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
-  _pairForAql->first = _applicationV8;
-  _pairForAql->second = _queryRegistry;
+  _pairForAqlHandler = new std::pair<ApplicationV8*, aql::QueryRegistry*>(_applicationV8, _queryRegistry);
+  _pairForJobHandler = new std::pair<Dispatcher*, AsyncJobManager*>(_applicationDispatcher->dispatcher(), _jobManager);
 
   // ...........................................................................
   // create endpoints and handlers
@@ -1152,8 +1168,10 @@ int ArangoServer::startupServer () {
 
   delete _queryRegistry;
   _queryRegistry = nullptr;
-  delete _pairForAql;
-  _pairForAql = nullptr;
+  delete _pairForAqlHandler;
+  _pairForAqlHandler = nullptr;
+  delete _pairForJobHandler;
+  _pairForJobHandler = nullptr;
 
   closeDatabases();
 

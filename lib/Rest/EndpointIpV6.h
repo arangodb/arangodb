@@ -41,7 +41,7 @@ namespace triagens {
 // --SECTION--                                                      EndpointIpV6
 // -----------------------------------------------------------------------------
 
-    class EndpointIpV6 : public EndpointIp {
+    class EndpointIpV6 final : public EndpointIp {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

@@ -30,9 +30,11 @@
 #ifndef ARANGODB_HTTP_SERVER_HTTP_HANDLER_H
 #define ARANGODB_HTTP_SERVER_HTTP_HANDLER_H 1
 
-#include "Rest/Handler.h"
-
+#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
+#include "Dispatcher/Job.h"
 #include "Rest/HttpResponse.h"
+#include "Statistics/StatisticsAgent.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -40,8 +42,10 @@
 
 namespace triagens {
   namespace rest {
+    class Dispatcher;
     class HttpHandlerFactory;
     class HttpRequest;
+    class HttpServer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpHandler
@@ -51,7 +55,7 @@ namespace triagens {
 /// @brief abstract class for http handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpHandler : public Handler {
+    class HttpHandler : public RequestStatisticsAgent {
       HttpHandler (HttpHandler const&) = delete;
       HttpHandler& operator= (HttpHandler const&) = delete;
 
@@ -75,13 +79,114 @@ namespace triagens {
 /// @brief destructs a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~HttpHandler ();
+        virtual ~HttpHandler ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status of execution
+////////////////////////////////////////////////////////////////////////////////
+
+        enum status_e {
+          HANDLER_DONE,
+          HANDLER_REQUEUE,
+          HANDLER_FAILED
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief result of execution
+////////////////////////////////////////////////////////////////////////////////
+
+        class status_t {
+          public:
+            status_t ()
+              : status(HANDLER_FAILED) {
+            }
+
+            explicit
+            status_t (status_e status)
+              : status(status) {
+            }
+
+            Job::status_t jobStatus () {
+              switch (status) {
+                case HttpHandler::HANDLER_DONE:
+                  return Job::status_t(Job::JOB_DONE);
+
+                case HttpHandler::HANDLER_REQUEUE: {
+                  Job::status_t result(Job::JOB_REQUEUE);
+                  result.sleep = sleep;
+                  return result;
+                }
+
+                case HttpHandler::HANDLER_FAILED:
+                default:
+                  return Job::status_t(Job::JOB_FAILED);
+              }
+            }
+
+            status_e status;
+            double sleep;
+        };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            virtual public methods
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if a handler is executed directly
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual bool isDirect () const = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the queue name
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual size_t queue () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the thread which currently dealing with the job
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void setDispatcherThread (DispatcherThread*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepares execution of a handler, has to be called before execute
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void prepareExecute ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a handler
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual status_t execute () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finalizes execution of a handler, has to be called after execute
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void finalizeExecute ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to cancel an execution
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual bool cancel ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles error
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void handleError (basics::Exception const&) = 0;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a response
@@ -148,6 +253,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current dispatcher thread
+////////////////////////////////////////////////////////////////////////////////
+
+        DispatcherThread* _dispatcherThread;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the request

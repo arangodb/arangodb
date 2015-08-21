@@ -349,9 +349,9 @@ bool HttpServer::handleRequest (HttpCommTask* task,
   while (true) {
     // directly execute the handler within the scheduler thread
     if (handler->isDirect()) {
-      Handler::status_t status = handleRequestDirectly(task, handler.get());
+      HttpHandler::status_t status = handleRequestDirectly(task, handler.get());
 
-      if (status.status != Handler::HANDLER_REQUEUE) {
+      if (status.status != HttpHandler::HANDLER_REQUEUE) {
         return true;
       }
     }
@@ -438,8 +438,8 @@ bool HttpServer::openEndpoint (Endpoint* endpoint) {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, HttpHandler* handler) {
-  Handler::status_t status(Handler::HANDLER_FAILED);
+HttpHandler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, HttpHandler* handler) {
+  HttpHandler::status_t status(HttpHandler::HANDLER_FAILED);
 
   RequestStatisticsAgentSetRequestStart(handler);
 
@@ -469,7 +469,7 @@ Handler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, HttpHan
 
     handler->finalizeExecute();
 
-    if (status.status == Handler::HANDLER_REQUEUE) {
+    if (status.status == HttpHandler::HANDLER_REQUEUE) {
       handler->RequestStatisticsAgent::transfer(task);
       return status;
     }

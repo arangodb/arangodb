@@ -719,7 +719,7 @@ AqlValue Functions::Like (triagens::aql::Query* query,
   AppendAsString(buffer, regex.json());
   size_t const length = buffer.length();
 
-  std::string const pattern = std::move(BuildRegexPattern(buffer.c_str(), length, caseInsensitive));
+  std::string const pattern = BuildRegexPattern(buffer.c_str(), length, caseInsensitive);
   RegexMatcher* matcher = nullptr;
 
   if (RegexCache != nullptr) {

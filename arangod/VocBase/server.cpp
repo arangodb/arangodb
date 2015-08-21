@@ -711,34 +711,6 @@ static int OpenDatabases (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication appliers in all databases
-////////////////////////////////////////////////////////////////////////////////
-
-static void StopReplicationAppliers (TRI_server_t* server) {
-  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
-  // No need for the thread protector here, because we have the mutex
-  
-  for (auto& p : server->_databasesLists.load()->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-    if (vocbase->_replicationApplier != nullptr) {
-      TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
-
-#if 0
-      // stop pending transactions 
-      for (auto& it : vocbase->_replicationApplier->_runningRemoteTransactions) {
-        auto trx = it.second;
-        trx->abort();
-        delete trx;
-      }
-      vocbase->_replicationApplier->_runningRemoteTransactions.clear();
-#endif      
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief close all opened databases
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1981,7 +1953,7 @@ int TRI_InitDatabasesServer (TRI_server_t* server) {
         LOG_INFO("replication applier explicitly deactivated for database '%s'", vocbase->_name);
       }
       else {
-        int res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
+        int res = vocbase->_replicationApplier->start(0, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_WARNING("unable to start replication applier for database '%s': %s",
@@ -2018,7 +1990,17 @@ int TRI_StopServer (TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_StopReplicationAppliersServer (TRI_server_t* server) {
-  StopReplicationAppliers(server);
+  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
+  // No need for the thread protector here, because we have the mutex
+  
+  for (auto& p : server->_databasesLists.load()->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+    if (vocbase->_replicationApplier != nullptr) {
+      vocbase->_replicationApplier->stop(false);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2221,7 +2203,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
           LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
         }
         else {
-          res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
+          res = vocbase->_replicationApplier->start(0, false);
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_WARNING("unable to start replication applier for database '%s': %s",

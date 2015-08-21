@@ -69,7 +69,7 @@ namespace {
         return status_t(HANDLER_DONE);
       };
 
-      void handleError (const Exception& error) {
+      void handleError (const Exception& error) override {
         _response = createResponse(HttpResponse::SERVICE_UNAVAILABLE);
       };
   };

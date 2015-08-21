@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief job control request handler
+/// @brief shutdown request handler
 ///
 /// @file
 ///
@@ -22,36 +22,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
+/// @author Max Neunhoeffer
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_JOB_HANDLER_H
-#define ARANGODB_ADMIN_REST_JOB_HANDLER_H 1
+#ifndef ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H
+#define ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Admin/RestBaseHandler.h"
-#include "HttpServer/AsyncJobManager.h"
+#include "ApplicationServer/ApplicationServer.h"
+#include "Rest/HttpResponse.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
-  namespace rest {
-    class AsyncJobManager;
-    class Dispatcher;
-  }
-
   namespace admin {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class RestJobHandler
+// --SECTION--                                         class RestShutdownHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief job control request handler
+/// @brief shutdown request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestJobHandler : public RestBaseHandler {
+    class RestShutdownHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -63,8 +57,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestJobHandler (rest::HttpRequest* request,
-                        std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
+        RestShutdownHandler (rest::HttpRequest*, void* applicationServer);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -79,50 +72,10 @@ namespace triagens {
         bool isDirect () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the handler
+/// @brief initiates the shutdown process
 ////////////////////////////////////////////////////////////////////////////////
 
         status_t execute () override;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief put handler
-////////////////////////////////////////////////////////////////////////////////
-
-        void putJob ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief put method handler
-////////////////////////////////////////////////////////////////////////////////
-
-        void putJobMethod ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get handler
-////////////////////////////////////////////////////////////////////////////////
-
-        void getJob ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a job's status by its id
-////////////////////////////////////////////////////////////////////////////////
-
-        void getJobById (std::string const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get job status by type
-////////////////////////////////////////////////////////////////////////////////
-
-        void getJobByType (std::string const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete handler
-////////////////////////////////////////////////////////////////////////////////
-
-        void deleteJob ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -131,17 +84,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher
+/// @brief application server
 ////////////////////////////////////////////////////////////////////////////////
 
-        rest::Dispatcher* _dispatcher;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief async job manager
-////////////////////////////////////////////////////////////////////////////////
-
-        rest::AsyncJobManager* _jobManager;
-
+        triagens::rest::ApplicationServer* _applicationServer;
     };
   }
 }

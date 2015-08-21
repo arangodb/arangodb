@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document change subscription handler
+/// @brief job control request handler
 ///
 /// @file
 ///
@@ -22,29 +22,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_SUBSCRIBE_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_SUBSCRIBE_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_JOB_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_JOB_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class RestSubscribeHandler
-// -----------------------------------------------------------------------------
+#include "HttpServer/AsyncJobManager.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
-  namespace arango {
+  namespace rest {
+    class AsyncJobManager;
+    class Dispatcher;
+  }
+
+  namespace admin {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class RestJobHandler
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document changes subscription handler
+/// @brief job control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestSubscribeHandler : public RestVocbaseBaseHandler {
+    class RestJobHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -56,7 +62,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestSubscribeHandler (rest::HttpRequest*);
+        RestJobHandler (rest::HttpRequest* request,
+                        std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -68,19 +75,71 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_t execute () override final;
+        bool isDirect () const override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the handler
+////////////////////////////////////////////////////////////////////////////////
+
+        status_t execute () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief put handler
+////////////////////////////////////////////////////////////////////////////////
+
+        void putJob ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief put method handler
+////////////////////////////////////////////////////////////////////////////////
+
+        void putJobMethod ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get handler
+////////////////////////////////////////////////////////////////////////////////
+
+        void getJob ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a job's status by its id
+////////////////////////////////////////////////////////////////////////////////
+
+        void getJobById (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get job status by type
+////////////////////////////////////////////////////////////////////////////////
+
+        void getJobByType (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete handler
+////////////////////////////////////////////////////////////////////////////////
+
+        void deleteJob ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addSubscription ();
+        rest::Dispatcher* _dispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief async job manager
+////////////////////////////////////////////////////////////////////////////////
+
+        rest::AsyncJobManager* _jobManager;
 
     };
   }

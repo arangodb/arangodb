@@ -28,18 +28,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestJobHandler.h"
-
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
+using namespace triagens::admin;
 using namespace triagens::basics;
 using namespace triagens::rest;
-using namespace triagens::admin;
 using namespace std;
 
 // -----------------------------------------------------------------------------
@@ -55,7 +54,7 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestJobHandler::RestJobHandler (HttpRequest* request,
-                                pair<Dispatcher*, AsyncJobManager*>* data)
+                                std::pair<Dispatcher*, AsyncJobManager*>* data)
   : RestBaseHandler(request),
     _dispatcher(data->first),
     _jobManager(data->second) {

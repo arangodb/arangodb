@@ -338,7 +338,7 @@ void TRI_GetBacktrace (std::string& btstr) {
     char address[64];
     SymFromAddr(process, (DWORD64) stack[i], 0, symbol);
 
-    snprintf(address, sizeof(address), "0x%0X", symbol->Address);
+    snprintf(address, sizeof(address), "0x%0X", (unsigned int) symbol->Address);
     btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name + std::string(" [") + address + std::string("]\n");
   }
 

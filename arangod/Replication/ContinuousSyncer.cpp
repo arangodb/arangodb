@@ -166,9 +166,9 @@ int ContinuousSyncer::run () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     // stop ourselves
-    TRI_StopReplicationApplier(_applier, false);
+    _applier->stop(false);
 
-    return TRI_SetErrorReplicationApplier(_applier, res, errorMsg.c_str());
+    return _applier->setError(res, errorMsg.c_str());
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -176,10 +176,10 @@ int ContinuousSyncer::run () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_SetErrorReplicationApplier(_applier, res, errorMsg.c_str());
+    _applier->setError(res, errorMsg.c_str());
 
     // stop ourselves
-    TRI_StopReplicationApplier(_applier, false);
+    _applier->stop(false);
 
     return res;
   }
@@ -196,7 +196,7 @@ int ContinuousSyncer::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ContinuousSyncer::setProgress (char const* msg) {
-  TRI_SetProgressReplicationApplier(_applier, msg, true);
+  _applier->setProgress(msg, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -780,7 +780,7 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       else {
         ignoreCount--;
         LOG_WARNING("ignoring replication error for database '%s': %s",
-                    _applier->_databaseName,
+                    _applier->databaseName(),
                     errorMsg.c_str());
         errorMsg = "";
       }

@@ -50,7 +50,7 @@ namespace triagens {
 // --SECTION--                                                EndpointUnixDomain
 // -----------------------------------------------------------------------------
 
-    class EndpointUnixDomain : public Endpoint {
+    class EndpointUnixDomain final : public Endpoint {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -83,7 +83,7 @@ namespace triagens {
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_socket_t connect (double, double);
+        TRI_socket_t connect (double, double) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect the endpoint
@@ -101,7 +101,7 @@ namespace triagens {
 /// @brief get endpoint domain
 ////////////////////////////////////////////////////////////////////////////////
 
-        int getDomain () const {
+        int getDomain () const override {
           return AF_UNIX;
         }
 
@@ -109,7 +109,7 @@ namespace triagens {
 /// @brief get port
 ////////////////////////////////////////////////////////////////////////////////
 
-        int getPort () const {
+        int getPort () const override {
           return 0;
         }
 
@@ -117,7 +117,7 @@ namespace triagens {
 /// @brief get host name
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string getHost () const {
+        std::string getHost () const override {
           return "localhost";
         }
 
@@ -125,7 +125,7 @@ namespace triagens {
 /// @brief get host string for HTTP requests
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string getHostString () const {
+        std::string getHostString () const override {
           return "localhost";
         }
 
