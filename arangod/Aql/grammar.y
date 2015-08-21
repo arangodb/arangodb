@@ -474,11 +474,11 @@ optional_into:
 
 variable_list: 
     variable_name {
-      if (! parser->ast()->scopes()->existsVariable($1.value)) {
+      if (! parser->ast()->scopes()->existsVariable($1.value, $1.length)) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $1.value, yylloc.first_line, yylloc.first_column);
       }
         
-      auto node = parser->ast()->createNodeReference($1.value);
+      auto node = parser->ast()->createNodeReference($1.value, $1.length);
       if (node == nullptr) {
         ABORT_OOM
       }
@@ -488,11 +488,11 @@ variable_list:
       parser->pushArrayElement(node);
     }
   | variable_list T_COMMA variable_name {
-      if (! parser->ast()->scopes()->existsVariable($3.value)) {
+      if (! parser->ast()->scopes()->existsVariable($3.value, $3.length)) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $3.value, yylloc.first_line, yylloc.first_column);
       }
         
-      auto node = parser->ast()->createNodeReference($3.value);
+      auto node = parser->ast()->createNodeReference($3.value, $3.length);
       if (node == nullptr) {
         ABORT_OOM
       }
@@ -692,7 +692,7 @@ upsert_statement:
       auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), $8, false);
       parser->ast()->addOperation(forNode);
 
-      auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName.c_str()), $3);
+      auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), $3);
       parser->ast()->addOperation(filterNode);
       
       auto offsetValue = parser->ast()->createNodeValueInt(0);
@@ -700,7 +700,7 @@ upsert_statement:
       auto limitNode = parser->ast()->createNodeLimit(offsetValue, limitValue);
       parser->ast()->addOperation(limitNode);
       
-      auto refNode = parser->ast()->createNodeReference(variableName.c_str());
+      auto refNode = parser->ast()->createNodeReference(variableName);
       auto returnNode = parser->ast()->createNodeReturn(refNode);
       parser->ast()->addOperation(returnNode);
       scopes->endNested();
@@ -713,10 +713,10 @@ upsert_statement:
       parser->ast()->addOperation(subQuery);
       
       auto index = parser->ast()->createNodeValueInt(0);
-      auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName.c_str()), index));
+      auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName), index));
       parser->ast()->addOperation(firstDoc);
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(Variable::NAME_OLD), $5, $7, $8, $9);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $5, $7, $8, $9);
       parser->ast()->addOperation(node);
       parser->setWriteNode(node);
     }
@@ -881,7 +881,7 @@ expression_or_query:
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeReference(variableName.c_str());
+      $$ = parser->ast()->createNodeReference(variableName);
     }
   ;
 
@@ -972,7 +972,7 @@ object_element:
     T_STRING {
       // attribute-name-only (comparable to JS enhanced object literals, e.g. { foo, bar })
       auto ast = parser->ast();
-      auto variable = ast->scopes()->getVariable($1.value, true);
+      auto variable = ast->scopes()->getVariable($1.value, $1.length, true);
       
       if (variable == nullptr) {
         // variable does not exist
@@ -1047,7 +1047,7 @@ reference:
       auto ast = parser->ast();
       AstNode* node = nullptr;
 
-      auto variable = ast->scopes()->getVariable($1.value, true);
+      auto variable = ast->scopes()->getVariable($1.value, $1.length, true);
       
       if (variable == nullptr) {
         // variable does not exist
@@ -1111,7 +1111,7 @@ reference:
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeReference(variableName.c_str());
+      $$ = parser->ast()->createNodeReference(variableName);
     } 
   | reference '.' T_STRING %prec REFERENCE {
       // named variable access, e.g. variable.reference
@@ -1177,7 +1177,7 @@ reference:
       }
 
       auto scopes = parser->ast()->scopes();
-      scopes->stackCurrentVariable(scopes->getVariable(nextName.c_str()));
+      scopes->stackCurrentVariable(scopes->getVariable(nextName));
     } optional_array_filter optional_array_limit optional_array_return T_ARRAY_CLOSE %prec EXPANSION {
       auto scopes = parser->ast()->scopes();
       scopes->unstackCurrentVariable();
@@ -1188,12 +1188,12 @@ reference:
       auto variable = static_cast<Variable const*>(variableNode->getData());
 
       if ($1->type == NODE_TYPE_EXPANSION) {
-        auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
+        auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5, $6, $7);
         $1->changeMember(1, expand);
         $$ = $1;
       }
       else {
-        $$ = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name.c_str()), $5, $6, $7);
+        $$ = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5, $6, $7);
       }
     }
   ;

@@ -335,7 +335,7 @@ Query* Query::clone (QueryPart part,
     }
    
     // clone all variables 
-    for (auto it : _ast->variables()->variables(true)) {
+    for (auto& it : _ast->variables()->variables(true)) {
       auto var = _ast->variables()->getVariable(it.first);
       TRI_ASSERT(var != nullptr);
       clone->ast()->variables()->createVariable(var);

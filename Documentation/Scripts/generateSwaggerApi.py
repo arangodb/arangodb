@@ -56,8 +56,8 @@ files = {
   "graph" : [ "js/actions/api-graph.js" ],
   "import" : [ "arangod/RestHandler/RestImportHandler.cpp" ],
   "index" : [ "js/actions/api-index.js" ],
-  "job" : [ "lib/HttpServer/AsyncJobManager.h" ],
-  "log" : [ "lib/Admin/RestAdminLogHandler.cpp" ],
+  "job" : [ "arangod/HttpServer/AsyncJobManager.h" ],
+  "log" : [ "arangod/RestHandler/RestAdminLogHandler.cpp" ],
   "query" : [ "arangod/RestHandler/RestQueryHandler.cpp" ],
   "replication" : [ "arangod/RestHandler/RestReplicationHandler.cpp" ],
   "simple" : [ "js/actions/api-simple.js", "arangod/RestHandler/RestSimpleHandler.cpp" ],
@@ -67,7 +67,7 @@ files = {
   "transaction" : [ "js/actions/api-transaction.js" ],
   "traversal" : [ "js/actions/api-traversal.js" ],
   "user" : [ "js/actions/_api/user/app.js" ],
-  "version" : [ "lib/Admin/RestVersionHandler.cpp" ],
+  "version" : [ "arangod/RestHandler/RestVersionHandler.cpp" ],
   "wal" : [ "js/actions/_admin/wal/app.js" ]
 }
 

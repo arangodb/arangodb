@@ -650,7 +650,7 @@ AstNode* Ast::createNodeVariable (char const* name,
     return nullptr;
   }
 
-  if (_scopes.existsVariable(name)) {
+  if (_scopes.existsVariable(name, nameLength)) {
     _query->registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
     return nullptr;
   }
@@ -691,11 +691,30 @@ AstNode* Ast::createNodeCollection (char const* name,
 /// @brief create an AST reference node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeReference (char const* variableName) {
+AstNode* Ast::createNodeReference (char const* variableName,
+                                   size_t nameLength) {
   if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
+  AstNode* node = createNode(NODE_TYPE_REFERENCE);
+
+  auto variable = _scopes.getVariable(std::string(variableName, nameLength));
+
+  if (variable == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found in reference AstNode");
+  }
+
+  node->setData(variable);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST reference node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeReference (std::string const& variableName) {
   AstNode* node = createNode(NODE_TYPE_REFERENCE);
 
   auto variable = _scopes.getVariable(variableName);
