@@ -251,7 +251,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
   if (unique) {
     _hashArray = nullptr;
     try {
-      _hashArray = new TRI_hash_array_t(paths.size());
+      _hashArray = new TRI_hash_array_t(_paths.size());
     }
     catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
