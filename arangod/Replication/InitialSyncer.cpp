@@ -55,6 +55,8 @@ using namespace triagens::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+size_t const InitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,18 +75,16 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
   _batchUpdateTime(0),
   _batchTtl(180),
   _includeSystem(false),
-  _chunkSize(),
+  _chunkSize(configuration->_chunkSize),
   _verbose(verbose),
   _hasFlushed(false) {
 
-  uint64_t c = configuration->_chunkSize;
-  if (c == 0) {
-    c = (uint64_t) 8 * 1024 * 1024; // 8 mb
+  if (_chunkSize == 0) {
+    _chunkSize = (uint64_t) 2 * 1024 * 1024; // 2 mb
   }
-
-  TRI_ASSERT(c > 0);
-
-  _chunkSize = StringUtils::itoa(c);
+  else if (_chunkSize < 128 * 1024) {
+    _chunkSize = 128 * 1024;
+  }
 
   _includeSystem = configuration->_includeSystem;
 }
@@ -466,9 +466,10 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     _hasFlushed = true;
   }
 
+  uint64_t chunkSize = _chunkSize;
+
   string const baseUrl = BaseUrl +
                          "/dump?collection=" + cid +
-                         "&chunkSize=" + _chunkSize + 
                          appendix;
 
   map<string, string> headers;
@@ -486,6 +487,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     }
 
     url += "&serverId=" + _localServerIdString;
+    url += "&chunkSize=" + StringUtils::itoa(chunkSize);
   
     std::string const typeString = (trxCollection->_collection->_collection->_info._type == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
@@ -561,6 +563,14 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     if (! checkMore || fromTick == 0) {
       // done
       return res;
+    }
+
+    // increase chunk size for next fetch
+    if (chunkSize < MaxChunkSize) {
+      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
+      if (chunkSize > MaxChunkSize) {
+        chunkSize = MaxChunkSize;
+      }
     }
 
     batch++;

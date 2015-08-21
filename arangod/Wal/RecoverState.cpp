@@ -1122,7 +1122,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       if (TRI_IsStringJson(name)) {
         collection = TRI_LookupCollectionByNameVocBase(vocbase, name->_value._string.data);
         
-        if (collection != nullptr && ! TRI_IsSystemNameCollection(name->_value._string.data)) {
+        if (collection != nullptr) { // && ! TRI_IsSystemNameCollection(name->_value._string.data)) {
           // if yes, delete it
           TRI_voc_cid_t otherCid = collection->_cid;
 
@@ -1161,9 +1161,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_FreeCollectionInfoOptions(&info);
 
       if (collection == nullptr) {
-        LOG_WARNING("cannot create collection %llu in database %llu", 
+        LOG_WARNING("cannot create collection %llu in database %llu: %s", 
                     (unsigned long long) collectionId, 
-                    (unsigned long long) databaseId);
+                    (unsigned long long) databaseId,
+                    TRI_last_error());
         ++state->errorCount;
         return state->canContinue();
       }

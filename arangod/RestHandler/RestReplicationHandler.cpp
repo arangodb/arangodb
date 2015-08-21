@@ -1748,7 +1748,7 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreCollection () {
-  TRI_json_t* json = _request->toJson(0);
+  std::unique_ptr<TRI_json_t> json(_request->toJson(nullptr));
 
   if (json == nullptr) {
     generateError(HttpResponse::BAD,
@@ -1782,14 +1782,12 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   string errorMsg;
   int res;
   if (ServerState::instance()->isCoordinator()) {
-    res = processRestoreCollectionCoordinator(json, overwrite, recycleIds,
+    res = processRestoreCollectionCoordinator(json.get(), overwrite, recycleIds,
                                               force, errorMsg);
   }
   else {
-    res = processRestoreCollection(json, overwrite, recycleIds, force, errorMsg);
+    res = processRestoreCollection(json.get(), overwrite, recycleIds, force, errorMsg);
   }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -1797,11 +1795,11 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   else {
     TRI_json_t result;
 
-    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+    TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &result);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
 
     generateResult(&result);
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &result);
   }
 }
 
