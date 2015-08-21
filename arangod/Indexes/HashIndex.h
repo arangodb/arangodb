@@ -267,7 +267,7 @@ namespace triagens {
                 TRI_HashArrayMulti_t;
 
         union {
-          TRI_hash_array_t      _hashArray;        // the hash array itself, unique values
+          TRI_hash_array_t*       _hashArray;   // the hash array itself, unique values
           struct {
             TRI_HashArrayMulti_t* _hashArray;   // the hash array itself, non-unique values
             HashElementFunc*      _hashElement; // hash function for elements
