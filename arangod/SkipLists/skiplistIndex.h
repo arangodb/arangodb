@@ -132,7 +132,7 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 //------------------------------------------------------------------------------
 
 SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_t*,
-                                  size_t, bool);
+                                  size_t, bool, bool);
 
 TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, 
                                              TRI_vector_t const*,
@@ -142,10 +142,6 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*,
 TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, 
                                              TRI_index_operator_t const*,
                                              bool);
-
-int SkiplistIndex_insert (SkiplistIndex*, TRI_index_element_t*);
-
-int SkiplistIndex_remove (SkiplistIndex*, TRI_index_element_t*);
 
 bool SkiplistIndex_update (SkiplistIndex*, const TRI_index_element_t*,
                            const TRI_index_element_t*);

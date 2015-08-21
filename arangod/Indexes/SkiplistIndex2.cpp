@@ -139,10 +139,18 @@ SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
   TRI_ASSERT(! fields.empty());
 
   TRI_ASSERT(iid != 0);
+  bool useExpansion = false;
+  for (auto& list: fields) {
+    if (TRI_AttributeNamesHaveExpansion(list)) {
+      useExpansion = true;
+      break;
+    }
+  }
   
   _skiplistIndex = SkiplistIndex_new(collection,
                                      _paths.size(),
-                                     unique);
+                                     unique,
+                                     useExpansion);
 }
 
 SkiplistIndex2::~SkiplistIndex2 () {
@@ -189,13 +197,23 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
   // insert into the index. the memory for the element will be owned or freed
   // by the index
 
-  for (auto& skiplistElement : elements) {
-    res = SkiplistIndex_insert(_skiplistIndex, skiplistElement);
+  size_t count = elements.size();
+  for (size_t i = 0; i < count; ++i) {
+    res = _skiplistIndex->skiplist->insert(elements[i]);
+
     if (res != TRI_ERROR_NO_ERROR) {
-      // TODO FIXME
+      TRI_index_element_t::free(elements[i]);
+      // Note: this element is freed already
+      for (size_t j = i + 1; j < count; ++j) {
+        TRI_index_element_t::free(elements[j]);
+      }
+      for (size_t j = 0; j < i; ++j) {
+         _skiplistIndex->skiplist->remove(elements[j]);
+        // No need to free elements[j] skiplist has taken over already
+      }
+      return res;
     }
   }
-  // TODO FIXME
   return res;
 }
 
@@ -216,13 +234,10 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index
 
-  for (auto& skiplistElement : elements) {
-    res = SkiplistIndex_remove(_skiplistIndex, skiplistElement);
-    if (res != TRI_ERROR_NO_ERROR) {
-      // TODO FIXME
-    }
+  size_t count = elements.size();
+  for (size_t i = 0; i < count; ++i) {
+    res = _skiplistIndex->skiplist->remove(elements[i]);
   }
-  // TODO FIXME
   return res;
 }
 
