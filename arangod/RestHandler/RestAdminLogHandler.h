@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown request handler
+/// @brief admin log request handler
 ///
 /// @file
 ///
@@ -22,30 +22,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H
-#define ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Admin/RestBaseHandler.h"
-#include "ApplicationServer/ApplicationServer.h"
-#include "Rest/HttpResponse.h"
+#include "RestHandler/RestAdminBaseHandler.h"
 
 namespace triagens {
   namespace admin {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         class RestShutdownHandler
+// --SECTION--                                         class RestAdminLogHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown request handler
+/// @brief admin log request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestShutdownHandler : public RestBaseHandler {
+    class RestAdminLogHandler : public RestAdminBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -57,7 +56,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestShutdownHandler (rest::HttpRequest*, void* applicationServer);
+        RestAdminLogHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -72,22 +71,10 @@ namespace triagens {
         bool isDirect () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initiates the shutdown process
+/// @brief returns the log files (inheritDoc)
 ////////////////////////////////////////////////////////////////////////////////
 
         status_t execute () override;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief application server
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::rest::ApplicationServer* _applicationServer;
     };
   }
 }

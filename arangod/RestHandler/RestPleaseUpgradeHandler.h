@@ -81,7 +81,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (const basics::Exception&);
+        void handleError (const basics::Exception&) override;
     };
   }
 }

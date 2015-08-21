@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for handlers
+/// @brief debug helper handler
 ///
 /// @file
 ///
@@ -24,76 +24,63 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Handler.h"
+#ifndef ARANGODB_REST_HANDLER_REST_DEBUG_HELPER_HANDLER_H
+#define ARANGODB_REST_HNDLER_REST_DEBUG_HELPER_HANDLER_H 1
 
-#include "Dispatcher/Dispatcher.h"
+#include "Basics/Common.h"
+#include "Rest/HttpResponse.h"
+#include "RestHandler/RestBaseHandler.h"
 
-using namespace triagens::rest;
-using namespace std;
+namespace triagens {
+  namespace admin {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          class RestVersionHandler
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief version request handler
+////////////////////////////////////////////////////////////////////////////////
+
+    class RestDebugHelperHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::Handler () 
-  : _dispatcherThread(nullptr) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler
-////////////////////////////////////////////////////////////////////////////////
-
-Handler::~Handler () {
-}
+        explicit RestDebugHelperHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the queue name
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t Handler::queue () const {
-  return Dispatcher::STANDARD_QUEUE;
+        bool isDirect () const override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the server version number
+////////////////////////////////////////////////////////////////////////////////
+
+        status_t execute () override;
+
+    };
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the thread which currently dealing with the job
-////////////////////////////////////////////////////////////////////////////////
-
-void Handler::setDispatcherThread (DispatcherThread* dispatcherThread) {
-  _dispatcherThread = dispatcherThread;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares for execution
-////////////////////////////////////////////////////////////////////////////////
-
-void Handler::prepareExecute () {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to cancel an execution
-////////////////////////////////////////////////////////////////////////////////
-
-void Handler::finalizeExecute () {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to cancel an execution
-////////////////////////////////////////////////////////////////////////////////
-
-bool Handler::cancel () {
-  return false;
-}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

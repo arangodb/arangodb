@@ -31,28 +31,23 @@
 #include <iostream>
 
 #include "ArangoShell/ArangoClient.h"
+#include "Basics/files.h"
 #include "Basics/FileUtils.h"
+#include "Basics/init.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/logging.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
-#include "Basics/files.h"
-#include "Basics/init.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#ifdef TRI_FILESYSTEM_CASE_BROKEN
-#include <openssl/md5.h>
-#else
-#define hexStr ""
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -625,7 +620,6 @@ static int SortCollections (const void* l,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ProcessInputDirectory (string& errorMsg) {
-
   // create a lookup table for collections
   map<string, bool> restrictList;
   for (size_t i = 0; i < Collections.size(); ++i) {
@@ -644,8 +638,7 @@ static int ProcessInputDirectory (string& errorMsg) {
     const vector<string> files = FileUtils::listFiles(InputDirectory);
     const size_t n = files.size();
 
-    // TODO: externalise file extension
-    const string suffix = string(".structure.json");
+    const string suffix = std::string(".structure.json");
 
     // loop over all files in InputDirectory, and look for all structure.json files
     for (size_t i = 0; i < n; ++i) {
@@ -665,21 +658,6 @@ static int ProcessInputDirectory (string& errorMsg) {
         continue;
       }
 
-#ifdef TRI_FILESYSTEM_CASE_BROKEN
-      // Cut of the dirty md5 hash on the wintendo and on mac:
-      if (name.length() > 32) {
-        string nname;
-        nname = name.substr(0, name.length() - 32);
-        name = nname;
-      }
-#endif
-
-      if (restrictList.size() > 0 &&
-          restrictList.find(name) == restrictList.end()) {
-        // collection name not in list
-        continue;
-      }
-
       const string fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + files[i];
 
       TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, fqn.c_str(), 0);
@@ -689,7 +667,7 @@ static int ProcessInputDirectory (string& errorMsg) {
       if (! JsonHelper::isObject(json) ||
           ! JsonHelper::isObject(parameters) ||
           ! JsonHelper::isArray(indexes)) {
-        errorMsg = "could not read collection structure file '" + name + "'";
+        errorMsg = "could not read collection structure file '" + fqn + "'";
 
         if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -702,12 +680,12 @@ static int ProcessInputDirectory (string& errorMsg) {
 
       const string cname = JsonHelper::getStringValue(parameters, "name", "");
 
-      if (cname != name) {
+      if (cname != name && name != (cname + "_" + triagens::rest::SslInterface::sslMD5(cname))) {
         // file has a different name than found in structure file
 
         if (ImportStructure) {
           // we cannot go on if there is a mismatch
-          errorMsg = "collection name mismatch in collection structure file '" + name + "' (offending value: '" + cname + "')";
+          errorMsg = "collection name mismatch in collection structure file '" + fqn + "' (offending value: '" + cname + "')";
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
 
@@ -715,7 +693,7 @@ static int ProcessInputDirectory (string& errorMsg) {
         }
         else {
           // we can patch the name in our array and go on
-          cout << "ignoring collection name mismatch in collection structure file '" + name + "' (offending value: '" + cname + "')" << endl;
+          cout << "ignoring collection name mismatch in collection structure file '" + fqn + "' (offending value: '" + cname + "')" << endl;
 
           TRI_json_t* nameAttribute = TRI_LookupObjectJson(parameters, "name");
 
@@ -729,6 +707,13 @@ static int ProcessInputDirectory (string& errorMsg) {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
           }
         }
+      }
+
+      if (! restrictList.empty() > 0 &&
+          restrictList.find(cname) == restrictList.end()) {
+        // collection name not in list
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        continue;
       }
 
       TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collections, json);
@@ -780,24 +765,10 @@ static int ProcessInputDirectory (string& errorMsg) {
 
       if (ImportData) {
         // import data. check if we have a datafile
-        // TODO: externalise file extension
-#ifdef TRI_FILESYSTEM_CASE_BROKEN
-        size_t   dstLen;
-        char     *hexStr = NULL;
-        char     rawdigest[16];
-        MD5_CTX  md5context;
-        MD5_Init(&md5context);
-      
-        MD5_Update(&md5context,
-                   (const unsigned char*)cname.c_str(), cname.length());
-      
-        MD5_Final((u_char*)rawdigest, &md5context);
-        hexStr = TRI_EncodeHexString(rawdigest, 16, &dstLen);
-#endif
-        const string datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + cname + hexStr + ".data.json";
-#ifdef TRI_FILESYSTEM_CASE_BROKEN
-        TRI_Free(TRI_CORE_MEM_ZONE, hexStr);
-#endif
+        std::string datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + cname + "_" + triagens::rest::SslInterface::sslMD5(cname) + ".data.json";
+        if (! TRI_ExistsFile(datafile.c_str())) {
+          datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + cname + ".data.json";
+        }
 
         if (TRI_ExistsFile(datafile.c_str())) {
           // found a datafile

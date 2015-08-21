@@ -116,11 +116,14 @@ union YYSTYPE
 #line 17 "arangod/Aql/grammar.y" /* yacc.c:1909  */
 
   triagens::aql::AstNode*  node;
-  char*                    strval;
+  struct {
+    char*                  value;
+    size_t                 length;
+  }                        strval;
   bool                     boolval;
   int64_t                  intval;
 
-#line 124 "arangod/Aql/grammar.hpp" /* yacc.c:1909  */
+#line 127 "arangod/Aql/grammar.hpp" /* yacc.c:1909  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1

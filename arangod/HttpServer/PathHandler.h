@@ -31,7 +31,6 @@
 #define ARANGODB_HTTP_SERVER_PATH_HANDLER_H 1
 
 #include "Basics/Common.h"
-
 #include "HttpServer/HttpHandler.h"
 
 namespace triagens {
@@ -108,7 +107,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (const basics::Exception&);
+        void handleError (const basics::Exception&) override;
 
       private:
         std::string path;

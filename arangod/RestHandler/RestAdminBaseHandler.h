@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief admin log request handler
+/// @brief default handler for admin handlers
 ///
 /// @file
 ///
@@ -22,30 +22,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
+/// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_ADMIN_LOG_HANDLER_H
-#define ARANGODB_ADMIN_REST_ADMIN_LOG_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_ADMIN_BASE_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_ADMIN_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Admin/RestAdminBaseHandler.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
   namespace admin {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         class RestAdminLogHandler
+// --SECTION--                                        class RestAdminBaseHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief admin log request handler
+/// @brief default handler for admin handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestAdminLogHandler : public RestAdminBaseHandler {
+    class RestAdminBaseHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -57,25 +56,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestAdminLogHandler (rest::HttpRequest*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDirect () const override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the log files (inheritDoc)
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute () override;
+        explicit RestAdminBaseHandler (rest::HttpRequest* request);
     };
   }
 }

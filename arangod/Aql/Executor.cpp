@@ -502,7 +502,7 @@ v8::Handle<v8::Value> Executor::toV8 (v8::Isolate* isolate,
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     for (size_t i = 0; i < n; ++i) {
       auto sub = node->getMember(i);
-      result->ForceSet(TRI_V8_STRING(sub->getStringValue()), toV8(isolate, sub->getMember(0)));
+      result->ForceSet(TRI_V8_PAIR_STRING(sub->getStringValue(), sub->getStringLength()), toV8(isolate, sub->getMember(0)));
     }
     return result;
   }
@@ -518,7 +518,7 @@ v8::Handle<v8::Value> Executor::toV8 (v8::Isolate* isolate,
       case VALUE_TYPE_DOUBLE:
         return v8::Number::New(isolate, static_cast<double>(node->value.value._double));
       case VALUE_TYPE_STRING:
-        return TRI_V8_STRING(node->value.value._string);
+        return TRI_V8_PAIR_STRING(node->value.value._string, node->value.length);
     }
   }
   return v8::Null(isolate);
@@ -624,11 +624,12 @@ void Executor::generateCodeExpression (AstNode const* node) {
 /// @brief generates code for a string value
 ////////////////////////////////////////////////////////////////////////////////
         
-void Executor::generateCodeString (char const* value) {
+void Executor::generateCodeString (char const* value, 
+                                   size_t length) {
   TRI_ASSERT(value != nullptr);
 
   _buffer->appendChar('"');
-  _buffer->appendJsonEncoded(value);
+  _buffer->appendJsonEncoded(value, length);
   _buffer->appendChar('"');
 }
 
@@ -638,7 +639,7 @@ void Executor::generateCodeString (char const* value) {
         
 void Executor::generateCodeString (std::string const& value) {
   _buffer->appendChar('"');
-  _buffer->appendJsonEncoded(value.c_str());
+  _buffer->appendJsonEncoded(value.c_str(), value.size());
   _buffer->appendChar('"');
 }
 
@@ -753,7 +754,7 @@ void Executor::generateCodeDynamicObject (AstNode const* node) {
 
     if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
       _buffer->appendText(TRI_CHAR_LENGTH_PAIR("o["));
-      generateCodeString(member->getStringValue());
+      generateCodeString(member->getStringValue(), member->getStringLength());
       _buffer->appendText(TRI_CHAR_LENGTH_PAIR("]="));
       generateCodeNode(member->getMember(0));
     }
@@ -802,7 +803,7 @@ void Executor::generateCodeRegularObject (AstNode const* node) {
     auto member = node->getMember(i);
 
     if (member != nullptr) {
-      generateCodeString(member->getStringValue());
+      generateCodeString(member->getStringValue(), member->getStringLength());
       _buffer->appendChar(':');
       generateCodeNode(member->getMember(0));
     }
@@ -909,7 +910,7 @@ void Executor::generateCodeReference (AstNode const* node) {
   auto variable = static_cast<Variable*>(node->getData());
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("vars["));
-  generateCodeString(variable->name.c_str());
+  generateCodeString(variable->name);
   _buffer->appendChar(']');
 }
 
@@ -924,7 +925,7 @@ void Executor::generateCodeVariable (AstNode const* node) {
   auto variable = static_cast<Variable*>(node->getData());
   
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("vars["));
-  generateCodeString(variable->name.c_str());
+  generateCodeString(variable->name);
   _buffer->appendChar(']');
 }
 
@@ -936,10 +937,8 @@ void Executor::generateCodeCollection (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
   
-  char const* name = node->getStringValue();
-
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.GET_DOCUMENTS("));
-  generateCodeString(name);
+  generateCodeString(node->getStringValue(), node->getStringLength());
   _buffer->appendChar(')');
 }
 
@@ -979,8 +978,7 @@ void Executor::generateCodeFunctionCall (AstNode const* node) {
         (conversion == Function::CONVERSION_REQUIRED || conversion == Function::CONVERSION_OPTIONAL)) {
       // the parameter at this position is a collection name that is converted to a string
       // do a parameter conversion from a collection parameter to a collection name parameter
-      char const* name = member->getStringValue();
-      generateCodeString(name);
+      generateCodeString(member->getStringValue(), member->getStringLength());
     }
     else if (conversion == Function::CONVERSION_REQUIRED) {
       // the parameter at the position is not a collection name... fail
@@ -1002,15 +1000,12 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
   
-  char const* name = node->getStringValue();
-  TRI_ASSERT(name != nullptr);
-
   auto args = node->getMember(0);
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.FCALL_USER("));
-  generateCodeString(name);
+  generateCodeString(node->getStringValue(), node->getStringLength());
   _buffer->appendChar(',');
 
   generateCodeNode(args);
@@ -1116,7 +1111,7 @@ void Executor::generateCodeNamedAccess (AstNode const* node) {
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.DOCUMENT_MEMBER("));
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
-  generateCodeString(node->getStringValue());
+  generateCodeString(node->getStringValue(), node->getStringLength());
   _buffer->appendChar(')');
 }
 

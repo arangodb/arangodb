@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 
 #ifdef _WIN32
-  #include "Basics/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "Rest/AnyServer.h"
@@ -60,6 +60,7 @@ namespace triagens {
     class ApplicationEndpointServer;
     class ApplicationScheduler;
     class AsyncJobManager;
+    class Dispatcher;
     class HttpServer;
     class HttpsServer;
   }
@@ -695,7 +696,13 @@ namespace triagens {
 /// this will be removed once we have a global struct with "everything useful"
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::pair<ApplicationV8*, aql::QueryRegistry*>* _pairForAql;
+        std::pair<ApplicationV8*, aql::QueryRegistry*>* _pairForAqlHandler;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ptr to pair used for job manager rest handler
+////////////////////////////////////////////////////////////////////////////////
+
+        std::pair<triagens::rest::Dispatcher*, triagens::rest::AsyncJobManager*>* _pairForJobHandler;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread pool for background parallel index creation

@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Dispatcher/Job.h"
-#include "Rest/Handler.h"
+#include "HttpServer/HttpHandler.h"
 
 struct TRI_server_t;
 
@@ -118,7 +118,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cleanup (rest::DispatcherQueue* queue);
+        void cleanup (rest::DispatcherQueue* queue) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -133,7 +133,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (basics::Exception const& ex) {
+        void handleError (basics::Exception const& ex) override {
         }
 
 // -----------------------------------------------------------------------------

@@ -49,7 +49,6 @@ build-book:
 	cd ppbooks/$(NAME); test -L SUMMARY.md || ln -s ../../$(NAME)/SUMMARY.md .
 	cd ppbooks/$(NAME); test -L book.json || ln -s ../../$(NAME)/book.json .
 	cd ppbooks/$(NAME); cp -a ../../$(NAME)/styles/* styles/
-	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/$(newVersionNumber)/g' styles/header.js
 	WD=`pwd`; \
 	for pic in `find $(NAME) -name \*.png`; do \
 		cd $${WD}/ppbooks; \
@@ -58,6 +57,10 @@ build-book:
 		ln -s $${WD}/$${pic} $${pic}; \
 	done
 	python generateMdFiles.py $(NAME) ppbooks/
+
+	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
+	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
+	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/v$(newVersionNumber)/g' book.json
 
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
 

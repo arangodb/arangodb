@@ -1693,7 +1693,9 @@ def _DictsToFolders(base_path, bucket, flat):
         children += folder_children
       else:
         folder_children = MSVSNew.MSVSFolder(os.path.join(base_path, folder),
-                                             name='(' + folder + ')',
+                                             # parentheses not supported by msbuild target parameter /t
+                                             # name='(' + folder + ')',
+                                             name=folder,
                                              entries=folder_children)
         children.append(folder_children)
     else:
@@ -1967,7 +1969,9 @@ def GenerateOutput(target_list, target_dicts, data, params):
     sln_projects += gyp.common.DeepDependencyTargets(target_dicts, sln_projects)
     # Create folder hierarchy.
     root_entries = _GatherSolutionFolders(
-        sln_projects, project_objects, flat=msvs_version.FlatSolution())
+        # ArangoDB V8 build script expects flat solution
+        # sln_projects, project_objects, flat=msvs_version.FlatSolution())
+        sln_projects, project_objects, flat=True)
     # Create solution.
     sln = MSVSNew.MSVSSolution(sln_path,
                                entries=root_entries,

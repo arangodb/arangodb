@@ -239,14 +239,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeFor (char const*,
+                                size_t,
                                 AstNode const*,
-                                bool = false);
+                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST let node, without an IF condition
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeLet (char const*,
+                                size_t,
                                 AstNode const*,
                                 bool);
 
@@ -262,6 +264,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeLet (char const*,
+                                size_t,
                                 AstNode const*,
                                 AstNode const*);
 
@@ -341,6 +344,7 @@ namespace triagens {
 
         AstNode* createNodeCollect (AstNode const*,
                                     char const*,
+                                    size_t,
                                     AstNode const*,
                                     AstNode const*);
 
@@ -350,6 +354,7 @@ namespace triagens {
 
         AstNode* createNodeCollectExpression (AstNode const*,
                                               char const*,
+                                              size_t,
                                               AstNode const*,
                                               AstNode const*);
 
@@ -359,6 +364,7 @@ namespace triagens {
 
         AstNode* createNodeCollectCount (AstNode const*,
                                          char const*,
+                                         size_t length,
                                          AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,6 +392,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeAssign (char const*,
+                                   size_t,
                                    AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,6 +400,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeVariable (char const*,
+                                     size_t,
                                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,7 +414,14 @@ namespace triagens {
 /// @brief create an AST reference node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeReference (char const*);
+        AstNode* createNodeReference (char const*,
+                                      size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST reference node
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* createNodeReference (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST reference node
@@ -418,7 +433,8 @@ namespace triagens {
 /// @brief create an AST parameter node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeParameter (char const*);
+        AstNode* createNodeParameter (char const*,
+                                      size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST unary operator
@@ -448,7 +464,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeAttributeAccess (AstNode const*,
-                                            char const*);
+                                            char const*,
+                                            size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST attribute access node w/ bind parameter
@@ -487,6 +504,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeIterator (char const*,
+                                     size_t,
                                      AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -517,7 +535,8 @@ namespace triagens {
 /// @brief create an AST string value node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeValueString (char const*);
+        AstNode* createNodeValueString (char const*,
+                                        size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST array node
@@ -536,6 +555,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeObjectElement (char const*,
+                                          size_t,
                                           AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////

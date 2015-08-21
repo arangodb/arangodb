@@ -31,12 +31,11 @@
 #define ARANGODB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Admin/RestBaseHandler.h"
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/json-utilities.h"
 #include "Rest/HttpResponse.h"
+#include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
 #include "Utils/transactions.h"
 
@@ -150,7 +149,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestVocbaseBaseHandler (rest::HttpRequest*);
+        explicit RestVocbaseBaseHandler (rest::HttpRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -425,13 +424,13 @@ namespace triagens {
 /// @brief prepareExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void prepareExecute ();
+        virtual void prepareExecute () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finalizeExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void finalizeExecute ();
+        virtual void finalizeExecute () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _nolockHeaderFound

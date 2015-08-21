@@ -1,6 +1,6 @@
 {
   "gitbook": ">=2.0.0",
-  "title": "ArangoDB Documentation",
+  "title": "ArangoDB VERSION_NUMBER Documentation",
   "language": "en",
   "plugins":["expandable-chapters", "addcssjs"],
   "pdf": {

@@ -675,8 +675,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         auto arg = member->getMemberUnchecked(i);
 
         if (arg->type == NODE_TYPE_COLLECTION) {
-          char const* collectionName = arg->getStringValue();
-          parameters.emplace_back(AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, collectionName, strlen(collectionName))), nullptr);
+          parameters.emplace_back(AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, arg->getStringValue(), arg->getStringLength())), nullptr);
         }
         else {
           auto value = executeSimpleExpression(arg, &myCollection, trx, argv, startPos, vars, regs, false);
@@ -1084,7 +1083,7 @@ std::pair<std::string, std::string> Expression::getAttributeAccess () {
   }
 
   while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attributeVector.emplace_back(expNode->getStringValue());
+    attributeVector.emplace_back(std::string(expNode->getStringValue(), expNode->getStringLength()));
     expNode = expNode->getMember(0);
   }
   
