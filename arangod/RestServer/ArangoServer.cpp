@@ -618,6 +618,7 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
+    ("server.additional-threads", &_additionalThreads, "number of threads in additional queues")
     ("server.foxx-queues", &_foxxQueues, "enable Foxx queues")
     ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
     ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")
@@ -940,6 +941,19 @@ int ArangoServer::startupServer () {
         role == ServerState::ROLE_SECONDARY) {
       _applicationDispatcher->buildAQLQueue(_dispatcherThreads,
                                             (int) _dispatcherQueueSize);
+    }
+
+    for (size_t i = 0;  i < _additionalThreads.size();  ++i) {
+      int n = _additionalThreads[i];
+
+      if (n < 1) {
+	n = 1;
+      }
+
+      _additionalThreads[i] = n;
+
+      _applicationDispatcher->buildNamedQueue(
+        to_string(i + 1), n, (int) _dispatcherQueueSize);
     }
   }
 

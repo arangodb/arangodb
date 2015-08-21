@@ -368,7 +368,6 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/Utils/arangod_libarangod_a-TransactionContext.$(OBJEXT) \
 	arangod/Utils/arangod_libarangod_a-V8TransactionContext.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-ApplicationV8.$(OBJEXT) \
-	arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-V8Job.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-V8PeriodicTask.$(OBJEXT) \
 	arangod/V8Server/arangod_libarangod_a-V8QueueJob.$(OBJEXT) \
@@ -1505,7 +1504,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Utils/TransactionContext.cpp \
 	arangod/Utils/V8TransactionContext.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
-	arangod/V8Server/V8DispatcherThread.cpp \
 	arangod/V8Server/V8Job.cpp \
 	arangod/V8Server/V8PeriodicTask.cpp \
 	arangod/V8Server/V8QueueJob.cpp \
@@ -2481,9 +2479,6 @@ arangod/V8Server/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/V8Server/$(DEPDIR)
 	@: > arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
 arangod/V8Server/arangod_libarangod_a-ApplicationV8.$(OBJEXT):  \
-	arangod/V8Server/$(am__dirstamp) \
-	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
-arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.$(OBJEXT):  \
 	arangod/V8Server/$(am__dirstamp) \
 	arangod/V8Server/$(DEPDIR)/$(am__dirstamp)
 arangod/V8Server/arangod_libarangod_a-V8Job.$(OBJEXT):  \
@@ -3670,7 +3665,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-TransactionContext.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-V8TransactionContext.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-ApplicationV8.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Job.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8PeriodicTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8QueueJob.Po@am__quote@
@@ -5281,20 +5275,6 @@ arangod/V8Server/arangod_libarangod_a-ApplicationV8.obj: arangod/V8Server/Applic
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/ApplicationV8.cpp' object='arangod/V8Server/arangod_libarangod_a-ApplicationV8.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-ApplicationV8.obj `if test -f 'arangod/V8Server/ApplicationV8.cpp'; then $(CYGPATH_W) 'arangod/V8Server/ApplicationV8.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/ApplicationV8.cpp'; fi`
-
-arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o: arangod/V8Server/V8DispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Tpo -c -o arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o `test -f 'arangod/V8Server/V8DispatcherThread.cpp' || echo '$(srcdir)/'`arangod/V8Server/V8DispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/V8DispatcherThread.cpp' object='arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.o `test -f 'arangod/V8Server/V8DispatcherThread.cpp' || echo '$(srcdir)/'`arangod/V8Server/V8DispatcherThread.cpp
-
-arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj: arangod/V8Server/V8DispatcherThread.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Tpo -c -o arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj `if test -f 'arangod/V8Server/V8DispatcherThread.cpp'; then $(CYGPATH_W) 'arangod/V8Server/V8DispatcherThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/V8DispatcherThread.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Tpo arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8DispatcherThread.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/V8Server/V8DispatcherThread.cpp' object='arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/V8Server/arangod_libarangod_a-V8DispatcherThread.obj `if test -f 'arangod/V8Server/V8DispatcherThread.cpp'; then $(CYGPATH_W) 'arangod/V8Server/V8DispatcherThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/V8Server/V8DispatcherThread.cpp'; fi`
 
 arangod/V8Server/arangod_libarangod_a-V8Job.o: arangod/V8Server/V8Job.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/V8Server/arangod_libarangod_a-V8Job.o -MD -MP -MF arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-V8Job.Tpo -c -o arangod/V8Server/arangod_libarangod_a-V8Job.o `test -f 'arangod/V8Server/V8Job.cpp' || echo '$(srcdir)/'`arangod/V8Server/V8Job.cpp
@@ -9455,6 +9435,7 @@ examples:
 
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
 		--output-dir @builddir@/Documentation/Examples \
+		--only-thisone "$(FILTER_EXAMPLE)" \
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
 		@srcdir@/js/actions \
 		@srcdir@/js/client \
@@ -9467,14 +9448,24 @@ examples:
 		@srcdir@/lib/Admin \
 		> /tmp/arangosh.examples.js
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
-
-	@builddir@/bin/arangosh \
-		-s \
-		-c @srcdir@/etc/relative/arangosh.conf \
-		--server.password "" \
-		--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
-		--javascript.execute /tmp/arangosh.examples.js
+	if test -z "$(server.endpoint)"; then \
+		$(MAKE) start-server PID=$(PID) \
+			SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" \
+			PROTO=http ;\
+		@builddir@/bin/arangosh \
+			-s \
+			-c @srcdir@/etc/relative/arangosh.conf \
+			--server.password "" \
+			--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
+			--javascript.execute /tmp/arangosh.examples.js ;\
+	else \
+		@builddir@/bin/arangosh \
+			-s \
+			-c @srcdir@/etc/relative/arangosh.conf \
+			--server.password "" \
+			--server.endpoint $(server.endpoint) \
+			--javascript.execute /tmp/arangosh.examples.js ;\
+	fi
 
 ################################################################################
 ### @brief executes jslint

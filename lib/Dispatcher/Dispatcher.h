@@ -120,8 +120,6 @@ namespace triagens {
 /////////////////////////////////////////////////////////////////////////
 
         int startNamedQueue (const std::string& name,
-                             newDispatcherThread_fptr,
-                             void* threadData,
                              size_t nrThreads,
                              size_t maxSize);
 

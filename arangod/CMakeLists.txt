@@ -150,7 +150,6 @@ add_executable(
     Utils/TransactionContext.cpp
     Utils/V8TransactionContext.cpp
     V8Server/ApplicationV8.cpp
-    V8Server/V8DispatcherThread.cpp
     V8Server/V8Job.cpp
     V8Server/V8PeriodicTask.cpp
     V8Server/V8QueueJob.cpp

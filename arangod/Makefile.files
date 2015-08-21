@@ -109,7 +109,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Utils/TransactionContext.cpp \
 	arangod/Utils/V8TransactionContext.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
-	arangod/V8Server/V8DispatcherThread.cpp \
 	arangod/V8Server/V8Job.cpp \
 	arangod/V8Server/V8PeriodicTask.cpp \
 	arangod/V8Server/V8QueueJob.cpp \

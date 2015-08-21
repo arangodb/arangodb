@@ -159,8 +159,6 @@ int Dispatcher::addAQLQueue (size_t nrThreads,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Dispatcher::startNamedQueue (std::string const& name,
-                                 newDispatcherThread_fptr func,
-                                 void* threadData,
                                  size_t nrThreads,
                                  size_t maxSize) {
   MUTEX_LOCKER(_accessDispatcher);
@@ -177,8 +175,8 @@ int Dispatcher::startNamedQueue (std::string const& name,
     _scheduler,
     this,
     name,
-    func,
-    threadData,
+    DefaultDispatcherThread,
+    nullptr,
     nrThreads,
     maxSize);
 
