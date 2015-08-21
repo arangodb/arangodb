@@ -123,12 +123,12 @@ static int CmpElmElm (void* sli,
   // The document could be the same -- so no further comparison is required.
   // ..........................................................................
 
+  SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
   if (leftElement == rightElement ||
-      leftElement->document() == rightElement->document()) {
+      (!skiplistindex->skiplist->isArray() && leftElement->document() == rightElement->document())) {
     return 0;
   }
 
-  SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
   auto shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   for (size_t j = 0;  j < skiplistindex->_numFields;  j++) {
     int compareResult = CompareElementElement(leftElement,
@@ -204,7 +204,6 @@ static int CmpKeyElm (void* sli,
 static void FreeElm (void* e) {
   auto element = static_cast<TRI_index_element_t*>(e);
   TRI_index_element_t::free(element);
-  // TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,7 +437,8 @@ void SkiplistIndex_free (SkiplistIndex* slIndex) {
 
 SkiplistIndex* SkiplistIndex_new (TRI_document_collection_t* document,
                                   size_t numFields,
-                                  bool unique) {
+                                  bool unique,
+                                  bool isArray) {
   SkiplistIndex* skiplistIndex = static_cast<SkiplistIndex*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true));
 
   if (skiplistIndex == nullptr) {
@@ -451,7 +451,7 @@ SkiplistIndex* SkiplistIndex_new (TRI_document_collection_t* document,
   try {
     skiplistIndex->skiplist = new triagens::basics::SkipList(
                                            CmpElmElm, CmpKeyElm, skiplistIndex,
-                                           FreeElm, unique);
+                                           FreeElm, unique, isArray);
   }
   catch (...) {
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
@@ -515,7 +515,7 @@ static bool skiplistIndex_findHelperIntervalValid(
 
   compareResult = CmpElmElm( skiplistIndex,
                              lNode->document(), rNode->document(), 
-                             triagens::basics::SKIPLIST_CMP_TOTORDER );
+                             triagens::basics::SKIPLIST_CMP_TOTORDER);
   return (compareResult == -1);
   // Since we know that the nodes are not neighbours, we can guarantee
   // at least one document in the interval.
@@ -971,43 +971,6 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex* skiplistIndex,
   }
 
   return results;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a data element into the skip list
-/// ownership for the element is transferred to the index
-////////////////////////////////////////////////////////////////////////////////
-
-int SkiplistIndex_insert (SkiplistIndex* skiplistIndex,
-                          TRI_index_element_t* element) {
-  int res = skiplistIndex->skiplist->insert(element);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_index_element_t::free(element);
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an entry from the skip list
-/// ownership for the element is transferred to the index
-////////////////////////////////////////////////////////////////////////////////
-
-int SkiplistIndex_remove (SkiplistIndex* skiplistIndex,
-                          TRI_index_element_t* element) {
-  int res = skiplistIndex->skiplist->remove(element);
-
-  TRI_index_element_t::free(element);
-
-  if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-    // This is for the case of a rollback in an aborted transaction.
-    // We silently ignore the fact that the document was not there.
-    // This could also be useful for the case of a sparse index.
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

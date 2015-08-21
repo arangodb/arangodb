@@ -200,7 +200,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
   size_t i = 0;
   for (auto const& field : fields) {
     std::string fieldString;
-    TRI_AttributeNamesToString(field, fieldString);
+    TRI_AttributeNamesToString(field, fieldString, true);
     v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
 
     if (! conditions->HasOwnProperty(key)) {
@@ -407,7 +407,7 @@ static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
 
   for (auto const& field : fields) {
     std::string fieldString;
-    TRI_AttributeNamesToString(field, fieldString);
+    TRI_AttributeNamesToString(field, fieldString, true);
     v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
 
     if (! example->HasOwnProperty(key)) {
