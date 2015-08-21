@@ -436,7 +436,8 @@ static int insertIntoIndex (VocShaper* shaper,
                      TRI_shaped_json_t const* subShape,
                      size_t subShapeLevel,
                      size_t level, 
-                     std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& attributes, 
+                     std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& attributes,
+                     bool const sparse,
                      std::unordered_set<std::vector<TRI_shaped_json_t>>& toInsert,
                      std::vector<TRI_shaped_json_t>& shapes) {
   TRI_ASSERT(! attributes.empty());
@@ -447,15 +448,25 @@ static int insertIntoIndex (VocShaper* shaper,
   size_t i = subShapeLevel;
   while (i < n) {
     TRI_shaped_json_t shapedJson;
-    TRI_shape_pid_t attributeName = attributes[level][i].first;
+    TRI_shape_pid_t pid = attributes[level][i].first;
 
     bool check = shaper->extractShapedJson(
-      subShape, 0, attributeName, &shapedJson, &shape
+      subShape, 0, pid, &shapedJson, &shape
     );
 
-    if (! check) {
-      // attribute not, found => treat as sparse
-      return TRI_ERROR_NO_ERROR;
+    if (! check || shape == nullptr || shapedJson._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+      // attribute not, found
+      if (sparse) {
+        // If sparse we do not have to index
+        return TRI_ERROR_NO_ERROR;
+      } else {
+        // If not sparse we insert null here
+        shapedJson._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+        shapedJson._data.data = nullptr;
+        shapedJson._data.length = 0;
+        currentShape = shapedJson;
+        break;
+      }
     }
 
     bool expand = attributes[level][i].second;
@@ -470,7 +481,7 @@ static int insertIntoIndex (VocShaper* shaper,
           for (size_t index = 0; index < len; ++index) {
             ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
             if (ok) {
-              insertIntoIndex(shaper, documentShape, &shapedArrayElement, i + 1, level, attributes, toInsert, shapes);
+              insertIntoIndex(shaper, documentShape, &shapedArrayElement, i + 1, level, attributes, sparse, toInsert, shapes);
             }
             else {
               TRI_ASSERT(false);
@@ -482,7 +493,7 @@ static int insertIntoIndex (VocShaper* shaper,
           for (size_t index = 0; index < len; ++index) {
             ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
             if (ok) {
-              insertIntoIndex(shaper, documentShape, &shapedArrayElement, i + 1, level, attributes, toInsert, shapes);
+              insertIntoIndex(shaper, documentShape, &shapedArrayElement, i + 1, level, attributes, sparse, toInsert, shapes);
             }
             else {
               TRI_ASSERT(false);
@@ -494,16 +505,26 @@ static int insertIntoIndex (VocShaper* shaper,
           for (size_t index = 0; index < len; ++index) {
             ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
             if (ok) {
-              insertIntoIndex(shaper, documentShape, &shapedArrayElement, i + 1, level, attributes, toInsert, shapes);
+              insertIntoIndex(shaper, documentShape, &shapedArrayElement, i + 1, level, attributes, sparse, toInsert, shapes);
             }
             else {
               TRI_ASSERT(false);
             }
           }
           break;
-        // default:
-          // Non Array attribute cannot be expanded and will not be indexed
-          // TODO FIXME check sparse
+        default:
+          // Non Array attribute cannot be expanded
+          if (sparse) {
+            // If sparse we do not have to index
+            return TRI_ERROR_NO_ERROR;
+          } else {
+            // If not sparse we insert null here
+            shapedJson._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+            shapedJson._data.data = nullptr;
+            shapedJson._data.length = 0;
+            currentShape = shapedJson;
+            break;
+          }
       }
       // Leave the while loop here, it has been walked through in recursion
       return TRI_ERROR_NO_ERROR;
@@ -522,7 +543,7 @@ static int insertIntoIndex (VocShaper* shaper,
     return TRI_ERROR_NO_ERROR;
   }
 
-  insertIntoIndex(shaper, documentShape, documentShape, 0, level + 1, attributes, toInsert, shapes);
+  insertIntoIndex(shaper, documentShape, documentShape, 0, level + 1, attributes, sparse, toInsert, shapes);
   shapes.pop_back();
 
   return TRI_ERROR_NO_ERROR;
@@ -553,7 +574,7 @@ int Index::fillElement (std::function<TRI_index_element_t* ()> allocate,
 
   std::unordered_set<std::vector<TRI_shaped_json_t>> toInsert;
   std::vector<TRI_shaped_json_t> shapes;
-  insertIntoIndex(_collection->getShaper(), &shapedJson, &shapedJson, 0, 0, paths, toInsert, shapes);
+  insertIntoIndex(_collection->getShaper(), &shapedJson, &shapedJson, 0, 0, paths, sparse, toInsert, shapes);
   char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
   size_t const n = paths.size();
   for (auto& info : toInsert) {
