@@ -744,7 +744,7 @@ SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 unittests-shell-client:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=unix
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
 
 	@echo
 	@echo "================================================================================"

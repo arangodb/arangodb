@@ -31,6 +31,7 @@
 #include "Basics/random.h"
 #include "Basics/Exceptions.h"
 
+#include <iostream>
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
@@ -287,9 +288,10 @@ SkipList::SkipList (SkipListCmpElmElm cmp_elm_elm,
                     SkipListCmpKeyElm cmp_key_elm,
                     void* cmpdata,
                     SkipListFreeFunc freefunc,
-                    bool unique) 
+                    bool unique,
+                    bool isArray)
     : _cmp_elm_elm(cmp_elm_elm), _cmp_key_elm(cmp_key_elm), _cmpdata(cmpdata),
-      _free(freefunc), _unique(unique), _nrUsed(0) {
+      _free(freefunc), _unique(unique), _nrUsed(0), _isArray(isArray) {
   
   // set initial memory usage
   _memoryUsed = sizeof(SkipList);

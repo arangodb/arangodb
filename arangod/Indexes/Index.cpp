@@ -33,6 +33,7 @@
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
 
+
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
@@ -408,109 +409,156 @@ bool Index::hasBatchInsert () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper to recursively insert expanded elements in to list of index_elements.
+/// @brief helper function to transform AttributeNames into pid lists
+/// This will create PIDs for all indexed Attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static void insertExpandedElements (std::function<TRI_index_element_t* ()> const& allocate,
-                                    TRI_index_element_t* baseElement,
-                                    std::deque<std::pair<size_t, std::vector<TRI_shaped_json_t>>>& expansions,
-                                    std::vector<TRI_index_element_t*>& result,
-                                    char const* ptr,
-                                    size_t const paths) {
-  // Invariant: The baseElement is allocated and properly has space.
-  // For each expansion place we have to allocate another index_element and copy the values
-  // of baseElement into it.
-  if (expansions.empty()) {
-    result.push_back(baseElement);
-    return;
-  }
-  // In each step we reduce expansions.size() by 1, so will terminate.
-  auto current = expansions.front();
-  expansions.pop_front();
-  bool first = true;
-  for (auto& el : current.second) {
-    TRI_index_element_t* element = nullptr;
-    if (first) {
-      // One index_element is allocated, we use this space for the first entry in the expansion
-      element = baseElement;
-      first = false;
+std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const Index::fillPidPaths () {
+  std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> result;
+  VocShaper* shaper = _collection->getShaper();
+  for (auto& list : _fields) {
+    std::vector<std::pair<TRI_shape_pid_t, bool>> interior;
+    for (auto& attr : list) {
+      auto pid = shaper->findOrCreateAttributePathByName(attr.name.c_str());
+      interior.emplace_back(pid, attr.shouldExpand);
     }
-    else {
-      // Allocate a new index element and copy all baseElement values over.
-      // baseElement might contain expansions from levels further down
-      // but they will be overwritten again later.
-      element = allocate();
-      element->document(baseElement->document());
-      for (size_t j = 0; j < paths; ++j) {
-        element->subObjects()[j] = baseElement->subObjects()[j];
+    result.push_back(interior);
+  }
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to create a set of index combinations to insert
+////////////////////////////////////////////////////////////////////////////////
+
+static int insertIntoIndex (VocShaper* shaper,
+                     TRI_shaped_json_t const* documentShape, 
+                     TRI_shaped_json_t const* subShape,
+                     size_t subShapeLevel,
+                     size_t level, 
+                     std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& attributes,
+                     bool const sparse,
+                     std::unordered_set<std::vector<TRI_shaped_json_t>>& toInsert,
+                     std::vector<TRI_shaped_json_t>& shapes) {
+  TRI_ASSERT(! attributes.empty());
+  TRI_ASSERT(level < attributes.size());
+  TRI_shaped_json_t currentShape = *subShape;
+  TRI_shape_t const* shape = nullptr;
+  size_t const n = attributes[level].size();
+  size_t i = subShapeLevel;
+  while (i < n) {
+    TRI_shaped_json_t shapedJson;
+    TRI_shape_pid_t pid = attributes[level][i].first;
+
+    bool check = shaper->extractShapedJson(
+      subShape, 0, pid, &shapedJson, &shape
+    );
+
+    if (! check || shape == nullptr || shapedJson._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+      // attribute not, found
+      if (sparse) {
+        // If sparse we do not have to index
+        return TRI_ERROR_NO_ERROR;
+      } else {
+        // If not sparse we insert null here
+        shapedJson._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+        shapedJson._data.data = nullptr;
+        shapedJson._data.length = 0;
+        currentShape = shapedJson;
+        break;
       }
     }
-    TRI_FillShapedSub(&(element->subObjects()[current.first]), &el, ptr);
-    insertExpandedElements(allocate, element, expansions, result, ptr, paths);
-  }
-  // If we are done with this level we push it back on the stack,
-  // a higher level has done expansion as well and expects expansions to be
-  // non-modified.
-  expansions.push_front(current);
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to expand a list element.
-////////////////////////////////////////////////////////////////////////////////
+    bool expand = attributes[level][i].second;
 
-static void expandField (VocShaper* shaper,
-                         TRI_shaped_json_t const* list,
-                         std::vector<TRI_shaped_json_t>& result) {
-
-  size_t len;
-  bool ok;
-  std::function<bool (size_t index, TRI_shaped_json_t* entry)> access;
-  TRI_shape_t const* shape = shaper->lookupShapeId(list->_sid); 
-  switch (shape->_type) {
-    case TRI_SHAPE_LIST:
-      len = TRI_LengthListShapedJson((const TRI_list_shape_t*) shape, list);
-      access = [&] (size_t index, TRI_shaped_json_t* entry) -> bool {
-        return TRI_AtListShapedJson((const TRI_list_shape_t*) shape, list, index, entry);
-      };
-      break;
-    case TRI_SHAPE_HOMOGENEOUS_LIST:
-      len = TRI_LengthHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, list);
-      access = [&] (size_t index, TRI_shaped_json_t* entry) -> bool {
-        return TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, list, index, entry);
-      };
-      break;
-    case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-      len = TRI_LengthHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, list);
-      access = [&] (size_t index, TRI_shaped_json_t* entry) -> bool {
-        return TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, list, index, entry);
-      };
-      break;
-    default:
-      return;
-  }
-  for (size_t i = 0; i < len; ++i) {
-    TRI_shaped_json_t entry;
-    ok = access(i, &entry);
-    if (ok && entry._sid != BasicShapes::TRI_SHAPE_SID_NULL) {
-      // Check duplicates
-      // TRI_CompareValuesJson
-      result.emplace_back(entry);
+    if (expand) {
+      size_t len = 0;
+      TRI_shaped_json_t shapedArrayElement;
+      bool ok = false;
+      switch (shape->_type) {
+        case TRI_SHAPE_LIST:
+          len = TRI_LengthListShapedJson((const TRI_list_shape_t*) shape, &shapedJson);
+          for (size_t index = 0; index < len; ++index) {
+            ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
+            if (ok) {
+              insertIntoIndex(shaper, documentShape, &shapedArrayElement, i + 1, level, attributes, sparse, toInsert, shapes);
+            }
+            else {
+              TRI_ASSERT(false);
+            }
+          }
+          break;
+        case TRI_SHAPE_HOMOGENEOUS_LIST:
+          len = TRI_LengthHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &shapedJson);
+          for (size_t index = 0; index < len; ++index) {
+            ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
+            if (ok) {
+              insertIntoIndex(shaper, documentShape, &shapedArrayElement, i + 1, level, attributes, sparse, toInsert, shapes);
+            }
+            else {
+              TRI_ASSERT(false);
+            }
+          }
+          break;
+        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
+          len = TRI_LengthHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &shapedJson);
+          for (size_t index = 0; index < len; ++index) {
+            ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
+            if (ok) {
+              insertIntoIndex(shaper, documentShape, &shapedArrayElement, i + 1, level, attributes, sparse, toInsert, shapes);
+            }
+            else {
+              TRI_ASSERT(false);
+            }
+          }
+          break;
+        default:
+          // Non Array attribute cannot be expanded
+          if (sparse) {
+            // If sparse we do not have to index
+            return TRI_ERROR_NO_ERROR;
+          } else {
+            // If not sparse we insert null here
+            shapedJson._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+            shapedJson._data.data = nullptr;
+            shapedJson._data.length = 0;
+            currentShape = shapedJson;
+            break;
+          }
+      }
+      // Leave the while loop here, it has been walked through in recursion
+      return TRI_ERROR_NO_ERROR;
     }
     else {
-      // TODO Fix ME
+      currentShape = shapedJson;
     }
+    ++i;
   }
+
+  shapes.push_back(currentShape);
+
+  if (level + 1 == attributes.size()) {
+    toInsert.emplace(shapes);
+    shapes.pop_back();
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  insertIntoIndex(shaper, documentShape, documentShape, 0, level + 1, attributes, sparse, toInsert, shapes);
+  shapes.pop_back();
+
+  return TRI_ERROR_NO_ERROR;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to insert a document into any index type
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
-                       std::vector<TRI_index_element_t*>& elements,
-                       TRI_doc_mptr_t const* document,
-                       std::vector<TRI_shape_pid_t> const& paths,
-                       bool const sparse) {
+int Index::fillElement (std::function<TRI_index_element_t* ()> allocate,
+                        std::vector<TRI_index_element_t*>& elements,
+                        TRI_doc_mptr_t const* document,
+                        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths,
+                        bool const sparse) {
   TRI_ASSERT(document != nullptr);
   TRI_ASSERT_EXPENSIVE(document->getDataPtr() != nullptr);   // ONLY IN INDEX, PROTECTED by RUNTIME
 
@@ -524,78 +572,25 @@ int Index::fillElement(std::function<TRI_index_element_t* ()> allocate,
     return TRI_ERROR_INTERNAL;
   }
 
+  std::unordered_set<std::vector<TRI_shaped_json_t>> toInsert;
+  std::vector<TRI_shaped_json_t> shapes;
+  insertIntoIndex(_collection->getShaper(), &shapedJson, &shapedJson, 0, 0, paths, sparse, toInsert, shapes);
   char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
   size_t const n = paths.size();
+  for (auto& info : toInsert) {
+    TRI_ASSERT(info.size() == n);
+    TRI_index_element_t* element = allocate();
+    if (element == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+    element->document(const_cast<TRI_doc_mptr_t*>(document));
+    TRI_shaped_sub_t* subObjects = element->subObjects();
 
-  TRI_index_element_t* element = allocate();
-  if (element == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+    for (size_t j = 0; j < n; ++j) {
+      TRI_FillShapedSub(&subObjects[j], &info[j], ptr);
+    }
+    elements.push_back(element);
   }
-  element->document(const_cast<TRI_doc_mptr_t*>(document));
-  TRI_shaped_sub_t* subObjects = element->subObjects();
-  std::deque<std::pair<size_t, std::vector<TRI_shaped_json_t>>> expansions;
-  // We assume that _fields and paths correspond to oneanother and have the same order
-  for (size_t j = 0; j < n; ++j) {
-    TRI_shape_pid_t path = paths[j];
-
-    // ..........................................................................
-    // Determine if document has that particular shape
-    // ..........................................................................
-
-    TRI_shape_access_t const* acc = _collection->getShaper()->findAccessor(shapedJson._sid, path);  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-    if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-      // OK, the document does not contain the attributed needed by 
-      // the index, are we sparse?
-      subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL;
-
-
-      if (sparse) {
-        // no need to continue
-        // Free this element and return.
-        TRI_index_element_t::free(element);
-        return TRI_ERROR_NO_ERROR;
-        // return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-      }
-      continue;
-    }
-
-    // ..........................................................................
-    // Extract the field
-    // ..........................................................................
-
-    TRI_shaped_json_t shapedObject;
-    if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (shapedObject._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
-      if (sparse) {
-        // no need to continue
-        // Free this element and return.
-        TRI_index_element_t::free(element);
-        return TRI_ERROR_NO_ERROR;
-        // return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-      }
-    }
-
-    // .........................................................................
-    // Store the field
-    // .........................................................................
-
-    bool hasExpansion = TRI_AttributeNamesHaveExpansion(_fields[j]);
-    if (hasExpansion) {
-      std::vector<TRI_shaped_json_t> insertFields;
-      expandField(_collection->getShaper(), &shapedObject, insertFields);
-      expansions.push_back(std::make_pair(j, insertFields));
-    }
-    else {
-      TRI_FillShapedSub(&subObjects[j], &shapedObject, ptr);
-    }
-  }
-  insertExpandedElements(allocate, element, expansions, elements, ptr, n);
-
   return TRI_ERROR_NO_ERROR;
 }
 

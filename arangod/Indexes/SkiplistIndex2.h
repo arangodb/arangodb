@@ -58,7 +58,6 @@ namespace triagens {
         SkiplistIndex2 (TRI_idx_iid_t,
                         struct TRI_document_collection_t*,
                         std::vector<std::vector<triagens::basics::AttributeName>> const&,
-                        std::vector<TRI_shape_pid_t> const&,
                         bool,
                         bool);
 
@@ -119,7 +118,7 @@ namespace triagens {
 /// @brief the attribute paths
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<TRI_shape_pid_t> const  _paths;
+        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const  _paths;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual skiplist index
