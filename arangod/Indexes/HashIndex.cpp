@@ -248,10 +248,16 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
 
   TRI_ASSERT(iid != 0);
 
+  uint32_t indexBuckets = 1;
+  if (collection != nullptr) {
+    // document is a nullptr in the coordinator case
+    indexBuckets = collection->_info._indexBuckets;
+  }
+
   if (unique) {
     _hashArray = nullptr;
     try {
-      _hashArray = new TRI_hash_array_t(_paths.size());
+      _hashArray = new TRI_hash_array_t(_paths.size(), indexBuckets);
     }
     catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
