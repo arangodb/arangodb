@@ -1664,8 +1664,8 @@ int TRI_DetermineOpenTransactionsReplication (TRI_replication_dump_t* dump,
       TRI_AppendStringStringBuffer(dump->_buffer, "[\"");
 
       for (auto const& it : transactions) {
-        if (it.second < lastFoundTick) {
-          lastFoundTick = it.second;
+        if (it.second - 1 < lastFoundTick) {
+          lastFoundTick = it.second - 1;
         }
      
         if (first) { 

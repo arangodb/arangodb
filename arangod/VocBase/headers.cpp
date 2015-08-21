@@ -74,9 +74,10 @@ TRI_headers_t::TRI_headers_t ()
     _end(nullptr),
     _nrAllocated(0),
     _nrLinked(0),
-    _totalSize(0) {
-
-  TRI_InitVectorPointer(&_blocks, TRI_UNKNOWN_MEM_ZONE, 16);
+    _totalSize(0),
+    _blocks() {
+ 
+  _blocks.reserve(16); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,11 +85,9 @@ TRI_headers_t::TRI_headers_t ()
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_headers_t::~TRI_headers_t () {
-  for (size_t i = 0;  i < _blocks._length;  ++i) {
-    delete[] static_cast<TRI_doc_mptr_t*>(_blocks._buffer[i]);
+  for (auto& it : _blocks) {
+    delete[] it;
   }
-
-  TRI_DestroyVectorPointer(&_blocks);
 }
 
 // -----------------------------------------------------------------------------
@@ -324,7 +323,7 @@ TRI_doc_mptr_t* TRI_headers_t::request (size_t size) {
   TRI_ASSERT(size > 0);
 
   if (_freelist == nullptr) {
-    size_t blockSize = GetBlockSize(_blocks._length);
+    size_t blockSize = GetBlockSize(_blocks.size());
     TRI_ASSERT(blockSize > 0);
 
     TRI_doc_mptr_t* begin;
@@ -352,7 +351,15 @@ TRI_doc_mptr_t* TRI_headers_t::request (size_t size) {
 
     _freelist = header;
 
-    TRI_PushBackVectorPointer(&_blocks, begin);
+    try {
+      _blocks.emplace_back(begin);
+    }
+    catch (...) {
+      // out of memory
+      delete[] begin; 
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return nullptr;
+    }
   }
 
   TRI_ASSERT(_freelist != nullptr);
@@ -417,20 +424,18 @@ void TRI_headers_t::release (TRI_doc_mptr_t* header,
   header->setDataPtr(_freelist); // ONLY IN HEADERS
   _freelist = header;
 
-  if (_nrAllocated == 0 && _blocks._length >= 8) {
+  if (_nrAllocated == 0 && _blocks.size() >= 8) {
     // if this was the last header, we can safely reclaim some
     // memory by freeing all already-allocated blocks and wiping the freelist
     // we only do this if we had allocated 8 blocks of headers
     // this limit is arbitrary, but will ensure we only free memory if
     // it is sensible and not everytime the last document is removed
 
-    for (size_t i = 0;  i < _blocks._length;  ++i) {
-      delete[] static_cast<TRI_doc_mptr_t*>(_blocks._buffer[i]);
-      _blocks._buffer[i] = nullptr;
+    for (auto& it : _blocks) {
+      delete[] it;
     }
+    _blocks.clear();
 
-    // set length to 0
-    _blocks._length = 0;
     _freelist = nullptr;
     _begin = nullptr;
     _end = nullptr;

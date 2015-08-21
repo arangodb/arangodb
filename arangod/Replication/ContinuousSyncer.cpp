@@ -209,6 +209,14 @@ void ContinuousSyncer::setProgress (char const* msg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the applier progress
+////////////////////////////////////////////////////////////////////////////////
+
+void ContinuousSyncer::setProgress (std::string const& msg) {
+  setProgress(msg.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief save the current applier state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -363,15 +371,18 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   }
 
   // extract optional "cname"
+  bool isSystem = false;
   TRI_json_t const* cnameJson = JsonHelper::getObjectElement(json, "cname");
 
   if (JsonHelper::isString(cnameJson)) {
     string const cnameString = JsonHelper::getStringValue(json, "cname", "");
-    if (! cnameString.empty() && cnameString[0] == '_') {
-      // system collection
+    isSystem = (! cnameString.empty() && cnameString[0] == '_');
+
+    if (! cnameString.empty()) {
       TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(_vocbase, cnameString.c_str());
+
       if (col != nullptr && col->_cid != cid) {
-        // cid change? this may happen for system collections
+        // cid change? this may happen for system collections or if we restored from a dump
         cid = col->_cid;
       }
     }
@@ -381,6 +392,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   TRI_json_t const* keyJson = JsonHelper::getObjectElement(json, "key");
 
   if (! JsonHelper::isString(keyJson)) {
+    errorMsg = "invalid document key format";
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
@@ -415,12 +427,14 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
     auto it = _openInitialTransactions.find(tid);
 
     if (it == _openInitialTransactions.end()) {
+      errorMsg = "unexpected transaction " + StringUtils::itoa(tid); 
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
     auto trx = (*it).second;
 
     if (trx == nullptr) {
+      errorMsg = "unexpected transaction " + StringUtils::itoa(tid); 
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
@@ -436,6 +450,11 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
                                         rid,
                                         doc,
                                         errorMsg);
+
+    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+      // ignore unique constraint violations for system collections
+      res = TRI_ERROR_NO_ERROR;
+    }
 
     return res;
   }
@@ -465,6 +484,11 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
                                     rid,
                                     doc,
                                     errorMsg);
+    
+    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+      // ignore unique constraint violations for system collections
+      res = TRI_ERROR_NO_ERROR;
+    }
 
     res = trx.finish(res);
 
@@ -674,6 +698,7 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
+                                      TRI_voc_tick_t firstRegularTick,
                                       string& errorMsg) {
 
   // fetch marker "type"
@@ -687,13 +712,9 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
 
     WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
 
-    if (newTick > _applier->_state._lastProcessedContinuousTick) {
+    if (newTick >= firstRegularTick &&
+        newTick > _applier->_state._lastProcessedContinuousTick) {
       _applier->_state._lastProcessedContinuousTick = newTick;
-    }
-    else {
-      LOG_WARNING("replication marker tick value %llu is lower than last processed tick value %llu",
-                  (unsigned long long) newTick,
-                  (unsigned long long) _applier->_state._lastProcessedContinuousTick);
     }
   }
 
@@ -808,7 +829,7 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       skipped = true;
     }
     else {
-      res = applyLogMarker(json.get(), errorMsg);
+      res = applyLogMarker(json.get(), firstRegularTick, errorMsg);
       skipped = false;
     }
 
@@ -901,6 +922,16 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     // must not happen
     return TRI_ERROR_INTERNAL;
   }
+
+  LOG_TRACE("starting with from tick %llu, fetch tick %llu, open transactions: %d",
+            (unsigned long long) fromTick,
+            (unsigned long long) fetchTick,
+            (int) _openInitialTransactions.size());
+
+  string const progress = "starting with from tick " + StringUtils::itoa(fromTick) + 
+                          ", fetch tick " + StringUtils::itoa(fetchTick) +
+                          ", open transactions: " + StringUtils::itoa(_openInitialTransactions.size());
+  setProgress(progress);
 
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
@@ -1017,7 +1048,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
             url.c_str());
 
   // send request
-  setProgress(progress.c_str());
+  setProgress(progress);
 
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
                                                 url,
@@ -1126,13 +1157,14 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
                      "&serverId=" + _localServerIdString + 
                      "&includeSystem=" + (_includeSystem ? "true" : "false");
 
-  LOG_TRACE("running continuous replication request with tick %llu, url %s",
+  LOG_TRACE("running continuous replication request with from tick %llu, first regular tick %llu, url %s",
             (unsigned long long) fetchTick,
+            (unsigned long long) firstRegularTick,
             url.c_str());
 
   // send request
-  string const progress = "fetching master log from offset " + tickString;
-  setProgress(progress.c_str());
+  string const progress = "fetching master log from tick " + tickString;
+  setProgress(progress);
 
   std::string body;
 
