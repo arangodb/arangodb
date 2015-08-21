@@ -131,15 +131,6 @@ static int FillIndexSearchValueByHashIndexElement (HashIndex const* hashIndex,
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
-<<<<<<< HEAD
-    // TODO needs to be extracted as a helper function
-    if ( triagens::basics::TRI_AttributeNamesHaveExpansion(hashIndex->fields()[j]) ) {
-      TRI_shape_t const* shape = shaper->lookupShapeId(shapedObject._sid); 
-      if (shape->_type >= TRI_SHAPE_LIST && shape->_type <= TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
-        std::cout << "Should expand here" << std::endl;
-        auto json = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &shapedObject));
-        std::cout << "Is Array " << json.isArray() << " :: " << json << std::endl;
-=======
 static int HashIndexHelper (HashIndex const* hashIndex,
                             TRI_hash_index_element_t* hashElement,
                             TRI_doc_mptr_t const* document) {
@@ -182,7 +173,6 @@ static int HashIndexHelper (HashIndex const* hashIndex,
       if (sparse) {
         // no need to continue
         return res;
->>>>>>> origin/eimerung_hashindex
       }
     }
 }
@@ -247,13 +237,14 @@ static int HashIndex_find (TRI_hash_array_t const* hashArray,
 HashIndex::HashIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection,
                       std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
-                      std::vector<TRI_shape_pid_t> const& paths,
                       bool unique,
                       bool sparse) 
   : Index(iid, collection, fields),
-    _paths(paths),
+    _paths(fillPidPaths()),
     _unique(unique),
     _sparse(sparse) {
+
+  TRI_ASSERT(! fields.empty());
 
   TRI_ASSERT(iid != 0);
 
@@ -277,8 +268,8 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
     _multi._isEqualElElByKey = nullptr;
     _multi._hashElement = nullptr;
     try {
-      _multi._hashElement = new HashElementFunc(paths.size());
-      _multi._isEqualElElByKey = new IsEqualElementElementByKey(paths.size());
+      _multi._hashElement = new HashElementFunc(_paths.size());
+      _multi._isEqualElElByKey = new IsEqualElementElementByKey(_paths.size());
       _multi._hashArray = new TRI_HashArrayMulti_t(hashKey, 
                                                  *_multi._hashElement,
                                                  isEqualKeyElement,
@@ -541,12 +532,20 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
     return res;
   };
 
-  for (auto& hashElement : elements) {
-    //TODO FIXME Multiple elements
+  size_t count = elements.size();
+  for (size_t i = 0; i < count; ++i) {
+    auto hashElement = elements[i];
     res = work(hashElement, isRollback);
-
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_index_element_t::free(hashElement);
+      for (size_t j = i; j < count; ++j) {
+        // Free all elements that are not yet in the index
+        TRI_index_element_t::free(elements[j]);
+      }
+      for (size_t j = 0; j < i; ++j) {
+        // Remove all allready indexed elements and free them
+        removeUniqueElement(elements[j], isRollback);
+      }
+      return res;
     }
   }
   return res;
@@ -581,14 +580,42 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     return TRI_ERROR_NO_ERROR;
   };
   
-  for (auto& hashElement : elements) {
-    //TODO FIXME Multiple elements
+  size_t count = elements.size();
+  for (size_t i = 0; i < count; ++i) {
+    auto hashElement = elements[i];
     res = work(hashElement, isRollback);
-
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_index_element_t::free(hashElement);
+      for (size_t j = i; j < count; ++j) {
+        // Free all elements that are not yet in the index
+        TRI_index_element_t::free(elements[j]);
+      }
+      for (size_t j = 0; j < i; ++j) {
+        // Remove all allready indexed elements and free them
+        removeMultiElement(elements[j], isRollback);
+      }
+      return res;
     }
   }
+  return res;
+}
+
+int HashIndex::removeUniqueElement(TRI_index_element_t* element, bool isRollback) {
+  TRI_IF_FAILURE("RemoveHashIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  int res = _hashArray->remove (this, element);
+
+  // this might happen when rolling back
+  if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+    if (isRollback) {
+      return TRI_ERROR_NO_ERROR;
+    }
+    else {
+      return TRI_ERROR_INTERNAL;
+    }
+  }
+
   return res;
 }
 
@@ -606,42 +633,14 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
     return res;
   }
 
-  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
-    TRI_IF_FAILURE("RemoveHashIndex") {
-      return TRI_ERROR_DEBUG;
-    }
-
-    int res = _hashArray->remove (this, element);
-
-    // this might happen when rolling back
-    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
-      if (isRollback) {
-        return TRI_ERROR_NO_ERROR;
-      }
-      else {
-        return TRI_ERROR_INTERNAL;
-      }
-    }
-
-    return res;
-  };
-
   for (auto& hashElement : elements) {
-    res = work(hashElement, isRollback);
+    res = removeUniqueElement(hashElement, isRollback);
     TRI_index_element_t::free(hashElement);
   }
   return res;
 }
 
-int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
-
-  auto allocate = [this] () -> TRI_index_element_t* {
-    return TRI_index_element_t::allocate(keyEntrySize(), false);
-  };
-  std::vector<TRI_index_element_t*> elements;
-  int res = fillElement(allocate, elements, doc, paths(), sparse());
-
-  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
+int HashIndex::removeMultiElement(TRI_index_element_t* element, bool isRollback) {
     TRI_IF_FAILURE("RemoveHashIndex") {
       return TRI_ERROR_DEBUG;
     }
@@ -658,10 +657,18 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
       }
     }
     return TRI_ERROR_NO_ERROR;
+}
+
+int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
+
+  auto allocate = [this] () -> TRI_index_element_t* {
+    return TRI_index_element_t::allocate(keyEntrySize(), false);
   };
+  std::vector<TRI_index_element_t*> elements;
+  int res = fillElement(allocate, elements, doc, paths(), sparse());
 
   for (auto& hashElement : elements) {
-    res = work(hashElement, isRollback);
+    res = removeMultiElement(hashElement, isRollback);
     TRI_index_element_t::free(hashElement);
   }
                  

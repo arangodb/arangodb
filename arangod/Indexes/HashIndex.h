@@ -60,7 +60,6 @@ namespace triagens {
         HashIndex (TRI_idx_iid_t,
                    struct TRI_document_collection_t*,
                    std::vector<std::vector<triagens::basics::AttributeName>> const&,
-                   std::vector<TRI_shape_pid_t> const&,
                    bool,
                    bool);
 
@@ -96,7 +95,7 @@ namespace triagens {
         
         int sizeHint (size_t) override final;
         
-        std::vector<TRI_shape_pid_t> const& paths () const {
+        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths () const {
           return _paths;
         }
 
@@ -151,8 +150,12 @@ namespace triagens {
         int insertUnique (struct TRI_doc_mptr_t const*, bool);
 
         int insertMulti (struct TRI_doc_mptr_t const*, bool);
-        
+
+        int removeUniqueElement(TRI_index_element_t*, bool);
+
         int removeUnique (struct TRI_doc_mptr_t const*, bool);
+
+        int removeMultiElement(TRI_index_element_t*, bool);
 
         int removeMulti (struct TRI_doc_mptr_t const*, bool);
 
@@ -255,7 +258,7 @@ namespace triagens {
 /// @brief the attribute paths
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<TRI_shape_pid_t> const  _paths;
+        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const  _paths;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual hash index

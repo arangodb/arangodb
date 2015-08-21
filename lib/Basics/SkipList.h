@@ -124,6 +124,8 @@ namespace triagens {
         bool _unique;     // indicates whether multiple entries that
                           // are equal in the preorder are allowed in
         uint64_t _nrUsed;
+        bool _isArray;    // indicates whether this index is used to
+                          // index arrays.
         size_t _memoryUsed;
 
       public:
@@ -143,7 +145,8 @@ namespace triagens {
                   SkipListCmpKeyElm cmp_key_elm,
                   void* cmpdata,
                   SkipListFreeFunc freefunc,
-                  bool unique);
+                  bool unique,
+                  bool isArray);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a skiplist and all its documents
@@ -230,6 +233,14 @@ namespace triagens {
 
         size_t memoryUsage () const {
           return _memoryUsed;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns if this indexed is used for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isArray () const {
+          return _isArray;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

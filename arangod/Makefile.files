@@ -220,7 +220,6 @@ bin_arangod_CPPFLAGS = \
 
 bin_arangod_LDADD = \
 	arangod/libarangod.a \
-	lib/libarango_fe.a \
 	lib/libarango_v8.a \
 	lib/libarango.a \
 	$(LIBS) \

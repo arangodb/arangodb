@@ -31,6 +31,7 @@
 #define ARANGODB_BASICS_ATTRIBUTENAMEPARSER_H 1
 
 #include "Common.h"
+#include <iostream>
 
 namespace triagens {
   namespace basics {
@@ -62,8 +63,11 @@ namespace triagens {
       bool operator!= (const AttributeName& b) const {
         return name != b.name || shouldExpand != b.shouldExpand;
       }
+
     };
 
+    std::ostream& operator<< (std::ostream&, AttributeName const*);
+    std::ostream& operator<< (std::ostream&, AttributeName const&);
 
 
 
@@ -89,17 +93,6 @@ namespace triagens {
         std::string& result,
         bool excludeExpansion = false
       );
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transform a vector of AttributeNames into a pid string.
-///        Stops at first expansion
-////////////////////////////////////////////////////////////////////////////////
-
-    void TRI_AttributeNamesToPidString (
-        std::vector<AttributeName> const& input,
-        std::string& result
-      );
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Tests if this AttributeName uses an expansion operator
