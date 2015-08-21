@@ -203,7 +203,7 @@ static TRI_vector_pointer_t HashIndex_find (TRI_hash_array_t const* hashArray,
   // to locate the hash array entry by key.
   // .............................................................................
 
-  TRI_index_element_t* result = TRI_FindByKeyHashArray(hashArray, key);
+  TRI_index_element_t* result = hashArray->findByKey(key);
 
   if (result != nullptr) {
     // unique hash index: maximum number is 1
@@ -226,7 +226,7 @@ static int HashIndex_find (TRI_hash_array_t const* hashArray,
   // to locate the hash array entry by key.
   // .............................................................................
 
-  TRI_index_element_t* found = TRI_FindByKeyHashArray(hashArray, key);
+  TRI_index_element_t* found = hashArray->findByKey(key);
 
   if (found != nullptr) {
     // unique hash index: maximum number is 1
@@ -258,9 +258,11 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
   TRI_ASSERT(iid != 0);
 
   if (unique) {
-    _hashArray._table = nullptr;
-
-    if (TRI_InitHashArray(&_hashArray, paths.size()) != TRI_ERROR_NO_ERROR) {
+    _hashArray = nullptr;
+    try {
+      _hashArray = new TRI_hash_array_t(paths.size());
+    }
+    catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
@@ -297,7 +299,8 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
 
 HashIndex::~HashIndex () {
   if (_unique) {
-    TRI_DestroyHashArray(&_hashArray);
+    delete _hashArray;
+    _hashArray = nullptr;
   }
   else {
     delete _multi._hashElement;
@@ -326,8 +329,8 @@ double HashIndex::selectivityEstimate () const {
         
 size_t HashIndex::memory () const {
   if (_unique) {
-    return static_cast<size_t>(keyEntrySize() * _hashArray._nrUsed + 
-                               TRI_MemoryUsageHashArray(&_hashArray));
+    return static_cast<size_t>(keyEntrySize() * _hashArray->size() + 
+                               _hashArray->memoryUsage());
   }
 
   return static_cast<size_t>(keyEntrySize() * _multi._hashArray->size() +
@@ -380,7 +383,7 @@ int HashIndex::sizeHint (size_t size) {
   }
 
   if (_unique) {
-    return TRI_ResizeHashArray(this, &_hashArray, size);
+    return _hashArray->resize(this, size);
   }
   else {
     return _multi._hashArray->resize(size);
@@ -395,7 +398,7 @@ int HashIndex::sizeHint (size_t size) {
 // FIXME: use std::vector here as well
 TRI_vector_pointer_t HashIndex::lookup (TRI_index_search_value_t* searchValue) const {
   if (_unique) {
-    return HashIndex_find(&_hashArray, searchValue);
+    return HashIndex_find(_hashArray, searchValue);
   }
 
   std::vector<TRI_index_element_t*>* results 
@@ -420,7 +423,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_copy_t>& documents) const {
 
   if (_unique) {
-    return HashIndex_find(&_hashArray, searchValue, documents);
+    return HashIndex_find(_hashArray, searchValue, documents);
   }
 
   std::vector<TRI_index_element_t*>* results = nullptr;
@@ -456,7 +459,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
 
   if (_unique) {
     next = nullptr;
-    return HashIndex_find(&_hashArray, searchValue, documents);
+    return HashIndex_find(_hashArray, searchValue, documents);
   }
 
   std::vector<TRI_index_element_t*>* results = nullptr;
@@ -529,7 +532,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
       return res;
     }
 
-    res = TRI_InsertKeyHashArray(this, &_hashArray, &key, element, isRollback);
+    res = _hashArray->insert(this, &key, element, isRollback);
 
     if (key._values != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
@@ -608,7 +611,7 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
       return TRI_ERROR_DEBUG;
     }
 
-    int res = TRI_RemoveElementHashArray(this, &_hashArray, element);
+    int res = _hashArray->remove (this, element);
 
     // this might happen when rolling back
     if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {

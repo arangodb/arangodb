@@ -34,7 +34,6 @@
 #include "Basics/fasthash.h"
 #include "Basics/logging.h"
 #include "Indexes/HashIndex.h"
-#include "Indexes/Index.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
@@ -46,12 +45,11 @@
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement (TRI_hash_array_t const* array,
-                               TRI_index_search_value_t const* left,
-                               TRI_index_element_t const* right) {
+bool TRI_hash_array_t::isEqualKeyElement (TRI_index_search_value_t const* left,
+                                          TRI_index_element_t const* right) const {
   TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
 
-  for (size_t j = 0;  j < array->_numFields;  ++j) {
+  for (size_t j = 0;  j < _numFields;  ++j) {
     TRI_shaped_json_t* leftJson = &left->_values[j];
     TRI_shaped_sub_t* rightSub = &right->subObjects()[j];
 
@@ -81,11 +79,10 @@ static bool IsEqualKeyElement (TRI_hash_array_t const* array,
 /// @brief given a key generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKey (TRI_hash_array_t const* array,
-                         TRI_index_search_value_t const* key) {
+uint64_t TRI_hash_array_t::hashKey (TRI_index_search_value_t const* key) const {
   uint64_t hash = 0x0123456789abcdef;
 
-  for (size_t j = 0;  j < array->_numFields;  ++j) {
+  for (size_t j = 0;  j < _numFields;  ++j) {
     // ignore the sid for hashing
     hash = fasthash64(key->_values[j]._data.data, key->_values[j]._data.length,
                       hash);
@@ -98,11 +95,10 @@ static uint64_t HashKey (TRI_hash_array_t const* array,
 /// @brief given an element generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElement (TRI_hash_array_t* array,
-                             TRI_index_element_t* element) {
+uint64_t TRI_hash_array_t::hashElement (TRI_index_element_t const* element) const {
   uint64_t hash = 0x0123456789abcdef;
 
-  for (size_t j = 0;  j < array->_numFields;  j++) {
+  for (size_t j = 0;  j < _numFields;  j++) {
     char const* data;
     size_t length;
     TRI_InspectShapedSub(&element->subObjects()[j], element->document(), data, length);
@@ -120,54 +116,19 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initial preallocation size of the hash table when the table is
-/// first created
-/// setting this to a high value will waste memory but reduce the number of
-/// reallocations/repositionings necessary when the table grows
-////////////////////////////////////////////////////////////////////////////////
-
-static inline uint64_t InitialSize () {
-  return 251;
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allocate memory for the hash table
-////////////////////////////////////////////////////////////////////////////////
-
-static int AllocateTable (TRI_hash_array_t* array,
-                          uint64_t numElements) {
-  size_t const size = static_cast<size_t>
-                            (sizeof(TRI_index_element_t*) * numElements);
-
-  TRI_index_element_t** table = static_cast<TRI_index_element_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, true));
-
-  if (table == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  array->_table    = table;
-  array->_nrAlloc  = numElements;
-
-  return TRI_ERROR_NO_ERROR;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the array
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ResizeHashArray (triagens::arango::HashIndex* hashIndex,
-                            TRI_hash_array_t* array,
-                            uint64_t targetSize,
-                            bool allowShrink) {
-  if (array->_nrAlloc >= targetSize && ! allowShrink) {
+int TRI_hash_array_t::resizeInternal (triagens::arango::HashIndex* hashIndex,
+                                      Bucket& b,
+                                      uint64_t targetSize,
+                                      bool allowShrink) {
+
+  if (b._nrAlloc >= targetSize && ! allowShrink) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -181,45 +142,45 @@ static int ResizeHashArray (triagens::arango::HashIndex* hashIndex,
                (unsigned long long) targetSize);
   }
 
-  TRI_index_element_t** oldTable    = array->_table;
-  uint64_t oldAlloc = array->_nrAlloc;
+  TRI_index_element_t** oldTable    = b._table;
+  uint64_t oldAlloc = b._nrAlloc;
 
   TRI_ASSERT(targetSize > 0);
 
-  int res = AllocateTable(array, targetSize);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  try {
+    b._table = new TRI_index_element_t* [targetSize];
   }
+  catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  b._nrAlloc = targetSize;
 
-  if (array->_nrUsed > 0) {
-    uint64_t const n = array->_nrAlloc;
+  if (b._nrUsed > 0) {
+    uint64_t const n = b._nrAlloc;
 
     for (uint64_t j = 0; j < oldAlloc; j++) {
       TRI_index_element_t* element = oldTable[j];
 
       if (element != nullptr) {
         uint64_t i, k;
-        i = k = HashElement(array, element) % n;
+        i = k = hashElement(element) % n;
 
-        for (; i < n && array->_table[i] != nullptr; ++i);
+        for (; i < n && b._table[i] != nullptr; ++i);
         if (i == n) {
-          for (i = 0; i < k && array->_table[i] != nullptr; ++i);
+          for (i = 0; i < k && b._table[i] != nullptr; ++i);
         }
-
-        TRI_ASSERT_EXPENSIVE(i < n);
 
         // .....................................................................
         // add a new element to the associative array
         // memcpy ok here since are simply moving array items internally
         // .....................................................................
 
-        array->_table[i] = element;
+        b._table[i] = element;
       }
     }
   }
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
+  delete [] oldTable;
   
   LOG_TIMER((TRI_microtime() - start),
             "index-resize %s, target size: %llu", 
@@ -233,10 +194,10 @@ static int ResizeHashArray (triagens::arango::HashIndex* hashIndex,
 /// @brief triggers a resize if necessary
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckResize (triagens::arango::HashIndex* hashIndex,
-                         TRI_hash_array_t* array) {
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    int res = ResizeHashArray(hashIndex, array, 2 * array->_nrAlloc + 1, false);
+bool TRI_hash_array_t::checkResize (triagens::arango::HashIndex* hashIndex,
+                                    Bucket& b) {
+  if (2 * b._nrAlloc < 3 * b._nrUsed) {
+    int res = resizeInternal(hashIndex, b, 2 * b._nrAlloc + 1, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return false;
@@ -247,59 +208,6 @@ static bool CheckResize (triagens::arango::HashIndex* hashIndex,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises an array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InitHashArray (TRI_hash_array_t* array,
-                       size_t numFields) {
-
-  TRI_ASSERT(numFields > 0);
-
-  array->_numFields = numFields;
-  array->_table     = nullptr;
-  array->_nrUsed    = 0;
-  array->_nrAlloc   = 0;
-
-  return AllocateTable(array, InitialSize());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyHashArray (TRI_hash_array_t* array) {
-  if (array == nullptr) {
-    return;
-  }
-
-  // ...........................................................................
-  // Go through each item in the array and remove any internal allocated memory
-  // ...........................................................................
-
-  // array->_table might be NULL if array initialisation fails
-  if (array->_table != nullptr) {
-    TRI_index_element_t** p;
-    TRI_index_element_t** e;
-
-    p = array->_table;
-    e = p + array->_nrAlloc;
-
-    for (;  p < e;  ++p) {
-      auto item = *p;
-      if (item != nullptr) {
-        TRI_index_element_t::free(item);
-      }
-    }
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_table);
-  }
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -307,71 +215,57 @@ void TRI_DestroyHashArray (TRI_hash_array_t* array) {
 /// @brief get the hash array's memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const* array) {
-  if (array == nullptr) {
-    return 0;
+size_t TRI_hash_array_t::memoryUsage () {
+  size_t sum = 0;
+  for (auto& b : _buckets) {
+    sum += (size_t) (b._nrAlloc * sizeof(TRI_index_element_t*));
   }
-
-  size_t tableSize  = (size_t) (array->_nrAlloc * 
-                                sizeof(TRI_index_element_t*));
-  size_t memberSize = (size_t) (array->_nrUsed * 
-     (sizeof(TRI_index_element_t) + 
-      array->_numFields * sizeof(TRI_shaped_sub_t)));
-
-  return (size_t) (tableSize + memberSize);
+  return sum;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the hash table
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeHashArray (triagens::arango::HashIndex* hashIndex,
-                         TRI_hash_array_t* array,
-                         size_t size) {
-  return ResizeHashArray(hashIndex, array, (uint64_t) (2 * size + 1), false);
+int TRI_hash_array_t::resize (triagens::arango::HashIndex* hashIndex,
+                              size_t size) {
+  int res = TRI_ERROR_NO_ERROR;
+  for (auto& b : _buckets) {
+    res = resizeInternal(hashIndex, b,
+                         (uint64_t) (3 * size / 2 + 1) / _buckets.size(), 
+                         false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an element given a key, return NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t const* array,
-                                                    TRI_index_search_value_t* key) {
-  uint64_t const n = array->_nrAlloc;
-  uint64_t i, k;
+TRI_index_element_t* TRI_hash_array_t::findByKey (TRI_index_search_value_t* key) const {
+  uint64_t i = hashKey(key);
+  Bucket const& b = _buckets[i & _bucketsMask];
 
-  i = k = HashKey(array, key) % n;
+  uint64_t const n = b._nrAlloc;
+  i = i % n;
+  uint64_t k = i;
 
-  for (; i < n && array->_table[i] != nullptr && 
-         ! IsEqualKeyElement(array, key, array->_table[i]); ++i);
+  for (; i < n && b._table[i] != nullptr && 
+         ! isEqualKeyElement(key, b._table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && array->_table[i] != nullptr && 
-                ! IsEqualKeyElement(array, key, array->_table[i]); ++i);
+    for (i = 0; i < k && b._table[i] != nullptr && 
+                ! isEqualKeyElement(key, b._table[i]); ++i);
   }
-
-  TRI_ASSERT_EXPENSIVE(i < n);
 
   // ...........................................................................
   // return whatever we found, this is nullptr if the thing was not found
   // and otherwise a valid pointer
   // ...........................................................................
 
-  return array->_table[i];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an element given a key, return NULL if not found
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t const* array,
-                                                  TRI_index_search_value_t* key) {
-  TRI_index_element_t* element = TRI_LookupByKeyHashArray(array, key);
-
-  if (element != nullptr && IsEqualKeyElement(array, key, element)) {
-    return element;
-  }
-
-  return nullptr;
+  return b._table[i];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,35 +275,33 @@ TRI_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t const* array,
 /// element.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertKeyHashArray (triagens::arango::HashIndex* hashIndex,
-                            TRI_hash_array_t* array,
-                            TRI_index_search_value_t const* key,
-                            TRI_index_element_t const* element,
-                            bool isRollback) {
-
+int TRI_hash_array_t::insert (triagens::arango::HashIndex* hashIndex,
+                              TRI_index_search_value_t const* key,
+                              TRI_index_element_t const* element,
+                              bool isRollback) {
   // ...........................................................................
   // we are adding and the table is more than half full, extend it
   // ...........................................................................
 
-  if (! CheckResize(hashIndex, array)) {
+  uint64_t i = hashKey(key);
+  Bucket& b = _buckets[i & _bucketsMask];
+
+  if (! checkResize(hashIndex, b)) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  const uint64_t n = array->_nrAlloc;
-  uint64_t i, k;
+  uint64_t const n = b._nrAlloc;
+  i = i % n;
+  uint64_t k = i;
 
-  i = k = HashKey(array, key) % n;
-
-  for (; i < n && array->_table[i] != nullptr && 
-         ! IsEqualKeyElement(array, key, array->_table[i]); ++i);
+  for (; i < n && b._table[i] != nullptr && 
+         ! isEqualKeyElement(key, b._table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && array->_table[i] != nullptr && 
-                ! IsEqualKeyElement(array, key, array->_table[i]); ++i);
+    for (i = 0; i < k && b._table[i] != nullptr && 
+                ! isEqualKeyElement(key, b._table[i]); ++i);
   }
 
-  TRI_ASSERT_EXPENSIVE(i < n);
-
-  TRI_index_element_t* arrayElement = array->_table[i];
+  TRI_index_element_t* arrayElement = b._table[i];
 
   // ...........................................................................
   // if we found an element, return
@@ -419,9 +311,9 @@ int TRI_InsertKeyHashArray (triagens::arango::HashIndex* hashIndex,
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
-  array->_table[i] = const_cast<TRI_index_element_t*>(element);
-  TRI_ASSERT(array->_table[i] != nullptr && array->_table[i]->document() != nullptr);
-  array->_nrUsed++;
+  b._table[i] = const_cast<TRI_index_element_t*>(element);
+  TRI_ASSERT(b._table[i] != nullptr && b._table[i]->document() != nullptr);
+  b._nrUsed++;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -430,24 +322,23 @@ int TRI_InsertKeyHashArray (triagens::arango::HashIndex* hashIndex,
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveElementHashArray (triagens::arango::HashIndex* hashIndex,
-                                TRI_hash_array_t* array,
-                                TRI_index_element_t* element) {
-  uint64_t const n = array->_nrAlloc;
-  uint64_t i, k;
+int TRI_hash_array_t::remove (triagens::arango::HashIndex* hashIndex,
+                              TRI_index_element_t* element) {
+  uint64_t i = hashElement(element);
+  Bucket& b = _buckets[i & _bucketsMask];
 
-  i = k = HashElement(array, element) % n;
+  uint64_t const n = b._nrAlloc;
+  i = i % n;
+  uint64_t k = i;
 
-  for (; i < n && array->_table[i] != nullptr && 
-         element->document() != array->_table[i]->document(); ++i);
+  for (; i < n && b._table[i] != nullptr && 
+         element->document() != b._table[i]->document(); ++i);
   if (i == n) {
-    for (i = 0; i < k && array->_table[i] != nullptr && 
-                element->document() != array->_table[i]->document(); ++i);
+    for (i = 0; i < k && b._table[i] != nullptr && 
+                element->document() != b._table[i]->document(); ++i);
   }
 
-  TRI_ASSERT_EXPENSIVE(i < n);
-
-  TRI_index_element_t* arrayElement = array->_table[i];
+  TRI_index_element_t* arrayElement = b._table[i];
 
   // ...........................................................................
   // if we did not find such an item return error code
@@ -463,8 +354,8 @@ int TRI_RemoveElementHashArray (triagens::arango::HashIndex* hashIndex,
   // ...........................................................................
 
   TRI_index_element_t::free(arrayElement);
-  array->_table[i] = nullptr;
-  array->_nrUsed--;
+  b._table[i] = nullptr;
+  b._nrUsed--;
 
   // ...........................................................................
   // and now check the following places for items to move closer together
@@ -473,20 +364,20 @@ int TRI_RemoveElementHashArray (triagens::arango::HashIndex* hashIndex,
 
   k = TRI_IncModU64(i, n);
 
-  while (array->_table[k] != nullptr) {
-    uint64_t j = HashElement(array, array->_table[k]) % n;
+  while (b._table[k] != nullptr) {
+    uint64_t j = hashElement(b._table[k]) % n;
 
     if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
-      array->_table[i] = array->_table[k];
-      array->_table[k] = nullptr;
+      b._table[i] = b._table[k];
+      b._table[k] = nullptr;
       i = k;
     }
 
     k = TRI_IncModU64(k, n);
   }
 
-  if (array->_nrUsed == 0) {
-    ResizeHashArray(hashIndex, array, InitialSize(), true);
+  if (b._nrUsed == 0) {
+    resizeInternal (hashIndex, b, initialSize(), true);
   }
 
   return TRI_ERROR_NO_ERROR;
