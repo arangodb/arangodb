@@ -551,11 +551,18 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
       return;
     }
+    
+    char buffer[21];
+    size_t len;
 
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "datafile", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, it.filename.c_str(), it.filename.size()));
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "status", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, it.state.c_str(), it.state.size()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMin", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(it.tickMin)));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMax", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(it.tickMax)));
+
+    len = TRI_StringUInt64InPlace(it.tickMin, (char*) &buffer);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMin", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char const*) buffer, len));
+
+    len = TRI_StringUInt64InPlace(it.tickMax, (char*) &buffer);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMax", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char const*) buffer, len));
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, r);
   }

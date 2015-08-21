@@ -77,6 +77,34 @@ static void JS_StateLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the tick ranges that can be provided by the replication logger
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_TickRangesLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
+  
+  v8::Handle<v8::Array> result = v8::Array::New(isolate, (int) ranges.size());
+  uint32_t i = 0;
+
+  for (auto& it : ranges) {
+    v8::Handle<v8::Object> df = v8::Object::New(isolate);
+
+    df->ForceSet(TRI_V8_ASCII_STRING("datafile"), TRI_V8_STD_STRING(it.filename));
+    df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(it.state));
+    df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), V8TickId(isolate, it.tickMin));
+    df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), V8TickId(isolate, it.tickMax));
+
+    result->Set(i++, df);
+  }
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the last WAL entries
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -645,6 +673,7 @@ void TRI_InitV8Replication (v8::Isolate* isolate,
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_STATE"), JS_StateLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_LAST"), JS_LastLoggerReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_TICK_RANGES"), JS_TickRangesLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_SYNCHRONISE"), JS_SynchroniseReplication, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_SERVER_ID"), JS_ServerIdReplication, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_CONFIGURE"), JS_ConfigureApplierReplication, true);
