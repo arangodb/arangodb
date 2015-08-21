@@ -257,6 +257,48 @@ function arrayHashIndexSuite () {
       assertEqual(res.length, 0);
     },
 
+    testInsertAndReadArraySparse : function () {
+      var idx = collection.ensureHashIndex("a[*]", "b", {sparse: true}).id;
+
+      // None of these should be found
+      collection.save({a: [1, 2]});
+      collection.save({b: 2});
+      collection.save({a: [], b: 2});
+      collection.save({a: [], b: null});
+      collection.save({a: null, b: 2});
+
+      var res = collection.BY_EXAMPLE_HASH(idx, {}, 0, null).documents;
+      assertEqual(res.length, 0);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: null}, 0, null).documents;
+      assertEqual(res.length, 0);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {b: null}, 0, null).documents;
+      assertEqual(res.length, 0);
+
+      // This should be found
+      var id6 = collection.save({a: [1, 2], b: 2})._id;
+      res = collection.BY_EXAMPLE_HASH(idx, {a: 1, b: 2}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id6);
+
+      // This should be found
+      var id7 = collection.save({a: [3, null, 5], b: 1})._id;
+      res = collection.BY_EXAMPLE_HASH(idx, {a: 3, b: 1}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id7);
+
+      
+      res = collection.BY_EXAMPLE_HASH(idx, {a: 5, b: 1}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id7);
+
+      // But not like this
+      res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: 1}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id7);
+    }
+
   };
 }
 
@@ -483,6 +525,45 @@ function arraySkiplistIndexSuite () {
       res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: 4}, 0, null).documents;
       assertEqual(res.length, 0);
     },
+
+    testInsertAndReadArraySparse : function () {
+      var idx = collection.ensureSkiplist("a[*]", "b", {sparse: true}).id;
+
+      // None of these should be found
+      collection.save({a: [1, 2]});
+      collection.save({b: 2});
+      collection.save({a: [], b: 2});
+      collection.save({a: [], b: null});
+      collection.save({a: null, b: 2});
+
+      var res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: null, b: 2}, 0, null).documents;
+      assertEqual(res.length, 0);
+
+      res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: 1, b: null}, 0, null).documents;
+      assertEqual(res.length, 0);
+
+      // This should be found
+      var id6 = collection.save({a: [1, 2], b: 2})._id;
+      res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: 1, b: 2}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id6);
+
+      // This should be found
+      var id7 = collection.save({a: [3, null, 5], b: 1})._id;
+      res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: 3, b: 1}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id7);
+
+      
+      res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: 5, b: 1}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id7);
+
+      // But not like this
+      res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: null, b: 1}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id7);
+    }
 
   };
 }
