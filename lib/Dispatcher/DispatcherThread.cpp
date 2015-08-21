@@ -59,7 +59,7 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
   : Thread("dispat"+ 
            (queue->name() == "STANDARD" 
             ? std::string("_def")
-            : (queue->name() == "AQL" ? std::string("_aql") : queue->name()))),
+            : (queue->name() == "AQL" ? std::string("_aql") : ("_" + queue->name())))),
     _queue(queue),
     _jobType(Job::READ_JOB) {
   allowAsynchronousCancelation();

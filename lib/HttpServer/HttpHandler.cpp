@@ -29,11 +29,15 @@
 
 #include "HttpHandler.h"
 
+#include "Basics/StringUtils.h"
 #include "Basics/logging.h"
 #include "HttpServer/HttpServerJob.h"
+#include "Dispatcher/Dispatcher.h"
 #include "Rest/HttpRequest.h"
 
+using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpHandler
@@ -50,7 +54,8 @@ using namespace triagens::rest;
 HttpHandler::HttpHandler (HttpRequest* request)
   : _request(request),
     _response(nullptr),
-    _server(nullptr) {
+    _server(nullptr),
+    _queueName() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +135,28 @@ HttpResponse* HttpHandler::stealResponse () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+string const& HttpHandler::queue () const {
+  if (_queueName.empty()) {
+    return triagens::rest::Dispatcher::QUEUE_NAME;
+  }
+  else {
+    return _queueName;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
 Job* HttpHandler::createJob (HttpServer* server, bool isDetached) {
+  bool found;
+  const char* queue = _request->header("x-arango-queue", found);
+
+  if (found) {
+    uint32_t qnr = StringUtils::uint32(queue);
+    _queueName = to_string(qnr);
+  }
+
   return new HttpServerJob(server, this, isDetached);
 }
 

@@ -63,8 +63,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpServerJob (HttpServer* server,
-                          HttpHandler* handler,
-                          bool isDetached);
+                       HttpHandler* handler,
+                       bool isDetached);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a server job

@@ -43,6 +43,7 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
 using namespace triagens::aql;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -76,6 +77,19 @@ RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
 
 bool RestAqlHandler::isDirect () const {
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+string const& RestAqlHandler::queue () const {
+  if (_queueName.empty()) {
+    return triagens::rest::Dispatcher::AQL_QUEUE_NAME;
+  }
+  else {
+    return _queueName;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

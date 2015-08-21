@@ -88,9 +88,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const& queue () const override {
-          return triagens::rest::Dispatcher::AQL_QUEUE_NAME;
-        }
+        std::string const& queue () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the handler
