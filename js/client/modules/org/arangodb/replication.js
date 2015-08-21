@@ -132,6 +132,19 @@ applier.properties = function (config) {
   return requestResult;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the tick ranges that can be provided by the replication logger
+////////////////////////////////////////////////////////////////////////////////
+
+logger.tickRanges = function () {
+  var db = internal.db;
+
+  var requestResult = db._connection.GET("/_api/replication/logger-tick-ranges");
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   other functions
 // -----------------------------------------------------------------------------
