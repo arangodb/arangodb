@@ -72,7 +72,7 @@ def walk_on_files(inDirPath, outDirPath):
         for file in files:
             if file.endswith(".mdpp"):
                 inFileFull = os.path.join(root, file)
-                outFileFull = os.path.join(outDirPath, re.sub(r'mdpp$', 'md', inFileFull));
+                outFileFull = os.path.join(outDirPath, re.sub(r'mdpp$', 'md', inFileFull))
                 print "%s -> %s" % (inFileFull, outFileFull)
                 _mkdir_recursive(os.path.join(outDirPath, root))
                 mdpp = open(inFileFull, "r")
@@ -80,7 +80,7 @@ def walk_on_files(inDirPath, outDirPath):
                 MarkdownPP.MarkdownPP(input=mdpp, output=md, modules=MarkdownPP.modules.keys())
                 mdpp.close()
                 md.close()
-                findStartCode(md, outFileFull);
+                findStartCode(md, outFileFull)
 
 def findStartCode(fd,full_path):
     inFD = open(full_path, "r")
@@ -135,8 +135,9 @@ def replaceTextInline(text, pathOfFile, searchText):
       print '*' * 80
       print text
       exit(1)
-  rePattern = r'\s*@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText
-  match = re.search(rePattern, text, flags=re.DOTALL);
+  rePattern = r'(?s)\s*@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText
+  # (?s) is equivalent to flags=re.DOTALL but works in Python 2.6
+  match = re.search(rePattern, text)
 
   if (match == None): 
       print "failed to match with '%s' for %s in file %s in: \n%s" % (rePattern, searchText, pathOfFile, text)
@@ -145,9 +146,9 @@ def replaceTextInline(text, pathOfFile, searchText):
   subtext = match.group(0)
   if (len(re.findall('@startDocuBlock', subtext)) > 1):
       print "failed to snap with '%s' on end docublock for %s in %s our match is:\n%s" % (rePattern, searchText, pathOfFile, subtext)
-      exit(1);
+      exit(1)
 
-  return re.sub(rePattern, dokuBlocks[1][searchText], text, flags=re.DOTALL)
+  return re.sub(rePattern, dokuBlocks[1][searchText], text)
 
 ################################################################################
 # Read the docublocks into memory
@@ -186,7 +187,7 @@ def readNextLine(line):
 def loadDokuBlocks():
     state = STATE_SEARCH_START
     f=open("allComments.txt", 'rU')
-    count = 0;
+    count = 0
     for line in f.readlines():
         if state == STATE_SEARCH_START:
             state = readStartLine(line)
