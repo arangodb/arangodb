@@ -6,13 +6,13 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-number">759445452</span>
+etag: <span class="hljs-number">757645276</span>
 
 { 
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v1"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v1"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"759445452"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"757645276"</span>, 
     <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val2"</span> 
   }, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

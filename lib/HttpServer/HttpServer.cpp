@@ -447,7 +447,7 @@ void HttpServer::handleAsync (HttpCommTask* task) {
 /// @brief create a job for asynchronous execution (using the dispatcher)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
+int HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
   if (_dispatcher == nullptr) {
     // without a dispatcher, simply give up
     RequestStatisticsAgentSetExecuteError(handler);
@@ -455,7 +455,7 @@ bool HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
     delete handler;
 
     LOG_WARNING("no dispatcher is known");
-    return false;
+    return TRI_ERROR_INTERNAL;
   }
 
   // execute the handler using the dispatcher
@@ -470,7 +470,7 @@ bool HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
     delete handler;
 
     LOG_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
-    return false;
+    return TRI_ERROR_INTERNAL;
   }
 
   if (jobId != nullptr) {
@@ -483,31 +483,31 @@ bool HttpServer::handleRequestAsync (HttpHandler* handler, uint64_t* jobId) {
       delete job;
       delete handler;
 
-      return false;
+      return TRI_ERROR_INTERNAL;
     }
   }
 
-  int error = _dispatcher->addJob(job);
+  int res = _dispatcher->addJob(job);
 
-  if (error != TRI_ERROR_NO_ERROR) {
+  if (res != TRI_ERROR_NO_ERROR) {
     // could not add job to job queue
     RequestStatisticsAgentSetExecuteError(handler);
-    LOG_WARNING("unable to add job to the job queue: %s", TRI_errno_string(error));
+    LOG_WARNING("unable to add job to the job queue: %s", TRI_errno_string(res));
     delete job;
     delete handler;
 
-    return false;
+    return res;
   }
 
   // job is in queue now
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the handler directly or add it to the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequest (HttpCommTask* task, HttpHandler* handler) {
+int HttpServer::handleRequest (HttpCommTask* task, HttpHandler* handler) {
   registerHandler(handler, task);
 
   // execute handler and (possibly) requeue
@@ -519,7 +519,7 @@ bool HttpServer::handleRequest (HttpCommTask* task, HttpHandler* handler) {
 
       if (status.status != Handler::HANDLER_REQUEUE) {
         shutdownHandlerByTask(task);
-        return true;
+        return TRI_ERROR_NO_ERROR;
       }
     }
 
@@ -538,11 +538,10 @@ bool HttpServer::handleRequest (HttpCommTask* task, HttpHandler* handler) {
         LOG_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
 
         shutdownHandlerByTask(task);
-        return false;
+        return TRI_ERROR_INTERNAL;
       }
 
-      registerJob(handler, job);
-      return true;
+      return registerJob(handler, job);
     }
 
     // without a dispatcher, simply give up
@@ -552,11 +551,12 @@ bool HttpServer::handleRequest (HttpCommTask* task, HttpHandler* handler) {
       LOG_WARNING("no dispatcher is known");
 
       shutdownHandlerByTask(task);
-      return false;
+      return TRI_ERROR_INTERNAL;
     }
   }
 
-  return true;
+  // to pacify the compiler
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -796,7 +796,7 @@ void HttpServer::registerHandler (HttpHandler* handler, HttpCommTask* task) {
 /// @brief registers a new job
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::registerJob (HttpHandler* handler, HttpServerJob* job) {
+int HttpServer::registerJob (HttpHandler* handler, HttpServerJob* job) {
   GENERAL_SERVER_LOCK(&_mappingLock);
 
   // update the handler information
@@ -806,7 +806,7 @@ void HttpServer::registerJob (HttpHandler* handler, HttpServerJob* job) {
     GENERAL_SERVER_UNLOCK(&_mappingLock);
     LOG_DEBUG("registerJob called for an unknown handler");
 
-    return;
+    return TRI_ERROR_INTERNAL;
   }
 
   handler_task_job_t& element = it->second;
@@ -816,7 +816,7 @@ void HttpServer::registerJob (HttpHandler* handler, HttpServerJob* job) {
 
   handler->RequestStatisticsAgent::transfer(job);
 
-  _dispatcher->addJob(job);
+  return _dispatcher->addJob(job);
 }
 
 // -----------------------------------------------------------------------------

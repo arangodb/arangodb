@@ -206,7 +206,7 @@ int Dispatcher::addJob (Job* job) {
   DispatcherQueue* queue = lookupQueue(name);
 
   if (queue == nullptr) {
-    LOG_WARNING("unknown queue '%s'", name.c_str());
+    LOG_DEBUG("unknown queue '%s'", name.c_str());
     return TRI_ERROR_QUEUE_UNKNOWN;
   }
 

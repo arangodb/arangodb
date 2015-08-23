@@ -242,13 +242,13 @@ namespace triagens {
 /// @brief creates a job for asynchronous execution
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRequestAsync (HttpHandler*, uint64_t* jobId);
+        int handleRequestAsync (HttpHandler*, uint64_t* jobId);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the handler directly or add it to the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRequest (HttpCommTask*, HttpHandler*);
+        int handleRequest (HttpCommTask*, HttpHandler*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback if job is done
@@ -306,7 +306,7 @@ namespace triagens {
 /// @brief registers a new job
 ////////////////////////////////////////////////////////////////////////////////
 
-        void registerJob (HttpHandler* handler, HttpServerJob* job);
+        int registerJob (HttpHandler* handler, HttpServerJob* job);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables

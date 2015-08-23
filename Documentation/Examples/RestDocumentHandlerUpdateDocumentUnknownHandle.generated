@@ -1,4 +1,4 @@
-shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/724973516 &lt;&lt;EOF</span>
+shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/726384604 &lt;&lt;EOF</span>
 {}
 EOF
 

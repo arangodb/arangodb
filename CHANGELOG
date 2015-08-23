@@ -1,3 +1,10 @@
+v2.6.6 (2015-08-23)
+-------------------
+
+* added startup option `--server.additional-threads` to create separate queues
+  for slow requests.
+
+
 v2.6.5 (2015-08-17)
 -------------------
 

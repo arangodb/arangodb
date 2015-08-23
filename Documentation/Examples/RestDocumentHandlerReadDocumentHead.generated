@@ -1,2 +1,2 @@
-shell&gt; curl -X HEAD --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/719599564</span>
+shell&gt; curl -X HEAD --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/721010652</span>
 

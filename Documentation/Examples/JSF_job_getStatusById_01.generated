@@ -2,15 +2,15 @@ shell&gt; curl -X PUT --header <span class="hljs-string">'x-arango-async: store'
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: text/plain; charset=utf-<span class="hljs-number">8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">602486732</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">606191580</span>
 
-shell&gt; curl -X PUT --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/602486732</span>
+shell&gt; curl -X PUT --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/606191580</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">602486732</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">606191580</span>
 
 { 
   <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
-  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.6.5"</span> 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.6.6"</span> 
 }

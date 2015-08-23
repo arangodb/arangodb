@@ -942,7 +942,6 @@ void HttpCommTask::processCorsOptions (uint32_t compatibility) {
 
 void HttpCommTask::processRequest (uint32_t compatibility) {
   HttpHandler* handler = _server->handlerFactory()->createHandler(_request);
-  bool ok = false;
 
   if (handler == nullptr) {
     LOG_TRACE("no handler is known, giving up");
@@ -970,6 +969,8 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
   // clear request object
   _request = nullptr;
   RequestStatisticsAgent::transfer(handler);
+  
+  int res = TRI_ERROR_INTERNAL;
 
   // async execution
   if (found && (asyncExecution == "true" || asyncExecution == "store")) {
@@ -982,14 +983,14 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
 
     if (asyncExecution == "store") {
       // persist the responses
-      ok = _server->handleRequestAsync(handler, &jobId);
+      res = _server->handleRequestAsync(handler, &jobId);
     }
     else {
       // don't persist the responses
-      ok = _server->handleRequestAsync(handler, 0);
+      res = _server->handleRequestAsync(handler, 0);
     }
 
-    if (ok) {
+    if (res == TRI_ERROR_NO_ERROR) {
       HttpResponse response(HttpResponse::ACCEPTED, compatibility);
 
       if (jobId > 0) {
@@ -1007,11 +1008,21 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
 
   // synchronous request
   else {
-    ok = _server->handleRequest(this, handler);
+    res = _server->handleRequest(this, handler);
   }
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     HttpResponse response(HttpResponse::SERVER_ERROR, compatibility);
+
+    response.body()
+    .appendText("{\"error\":true,\"errorMessage\":\"")
+    .appendText(TRI_errno_string(res))
+    .appendText("\",\"code\":")
+    .appendInteger((int) HttpResponse::SERVER_ERROR)
+    .appendText(",\"errorNum\":")
+    .appendInteger(res)
+    .appendText("}");
+
     handleResponse(&response);
   }
 }
