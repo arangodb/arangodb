@@ -237,6 +237,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
   size_t count = elements.size();
   for (size_t i = 0; i < count; ++i) {
     res = _skiplistIndex->skiplist->remove(elements[i]);
+    TRI_index_element_t::free(elements[i]);
   }
   return res;
 }

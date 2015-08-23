@@ -656,6 +656,7 @@ int HashIndex::removeMultiElement(TRI_index_element_t* element, bool isRollback)
         return TRI_ERROR_INTERNAL;
       }
     }
+    TRI_index_element_t::free(old);
     return TRI_ERROR_NO_ERROR;
 }
 
