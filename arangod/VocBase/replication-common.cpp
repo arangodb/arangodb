@@ -48,10 +48,22 @@
 
 void TRI_GetTimeStampReplication (char* dst,
                                   size_t maxLength) {
-  time_t tt;
   struct tm tb;
+  time_t tt = time(nullptr);
+  TRI_gmtime(tt, &tb);
 
-  tt = time(0);
+  strftime(dst, maxLength, "%Y-%m-%dT%H:%M:%SZ", &tb);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a timestamp string in a target buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_GetTimeStampReplication (double timeStamp,
+                                  char* dst,
+                                  size_t maxLength) {
+  struct tm tb;
+  time_t tt = static_cast<time_t>(timeStamp);
   TRI_gmtime(tt, &tb);
 
   strftime(dst, maxLength, "%Y-%m-%dT%H:%M:%SZ", &tb);

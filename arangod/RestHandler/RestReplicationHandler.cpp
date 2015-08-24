@@ -375,18 +375,13 @@ bool RestReplicationHandler::isCoordinatorError () {
 
 void RestReplicationHandler::insertClient (TRI_voc_tick_t lastServedTick) {
   bool found;
-  char const* value;
-
-  value = _request->value("serverId", found);
+  char const* value = _request->value("serverId", found);
 
   if (found) {
     TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
 
     if (serverId > 0) {
-      // TODO: there is no replication logger anymore since 2.2
-      // either re-implement tracking of clients else or remove exposing the
-      // "clients" attribute altogether
-      // TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, lastServedTick);
+      _vocbase->updateReplicationClient(serverId, lastServedTick);
     }
   }
 }
@@ -449,11 +444,14 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///
 ///   - *serverId*: the logger server's id
 ///
-/// - *clients*: this attribute was used in ArangoDB versions prior to 2.1 for
-///   returning which replication applier clients connected to the logger. Each
-///   client was returned with its date/time of last connect. Since there is no
-///   replication-logger in ArangoDB where the client connection data could be kept,
-///   this attribute currently always is an empty array.
+/// - *clients*: returns the last fetch status by replication clients connected to
+///   the logger. Each client is returned as a JSON object with the following attributes:
+///
+///   - *serverId*: server id of client
+///
+///   - *lastServedTick*: last tick value served to this client via the *logger-follow* API
+///
+///   - *time*: date and time when this client last called the *logger-follow* API
 ///
 /// @RESTRETURNCODES
 ///
@@ -527,7 +525,32 @@ void RestReplicationHandler::handleCommandLoggerState () {
 
   // clients
   TRI_json_t* clients = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
   if (clients != nullptr) {
+    try {
+      auto allClients = _vocbase->getReplicationClients();
+      for (auto& it : allClients) {
+        TRI_json_t* client = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+
+        if (client != nullptr) {
+          serverIdString = TRI_StringUInt64(std::get<0>(it));
+          TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, client, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString, strlen(serverIdString)));
+          TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
+    
+          char buffer[21];
+          TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
+          TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, client, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buffer, strlen(buffer)));
+
+          char* tickString = TRI_StringUInt64(std::get<2>(it));
+          TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, client, "lastServedTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString, strlen(tickString)));
+          TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
+        }
+
+        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, clients, client);
+      }
+    }
+    catch (...) {
+    }
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "clients", clients);
   }
 
