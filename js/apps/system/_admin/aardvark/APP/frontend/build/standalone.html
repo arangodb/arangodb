@@ -235,6 +235,7 @@
   <div id="installed">
     <div id="installedList" class="tileList">
       <div class="tile">
+        <div class="fullBorderBox"></div>
         <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
       </div>
     </div>
@@ -277,6 +278,7 @@
 </script>
 
 <script id="collectionsItemView.ejs" type="text/template">
+<div class="borderBox"></div>
 <div class="iconSet">
   <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
   <% if(model.get('status') === "loaded") { %>
@@ -408,6 +410,7 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
       <div id="collectionsThumbnailsIn" class="tileList">
         <div class="tile">
+          <div class="fullBorderBox"></div>
           <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
         </div>
       </div>
@@ -597,6 +600,7 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
+        <div class="fullBorderBox"></div>
         <a href="#" id="createDatabase" class="add">
           <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
           Add Database
@@ -607,15 +611,16 @@
       %>
 
       <div class="tile">
-      <div class="iconSet">
-        <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+        <div class="borderBox"></div>
+        <div class="iconSet">
+          <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+        </div>
+        <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
+        <div class="tileBadge">
+        </div>
+        <h5 class="collectionName"><%=name %></h5>
       </div>
-      <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
-      <div class="tileBadge">
-    </div>
 
-      <h5 class="collectionName"><%=name %></h5>
-    </div>
       <%});%>
      </div>
   </div>
@@ -1210,6 +1215,7 @@ if (list.length > 0) {
 </script>
 
 <script id="foxxActiveView.ejs" type="text/template">
+  <div class="borderBox"></div>
   <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
     <% if (model.needsAttention()) { %>
       <span class="warning-icons">
@@ -1390,6 +1396,7 @@ if (list.length > 0) {
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="graphManagementThumbnailsIn" class="tileList">
       <div class="tile">
+        <div class="fullBorderBox"></div>
         <a href="#" id="createGraph" class="add">
           <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
           Add Graph
@@ -1402,6 +1409,7 @@ if (list.length > 0) {
       %>
 
       <div class="tile tile-graph" id="<%=graphName %>_tile">
+      <div class="borderBox"></div>
       <div class="iconSet">
         <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
       </div>
@@ -2748,6 +2756,7 @@ var cutByResolution = function (str) {
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
+        <div class="fullBorderBox"></div>
         <a href="#" id="createUser" class="add">
           <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
           Add User
@@ -2779,6 +2788,7 @@ var cutByResolution = function (str) {
       %>
 
       <div class="tile">
+        <div class="borderBox"></div>
         <div class="iconSet">
           <span class="icon_arangodb_settings2 editUser" id="<%=_.escape(username) %>_edit-user" alt="Edit user" title="Edit user"></span>
         </div>
@@ -2852,7 +2862,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1439401344440"></script>
+<script src="app.js?version=1440401914326"></script>
 
   </body>
 </html>
