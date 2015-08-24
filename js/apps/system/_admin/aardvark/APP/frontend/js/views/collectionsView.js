@@ -10,9 +10,6 @@
 
     searchTimeout: null,
 
-    initialize: function () {
-    },
-
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
     render: function () {
@@ -213,7 +210,7 @@
       searchOptions.searchPhrase = null;
     },
 
-    restrictToSearchPhraseKey: function (e) {
+    restrictToSearchPhraseKey: function () {
       // key pressed in search box
       var self = this;
 

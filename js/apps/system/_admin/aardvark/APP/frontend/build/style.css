@@ -4,6 +4,7 @@ $c-lightgreen-2-bg: #e4ecd9;;
 $c-lightgreen-transp-bg: rgba(222, 233, 207, 0.8);
 $c-lightgreen-2-transp-bg: rgba(228, 236, 217, 0.8);
 */
+/*$c-content-border: rgba(104, 103, 102, 0.1);*/
 body {
   /*background: #DEE8D0 !important;*/
   background: #F5F8F0 !important;
@@ -2483,7 +2484,8 @@ div .tile, div .bigtile {
   box-shadow: none;
   background-color: #fff;
   border-radius: 3px;
-  border: 1px solid rgba(104, 103, 102, 0.1);
+  /*border: 1px solid $c-content-border;*/
+  border: 1px solid #F5F8F0;
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -2571,6 +2573,18 @@ div .tile, div .bigtile {
       margin-right: 5px;
       margin-top: 16px;
       width: 70px; }
+  div .tile div.fullBorderBox, div .bigtile div.fullBorderBox {
+    border: 1px solid rgba(140, 138, 137, 0.25);
+    border-radius: 3px;
+    height: 100%;
+    position: absolute;
+    width: 100%; }
+  div .tile div.borderBox, div .bigtile div.borderBox {
+    border: 1px solid rgba(140, 138, 137, 0.25);
+    border-radius: 3px;
+    height: 75px;
+    position: absolute;
+    width: 224px; }
   div .tile div.iconSet, div .bigtile div.iconSet {
     position: absolute;
     right: 5px;
@@ -4769,7 +4783,7 @@ input.search-input {
 div.headerBar {
   background-color: #fff;
   border-radius: 3px;
-  border: 1px solid rgba(104, 103, 102, 0.1);
+  border: 1px solid rgba(140, 138, 137, 0.25);
   color: #fff;
   font-size: 16px;
   height: 36px;
@@ -6890,7 +6904,7 @@ input.gv-radio-button {
       position: absolute;
       width: 160px; }
       .application-detail-view section.info .header div.header-icon-container img.icon {
-        border: 1px solid rgba(104, 103, 102, 0.1);
+        border: 1px solid rgba(140, 138, 137, 0.25);
         border-radius: 3px;
         height: auto;
         max-height: 160px;
@@ -6943,7 +6957,7 @@ input.gv-radio-button {
         margin: 0;
         font-size: 1em; }
   .application-detail-view section.info .swagger iframe {
-    border: 1px solid rgba(104, 103, 102, 0.1);
+    border: 1px solid rgba(140, 138, 137, 0.25);
     border-radius: 3px;
     height: 600px;
     width: 100%; }
@@ -6953,7 +6967,7 @@ input.gv-radio-button {
     padding: 1em 2em; }
 .application-detail-view aside.meta {
   background-color: #fff;
-  border: 1px solid rgba(104, 103, 102, 0.1);
+  border: 1px solid rgba(140, 138, 137, 0.25);
   border-radius: 3px;
   clear: right;
   float: left;
