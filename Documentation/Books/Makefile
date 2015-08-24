@@ -58,9 +58,9 @@ build-book:
 	done
 	python generateMdFiles.py $(NAME) ppbooks/
 
-	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
-	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
-	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/v$(newVersionNumber)/g' book.json
+	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
+	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
+	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' book.json
 
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
 
