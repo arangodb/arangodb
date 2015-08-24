@@ -149,6 +149,10 @@ int TRI_hash_array_t::resizeInternal (triagens::arango::HashIndex* hashIndex,
 
   try {
     b._table = new TRI_index_element_t* [targetSize];
+
+    for (uint64_t i = 0; i < targetSize; i++) {
+      b._table[i] = nullptr;
+    }
   }
   catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -169,11 +173,6 @@ int TRI_hash_array_t::resizeInternal (triagens::arango::HashIndex* hashIndex,
         if (i == n) {
           for (i = 0; i < k && b._table[i] != nullptr; ++i);
         }
-
-        // .....................................................................
-        // add a new element to the associative array
-        // memcpy ok here since are simply moving array items internally
-        // .....................................................................
 
         b._table[i] = element;
       }

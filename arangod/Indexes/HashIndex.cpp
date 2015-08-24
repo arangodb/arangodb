@@ -47,6 +47,14 @@ static bool isEqualElementElement (TRI_index_element_t const* left,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Frees an index element
+////////////////////////////////////////////////////////////////////////////////
+
+static void freeElement(TRI_index_element_t* element) {
+  TRI_index_element_t::free(element);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief given a key generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -120,63 +128,6 @@ static int FillIndexSearchValueByHashIndexElement (HashIndex const* hashIndex,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper for hashing
-///
-/// This function takes a document master pointer and creates a corresponding
-/// hash index element. The index element contains the document master pointer
-/// and a lists of offsets and sizes describing the parts of the documents to be
-/// hashed and the shape identifier of each part.
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-static int HashIndexHelper (HashIndex const* hashIndex,
-                            TRI_hash_index_element_t* hashElement,
-                            TRI_doc_mptr_t const* document) {
-  TRI_shaped_json_t shapedJson;         // the object behind document
-
-  auto shaper = hashIndex->collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  bool const sparse = hashIndex->sparse();
-
-  // .............................................................................
-  // Assign the document to the TRI_hash_index_element_t structure - so that it
-  // can later be retreived.
-  // .............................................................................
-
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  hashElement->_document = const_cast<TRI_doc_mptr_t*>(document);
-  char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX
-
-  // .............................................................................
-  // Extract the attribute values
-  // .............................................................................
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  auto const& paths = hashIndex->paths();
-  size_t const n = paths.size();
-
-  for (size_t j = 0;  j < n;  ++j) {
-    TRI_shape_pid_t path = paths[j];
-
-    // determine if document has that particular shape
-    TRI_shape_access_t const* acc = shaper->findAccessor(shapedJson._sid, path);
-
-    // field not part of the object
-    if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-      hashElement->_subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL;
-
-      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-
-      if (sparse) {
-        // no need to continue
-        return res;
-      }
-    }
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates a key within the hash array part
@@ -300,9 +251,10 @@ HashIndex::~HashIndex () {
     _hashArray = nullptr;
   }
   else {
+    _multi._hashArray->invokeOnAllElements(freeElement);
     delete _multi._hashElement;
     delete _multi._isEqualElElByKey;
-    delete _multi._hashArray;   // FIXME: should we free the pointers in there?
+    delete _multi._hashArray;
   }
 }
 
@@ -545,7 +497,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < count; ++j) {
         // Free all elements that are not yet in the index
-        TRI_index_element_t::free(elements[j]);
+        freeElement(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
         // Remove all allready indexed elements and free them
@@ -593,7 +545,7 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < count; ++j) {
         // Free all elements that are not yet in the index
-        TRI_index_element_t::free(elements[j]);
+        freeElement(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
         // Remove all allready indexed elements and free them
@@ -634,14 +586,14 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& hashElement : elements) {
-      TRI_index_element_t::free(hashElement);
+      freeElement(hashElement);
     }
     return res;
   }
 
   for (auto& hashElement : elements) {
     res = removeUniqueElement(hashElement, isRollback);
-    TRI_index_element_t::free(hashElement);
+    freeElement(hashElement);
   }
   return res;
 }
@@ -662,7 +614,7 @@ int HashIndex::removeMultiElement(TRI_index_element_t* element, bool isRollback)
         return TRI_ERROR_INTERNAL;
       }
     }
-    TRI_index_element_t::free(old);
+    freeElement(old);
     return TRI_ERROR_NO_ERROR;
 }
 
@@ -676,7 +628,7 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
 
   for (auto& hashElement : elements) {
     res = removeMultiElement(hashElement, isRollback);
-    TRI_index_element_t::free(hashElement);
+    freeElement(hashElement);
   }
                  
   return res;
