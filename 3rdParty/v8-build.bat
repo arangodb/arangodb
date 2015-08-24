@@ -2,17 +2,6 @@
 :: ==== <CONFIGURATION>
 :: ========================================================================================================
 
-:: Set the version of Visual Studio. This will just add a suffix to the string
-:: of your directories to avoid mixing them up.
-SET VS_VERSION=vs2013
-
-:: Set this to the directory that contains vcvarsall.bat file of the
-:: VC Visual Studio version you want to use for building ICU.
-SET VISUAL_STUDIO_VC="C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
-
-:: Set this to the version of ICU you are building
-SET V8_VERSION=4.3.61
-
 :: x86_amd64 or x86
 set ARCHITECTURE=%1
 
@@ -25,13 +14,26 @@ set MSPLATFORM=%3
 :: 64 or 32
 set SUFFIX=%4
 
+:: Set the version of Visual Studio. This will just add a suffix to the string
+:: of your directories to avoid mixing them up.
+SET VS_VERSION=vs%5
+SET MSVS_VERSION=%5
+
+:: Set this to the directory that contains vcvarsall.bat file of the
+:: VC Visual Studio version you want to use for building ICU.
+SET VISUAL_STUDIO_VC=%6
+
+:: Set this to the version of V8 you are building
+SET V8_VERSION=%7
+
+
 :: ========================================================================================================
 :: ==== <BUILD> 
 :: ========================================================================================================
 
 call %VISUAL_STUDIO_VC%\vcvarsall.bat %ARCHITECTURE%
 
-set CMD=-G msvs_version=2013
+set CMD=-G msvs_version=%MSVS_VERSION%
 set CMD=%CMD% -Dtarget_arch=%PLATFORM%
 set CMD=%CMD% -Dcomponent=static_library
 set CMD=%CMD% -Dmode=release
@@ -40,9 +42,9 @@ set CMD=%CMD% -Dv8_use_snapshot=false
 
 echo %CMD%
 
-cd V8-%V8_VERSION%
+cd %V8_VERSION%
 
-set PATH=%~dp0V8-%V8_VERSION%\third_party\python_26;%PATH%
+set PATH=%~dp0%V8_VERSION%\third_party\python_26;%PATH%
 .\third_party\python_26\python.exe build\gyp_v8 %CMD%
 
 cd build
