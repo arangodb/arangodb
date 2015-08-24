@@ -1982,7 +1982,8 @@ ul.navlist {
     margin-left: 0; }
     ul.navlist li.dropdown-item a {
       display: block;
-      border-bottom: 0; }
+      border-bottom: 0;
+      font-size: 11pt; }
     ul.navlist li.dropdown-item a:hover {
       color: #686766;
       background-color: #dee9cf; }
@@ -2003,13 +2004,16 @@ a.tab {
   border-bottom: 0 !important;
   font-weight: 300; }
 
-ul.link-dropdown-menu {
+ul.link-dropdown-menu, ul.user-dropdown-menu {
   background-color: #fff;
   z-index: -10;
   margin-top: 7px;
   margin-right: -1px;
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-top-right-radius: 0; }
+
+ul.user-dropdown-menu {
+  margin-top: 6px; }
 
 ul.script-dropdown-menu li.dropdown-item {
   margin-left: 0; }
@@ -5282,7 +5286,8 @@ pre.gv-object-view {
   -webkit-border-radius: 3px;
   border-radius: 3px;
   background-color: #d3d3d3;
-  border: 2px solid #8aa051;
+  border: 1px solid rgba(140, 138, 137, 0.25);
+  height: 25px;
   margin-top: -4px; }
 
 .tooltip-inner {
