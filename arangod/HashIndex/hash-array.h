@@ -122,12 +122,6 @@ class TRI_hash_array_t {
 
     ~TRI_hash_array_t () {
       for (auto& b : _buckets) {
-        for (size_t i = 0; i < b._nrAlloc; i++) {
-          TRI_index_element_t* p = b._table[i];
-          if (p != nullptr) {
-            TRI_index_element_t::free(p);
-          }
-        }
         delete [] b._table;
         b._table = nullptr;
         b._nrAlloc = 0;
@@ -142,6 +136,12 @@ class TRI_hash_array_t {
     TRI_hash_array_t (TRI_hash_array_t&&) = delete;       // move constructor
     TRI_hash_array_t& operator= (TRI_hash_array_t const&) = delete;  // op =
     TRI_hash_array_t& operator= (TRI_hash_array_t&&) = delete;       // op =
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a type for a generic callback to run over all elements
+////////////////////////////////////////////////////////////////////////////////
+
+    typedef std::function<void(TRI_index_element_t*)> CallbackElementFuncType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initial preallocation size of the hash table when the table is
@@ -237,11 +237,28 @@ class TRI_hash_array_t {
                 bool isRollback);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the array
+/// @brief removes an element from the array, returns nullptr if the element
+/// was not found and the old value, if it was successfully removed
 ////////////////////////////////////////////////////////////////////////////////
 
-    int remove (triagens::arango::HashIndex*,
-                TRI_index_element_t* element);
+    TRI_index_element_t* remove (triagens::arango::HashIndex*,
+                                 TRI_index_element_t* element);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the hash
+////////////////////////////////////////////////////////////////////////////////
+
+    void invokeOnAllElements (CallbackElementFuncType callback) {
+      for (auto& b : _buckets) {
+        if (b._table != nullptr) {
+          for (size_t i = 0; i < b._nrAlloc; ++i) {
+            if (b._table[i] != nullptr) {
+              callback(b._table[i]);
+            }
+          }
+        }
+      }
+    }
 
 };
 
