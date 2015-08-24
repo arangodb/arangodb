@@ -9,11 +9,10 @@
     el2: '.header',
     el3: '.footer',
 
-    init: function () {
-    },
-
     events: {
-      "submit #loginForm" : "login"
+      "submit #loginForm" : "login",
+      "keypress #loginForm input" : "clear",
+      "change #loginForm input" : "clear"
     },
 
     template: templateEngine.createTemplate("loginView.ejs"),
@@ -26,6 +25,11 @@
       $('#loginUsername').focus();
 
       return this;
+    },
+
+    clear: function () {
+      $('#loginForm input').removeClass("form-error");
+      $('.wrong-credentials').hide();
     },
 
     login: function (e) {
@@ -46,6 +50,10 @@
         window.location.reload();
         $('#currentUser').text(username);
         this.collection.loadUserSettings();
+      }
+      else {
+        $('#loginForm input').addClass("form-error");
+        $('.wrong-credentials').show();
       }
     }
 
