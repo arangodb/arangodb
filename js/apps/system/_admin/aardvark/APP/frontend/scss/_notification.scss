@@ -1,11 +1,10 @@
 .fixedDropdown {
-  margin: 37px 0 0 0 !important;
-  width: 210px;
-  right: -1px !important;
- 
-  background: $c-white !important; 
+  background: $c-white !important;
   border-color: $c-content-border !important;
   border-radius: 3px !important;
+  margin: 37px 0 0 !important;
+  right: -1px !important;
+  width: 210px;
 
   &:after {
     visibility: hidden;
@@ -17,8 +16,8 @@
 
   .dropdown-header {
     border-bottom: 1px solid $c-semi-transp;
-    padding: 0 !important;
     margin-left: -1px;
+    padding: 0 !important;
 
     a {
       color: $c-black;
