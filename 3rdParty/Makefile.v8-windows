@@ -1,7 +1,7 @@
 PDBNAME=vc120.pdb
 TARGET=Visual Studio 12
 VS=2013
-VSPATH="C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
+VSPATH=C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC
 V8=V8-4.3.61
 
 .PHONY: all install
@@ -42,8 +42,8 @@ install_bits:
 	mkdir -p ../WindowsLibraries/$(BITS)/lib/RelWithDebInfo
 	mkdir -p ../WindowsLibraries/$(BITS)/include/unicode
 	for i in `find $(V8)/build -name $(PDBNAME) | grep $(BITS)`; do \
-		LIBNAME=`echo $$i|sed "s;.*/\(.*\)/$(PDBNAME);\1;"`; \
-		BUILD=`echo $$i|sed "s;$(V8)/build/\(.*\)/obj/$${LIBNAME}/$(PDBNAME);\1;"`; \
+		LIBNAME=`echo $$i|sed 's;.*/\(.*\)/$(PDBNAME);\1;'`; \
+		BUILD=`echo $$i|sed 's;$(V8)/build/\(.*\)/obj/$${LIBNAME}/$(PDBNAME);\1;'`; \
 		cp $$i $(V8)/build/$${BUILD}/lib/$${LIBNAME}.pdb; \
 	done
 

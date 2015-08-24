@@ -9,15 +9,15 @@ toolbar {
   margin-right: 0;
 
   span:hover {
-    background-color: red;
-    color: white;
+    background-color: $c-negative;
+    color: $c-white;
   }
 
 }
 
 .queryBottomActions {
-  padding: 10px;
   border-top: 1px solid $c-c2grey;
+  padding: 10px;
 }
 
 #queryManagementContent {
@@ -25,13 +25,13 @@ toolbar {
 }
 
 .queryManagementBottomActions {
-  margin-top: -2px;
-  border-top: 1px solid $c-c2grey;
-  height: 40px;
-  padding-top: 10px;
+  background-color: $c-white;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
-  background-color: white;
+  border-top: 1px solid $c-c2grey;
+  height: 40px;
+  margin-top: -2px;
+  padding-top: 10px;
 
   button {
     margin-right: 10px;
@@ -45,20 +45,20 @@ toolbar {
   span {
     border-radius: 3px;
     float: right;
-    width: 25px;
     height: 18px;
-    position: relative;
-    padding-top: 3px;
-    padding-right: 0;
-    padding-left: 5px;
-    padding-bottom: 6px;
     margin-left: 3px;
-    top: 0px;
+    padding-bottom: 6px;
+    padding-left: 5px;
+    padding-right: 0;
+    padding-top: 3px;
+    position: relative;
+    top: 0;
+    width: 25px;
   }
 
   span:hover {
     background-color: $c-positive;
-    color: white;
+    color: $c-white;
   }
 
   i {
@@ -95,7 +95,7 @@ toolbar {
 .queryMethods {
   button {
     a {
-      color: #fff;
+      color: $c-white;
     }
   }
 }
@@ -179,16 +179,16 @@ toolbar {
   height: 30px !important;
   margin-right: 10px;
   width: 130px !important;
-}
 
-.querySizeDiv select {
-  height: 30px !important;
+  select {
+    height: 30px !important;
+  }
 }
 
 .wide-button-div {
-  margin-top: -10px;
   height: 36px;
   margin-bottom: 15px;
+  margin-top: -10px;
   padding-top: 5px;
   width: 100%;
 }
@@ -242,26 +242,14 @@ toolbar {
 }
 
 .query-select {
-  border: 0 !important;border-radius: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
   line-height: 20px !important;
   margin-bottom: 0;
   z-index: 9999 !important;
 
   option {
     z-index: 9999 !important;
-  }
-}
-
-.editor-label {
-  background-color: #ddd;
-  height: 1px;
-  width: 100%;
-
-  h6 {
-    font-family: 'Open Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 400;
-    margin-bottom: 5px;
   }
 }
 
@@ -314,11 +302,11 @@ toolbar {
   margin-top: 18px;
 
   .arango-tab a {
-    border-bottom-color: #ddd;
+    border-bottom-color: $c-tab-bottom-border;
   }
 
   .arango-tab .active {
-    border-bottom-color: #fff !important;
+    border-bottom-color: $c-white !important;
   }
 }
 
@@ -326,7 +314,7 @@ toolbar {
   display: none;
   min-height: 360px;
 
-  &> * {
+  > * {
     border: 0 !important;
   }
 
@@ -386,7 +374,7 @@ toolbar {
   width: 100%;
 }
 
-svg.explain-tree {
+.explain-tree {
   width: 100%;
 
   .node text {
@@ -395,7 +383,7 @@ svg.explain-tree {
 
   .link {
     fill: none;
-    stroke: #ccc;
+    stroke: $c-accordion-heading;
     stroke-width: 1.5px;
   }
 }

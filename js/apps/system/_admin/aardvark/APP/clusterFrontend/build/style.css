@@ -1762,13 +1762,13 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-medium:before {
   content: "\f23a"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
+.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
   float: left; }
 
-div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, div.headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
+.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, div.headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
   float: right; }
 
-.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .machineClass:after, .scenarioSingleMachine:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after {
+.tileList:after, .resizecontainer:after, div.headerBar > div.headerButtonBar:after, .machineClass:after, .scenarioSingleMachine:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after {
   clear: both;
   content: '.';
   display: block;
@@ -1776,10 +1776,10 @@ div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .
   height: 0;
   visibility: hidden; }
 
-ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
+.script-dropdown-menu .dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
   cursor: pointer; }
 
-nav.navbar, footer.footer {
+.navbar, footer.footer {
   background-color: rgba(245, 248, 240, 0.95);
   color: #fff;
   left: 0;
@@ -1877,7 +1877,7 @@ a.inactive.coordinator, a.inactive.dbserver {
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
     fill: #d3d3d3; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu {
+.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu {
   background-color: #F5F8F0;
   border-color: #666;
   border-style: solid;
@@ -1891,150 +1891,149 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dro
   right: 0;
   top: 80%;
   z-index: 1000; }
-  ul.link-dropdown-menu li, ul.user-dropdown-menu li, ul.script-dropdown-menu li, ul.gv-dropdown-menu li {
+  .link-dropdown-menu li, .user-dropdown-menu li, .script-dropdown-menu li, .gv-dropdown-menu li {
     line-height: 23px;
     white-space: nowrap;
     width: 100%; }
-  ul.link-dropdown-menu li.dropdown-header, ul.user-dropdown-menu li.dropdown-header, ul.script-dropdown-menu li.dropdown-header, ul.gv-dropdown-menu li.dropdown-header {
+  .link-dropdown-menu li.dropdown-header, .user-dropdown-menu li.dropdown-header, .script-dropdown-menu li.dropdown-header, .gv-dropdown-menu li.dropdown-header {
     color: #999;
     font-size: 15px;
     font-weight: 600;
     font-variant: small-caps;
     padding: 0 15px; }
-  ul.link-dropdown-menu li.dropdown-header:hover, ul.user-dropdown-menu li.dropdown-header:hover, ul.script-dropdown-menu li.dropdown-header:hover, ul.gv-dropdown-menu li.dropdown-header:hover {
+  .link-dropdown-menu li.dropdown-header:hover, .user-dropdown-menu li.dropdown-header:hover, .script-dropdown-menu li.dropdown-header:hover, .gv-dropdown-menu li.dropdown-header:hover {
     cursor: default; }
-  ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider, ul.script-dropdown-menu li.divider, ul.gv-dropdown-menu li.divider {
+  .link-dropdown-menu li.divider, .user-dropdown-menu li.divider, .script-dropdown-menu li.divider, .gv-dropdown-menu li.divider {
     background-color: #666;
     height: 1px;
     margin: 10px 0px; }
-  ul.link-dropdown-menu a, ul.user-dropdown-menu a, ul.script-dropdown-menu a, ul.gv-dropdown-menu a {
+  .link-dropdown-menu a, .user-dropdown-menu a, .script-dropdown-menu a, .gv-dropdown-menu a {
     color: #fff;
     padding: 0 20px; }
 
 .navbar {
-  -webkit-font-smoothing: subpixel-antialiased; }
-  .navbar .nav li.dropdown .active > .dropdown-toggle, .navbar .nav li.dropdown .open > .dropdown-toggle, .navbar .nav li.dropdown .open.active > .dropdown-toggle {
-    background: #788f3d; }
-
-nav.navbar {
-  padding-top: 6px;
+  -webkit-font-smoothing: subpixel-antialiased;
   height: 44px;
   margin-bottom: 3px;
+  padding-top: 6px;
   top: 0; }
-  nav.navbar .arangodbLogo {
+  .navbar .arangodbLogo {
     height: auto;
     margin-left: -5px;
     margin-top: -1px;
     width: 40%; }
-  nav.navbar .nav > .active > a {
-    background-color: #fff;
-    color: #000;
+  .navbar .nav .dropdown .active > .dropdown-toggle, .navbar .nav .dropdown .open > .dropdown-toggle, .navbar .nav .dropdown .open.active > .dropdown-toggle {
+    background: #788f3d; }
+  .navbar .nav > .active > a {
     -webkit-box-shadow: 0 0 0 transparent inset;
     -moz-box-shadow: 0 0 0 transparent inset;
-    box-shadow: 0 0 0 transparent inset; }
-  nav.navbar .nav > li > a:focus {
+    box-shadow: 0 0 0 transparent inset;
+    background-color: #fff;
+    color: #000; }
+  .navbar .nav > li > a:focus {
     background-color: #fff; }
-  nav.navbar .nav > li > a:hover {
+  .navbar .nav > li > a:hover {
     background-color: #000;
     color: #686766; }
 
-div.navlogo {
+.navlogo {
   margin-left: 5px;
   margin-right: -3px;
   padding-top: 3px; }
 
-ul.navlist {
+.navlist {
   list-style: none; }
-  ul.navlist li {
+  .navlist li {
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent;
+    border-top: 1px solid transparent;
     margin-left: 1px; }
-    ul.navlist li.navbar-spacer {
+    .navlist li.dropdown:hover {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      border-left: 1px solid rgba(0, 0, 0, 0.2);
+      border-right: 1px solid rgba(0, 0, 0, 0.2);
+      border-top: 1px solid rgba(0, 0, 0, 0.2); }
+    .navlist li.navbar-spacer, .navlist li.divider {
+      border: 0; }
+    .navlist li.divider {
+      background-color: rgba(0, 0, 0, 0.2); }
+    .navlist li.navbar-spacer {
       background-color: #a0a0a0;
       height: 21px;
       margin-top: 9px;
       width: 1px; }
-      ul.navlist li.navbar-spacer.big {
+      .navlist li.navbar-spacer.big {
         margin-left: 15px;
         margin-right: 15px; }
-      ul.navlist li.navbar-spacer.med {
+      .navlist li.navbar-spacer.med {
         margin-left: 5px;
         margin-right: 5px; }
-      ul.navlist li.navbar-spacer:hover {
+      .navlist li.navbar-spacer:hover {
         background-color: #a0a0a0; }
-  ul.navlist li.active {
-    font-weight: bold; }
-    ul.navlist li.active .tab {
-      border-bottom: 2px solid #8aa051;
-      padding-bottom: 4px; }
-  ul.navlist > li.active {
+  .navlist .active .tab {
+    border-bottom: 2px solid #8aa051;
+    padding-bottom: 4px; }
+  .navlist > .active {
     background-color: transparent; }
-    ul.navlist > li.active a {
+    .navlist > .active a {
       color: #000; }
-  ul.navlist > li.active:hover {
+  .navlist > .active:hover {
     background-color: transparent; }
-    ul.navlist > li.active:hover a {
+    .navlist > .active:hover a {
       color: #000; }
-  ul.navlist li.navbar-spacer, ul.navlist li.divider {
-    border: none; }
-  ul.navlist li.divider {
-    background-color: rgba(0, 0, 0, 0.2); }
-  ul.navlist li {
-    border-top: 1px solid transparent;
-    border-left: 1px solid transparent;
-    border-right: 1px solid transparent; }
-    ul.navlist li.dropdown:hover {
-      border-top: 1px solid rgba(0, 0, 0, 0.2);
-      border-left: 1px solid rgba(0, 0, 0, 0.2);
-      border-right: 1px solid rgba(0, 0, 0, 0.2);
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0; }
-  ul.navlist li.dropdown-item:hover, ul.navlist > li:hover {
+  .navlist .dropdown-item:hover, .navlist > li:hover {
     background-color: #fff;
     border-radius: 3px; }
-    ul.navlist li.dropdown-item:hover a, ul.navlist > li:hover a {
+    .navlist .dropdown-item:hover a, .navlist > li:hover a {
       color: #000; }
-  ul.navlist li.dropdown-item {
+  .navlist .dropdown-item {
     margin-left: 0; }
-    ul.navlist li.dropdown-item a {
+    .navlist .dropdown-item a {
+      border-bottom: 0;
       display: block;
-      border-bottom: 0; }
-    ul.navlist li.dropdown-item a:hover {
-      color: #686766;
-      background-color: #dee9cf; }
+      font-size: 11pt; }
+    .navlist .dropdown-item a:hover {
+      background-color: #dee9cf;
+      color: #686766; }
 
-a.tab {
+.tab {
   color: #686766;
   display: block;
   font-size: 12pt;
   font-weight: 100;
-  padding-top: 9px;
-  padding-left: 10px;
   padding-bottom: 10px;
-  padding-right: 10px; }
-  a.tab.userImg {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 9px; }
+  .tab.userImg {
     padding-bottom: 5px; }
 
 .dropdown-item a {
   border-bottom: 0 !important;
   font-weight: 300; }
 
-ul.link-dropdown-menu {
+.link-dropdown-menu, .user-dropdown-menu {
   background-color: #fff;
-  z-index: -10;
-  margin-top: 7px;
-  margin-right: -1px;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  border-top-right-radius: 0; }
+  border-top-right-radius: 0;
+  margin-right: -1px;
+  margin-top: 7px;
+  z-index: -10; }
 
-ul.script-dropdown-menu li.dropdown-item {
+.user-dropdown-menu {
+  margin-top: 6px; }
+
+.script-dropdown-menu .dropdown-item {
   margin-left: 0; }
-  ul.script-dropdown-menu li.dropdown-item a {
+  .script-dropdown-menu .dropdown-item a {
     display: block; }
-    ul.script-dropdown-menu li.dropdown-item a:hover {
+    .script-dropdown-menu .dropdown-item a:hover {
       color: #fff; }
-  ul.script-dropdown-menu li.dropdown-item:hover {
+  .script-dropdown-menu .dropdown-item:hover {
     background-color: #8aa051; }
 
-ul.gv-dropdown-menu {
+.gv-dropdown-menu {
   -moz-border-radius: 0;
   -webkit-border-radius: 0;
   border-radius: 0;
@@ -2042,17 +2041,17 @@ ul.gv-dropdown-menu {
   border: solid 1px #c2c2c2;
   margin-right: -20px;
   margin-top: 6px; }
-  ul.gv-dropdown-menu:after {
+  .gv-dropdown-menu:after {
     border-bottom-color: #fff; }
-  ul.gv-dropdown-menu li:hover {
+  .gv-dropdown-menu li:hover {
     background-color: #fff;
     background-image: none; }
-  ul.gv-dropdown-menu li a {
+  .gv-dropdown-menu li a {
     padding: 0; }
-    ul.gv-dropdown-menu li a label {
+    .gv-dropdown-menu li a label {
       color: #fff;
       padding-left: 5px; }
-    ul.gv-dropdown-menu li a:focus {
+    .gv-dropdown-menu li a:focus {
       background-color: #8aa051 !important;
       background-image: none; }
 
@@ -2065,8 +2064,8 @@ ul.gv-dropdown-menu {
 
 .caret {
   border-left: 5px solid transparent;
-  border-top: 5px solid #686766;
   border-right: 5px solid transparent;
+  border-top: 5px solid #686766;
   content: '';
   display: inline-block;
   height: 0;
@@ -2667,22 +2666,22 @@ div .tile-graph .tile-icon:hover {
 div .bigtile {
   height: 309px;
   width: 452px; }
-  div .bigtile div.shardContainer {
+  div .bigtile .shardContainer {
     font-size: 30px; }
-    div .bigtile div.shardContainer span {
+    div .bigtile .shardContainer span {
       padding: 2px; }
 
 .collectionName {
-  bottom: 0;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
+  bottom: 0;
   font-weight: 300;
   left: 0;
   position: absolute;
   right: 0;
   text-align: left; }
 
-div.resizecontainer {
+.resizecontainer {
   margin: 0 auto; }
 
 @media (max-width: 798px) {
@@ -2703,7 +2702,7 @@ div.resizecontainer {
     font-size: 14px; } }
 
 @media (min-width: 250px) and (max-width: 489px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 228px; }
   .dashboard-large-chart {
     width: 146px; }
@@ -2715,8 +2714,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 106px;
-    float: left; }
+    float: left;
+    width: 106px; }
   .dashboard-medium-chart {
     width: 96px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -2804,8 +2803,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 133px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 91px;
-    float: left; }
+    float: left;
+    width: 91px; }
   .modal-body .dashboard-medium-chart {
     width: 91px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -2874,7 +2873,7 @@ div.resizecontainer {
     display: none; } }
 
 @media (min-width: 490px) and (max-width: 729px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 468px; }
   .dashboard-large-chart {
     width: 306px; }
@@ -2886,8 +2885,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 226px;
-    float: left; }
+    float: left;
+    width: 226px; }
   .dashboard-medium-chart {
     width: 216px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -2975,8 +2974,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 293px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 211px;
-    float: left; }
+    float: left;
+    width: 211px; }
   .modal-body .dashboard-medium-chart {
     width: 211px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3045,7 +3044,7 @@ div.resizecontainer {
     display: none; } }
 
 @media (min-width: 730px) and (max-width: 969px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 708px; }
   .dashboard-large-chart {
     width: 466px; }
@@ -3057,8 +3056,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 346px;
-    float: left; }
+    float: left;
+    width: 346px; }
   .dashboard-medium-chart {
     width: 336px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3146,8 +3145,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 453px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 331px;
-    float: left; }
+    float: left;
+    width: 331px; }
   .modal-body .dashboard-medium-chart {
     width: 331px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3214,7 +3213,7 @@ div.resizecontainer {
     width: 508px; } }
 
 @media (min-width: 970px) and (max-width: 1209px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 948px; }
   .dashboard-large-chart {
     width: 626px; }
@@ -3226,8 +3225,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 13px; }
   .dashboard-medium-chart-outer {
-    width: 466px;
-    float: left; }
+    float: left;
+    width: 466px; }
   .dashboard-medium-chart {
     width: 456px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3314,8 +3313,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 493px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 451px;
-    float: left; }
+    float: left;
+    width: 451px; }
   .modal-body .dashboard-medium-chart {
     width: 451px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3380,7 +3379,7 @@ div.resizecontainer {
     width: 748px; } }
 
 @media (min-width: 1210px) and (max-width: 1449px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1188px; }
   .dashboard-large-chart {
     width: 786px; }
@@ -3392,8 +3391,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 586px;
-    float: left; }
+    float: left;
+    width: 586px; }
   .dashboard-medium-chart {
     width: 576px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3480,8 +3479,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 643px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 571px;
-    float: left; }
+    float: left;
+    width: 571px; }
   .modal-body .dashboard-medium-chart {
     width: 571px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3546,7 +3545,7 @@ div.resizecontainer {
     width: 988px; } }
 
 @media (min-width: 1450px) and (max-width: 1689px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1428px; }
   .dashboard-large-chart {
     width: 946px; }
@@ -3558,8 +3557,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 706px;
-    float: left; }
+    float: left;
+    width: 706px; }
   .dashboard-medium-chart {
     width: 696px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3646,8 +3645,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 793px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 691px;
-    float: left; }
+    float: left;
+    width: 691px; }
   .modal-body .dashboard-medium-chart {
     width: 691px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3712,7 +3711,7 @@ div.resizecontainer {
     width: 1228px; } }
 
 @media (min-width: 1690px) and (max-width: 1929px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1668px; }
   .dashboard-large-chart {
     width: 1106px; }
@@ -3724,8 +3723,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 16px; }
   .dashboard-medium-chart-outer {
-    width: 826px;
-    float: left; }
+    float: left;
+    width: 826px; }
   .dashboard-medium-chart {
     width: 816px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3812,8 +3811,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 933px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 811px;
-    float: left; }
+    float: left;
+    width: 811px; }
   .modal-body .dashboard-medium-chart {
     width: 811px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3878,7 +3877,7 @@ div.resizecontainer {
     width: 1468px; } }
 
 @media (min-width: 1930px) and (max-width: 2169px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1908px; }
   .dashboard-large-chart {
     width: 1266px; }
@@ -3890,8 +3889,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 946px;
-    float: left; }
+    float: left;
+    width: 946px; }
   .dashboard-medium-chart {
     width: 936px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3978,8 +3977,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1083px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 931px;
-    float: left; }
+    float: left;
+    width: 931px; }
   .modal-body .dashboard-medium-chart {
     width: 931px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -4044,7 +4043,7 @@ div.resizecontainer {
     width: 1708px; } }
 
 @media (min-width: 2170px) and (max-width: 2409px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2148px; }
   .dashboard-large-chart {
     width: 1426px; }
@@ -4056,8 +4055,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1066px;
-    float: left; }
+    float: left;
+    width: 1066px; }
   .dashboard-medium-chart {
     width: 1056px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -4144,8 +4143,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1273px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1051px;
-    float: left; }
+    float: left;
+    width: 1051px; }
   .modal-body .dashboard-medium-chart {
     width: 1051px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -4210,7 +4209,7 @@ div.resizecontainer {
     width: 1948px; } }
 
 @media (min-width: 2410px) and (max-width: 2649px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2388px; }
   .dashboard-large-chart {
     width: 1586px; }
@@ -4222,8 +4221,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1186px;
-    float: left; }
+    float: left;
+    width: 1186px; }
   .dashboard-medium-chart {
     width: 1176px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -4310,8 +4309,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1433px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1171px;
-    float: left; }
+    float: left;
+    width: 1171px; }
   .modal-body .dashboard-medium-chart {
     width: 1171px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -4376,7 +4375,7 @@ div.resizecontainer {
     width: 2188px; } }
 
 @media (min-width: 2650px) and (max-width: 2889px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2628px; }
   .dashboard-large-chart {
     width: 1746px; }
@@ -4388,8 +4387,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1306px;
-    float: left; }
+    float: left;
+    width: 1306px; }
   .dashboard-medium-chart {
     width: 1296px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -4476,8 +4475,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1593px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1291px;
-    float: left; }
+    float: left;
+    width: 1291px; }
   .modal-body .dashboard-medium-chart {
     width: 1291px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -4900,8 +4899,8 @@ div.headerBar > div.headerButtonBar {
 
 .modal-header, .modal-dashboard-header {
   background-color: #fff;
-  border-radius: 3px;
   border-bottom: 0 !important;
+  border-radius: 3px;
   margin-top: 5px;
   padding-left: 5px;
   padding-right: 10px;
@@ -4929,39 +4928,39 @@ div.headerBar > div.headerButtonBar {
   font-size: 14px;
   font-weight: 300; }
   .modal-body .select2-choices {
+    background-image: none !important;
+    border: 1px solid #999;
     border-radius: 3px;
-    border: 1px solid #aaa;
-    box-shadow: none;
     -webkit-box-shadow: none;
-    background-image: none !important; }
+    box-shadow: none; }
     .modal-body .select2-choices input {
-      box-shadow: none;
       -webkit-box-shadow: none;
+      box-shadow: none;
       outline: transparent !important; }
     .modal-body .select2-choices input:active {
-      box-shadow: none;
       -webkit-box-shadow: none;
+      box-shadow: none;
       outline: none !important; }
     .modal-body .select2-choices .select2-search-choice {
       margin: 5px 0 3px 5px !important; }
     .modal-body .select2-choices li {
-      color: #000;
       background-color: #fff !important;
-      background-image: none !important; }
+      background-image: none !important;
+      color: #000; }
       .modal-body .select2-choices li a {
-        margin-top: -1px;
-        margin-left: 1px; }
+        margin-left: 1px;
+        margin-top: -1px; }
   .modal-body .select2-choices:active {
-    outline: transparent !important;
-    border: 1px solid #aaa;
+    border: 1px solid #999;
+    -webkit-box-shadow: none !important;
     box-shadow: none !important;
-    -webkit-box-shadow: none !important; }
+    outline: transparent !important; }
   .modal-body .nav-tabs {
     margin-top: 15px; }
   .modal-body input, .modal-body select, .modal-body textarea {
-    margin-top: 10px;
     border-radius: 3px;
-    box-shadow: none; }
+    box-shadow: none;
+    margin-top: 10px; }
   .modal-body input[type='checkbox'] {
     margin-bottom: 10px; }
   .modal-body input[type='text'].invalid-input {
@@ -4984,7 +4983,7 @@ div.headerBar > div.headerButtonBar {
     width: 300px; }
     .modal-body th .valueCell input {
       width: 290px; }
-  .modal-body th div.select2-container {
+  .modal-body th .select2-container {
     margin-bottom: 10px;
     margin-top: 10px; }
   .modal-body .icon-info-sign {
@@ -5010,11 +5009,11 @@ div.headerBar > div.headerButtonBar {
     margin-left: 0;
     padding-left: 0;
     padding-right: 0; }
-  .modal-body .accordion-toggle span b.caret {
+  .modal-body .accordion-toggle span .caret {
     border-top-color: #000;
     float: right;
     margin-top: 5px; }
-  .modal-body .accordion-toggle.collapsed span b.caret {
+  .modal-body .accordion-toggle.collapsed span .caret {
     -ms-transform: rotate(90deg);
     -webkit-transform: rotate(90deg);
     transform: rotate(90deg); }
@@ -5034,13 +5033,13 @@ div.headerBar > div.headerButtonBar {
       max-height: 290px; }
   .modal-body .errorMessage {
     background-color: #fff;
-    color: #f00;
+    color: #da4f49;
     font-size: 9pt;
     font-weight: 400;
     margin-bottom: 5px;
     margin-top: -9px;
     position: absolute; }
-  .modal-body .nav img.tab-icon {
+  .modal-body .nav .tab-icon {
     margin-right: 5px;
     margin-top: -3px;
     width: 20px; }
@@ -5054,9 +5053,9 @@ div.headerBar > div.headerButtonBar {
   opacity: .4; }
 
 .modal {
-  box-shadow: none;
   border: 0 !important;
-  border-radius: 3px !important; }
+  border-radius: 3px !important;
+  box-shadow: 0; }
   .modal .fade.in {
     top: 12.1% !important; }
   .modal table tr:last-child {
@@ -5079,7 +5078,7 @@ div.headerBar > div.headerButtonBar {
   .modalTooltips span:hover {
     color: #000; }
 
-pre.gv-object-view {
+.gv-object-view {
   text-align: left;
   white-space: pre; }
 
@@ -5453,15 +5452,15 @@ div .tile-graph .tile-icon:hover {
 div .bigtile {
   height: 309px;
   width: 452px; }
-  div .bigtile div.shardContainer {
+  div .bigtile .shardContainer {
     font-size: 30px; }
-    div .bigtile div.shardContainer span {
+    div .bigtile .shardContainer span {
       padding: 2px; }
 
 .collectionName {
-  bottom: 0;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
+  bottom: 0;
   font-weight: 300;
   left: 0;
   position: absolute;
@@ -5649,7 +5648,7 @@ div .bigtile {
 .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
   color: #666; }
 
-div.resizecontainer {
+.resizecontainer {
   margin: 0 auto; }
 
 @media (max-width: 798px) {
@@ -5670,7 +5669,7 @@ div.resizecontainer {
     font-size: 14px; } }
 
 @media (min-width: 250px) and (max-width: 489px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 228px; }
   .dashboard-large-chart {
     width: 146px; }
@@ -5682,8 +5681,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 106px;
-    float: left; }
+    float: left;
+    width: 106px; }
   .dashboard-medium-chart {
     width: 96px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -5771,8 +5770,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 133px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 91px;
-    float: left; }
+    float: left;
+    width: 91px; }
   .modal-body .dashboard-medium-chart {
     width: 91px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -5841,7 +5840,7 @@ div.resizecontainer {
     display: none; } }
 
 @media (min-width: 490px) and (max-width: 729px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 468px; }
   .dashboard-large-chart {
     width: 306px; }
@@ -5853,8 +5852,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 226px;
-    float: left; }
+    float: left;
+    width: 226px; }
   .dashboard-medium-chart {
     width: 216px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -5942,8 +5941,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 293px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 211px;
-    float: left; }
+    float: left;
+    width: 211px; }
   .modal-body .dashboard-medium-chart {
     width: 211px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6012,7 +6011,7 @@ div.resizecontainer {
     display: none; } }
 
 @media (min-width: 730px) and (max-width: 969px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 708px; }
   .dashboard-large-chart {
     width: 466px; }
@@ -6024,8 +6023,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 346px;
-    float: left; }
+    float: left;
+    width: 346px; }
   .dashboard-medium-chart {
     width: 336px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6113,8 +6112,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 453px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 331px;
-    float: left; }
+    float: left;
+    width: 331px; }
   .modal-body .dashboard-medium-chart {
     width: 331px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6181,7 +6180,7 @@ div.resizecontainer {
     width: 508px; } }
 
 @media (min-width: 970px) and (max-width: 1209px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 948px; }
   .dashboard-large-chart {
     width: 626px; }
@@ -6193,8 +6192,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 13px; }
   .dashboard-medium-chart-outer {
-    width: 466px;
-    float: left; }
+    float: left;
+    width: 466px; }
   .dashboard-medium-chart {
     width: 456px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6281,8 +6280,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 493px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 451px;
-    float: left; }
+    float: left;
+    width: 451px; }
   .modal-body .dashboard-medium-chart {
     width: 451px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6347,7 +6346,7 @@ div.resizecontainer {
     width: 748px; } }
 
 @media (min-width: 1210px) and (max-width: 1449px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1188px; }
   .dashboard-large-chart {
     width: 786px; }
@@ -6359,8 +6358,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 586px;
-    float: left; }
+    float: left;
+    width: 586px; }
   .dashboard-medium-chart {
     width: 576px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6447,8 +6446,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 643px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 571px;
-    float: left; }
+    float: left;
+    width: 571px; }
   .modal-body .dashboard-medium-chart {
     width: 571px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6513,7 +6512,7 @@ div.resizecontainer {
     width: 988px; } }
 
 @media (min-width: 1450px) and (max-width: 1689px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1428px; }
   .dashboard-large-chart {
     width: 946px; }
@@ -6525,8 +6524,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 706px;
-    float: left; }
+    float: left;
+    width: 706px; }
   .dashboard-medium-chart {
     width: 696px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6613,8 +6612,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 793px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 691px;
-    float: left; }
+    float: left;
+    width: 691px; }
   .modal-body .dashboard-medium-chart {
     width: 691px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6679,7 +6678,7 @@ div.resizecontainer {
     width: 1228px; } }
 
 @media (min-width: 1690px) and (max-width: 1929px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1668px; }
   .dashboard-large-chart {
     width: 1106px; }
@@ -6691,8 +6690,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 16px; }
   .dashboard-medium-chart-outer {
-    width: 826px;
-    float: left; }
+    float: left;
+    width: 826px; }
   .dashboard-medium-chart {
     width: 816px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6779,8 +6778,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 933px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 811px;
-    float: left; }
+    float: left;
+    width: 811px; }
   .modal-body .dashboard-medium-chart {
     width: 811px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6845,7 +6844,7 @@ div.resizecontainer {
     width: 1468px; } }
 
 @media (min-width: 1930px) and (max-width: 2169px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1908px; }
   .dashboard-large-chart {
     width: 1266px; }
@@ -6857,8 +6856,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 946px;
-    float: left; }
+    float: left;
+    width: 946px; }
   .dashboard-medium-chart {
     width: 936px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6945,8 +6944,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1083px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 931px;
-    float: left; }
+    float: left;
+    width: 931px; }
   .modal-body .dashboard-medium-chart {
     width: 931px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -7011,7 +7010,7 @@ div.resizecontainer {
     width: 1708px; } }
 
 @media (min-width: 2170px) and (max-width: 2409px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2148px; }
   .dashboard-large-chart {
     width: 1426px; }
@@ -7023,8 +7022,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1066px;
-    float: left; }
+    float: left;
+    width: 1066px; }
   .dashboard-medium-chart {
     width: 1056px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -7111,8 +7110,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1273px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1051px;
-    float: left; }
+    float: left;
+    width: 1051px; }
   .modal-body .dashboard-medium-chart {
     width: 1051px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -7177,7 +7176,7 @@ div.resizecontainer {
     width: 1948px; } }
 
 @media (min-width: 2410px) and (max-width: 2649px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2388px; }
   .dashboard-large-chart {
     width: 1586px; }
@@ -7189,8 +7188,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1186px;
-    float: left; }
+    float: left;
+    width: 1186px; }
   .dashboard-medium-chart {
     width: 1176px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -7277,8 +7276,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1433px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1171px;
-    float: left; }
+    float: left;
+    width: 1171px; }
   .modal-body .dashboard-medium-chart {
     width: 1171px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -7343,7 +7342,7 @@ div.resizecontainer {
     width: 2188px; } }
 
 @media (min-width: 2650px) and (max-width: 2889px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2628px; }
   .dashboard-large-chart {
     width: 1746px; }
@@ -7355,8 +7354,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1306px;
-    float: left; }
+    float: left;
+    width: 1306px; }
   .dashboard-medium-chart {
     width: 1296px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -7443,8 +7442,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1593px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1291px;
-    float: left; }
+    float: left;
+    width: 1291px; }
   .modal-body .dashboard-medium-chart {
     width: 1291px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
