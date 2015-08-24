@@ -1765,10 +1765,10 @@ body, input, textarea, .page-title span, .pingback a.url {
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
   float: left; }
 
-div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, .search-field, div.headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
+div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, div.headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
   float: right; }
 
-div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .machineClass:after, .scenarioSingleMachine:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after {
+.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .machineClass:after, .scenarioSingleMachine:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after {
   clear: both;
   content: '.';
   display: block;
@@ -1776,7 +1776,7 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile div.iconSet span, div .bigtile div.iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
+ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -1940,7 +1940,7 @@ nav.navbar {
 
 div.navlogo {
   margin-left: 5px;
-  margin-right: -1px;
+  margin-right: -3px;
   padding-top: 3px; }
 
 ul.navlist {
@@ -2486,10 +2486,10 @@ a.button-gui {
   height: 30px;
   padding: 10px; }
 
-div.tileList {
+.tileList {
   margin-left: -6px;
   margin-right: -6px; }
-  div.tileList legend {
+  .tileList legend {
     padding-left: 5px; }
 
 div .tile, div .bigtile {
@@ -2497,9 +2497,8 @@ div .tile, div .bigtile {
   -moz-box-shadow: none;
   box-shadow: none;
   background-color: #fff;
-  border-radius: 3px;
-  /*border: 1px solid $c-content-border;*/
   border: 1px solid #F5F8F0;
+  border-radius: 3px;
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -2524,10 +2523,10 @@ div .tile, div .bigtile {
       content: '';
       position: absolute;
       right: -17px; }
-    div .tile .warning-icons .fa + .fa, div .bigtile .warning-icons .fa + .fa {
+    div .tile .warning-icons .fa, div .bigtile .warning-icons .fa {
       margin-left: 1px; }
-    div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
-      font-size: 8px; }
+      div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
+        font-size: 8px; }
   div .tile .collection-type-icon, div .bigtile .collection-type-icon {
     color: #666;
     font-size: 30pt;
@@ -2550,24 +2549,24 @@ div .tile, div .bigtile {
   div .tile a svg.icon, div .bigtile a svg.icon {
     height: 50px;
     width: 50px; }
-  div .tile svg.tile-icon-svg, div .bigtile svg.tile-icon-svg {
+  div .tile .tile-icon-svg, div .bigtile .tile-icon-svg {
     cursor: pointer;
     fill: #686766;
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
     width: 50px; }
-  div .tile span.tile-icon, div .bigtile span.tile-icon {
+  div .tile .tile-icon, div .bigtile .tile-icon {
     color: #686766;
     font-size: 50px;
     line-height: 1.2; }
-  div .tile span.icon_arangodb_edge5-2, div .bigtile span.icon_arangodb_edge5-2 {
+  div .tile .icon_arangodb_edge5-2, div .bigtile .icon_arangodb_edge5-2 {
+    display: inline-block;
     position: relative;
     top: 15px;
-    -webkit-transform: rotate(80deg);
     -moz-transform: rotate(80deg);
     -o-transform: rotate(80deg);
-    display: inline-block; }
+    -webkit-transform: rotate(80deg); }
   div .tile h5, div .bigtile h5 {
     background: #8c8a89;
     color: #fff;
@@ -2577,47 +2576,47 @@ div .tile, div .bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
-  div .tile div.tileSelects, div .bigtile div.tileSelects {
+  div .tile .tileSelects, div .bigtile .tileSelects {
     margin-left: 40px;
     position: relative;
     z-index: 9999; }
-    div .tile div.tileSelects select, div .bigtile div.tileSelects select {
+    div .tile .tileSelects select, div .bigtile .tileSelects select {
       float: right;
       height: 20px;
       margin-right: 5px;
       margin-top: 16px;
       width: 70px; }
-  div .tile div.fullBorderBox, div .bigtile div.fullBorderBox {
+  div .tile .fullBorderBox, div .bigtile .fullBorderBox {
     border: 1px solid rgba(140, 138, 137, 0.25);
     border-radius: 3px;
     height: 100%;
     position: absolute;
     width: 100%; }
-  div .tile div.borderBox, div .bigtile div.borderBox {
+  div .tile .borderBox, div .bigtile .borderBox {
     border: 1px solid rgba(140, 138, 137, 0.25);
     border-radius: 3px;
     height: 75px;
     position: absolute;
     width: 224px; }
-  div .tile div.iconSet, div .bigtile div.iconSet {
+  div .tile .iconSet, div .bigtile .iconSet {
     position: absolute;
     right: 5px;
     top: 5px; }
-    div .tile div.iconSet span, div .bigtile div.iconSet span {
+    div .tile .iconSet span, div .bigtile .iconSet span {
       border-radius: 3px;
       color: #000;
       font-size: 18px;
-      padding-top: 2px;
       padding-bottom: 2px;
       padding-left: 3px;
-      padding-right: 3px; }
-      div .tile div.iconSet span:hover, div .bigtile div.iconSet span:hover {
+      padding-right: 3px;
+      padding-top: 2px; }
+      div .tile .iconSet span:hover, div .bigtile .iconSet span:hover {
         background-color: #8aa051;
         color: #fff; }
-      div .tile div.iconSet span.disabled, div .bigtile div.iconSet span.disabled {
+      div .tile .iconSet span.disabled, div .bigtile .iconSet span.disabled {
         cursor: default;
         opacity: .2; }
-      div .tile div.iconSet span.disabled:hover, div .bigtile div.iconSet span.disabled:hover {
+      div .tile .iconSet span.disabled:hover, div .bigtile .iconSet span.disabled:hover {
         background-color: #fff;
         color: #000;
         cursor: default;
@@ -2628,36 +2627,36 @@ div .tile, div .bigtile {
     border-bottom: 16px solid #ff8f35; }
   div .tile .deleted div, div .bigtile .deleted div {
     border-bottom: 16px solid #700; }
-  div .tile div.tileBadge, div .bigtile div.tileBadge {
+  div .tile .tileBadge, div .bigtile .tileBadge {
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     position: absolute;
     right: 0; }
-    div .tile div.tileBadge button, div .bigtile div.tileBadge button {
+    div .tile .tileBadge button, div .bigtile .tileBadge button {
       margin-left: 0;
       margin-right: 5px; }
-    div .tile div.tileBadge span, div .bigtile div.tileBadge span {
+    div .tile .tileBadge span, div .bigtile .tileBadge span {
       display: inline-block;
       line-height: 15px; }
-      div .tile div.tileBadge span div.corneredBadge, div .bigtile div.tileBadge span div.corneredBadge {
-        border-left: 5px solid transparent;
+      div .tile .tileBadge span .corneredBadge, div .bigtile .tileBadge span .corneredBadge {
         border-bottom-style: solid;
         border-bottom-width: 17px;
+        border-left: 5px solid transparent;
         border-radius: 3px;
-        margin-bottom: 4px;
-        margin-right: 5px;
         color: #fff;
         height: 0;
+        margin-bottom: 4px;
+        margin-right: 5px;
         padding-left: 1px;
         padding-right: 6px; }
-        div .tile div.tileBadge span div.corneredBadge.loading, div .bigtile div.tileBadge span div.corneredBadge.loading {
+        div .tile .tileBadge span .corneredBadge.loading, div .bigtile .tileBadge span .corneredBadge.loading {
           border-bottom-color: #ff8f35; }
-        div .tile div.tileBadge span div.corneredBadge.loaded, div .bigtile div.tileBadge span div.corneredBadge.loaded {
+        div .tile .tileBadge span .corneredBadge.loaded, div .bigtile .tileBadge span .corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        div .tile div.tileBadge span div.corneredBadge.unloaded, div .bigtile div.tileBadge span div.corneredBadge.unloaded {
+        div .tile .tileBadge span .corneredBadge.unloaded, div .bigtile .tileBadge span .corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
-        div .tile div.tileBadge span div.corneredBadge.development, div .bigtile div.tileBadge span div.corneredBadge.development {
+        div .tile .tileBadge span .corneredBadge.development, div .bigtile .tileBadge span .corneredBadge.development {
           border-bottom-color: #ff8f35; }
 
 div .tile {
@@ -4659,7 +4658,10 @@ div.dropdownInner {
   div.dropdownInner ul li .fa {
     margin-right: 5px;
     color: #8c8a89; }
-    div.dropdownInner ul li .fa.fa-check-circle-o, div.dropdownInner ul li .fa.fa-dot-circle-o {
+    div.dropdownInner ul li .fa.fa-square-o {
+      margin-left: 1px;
+      margin-right: 6px; }
+    div.dropdownInner ul li .fa.fa-check-circle-o, div.dropdownInner ul li .fa.fa-check-square-o, div.dropdownInner ul li .fa.fa-dot-circle-o {
       color: #8aa051; }
 
 div.queryline {
@@ -5270,10 +5272,10 @@ a.dbserver.double {
   padding: 5px;
   text-align: left; }
 
-div.tileList {
+.tileList {
   margin-left: -6px;
   margin-right: -6px; }
-  div.tileList legend {
+  .tileList legend {
     padding-left: 5px; }
 
 div .tile, div .bigtile {
@@ -5281,9 +5283,8 @@ div .tile, div .bigtile {
   -moz-box-shadow: none;
   box-shadow: none;
   background-color: #fff;
-  border-radius: 3px;
-  /*border: 1px solid $c-content-border;*/
   border: 1px solid #F5F8F0;
+  border-radius: 3px;
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -5308,10 +5309,10 @@ div .tile, div .bigtile {
       content: '';
       position: absolute;
       right: -17px; }
-    div .tile .warning-icons .fa + .fa, div .bigtile .warning-icons .fa + .fa {
+    div .tile .warning-icons .fa, div .bigtile .warning-icons .fa {
       margin-left: 1px; }
-    div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
-      font-size: 8px; }
+      div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
+        font-size: 8px; }
   div .tile .collection-type-icon, div .bigtile .collection-type-icon {
     color: #666;
     font-size: 30pt;
@@ -5334,24 +5335,24 @@ div .tile, div .bigtile {
   div .tile a svg.icon, div .bigtile a svg.icon {
     height: 50px;
     width: 50px; }
-  div .tile svg.tile-icon-svg, div .bigtile svg.tile-icon-svg {
+  div .tile .tile-icon-svg, div .bigtile .tile-icon-svg {
     cursor: pointer;
     fill: #686766;
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
     width: 50px; }
-  div .tile span.tile-icon, div .bigtile span.tile-icon {
+  div .tile .tile-icon, div .bigtile .tile-icon {
     color: #686766;
     font-size: 50px;
     line-height: 1.2; }
-  div .tile span.icon_arangodb_edge5-2, div .bigtile span.icon_arangodb_edge5-2 {
+  div .tile .icon_arangodb_edge5-2, div .bigtile .icon_arangodb_edge5-2 {
+    display: inline-block;
     position: relative;
     top: 15px;
-    -webkit-transform: rotate(80deg);
     -moz-transform: rotate(80deg);
     -o-transform: rotate(80deg);
-    display: inline-block; }
+    -webkit-transform: rotate(80deg); }
   div .tile h5, div .bigtile h5 {
     background: #8c8a89;
     color: #fff;
@@ -5361,47 +5362,47 @@ div .tile, div .bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
-  div .tile div.tileSelects, div .bigtile div.tileSelects {
+  div .tile .tileSelects, div .bigtile .tileSelects {
     margin-left: 40px;
     position: relative;
     z-index: 9999; }
-    div .tile div.tileSelects select, div .bigtile div.tileSelects select {
+    div .tile .tileSelects select, div .bigtile .tileSelects select {
       float: right;
       height: 20px;
       margin-right: 5px;
       margin-top: 16px;
       width: 70px; }
-  div .tile div.fullBorderBox, div .bigtile div.fullBorderBox {
+  div .tile .fullBorderBox, div .bigtile .fullBorderBox {
     border: 1px solid rgba(140, 138, 137, 0.25);
     border-radius: 3px;
     height: 100%;
     position: absolute;
     width: 100%; }
-  div .tile div.borderBox, div .bigtile div.borderBox {
+  div .tile .borderBox, div .bigtile .borderBox {
     border: 1px solid rgba(140, 138, 137, 0.25);
     border-radius: 3px;
     height: 75px;
     position: absolute;
     width: 224px; }
-  div .tile div.iconSet, div .bigtile div.iconSet {
+  div .tile .iconSet, div .bigtile .iconSet {
     position: absolute;
     right: 5px;
     top: 5px; }
-    div .tile div.iconSet span, div .bigtile div.iconSet span {
+    div .tile .iconSet span, div .bigtile .iconSet span {
       border-radius: 3px;
       color: #000;
       font-size: 18px;
-      padding-top: 2px;
       padding-bottom: 2px;
       padding-left: 3px;
-      padding-right: 3px; }
-      div .tile div.iconSet span:hover, div .bigtile div.iconSet span:hover {
+      padding-right: 3px;
+      padding-top: 2px; }
+      div .tile .iconSet span:hover, div .bigtile .iconSet span:hover {
         background-color: #8aa051;
         color: #fff; }
-      div .tile div.iconSet span.disabled, div .bigtile div.iconSet span.disabled {
+      div .tile .iconSet span.disabled, div .bigtile .iconSet span.disabled {
         cursor: default;
         opacity: .2; }
-      div .tile div.iconSet span.disabled:hover, div .bigtile div.iconSet span.disabled:hover {
+      div .tile .iconSet span.disabled:hover, div .bigtile .iconSet span.disabled:hover {
         background-color: #fff;
         color: #000;
         cursor: default;
@@ -5412,36 +5413,36 @@ div .tile, div .bigtile {
     border-bottom: 16px solid #ff8f35; }
   div .tile .deleted div, div .bigtile .deleted div {
     border-bottom: 16px solid #700; }
-  div .tile div.tileBadge, div .bigtile div.tileBadge {
+  div .tile .tileBadge, div .bigtile .tileBadge {
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     position: absolute;
     right: 0; }
-    div .tile div.tileBadge button, div .bigtile div.tileBadge button {
+    div .tile .tileBadge button, div .bigtile .tileBadge button {
       margin-left: 0;
       margin-right: 5px; }
-    div .tile div.tileBadge span, div .bigtile div.tileBadge span {
+    div .tile .tileBadge span, div .bigtile .tileBadge span {
       display: inline-block;
       line-height: 15px; }
-      div .tile div.tileBadge span div.corneredBadge, div .bigtile div.tileBadge span div.corneredBadge {
-        border-left: 5px solid transparent;
+      div .tile .tileBadge span .corneredBadge, div .bigtile .tileBadge span .corneredBadge {
         border-bottom-style: solid;
         border-bottom-width: 17px;
+        border-left: 5px solid transparent;
         border-radius: 3px;
-        margin-bottom: 4px;
-        margin-right: 5px;
         color: #fff;
         height: 0;
+        margin-bottom: 4px;
+        margin-right: 5px;
         padding-left: 1px;
         padding-right: 6px; }
-        div .tile div.tileBadge span div.corneredBadge.loading, div .bigtile div.tileBadge span div.corneredBadge.loading {
+        div .tile .tileBadge span .corneredBadge.loading, div .bigtile .tileBadge span .corneredBadge.loading {
           border-bottom-color: #ff8f35; }
-        div .tile div.tileBadge span div.corneredBadge.loaded, div .bigtile div.tileBadge span div.corneredBadge.loaded {
+        div .tile .tileBadge span .corneredBadge.loaded, div .bigtile .tileBadge span .corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        div .tile div.tileBadge span div.corneredBadge.unloaded, div .bigtile div.tileBadge span div.corneredBadge.unloaded {
+        div .tile .tileBadge span .corneredBadge.unloaded, div .bigtile .tileBadge span .corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
-        div .tile div.tileBadge span div.corneredBadge.development, div .bigtile div.tileBadge span div.corneredBadge.development {
+        div .tile .tileBadge span .corneredBadge.development, div .bigtile .tileBadge span .corneredBadge.development {
           border-bottom-color: #ff8f35; }
 
 div .tile {

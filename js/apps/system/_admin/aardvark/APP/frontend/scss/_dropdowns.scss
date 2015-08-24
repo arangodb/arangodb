@@ -74,7 +74,13 @@ div.dropdownInner {
         margin-right: 5px;
         color: #8c8a89;
 
+        &.fa-square-o {
+          margin-left: 1px;
+          margin-right: 6px;
+        }
+
         &.fa-check-circle-o,
+        &.fa-check-square-o,
         &.fa-dot-circle-o {
           color: $c-positive;
         }
