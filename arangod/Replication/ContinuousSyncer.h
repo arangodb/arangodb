@@ -31,7 +31,6 @@
 #define ARANGODB_REPLICATION_CONTINUOUS_SYNCER_H 1
 
 #include "Basics/Common.h"
-
 #include "Replication/Syncer.h"
 #include "Utils/ReplicationTransaction.h"
 #include "VocBase/replication-applier.h"
@@ -284,10 +283,16 @@ namespace triagens {
         bool _requireFromPresent;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the applier should be verbose
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _verbose;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief which transactions were open and need to be treated specially
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*> _openInitialTransactions;
+        std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*> _ongoingTransactions;
 
     };
 

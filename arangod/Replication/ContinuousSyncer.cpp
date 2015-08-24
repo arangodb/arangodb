@@ -64,7 +64,7 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
                                     TRI_vocbase_t* vocbase,
                                     TRI_replication_applier_configuration_t const* configuration,
                                     TRI_voc_tick_t initialTick,
-                                    bool useTick) 
+                                    bool useTick)
   : Syncer(vocbase, configuration),
     _server(server),
     _applier(vocbase->_replicationApplier),
@@ -73,7 +73,8 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
     _initialTick(initialTick),
     _useTick(useTick),
     _includeSystem(configuration->_includeSystem),
-    _requireFromPresent(configuration->_requireFromPresent) {
+    _requireFromPresent(configuration->_requireFromPresent),
+    _verbose(configuration->_verbose) {
 
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
@@ -98,7 +99,7 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
 
 ContinuousSyncer::~ContinuousSyncer () {
   // abort all running transactions
-  for (auto& it : _openInitialTransactions) {
+  for (auto& it : _ongoingTransactions) {
     auto trx = it.second;
 
     if (trx != nullptr) {
@@ -206,6 +207,10 @@ int ContinuousSyncer::run () {
 
 void ContinuousSyncer::setProgress (char const* msg) {
   _applier->setProgress(msg, true);
+          
+  if (_verbose) {
+    LOG_INFO("applier progress: %s", msg);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,8 +226,9 @@ void ContinuousSyncer::setProgress (std::string const& msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::saveApplierState () {
-  LOG_TRACE("saving replication applier state. last applied continuous tick: %llu",
-            (unsigned long long) _applier->_state._lastAppliedContinuousTick);
+  LOG_TRACE("saving replication applier state. last applied continuous tick: %llu, safe resume tick: %llu",
+            (unsigned long long) _applier->_state._lastAppliedContinuousTick,
+            (unsigned long long) _applier->_state._safeResumeTick);
 
   int res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, false);
 
@@ -263,7 +269,7 @@ bool ContinuousSyncer::skipMarker (TRI_voc_tick_t firstRegularTick,
           TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
           if (tid > 0 && 
-              _openInitialTransactions.find(tid) != _openInitialTransactions.end()) {
+              _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
             // must still use this marker as it belongs to a transaction we need to finish
             tooOld = false;
           }
@@ -424,9 +430,9 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   }
 
   if (tid > 0) {
-    auto it = _openInitialTransactions.find(tid);
+    auto it = _ongoingTransactions.find(tid);
 
-    if (it == _openInitialTransactions.end()) {
+    if (it == _ongoingTransactions.end()) {
       errorMsg = "unexpected transaction " + StringUtils::itoa(tid); 
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
@@ -513,13 +519,13 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
   // note: this is the remote transaction id!
   TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  auto it = _openInitialTransactions.find(tid);
+  auto it = _ongoingTransactions.find(tid);
 
-  if (it != _openInitialTransactions.end()) {
+  if (it != _ongoingTransactions.end()) {
     // found a previous version of the same transaction - should not happen...
     auto trx = (*it).second;
     
-    _openInitialTransactions.erase(tid);
+    _ongoingTransactions.erase(tid);
 
     if (trx != nullptr) {
       // abort ongoing trx
@@ -540,7 +546,7 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
     return res;
   }
 
-  _openInitialTransactions[tid] = trx.get();
+  _ongoingTransactions[tid] = trx.get();
   trx.release();
 
   return TRI_ERROR_NO_ERROR;
@@ -562,9 +568,9 @@ int ContinuousSyncer::abortTransaction (TRI_json_t const* json) {
   // note: this is the remote transaction id!
   TRI_voc_tid_t const tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  auto it = _openInitialTransactions.find(tid);
+  auto it = _ongoingTransactions.find(tid);
 
-  if (it == _openInitialTransactions.end()) {
+  if (it == _ongoingTransactions.end()) {
     // invalid state, no transaction was started.
     return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
   }
@@ -574,7 +580,7 @@ int ContinuousSyncer::abortTransaction (TRI_json_t const* json) {
   LOG_TRACE("abort replication transaction %llu", (unsigned long long) tid);
 
   auto trx = (*it).second;
-  _openInitialTransactions.erase(tid);
+  _ongoingTransactions.erase(tid);
 
   if (trx != nullptr) {
     int res = trx->abort();
@@ -602,9 +608,9 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
   // note: this is the remote trasnaction id!
   TRI_voc_tid_t const tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  auto it = _openInitialTransactions.find(tid);
+  auto it = _ongoingTransactions.find(tid);
 
-  if (it == _openInitialTransactions.end()) {
+  if (it == _ongoingTransactions.end()) {
     // invalid state, no transaction was started.
     return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
   }
@@ -614,7 +620,7 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
   LOG_TRACE("committing replication transaction %llu", (unsigned long long) tid);
   
   auto trx = (*it).second;
-  _openInitialTransactions.erase(tid);
+  _ongoingTransactions.erase(tid);
 
   if (trx != nullptr) {
     int res = trx->commit();
@@ -859,15 +865,19 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
         errorMsg = "";
       }
     }
-
+    
     // update tick value
     WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
 
     if (_applier->_state._lastProcessedContinuousTick > _applier->_state._lastAppliedContinuousTick) {
       _applier->_state._lastAppliedContinuousTick = _applier->_state._lastProcessedContinuousTick;
     }
+
     if (skipped) {
       ++_applier->_state._skippedOperations;
+    }
+    else if (_ongoingTransactions.empty()) {
+      _applier->_state._safeResumeTick = _applier->_state._lastProcessedContinuousTick;
     }
   }
 
@@ -886,6 +896,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
   // get start tick
   // ---------------------------------------
   TRI_voc_tick_t fromTick = 0;
+  TRI_voc_tick_t safeResumeTick = 0;
 
   {
     WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
@@ -902,6 +913,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
       if (_applier->_state._lastAppliedContinuousTick > fromTick) {
         fromTick = _applier->_state._lastAppliedContinuousTick;
       }
+      safeResumeTick = _applier->_state._safeResumeTick;
     }
   }
 
@@ -911,11 +923,18 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
 
   // get the applier into a sensible start state by fetching the list of
   // open transactions from the master
-  TRI_voc_tick_t fetchTick = 0;
-  int res = fetchMasterState(errorMsg, 0, fromTick, fetchTick);
+  TRI_voc_tick_t fetchTick = safeResumeTick;
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (safeResumeTick > 0 && safeResumeTick == fromTick) {
+    // special case in which from and to are equal
+    fetchTick = safeResumeTick;
+  }
+  else {
+    int res = fetchMasterState(errorMsg, safeResumeTick, fromTick, fetchTick);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
   }
 
   if (fetchTick > fromTick) {
@@ -926,11 +945,11 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
   LOG_TRACE("starting with from tick %llu, fetch tick %llu, open transactions: %d",
             (unsigned long long) fromTick,
             (unsigned long long) fetchTick,
-            (int) _openInitialTransactions.size());
+            (int) _ongoingTransactions.size());
 
   string const progress = "starting with from tick " + StringUtils::itoa(fromTick) + 
                           ", fetch tick " + StringUtils::itoa(fetchTick) +
-                          ", open transactions: " + StringUtils::itoa(_openInitialTransactions.size());
+                          ", open transactions: " + StringUtils::itoa(_ongoingTransactions.size());
   setProgress(progress);
 
   // run in a loop. the loop is terminated when the applier is stopped or an
@@ -940,7 +959,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     bool masterActive = false;
 
     // fetchTick is passed by reference!
-    res = followMasterLog(errorMsg, fetchTick, fromTick, _configuration._ignoreErrors, worked, masterActive);
+    int res = followMasterLog(errorMsg, fetchTick, fromTick, _configuration._ignoreErrors, worked, masterActive);
 
     uint64_t sleepTime;
 
@@ -977,32 +996,31 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
         // some other error we will not ignore
         return res;
       }
+
+      // no error
+      if (worked) {
+        // we have done something, so we won't sleep (but check for cancellation)
+        inactiveCycles = 0;
+        sleepTime      = 0;
+      }
       else {
-        // no error
-        if (worked) {
-          // we have done something, so we won't sleep (but check for cancellation)
-          inactiveCycles = 0;
-          sleepTime      = 0;
+        if (masterActive) {
+          sleepTime = 500 * 1000;
         }
         else {
-          if (masterActive) {
-            sleepTime = 500 * 1000;
-          }
-          else {
-            sleepTime = 5 * 1000 * 1000;
-          }
+          sleepTime = 5 * 1000 * 1000;
+        }
 
-          if (_configuration._adaptivePolling) {
-            inactiveCycles++;
-            if (inactiveCycles > 60) {
-              sleepTime *= 5;
-            }
-            else if (inactiveCycles > 30) {
-              sleepTime *= 3;
-            }
-            if (inactiveCycles > 15) {
-              sleepTime *= 2;
-            }
+        if (_configuration._adaptivePolling) {
+          inactiveCycles++;
+          if (inactiveCycles > 60) {
+            sleepTime *= 5;
+          }
+          else if (inactiveCycles > 30) {
+            sleepTime *= 3;
+          }
+          if (inactiveCycles > 15) {
+            sleepTime *= 2;
           }
         }
       }
@@ -1020,7 +1038,8 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     }
   }
 
-  return res;
+  // won't be reached
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1039,7 +1058,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
                      "?serverId=" + _localServerIdString +
                      "&from=" + StringUtils::itoa(fromTick) +
                      "&to=" + StringUtils::itoa(toTick);
-  
+ 
   string const progress = "fetching initial master state with from tick " + StringUtils::itoa(fromTick) + ", toTick " + StringUtils::itoa(toTick);
 
   LOG_TRACE("fetching initial master state with from tick %llu, to tick %llu, url %s",
@@ -1050,29 +1069,25 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   // send request
   setProgress(progress);
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
                                                 url,
                                                 nullptr,
                                                 0,
-                                                headers);
+                                                headers));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
                ": " + _client->getErrorMessage();
 
-    if (response != nullptr) {
-      delete response;
-    }
-
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
+
+  TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
-
-    delete response;
 
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
@@ -1089,7 +1104,6 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   if (! fromIncluded && 
       _requireFromPresent) {
     errorMsg = "required tick value '" + StringUtils::itoa(fromTick) + "' is not present on master at " + string(_masterInfo._endpoint);
-    delete response;
 
     return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
   }
@@ -1101,7 +1115,6 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
                 ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing";
 
-    delete response;
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
@@ -1109,8 +1122,6 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
 
   StringBuffer& data = response->getBody();
   std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.begin()));
-
-  delete response;
 
   if (! TRI_IsArrayJson(json.get())) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
@@ -1129,7 +1140,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    _openInitialTransactions.emplace(StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1), nullptr);
+    _ongoingTransactions.emplace(StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1), nullptr);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1168,12 +1179,12 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
   std::string body;
 
-  if (! _openInitialTransactions.empty()) {
+  if (! _ongoingTransactions.empty()) {
     // stringify list of open transactions
     body.append("[\"");
     bool first = true;
 
-    for (auto& it : _openInitialTransactions) {
+    for (auto& it : _ongoingTransactions) {
       if (first) {
         first = false;
       }
@@ -1189,29 +1200,25 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
     body.append("[]");
   }
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                 url,
                                                 body.c_str(),
                                                 body.size(),
-                                                headers);
+                                                headers));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
                ": " + _client->getErrorMessage();
 
-    if (response != nullptr) {
-      delete response;
-    }
-
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
+
+  TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
-
-    delete response;
 
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
@@ -1285,7 +1292,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
     }
 
     uint64_t processedMarkers = 0;
-    res = applyLog(response, firstRegularTick, errorMsg, processedMarkers, ignoreCount);
+    res = applyLog(response.get(), firstRegularTick, errorMsg, processedMarkers, ignoreCount);
 
     if (processedMarkers > 0) {
       worked = true;
@@ -1298,8 +1305,6 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
       }
     }
   }
-
-  delete response;
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

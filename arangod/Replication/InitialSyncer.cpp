@@ -65,19 +65,19 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
                               TRI_replication_applier_configuration_t const* configuration,
                               std::unordered_map<string, bool> const& restrictCollections,
                               string const& restrictType,
-                              bool verbose) :
-  Syncer(vocbase, configuration),
-  _progress("not started"),
-  _restrictCollections(restrictCollections),
-  _restrictType(restrictType),
-  _processedCollections(),
-  _batchId(0),
-  _batchUpdateTime(0),
-  _batchTtl(180),
-  _includeSystem(false),
-  _chunkSize(configuration->_chunkSize),
-  _verbose(verbose),
-  _hasFlushed(false) {
+                              bool verbose) 
+  : Syncer(vocbase, configuration),
+    _progress("not started"),
+    _restrictCollections(restrictCollections),
+    _restrictType(restrictType),
+    _processedCollections(),
+    _batchId(0),
+    _batchUpdateTime(0),
+    _batchTtl(180),
+    _includeSystem(false),
+    _chunkSize(configuration->_chunkSize),
+    _verbose(verbose),
+    _hasFlushed(false) {
 
   if (_chunkSize == 0) {
     _chunkSize = (uint64_t) 2 * 1024 * 1024; // 2 mb

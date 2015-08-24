@@ -72,6 +72,7 @@ typedef struct TRI_replication_applier_configuration_s {
   bool          _adaptivePolling;
   bool          _includeSystem;
   bool          _requireFromPresent;
+  bool          _verbose;
   std::string   _restrictType;
   std::unordered_map<std::string, bool> _restrictCollections;
 }
@@ -96,6 +97,7 @@ struct TRI_replication_applier_state_t {
   TRI_voc_tick_t                           _lastProcessedContinuousTick;
   TRI_voc_tick_t                           _lastAppliedContinuousTick;
   TRI_voc_tick_t                           _lastAvailableContinuousTick;
+  TRI_voc_tick_t                           _safeResumeTick;
   bool                                     _active;
   char*                                    _progressMsg;
   char                                     _progressTime[24];
