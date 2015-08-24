@@ -108,6 +108,8 @@ namespace triagens {
         typedef std::function<bool(Element const*, 
                                    Element const*)> 
                 IsEqualElementElementFuncType;
+        typedef std::function<void(Element*)> 
+                CallbackElementFuncType;
 
       private:
 
@@ -474,6 +476,18 @@ namespace triagens {
           check(true, true);
 #endif
           return res.load();
+        }
+
+        void invokeOnAllElements (CallbackElementFuncType callback) {
+          for (auto& b : _buckets) {
+            if (b._table != nullptr) {
+              for (size_t i = 0; i < b._nrAlloc; ++i) {
+                if (b._table[i].ptr != nullptr) {
+                  callback(b._table[i].ptr);
+                }
+              }
+            }
+          }
         }
 
       private:
@@ -880,7 +894,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the array
+/// @brief removes an element from the array, caller is responsible to free it
 ////////////////////////////////////////////////////////////////////////////////
 
         Element* remove (Element const* element) {
