@@ -7348,15 +7348,15 @@ var hljs=new function(){function l(o){return o.replace(/&/gm,"&amp;").replace(/<
                $(element).find('i').addClass('fa-dot-circle-o');
              }
              else {
-               $(element).find('i').addClass('fa-check-circle-o');
+               $(element).find('i').addClass('fa-check-square-o');
              }
            }
            else {
              if ($(element).find('i').hasClass('css-round-label')) {
-               $(element).find('i').addClass('fa-circle-o');
+               $(element).find('i').addClass('fa-square-o');
              }
              else {
-               $(element).find('i').addClass('fa-circle-o');
+               $(element).find('i').addClass('fa-square-o');
              }
            }
          }
@@ -7505,12 +7505,12 @@ var hljs=new function(){function l(o){return o.replace(/&/gm,"&amp;").replace(/<
       return returnVal;
     },
 
-    arangoNotification: function (title, content) {
-      window.App.notificationList.add({title:title, content: content});
+    arangoNotification: function (title, content, info) {
+      window.App.notificationList.add({title:title, content: content, info: info});
     },
 
-    arangoError: function (title, content) {
-      window.App.notificationList.add({title:title, content: content});
+    arangoError: function (title, content, info) {
+      window.App.notificationList.add({title:title, content: content, info: info});
     },
 
     getRandomToken: function () {

@@ -1,5 +1,7 @@
 PDBNAME=vc120.pdb
-
+TARGET=Visual Studio 12
+VS=2013
+VSPATH="C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
 V8=V8-4.3.61
 
 .PHONY: all install
@@ -8,28 +10,28 @@ all: build64 build32
 
 
 build64:
-	./v8-build.bat x86_amd64   x64    x64  64 
+	./v8-build.bat x86_amd64   x64    x64  64 $(VS) "$(VSPATH)" $(V8)
 
 build32:
-	./v8-build.bat       x86  ia32  Win32  32
+	./v8-build.bat       x86  ia32  Win32  32 $(VS) "$(VSPATH)" $(V8)
 
 
 clean: clean32 clean64
 
 clean64:
-	./v8-clean.bat cmd x86_amd64    x64  x64  64
+	./v8-clean.bat cmd x86_amd64    x64  x64  64 $(VS) "$(VSPATH)" $(V8)
 
 clean32:
-	./v8-clean.bat x86      ia32  Win32  32   32
+	./v8-clean.bat x86      ia32  Win32  32   32 $(VS) "$(VSPATH)" $(V8)
 
 
 distclean: distclean32 distclean64
 
 distclean64:
-	./v8-distclean.bat x86_amd64   x64    x64  64
+	./v8-distclean.bat x86_amd64   x64    x64  64 $(VS) "$(VSPATH)" $(V8)
 
 distclean32:
-	./v8-distclean.bat       x86  ia32  Win32  32
+	./v8-distclean.bat       x86  ia32  Win32  32 $(VS) "$(VSPATH)" $(V8)
 
 
 install:
