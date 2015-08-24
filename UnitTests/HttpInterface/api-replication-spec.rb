@@ -33,12 +33,6 @@ describe ArangoDB do
 
     context "dealing with the logger" do
 
-      before do
-      end
-
-      after do
-      end
-
 ################################################################################
 ## state
 ################################################################################
@@ -63,6 +57,47 @@ describe ArangoDB do
         server = all['server']
         server['serverId'].should match(/^\d+$/)
         server.should have_key('version')
+      end
+
+################################################################################
+## firstTick
+################################################################################
+
+      it "fetches the first available tick" do
+        # fetch state
+        cmd = api + "/logger-first-tick"
+        doc = ArangoDB.log_get("#{prefix}-logger-first-tick", cmd, :body => "")
+
+        doc.code.should eq(200)
+
+        result = doc.parsed_response
+        result.should have_key('firstTick')
+
+        result['firstTick'].should match(/^\d+$/)
+      end
+
+################################################################################
+## tickRanges
+################################################################################
+
+      it "fetches the available tick ranges" do
+        # fetch state
+        cmd = api + "/logger-tick-ranges"
+        doc = ArangoDB.log_get("#{prefix}-logger-tick-ranges", cmd, :body => "")
+
+        doc.code.should eq(200)
+
+        result = doc.parsed_response
+        result.size.should be > 0 
+        
+        result.each { |datafile|
+          datafile.should have_key('datafile')
+          datafile.should have_key('status')
+          datafile.should have_key('tickMin')
+          datafile.should have_key('tickMax')
+          datafile['tickMin'].should match(/^\d+$/)
+          datafile['tickMax'].should match(/^\d+$/)
+        }
       end
 
 ################################################################################
