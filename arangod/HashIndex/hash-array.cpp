@@ -321,7 +321,8 @@ int TRI_hash_array_t::insert (triagens::arango::HashIndex* hashIndex,
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_hash_array_t::remove (triagens::arango::HashIndex* hashIndex,
+TRI_index_element_t* TRI_hash_array_t::remove (
+                              triagens::arango::HashIndex* hashIndex,
                               TRI_index_element_t* element) {
   uint64_t i = hashElement(element);
   Bucket& b = _buckets[i & _bucketsMask];
@@ -337,14 +338,14 @@ int TRI_hash_array_t::remove (triagens::arango::HashIndex* hashIndex,
                 element->document() != b._table[i]->document(); ++i);
   }
 
-  TRI_index_element_t* arrayElement = b._table[i];
+  TRI_index_element_t* old = b._table[i];
 
   // ...........................................................................
   // if we did not find such an item return error code
   // ...........................................................................
 
-  if (arrayElement == nullptr) {
-    return TRI_RESULT_ELEMENT_NOT_FOUND;
+  if (old == nullptr) {
+    return old;
   }
 
   // ...........................................................................
@@ -352,7 +353,6 @@ int TRI_hash_array_t::remove (triagens::arango::HashIndex* hashIndex,
   // element structure
   // ...........................................................................
 
-  TRI_index_element_t::free(arrayElement);
   b._table[i] = nullptr;
   b._nrUsed--;
 
@@ -379,7 +379,7 @@ int TRI_hash_array_t::remove (triagens::arango::HashIndex* hashIndex,
     resizeInternal (hashIndex, b, initialSize(), true);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return old;
 }
 
 // -----------------------------------------------------------------------------

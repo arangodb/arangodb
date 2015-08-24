@@ -478,6 +478,10 @@ namespace triagens {
           return res.load();
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the hash
+////////////////////////////////////////////////////////////////////////////////
+
         void invokeOnAllElements (CallbackElementFuncType callback) {
           for (auto& b : _buckets) {
             if (b._table != nullptr) {

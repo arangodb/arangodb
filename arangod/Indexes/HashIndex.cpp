@@ -247,6 +247,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
 
 HashIndex::~HashIndex () {
   if (_unique) {
+    _hashArray->invokeOnAllElements(freeElement);
     delete _hashArray;
     _hashArray = nullptr;
   }
@@ -562,10 +563,10 @@ int HashIndex::removeUniqueElement(TRI_index_element_t* element, bool isRollback
     return TRI_ERROR_DEBUG;
   }
 
-  int res = _hashArray->remove (this, element);
+  TRI_index_element_t* old = _hashArray->remove (this, element);
 
   // this might happen when rolling back
-  if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+  if (old == nullptr) {
     if (isRollback) {
       return TRI_ERROR_NO_ERROR;
     }
@@ -573,8 +574,9 @@ int HashIndex::removeUniqueElement(TRI_index_element_t* element, bool isRollback
       return TRI_ERROR_INTERNAL;
     }
   }
+  freeElement(old);
 
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
