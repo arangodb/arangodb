@@ -235,8 +235,9 @@
   <div id="installed">
     <div id="installedList" class="tileList">
       <div class="tile">
-        <div class="fullBorderBox"></div>
-        <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
+        <div class="fullBorderBox">
+          <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
+        </div>
       </div>
     </div>
   </div>
@@ -410,8 +411,9 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
       <div id="collectionsThumbnailsIn" class="tileList">
         <div class="tile">
-          <div class="fullBorderBox"></div>
-          <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+          <div class="fullBorderBox">
+            <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+          </div>
         </div>
       </div>
   </div>
@@ -600,11 +602,12 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <div class="fullBorderBox"></div>
-        <a href="#" id="createDatabase" class="add">
-          <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add Database
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createDatabase" class="add">
+            <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add Database
+          </a>
+        </div>
       </div>
       <% collection.forEach(function(db) {
           var name = db.get("name");
@@ -1396,11 +1399,12 @@ if (list.length > 0) {
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="graphManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <div class="fullBorderBox"></div>
-        <a href="#" id="createGraph" class="add">
-          <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add Graph
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createGraph" class="add">
+            <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add Graph
+          </a>
+        </div>
       </div>
 
 
@@ -2396,6 +2400,11 @@ if (list.length > 0) {
     <div class="notificationItem">
       <a class="notificationItemTitle"><%=n.get("title")%></a>
       <div class="notificationItemContent"><%=n.get("content")%></div>
+
+      <% if (n.get("info")) { %>
+      <i title="<%=n.get("info")%>" class="notificationInfoIcon fa fa-info-circle"></i>
+      <% } %>
+
       <i id="<%=n.cid%>" class="fa fa-times-circle-o"></i>
     </div>
   </li>
@@ -2413,7 +2422,7 @@ if (list.length > 0) {
     <ul class="user-dropdown-menu fixedDropdown" id="notification_menu">
       <li class="dropdown-header"><a>Notifications</a></li>
       <ul class="innerDropdownInnerUL"></ul>
-      <button id="removeAllNotifications" class="button-danger">Clear</button>
+      <button id="removeAllNotifications" class="button-close">Clear</button>
     </ul>
   </li>
 
@@ -2756,11 +2765,12 @@ var cutByResolution = function (str) {
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <div class="fullBorderBox"></div>
-        <a href="#" id="createUser" class="add">
-          <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add User
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createUser" class="add">
+            <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add User
+          </a>
+        </div>
       </div>
 
 
@@ -2862,7 +2872,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1440409105953"></script>
+<script src="app.js?version=1440420420602"></script>
 
   </body>
 </html>

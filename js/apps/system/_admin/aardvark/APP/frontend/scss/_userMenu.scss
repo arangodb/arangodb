@@ -1,6 +1,6 @@
 .user-menu-img {
-  background-color: $c-inactive;
   @include border-radius(3px);
+  background-color: $c-inactive;
   border: 2px solid $c-positive;
   margin-top: -4px;
 }

@@ -33,6 +33,9 @@
   .key {
     font-weight: 100;
     margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .dataTable {
