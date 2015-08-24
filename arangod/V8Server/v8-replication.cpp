@@ -504,6 +504,12 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
         config._requireFromPresent = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("requireFromPresent")));
       }
     }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("verbose"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("verbose"))->IsBoolean()) {
+        config._verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("verbose")));
+      }
+    }
   
     if (object->Has(TRI_V8_ASCII_STRING("restrictCollections")) && object->Get(TRI_V8_ASCII_STRING("restrictCollections"))->IsArray()) {
       config._restrictCollections.clear();
