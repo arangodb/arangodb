@@ -11,12 +11,15 @@ linters:
 
   NestingDepth:
     enabled: true
-    max_depth: 4
+    max_depth: 5
     ignore_parent_selectors: false
 
   SelectorDepth:
     enabled: true
-    max_depth: 4
+    max_depth: 5
 
   VendorPrefix: 
+    enabled: false
+
+  IdSelector:
     enabled: false

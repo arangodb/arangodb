@@ -274,25 +274,25 @@ $iconsize: 50px;
 
 div {
 
-  & .tile {
+  .tile {
     @extend %tile;
     height: 100px;
     width: $tile-width - 14px;
   }
 
-  & .tile-graph {
+  .tile-graph {
     .tile-icon:hover {
-      cursor:pointer;
+      cursor: pointer;
     }
   }
 
-  & .bigtile {
+  .bigtile {
     @extend %clickable;
     @extend %tile;
     height: 309px;
     width: 2 * ($tile-width - 14px);
 
-    div.shardContainer {
+    .shardContainer {
       font-size: 30px;
 
       span {
@@ -303,9 +303,9 @@ div {
 }
 
 .collectionName {
-  bottom: 0;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
+  bottom: 0;
   font-weight: 300;
   left: 0;
   position: absolute;
