@@ -930,7 +930,7 @@
             try {
               var temp = JSON.parse(data.responseText);
               outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
-              arangoHelper.arangoError("Query error", temp.errorNum);
+              arangoHelper.arangoError("Query error", temp.errorNum, temp.errorMessage);
             }
             catch (e) {
               outputEditor.setValue('ERROR');

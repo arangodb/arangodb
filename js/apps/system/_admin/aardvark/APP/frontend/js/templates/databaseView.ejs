@@ -42,11 +42,12 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <div class="fullBorderBox"></div>
-        <a href="#" id="createDatabase" class="add">
-          <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add Database
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createDatabase" class="add">
+            <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add Database
+          </a>
+        </div>
       </div>
       <% collection.forEach(function(db) {
           var name = db.get("name");

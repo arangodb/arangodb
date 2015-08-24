@@ -1,9 +1,9 @@
-div.tileList {
+.tileList {
   @extend %clear-float;
   margin-left: -6px;
   margin-right: -6px;
 
-  & legend {
+  legend {
     padding-left: 5px;
   }
 }
@@ -15,9 +15,8 @@ $iconsize: 50px;
   @include box-shadow(none);
 
   background-color: $c-white;
-  border-radius: 3px;
-  /*border: 1px solid $c-content-border;*/
   border: 1px solid $c-lightgreen-2-bg;
+  border-radius: 3px;
   font-size: 14px;
   list-style: none;
   margin: {
@@ -30,7 +29,7 @@ $iconsize: 50px;
 
   .warning-icons {
     background-color: $c-negative;
-    color: #fff;
+    color: $c-white;
     font-size: 11px;
     height: 17px;
     left: 0;
@@ -49,9 +48,7 @@ $iconsize: 50px;
     }
 
     .fa {
-      &+.fa {
-        margin-left: 1px;
-      }
+      margin-left: 1px;
 
       &:before {
         font-size: 8px;
@@ -108,7 +105,7 @@ $iconsize: 50px;
     }
   }
 
-  svg.tile-icon-svg {
+  .tile-icon-svg {
     cursor: pointer;
     fill: $c-icon-grey;
     height: $iconsize;
@@ -117,19 +114,19 @@ $iconsize: 50px;
     width: $iconsize;
   }
 
-  span.tile-icon {
+  .tile-icon {
     color: $c-icon-grey;
     font-size: $iconsize;
     line-height: 1.2;
   }
 
-  span.icon_arangodb_edge5-2 {
+  .icon_arangodb_edge5-2 {
+    display: inline-block;
     position: relative;
     top: 15px;
-    -webkit-transform:rotate(80deg);
-    -moz-transform:rotate(80deg);
-    -o-transform:rotate(80deg);
-    display: inline-block;
+    -moz-transform: rotate(80deg);
+    -o-transform: rotate(80deg);
+    -webkit-transform: rotate(80deg);
   }
 
   h5 {
@@ -143,7 +140,7 @@ $iconsize: 50px;
     white-space: nowrap !important;
   }
 
-  div.tileSelects {
+  .tileSelects {
     margin-left: 40px;
     position: relative;
     z-index: 9999;
@@ -157,7 +154,7 @@ $iconsize: 50px;
     }
   }
 
-  div.fullBorderBox {
+  .fullBorderBox {
     border: 1px solid $c-tile-border;
     border-radius: 3px;
     height: 100%;
@@ -165,7 +162,7 @@ $iconsize: 50px;
     width: 100%;
   }
 
-  div.borderBox {
+  .borderBox {
     border: 1px solid $c-tile-border;
     border-radius: 3px;
     height: 75px;
@@ -173,7 +170,7 @@ $iconsize: 50px;
     width: 224px;
   }
 
-  div.iconSet {
+  .iconSet {
     position: absolute;
     right: 5px;
     top: 5px;
@@ -184,10 +181,10 @@ $iconsize: 50px;
       border-radius: 3px;
       color: $c-black;
       font-size: 18px;
-      padding-top: 2px;
       padding-bottom: 2px;
       padding-left: 3px;
       padding-right: 3px;
+      padding-top: 2px;
 
       &:hover {
         background-color: $c-positive;
@@ -221,7 +218,7 @@ $iconsize: 50px;
     border-bottom: 16px solid $c-state-critical;
   }
 
-  div.tileBadge {
+  .tileBadge {
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
@@ -239,19 +236,19 @@ $iconsize: 50px;
       display: inline-block;
       line-height: 15px;
 
-      div.corneredBadge {
+      .corneredBadge {
         border: {
-          left: 5px solid $c-transp;
           bottom: {
             style: solid;
             width: 17px;
           }
+          left: 5px solid $c-transp;
         }
         border-radius: 3px;
+        color: $c-white;
+        height: 0;
         margin-bottom: 4px;
         margin-right: 5px;
-        color: #fff;
-        height: 0;
         padding-left: 1px;
         padding-right: 6px;
 
