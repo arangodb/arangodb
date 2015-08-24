@@ -32,235 +32,446 @@
 #define ARANGODB_HASH_INDEX_HASH__ARRAY_H 1
 
 #include "Basics/Common.h"
-
-#include "Indexes/Index.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
+#include "Basics/logging.h"
 
 namespace triagens {
-  namespace arango {
-    class HashIndex;
-  }
-}
+  namespace basics {
+    // -----------------------------------------------------------------------------
+    // --SECTION--                                       UNIQUE ASSOCIATIVE POINTERS
+    // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 TRI_hash_array_t
-// -----------------------------------------------------------------------------
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief associative array
+    ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array
-////////////////////////////////////////////////////////////////////////////////
+    template <class Key, class Element>
+      class AssocUnique {
 
-class TRI_hash_array_t {
-    size_t _numFields; // the number of fields indexes
+        public:
 
-    struct Bucket {
+          typedef std::function<uint64_t(Key const*)> HashKeyFuncType;
+          typedef std::function<uint64_t(Element const*, bool)> HashElementFuncType;
+          typedef std::function<bool(Key const*, Element const*)> 
+            IsEqualKeyElementFuncType;
+          typedef std::function<void(Element*)> CallbackElementFuncType;
 
-      uint64_t _nrAlloc; // the size of the table
-      uint64_t _nrUsed;  // the number of used entries
+        private:
+          size_t _numFields; // the number of fields indexes
 
-      TRI_index_element_t** _table; // the table itself, aligned to a cache line boundary
-    };
+          struct Bucket {
 
-    std::vector<Bucket> _buckets;
-    size_t _bucketsMask;
+            uint64_t _nrAlloc; // the size of the table
+            uint64_t _nrUsed;  // the number of used entries
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+            Element** _table; // the table itself, aligned to a cache line boundary
+          };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+          std::vector<Bucket> _buckets;
+          size_t _bucketsMask;
 
-  public:
-    TRI_hash_array_t (size_t numFields, size_t numberBuckets = 1)
-      : _numFields(numFields) {
+          HashKeyFuncType const _hashKey;
+          HashElementFuncType const _hashElement;
+          IsEqualKeyElementFuncType const _isEqualKeyElement;
 
-      // Make the number of buckets a power of two:
-      size_t ex = 0;
-      size_t nr = 1;
-      numberBuckets >>= 1;
-      while (numberBuckets > 0) {
-        ex += 1;
-        numberBuckets >>= 1;
-        nr <<= 1;
-      }
-      numberBuckets = nr;
-      _bucketsMask = nr - 1;
+          std::function<std::string()> _contextCallback;
 
-      try {
-        for (size_t j = 0; j < numberBuckets; j++) {
-          _buckets.emplace_back();
-          Bucket& b = _buckets.back();
-          b._nrAlloc = initialSize();
-          b._table = nullptr;
+          // -----------------------------------------------------------------------------
+          // --SECTION--                                      constructors and destructors
+          // -----------------------------------------------------------------------------
 
-          // may fail...
-          b._table = new TRI_index_element_t* [b._nrAlloc];
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief constructor
+          ////////////////////////////////////////////////////////////////////////////////
 
-          for (uint64_t i = 0; i < b._nrAlloc; i++) {
-            b._table[i] = nullptr;
-          }
-        }
-      }
-      catch (...) {
-        for (auto& b : _buckets) {
-          delete [] b._table;
-          b._table = nullptr;
-          b._nrAlloc = 0;
-        }
-        throw;
-      }
-    }
+        public:
+          AssocUnique (HashKeyFuncType hashKey,
+              HashElementFuncType hashElement,
+              IsEqualKeyElementFuncType isEqualKeyElement,
+              size_t numFields,
+              size_t numberBuckets = 1,
+              std::function<std::string()> contextCallback = [] () -> std::string { return ""; }) :
+            _numFields(numFields)
+              _hashKey(hashKey), 
+            _hashElement(hashElement),
+            _isEqualKeyElement(isEqualKeyElement),
+            _contextCallback(contextCallback) {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+              // Make the number of buckets a power of two:
+              size_t ex = 0;
+              size_t nr = 1;
+              numberBuckets >>= 1;
+              while (numberBuckets > 0) {
+                ex += 1;
+                numberBuckets >>= 1;
+                nr <<= 1;
+              }
+              numberBuckets = nr;
+              _bucketsMask = nr - 1;
 
-    ~TRI_hash_array_t () {
-      for (auto& b : _buckets) {
-        delete [] b._table;
-        b._table = nullptr;
-        b._nrAlloc = 0;
-      }
-    }
+              try {
+                for (size_t j = 0; j < numberBuckets; j++) {
+                  _buckets.emplace_back();
+                  Bucket& b = _buckets.back();
+                  b._nrAlloc = initialSize();
+                  b._table = nullptr;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adhere to the rule of five
-////////////////////////////////////////////////////////////////////////////////
+                  // may fail...
+                  b._table = new Element* [b._nrAlloc];
 
-    TRI_hash_array_t (TRI_hash_array_t const&) = delete;  // copy constructor
-    TRI_hash_array_t (TRI_hash_array_t&&) = delete;       // move constructor
-    TRI_hash_array_t& operator= (TRI_hash_array_t const&) = delete;  // op =
-    TRI_hash_array_t& operator= (TRI_hash_array_t&&) = delete;       // op =
+                  for (uint64_t i = 0; i < b._nrAlloc; i++) {
+                    b._table[i] = nullptr;
+                  }
+                }
+              }
+              catch (...) {
+                for (auto& b : _buckets) {
+                  delete [] b._table;
+                  b._table = nullptr;
+                  b._nrAlloc = 0;
+                }
+                throw;
+              }
+            }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a type for a generic callback to run over all elements
-////////////////////////////////////////////////////////////////////////////////
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief destructor
+          ////////////////////////////////////////////////////////////////////////////////
 
-    typedef std::function<void(TRI_index_element_t*)> CallbackElementFuncType;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initial preallocation size of the hash table when the table is
-/// first created
-/// setting this to a high value will waste memory but reduce the number of
-/// reallocations/repositionings necessary when the table grows
-////////////////////////////////////////////////////////////////////////////////
-
-  private:
-
-    static uint64_t initialSize () {
-      return 251;
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determines if a key corresponds to an element
-////////////////////////////////////////////////////////////////////////////////
-
-    bool isEqualKeyElement (TRI_index_search_value_t const* left,
-                            TRI_index_element_t const* right) const;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief given a key generates a hash integer
-////////////////////////////////////////////////////////////////////////////////
-
-    uint64_t hashKey (TRI_index_search_value_t const* key) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief given an element generates a hash integer
-////////////////////////////////////////////////////////////////////////////////
-
-    uint64_t hashElement (TRI_index_element_t const* element) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resize the hash array
-////////////////////////////////////////////////////////////////////////////////
-
-    int resizeInternal (triagens::arango::HashIndex* hashIndex,
-                        Bucket& b,
-                        uint64_t targetSize,
-                        bool allowShrink);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check a resize of the hash array
-////////////////////////////////////////////////////////////////////////////////
-
-    bool checkResize (triagens::arango::HashIndex* hashIndex,
-                      Bucket& b);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hash array's memory usage
-////////////////////////////////////////////////////////////////////////////////
-
-  public:
-    size_t memoryUsage ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of elements in the hash
-////////////////////////////////////////////////////////////////////////////////
-
-    size_t size () {
-      size_t sum = 0;
-      for (auto& b : _buckets) {
-        sum += static_cast<size_t>(b._nrUsed);
-      }
-      return sum;
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resizes the hash table
-////////////////////////////////////////////////////////////////////////////////
-
-    int resize (triagens::arango::HashIndex*, size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an element given a key, returns NULL if not found
-////////////////////////////////////////////////////////////////////////////////
-
-    TRI_index_element_t* findByKey (TRI_index_search_value_t* key) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an key/element to the array
-////////////////////////////////////////////////////////////////////////////////
-
-    int insert (triagens::arango::HashIndex*,
-                TRI_index_search_value_t const* key,
-                TRI_index_element_t const* element,
-                bool isRollback);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the array, returns nullptr if the element
-/// was not found and the old value, if it was successfully removed
-////////////////////////////////////////////////////////////////////////////////
-
-    TRI_index_element_t* remove (triagens::arango::HashIndex*,
-                                 TRI_index_element_t* element);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a method to iterate over all elements in the hash
-////////////////////////////////////////////////////////////////////////////////
-
-    void invokeOnAllElements (CallbackElementFuncType callback) {
-      for (auto& b : _buckets) {
-        if (b._table != nullptr) {
-          for (size_t i = 0; i < b._nrAlloc; ++i) {
-            if (b._table[i] != nullptr) {
-              callback(b._table[i]);
+          ~AssocUnique () {
+            for (auto& b : _buckets) {
+              delete [] b._table;
+              b._table = nullptr;
+              b._nrAlloc = 0;
             }
           }
-        }
-      }
-    }
 
-};
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief adhere to the rule of five
+          ////////////////////////////////////////////////////////////////////////////////
+
+          AssocUnique (AssocUnique const&) = delete;  // copy constructor
+          AssocUnique (AssocUnique&&) = delete;       // move constructor
+          AssocUnique& operator= (AssocUnique const&) = delete;  // op =
+          AssocUnique& operator= (AssocUnique&&) = delete;       // op =
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief initial preallocation size of the hash table when the table is
+          /// first created
+          /// setting this to a high value will waste memory but reduce the number of
+          /// reallocations/repositionings necessary when the table grows
+          ////////////////////////////////////////////////////////////////////////////////
+
+        private:
+
+          static uint64_t initialSize () {
+            return 251;
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief determines if a key corresponds to an element
+          ////////////////////////////////////////////////////////////////////////////////
+
+          bool isEqualKeyElement (Key const* left,
+              Element const* right) const;
+
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief given a key generates a hash integer
+          ////////////////////////////////////////////////////////////////////////////////
+
+          uint64_t hashKey (Key const* key) const;
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief given an element generates a hash integer
+          ////////////////////////////////////////////////////////////////////////////////
+
+          uint64_t hashElement (Element const* element) const;
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief resizes the array
+          ////////////////////////////////////////////////////////////////////////////////
+
+          void resizeInternal (Bucket& b,
+              uint64_t targetSize,
+              bool allowShrink) {
+
+            if (b._nrAlloc >= targetSize && ! allowShrink) {
+              return;
+            }
+
+            // only log performance infos for indexes with more than this number of entries
+            static uint64_t const NotificationSizeThreshold = 131072; 
+
+            double start = TRI_microtime();
+            if (targetSize > NotificationSizeThreshold) {
+              LOG_ACTION("index-resize %s, target size: %llu", 
+                  _contextCallback().c_str(),
+                  (unsigned long long) targetSize);
+            }
+
+            Element** oldTable    = b._table;
+            uint64_t oldAlloc = b._nrAlloc;
+
+            TRI_ASSERT(targetSize > 0);
+
+            // This might throw, is catched outside
+            b._table = new Element* [targetSize];
+
+            for (uint64_t i = 0; i < targetSize; i++) {
+              b._table[i] = nullptr;
+            }
+
+            b._nrAlloc = targetSize;
+
+            if (b._nrUsed > 0) {
+              uint64_t const n = b._nrAlloc;
+
+              for (uint64_t j = 0; j < oldAlloc; j++) {
+                Element* element = oldTable[j];
+
+                if (element != nullptr) {
+                  uint64_t i, k;
+                  i = k = _hashElement(element) % n;
+
+                  for (; i < n && b._table[i] != nullptr; ++i);
+                  if (i == n) {
+                    for (i = 0; i < k && b._table[i] != nullptr; ++i);
+                  }
+
+                  b._table[i] = element;
+                }
+              }
+            }
+
+            delete [] oldTable;
+
+            LOG_TIMER((TRI_microtime() - start),
+                "index-resize %s, target size: %llu", 
+                _contextCallback().c_str(),
+                (unsigned long long) targetSize);
+          }
+
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief check a resize of the hash array
+          ////////////////////////////////////////////////////////////////////////////////
+
+          bool checkResize (Bucket& b) {
+            if (2 * b._nrAlloc < 3 * b._nrUsed) {
+              try {
+                resizeInternal(b, 2 * b._nrAlloc + 1, false);
+              }
+              catch (...) {
+                return false;
+              }
+            }
+            return true;
+          }
+
+          // -----------------------------------------------------------------------------
+          // --SECTION--                                                  public functions
+          // -----------------------------------------------------------------------------
+
+        public:
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief get the hash array's memory usage
+          ////////////////////////////////////////////////////////////////////////////////
+
+          size_t memoryUsage () {
+            size_t sum = 0;
+            for (auto& b : _buckets) {
+              sum += (size_t) (b._nrAlloc * sizeof(TRI_index_element_t*));
+            }
+            return sum;
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief get the number of elements in the hash
+          ////////////////////////////////////////////////////////////////////////////////
+
+          size_t size () {
+            size_t sum = 0;
+            for (auto& b : _buckets) {
+              sum += static_cast<size_t>(b._nrUsed);
+            }
+            return sum;
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief resizes the hash table
+          ////////////////////////////////////////////////////////////////////////////////
+
+          int resize (size_t size) {
+            for (auto& b : _buckets) {
+              try {
+                resizeInternal(b,
+                    (uint64_t) (3 * size / 2 + 1) / _buckets.size(), 
+                    false);
+              }
+              catch (...) {
+                return TRI_ERROR_OUT_OF_MEMORY;
+              }
+            }
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief finds an element given a key, returns NULL if not found
+          ////////////////////////////////////////////////////////////////////////////////
+
+          Element* findByKey (Key* key) const {
+            uint64_t i = _hashKey(key);
+            Bucket const& b = _buckets[i & _bucketsMask];
+
+            uint64_t const n = b._nrAlloc;
+            i = i % n;
+            uint64_t k = i;
+
+            for (; i < n && b._table[i] != nullptr && 
+                ! _isEqualKeyElement(key, b._table[i]); ++i);
+            if (i == n) {
+              for (i = 0; i < k && b._table[i] != nullptr && 
+                  ! _isEqualKeyElement(key, b._table[i]); ++i);
+            }
+
+            // ...........................................................................
+            // return whatever we found, this is nullptr if the thing was not found
+            // and otherwise a valid pointer
+            // ...........................................................................
+
+            return b._table[i];
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief adds an key/element to the array
+          ////////////////////////////////////////////////////////////////////////////////
+
+          int insert (Key const* key,
+              Element const* element,
+              bool isRollback) {
+            // ...........................................................................
+            // we are adding and the table is more than half full, extend it
+            // ...........................................................................
+
+            uint64_t i = _hashKey(key);
+            Bucket& b = _buckets[i & _bucketsMask];
+
+            if (! checkResize(b)) {
+              return TRI_ERROR_OUT_OF_MEMORY;
+            }
+
+            uint64_t const n = b._nrAlloc;
+            i = i % n;
+            uint64_t k = i;
+
+            for (; i < n && b._table[i] != nullptr && 
+                ! _isEqualKeyElement(key, b._table[i]); ++i);
+            if (i == n) {
+              for (i = 0; i < k && b._table[i] != nullptr && 
+                  ! _isEqualKeyElement(key, b._table[i]); ++i);
+            }
+
+            Element* arrayElement = b._table[i];
+
+            // ...........................................................................
+            // if we found an element, return
+            // ...........................................................................
+
+            if (arrayElement != nullptr) {
+              return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+            }
+
+            b._table[i] = element;
+            TRI_ASSERT(b._table[i] != nullptr && b._table[i]->document() != nullptr);
+            b._nrUsed++;
+
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief removes an element from the array, returns nullptr if the element
+          /// was not found and the old value, if it was successfully removed
+          ////////////////////////////////////////////////////////////////////////////////
+
+          Element* remove (Element* element) {
+            uint64_t i = _hashElement(element);
+            Bucket& b = _buckets[i & _bucketsMask];
+
+            uint64_t const n = b._nrAlloc;
+            i = i % n;
+            uint64_t k = i;
+
+            for (; i < n && b._table[i] != nullptr && 
+                element->document() != b._table[i]->document(); ++i);
+            if (i == n) {
+              for (i = 0; i < k && b._table[i] != nullptr && 
+                  element->document() != b._table[i]->document(); ++i);
+            }
+
+            Element* old = b._table[i];
+
+            // ...........................................................................
+            // if we did not find such an item return error code
+            // ...........................................................................
+
+            if (old == nullptr) {
+              return old;
+            }
+
+            // ...........................................................................
+            // remove item - destroy any internal memory associated with the 
+            // element structure
+            // ...........................................................................
+
+            b._table[i] = nullptr;
+            b._nrUsed--;
+
+            // ...........................................................................
+            // and now check the following places for items to move closer together
+            // so that there are no gaps in the array
+            // ...........................................................................
+
+            k = TRI_IncModU64(i, n);
+
+            while (b._table[k] != nullptr) {
+              uint64_t j = _hashElement(b._table[k]) % n;
+
+              if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
+                b._table[i] = b._table[k];
+                b._table[k] = nullptr;
+                i = k;
+              }
+
+              k = TRI_IncModU64(k, n);
+            }
+
+            if (b._nrUsed == 0) {
+              resizeInternal(b, initialSize(), true);
+            }
+
+            return old;
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief a method to iterate over all elements in the hash
+          ////////////////////////////////////////////////////////////////////////////////
+
+          void invokeOnAllElements (CallbackElementFuncType callback) {
+            for (auto& b : _buckets) {
+              if (b._table != nullptr) {
+                for (size_t i = 0; i < b._nrAlloc; ++i) {
+                  if (b._table[i] != nullptr) {
+                    callback(b._table[i]);
+                  }
+                }
+              }
+            }
+          }
+
+      };
+  } // namespace basics
+} // namespace triagens
 
 #endif
 
