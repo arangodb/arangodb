@@ -299,6 +299,33 @@ namespace triagens {
           }
 
           ////////////////////////////////////////////////////////////////////////////////
+          /// @brief finds an element equal to the given element.
+          ////////////////////////////////////////////////////////////////////////////////
+
+          Element* find (Element* element) const {
+            uint64_t i = _hashElement(element);
+            Bucket const& b = _buckets[i & _bucketsMask];
+
+            uint64_t const n = b._nrAlloc;
+            i = i % n;
+            uint64_t k = i;
+
+            for (; i < n && b._table[i] != nullptr && 
+                ! _isEqualElementElement(element, b._table[i]); ++i);
+            if (i == n) {
+              for (i = 0; i < k && b._table[i] != nullptr && 
+                  ! _isEqualElementElement(element, b._table[i]); ++i);
+            }
+
+            // ...........................................................................
+            // return whatever we found, this is nullptr if the thing was not found
+            // and otherwise a valid pointer
+            // ...........................................................................
+
+            return b._table[i];
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
           /// @brief finds an element given a key, returns NULL if not found
           ////////////////////////////////////////////////////////////////////////////////
 
@@ -372,11 +399,85 @@ namespace triagens {
           }
 
           ////////////////////////////////////////////////////////////////////////////////
+          /// @brief helper to heal a hole where we deleted something
+          ////////////////////////////////////////////////////////////////////////////////
+
+          void healHole (Bucket& b, uint64_t i) {
+
+            // ...........................................................................
+            // remove item - destroy any internal memory associated with the 
+            // element structure
+            // ...........................................................................
+
+            b._table[i] = nullptr;
+            b._nrUsed--;
+
+            uint64_t const n = b._nrAlloc;
+
+            // ...........................................................................
+            // and now check the following places for items to move closer together
+            // so that there are no gaps in the array
+            // ...........................................................................
+
+            uint64_t k = TRI_IncModU64(i, n);
+
+            while (b._table[k] != nullptr) {
+              uint64_t j = _hashElement(b._table[k]) % n;
+
+              if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
+                b._table[i] = b._table[k];
+                b._table[k] = nullptr;
+                i = k;
+              }
+
+              k = TRI_IncModU64(k, n);
+            }
+
+            if (b._nrUsed == 0) {
+              resizeInternal(b, initialSize(), true);
+            }
+
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief removes an element from the array based on its key,
+          /// returns nullptr if the element
+          /// was not found and the old value, if it was successfully removed
+          ////////////////////////////////////////////////////////////////////////////////
+
+          Element* removeByKey (Key const* key) {
+            uint64_t i = _hashKey(key);
+            Bucket& b = _buckets[i & _bucketsMask];
+
+            uint64_t const n = b._nrAlloc;
+            i = i % n;
+            uint64_t k = i;
+
+            for (; i < n && b._table[i] != nullptr && 
+                ! _isEqualKeyElement(key, b._table[i]); ++i);
+            if (i == n) {
+              for (i = 0; i < k && b._table[i] != nullptr && 
+                  ! _isEqualKeyElement(key, b._table[i]); ++i);
+            }
+
+            Element* old = b._table[i];
+
+            // ...........................................................................
+            // if we did not find such an item return nullptr
+            // ...........................................................................
+
+            if (old == nullptr) {
+              healHole(b, i);
+            }
+            return old;
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
           /// @brief removes an element from the array, returns nullptr if the element
           /// was not found and the old value, if it was successfully removed
           ////////////////////////////////////////////////////////////////////////////////
 
-          Element* remove (Element* element) {
+          Element* remove (Element const* element) {
             uint64_t i = _hashElement(element);
             Bucket& b = _buckets[i & _bucketsMask];
 
@@ -394,42 +495,11 @@ namespace triagens {
             Element* old = b._table[i];
 
             // ...........................................................................
-            // if we did not find such an item return error code
+            // if we did not find such an item return nullptr
             // ...........................................................................
 
-            if (old == nullptr) {
-              return old;
-            }
-
-            // ...........................................................................
-            // remove item - destroy any internal memory associated with the 
-            // element structure
-            // ...........................................................................
-
-            b._table[i] = nullptr;
-            b._nrUsed--;
-
-            // ...........................................................................
-            // and now check the following places for items to move closer together
-            // so that there are no gaps in the array
-            // ...........................................................................
-
-            k = TRI_IncModU64(i, n);
-
-            while (b._table[k] != nullptr) {
-              uint64_t j = _hashElement(b._table[k]) % n;
-
-              if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
-                b._table[i] = b._table[k];
-                b._table[k] = nullptr;
-                i = k;
-              }
-
-              k = TRI_IncModU64(k, n);
-            }
-
-            if (b._nrUsed == 0) {
-              resizeInternal(b, initialSize(), true);
+            if (old != nullptr) {
+              healHole(b, i);
             }
 
             return old;
