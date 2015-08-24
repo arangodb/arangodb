@@ -33,18 +33,13 @@ Instead, the server will write all data-modification operations into its write-a
 The write-ahead log can be queried by clients, so the need for an extra event log is 
 gone.
 
-!SUBSUBSECTION Starting and Stopping
+!SUBSUBSECTION Checking the state
 
 Starting with version 2.2, ArangoDB will log all data-modification operations in its
 write-ahead log automatically. There is no need to explicitly start or configure the
 replication logger on the master.
 
-The replication logger object is still present in ArangoDB 2.2 with the same methods
-as in previous versions of ArangoDB, but only for compatibility reasons. For example, the
-replication logger has *start* and *stop* methods, which are no-ops in ArangoDB 2.2.
-
-One functionality of the replication logger object remains useful in ArangoDB 2.2, and
-that is to query the current state. The state can be queried using the *state* command:
+To query the current state of the logger, use the *state* command:
   
     require("org/arangodb/replication").logger.state();
 
@@ -67,9 +62,9 @@ The result might look like this:
 }
 ```
 
-In previous versions of ArangoDB, the *running* attribute indicated whether the logger 
+In old versions of ArangoDB, the *running* attribute indicated whether the logger 
 was currently enabled and logged any events. In ArangoDB 2.2 and higher, this attribute
-will always have a value of *true*.
+will always have a value of *true*, as the replication logger cannot be turned off.
 
 The *totalEvents* attribute indicates how many log events have been logged since the start 
 of the ArangoDB server. Finally, the *lastLogTick* value indicates the id of the last 
@@ -77,7 +72,19 @@ operation that was written to the server's write-ahead log. It can be used to de
 operations were logged, and is also used by the replication applier for incremental 
 fetching of data.
 
-**Note**: Replication logger state can also be queried via the [HTTP API](../HttpReplications/README.md).
+**Note**: The replication logger state can also be queried via the [HTTP API](../HttpReplications/README.md).
+
+To query which data ranges are still available for replication clients to fetch,
+the logger provides the *firstTick* and *tickRanges* functions:
+
+    require("org/arangodb/replication").logger.firstTick();
+
+This will return the minimum tick value that the server can provide to replication
+clients via its replication APIS. The *tickRanges* function returns the minimum and
+maximum tick values per logfile:
+
+    require("org/arangodb/replication").logger.tickRanges();
+
 
 !SUBSUBSECTION Configuration
 
@@ -377,7 +384,7 @@ with the command
 require("org/arangodb/replication").applier.start("231848833079705");
 ```
 
-**Note**: The tick values should be handled as strings. Using numeric data types for tick
+**Note**: The tick values should be treated as strings. Using numeric data types for tick
 values is unsafe because they might exceed the 32 bit value and the IEEE754 double accuracy
 ranges.
 

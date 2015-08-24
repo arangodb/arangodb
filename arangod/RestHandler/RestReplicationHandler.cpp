@@ -111,11 +111,17 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
+      if (isCoordinatorError()) {
+        return status_t(HttpHandler::HANDLER_DONE);
+      }
       handleCommandLoggerTickRanges();
     }
     else if (command == "logger-first-tick") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
+      }
+      if (isCoordinatorError()) {
+        return status_t(HttpHandler::HANDLER_DONE);
       }
       handleCommandLoggerFirstTick();
     }
@@ -123,6 +129,9 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       if (type != HttpRequest::HTTP_REQUEST_GET &&
           type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
+      }
+      if (isCoordinatorError()) {
+        return status_t(HttpHandler::HANDLER_DONE);
       }
       handleCommandLoggerFollow();
     }
@@ -418,9 +427,6 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 /// logged tick value. This tick value is important for incremental fetching of
 /// data.
 ///
-/// The state API can be called regardless of whether the logger is currently
-/// running or not.
-///
 /// The body of the response contains a JSON object with the following
 /// attributes:
 ///
@@ -530,7 +536,55 @@ void RestReplicationHandler::handleCommandLoggerState () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the available logfile range
+/// @startDocuBlock JSF_get_api_replication_logger_tick_ranges
+/// @brief returns the tick value ranges available in the logfiles
+///
+/// @RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges available in the logfiles}
+///
+/// @RESTDESCRIPTION
+/// Returns the currently available ranges of tick values for all currently
+/// available logfiles. The tick values can be used to determine if certain
+/// data (identified by tick value) is still available for replication.
+///
+/// The body of the response contains a JSON array. Each array member is an object
+/// that describes a single logfile. Each object has the following attributes:
+///
+/// * *datafile*: name of the logfile
+/// 
+/// * *status*: status of the datafile, in textual form (e.g. "sealed", "open")
+///
+/// * *tickMin*: minimum tick value contained in logfile
+///
+/// * *tickMax*: maximum tick value contained in logfile
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the tick ranges could be determined successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if the logger state could not be determined.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
+///
+/// @EXAMPLES
+///
+/// Returns the available tick ranges.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerTickRanges}
+///     var url = "/_api/replication/logger-tick-ranges";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerTickRanges () {
@@ -572,7 +626,50 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first tick available in a logfile 
+/// @startDocuBlock JSF_get_api_replication_logger_first_tick
+/// @brief Return the first available tick value from the server
+///
+/// @RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first available tick value}
+///
+/// @RESTDESCRIPTION
+/// Returns the first available tick value that can be served from the server's
+/// replication log. This method can be called by replication clients after to
+/// determine if certain data (identified by a tick value) is still available
+/// for replication.
+///
+/// The result is a JSON object containing the attribute *firstTick*. This
+/// attribute contains the minimum tick value available in the server's replication
+/// log. 
+///
+/// **Note**: this method is not supported on a coordinator in a cluster.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
+///
+/// @EXAMPLES
+///
+/// Returning the first available tick
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFirstTick}
+///     var url = "/_api/replication/logger-first-tick";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logRawResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerFirstTick () {

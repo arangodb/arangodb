@@ -96,7 +96,7 @@ applier on the slave should thus only be performed if there is certainty that th
 currently fully idle and all transactions have been replicated fully.
 
 Note that while a slave has only partly executed a transaction from the master, it might keep
-a lock on the collections involved in the transaction.
+a write lock on the collections involved in the transaction.
 
 You may also want to check the master and slave states via the HTTP APIs (see [HTTP Interface for Replication](../HttpReplications/README.md)).
 
