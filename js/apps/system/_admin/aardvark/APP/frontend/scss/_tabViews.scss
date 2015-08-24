@@ -4,8 +4,8 @@
   border-bottom: 1px solid $c-tab-bottom-border;
   list-style: none;
   margin-left: 0;
-  padding-right: 10px;
   padding-bottom: 0;
+  padding-right: 10px;
 
   a {
     @extend %clickable;
@@ -38,7 +38,7 @@
 
     &.active a {
       background: $c-tab-active;
-      border-bottom-color: $c-tab-active !important; /* <-- is important */
+      border-bottom-color: $c-tab-active !important; // <-- is important
       border-left-color: $c-c2grey;
       border-right-color: $c-c2grey;
       border-top-color: $c-c2grey;

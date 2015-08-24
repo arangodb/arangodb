@@ -1,5 +1,5 @@
 .loginFixedWindow {
-  background: #dee8d0;
+  background: $c-login-bg;
   height: 100%;
   left: 0;
   position: fixed;
@@ -8,7 +8,7 @@
 }
 
 .login-window {
-  background-color: #fff;
+  background-color: $c-white;
   border-radius: 5px;
   height: 280px;
   left: 50%;
@@ -31,6 +31,13 @@
     margin-right: 5px;
     margin-top: -34px;
   }
+
+  .wrong-credentials {
+    color: $c-negative;
+    margin-top: -30px;
+    text-align: center;
+  }
+
 }
 
 .login-space {
@@ -39,4 +46,8 @@
 
 .login-input {
   width: 387px;
+}
+
+.form-error {
+  border: 1px solid $c-negative !important;
 }
