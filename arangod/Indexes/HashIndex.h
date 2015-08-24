@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
-#include "HashIndex/hash-array.h"
+#include "Basics/AssocUnique.h"
 #include "Indexes/Index.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
@@ -175,7 +175,7 @@ namespace triagens {
             HashElementFunc (size_t s) : _numFields(s) {
             }
             uint64_t operator() (TRI_index_element_t const* element,
-                                 bool byKey) {
+                                 bool byKey = true) {
               uint64_t hash = 0x0123456789abcdef;
 
               for (size_t j = 0;  j < _numFields;  j++) {
@@ -269,8 +269,15 @@ namespace triagens {
                                              uint32_t>
                 TRI_HashArrayMulti_t;
 
+        typedef triagens::basics::AssocUnique<TRI_index_search_value_t,
+                                              TRI_index_element_t>
+                TRI_HashArray_t;
+
         union {
-          TRI_hash_array_t*       _hashArray;   // the hash array itself, unique values
+          struct {
+            TRI_HashArray_t*       _hashArray;   // the hash array itself, unique values
+            HashElementFunc*      _hashElement; // hash function for elements
+          } _uniqueArray;
           struct {
             TRI_HashArrayMulti_t* _hashArray;   // the hash array itself, non-unique values
             HashElementFunc*      _hashElement; // hash function for elements

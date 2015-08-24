@@ -50,14 +50,15 @@ namespace triagens {
         public:
 
           typedef std::function<uint64_t(Key const*)> HashKeyFuncType;
-          typedef std::function<uint64_t(Element const*, bool)> HashElementFuncType;
+          typedef std::function<uint64_t(Element const*)> HashElementFuncType;
           typedef std::function<bool(Key const*, Element const*)> 
             IsEqualKeyElementFuncType;
+          typedef std::function<bool(Element const*, Element const*)> 
+            IsEqualElementElementFuncType;
+
           typedef std::function<void(Element*)> CallbackElementFuncType;
 
         private:
-          size_t _numFields; // the number of fields indexes
-
           struct Bucket {
 
             uint64_t _nrAlloc; // the size of the table
@@ -72,6 +73,7 @@ namespace triagens {
           HashKeyFuncType const _hashKey;
           HashElementFuncType const _hashElement;
           IsEqualKeyElementFuncType const _isEqualKeyElement;
+          IsEqualElementElementFuncType const _isEqualElementElement;
 
           std::function<std::string()> _contextCallback;
 
@@ -87,13 +89,13 @@ namespace triagens {
           AssocUnique (HashKeyFuncType hashKey,
               HashElementFuncType hashElement,
               IsEqualKeyElementFuncType isEqualKeyElement,
-              size_t numFields,
+              IsEqualElementElementFuncType isEqualElementElement,
               size_t numberBuckets = 1,
               std::function<std::string()> contextCallback = [] () -> std::string { return ""; }) :
-            _numFields(numFields)
-              _hashKey(hashKey), 
+            _hashKey(hashKey), 
             _hashElement(hashElement),
             _isEqualKeyElement(isEqualKeyElement),
+            _isEqualElementElement(isEqualElementElement),
             _contextCallback(contextCallback) {
 
               // Make the number of buckets a power of two:
@@ -166,26 +168,6 @@ namespace triagens {
           static uint64_t initialSize () {
             return 251;
           }
-
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief determines if a key corresponds to an element
-          ////////////////////////////////////////////////////////////////////////////////
-
-          bool isEqualKeyElement (Key const* left,
-              Element const* right) const;
-
-
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief given a key generates a hash integer
-          ////////////////////////////////////////////////////////////////////////////////
-
-          uint64_t hashKey (Key const* key) const;
-
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief given an element generates a hash integer
-          ////////////////////////////////////////////////////////////////////////////////
-
-          uint64_t hashElement (Element const* element) const;
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief resizes the array
@@ -281,7 +263,7 @@ namespace triagens {
           size_t memoryUsage () {
             size_t sum = 0;
             for (auto& b : _buckets) {
-              sum += (size_t) (b._nrAlloc * sizeof(TRI_index_element_t*));
+              sum += (size_t) (b._nrAlloc * sizeof(Element*));
             }
             return sum;
           }
@@ -348,7 +330,7 @@ namespace triagens {
           ////////////////////////////////////////////////////////////////////////////////
 
           int insert (Key const* key,
-              Element const* element,
+              Element* element,
               bool isRollback) {
             // ...........................................................................
             // we are adding and the table is more than half full, extend it
@@ -382,8 +364,8 @@ namespace triagens {
               return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
             }
 
-            b._table[i] = element;
-            TRI_ASSERT(b._table[i] != nullptr && b._table[i]->document() != nullptr);
+            b._table[i] = static_cast<Element*>(element);
+            TRI_ASSERT(b._table[i] != nullptr);
             b._nrUsed++;
 
             return TRI_ERROR_NO_ERROR;
@@ -403,10 +385,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                element->document() != b._table[i]->document(); ++i);
+                ! _isEqualElementElement(element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  element->document() != b._table[i]->document(); ++i);
+                  ! _isEqualElementElement(element, b._table[i]); ++i);
             }
 
             Element* old = b._table[i];
