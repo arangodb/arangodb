@@ -16,7 +16,8 @@ $iconsize: 50px;
 
   background-color: $c-white;
   border-radius: 3px;
-  border: 1px solid rgba(104, 103, 102, 0.1);
+  /*border: 1px solid $c-content-border;*/
+  border: 1px solid $c-lightgreen-2-bg;
   font-size: 14px;
   list-style: none;
   margin: {
@@ -154,6 +155,22 @@ $iconsize: 50px;
       margin-top: 16px;
       width: 70px;
     }
+  }
+
+  div.fullBorderBox {
+    border: 1px solid $c-tile-border;
+    border-radius: 3px;
+    height: 100%;
+    position: absolute;
+    width: 100%;
+  }
+
+  div.borderBox {
+    border: 1px solid $c-tile-border;
+    border-radius: 3px;
+    height: 75px;
+    position: absolute;
+    width: 224px;
   }
 
   div.iconSet {
