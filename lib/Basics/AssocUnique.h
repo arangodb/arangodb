@@ -24,7 +24,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Michael Hackstein
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,9 +42,6 @@ namespace triagens {
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief associative array
-    ///
-    /// NOTE: Convention hashing the key and hashing the element have to return the
-    /// same value!
     ////////////////////////////////////////////////////////////////////////////////
 
     template <class Key, class Element>
@@ -357,16 +353,17 @@ namespace triagens {
           }
 
           ////////////////////////////////////////////////////////////////////////////////
-          /// @brief adds an element to the array
+          /// @brief adds an key/element to the array
           ////////////////////////////////////////////////////////////////////////////////
 
-          int insert (Element* element,
+          int insert (Key const* key,
+              Element* element,
               bool isRollback) {
             // ...........................................................................
             // we are adding and the table is more than half full, extend it
             // ...........................................................................
 
-            uint64_t i = _hashElement(element);
+            uint64_t i = _hashKey(key);
             Bucket& b = _buckets[i & _bucketsMask];
 
             if (! checkResize(b)) {
@@ -378,10 +375,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualElementElement(element, b._table[i]); ++i);
+                ! _isEqualKeyElement(key, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualElementElement(element, b._table[i]); ++i);
+                  ! _isEqualKeyElement(key, b._table[i]); ++i);
             }
 
             Element* arrayElement = b._table[i];
