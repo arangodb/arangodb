@@ -145,7 +145,6 @@ TRI_transaction_hint_e;
 typedef struct TRI_transaction_s {
   TRI_vocbase_t*                       _vocbase;           // vocbase
   TRI_voc_tid_t                        _id;                // local trx id
-  TRI_voc_tid_t                        _externalId;        // external trx id (used in replication)
   TRI_transaction_type_e               _type;              // access type (read|write)
   TRI_transaction_status_e             _status;            // current status
   TRI_vector_pointer_t                 _collections;       // list of participating collections

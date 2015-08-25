@@ -128,6 +128,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DumpLogReplication (TRI_replication_dump_t*,
+                            std::unordered_set<TRI_voc_tid_t> const&,
+                            TRI_voc_tick_t,
                             TRI_voc_tick_t,
                             TRI_voc_tick_t,
                             bool);

@@ -2458,6 +2458,49 @@ TRI_vocbase_t::~TRI_vocbase_t () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief note the progress of a connected replication client
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_vocbase_t::updateReplicationClient (TRI_server_id_t serverId, 
+                                             TRI_voc_tick_t lastFetchedTick) {
+  WRITE_LOCKER(_replicationClientsLock);
+
+  try {
+    auto it = _replicationClients.find(serverId);
+
+    if (it == _replicationClients.end()) {
+      _replicationClients.emplace(serverId, std::make_pair(TRI_microtime(), lastFetchedTick));
+    }
+    else {
+      (*it).second.first = TRI_microtime();
+      if (lastFetchedTick > 0) {
+        (*it).second.second = lastFetchedTick;
+      }
+    }
+  }
+  catch (...) {
+    // silently fail...
+    // all we would be missing is the progress information of a slave
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the progress of all replication clients
+////////////////////////////////////////////////////////////////////////////////
+  
+std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> TRI_vocbase_t::getReplicationClients () {
+
+  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> result;
+
+  READ_LOCKER(_replicationClientsLock);
+
+  for (auto& it : _replicationClients) {
+    result.emplace_back(std::make_tuple(it.first, it.second.first, it.second.second));
+  }
+  return result;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

@@ -37,7 +37,6 @@
 #include "Basics/ReadWriteLockCPP11.h"
 #include "VocBase/collection.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/headers.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
@@ -52,6 +51,7 @@
 struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
 struct TRI_json_t;
+class TRI_headers_t;
 
 class VocShaper;
 
@@ -410,7 +410,7 @@ public:
   mutable triagens::arango::Ditches      _ditches;
   TRI_associative_pointer_t              _datafileInfo;
 
-  TRI_headers_t*                         _headersPtr;
+  class TRI_headers_t*                   _headersPtr;
   KeyGenerator*                          _keyGenerator;
 
   std::vector<triagens::arango::Index*>  _indexes;
