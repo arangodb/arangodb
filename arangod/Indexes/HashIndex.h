@@ -193,8 +193,8 @@ namespace triagens {
                 return hash;
               }
 
-              return fasthash64(&(element->document()), 
-                                sizeof(TRI_doc_mptr_t*), hash);
+              TRI_doc_mptr_t* ptr = element->document();
+              return fasthash64(&ptr, sizeof(TRI_doc_mptr_t*), hash);
             }
         };
 
