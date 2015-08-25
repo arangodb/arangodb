@@ -66,7 +66,8 @@ require("org/arangodb/replication").applier.properties({
   username: "myuser",
   password: "mypasswd",
   autoStart: true,
-  adaptivePolling: true
+  adaptivePolling: true,
+  verbose: false
 });
 ```
 
@@ -91,12 +92,13 @@ applier by executing the *state* command on the slave server:
 
 Please note that stopping the replication applier on the slave using the *stop* command 
 should be avoided. The reason is that currently ongoing transactions (that have partly been
-replicated to the slave) will be lost after a restart. Stopping and restarting the replication
-applier on the slave should thus only be performed if there is certainty that the master is
-currently fully idle and all transactions have been replicated fully.
+replicated to the slave) will be need to be restarted after a restart of the replication
+applier. Stopping and restarting the replication applier on the slave should thus only be 
+performed if there is certainty that the master is currently fully idle and all transactions 
+have been replicated fully.
 
 Note that while a slave has only partly executed a transaction from the master, it might keep
-a lock on the collections involved in the transaction.
+a write lock on the collections involved in the transaction.
 
 You may also want to check the master and slave states via the HTTP APIs (see [HTTP Interface for Replication](../HttpReplications/README.md)).
 

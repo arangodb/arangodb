@@ -1,9 +1,3 @@
-@charset "UTF-8";
-/*
-$c-lightgreen-2-bg: #e4ecd9;;
-$c-lightgreen-transp-bg: rgba(222, 233, 207, 0.8);
-$c-lightgreen-2-transp-bg: rgba(228, 236, 217, 0.8);
-*/
 body, input, textarea, .page-title span, .pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
@@ -1761,13 +1755,13 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-medium:before {
   content: "\f23a"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
+.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
   float: left; }
 
-div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, .search-field, div.headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
+.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, .headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
   float: right; }
 
-div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .machineClass:after, .scenarioSingleMachine:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after {
+.tileList:after, .resizecontainer:after, .headerBar > div.headerButtonBar:after, .machineClass:after, .scenarioSingleMachine:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after {
   clear: both;
   content: '.';
   display: block;
@@ -1775,10 +1769,10 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-ul.script-dropdown-menu li.dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile div.iconSet span, div .bigtile div.iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
+.script-dropdown-menu .dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
   cursor: pointer; }
 
-nav.navbar, footer.footer {
+.navbar, footer.footer {
   background-color: rgba(245, 248, 240, 0.95);
   color: #fff;
   left: 0;
@@ -1852,8 +1846,8 @@ a.warning.coordinator, a.warning.dbserver {
   border: 1px solid #fff;
   color: #555; }
   .button-header:hover, a.headerButton:hover, a.button-gui:hover, .button-header:focus, a.headerButton:focus, a.button-gui:focus {
-    border: 1px solid #8aa051;
     background-color: #8aa051;
+    border: 1px solid #8aa051;
     color: #fff; }
 
 .button-notification {
@@ -1876,12 +1870,29 @@ a.inactive.coordinator, a.inactive.dbserver {
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
     fill: #d3d3d3; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu {
-  background-color: #F5F8F0;
+input.search-input, .modal-body .select2-choices input, .modal-body input, .modal-body select, .modal-body textarea {
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
+  background-color: #fff !important;
+  border: 1px solid rgba(140, 138, 137, 0.25);
+  box-shadow: none;
+  outline: none;
+  outline-color: transparent;
+  outline-style: none; }
+  input.search-input:focus, .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
+    border-color: #999;
+    box-shadow: none;
+    outline: none;
+    outline-color: transparent;
+    outline-style: none; }
+
+.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu {
+  background-color: #f5f8f0;
   border-color: #666;
+  border-radius: 3px;
   border-style: solid;
   border-width: 1px;
-  border-radius: 3px;
   display: none;
   list-style: none;
   margin: 5px 0 0;
@@ -1890,150 +1901,149 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dro
   right: 0;
   top: 80%;
   z-index: 1000; }
-  ul.link-dropdown-menu li, ul.user-dropdown-menu li, ul.script-dropdown-menu li, ul.gv-dropdown-menu li {
+  .link-dropdown-menu li, .user-dropdown-menu li, .script-dropdown-menu li, .gv-dropdown-menu li {
     line-height: 23px;
     white-space: nowrap;
     width: 100%; }
-  ul.link-dropdown-menu li.dropdown-header, ul.user-dropdown-menu li.dropdown-header, ul.script-dropdown-menu li.dropdown-header, ul.gv-dropdown-menu li.dropdown-header {
+  .link-dropdown-menu .dropdown-header, .user-dropdown-menu .dropdown-header, .script-dropdown-menu .dropdown-header, .gv-dropdown-menu .dropdown-header {
     color: #999;
     font-size: 15px;
     font-weight: 600;
     font-variant: small-caps;
     padding: 0 15px; }
-  ul.link-dropdown-menu li.dropdown-header:hover, ul.user-dropdown-menu li.dropdown-header:hover, ul.script-dropdown-menu li.dropdown-header:hover, ul.gv-dropdown-menu li.dropdown-header:hover {
+  .link-dropdown-menu .dropdown-header:hover, .user-dropdown-menu .dropdown-header:hover, .script-dropdown-menu .dropdown-header:hover, .gv-dropdown-menu .dropdown-header:hover {
     cursor: default; }
-  ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider, ul.script-dropdown-menu li.divider, ul.gv-dropdown-menu li.divider {
+  .link-dropdown-menu .divider, .user-dropdown-menu .divider, .script-dropdown-menu .divider, .gv-dropdown-menu .divider {
     background-color: #666;
     height: 1px;
-    margin: 10px 0px; }
-  ul.link-dropdown-menu a, ul.user-dropdown-menu a, ul.script-dropdown-menu a, ul.gv-dropdown-menu a {
+    margin: 10px 0; }
+  .link-dropdown-menu a, .user-dropdown-menu a, .script-dropdown-menu a, .gv-dropdown-menu a {
     color: #fff;
     padding: 0 20px; }
 
 .navbar {
-  -webkit-font-smoothing: subpixel-antialiased; }
-  .navbar .nav li.dropdown .active > .dropdown-toggle, .navbar .nav li.dropdown .open > .dropdown-toggle, .navbar .nav li.dropdown .open.active > .dropdown-toggle {
-    background: #788f3d; }
-
-nav.navbar {
-  padding-top: 6px;
+  -webkit-font-smoothing: subpixel-antialiased;
   height: 44px;
   margin-bottom: 3px;
+  padding-top: 6px;
   top: 0; }
-  nav.navbar .arangodbLogo {
+  .navbar .arangodbLogo {
     height: auto;
     margin-left: -5px;
     margin-top: -1px;
     width: 40%; }
-  nav.navbar .nav > .active > a {
-    background-color: #fff;
-    color: #000;
+  .navbar .nav .dropdown .active > .dropdown-toggle, .navbar .nav .dropdown .open > .dropdown-toggle, .navbar .nav .dropdown .open.active > .dropdown-toggle {
+    background: #788f3d; }
+  .navbar .nav > .active > a {
     -webkit-box-shadow: 0 0 0 transparent inset;
     -moz-box-shadow: 0 0 0 transparent inset;
-    box-shadow: 0 0 0 transparent inset; }
-  nav.navbar .nav > li > a:focus {
+    box-shadow: 0 0 0 transparent inset;
+    background-color: #fff;
+    color: #000; }
+  .navbar .nav > li > a:focus {
     background-color: #fff; }
-  nav.navbar .nav > li > a:hover {
+  .navbar .nav > li > a:hover {
     background-color: #000;
     color: #686766; }
 
-div.navlogo {
+.navlogo {
   margin-left: 5px;
-  margin-right: -1px;
+  margin-right: -3px;
   padding-top: 3px; }
 
-ul.navlist {
+.navlist {
   list-style: none; }
-  ul.navlist li {
+  .navlist li {
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent;
+    border-top: 1px solid transparent;
     margin-left: 1px; }
-    ul.navlist li.navbar-spacer {
+    .navlist li.dropdown:hover {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      border-left: 1px solid rgba(0, 0, 0, 0.2);
+      border-right: 1px solid rgba(0, 0, 0, 0.2);
+      border-top: 1px solid rgba(0, 0, 0, 0.2); }
+    .navlist li.navbar-spacer, .navlist li.divider {
+      border: 0; }
+    .navlist li.divider {
+      background-color: rgba(0, 0, 0, 0.2); }
+    .navlist li.navbar-spacer {
       background-color: #a0a0a0;
       height: 21px;
       margin-top: 9px;
       width: 1px; }
-      ul.navlist li.navbar-spacer.big {
+      .navlist li.navbar-spacer.big {
         margin-left: 15px;
         margin-right: 15px; }
-      ul.navlist li.navbar-spacer.med {
+      .navlist li.navbar-spacer.med {
         margin-left: 5px;
         margin-right: 5px; }
-      ul.navlist li.navbar-spacer:hover {
+      .navlist li.navbar-spacer:hover {
         background-color: #a0a0a0; }
-  ul.navlist li.active {
-    font-weight: bold; }
-    ul.navlist li.active .tab {
-      border-bottom: 2px solid #8aa051;
-      padding-bottom: 4px; }
-  ul.navlist > li.active {
+  .navlist .active .tab {
+    border-bottom: 2px solid #8aa051;
+    padding-bottom: 4px; }
+  .navlist > .active {
     background-color: transparent; }
-    ul.navlist > li.active a {
+    .navlist > .active a {
       color: #000; }
-  ul.navlist > li.active:hover {
+  .navlist > .active:hover {
     background-color: transparent; }
-    ul.navlist > li.active:hover a {
+    .navlist > .active:hover a {
       color: #000; }
-  ul.navlist li.navbar-spacer, ul.navlist li.divider {
-    border: none; }
-  ul.navlist li.divider {
-    background-color: rgba(0, 0, 0, 0.2); }
-  ul.navlist li {
-    border-top: 1px solid transparent;
-    border-left: 1px solid transparent;
-    border-right: 1px solid transparent; }
-    ul.navlist li.dropdown:hover {
-      border-top: 1px solid rgba(0, 0, 0, 0.2);
-      border-left: 1px solid rgba(0, 0, 0, 0.2);
-      border-right: 1px solid rgba(0, 0, 0, 0.2);
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0; }
-  ul.navlist li.dropdown-item:hover, ul.navlist > li:hover {
+  .navlist .dropdown-item:hover, .navlist > li:hover {
     background-color: #fff;
     border-radius: 3px; }
-    ul.navlist li.dropdown-item:hover a, ul.navlist > li:hover a {
+    .navlist .dropdown-item:hover a, .navlist > li:hover a {
       color: #000; }
-  ul.navlist li.dropdown-item {
+  .navlist .dropdown-item {
     margin-left: 0; }
-    ul.navlist li.dropdown-item a {
+    .navlist .dropdown-item a {
+      border-bottom: 0;
       display: block;
-      border-bottom: 0; }
-    ul.navlist li.dropdown-item a:hover {
-      color: #686766;
-      background-color: #dee9cf; }
+      font-size: 11pt; }
+    .navlist .dropdown-item a:hover {
+      background-color: #dee9cf;
+      color: #686766; }
 
-a.tab {
+.tab {
   color: #686766;
   display: block;
   font-size: 12pt;
   font-weight: 100;
-  padding-top: 9px;
-  padding-left: 10px;
   padding-bottom: 10px;
-  padding-right: 10px; }
-  a.tab.userImg {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 9px; }
+  .tab.userImg {
     padding-bottom: 5px; }
 
 .dropdown-item a {
   border-bottom: 0 !important;
   font-weight: 300; }
 
-ul.link-dropdown-menu {
+.link-dropdown-menu, .user-dropdown-menu {
   background-color: #fff;
-  z-index: -10;
-  margin-top: 7px;
-  margin-right: -1px;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  border-top-right-radius: 0; }
+  border-top-right-radius: 0;
+  margin-right: -1px;
+  margin-top: 7px;
+  z-index: -10; }
 
-ul.script-dropdown-menu li.dropdown-item {
+.user-dropdown-menu {
+  margin-top: 6px; }
+
+.script-dropdown-menu .dropdown-item {
   margin-left: 0; }
-  ul.script-dropdown-menu li.dropdown-item a {
+  .script-dropdown-menu .dropdown-item a {
     display: block; }
-    ul.script-dropdown-menu li.dropdown-item a:hover {
+    .script-dropdown-menu .dropdown-item a:hover {
       color: #fff; }
-  ul.script-dropdown-menu li.dropdown-item:hover {
+  .script-dropdown-menu .dropdown-item:hover {
     background-color: #8aa051; }
 
-ul.gv-dropdown-menu {
+.gv-dropdown-menu {
   -moz-border-radius: 0;
   -webkit-border-radius: 0;
   border-radius: 0;
@@ -2041,17 +2051,17 @@ ul.gv-dropdown-menu {
   border: solid 1px #c2c2c2;
   margin-right: -20px;
   margin-top: 6px; }
-  ul.gv-dropdown-menu:after {
+  .gv-dropdown-menu:after {
     border-bottom-color: #fff; }
-  ul.gv-dropdown-menu li:hover {
+  .gv-dropdown-menu li:hover {
     background-color: #fff;
     background-image: none; }
-  ul.gv-dropdown-menu li a {
+  .gv-dropdown-menu li a {
     padding: 0; }
-    ul.gv-dropdown-menu li a label {
+    .gv-dropdown-menu li a label {
       color: #fff;
       padding-left: 5px; }
-    ul.gv-dropdown-menu li a:focus {
+    .gv-dropdown-menu li a:focus {
       background-color: #8aa051 !important;
       background-image: none; }
 
@@ -2064,8 +2074,8 @@ ul.gv-dropdown-menu {
 
 .caret {
   border-left: 5px solid transparent;
-  border-top: 5px solid #686766;
   border-right: 5px solid transparent;
+  border-top: 5px solid #686766;
   content: '';
   display: inline-block;
   height: 0;
@@ -2094,11 +2104,11 @@ footer.footer {
   bottom: 0;
   height: 40px; }
   footer.footer p {
+    font-size: 10pt;
+    font-weight: 100;
     margin-bottom: 0;
     padding-bottom: 10px;
-    padding-top: 10px;
-    font-weight: 100;
-    font-size: 10pt; }
+    padding-top: 10px; }
 
 div.footer-left {
   background: none repeat scroll 0 0 transparent;
@@ -2107,35 +2117,34 @@ div.footer-left {
   div.footer-left .social-icons {
     margin-top: 5px; }
     div.footer-left .social-icons a {
-      width: 25px;
       display: block;
+      float: left;
       height: 25px;
-      float: left; }
+      width: 25px; }
     div.footer-left .social-icons p {
-      font-size: 12pt;
       background: #fff;
       border: 1px solid rgba(104, 103, 102, 0.1);
       border-radius: 20px;
       height: 25px;
-      width: 25px;
+      margin-right: 10px;
       padding: 0;
-      margin-right: 10px; }
+      width: 25px; }
     div.footer-left .social-icons p:hover {
-      cursor: pointer;
-      background: #8c8a89; }
-      div.footer-left .social-icons p:hover i  {
+      background: #8c8a89;
+      cursor: pointer; }
+      div.footer-left .social-icons p:hover i {
         color: #fff; }
     div.footer-left .social-icons i {
       color: #000;
-      position: absolute;
-      margin-top: 4px; }
+      margin-top: 4px;
+      position: absolute; }
       div.footer-left .social-icons i.fa-twitter {
         margin-left: -7px; }
       div.footer-left .social-icons i.fa-envelope {
         margin-left: -20px; }
       div.footer-left .social-icons i.fa-google {
-        margin-top: 6px;
-        margin-left: -18px; }
+        margin-left: -18px;
+        margin-top: 6px; }
       div.footer-left .social-icons i.fa-stack-overflow {
         margin-left: -18px; }
 
@@ -2145,13 +2154,13 @@ div.footer-center {
   width: 10%; }
   div.footer-center i {
     background-color: #fff;
-    border-radius: 20px;
     border: 1px solid rgba(104, 103, 102, 0.1);
-    width: 20px;
-    padding: 6px 3px 6px 2px; }
+    border-radius: 20px;
+    padding: 6px 3px 6px 2px;
+    width: 20px; }
   div.footer-center i:hover {
-    color: #fff;
-    background-color: #8c8a89; }
+    background-color: #8c8a89;
+    color: #fff; }
   div.footer-center p {
     padding-top: 5px; }
   div.footer-center p:hover {
@@ -2211,11 +2220,85 @@ div.footer-right {
 #closeBtnInfoView {
   margin-left: 0 !important; }
 
-button.large-distance {
-  margin-left: 12px; }
-
-button.short-distance {
-  margin-left: 6px; }
+button {
+  font-family: 'Open Sans', sans-serif !important; }
+  button.btn-server {
+    width: 120px; }
+  button.gv-zoom-btn {
+    background-size: 14px 14px;
+    height: 14px;
+    vertical-align: baseline;
+    width: 14px; }
+    button.gv-zoom-btn.btn-zoom-right {
+      border: 0;
+      box-shadow: none;
+      right: 0;
+      top: 13px; }
+    button.gv-zoom-btn.pan-right {
+      background-image: url('../img/gv_arrow_right.png'); }
+    button.gv-zoom-btn.pan-left {
+      background-image: url('../img/gv_arrow_left.png'); }
+    button.gv-zoom-btn.pan-top {
+      background-image: url('../img/gv_arrow_top.png'); }
+    button.gv-zoom-btn.pan-bottom {
+      background-image: url('../img/gv_arrow_bottom.png'); }
+    button.gv-zoom-btn.btn-zoom:hover {
+      background: inherit; }
+    button.gv-zoom-btn.btn-zoom {
+      height: 14px;
+      margin: 0;
+      padding: 0;
+      position: absolute;
+      width: 16px; }
+    button.gv-zoom-btn.btn-zoom-top {
+      border: 0;
+      box-shadow: none;
+      left: 13px;
+      top: 1; }
+    button.gv-zoom-btn.btn-zoom-left {
+      border: 0;
+      box-shadow: none;
+      left: 0;
+      top: 13px; }
+    button.gv-zoom-btn.btn-zoom-bottom {
+      border: 0;
+      box-shadow: none;
+      left: 13px;
+      top: 25px; }
+  button.gv-icon-btn {
+    -moz-border-radius: 0 !important;
+    -webkit-border-radius: 0 !important;
+    border-radius: 0 !important;
+    background-size: 36px 36px;
+    height: 36px;
+    width: 36px; }
+    button.gv-icon-btn.active {
+      background-color: #8aa051; }
+  button.gv_dropdown_entry {
+    height: 30px;
+    margin: 4px 4px 4px 30px;
+    width: 160px; }
+  button.gv_context_button {
+    width: 65px; }
+  button.large-distance {
+    margin-left: 12px; }
+  button.short-distance {
+    margin-left: 6px; }
+  button.shutdown {
+    margin-top: 6px;
+    padding: 3px 14px; }
+  button.graphViewer-icon-button {
+    background-color: transparent;
+    border: 0;
+    height: 20px;
+    margin-left: 5px;
+    margin-top: -2px;
+    padding: 0;
+    width: 20px; }
+    button.graphViewer-icon-button img {
+      height: 20px;
+      padding-bottom: 10px;
+      width: 20px; }
 
 ul.headerButtonList {
   display: inline-block;
@@ -2224,10 +2307,6 @@ ul.headerButtonList {
   padding-left: 0 !important; }
   ul.headerButtonList li {
     display: inline; }
-
-button.shutdown {
-  margin-top: 6px;
-  padding: 3px 14px; }
 
 a.headerButton, a.button-gui {
   -moz-border-radius: 2px;
@@ -2255,8 +2334,8 @@ a.headerButton {
     font-weight: bold; }
   a.headerButton.activated {
     background-color: #788f3d;
-    color: #fff;
-    border: 1px solid #788f3d; }
+    border: 1px solid #788f3d;
+    color: #fff; }
     a.headerButton.activated:hover {
       background-color: #fff;
       color: #788f3d; }
@@ -2271,14 +2350,14 @@ div.toolbox {
   border: 1px solid rgba(104, 103, 102, 0.1);
   margin-right: 5px;
   margin-top: -3px;
-  padding-top: 5px;
   padding-bottom: 5px;
+  padding-top: 5px;
   position: absolute; }
   div.toolbox div.gv_action_button {
-    background-color: #fff;
     -moz-border-radius: 3px;
     -webkit-border-radius: 3px;
     border-radius: 3px;
+    background-color: #fff;
     color: #000;
     height: 50px;
     margin: 5px;
@@ -2305,102 +2384,18 @@ h6.gv_icon_icon {
 h6.gv_button_title {
   bottom: 1px; }
 
-button.graphViewer-icon-button {
-  background-color: transparent;
-  border: 0;
-  height: 20px;
-  margin-left: 5px;
-  margin-top: -2px;
-  padding: 0;
-  width: 20px; }
-
-button.graphViewer-icon-button > img {
-  height: 20px;
-  padding-bottom: 10px;
-  width: 20px; }
-
-button.gv_dropdown_entry {
-  height: 30px;
-  margin: 4px 4px 4px 30px;
-  width: 160px; }
-
-button.gv_context_button {
-  width: 65px; }
-
 .btn-icon {
   background-color: #383434;
   padding: 4px; }
 
-button.gv-icon-small {
+.gv-icon-small {
   background-size: 16px 16px;
   height: 16px;
   width: 16px; }
-
-button.gv-icon-small.delete {
-  background-image: url('../img/icon_delete.png'); }
-
-button.gv-icon-small.add {
-  background-image: url('../img/plus_icon.png'); }
-
-button.gv-icon-btn {
-  -moz-border-radius: 0 !important;
-  -webkit-border-radius: 0 !important;
-  border-radius: 0 !important;
-  background-size: 36px 36px;
-  height: 36px;
-  width: 36px; }
-
-button.gv-icon-btn.active {
-  background-color: #8aa051; }
-
-button.btn-zoom:hover {
-  background: inherit; }
-
-button.btn-zoom {
-  background: none;
-  height: 16px;
-  margin: 0;
-  padding: 0;
-  position: absolute;
-  width: 16px; }
-
-button.btn-zoom-top {
-  border: 0;
-  box-shadow: none;
-  left: 13px;
-  top: 1; }
-
-button.btn-zoom-left {
-  border: 0;
-  box-shadow: none;
-  left: 0;
-  top: 13px; }
-
-button.btn-zoom-bottom {
-  border: 0;
-  box-shadow: none;
-  left: 13px;
-  top: 25px; }
-
-button.btn-zoom-right {
-  border: 0;
-  box-shadow: none;
-  right: 0;
-  top: 13px; }
-
-button.gv-zoom-btn {
-  background-size: 14px 14px;
-  height: 14px;
-  vertical-align: baseline;
-  width: 14px; }
-  button.gv-zoom-btn.pan-right {
-    background-image: url('../img/gv_arrow_right.png'); }
-  button.gv-zoom-btn.pan-left {
-    background-image: url('../img/gv_arrow_left.png'); }
-  button.gv-zoom-btn.pan-top {
-    background-image: url('../img/gv_arrow_top.png'); }
-  button.gv-zoom-btn.pan-bottom {
-    background-image: url('../img/gv_arrow_bottom.png'); }
+  .gv-icon-small.delete {
+    background-image: url('../img/icon_delete.png'); }
+  .gv-icon-small.add {
+    background-image: url('../img/plus_icon.png'); }
 
 a.pagination-button, ul.arango-pagination a {
   -moz-border-radius: 3px;
@@ -2421,9 +2416,6 @@ a.pagination-button, ul.arango-pagination a {
 .modal-body th.actionCell > button {
   margin-top: -12px; }
 
-button {
-  font-family: 'Open Sans', sans-serif !important; }
-
 .btn-old-padding {
   padding-bottom: 4px !important;
   padding-top: 4px !important; }
@@ -2431,15 +2423,12 @@ button {
 button.btn-overview, button.btn-server {
   margin: 5px; }
 
-button.btn-server {
-  width: 120px; }
-
 a.button-gui {
   height: auto;
   margin-bottom: 0;
   margin-top: 0;
-  padding-top: 1px;
   padding-bottom: 1px;
+  padding-top: 1px;
   position: absolute;
   right: 2px;
   text-decoration: none !important;
@@ -2480,24 +2469,28 @@ a.button-gui {
       background-color: #8ba142; }
 
 .bottomButtonBar {
-  border-top: 1px solid rgba(104, 103, 102, 0.1);
   background-color: #fff;
+  border-top: 1px solid rgba(104, 103, 102, 0.1);
   height: 30px;
   padding: 10px; }
 
-div.tileList {
+.tileList {
   margin-left: -6px;
   margin-right: -6px; }
-  div.tileList legend {
+  .tileList legend {
     padding-left: 5px; }
+  .tileList .tile:first-child a {
+    opacity: .5; }
+    .tileList .tile:first-child a:hover {
+      opacity: 1; }
 
 div .tile, div .bigtile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
   background-color: #fff;
+  border: 1px solid #f5f8f0;
   border-radius: 3px;
-  border: 1px solid rgba(104, 103, 102, 0.1);
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -2522,19 +2515,23 @@ div .tile, div .bigtile {
       content: '';
       position: absolute;
       right: -17px; }
-    div .tile .warning-icons .fa + .fa, div .bigtile .warning-icons .fa + .fa {
+    div .tile .warning-icons .fa, div .bigtile .warning-icons .fa {
       margin-left: 1px; }
-    div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
-      font-size: 8px; }
+      div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
+        font-size: 8px; }
   div .tile .collection-type-icon, div .bigtile .collection-type-icon {
     color: #666;
     font-size: 30pt;
     margin-top: 12pt; }
   div .tile .collection-type-icon:hover, div .bigtile .collection-type-icon:hover {
     cursor: pointer; }
-  div .tile img.icon, div .bigtile img.icon {
-    height: 50px;
-    width: 50px; }
+  div .tile img, div .bigtile img {
+    position: relative; }
+    div .tile img.icon, div .bigtile img.icon {
+      height: 50px;
+      width: 50px; }
+    div .tile img:hover, div .bigtile img:hover {
+      cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
     font-size: 22px;
     margin-left: 22px;
@@ -2548,24 +2545,24 @@ div .tile, div .bigtile {
   div .tile a svg.icon, div .bigtile a svg.icon {
     height: 50px;
     width: 50px; }
-  div .tile svg.tile-icon-svg, div .bigtile svg.tile-icon-svg {
+  div .tile .tile-icon-svg, div .bigtile .tile-icon-svg {
     cursor: pointer;
     fill: #686766;
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
     width: 50px; }
-  div .tile span.tile-icon, div .bigtile span.tile-icon {
+  div .tile .tile-icon, div .bigtile .tile-icon {
     color: #686766;
     font-size: 50px;
     line-height: 1.2; }
-  div .tile span.icon_arangodb_edge5-2, div .bigtile span.icon_arangodb_edge5-2 {
+  div .tile .icon_arangodb_edge5-2, div .bigtile .icon_arangodb_edge5-2 {
+    display: inline-block;
     position: relative;
     top: 15px;
-    -webkit-transform: rotate(80deg);
     -moz-transform: rotate(80deg);
     -o-transform: rotate(80deg);
-    display: inline-block; }
+    -webkit-transform: rotate(80deg); }
   div .tile h5, div .bigtile h5 {
     background: #8c8a89;
     color: #fff;
@@ -2575,35 +2572,47 @@ div .tile, div .bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
-  div .tile div.tileSelects, div .bigtile div.tileSelects {
+  div .tile .tileSelects, div .bigtile .tileSelects {
     margin-left: 40px;
     position: relative;
     z-index: 9999; }
-    div .tile div.tileSelects select, div .bigtile div.tileSelects select {
+    div .tile .tileSelects select, div .bigtile .tileSelects select {
       float: right;
       height: 20px;
       margin-right: 5px;
       margin-top: 16px;
       width: 70px; }
-  div .tile div.iconSet, div .bigtile div.iconSet {
+  div .tile .fullBorderBox, div .bigtile .fullBorderBox {
+    border: 1px solid rgba(140, 138, 137, 0.25);
+    border-radius: 3px;
+    height: 100%;
+    position: absolute;
+    width: 100%; }
+  div .tile .borderBox, div .bigtile .borderBox {
+    border: 1px solid rgba(140, 138, 137, 0.25);
+    border-radius: 3px;
+    height: 75px;
+    position: absolute;
+    width: 224px; }
+  div .tile .iconSet, div .bigtile .iconSet {
     position: absolute;
     right: 5px;
     top: 5px; }
-    div .tile div.iconSet span, div .bigtile div.iconSet span {
+    div .tile .iconSet span, div .bigtile .iconSet span {
       border-radius: 3px;
-      color: #000;
+      color: #666;
       font-size: 18px;
-      padding-top: 2px;
       padding-bottom: 2px;
       padding-left: 3px;
-      padding-right: 3px; }
-      div .tile div.iconSet span:hover, div .bigtile div.iconSet span:hover {
+      padding-right: 3px;
+      padding-top: 2px; }
+      div .tile .iconSet span:hover, div .bigtile .iconSet span:hover {
         background-color: #8aa051;
         color: #fff; }
-      div .tile div.iconSet span.disabled, div .bigtile div.iconSet span.disabled {
+      div .tile .iconSet span.disabled, div .bigtile .iconSet span.disabled {
         cursor: default;
         opacity: .2; }
-      div .tile div.iconSet span.disabled:hover, div .bigtile div.iconSet span.disabled:hover {
+      div .tile .iconSet span.disabled:hover, div .bigtile .iconSet span.disabled:hover {
         background-color: #fff;
         color: #000;
         cursor: default;
@@ -2614,36 +2623,36 @@ div .tile, div .bigtile {
     border-bottom: 16px solid #ff8f35; }
   div .tile .deleted div, div .bigtile .deleted div {
     border-bottom: 16px solid #700; }
-  div .tile div.tileBadge, div .bigtile div.tileBadge {
+  div .tile .tileBadge, div .bigtile .tileBadge {
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     position: absolute;
     right: 0; }
-    div .tile div.tileBadge button, div .bigtile div.tileBadge button {
+    div .tile .tileBadge button, div .bigtile .tileBadge button {
       margin-left: 0;
       margin-right: 5px; }
-    div .tile div.tileBadge span, div .bigtile div.tileBadge span {
+    div .tile .tileBadge span, div .bigtile .tileBadge span {
       display: inline-block;
       line-height: 15px; }
-      div .tile div.tileBadge span div.corneredBadge, div .bigtile div.tileBadge span div.corneredBadge {
-        border-left: 5px solid transparent;
+      div .tile .tileBadge span .corneredBadge, div .bigtile .tileBadge span .corneredBadge {
         border-bottom-style: solid;
         border-bottom-width: 17px;
+        border-left: 5px solid transparent;
         border-radius: 3px;
-        margin-bottom: 4px;
-        margin-right: 5px;
         color: #fff;
         height: 0;
+        margin-bottom: 4px;
+        margin-right: 5px;
         padding-left: 1px;
         padding-right: 6px; }
-        div .tile div.tileBadge span div.corneredBadge.loading, div .bigtile div.tileBadge span div.corneredBadge.loading {
+        div .tile .tileBadge span .corneredBadge.loading, div .bigtile .tileBadge span .corneredBadge.loading {
           border-bottom-color: #ff8f35; }
-        div .tile div.tileBadge span div.corneredBadge.loaded, div .bigtile div.tileBadge span div.corneredBadge.loaded {
+        div .tile .tileBadge span .corneredBadge.loaded, div .bigtile .tileBadge span .corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        div .tile div.tileBadge span div.corneredBadge.unloaded, div .bigtile div.tileBadge span div.corneredBadge.unloaded {
+        div .tile .tileBadge span .corneredBadge.unloaded, div .bigtile .tileBadge span .corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
-        div .tile div.tileBadge span div.corneredBadge.development, div .bigtile div.tileBadge span div.corneredBadge.development {
+        div .tile .tileBadge span .corneredBadge.development, div .bigtile .tileBadge span .corneredBadge.development {
           border-bottom-color: #ff8f35; }
 
 div .tile {
@@ -2654,22 +2663,22 @@ div .tile-graph .tile-icon:hover {
 div .bigtile {
   height: 309px;
   width: 452px; }
-  div .bigtile div.shardContainer {
+  div .bigtile .shardContainer {
     font-size: 30px; }
-    div .bigtile div.shardContainer span {
+    div .bigtile .shardContainer span {
       padding: 2px; }
 
 .collectionName {
-  bottom: 0;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
+  bottom: 0;
   font-weight: 300;
   left: 0;
   position: absolute;
   right: 0;
   text-align: left; }
 
-div.resizecontainer {
+.resizecontainer {
   margin: 0 auto; }
 
 @media (max-width: 798px) {
@@ -2690,7 +2699,7 @@ div.resizecontainer {
     font-size: 14px; } }
 
 @media (min-width: 250px) and (max-width: 489px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 228px; }
   .dashboard-large-chart {
     width: 146px; }
@@ -2702,8 +2711,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 106px;
-    float: left; }
+    float: left;
+    width: 106px; }
   .dashboard-medium-chart {
     width: 96px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -2719,8 +2728,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 96px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 66px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -2791,8 +2800,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 133px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 91px;
-    float: left; }
+    float: left;
+    width: 91px; }
   .modal-body .dashboard-medium-chart {
     width: 91px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -2861,7 +2870,7 @@ div.resizecontainer {
     display: none; } }
 
 @media (min-width: 490px) and (max-width: 729px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 468px; }
   .dashboard-large-chart {
     width: 306px; }
@@ -2873,8 +2882,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 226px;
-    float: left; }
+    float: left;
+    width: 226px; }
   .dashboard-medium-chart {
     width: 216px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -2890,8 +2899,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 216px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 146px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -2962,8 +2971,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 293px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 211px;
-    float: left; }
+    float: left;
+    width: 211px; }
   .modal-body .dashboard-medium-chart {
     width: 211px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3032,7 +3041,7 @@ div.resizecontainer {
     display: none; } }
 
 @media (min-width: 730px) and (max-width: 969px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 708px; }
   .dashboard-large-chart {
     width: 466px; }
@@ -3044,8 +3053,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 346px;
-    float: left; }
+    float: left;
+    width: 346px; }
   .dashboard-medium-chart {
     width: 336px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3061,8 +3070,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 336px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 226px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3133,8 +3142,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 453px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 331px;
-    float: left; }
+    float: left;
+    width: 331px; }
   .modal-body .dashboard-medium-chart {
     width: 331px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3201,7 +3210,7 @@ div.resizecontainer {
     width: 508px; } }
 
 @media (min-width: 970px) and (max-width: 1209px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 948px; }
   .dashboard-large-chart {
     width: 626px; }
@@ -3213,8 +3222,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 13px; }
   .dashboard-medium-chart-outer {
-    width: 466px;
-    float: left; }
+    float: left;
+    width: 466px; }
   .dashboard-medium-chart {
     width: 456px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3230,8 +3239,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 220px;
       width: 456px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 11px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 11px; }
   .dashboard-small-chart {
     width: 306px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3301,8 +3310,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 493px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 451px;
-    float: left; }
+    float: left;
+    width: 451px; }
   .modal-body .dashboard-medium-chart {
     width: 451px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3367,7 +3376,7 @@ div.resizecontainer {
     width: 748px; } }
 
 @media (min-width: 1210px) and (max-width: 1449px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1188px; }
   .dashboard-large-chart {
     width: 786px; }
@@ -3379,8 +3388,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 586px;
-    float: left; }
+    float: left;
+    width: 586px; }
   .dashboard-medium-chart {
     width: 576px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3396,8 +3405,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 255px;
       width: 576px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 12px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 12px; }
   .dashboard-small-chart {
     width: 386px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3467,8 +3476,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 643px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 571px;
-    float: left; }
+    float: left;
+    width: 571px; }
   .modal-body .dashboard-medium-chart {
     width: 571px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3533,7 +3542,7 @@ div.resizecontainer {
     width: 988px; } }
 
 @media (min-width: 1450px) and (max-width: 1689px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1428px; }
   .dashboard-large-chart {
     width: 946px; }
@@ -3545,8 +3554,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 706px;
-    float: left; }
+    float: left;
+    width: 706px; }
   .dashboard-medium-chart {
     width: 696px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3562,8 +3571,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 696px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 13px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 13px; }
   .dashboard-small-chart {
     width: 466px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3633,8 +3642,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 793px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 691px;
-    float: left; }
+    float: left;
+    width: 691px; }
   .modal-body .dashboard-medium-chart {
     width: 691px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3699,7 +3708,7 @@ div.resizecontainer {
     width: 1228px; } }
 
 @media (min-width: 1690px) and (max-width: 1929px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1668px; }
   .dashboard-large-chart {
     width: 1106px; }
@@ -3711,8 +3720,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 16px; }
   .dashboard-medium-chart-outer {
-    width: 826px;
-    float: left; }
+    float: left;
+    width: 826px; }
   .dashboard-medium-chart {
     width: 816px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3728,8 +3737,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 325px;
       width: 816px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 14px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 14px; }
   .dashboard-small-chart {
     width: 546px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3799,8 +3808,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 933px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 811px;
-    float: left; }
+    float: left;
+    width: 811px; }
   .modal-body .dashboard-medium-chart {
     width: 811px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -3865,7 +3874,7 @@ div.resizecontainer {
     width: 1468px; } }
 
 @media (min-width: 1930px) and (max-width: 2169px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1908px; }
   .dashboard-large-chart {
     width: 1266px; }
@@ -3877,8 +3886,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 946px;
-    float: left; }
+    float: left;
+    width: 946px; }
   .dashboard-medium-chart {
     width: 936px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3894,8 +3903,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 385px;
       width: 936px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 626px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3965,8 +3974,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1083px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 931px;
-    float: left; }
+    float: left;
+    width: 931px; }
   .modal-body .dashboard-medium-chart {
     width: 931px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -4031,7 +4040,7 @@ div.resizecontainer {
     width: 1708px; } }
 
 @media (min-width: 2170px) and (max-width: 2409px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2148px; }
   .dashboard-large-chart {
     width: 1426px; }
@@ -4043,8 +4052,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1066px;
-    float: left; }
+    float: left;
+    width: 1066px; }
   .dashboard-medium-chart {
     width: 1056px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -4060,8 +4069,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1056px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 706px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -4131,8 +4140,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1273px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1051px;
-    float: left; }
+    float: left;
+    width: 1051px; }
   .modal-body .dashboard-medium-chart {
     width: 1051px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -4197,7 +4206,7 @@ div.resizecontainer {
     width: 1948px; } }
 
 @media (min-width: 2410px) and (max-width: 2649px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2388px; }
   .dashboard-large-chart {
     width: 1586px; }
@@ -4209,8 +4218,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1186px;
-    float: left; }
+    float: left;
+    width: 1186px; }
   .dashboard-medium-chart {
     width: 1176px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -4226,8 +4235,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1176px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 786px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -4297,8 +4306,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1433px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1171px;
-    float: left; }
+    float: left;
+    width: 1171px; }
   .modal-body .dashboard-medium-chart {
     width: 1171px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -4363,7 +4372,7 @@ div.resizecontainer {
     width: 2188px; } }
 
 @media (min-width: 2650px) and (max-width: 2889px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2628px; }
   .dashboard-large-chart {
     width: 1746px; }
@@ -4375,8 +4384,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1306px;
-    float: left; }
+    float: left;
+    width: 1306px; }
   .dashboard-medium-chart {
     width: 1296px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -4392,8 +4401,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1296px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 866px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -4463,8 +4472,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1593px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1291px;
-    float: left; }
+    float: left;
+    width: 1291px; }
   .modal-body .dashboard-medium-chart {
     width: 1291px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -4529,8 +4538,8 @@ div.resizecontainer {
     width: 2428px; } }
 
 div.centralRow {
-  margin-top: 40px;
-  margin-bottom: 40px; }
+  margin-bottom: 40px;
+  margin-top: 40px; }
 
 div.centralContent {
   background-color: transparent;
@@ -4602,7 +4611,7 @@ div.headerDropdown {
   width: auto; }
   div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
     display: none; }
-    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label {
       background-position: 0 0;
       background-repeat: no-repeat;
       display: inline-block;
@@ -4642,11 +4651,14 @@ div.dropdownInner {
     div.dropdownInner ul label {
       color: #000;
       padding-left: 35px; }
-  div.dropdownInner ul li .fa {
-    margin-right: 5px;
-    color: #8c8a89; }
-    div.dropdownInner ul li .fa.fa-check-circle-o, div.dropdownInner ul li .fa.fa-dot-circle-o {
-      color: #8aa051; }
+    div.dropdownInner ul li .fa {
+      color: #999;
+      margin-right: 5px; }
+      div.dropdownInner ul li .fa.fa-square-o {
+        margin-left: 1px;
+        margin-right: 6px; }
+      div.dropdownInner ul li .fa.fa-check-circle-o, div.dropdownInner ul li .fa.fa-check-square-o, div.dropdownInner ul li .fa.fa-dot-circle-o {
+        color: #8aa051; }
 
 div.queryline {
   color: #000;
@@ -4684,10 +4696,10 @@ div.dropdownImport {
   background-color: #fff;
   border-radius: 3px;
   display: none;
-  padding-top: 10px;
+  padding-bottom: 5px;
   padding-left: 10px;
   padding-right: 10px;
-  padding-bottom: 5px;
+  padding-top: 10px;
   position: relative; }
   div.dropdownImport input {
     line-height: 0;
@@ -4729,39 +4741,24 @@ span.gv_caret {
   margin-top: 2px !important; }
 
 input.search-input {
-  -moz-border-radius: 3px;
-  -webkit-border-radius: 3px;
-  border-radius: 3px;
-  background-color: #fff !important;
-  border: 1px solid #eeeeee;
-  box-shadow: none;
   height: 14px;
   line-height: 18px;
-  margin-top: 6px;
   margin-right: -1px;
-  width: 120px;
-  outline: none;
-  outline-color: transparent;
-  outline-style: none; }
-  input.search-input:focus {
-    border-color: #999999;
-    box-shadow: none;
-    outline: none;
-    outline-color: transparent;
-    outline-style: none; }
+  margin-top: 6px;
+  width: 120px; }
 
 .search-field {
   margin-left: 10px; }
   .search-field .fa-search {
-    color: #D2D2D2;
-    font-size: 13pt;
-    opacity: 0.5;
+    color: #c2c2c2;
+    font-size: 12pt;
+    opacity: .5;
     position: absolute;
-    right: 7px;
+    right: 9px;
     top: 9px; }
     .search-field .fa-search:hover {
-      opacity: 1;
-      cursor: pointer; }
+      cursor: pointer;
+      opacity: 1; }
 
 .search-submit-icon, .gv-search-submit-icon {
   background-image: url('../img/enter_icon.png');
@@ -4782,25 +4779,25 @@ input.search-input {
 
 div.headerBar {
   background-color: #fff;
+  border: 1px solid rgba(140, 138, 137, 0.25);
   border-radius: 3px;
-  border: 1px solid rgba(104, 103, 102, 0.1);
   color: #fff;
   font-size: 16px;
   height: 36px;
-  margin-top: 15px;
   margin-bottom: 5px;
+  margin-top: 15px;
   padding-left: 5px;
   padding-right: 5px;
   position: relative; }
   div.headerBar .infoField {
-    background-color: #f5f8f0;
-    border: 1px solid lightgrey;
+    background-color: #fff;
+    border: 1px solid rgba(140, 138, 137, 0.25);
     border-radius: 3px !important;
-    color: black;
+    color: #000;
     float: right;
     font-size: 12px;
-    margin-top: 7px;
     margin-right: 7px;
+    margin-top: 7px;
     padding-left: 5px;
     padding-right: 5px; }
     div.headerBar .infoField .fa {
@@ -4808,7 +4805,7 @@ div.headerBar {
       margin-left: 5px; }
   div.headerBar input[type=checkbox].css-checkbox {
     display: none; }
-    div.headerBar input[type=checkbox].css-checkbox + label.css-label {
+    div.headerBar input[type=checkbox].css-checkbox label.css-label {
       background-position: 0 0;
       background-repeat: no-repeat;
       cursor: pointer;
@@ -4822,7 +4819,7 @@ div.headerBar {
     background-position: 0 -15px; }
   div.headerBar input[type="radio"] {
     display: none; }
-    div.headerBar input[type="radio"] + label span {
+    div.headerBar input[type="radio"] label span {
       background: url('../img/check_radio_sheet.png') -38px top no-repeat;
       cursor: pointer;
       display: inline-block;
@@ -4833,15 +4830,15 @@ div.headerBar {
   div.headerBar input[type="radio"]:checked + label span {
     background: url('../img/check_radio_sheet.png') -57px top no-repeat; }
 
-div.headerBar a.arangoHeader {
+.headerBar a.arangoHeader {
   color: #000;
   font-size: 13pt;
   font-weight: 100;
-  left: 0px;
+  left: 0;
   position: relative;
   top: 7px; }
 
-div.headerBar > div.headerButtonBar {
+.headerBar > div.headerButtonBar {
   margin: 4px 0;
   margin-bottom: 0 !important; }
 
@@ -4851,20 +4848,20 @@ div.headerBar > div.headerButtonBar {
   border-radius: 0;
   padding: 7px 0; }
   .breadcrumb .disabledBread {
-    font-size: 13pt;
-    font-weight: 100;
     color: #666;
     float: left;
+    font-size: 13pt;
+    font-weight: 100;
     padding-right: 5px;
     position: relative; }
     .breadcrumb .disabledBread i {
       font-size: 10pt;
       margin-left: 10px; }
   .breadcrumb .activeBread {
-    font-size: 13pt;
-    font-weight: 100;
     color: #7da817;
-    float: left; }
+    float: left;
+    font-size: 13pt;
+    font-weight: 100; }
 
 .arangoHeader {
   font-weight: 400; }
@@ -4884,8 +4881,8 @@ div.headerBar > div.headerButtonBar {
 
 .modal-header, .modal-dashboard-header {
   background-color: #fff;
-  border-radius: 3px;
   border-bottom: 0 !important;
+  border-radius: 3px;
   margin-top: 5px;
   padding-left: 5px;
   padding-right: 10px;
@@ -4911,41 +4908,36 @@ div.headerBar > div.headerButtonBar {
   color: #736b68;
   font-family: 'Open Sans', sans-serif !important;
   font-size: 14px;
-  font-weight: 300; }
+  font-weight: 300;
+  max-height: 410px; }
   .modal-body .select2-choices {
+    background-image: none !important;
+    border: 1px solid #999;
     border-radius: 3px;
-    border: 1px solid #aaa;
-    box-shadow: none;
     -webkit-box-shadow: none;
-    background-image: none !important; }
-    .modal-body .select2-choices input {
-      box-shadow: none;
-      -webkit-box-shadow: none;
-      outline: transparent !important; }
+    box-shadow: none; }
     .modal-body .select2-choices input:active {
-      box-shadow: none;
       -webkit-box-shadow: none;
+      box-shadow: none;
       outline: none !important; }
     .modal-body .select2-choices .select2-search-choice {
       margin: 5px 0 3px 5px !important; }
     .modal-body .select2-choices li {
-      color: #000;
       background-color: #fff !important;
-      background-image: none !important; }
+      background-image: none !important;
+      color: #000; }
       .modal-body .select2-choices li a {
-        margin-top: -1px;
-        margin-left: 1px; }
+        margin-left: 1px;
+        margin-top: -1px; }
   .modal-body .select2-choices:active {
-    outline: transparent !important;
-    border: 1px solid #aaa;
+    border: 1px solid #999;
+    -webkit-box-shadow: none !important;
     box-shadow: none !important;
-    -webkit-box-shadow: none !important; }
+    outline: transparent !important; }
   .modal-body .nav-tabs {
     margin-top: 15px; }
   .modal-body input, .modal-body select, .modal-body textarea {
-    margin-top: 10px;
-    border-radius: 3px;
-    box-shadow: none; }
+    margin-top: 10px; }
   .modal-body input[type='checkbox'] {
     margin-bottom: 10px; }
   .modal-body input[type='text'].invalid-input {
@@ -4968,7 +4960,7 @@ div.headerBar > div.headerButtonBar {
     width: 300px; }
     .modal-body th .valueCell input {
       width: 290px; }
-  .modal-body th div.select2-container {
+  .modal-body th .select2-container {
     margin-bottom: 10px;
     margin-top: 10px; }
   .modal-body .icon-info-sign {
@@ -4994,11 +4986,11 @@ div.headerBar > div.headerButtonBar {
     margin-left: 0;
     padding-left: 0;
     padding-right: 0; }
-  .modal-body .accordion-toggle span b.caret {
+  .modal-body .accordion-toggle span .caret {
     border-top-color: #000;
     float: right;
     margin-top: 5px; }
-  .modal-body .accordion-toggle.collapsed span b.caret {
+  .modal-body .accordion-toggle.collapsed span .caret {
     -ms-transform: rotate(90deg);
     -webkit-transform: rotate(90deg);
     transform: rotate(90deg); }
@@ -5018,13 +5010,13 @@ div.headerBar > div.headerButtonBar {
       max-height: 290px; }
   .modal-body .errorMessage {
     background-color: #fff;
-    color: #f00;
+    color: #da4f49;
     font-size: 9pt;
     font-weight: 400;
     margin-bottom: 5px;
     margin-top: -9px;
     position: absolute; }
-  .modal-body .nav img.tab-icon {
+  .modal-body .nav .tab-icon {
     margin-right: 5px;
     margin-top: -3px;
     width: 20px; }
@@ -5038,9 +5030,9 @@ div.headerBar > div.headerButtonBar {
   opacity: .4; }
 
 .modal {
-  box-shadow: none;
   border: 0 !important;
-  border-radius: 3px !important; }
+  border-radius: 3px !important;
+  box-shadow: 0; }
   .modal .fade.in {
     top: 12.1% !important; }
   .modal table tr:last-child {
@@ -5063,7 +5055,7 @@ div.headerBar > div.headerButtonBar {
   .modalTooltips span:hover {
     color: #000; }
 
-pre.gv-object-view {
+.gv-object-view {
   text-align: left;
   white-space: pre; }
 
@@ -5145,8 +5137,8 @@ svg.clusterChart {
     border: 1px solid #808080; }
   .lineGraph .many .dygraph-legend > span {
     display: none; }
-  .lineGraph .many .dygraph-legend > span.highlight {
-    display: inline; }
+    .lineGraph .many .dygraph-legend > span.highlight {
+      display: inline; }
 
 a.coordinator, a.dbserver {
   color: #000;
@@ -5256,19 +5248,23 @@ a.dbserver.double {
   padding: 5px;
   text-align: left; }
 
-div.tileList {
+.tileList {
   margin-left: -6px;
   margin-right: -6px; }
-  div.tileList legend {
+  .tileList legend {
     padding-left: 5px; }
+  .tileList .tile:first-child a {
+    opacity: .5; }
+    .tileList .tile:first-child a:hover {
+      opacity: 1; }
 
 div .tile, div .bigtile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
   background-color: #fff;
+  border: 1px solid #f5f8f0;
   border-radius: 3px;
-  border: 1px solid rgba(104, 103, 102, 0.1);
   font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
@@ -5293,19 +5289,23 @@ div .tile, div .bigtile {
       content: '';
       position: absolute;
       right: -17px; }
-    div .tile .warning-icons .fa + .fa, div .bigtile .warning-icons .fa + .fa {
+    div .tile .warning-icons .fa, div .bigtile .warning-icons .fa {
       margin-left: 1px; }
-    div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
-      font-size: 8px; }
+      div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
+        font-size: 8px; }
   div .tile .collection-type-icon, div .bigtile .collection-type-icon {
     color: #666;
     font-size: 30pt;
     margin-top: 12pt; }
   div .tile .collection-type-icon:hover, div .bigtile .collection-type-icon:hover {
     cursor: pointer; }
-  div .tile img.icon, div .bigtile img.icon {
-    height: 50px;
-    width: 50px; }
+  div .tile img, div .bigtile img {
+    position: relative; }
+    div .tile img.icon, div .bigtile img.icon {
+      height: 50px;
+      width: 50px; }
+    div .tile img:hover, div .bigtile img:hover {
+      cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
     font-size: 22px;
     margin-left: 22px;
@@ -5319,24 +5319,24 @@ div .tile, div .bigtile {
   div .tile a svg.icon, div .bigtile a svg.icon {
     height: 50px;
     width: 50px; }
-  div .tile svg.tile-icon-svg, div .bigtile svg.tile-icon-svg {
+  div .tile .tile-icon-svg, div .bigtile .tile-icon-svg {
     cursor: pointer;
     fill: #686766;
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
     width: 50px; }
-  div .tile span.tile-icon, div .bigtile span.tile-icon {
+  div .tile .tile-icon, div .bigtile .tile-icon {
     color: #686766;
     font-size: 50px;
     line-height: 1.2; }
-  div .tile span.icon_arangodb_edge5-2, div .bigtile span.icon_arangodb_edge5-2 {
+  div .tile .icon_arangodb_edge5-2, div .bigtile .icon_arangodb_edge5-2 {
+    display: inline-block;
     position: relative;
     top: 15px;
-    -webkit-transform: rotate(80deg);
     -moz-transform: rotate(80deg);
     -o-transform: rotate(80deg);
-    display: inline-block; }
+    -webkit-transform: rotate(80deg); }
   div .tile h5, div .bigtile h5 {
     background: #8c8a89;
     color: #fff;
@@ -5346,35 +5346,47 @@ div .tile, div .bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
-  div .tile div.tileSelects, div .bigtile div.tileSelects {
+  div .tile .tileSelects, div .bigtile .tileSelects {
     margin-left: 40px;
     position: relative;
     z-index: 9999; }
-    div .tile div.tileSelects select, div .bigtile div.tileSelects select {
+    div .tile .tileSelects select, div .bigtile .tileSelects select {
       float: right;
       height: 20px;
       margin-right: 5px;
       margin-top: 16px;
       width: 70px; }
-  div .tile div.iconSet, div .bigtile div.iconSet {
+  div .tile .fullBorderBox, div .bigtile .fullBorderBox {
+    border: 1px solid rgba(140, 138, 137, 0.25);
+    border-radius: 3px;
+    height: 100%;
+    position: absolute;
+    width: 100%; }
+  div .tile .borderBox, div .bigtile .borderBox {
+    border: 1px solid rgba(140, 138, 137, 0.25);
+    border-radius: 3px;
+    height: 75px;
+    position: absolute;
+    width: 224px; }
+  div .tile .iconSet, div .bigtile .iconSet {
     position: absolute;
     right: 5px;
     top: 5px; }
-    div .tile div.iconSet span, div .bigtile div.iconSet span {
+    div .tile .iconSet span, div .bigtile .iconSet span {
       border-radius: 3px;
-      color: #000;
+      color: #666;
       font-size: 18px;
-      padding-top: 2px;
       padding-bottom: 2px;
       padding-left: 3px;
-      padding-right: 3px; }
-      div .tile div.iconSet span:hover, div .bigtile div.iconSet span:hover {
+      padding-right: 3px;
+      padding-top: 2px; }
+      div .tile .iconSet span:hover, div .bigtile .iconSet span:hover {
         background-color: #8aa051;
         color: #fff; }
-      div .tile div.iconSet span.disabled, div .bigtile div.iconSet span.disabled {
+      div .tile .iconSet span.disabled, div .bigtile .iconSet span.disabled {
         cursor: default;
         opacity: .2; }
-      div .tile div.iconSet span.disabled:hover, div .bigtile div.iconSet span.disabled:hover {
+      div .tile .iconSet span.disabled:hover, div .bigtile .iconSet span.disabled:hover {
         background-color: #fff;
         color: #000;
         cursor: default;
@@ -5385,36 +5397,36 @@ div .tile, div .bigtile {
     border-bottom: 16px solid #ff8f35; }
   div .tile .deleted div, div .bigtile .deleted div {
     border-bottom: 16px solid #700; }
-  div .tile div.tileBadge, div .bigtile div.tileBadge {
+  div .tile .tileBadge, div .bigtile .tileBadge {
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     position: absolute;
     right: 0; }
-    div .tile div.tileBadge button, div .bigtile div.tileBadge button {
+    div .tile .tileBadge button, div .bigtile .tileBadge button {
       margin-left: 0;
       margin-right: 5px; }
-    div .tile div.tileBadge span, div .bigtile div.tileBadge span {
+    div .tile .tileBadge span, div .bigtile .tileBadge span {
       display: inline-block;
       line-height: 15px; }
-      div .tile div.tileBadge span div.corneredBadge, div .bigtile div.tileBadge span div.corneredBadge {
-        border-left: 5px solid transparent;
+      div .tile .tileBadge span .corneredBadge, div .bigtile .tileBadge span .corneredBadge {
         border-bottom-style: solid;
         border-bottom-width: 17px;
+        border-left: 5px solid transparent;
         border-radius: 3px;
-        margin-bottom: 4px;
-        margin-right: 5px;
         color: #fff;
         height: 0;
+        margin-bottom: 4px;
+        margin-right: 5px;
         padding-left: 1px;
         padding-right: 6px; }
-        div .tile div.tileBadge span div.corneredBadge.loading, div .bigtile div.tileBadge span div.corneredBadge.loading {
+        div .tile .tileBadge span .corneredBadge.loading, div .bigtile .tileBadge span .corneredBadge.loading {
           border-bottom-color: #ff8f35; }
-        div .tile div.tileBadge span div.corneredBadge.loaded, div .bigtile div.tileBadge span div.corneredBadge.loaded {
+        div .tile .tileBadge span .corneredBadge.loaded, div .bigtile .tileBadge span .corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        div .tile div.tileBadge span div.corneredBadge.unloaded, div .bigtile div.tileBadge span div.corneredBadge.unloaded {
+        div .tile .tileBadge span .corneredBadge.unloaded, div .bigtile .tileBadge span .corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
-        div .tile div.tileBadge span div.corneredBadge.development, div .bigtile div.tileBadge span div.corneredBadge.development {
+        div .tile .tileBadge span .corneredBadge.development, div .bigtile .tileBadge span .corneredBadge.development {
           border-bottom-color: #ff8f35; }
 
 div .tile {
@@ -5425,15 +5437,15 @@ div .tile-graph .tile-icon:hover {
 div .bigtile {
   height: 309px;
   width: 452px; }
-  div .bigtile div.shardContainer {
+  div .bigtile .shardContainer {
     font-size: 30px; }
-    div .bigtile div.shardContainer span {
+    div .bigtile .shardContainer span {
       padding: 2px; }
 
 .collectionName {
-  bottom: 0;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
+  bottom: 0;
   font-weight: 300;
   left: 0;
   position: absolute;
@@ -5457,17 +5469,27 @@ div .bigtile {
   right: 9px;
   top: 6px; }
 
+.dashboard-sub-bar {
+  background-color: #686766;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+  color: #fff;
+  height: 24px;
+  line-height: 24px;
+  margin: 0;
+  padding: 0 6px; }
+
 .dashboard-large-chart {
-  margin-right: 12px;
   border: 1px solid rgba(104, 103, 102, 0.1);
-  border-radius: 3px; }
+  border-radius: 3px;
+  margin-right: 12px; }
   .dashboard-large-chart .dashboard-large-chart-inner {
     background-color: #fff;
     border-left: 5px solid #fff;
     border-right: 5px solid #fff;
     border-top: 5px solid #fff;
-    padding-top: 12px;
-    padding-bottom: 10px; }
+    padding-bottom: 10px;
+    padding-top: 12px; }
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       margin-bottom: 0; }
 
@@ -5483,8 +5505,8 @@ div .bigtile {
     padding-top: 5px; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
       fill-opacity: .15;
-      stroke-opacity: 0.8;
-      stroke-width: 0.5px; }
+      stroke-opacity: .8;
+      stroke-width: .5px; }
 
 .dashboard-medium-chart-outer {
   border: 1px solid rgba(104, 103, 102, 0.1);
@@ -5497,8 +5519,8 @@ div .bigtile {
   border-left: 5px solid #fff;
   border-right: 5px solid #fff;
   border-top: 5px solid #fff;
-  padding-top: 10px;
-  margin-bottom: 0; }
+  margin-bottom: 0;
+  padding-top: 10px; }
   .dashboard-medium-chart:first-child {
     margin-right: 12px; }
   .dashboard-medium-chart .dashboard-interior-chart {
@@ -5530,12 +5552,11 @@ div .bigtile {
   border-radius: 3px; }
   .dashboard-tendency-container .dashboard-tendency-chart {
     background-color: #fff;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
-    border-top: 5px solid #fff;
     border-left: 5px solid #fff;
     border-right: 5px solid #fff;
     border-top: 5px solid #fff;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
     padding-bottom: 5px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency {
       background-color: #fff;
@@ -5570,26 +5591,16 @@ div .bigtile {
     .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
       fill-opacity: .15;
       stroke-opacity: .8;
-      stroke-width: 0.5px; }
+      stroke-width: .5px; }
 
 .dashboard-legend .dashboard-legend-inner {
   padding: 0 5px 5px 0; }
-
-.dashboard-sub-bar {
-  background-color: #686766;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
-  color: #fff;
-  height: 24px;
-  line-height: 24px;
-  margin: 0;
-  padding: 0 6px; }
 
 .dashboard-spacer {
   margin: 0 12px; }
 
 .headerBar.dashboard-headerbar {
-  margin: 15px 0 10px; }
+  margin: 20px 0; }
 
 .modal-chart-detail .modal-dashboard-legend .dashboard-legend-inner {
   padding-left: 20px; }
@@ -5621,7 +5632,7 @@ div .bigtile {
 .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
   color: #666; }
 
-div.resizecontainer {
+.resizecontainer {
   margin: 0 auto; }
 
 @media (max-width: 798px) {
@@ -5642,7 +5653,7 @@ div.resizecontainer {
     font-size: 14px; } }
 
 @media (min-width: 250px) and (max-width: 489px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 228px; }
   .dashboard-large-chart {
     width: 146px; }
@@ -5654,8 +5665,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 106px;
-    float: left; }
+    float: left;
+    width: 106px; }
   .dashboard-medium-chart {
     width: 96px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -5671,8 +5682,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 96px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 66px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -5743,8 +5754,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 133px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 91px;
-    float: left; }
+    float: left;
+    width: 91px; }
   .modal-body .dashboard-medium-chart {
     width: 91px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -5813,7 +5824,7 @@ div.resizecontainer {
     display: none; } }
 
 @media (min-width: 490px) and (max-width: 729px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 468px; }
   .dashboard-large-chart {
     width: 306px; }
@@ -5825,8 +5836,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 226px;
-    float: left; }
+    float: left;
+    width: 226px; }
   .dashboard-medium-chart {
     width: 216px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -5842,8 +5853,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 216px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 146px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -5914,8 +5925,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 293px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 211px;
-    float: left; }
+    float: left;
+    width: 211px; }
   .modal-body .dashboard-medium-chart {
     width: 211px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -5984,7 +5995,7 @@ div.resizecontainer {
     display: none; } }
 
 @media (min-width: 730px) and (max-width: 969px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 708px; }
   .dashboard-large-chart {
     width: 466px; }
@@ -5996,8 +6007,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 12px; }
   .dashboard-medium-chart-outer {
-    width: 346px;
-    float: left; }
+    float: left;
+    width: 346px; }
   .dashboard-medium-chart {
     width: 336px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6013,8 +6024,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 336px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 226px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6085,8 +6096,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 453px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 331px;
-    float: left; }
+    float: left;
+    width: 331px; }
   .modal-body .dashboard-medium-chart {
     width: 331px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6153,7 +6164,7 @@ div.resizecontainer {
     width: 508px; } }
 
 @media (min-width: 970px) and (max-width: 1209px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 948px; }
   .dashboard-large-chart {
     width: 626px; }
@@ -6165,8 +6176,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 13px; }
   .dashboard-medium-chart-outer {
-    width: 466px;
-    float: left; }
+    float: left;
+    width: 466px; }
   .dashboard-medium-chart {
     width: 456px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6182,8 +6193,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 220px;
       width: 456px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 11px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 11px; }
   .dashboard-small-chart {
     width: 306px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6253,8 +6264,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 493px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 451px;
-    float: left; }
+    float: left;
+    width: 451px; }
   .modal-body .dashboard-medium-chart {
     width: 451px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6319,7 +6330,7 @@ div.resizecontainer {
     width: 748px; } }
 
 @media (min-width: 1210px) and (max-width: 1449px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1188px; }
   .dashboard-large-chart {
     width: 786px; }
@@ -6331,8 +6342,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 586px;
-    float: left; }
+    float: left;
+    width: 586px; }
   .dashboard-medium-chart {
     width: 576px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6348,8 +6359,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 255px;
       width: 576px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 12px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 12px; }
   .dashboard-small-chart {
     width: 386px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6419,8 +6430,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 643px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 571px;
-    float: left; }
+    float: left;
+    width: 571px; }
   .modal-body .dashboard-medium-chart {
     width: 571px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6485,7 +6496,7 @@ div.resizecontainer {
     width: 988px; } }
 
 @media (min-width: 1450px) and (max-width: 1689px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1428px; }
   .dashboard-large-chart {
     width: 946px; }
@@ -6497,8 +6508,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 15px; }
   .dashboard-medium-chart-outer {
-    width: 706px;
-    float: left; }
+    float: left;
+    width: 706px; }
   .dashboard-medium-chart {
     width: 696px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6514,8 +6525,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 696px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 13px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 13px; }
   .dashboard-small-chart {
     width: 466px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6585,8 +6596,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 793px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 691px;
-    float: left; }
+    float: left;
+    width: 691px; }
   .modal-body .dashboard-medium-chart {
     width: 691px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6651,7 +6662,7 @@ div.resizecontainer {
     width: 1228px; } }
 
 @media (min-width: 1690px) and (max-width: 1929px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1668px; }
   .dashboard-large-chart {
     width: 1106px; }
@@ -6663,8 +6674,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 16px; }
   .dashboard-medium-chart-outer {
-    width: 826px;
-    float: left; }
+    float: left;
+    width: 826px; }
   .dashboard-medium-chart {
     width: 816px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6680,8 +6691,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 325px;
       width: 816px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 14px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 14px; }
   .dashboard-small-chart {
     width: 546px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6751,8 +6762,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 933px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 811px;
-    float: left; }
+    float: left;
+    width: 811px; }
   .modal-body .dashboard-medium-chart {
     width: 811px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6817,7 +6828,7 @@ div.resizecontainer {
     width: 1468px; } }
 
 @media (min-width: 1930px) and (max-width: 2169px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 1908px; }
   .dashboard-large-chart {
     width: 1266px; }
@@ -6829,8 +6840,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 946px;
-    float: left; }
+    float: left;
+    width: 946px; }
   .dashboard-medium-chart {
     width: 936px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -6846,8 +6857,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 385px;
       width: 936px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 626px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6917,8 +6928,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1083px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 931px;
-    float: left; }
+    float: left;
+    width: 931px; }
   .modal-body .dashboard-medium-chart {
     width: 931px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -6983,7 +6994,7 @@ div.resizecontainer {
     width: 1708px; } }
 
 @media (min-width: 2170px) and (max-width: 2409px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2148px; }
   .dashboard-large-chart {
     width: 1426px; }
@@ -6995,8 +7006,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1066px;
-    float: left; }
+    float: left;
+    width: 1066px; }
   .dashboard-medium-chart {
     width: 1056px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -7012,8 +7023,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1056px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 706px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -7083,8 +7094,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1273px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1051px;
-    float: left; }
+    float: left;
+    width: 1051px; }
   .modal-body .dashboard-medium-chart {
     width: 1051px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -7149,7 +7160,7 @@ div.resizecontainer {
     width: 1948px; } }
 
 @media (min-width: 2410px) and (max-width: 2649px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2388px; }
   .dashboard-large-chart {
     width: 1586px; }
@@ -7161,8 +7172,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1186px;
-    float: left; }
+    float: left;
+    width: 1186px; }
   .dashboard-medium-chart {
     width: 1176px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -7178,8 +7189,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1176px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 786px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -7249,8 +7260,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1433px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1171px;
-    float: left; }
+    float: left;
+    width: 1171px; }
   .modal-body .dashboard-medium-chart {
     width: 1171px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -7315,7 +7326,7 @@ div.resizecontainer {
     width: 2188px; } }
 
 @media (min-width: 2650px) and (max-width: 2889px) {
-  div.resizecontainer {
+  .resizecontainer {
     width: 2628px; }
   .dashboard-large-chart {
     width: 1746px; }
@@ -7327,8 +7338,8 @@ div.resizecontainer {
   .dashboard-sub-bar-menu {
     font-size: 17px; }
   .dashboard-medium-chart-outer {
-    width: 1306px;
-    float: left; }
+    float: left;
+    width: 1306px; }
   .dashboard-medium-chart {
     width: 1296px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -7344,8 +7355,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1296px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 866px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -7415,8 +7426,8 @@ div.resizecontainer {
     .modal-body .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       width: 1593px; }
   .modal-body .dashboard-medium-chart-outer {
-    width: 1291px;
-    float: left; }
+    float: left;
+    width: 1291px; }
   .modal-body .dashboard-medium-chart {
     width: 1291px; }
     .modal-body .dashboard-medium-chart .dashboard-sub-bar {
@@ -7481,8 +7492,8 @@ div.resizecontainer {
     width: 2428px; } }
 
 div.centralRow {
-  margin-top: 40px;
-  margin-bottom: 40px; }
+  margin-bottom: 40px;
+  margin-top: 40px; }
 
 div.centralContent {
   background-color: transparent;

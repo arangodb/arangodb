@@ -1,18 +1,19 @@
 // TODO Needs to be cleaned up it is not so !important as it looks...
 .jsoneditor {
   background-color: $c-white !important;
-  border: 0px solid $c-semi-transp !important;
+  border: 0 solid $c-semi-transp !important;
 
   .menu {
     background-color: $c-white !important;
+    border-bottom: 1px solid $c-c2grey !important;
     border-left: 0 !important;
     border-right: 0 !important;
     border-top: 0 !important;
-    border-bottom: 1px solid $c-c2grey !important;
 
     button {
       border: 0 !important;
     }
+
     button:hover {
       background-color: $c-positive;
       color: $c-white;
@@ -29,9 +30,9 @@
       input {
         border: 1px solid $c-c2grey !important;
         border-radius: 3px;
-        margin-top: -2px;
         margin-left: 5px;
         margin-right: 5px;
+        margin-top: -2px;
       }
 
     }
@@ -43,21 +44,13 @@
   }
 }
 
-.show-save-state {
-  @extend %pull-right;
-  color: #008000;
-  display: none;
-  font-weight: 300;
-  margin-top: 5px;
-}
-
 .document-editor-extra {
   margin-top: 10px;
 }
 
 .document-editor {
   height: 500px;
-  margin-top: -10px;
   margin-bottom: 5px;
+  margin-top: -10px;
   width: 100%;
 }

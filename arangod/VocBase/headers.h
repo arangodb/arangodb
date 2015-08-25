@@ -31,13 +31,7 @@
 #define ARANGODB_VOC_BASE_HEADERS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/vector.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-struct TRI_doc_mptr_t;
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class TRI_headers_t
@@ -70,41 +64,57 @@ class TRI_headers_t {
   public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of allocated headers
+////////////////////////////////////////////////////////////////////////////////
+
+    size_t numAllocated () const {
+      return _nrAllocated;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the memory usage
+////////////////////////////////////////////////////////////////////////////////
+
+    size_t memory () const {
+      return _nrAllocated * sizeof(TRI_doc_mptr_t);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief move an existing header to the end of the linked list
 ////////////////////////////////////////////////////////////////////////////////
 
-    void moveBack (struct TRI_doc_mptr_t*, struct TRI_doc_mptr_t*);
+    void moveBack (TRI_doc_mptr_t*, TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlink an existing header from the linked list, without freeing it
 ////////////////////////////////////////////////////////////////////////////////
 
-    void unlink (struct TRI_doc_mptr_t*);
+    void unlink (TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move an existing header to another position in the linked list
 ////////////////////////////////////////////////////////////////////////////////
 
-    void move (struct TRI_doc_mptr_t*, struct TRI_doc_mptr_t*);
+    void move (TRI_doc_mptr_t*, TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief relink an existing header into the linked list, at its original
 /// position
 ////////////////////////////////////////////////////////////////////////////////
 
-    void relink (struct TRI_doc_mptr_t*, struct TRI_doc_mptr_t*);
+    void relink (TRI_doc_mptr_t*, TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request a new header
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct TRI_doc_mptr_t* request (size_t);
+    TRI_doc_mptr_t* request (size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief release/free an existing header, putting it back onto the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
-    void release (struct TRI_doc_mptr_t*, bool unlink);
+    void release (TRI_doc_mptr_t*, bool unlink);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjust the total size (called by the collector when changing WAL
@@ -119,7 +129,7 @@ class TRI_headers_t {
 /// note: the element returned might be nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
-    inline struct TRI_doc_mptr_t* front () const {
+    inline TRI_doc_mptr_t* front () const {
       return _begin;
     }
 
@@ -129,7 +139,7 @@ class TRI_headers_t {
 /// note: the element returned might be nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
-    inline struct TRI_doc_mptr_t* back () const {
+    inline TRI_doc_mptr_t* back () const {
       return _end;
     }
 
@@ -155,15 +165,15 @@ class TRI_headers_t {
 
   private:
 
-    TRI_doc_mptr_t const*  _freelist;    // free headers
+    TRI_doc_mptr_t const*         _freelist;    // free headers
 
-    TRI_doc_mptr_t*        _begin;       // start pointer to list of allocated headers
-    TRI_doc_mptr_t*        _end;         // end pointer to list of allocated headers
-    size_t                 _nrAllocated; // number of allocated headers
-    size_t                 _nrLinked;    // number of linked headers
-    int64_t                _totalSize;   // total size of markers for linked headers
+    TRI_doc_mptr_t*               _begin;       // start pointer to list of allocated headers
+    TRI_doc_mptr_t*               _end;         // end pointer to list of allocated headers
+    size_t                        _nrAllocated; // number of allocated headers
+    size_t                        _nrLinked;    // number of linked headers
+    int64_t                       _totalSize;   // total size of markers for linked headers
 
-    TRI_vector_pointer_t   _blocks;
+    std::vector<TRI_doc_mptr_t const*>  _blocks;
 };
 
 #endif

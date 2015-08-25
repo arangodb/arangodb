@@ -182,6 +182,7 @@ namespace triagens {
         uint64_t _nrProbesD; // statistics: number of misses while removing
 #endif
 
+
         HashKeyFuncType const _hashKey;
         HashElementFuncType const _hashElement;
         IsEqualKeyElementFuncType const _isEqualKeyElement;
@@ -648,7 +649,7 @@ namespace triagens {
 /// is already known. This is for example the case when resizing.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insertFirst (Bucket& b, Element* element, uint64_t hashByKey) {
+        IndexType insertFirst (Bucket& b, Element* element, uint64_t hashByKey) {
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
           check(true, true);
@@ -675,7 +676,7 @@ namespace triagens {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
             check(true, true);
 #endif
-            return;
+            return i;
           }
 
           // Now find the first slot with an entry with the same key
@@ -700,6 +701,7 @@ namespace triagens {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
           check(true, true);
 #endif
+          return i;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -709,8 +711,9 @@ namespace triagens {
 /// example the case when resizing.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insertFurther (Bucket& b, Element* element,
-                            uint64_t hashByKey, uint64_t hashByElm) {
+        void insertFurther (Bucket& b, Element* element, 
+                            uint64_t hashByKey, uint64_t hashByElm,
+                            IndexType firstPosition) {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
           check(true, true);
 #endif
@@ -720,35 +723,10 @@ namespace triagens {
           _nrAdds++;
 #endif
 
-          // We need the beginning of the doubly linked list:
-          IndexType hashIndex = hashToIndex(hashByKey);
-          IndexType i = hashIndex % b._nrAlloc;
-
-          TRI_ASSERT(nullptr != b._table[i].ptr);
-
-          // Find the first slot with an entry with the same key
-          // that is the start of a linked list, or a free slot:
-          while (b._table[i].ptr != nullptr &&
-                 (b._table[i].prev != INVALID_INDEX ||
-                  (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-                  ! _isEqualElementElementByKey(element, b._table[i].ptr))
-                ) {
-            i = incr(b, i);
-#ifdef TRI_INTERNAL_STATS
-          // update statistics
-            _ProbesA++;
-#endif
-
-          }
-
-          // If this is free, we are the first with this key, a contradiction:
-          TRI_ASSERT(nullptr != b._table[i].ptr);
-
-          // Now, entry i points to the beginning of the linked
-          // list of which we want to make element a member.
-
+          // We already know the beginning of the doubly linked list:
+          
           // Now find a new home for element in this linked list:
-          hashIndex = hashToIndex(hashByElm);
+          IndexType hashIndex = hashToIndex(hashByElm);
           IndexType j = hashIndex % b._nrAlloc;
 
           while (b._table[j].ptr != nullptr) {
@@ -760,12 +738,12 @@ namespace triagens {
 
           // add the element to the hash and linked list (in pos 2):
           b._table[j].ptr = element;
-          b._table[j].next = b._table[i].next;
-          b._table[j].prev = i;
+          b._table[j].next = b._table[firstPosition].next;
+          b._table[j].prev = firstPosition;
           if (useHashCache) {
             b._table[j].writeHashCache(hashByElm);
           }
-          b._table[i].next = j;
+          b._table[firstPosition].next = j;
           // Finally, we need to find the successor to patch it up:
           if (b._table[j].next != INVALID_INDEX) {
             b._table[b._table[j].next].prev = j;
@@ -1149,7 +1127,7 @@ namespace triagens {
               else {
                 hashByKey = _hashElement(oldTable[j].ptr, true);
               }
-              insertFirst(b, oldTable[j].ptr, hashByKey);
+              IndexType insertPosition = insertFirst(b, oldTable[j].ptr, hashByKey);
               // Now walk to the end of the list:
               IndexType k = j;
               while (oldTable[k].next != INVALID_INDEX) {
@@ -1164,7 +1142,7 @@ namespace triagens {
                 else {
                   hashByElm = _hashElement(oldTable[k].ptr, false);
                 }
-                insertFurther(b, oldTable[k].ptr, hashByKey, hashByElm);
+                insertFurther(b, oldTable[k].ptr, hashByKey, hashByElm, insertPosition);
                 k = oldTable[k].prev;
               }
             }

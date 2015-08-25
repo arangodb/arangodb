@@ -207,7 +207,9 @@
   <div id="installed">
     <div id="installedList" class="tileList">
       <div class="tile">
-        <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
+        <div class="fullBorderBox">
+          <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
+        </div>
       </div>
     </div>
   </div>
@@ -218,7 +220,7 @@
   <button class="arangodb-tabbar" id="<%=elid%>"><%=name%></button>
   <%});%>
 </div></script><script id="arangoTable.ejs" type="text/template"><table class="arango-table" id="<%=content.id%>">
-
+<% console.log(content) %>
   <thead>
     <tr>
       <% var hcounter = 0; %>
@@ -227,7 +229,6 @@
       <% hcounter++; });%>
     </tr>
   </thead>
-
   <tbody>
     <% _.each(content.rows, function(k) { var counter=0;%>
       <tr>
@@ -236,8 +237,15 @@
         <% counter++;});%>
       </tr>
     <%});%>
+
+    <% if (content.rows.length === 0) { %>
+      <tr>
+        <td>No content.</td><td></td><td></td>
+      </tr>
+    <% }; %>
   </tbody>
-</table></script><script id="collectionsItemView.ejs" type="text/template"><div class="iconSet">
+</table></script><script id="collectionsItemView.ejs" type="text/template"><div class="borderBox"></div>
+<div class="iconSet">
   <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
   <% if(model.get('status') === "loaded") { %>
     <span id="info_<%=model.get('name')%>" class="spanInfo icon_arangodb_info" title="Show collection properties"></span>
@@ -364,7 +372,9 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
       <div id="collectionsThumbnailsIn" class="tileList">
         <div class="tile">
-          <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+          <div class="fullBorderBox">
+            <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+          </div>
         </div>
       </div>
   </div></script><script id="dashboardView.ejs" type="text/template"><% var subBar = function(title) { %>
@@ -545,25 +555,28 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <a href="#" id="createDatabase" class="add">
-          <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add Database
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createDatabase" class="add">
+            <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add Database
+          </a>
+        </div>
       </div>
       <% collection.forEach(function(db) {
           var name = db.get("name");
       %>
 
       <div class="tile">
-      <div class="iconSet">
-        <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+        <div class="borderBox"></div>
+        <div class="iconSet">
+          <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+        </div>
+        <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
+        <div class="tileBadge">
+        </div>
+        <h5 class="collectionName"><%=name %></h5>
       </div>
-      <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
-      <div class="tileBadge">
-    </div>
 
-      <h5 class="collectionName"><%=name %></h5>
-    </div>
       <%});%>
      </div>
   </div></script><script id="dbSelectionView.ejs" type="text/template"><a href="#" class="tab" id="dbselection"></span><div class="dbselection">DB: <%=current%></div> <b class="caret"></b></a>
@@ -1123,7 +1136,8 @@ if (list.length > 0) {
 
 <div class="footer-right">
   <p><% if(n) { %><i class="isOnline fa fa-check-circle-o serverStatusIndicator"></i><a><%=n%> <%=v%> <% } %></a></i></p>
-</div></script><script id="foxxActiveView.ejs" type="text/template"><img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
+</div></script><script id="foxxActiveView.ejs" type="text/template"><div class="borderBox"></div>
+  <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
     <% if (model.needsAttention()) { %>
       <span class="warning-icons">
         <% if (model.isBroken()) { %>
@@ -1291,10 +1305,12 @@ if (list.length > 0) {
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="graphManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <a href="#" id="createGraph" class="add">
-          <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add Graph
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createGraph" class="add">
+            <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add Graph
+          </a>
+        </div>
       </div>
 
 
@@ -1303,6 +1319,7 @@ if (list.length > 0) {
       %>
 
       <div class="tile tile-graph" id="<%=graphName %>_tile">
+      <div class="borderBox"></div>
       <div class="iconSet">
         <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
       </div>
@@ -1349,10 +1366,9 @@ if (list.length > 0) {
     <td valign="top" colspan="3" class="dataTables_empty">Loading...</td>
   </tr>
 </tbody></script><script id="loginView.ejs" type="text/template"><div class="loginFixedWindow">
+  <img id="loginLogo" src="img/logo_arangodb_transp.png"/>
   <div id="loginWindow" class="login-window">
-    <div id="loginSpace" class="login-space"/>
-    <img id="loginLogo" src="img/logo_arangodb_transp.png"/>
-    <div id="loginSpace" class="login-space"/>
+    <p class="wrong-credentials" style="display:none" >Wrong credentials!</p>
     <form id="loginForm">
       <input class="login-input" placeholder="Username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
       <input class="login-input" placeholder="Password" id="loginPassword" type="password" name="password"><i class="fa fa-lock"></i>
@@ -2218,6 +2234,11 @@ if (list.length > 0) {
     <div class="notificationItem">
       <a class="notificationItemTitle"><%=n.get("title")%></a>
       <div class="notificationItemContent"><%=n.get("content")%></div>
+
+      <% if (n.get("info")) { %>
+      <i title="<%=n.get("info")%>" class="notificationInfoIcon fa fa-info-circle"></i>
+      <% } %>
+
       <i id="<%=n.cid%>" class="fa fa-times-circle-o"></i>
     </div>
   </li>
@@ -2231,7 +2252,7 @@ if (list.length > 0) {
     <ul class="user-dropdown-menu fixedDropdown" id="notification_menu">
       <li class="dropdown-header"><a>Notifications</a></li>
       <ul class="innerDropdownInnerUL"></ul>
-      <button id="removeAllNotifications" class="button-danger">Clear</button>
+      <button id="removeAllNotifications" class="button-close">Clear</button>
     </ul>
   </li>
 
@@ -2531,10 +2552,12 @@ var cutByResolution = function (str) {
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <a href="#" id="createUser" class="add">
-          <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add User
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createUser" class="add">
+            <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add User
+          </a>
+        </div>
       </div>
 
 
@@ -2562,6 +2585,7 @@ var cutByResolution = function (str) {
       %>
 
       <div class="tile">
+        <div class="borderBox"></div>
         <div class="iconSet">
           <span class="icon_arangodb_settings2 editUser" id="<%=_.escape(username) %>_edit-user" alt="Edit user" title="Edit user"></span>
         </div>
@@ -2592,4 +2616,4 @@ var cutByResolution = function (str) {
         <% }); %>
       </ul>
     </div>
-  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><script src="app.js?version=1439401344440"></script></body></html>
+  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><script src="app.js?version=1440500497330"></script></body></html>

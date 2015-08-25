@@ -19,9 +19,9 @@ svg.clusterChart {
 
   .many .dygraph-legend > span {
     display: none;
-  }
 
-  .many .dygraph-legend > span.highlight {
-    display: inline;
+    &.highlight {
+      display: inline;
+    }
   }
 }

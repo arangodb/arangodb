@@ -674,7 +674,7 @@ namespace triagens {
           TRI_ASSERT(v == nullptr || strlen(v) <= length);
 
           value.value._string = v;
-          value.length = length;
+          value.length = static_cast<uint32_t>(length);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

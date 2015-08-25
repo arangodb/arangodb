@@ -179,14 +179,10 @@ RecoverState::RecoverState (TRI_server_t* server,
                             bool ignoreRecoveryErrors)
   : server(server),
     failedTransactions(),
-    remoteTransactions(),
-    remoteTransactionCollections(),
-    remoteTransactionDatabases(),
     lastTick(0),
     logfilesToProcess(),
     openedCollections(),
     openedDatabases(),
-    runningRemoteTransactions(),
     emptyLogfiles(),
     policy(TRI_DOC_UPDATE_ONLY_IF_NEWER, 0, nullptr),
     ignoreRecoveryErrors(ignoreRecoveryErrors),
@@ -199,15 +195,6 @@ RecoverState::RecoverState (TRI_server_t* server,
 
 RecoverState::~RecoverState () {
   releaseResources();
-
-  // free running remote transactions
-  for (auto it = runningRemoteTransactions.begin(); it != runningRemoteTransactions.end(); ++it) {
-    auto trx = (*it).second;
-
-    delete trx;
-  }
-
-  runningRemoteTransactions.clear();
 }
 
 // -----------------------------------------------------------------------------
@@ -220,25 +207,6 @@ RecoverState::~RecoverState () {
 ////////////////////////////////////////////////////////////////////////////////
   
 void RecoverState::releaseResources () {
-  // hand over running remote transactions to the applier
-  for (auto it = runningRemoteTransactions.begin(); it != runningRemoteTransactions.end(); ++it) {
-    auto* trx = (*it).second;
-    
-    TRI_vocbase_t* vocbase = trx->vocbase();
-    TRI_ASSERT(vocbase != nullptr);
-
-    auto* applier = vocbase->_replicationApplier;
-    TRI_ASSERT(applier != nullptr);
-    
-    applier->addRemoteTransaction(trx);
-  }
-
-  // reset trx counter as we're moving transactions from this thread to a potential other
-  triagens::arango::TransactionBase::setNumbers(0, 0);
-
-  runningRemoteTransactions.clear();
-
-
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end(); ++it) {
     TRI_vocbase_col_t* collection = (*it).second;
@@ -412,61 +380,6 @@ TRI_document_collection_t* RecoverState::getCollection (TRI_voc_tick_t databaseI
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an operation in a remote transaction
-////////////////////////////////////////////////////////////////////////////////
-
-int RecoverState::executeRemoteOperation (TRI_voc_tick_t databaseId,
-                                          TRI_voc_cid_t collectionId,
-                                          TRI_voc_tid_t transactionId,
-                                          TRI_df_marker_t const* marker,
-                                          TRI_voc_fid_t fid,
-                                          std::function<int(RemoteTransactionType*, Marker*)> func) {
-
-  auto it = remoteTransactions.find(transactionId);
-  if (it == remoteTransactions.end()) {
-    LOG_WARNING("remote transaction not found: internal error");
-    return TRI_ERROR_INTERNAL;
-  }
-
-  TRI_voc_tid_t externalId = (*it).second.second;
-  auto it2 = runningRemoteTransactions.find(externalId);
-  if (it2 == runningRemoteTransactions.end()) {
-    LOG_WARNING("remote transaction not found: internal error");
-    return TRI_ERROR_INTERNAL;
-  }
-  
-  auto trx = (*it2).second;
-
-  registerRemoteUsage(databaseId, collectionId);
-
-  EnvelopeMarker* envelope = nullptr;
-  int res = TRI_ERROR_INTERNAL;
-
-  try {
-    envelope = new EnvelopeMarker(marker, fid);
-
-    // execute the operation
-    res = func(trx, envelope);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-  catch (triagens::basics::Exception const& ex) {
-    res = ex.code();
-  }
-  catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-    
-  if (envelope != nullptr) {
-    delete envelope;
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a single operation inside a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -600,6 +513,7 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       transaction_abort_marker_t const* m = reinterpret_cast<transaction_abort_marker_t const*>(marker);
 
       auto it = state->failedTransactions.find(m->_transactionId);
+
       if (it != state->failedTransactions.end()) {
         // delete previous element if present
         state->failedTransactions.erase(m->_transactionId);
@@ -612,15 +526,15 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
 
     case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION: {
       transaction_remote_begin_marker_t const* m = reinterpret_cast<transaction_remote_begin_marker_t const*>(marker);
-      // insert this transaction into the list of remote transactions
-      state->remoteTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, m->_externalId)));
+      // insert this transaction into the list of failed transactions
+      state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, false)));
       break;
     }
 
     case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION: {
       transaction_remote_commit_marker_t const* m = reinterpret_cast<transaction_remote_commit_marker_t const*>(marker);
-      // remove this transaction from the list of remote transactions
-      state->remoteTransactions.erase(m->_transactionId);
+      // remove this transaction from the list of failed transactions
+      state->failedTransactions.erase(m->_transactionId);
       break;
     }
 
@@ -629,13 +543,13 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       // insert this transaction into the list of failed transactions
       // the transaction is treated the same as a regular local transaction that is aborted
       auto it = state->failedTransactions.find(m->_transactionId);
-      if (it == state->failedTransactions.end()) {
-        // insert the transaction into the list of failed transactions
-        state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, false)));
+
+      if (it != state->failedTransactions.end()) {
+        state->failedTransactions.erase(m->_transactionId);
       }
       
-      // remove this transaction from the list of remote transactions
-      state->remoteTransactions.erase(m->_transactionId);
+      // and (re-)insert
+      state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, true)));
       break;
     }
 /*
@@ -795,48 +709,21 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_shaped_json_t shaped;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
 
-      int res = TRI_ERROR_NO_ERROR;
+      int res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int { 
+        if (IsVolatile(trx->trxCollection())) {
+          return TRI_ERROR_NO_ERROR;
+        } 
 
-      if (state->isRemoteTransaction(transactionId)) {
-        // remote operation
-        res = state->executeRemoteOperation(databaseId, collectionId, transactionId, marker, datafile->_fid, [&](RemoteTransactionType* trx, Marker* envelope) -> int { 
-          if (IsVolatile(trx->trxCollection(collectionId))) {
-            return TRI_ERROR_NO_ERROR;
-          } 
+        TRI_doc_mptr_copy_t mptr;
+        int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, nullptr, false, false, true);
 
-          TRI_doc_mptr_copy_t mptr;
-          int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(collectionId), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, nullptr, false, false, true);
+        if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+          state->policy.setExpectedRevision(m->_revisionId);
+          res = TRI_UpdateShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
+        }
 
-          if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-            state->policy.setExpectedRevision(m->_revisionId);
-            res = TRI_UpdateShapedJsonDocumentCollection(trx->trxCollection(collectionId), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
-          }
-
-          return res;
-        });
-      }
-      else if (! state->isUsedByRemoteTransaction(collectionId)) {
-        // local operation
-        res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int { 
-          if (IsVolatile(trx->trxCollection())) {
-            return TRI_ERROR_NO_ERROR;
-          } 
-
-          TRI_doc_mptr_copy_t mptr;
-          int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, nullptr, false, false, true);
-
-          if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-            state->policy.setExpectedRevision(m->_revisionId);
-            res = TRI_UpdateShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
-          }
-
-          return res;
-        });
-      }
-      else {
-        // ERROR - found a local action for a collection that has an ongoing remote transaction
-        res = TRI_ERROR_TRANSACTION_INTERNAL;
-      }
+        return res;
+      });
       
       if (res != TRI_ERROR_NO_ERROR && 
           res != TRI_ERROR_ARANGO_CONFLICT &&
@@ -879,48 +766,21 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_shaped_json_t shaped;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
 
-      int res = TRI_ERROR_NO_ERROR;
-      
-      if (state->isRemoteTransaction(transactionId)) {
-        // remote operation
-        res = state->executeRemoteOperation(databaseId, collectionId, transactionId, marker, datafile->_fid, [&](RemoteTransactionType* trx, Marker* envelope) -> int {
-          if (IsVolatile(trx->trxCollection(collectionId))) {
-            return TRI_ERROR_NO_ERROR;
-          } 
-
-          TRI_doc_mptr_copy_t mptr;
-          int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(collectionId), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &edge, false, false, true);
-
-          if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-            state->policy.setExpectedRevision(m->_revisionId);
-            res = TRI_UpdateShapedJsonDocumentCollection(trx->trxCollection(collectionId), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
-          }
-
-          return res;
-        });
-      }
-      else if (! state->isUsedByRemoteTransaction(collectionId)) {
-        // local operation
-        res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int {
-          if (IsVolatile(trx->trxCollection())) {
-            return TRI_ERROR_NO_ERROR;
-          } 
+      int res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int {
+        if (IsVolatile(trx->trxCollection())) {
+          return TRI_ERROR_NO_ERROR;
+        } 
  
-          TRI_doc_mptr_copy_t mptr;
-          int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &edge, false, false, true);
+        TRI_doc_mptr_copy_t mptr;
+        int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &edge, false, false, true);
 
-          if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-            state->policy.setExpectedRevision(m->_revisionId);
-            res = TRI_UpdateShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
-          }
+        if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+          state->policy.setExpectedRevision(m->_revisionId);
+          res = TRI_UpdateShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
+        }
 
-          return res;
-        });
-      }
-      else {
-        // ERROR - found a local action for a collection that has an ongoing remote transaction
-        res = TRI_ERROR_TRANSACTION_INTERNAL;
-      }
+        return res;
+      });
 
       if (res != TRI_ERROR_NO_ERROR && 
           res != TRI_ERROR_ARANGO_CONFLICT &&
@@ -955,40 +815,17 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
      
       char const* base = reinterpret_cast<char const*>(m); 
       char const* key = base + sizeof(remove_marker_t);
-      int res = TRI_ERROR_NO_ERROR;
-       
-      if (state->isRemoteTransaction(transactionId)) {
-        // remote operation
-        res = state->executeRemoteOperation(databaseId, collectionId, transactionId, marker, datafile->_fid, [&](RemoteTransactionType* trx, Marker* envelope) -> int { 
-          if (IsVolatile(trx->trxCollection(collectionId))) {
-            return TRI_ERROR_NO_ERROR;
-          } 
-
-          // remove the document and ignore any potential errors
-          state->policy.setExpectedRevision(m->_revisionId);
-          TRI_RemoveShapedJsonDocumentCollection(trx->trxCollection(collectionId), (TRI_voc_key_t) key, m->_revisionId, envelope, &state->policy, false, false);
-
+      int res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int { 
+        if (IsVolatile(trx->trxCollection())) {
           return TRI_ERROR_NO_ERROR;
-        });
-      }
-      else if (! state->isUsedByRemoteTransaction(collectionId)) {
-        // local operation
-        res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int { 
-          if (IsVolatile(trx->trxCollection())) {
-            return TRI_ERROR_NO_ERROR;
-          } 
+        } 
 
-          // remove the document and ignore any potential errors
-          state->policy.setExpectedRevision(m->_revisionId);
-          TRI_RemoveShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &state->policy, false, false);
+        // remove the document and ignore any potential errors
+        state->policy.setExpectedRevision(m->_revisionId);
+        TRI_RemoveShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &state->policy, false, false);
 
-          return TRI_ERROR_NO_ERROR;
-        });
-      }
-      else {
-        // ERROR - found a local action for a collection that has an ongoing remote transaction
-        res = TRI_ERROR_TRANSACTION_INTERNAL;
-      }
+        return TRI_ERROR_NO_ERROR;
+      });
 
       if (res != TRI_ERROR_NO_ERROR && 
           res != TRI_ERROR_ARANGO_CONFLICT &&
@@ -1008,47 +845,6 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
     // -----------------------------------------------------------------------------
     // transactions
     // -----------------------------------------------------------------------------
-    
-    case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION: {
-      transaction_remote_begin_marker_t const* m = reinterpret_cast<transaction_remote_begin_marker_t const*>(marker);
-      TRI_voc_tick_t databaseId  = m->_databaseId;
-      TRI_voc_tid_t externalId   = m->_externalId;
-      // start a remote transaction
-      
-      if (state->isDropped(databaseId)) {
-        return true;
-      }
-      
-      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-      if (vocbase == nullptr) {
-        LOG_WARNING("cannot start remote transaction in database %llu: %s", 
-                    (unsigned long long) databaseId,
-                    TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-      }
-
-      auto trx = new RemoteTransactionType(state->server, vocbase, externalId);
-
-      if (trx == nullptr) {
-        LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
-        ++state->errorCount;
-        return state->canContinue();
-      }
-
-      trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
-
-      int res = trx->begin();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
-        delete trx;
-        ++state->errorCount;
-        return state->canContinue();
-      }
-
-      state->runningRemoteTransactions.emplace(std::make_pair(m->_externalId, trx));
-      break;
-    }
-    
     
     case TRI_WAL_MARKER_RENAME_COLLECTION: {
       collection_rename_marker_t const* m = reinterpret_cast<collection_rename_marker_t const*>(marker);
@@ -1326,7 +1122,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       if (TRI_IsStringJson(name)) {
         collection = TRI_LookupCollectionByNameVocBase(vocbase, name->_value._string.data);
         
-        if (collection != nullptr && ! TRI_IsSystemNameCollection(name->_value._string.data)) {
+        if (collection != nullptr) { // && ! TRI_IsSystemNameCollection(name->_value._string.data)) {
           // if yes, delete it
           TRI_voc_cid_t otherCid = collection->_cid;
 
@@ -1365,9 +1161,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_FreeCollectionInfoOptions(&info);
 
       if (collection == nullptr) {
-        LOG_WARNING("cannot create collection %llu in database %llu", 
+        LOG_WARNING("cannot create collection %llu in database %llu: %s", 
                     (unsigned long long) collectionId, 
-                    (unsigned long long) databaseId);
+                    (unsigned long long) databaseId,
+                    TRI_last_error());
         ++state->errorCount;
         return state->canContinue();
       }

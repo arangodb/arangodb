@@ -4824,7 +4824,6 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
       }
 
       handleResult(errorCode, ep->_options.ignoreErrors);
-
       ++dstRow; 
     }
     // done with a block
@@ -4890,7 +4889,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   if (ep->_outVariableNew != nullptr) {
     result->setDocumentCollection(_outRegNew, trxCollection->_collection->_collection);
   }
-         
+
   // loop over all blocks
   size_t dstRow = 0;
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
@@ -4967,8 +4966,14 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
                 std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old.get(), json.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
 
                 if (patchedJson.get() != nullptr) {
-                  // all exceptions are caught in _trx->update()
-                  errorCode = _trx->update(trxCollection, key, 0, &mptr, patchedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+                  if (_isDBServer && 
+                      isShardKeyChange(old.get(), patchedJson.get(), true)) {
+                    errorCode = TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+                  }
+                  else {
+                    // all exceptions are caught in _trx->update()
+                    errorCode = _trx->update(trxCollection, key, 0, &mptr, patchedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+                  }
                 }
               }
             }
@@ -5007,7 +5012,6 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
       }
 
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
-      
       ++dstRow; 
     }
     // done with a block
@@ -5250,7 +5254,6 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
       }
 
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
-      
       ++dstRow; 
     }
     // done with a block
@@ -5353,7 +5356,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
       }
 
-      if (errorCode == TRI_ERROR_NO_ERROR && ep->_outVariableOld != nullptr) {
+      if (errorCode == TRI_ERROR_NO_ERROR && (ep->_outVariableOld != nullptr || _isDBServer)) {
         if (! hasKeyVariable && a.isShaped()) {
           // "old" is already ShapedJson. no need to fetch the old document first
           constructMptr(&nptr, a.getMarker());
@@ -5367,9 +5370,21 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
       if (errorCode == TRI_ERROR_NO_ERROR) {
         TRI_doc_mptr_copy_t mptr;
         auto const json = a.toJson(_trx, document, true);
-          
-        // all exceptions are caught in _trx->update()
-        errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+              
+        if (_isDBServer) {
+          TRI_shaped_json_t shapedJson;
+          TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, nptr.getDataPtr()); // PROTECTED by trx here
+          std::unique_ptr<TRI_json_t> old(TRI_JsonShapedJson(_collection->documentCollection()->getShaper(), &shapedJson));
+
+          if (isShardKeyChange(old.get(), json.json(), false)) {
+            errorCode = TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+          }
+        }
+
+        if (errorCode == TRI_ERROR_NO_ERROR) {
+          // all exceptions are caught in _trx->update()
+          errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+        }
 
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) { 
           if (ignoreDocumentNotFound) {
@@ -5402,7 +5417,6 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
       }
 
       handleResult(errorCode, ep->_options.ignoreErrors); 
-
       ++dstRow;
     }
     // done with a block

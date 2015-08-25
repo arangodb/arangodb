@@ -1,6 +1,12 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* report memory usage for document header data (revision id, pointer to data etc.)
+  in `db.collection.figures()`. The memory used for document headers will now
+  show up in the already existing attribute `indexes.size`. Due to that, the index
+  sizes reported by `figures()` in 2.7 will be higher than those reported by 2.6,
+  but the 2.7 values are more accurate.
+
 * IMPORTANT CHANGE: the filenames in dumps created by arangodump now contain
   not only the name of the dumped collection, but also an additional 32-digit hash
   value. This is done to prevent overwriting dump files in case-insensitive file
