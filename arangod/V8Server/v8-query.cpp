@@ -1200,7 +1200,7 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
   result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(n)));
-  result->Set(TRI_V8_ASCII_STRING("skip"), v8::Number::New(isolate, internalSkip));
+  result->Set(TRI_V8_ASCII_STRING("skip"), v8::Number::New(isolate, static_cast<double>(internalSkip)));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1382,8 +1382,8 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
     }
   }
 
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Integer::New(isolate, static_cast<double>(total)));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Integer::New(isolate, static_cast<double>(count)));
+  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
+  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(count)));
 
   if (error) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
