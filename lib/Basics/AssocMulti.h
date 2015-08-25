@@ -122,15 +122,20 @@ namespace triagens {
         };
 
         struct Bucket {
+          Bucket () = delete;
+
           IndexType _nrAlloc;      // the size of the table
           IndexType _nrUsed;       // the number of used entries
           IndexType _nrCollisions; // the number of entries that have
                                    // a key that was previously in the table
 
           Entry* _table;         // the table itself
+          size_t _id;
 
-          Bucket () : _nrAlloc(0), _nrUsed(0), _nrCollisions(0),
-                      _table(nullptr) {
+          explicit Bucket (size_t id) 
+            : _nrAlloc(0), _nrUsed(0), _nrCollisions(0),
+              _table(nullptr), _id(id) {
+
           }
           // Intentionally no destructor, the AssocMulti class takes
           // care of freeing the tables!
@@ -212,7 +217,7 @@ namespace triagens {
 
           try {
             for (size_t j = 0; j < numberBuckets; j++) {
-              _buckets.emplace_back();
+              _buckets.emplace_back(Bucket(j));
               Bucket& b = _buckets.back();
               b._nrAlloc = initialSize;
               b._table = nullptr;
@@ -477,7 +482,7 @@ namespace triagens {
 
       private:
 
-        void insertFirst (Bucket& b, Element* element, uint64_t hashByKey) {
+        IndexType insertFirst (Bucket& b, Element* element, uint64_t hashByKey) {
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
           check(true, true);
@@ -499,7 +504,7 @@ namespace triagens {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
             check(true, true);
 #endif
-            return;
+            return i;
           }
 
           // Now find the first slot with an entry with the same key
@@ -519,6 +524,7 @@ namespace triagens {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
           check(true, true);
 #endif
+          return i;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -529,7 +535,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void insertFurther (Bucket& b, Element* element, 
-                            uint64_t hashByKey, uint64_t hashByElm) {
+                            uint64_t hashByKey, uint64_t hashByElm,
+                            IndexType firstPosition) {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
           check(true, true);
 #endif
@@ -539,35 +546,8 @@ namespace triagens {
           _nrAdds++;
 #endif
 
-          // We need the beginning of the doubly linked list:
-          IndexType hashIndex = hashToIndex(hashByKey);
-          IndexType i = hashIndex % b._nrAlloc;
-
-          TRI_ASSERT(nullptr != b._table[i].ptr);
-
-          // Find the first slot with an entry with the same key
-          // that is the start of a linked list, or a free slot:
-          while (b._table[i].ptr != nullptr &&
-                 (b._table[i].prev != INVALID_INDEX ||
-                  b._table[i].hashCache != hashByKey ||
-                  ! _isEqualElementElementByKey(element, b._table[i].ptr))
-                ) {
-            i = incr(b, i);
-#ifdef TRI_INTERNAL_STATS
-          // update statistics
-            _ProbesA++;
-#endif
-
-          }
-
-          // If this is free, we are the first with this key, a contradiction:
-          TRI_ASSERT(nullptr != b._table[i].ptr);
-
-          // Now, entry i points to the beginning of the linked
-          // list of which we want to make element a member.
-
-          // Now find a new home for element in this linked list:
-          hashIndex = hashToIndex(hashByElm);
+          // We already know the beginning of the doubly linked list:
+          IndexType hashIndex = hashToIndex(hashByElm);
           IndexType j = hashIndex % b._nrAlloc;
 
           while (b._table[j].ptr != nullptr) {
@@ -578,8 +558,8 @@ namespace triagens {
           }
 
           // add the element to the hash and linked list (in pos 2):
-          b._table[j] = { hashByElm, element, b._table[i].next, i };
-          b._table[i].next = j;
+          b._table[j] = { hashByElm, element, b._table[firstPosition].next, firstPosition };
+          b._table[firstPosition].next = j;
           // Finally, we need to find the successor to patch it up:
           if (b._table[j].next != INVALID_INDEX) {
             b._table[b._table[j].next].prev = j;
@@ -855,10 +835,7 @@ namespace triagens {
                     (unsigned long) _buckets.size(),
                     (unsigned long) size);
 
-          int n = -1;
-
           for (auto& b : _buckets) {
-            ++n;
             IndexType newSize = size / _initialFillRatio;
 
             if (newSize < 2048) {
@@ -866,8 +843,9 @@ namespace triagens {
             }
 
             try {
-              LOG_DEBUG("initial size of bucket %d in AssocMulti: %lu",
-                        n, (unsigned long) newSize);
+              LOG_DEBUG("initial size of bucket %lu in AssocMulti: %lu",
+                        (unsigned long) b._id, 
+                        (unsigned long) newSize);
 
               resizeInternal(b, newSize);
             }
@@ -884,10 +862,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int initialResize () throw() {
-          int n = -1;
-
           for (auto& b : _buckets) {
-            ++n;
             IndexType newSize = b._nrUsed / _initialFillRatio;
 
             if (newSize < b._nrUsed + 2048) {
@@ -900,8 +875,8 @@ namespace triagens {
 
             try {
               if (b._nrAlloc < newSize) {
-                LOG_DEBUG("initial resize of bucket %d in AssocMulti: %lu entries, size %lu -> %lu",
-                          n, 
+                LOG_DEBUG("initial resize of bucket %lu in AssocMulti: %lu entries, size %lu -> %lu",
+                          (unsigned long) b._id, 
                           (unsigned long) b._nrUsed,
                           (unsigned long) b._nrAlloc,
                           (unsigned long) newSize);
@@ -972,13 +947,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void resizeInternal (Bucket& b, IndexType size) {
-          LOG_ACTION("index-resize %s, target size: %llu", 
+          IndexType oldAlloc = b._nrAlloc;
+
+          LOG_ACTION("index-resize %s, bucket: %lu, old size: %llu, target size: %llu", 
                      _contextCallback().c_str(),
+                     (unsigned long) b._id,
+                     (unsigned long long) oldAlloc,
                      (unsigned long long) size);
           double start = TRI_microtime();
 
           Entry* oldTable = b._table;
-          IndexType oldAlloc = b._nrAlloc;
 
           b._nrAlloc = static_cast<IndexType>(TRI_NearPrime(size));
           try {
@@ -1006,8 +984,8 @@ namespace triagens {
             if (oldTable[j].ptr != nullptr && 
                 oldTable[j].prev == INVALID_INDEX) {
               // This is a "first" one in its doubly linked list:
-              insertFirst(b, oldTable[j].ptr, oldTable[j].hashCache);
               uint64_t hashByKey = oldTable[j].hashCache;
+              IndexType insertPosition = insertFirst(b, oldTable[j].ptr, hashByKey);
               // Now walk to the end of the list:
               IndexType k = j;
               while (oldTable[k].next != INVALID_INDEX) {
@@ -1016,7 +994,7 @@ namespace triagens {
               // Now insert all of them backwards, not repeating k:
               while (k != j) {
                 insertFurther(b, oldTable[k].ptr, hashByKey, 
-                              oldTable[k].hashCache);
+                              oldTable[k].hashCache, insertPosition);
                 k = oldTable[k].prev;
               }
             }
@@ -1025,8 +1003,10 @@ namespace triagens {
           delete [] oldTable;
           
           LOG_TIMER((TRI_microtime() - start),
-                    "index-resize, %s, target size: %llu",
+                    "index-resize, %s, bucket: %lu, old size: %llu, target size: %llu",
                     _contextCallback().c_str(),
+                    (unsigned long) b._id,
+                    (unsigned long long) oldAlloc,
                     (unsigned long long) size); 
         }
 
