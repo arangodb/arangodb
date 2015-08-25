@@ -216,6 +216,24 @@
   }
 }
 
+%inputs {
+  @include border-radius(3px);
+  background-color: $c-white !important;
+  border: 1px solid $c-content-border;
+  box-shadow: none;
+  outline: none;
+  outline-color: $c-transp;
+  outline-style: none;
+
+  &:focus {
+    border-color: $c-dark-grey;
+    box-shadow: none;
+    outline: none;
+    outline-color: $c-transp;
+    outline-style: none;
+  }
+}
+
 %dropdown-menu {
   @extend %pull-left;
 

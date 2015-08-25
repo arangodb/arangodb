@@ -1870,6 +1870,23 @@ a.inactive.coordinator, a.inactive.dbserver {
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
     fill: #d3d3d3; }
 
+input.search-input, .modal-body .select2-choices input, .modal-body input, .modal-body select, .modal-body textarea {
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
+  background-color: #fff !important;
+  border: 1px solid rgba(140, 138, 137, 0.25);
+  box-shadow: none;
+  outline: none;
+  outline-color: transparent;
+  outline-style: none; }
+  input.search-input:focus, .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
+    border-color: #999;
+    box-shadow: none;
+    outline: none;
+    outline-color: transparent;
+    outline-style: none; }
+
 .link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu {
   background-color: #f5f8f0;
   border-color: #666;
@@ -2462,6 +2479,10 @@ a.button-gui {
   margin-right: -6px; }
   .tileList legend {
     padding-left: 5px; }
+  .tileList .tile:first-child a {
+    opacity: .5; }
+    .tileList .tile:first-child a:hover {
+      opacity: 1; }
 
 div .tile, div .bigtile {
   -webkit-box-shadow: none;
@@ -2504,9 +2525,13 @@ div .tile, div .bigtile {
     margin-top: 12pt; }
   div .tile .collection-type-icon:hover, div .bigtile .collection-type-icon:hover {
     cursor: pointer; }
-  div .tile img.icon, div .bigtile img.icon {
-    height: 50px;
-    width: 50px; }
+  div .tile img, div .bigtile img {
+    position: relative; }
+    div .tile img.icon, div .bigtile img.icon {
+      height: 50px;
+      width: 50px; }
+    div .tile img:hover, div .bigtile img:hover {
+      cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
     font-size: 22px;
     margin-left: 22px;
@@ -2575,7 +2600,7 @@ div .tile, div .bigtile {
     top: 5px; }
     div .tile .iconSet span, div .bigtile .iconSet span {
       border-radius: 3px;
-      color: #000;
+      color: #666;
       font-size: 18px;
       padding-bottom: 2px;
       padding-left: 3px;
@@ -4716,35 +4741,20 @@ span.gv_caret {
   margin-top: 2px !important; }
 
 input.search-input {
-  -moz-border-radius: 3px;
-  -webkit-border-radius: 3px;
-  border-radius: 3px;
-  background-color: #fff !important;
-  border: 1px solid rgba(140, 138, 137, 0.25);
-  box-shadow: none;
   height: 14px;
   line-height: 18px;
   margin-right: -1px;
   margin-top: 6px;
-  outline: none;
-  outline-color: transparent;
-  outline-style: none;
   width: 120px; }
-  input.search-input:focus {
-    border-color: #999;
-    box-shadow: none;
-    outline: none;
-    outline-color: transparent;
-    outline-style: none; }
 
 .search-field {
   margin-left: 10px; }
   .search-field .fa-search {
     color: #c2c2c2;
-    font-size: 13pt;
+    font-size: 12pt;
     opacity: .5;
     position: absolute;
-    right: 7px;
+    right: 9px;
     top: 9px; }
     .search-field .fa-search:hover {
       cursor: pointer;
@@ -4898,17 +4908,14 @@ div.headerBar {
   color: #736b68;
   font-family: 'Open Sans', sans-serif !important;
   font-size: 14px;
-  font-weight: 300; }
+  font-weight: 300;
+  max-height: 410px; }
   .modal-body .select2-choices {
     background-image: none !important;
     border: 1px solid #999;
     border-radius: 3px;
     -webkit-box-shadow: none;
     box-shadow: none; }
-    .modal-body .select2-choices input {
-      -webkit-box-shadow: none;
-      box-shadow: none;
-      outline: transparent !important; }
     .modal-body .select2-choices input:active {
       -webkit-box-shadow: none;
       box-shadow: none;
@@ -4930,8 +4937,6 @@ div.headerBar {
   .modal-body .nav-tabs {
     margin-top: 15px; }
   .modal-body input, .modal-body select, .modal-body textarea {
-    border-radius: 3px;
-    box-shadow: none;
     margin-top: 10px; }
   .modal-body input[type='checkbox'] {
     margin-bottom: 10px; }
@@ -5248,6 +5253,10 @@ a.dbserver.double {
   margin-right: -6px; }
   .tileList legend {
     padding-left: 5px; }
+  .tileList .tile:first-child a {
+    opacity: .5; }
+    .tileList .tile:first-child a:hover {
+      opacity: 1; }
 
 div .tile, div .bigtile {
   -webkit-box-shadow: none;
@@ -5290,9 +5299,13 @@ div .tile, div .bigtile {
     margin-top: 12pt; }
   div .tile .collection-type-icon:hover, div .bigtile .collection-type-icon:hover {
     cursor: pointer; }
-  div .tile img.icon, div .bigtile img.icon {
-    height: 50px;
-    width: 50px; }
+  div .tile img, div .bigtile img {
+    position: relative; }
+    div .tile img.icon, div .bigtile img.icon {
+      height: 50px;
+      width: 50px; }
+    div .tile img:hover, div .bigtile img:hover {
+      cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
     font-size: 22px;
     margin-left: 22px;
@@ -5361,7 +5374,7 @@ div .tile, div .bigtile {
     top: 5px; }
     div .tile .iconSet span, div .bigtile .iconSet span {
       border-radius: 3px;
-      color: #000;
+      color: #666;
       font-size: 18px;
       padding-bottom: 2px;
       padding-left: 3px;
@@ -5587,7 +5600,7 @@ div .bigtile {
   margin: 0 12px; }
 
 .headerBar.dashboard-headerbar {
-  margin: 15px 0 10px; }
+  margin: 20px 0; }
 
 .modal-chart-detail .modal-dashboard-legend .dashboard-legend-inner {
   padding-left: 20px; }
