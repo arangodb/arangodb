@@ -125,54 +125,7 @@ static int FillIndexSearchValueByHashIndexElement (HashIndex const* hashIndex,
 
     TRI_InspectShapedSub(&element->subObjects()[i], ptr, key->_values[i]);
   }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locates a key within the hash array part
-/// it is the callers responsibility to destroy the result
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vector_pointer_t HashIndex_find (TRI_hash_array_t const* hashArray,
-                                            TRI_index_search_value_t* key) {
-  TRI_vector_pointer_t results;
-  TRI_InitVectorPointer(&results, TRI_UNKNOWN_MEM_ZONE);
-
-  // .............................................................................
-  // A find request means that a set of values for the "key" was sent. We need
-  // to locate the hash array entry by key.
-  // .............................................................................
-
-  TRI_index_element_t* result = hashArray->findByKey(key);
-
-  if (result != nullptr) {
-    // unique hash index: maximum number is 1
-    TRI_PushBackVectorPointer(&results, result->document());
-  }
-
-  return results;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locates a key within the hash array part
-////////////////////////////////////////////////////////////////////////////////
-
-static int HashIndex_find (TRI_hash_array_t const* hashArray,
-                           TRI_index_search_value_t* key,
-                           std::vector<TRI_doc_mptr_copy_t>& result) {
-
-  // .............................................................................
-  // A find request means that a set of values for the "key" was sent. We need
-  // to locate the hash array entry by key.
-  // .............................................................................
-
-  TRI_index_element_t* found = hashArray->findByKey(key);
-
-  if (found != nullptr) {
-    // unique hash index: maximum number is 1
-    result.emplace_back(*(found->document()));
-  }
+  key->_length = n;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -206,21 +159,21 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
   }
 
   if (unique) {
-    _hashArray = nullptr;
+    _uniqueArray._hashArray = nullptr;
     try {
-      _hashArray = new TRI_hash_array_t(_paths.size(), indexBuckets);
+      _uniqueArray._hashElement = new HashElementFunc(_paths.size());
+      _uniqueArray._hashArray = new TRI_HashArray_t(hashKey,
+                                               *_uniqueArray._hashElement,
+                                               isEqualKeyElement,
+                                               isEqualElementElement,
+                                               indexBuckets
+      );
     }
     catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
   else {
-    uint32_t indexBuckets = 1;
-    if (collection != nullptr) {
-      // document is a nullptr in the coordinator case
-      indexBuckets = collection->_info._indexBuckets;
-    }
-          
     _multi._hashArray = nullptr;
     _multi._isEqualElElByKey = nullptr;
     _multi._hashElement = nullptr;
@@ -247,9 +200,9 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
 
 HashIndex::~HashIndex () {
   if (_unique) {
-    _hashArray->invokeOnAllElements(freeElement);
-    delete _hashArray;
-    _hashArray = nullptr;
+    _uniqueArray._hashArray->invokeOnAllElements(freeElement);
+    delete _uniqueArray._hashElement;
+    delete _uniqueArray._hashArray;
   }
   else {
     _multi._hashArray->invokeOnAllElements(freeElement);
@@ -279,8 +232,8 @@ double HashIndex::selectivityEstimate () const {
         
 size_t HashIndex::memory () const {
   if (_unique) {
-    return static_cast<size_t>(keyEntrySize() * _hashArray->size() + 
-                               _hashArray->memoryUsage());
+    return static_cast<size_t>(keyEntrySize() * _uniqueArray._hashArray->size() + 
+                               _uniqueArray._hashArray->memoryUsage());
   }
 
   return static_cast<size_t>(keyEntrySize() * _multi._hashArray->size() +
@@ -333,36 +286,11 @@ int HashIndex::sizeHint (size_t size) {
   }
 
   if (_unique) {
-    return _hashArray->resize(this, size);
+    return _uniqueArray._hashArray->resize(size);
   }
   else {
     return _multi._hashArray->resize(size);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given shaped json objects
-/// it is the callers responsibility to destroy the result
-////////////////////////////////////////////////////////////////////////////////
-
-// FIXME: use std::vector here as well
-TRI_vector_pointer_t HashIndex::lookup (TRI_index_search_value_t* searchValue) const {
-  if (_unique) {
-    return HashIndex_find(_hashArray, searchValue);
-  }
-
-  std::vector<TRI_index_element_t*>* results 
-      = _multi._hashArray->lookupByKey(searchValue);
-  TRI_vector_pointer_t resultsvec;
-  int res = TRI_InitVectorPointer(&resultsvec, TRI_UNKNOWN_MEM_ZONE, 
-                                  results->size());
-  if (res == TRI_ERROR_NO_ERROR) {
-    for (size_t i = 0; i < results->size(); i++) {
-      TRI_PushBackVectorPointer(&resultsvec, (*results)[i]->document());
-    }
-  }
-  delete results;
-  return resultsvec;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,7 +301,13 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_copy_t>& documents) const {
 
   if (_unique) {
-    return HashIndex_find(_hashArray, searchValue, documents);
+    TRI_index_element_t* found = _uniqueArray._hashArray->findByKey(searchValue);
+
+    if (found != nullptr) {
+      // unique hash index: maximum number is 1
+      documents.emplace_back(*(found->document()));
+    }
+    return TRI_ERROR_NO_ERROR;
   }
 
   std::vector<TRI_index_element_t*>* results = nullptr;
@@ -409,7 +343,13 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
 
   if (_unique) {
     next = nullptr;
-    return HashIndex_find(_hashArray, searchValue, documents);
+    TRI_index_element_t* found = _uniqueArray._hashArray->findByKey(searchValue);
+
+    if (found != nullptr) {
+      // unique hash index: maximum number is 1
+      documents.emplace_back(*(found->document()));
+    }
+    return TRI_ERROR_NO_ERROR;
   }
 
   std::vector<TRI_index_element_t*>* results = nullptr;
@@ -469,7 +409,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(allocate, elements, doc, paths(), sparse());
   
-  auto work = [this] (TRI_index_element_t const* element, bool isRollback) -> int {
+  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("InsertHashIndex") {
       return TRI_ERROR_DEBUG;
     }
@@ -482,7 +422,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
       return res;
     }
 
-    res = _hashArray->insert(this, &key, element, isRollback);
+    res = _uniqueArray._hashArray->insert(&key, element, isRollback);
 
     if (key._values != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
@@ -558,13 +498,12 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
   return res;
 }
 
-int HashIndex::removeUniqueElement(TRI_index_element_t* element, bool isRollback) {
+int HashIndex::removeUniqueElement (TRI_index_element_t* element, bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") {
     return TRI_ERROR_DEBUG;
   }
 
-  TRI_index_element_t* old = _hashArray->remove (this, element);
-
+  TRI_index_element_t* old = _uniqueArray._hashArray->remove(element);
   // this might happen when rolling back
   if (old == nullptr) {
     if (isRollback) {
